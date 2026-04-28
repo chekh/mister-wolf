@@ -569,12 +569,26 @@ export interface ExecutionContext {
 Add timeout resolution to `executeSingleAttempt`:
 
 ```typescript
+private projectConfig: ProjectConfig;
+
+constructor(
+  private registry: RunnerRegistry,
+  private caseStore: CaseStore,
+  private gateStore: GateStore,
+  private bus: InProcessEventBus,
+  projectConfig?: ProjectConfig,
+) {
+  this.projectConfig = projectConfig || loadProjectConfig();
+}
+
 private resolveTimeout(step: StepDefinition): number {
   // Priority: step > wolf.yaml > default
   if (step.timeout) {
     return this.parseDuration(step.timeout);
   }
-  // TODO: read from project config when available
+  if (this.projectConfig.defaults.timeout) {
+    return this.parseDuration(this.projectConfig.defaults.timeout);
+  }
   return this.parseDuration('60s');
 }
 
@@ -592,8 +606,25 @@ private async executeSingleAttempt(step: StepDefinition, state: ExecutionState):
     timeoutMs,
   };
 
-  // TODO: add timeout enforcement wrapper
-  return await runner.run({ ...step, input: interpolatedInput }, ctx);
+  return await this.runWithTimeout(
+    () => runner.run({ ...step, input: interpolatedInput }, ctx),
+    timeoutMs,
+    step.id
+  );
+}
+
+private async runWithTimeout<T>(
+  fn: () => Promise<T>,
+  timeoutMs: number,
+  stepId: string
+): Promise<T> {
+  return Promise.race([
+    fn(),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Step ${stepId} timed out after ${timeoutMs}ms`)), timeoutMs)
+    ),
+  ]);
+}
 }
 ```
 
