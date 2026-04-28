@@ -31,10 +31,22 @@ export class GateStore {
   }
 
   getGate(gateId: string): { caseId: string; stepId: string; gate: GateState } | null {
-    const parts = gateId.split('_');
-    if (parts.length < 3) return null;
-    const stepId = parts.pop()!;
-    const caseId = parts.slice(1).join('_');
+    // gateId format: gate_{caseId}_{stepId}
+    // caseId format: case_{uuid} (uuid has no underscores)
+    // stepId may contain underscores
+    const prefix = 'gate_';
+    if (!gateId.startsWith(prefix)) return null;
+
+    const rest = gateId.slice(prefix.length);
+    const casePrefix = 'case_';
+    if (!rest.startsWith(casePrefix)) return null;
+
+    const afterCasePrefix = rest.slice(casePrefix.length);
+    const firstUnderscore = afterCasePrefix.indexOf('_');
+    if (firstUnderscore === -1) return null;
+
+    const caseId = 'case_' + afterCasePrefix.slice(0, firstUnderscore);
+    const stepId = afterCasePrefix.slice(firstUnderscore + 1);
 
     const state = this.caseStore.readState(caseId);
     if (!state) return null;
