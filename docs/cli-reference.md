@@ -404,12 +404,6 @@ wolf cases inspect case_abc123 --json | jq '.completed_steps | length'
 
 ---
 
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `WOLF_STATE_DIR` | Override default state directory (`.wolf/state`) |
-
 ## Files
 
 | File | Description |

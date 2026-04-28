@@ -196,7 +196,7 @@ Mr. Wolf
 ├── Workflow Engine    # Sequential execution, state machine
 ├── Runner Registry    # Pluggable step runners
 │   ├── echo           # Simple output
-│   ├── shell          # Shell commands with security restrictions
+│   ├── shell          # Shell commands with basic safety checks
 │   └── manual_gate    # Human approval gates
 ├── State Store        # File-based persistence (JSON + JSONL)
 │   ├── Case Store     # Case metadata + workflow snapshot

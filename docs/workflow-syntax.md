@@ -58,7 +58,7 @@ Outputs a message. Returns the message as output.
 
 ### shell
 
-Executes a shell command with security restrictions.
+Executes a shell command with basic safety checks.
 
 ```yaml
 - id: list_files
