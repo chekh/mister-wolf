@@ -2,10 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { execSync } from 'child_process';
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, existsSync, readdirSync } from 'fs';
 import { tmpdir } from 'os';
-import { join, resolve } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const cliPath = join(__dirname, '..', '..', 'dist', 'cli', 'index.js');
 
 describe('CLI integration', () => {
-  const cliPath = resolve(process.cwd(), 'dist/cli/index.js');
 
   it('should run a workflow and complete', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'wolf-cli-'));
