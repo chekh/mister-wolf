@@ -1,0 +1,30 @@
+{
+  "name": "mr-wolf",
+  "version": "0.1.0",
+  "description": "Mr. Wolf — universal adaptive agent framework",
+  "type": "module",
+  "bin": {
+    "wolf": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "js-yaml": "^4.1.0",
+    "zod": "^3.23.0",
+    "better-sqlite3": "^9.0.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0",
+    "@types/node": "^20.0.0",
+    "@types/js-yaml": "^4.0.0",
+    "@types/better-sqlite3": "^7.6.0"
+  }
+}
