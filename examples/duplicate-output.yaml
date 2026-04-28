@@ -1,0 +1,17 @@
+# examples/duplicate-output.yaml
+id: duplicate_output_demo
+version: "0.1.0"
+steps:
+  - id: step1
+    type: builtin
+    runner: echo
+    input:
+      message: "first"
+    output: shared_var
+
+  - id: step2
+    type: builtin
+    runner: echo
+    input:
+      message: "second"
+    output: shared_var

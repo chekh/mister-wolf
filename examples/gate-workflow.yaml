@@ -1,0 +1,21 @@
+# examples/gate-workflow.yaml
+id: gate_demo
+version: "0.1.0"
+steps:
+  - id: setup
+    type: builtin
+    runner: echo
+    input:
+      message: "Setup complete"
+
+  - id: approval_needed
+    type: builtin
+    runner: manual_gate
+    input:
+      message: "Do you approve this action?"
+
+  - id: finalize
+    type: builtin
+    runner: echo
+    input:
+      message: "Action approved and completed"

@@ -1,0 +1,9 @@
+# examples/shell-error.yaml
+id: shell_error_demo
+version: "0.1.0"
+steps:
+  - id: fail_step
+    type: builtin
+    runner: shell
+    input:
+      command: "exit 1"
