@@ -7,6 +7,7 @@ import { ExecutionState, StepResult } from '../types/state.js';
 import { RuntimeEvent } from '../types/events.js';
 import { interpolateObject } from './template.js';
 import { evaluateCondition } from './conditions.js';
+import { ProjectConfig } from '../config/project-config.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class WorkflowEngine {
@@ -17,6 +18,7 @@ export class WorkflowEngine {
     private caseStore: CaseStore,
     private gateStore: GateStore,
     private bus: InProcessEventBus,
+    private config: ProjectConfig = { state_dir: '.wolf/state', defaults: { timeout: '30s' } },
   ) {}
 
   async execute(caseId: string, workflow: WorkflowDefinition): Promise<{ status: string }> {
@@ -114,6 +116,7 @@ export class WorkflowEngine {
       state.updated_at = new Date().toISOString();
 
       if (result.status === 'success') {
+        state.step_statuses[step.id] = 'success';
         state.completed_steps.push(step.id);
 
         if (step.output && result.output !== undefined) {
@@ -124,7 +127,7 @@ export class WorkflowEngine {
           this.caseStore.writeOutput(state.case_id, step.id, String(result.output));
         }
 
-        if (step.artifact && result.status === 'success' && result.output !== undefined) {
+        if (step.artifact && result.output !== undefined) {
           this.caseStore.writeArtifact(
             state.case_id,
             step.id,
@@ -132,17 +135,13 @@ export class WorkflowEngine {
             String(result.output)
           );
 
-          const event: RuntimeEvent = {
-            id: uuidv4(),
+          await this.emitEvent({
             type: 'artifact.created',
             case_id: state.case_id,
+            workflow_id: state.workflow_id,
             step_id: step.id,
-            timestamp: new Date().toISOString(),
-            actor: { type: 'system', id: 'workflow-engine' },
             payload: { path: step.artifact.path },
-          };
-          await this.bus.publish(event);
-          this.caseStore.appendEvent(state.case_id, event);
+          });
         }
 
         this.caseStore.writeState(state.case_id, state);
@@ -155,6 +154,7 @@ export class WorkflowEngine {
           payload: { output: result.output },
         });
       } else if (result.status === 'gated') {
+        state.step_statuses[step.id] = 'gated';
         this.gateStore.createGate(state.case_id, step.id);
         const updatedState = this.caseStore.readState(state.case_id)!;
         updatedState.status = 'paused';
@@ -172,6 +172,7 @@ export class WorkflowEngine {
 
         return { status: 'paused' };
       } else if (result.status === 'failure') {
+        state.step_statuses[step.id] = 'failure';
         state.status = 'failed';
         state.failed_steps.push(step.id);
         this.caseStore.writeState(state.case_id, state);
@@ -251,18 +252,32 @@ export class WorkflowEngine {
     if (step.timeout) {
       return this.parseDuration(step.timeout);
     }
+    if (this.config.defaults.timeout) {
+      return this.parseDuration(this.config.defaults.timeout);
+    }
     return this.parseDuration('60s');
   }
 
-  private async runWithTimeout<T>(
-    fn: () => Promise<T>,
+  private async runWithTimeout(
+    fn: () => Promise<StepResult>,
     timeoutMs: number,
     stepId: string,
-  ): Promise<T> {
+  ): Promise<StepResult> {
     return Promise.race([
       fn(),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Step ${stepId} timed out after ${timeoutMs}ms`)), timeoutMs),
+      new Promise<StepResult>((resolve) =>
+        setTimeout(
+          () =>
+            resolve({
+              status: 'failure',
+              error: {
+                type: 'TimeoutError',
+                message: `Step ${stepId} timed out after ${timeoutMs}ms`,
+                retryable: false,
+              },
+            }),
+          timeoutMs,
+        ),
       ),
     ]);
   }
@@ -323,6 +338,7 @@ export class WorkflowEngine {
       ...partial,
       payload: partial.payload || {},
     };
+    this.caseStore.appendEvent(event.case_id, event);
     await this.bus.publish(event);
   }
 
