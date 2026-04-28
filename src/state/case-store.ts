@@ -4,7 +4,7 @@ import { ExecutionState } from '../types/state.js';
 import { CaseMetadata, CaseStatus } from '../types/case.js';
 import { SQLiteIndex } from './sqlite-index.js';
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import yaml from 'js-yaml';
 
 export class CaseStore {
@@ -95,5 +95,12 @@ export class CaseStore {
 
   writeOutput(caseId: string, stepId: string, stdout: string, stderr?: string): void {
     this.fileStore.writeOutput(caseId, stepId, stdout, stderr);
+  }
+
+  writeArtifact(caseId: string, stepId: string, artifactPath: string, content: string): void {
+    const caseDir = this.fileStore.getCaseDir(caseId);
+    const fullPath = join(caseDir, 'artifacts', artifactPath);
+    mkdirSync(dirname(fullPath), { recursive: true });
+    writeFileSync(fullPath, content);
   }
 }

@@ -27,4 +27,13 @@ describe('CaseStore', () => {
     const snapshot = store.loadWorkflowSnapshot('case_123');
     expect(snapshot.id).toBe('test');
   });
+
+  it('should write artifact', () => {
+    store.createCase('case_123', { id: 'w', version: '0.1.0', steps: [] }, 'r');
+    store.writeArtifact('case_123', 'step1', 'reports/output.txt', 'artifact content');
+
+    const artifactPath = join(tempDir, 'cases', 'case_123', 'artifacts', 'reports', 'output.txt');
+    expect(existsSync(artifactPath)).toBe(true);
+    expect(readFileSync(artifactPath, 'utf-8')).toBe('artifact content');
+  });
 });

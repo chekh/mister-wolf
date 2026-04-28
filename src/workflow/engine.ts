@@ -124,6 +124,27 @@ export class WorkflowEngine {
           this.caseStore.writeOutput(state.case_id, step.id, String(result.output));
         }
 
+        if (step.artifact && result.status === 'success' && result.output !== undefined) {
+          this.caseStore.writeArtifact(
+            state.case_id,
+            step.id,
+            step.artifact.path,
+            String(result.output)
+          );
+
+          const event: RuntimeEvent = {
+            id: uuidv4(),
+            type: 'artifact.created',
+            case_id: state.case_id,
+            step_id: step.id,
+            timestamp: new Date().toISOString(),
+            actor: { type: 'system', id: 'workflow-engine' },
+            payload: { path: step.artifact.path },
+          };
+          await this.bus.publish(event);
+          this.caseStore.appendEvent(state.case_id, event);
+        }
+
         this.caseStore.writeState(state.case_id, state);
 
         await this.emitEvent({
