@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { readdirSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import yaml from 'js-yaml';
+import { SQLiteIndex } from '../../state/sqlite-index.js';
 
 export function createCasesCommand(): Command {
   const cases = new Command('cases')
@@ -14,48 +15,57 @@ export function createCasesCommand(): Command {
     .action(async (options: { status?: string }) => {
       const cwd = process.cwd();
       const casesDir = join(cwd, '.wolf', 'state', 'cases');
-
-      if (!existsSync(casesDir)) {
-        console.log('No cases found.');
-        return;
-      }
-
-      const caseDirs = readdirSync(casesDir, { withFileTypes: true })
-        .filter(d => d.isDirectory())
-        .map(d => d.name);
-
-      if (caseDirs.length === 0) {
-        console.log('No cases found.');
-        return;
-      }
+      const sqlitePath = join(cwd, '.wolf', 'state', 'wolf.sqlite');
 
       const rows: { caseId: string; status: string; updated: string }[] = [];
 
-      for (const caseId of caseDirs) {
-        const caseDir = join(casesDir, caseId);
-        const caseYamlPath = join(caseDir, 'case.yaml');
-        const stateJsonPath = join(caseDir, 'state.json');
-
-        let status = 'unknown';
-        let updated = '';
-
-        if (existsSync(caseYamlPath)) {
-          const content = readFileSync(caseYamlPath, 'utf-8');
-          const meta = yaml.load(content) as Record<string, unknown>;
-          status = String(meta.status || 'unknown');
-          updated = String(meta.updated_at || '');
-        } else if (existsSync(stateJsonPath)) {
-          const content = readFileSync(stateJsonPath, 'utf-8');
-          const state = JSON.parse(content) as Record<string, unknown>;
-          status = String(state.status || 'unknown');
-          updated = String(state.updated_at || '');
+      if (existsSync(sqlitePath)) {
+        const index = new SQLiteIndex(sqlitePath);
+        const cases = index.listCases(options.status);
+        for (const c of cases) {
+          rows.push({ caseId: c.id, status: c.status, updated: '' });
+        }
+      } else {
+        if (!existsSync(casesDir)) {
+          console.log('No cases found.');
+          return;
         }
 
-        if (options.status && status !== options.status) {
-          continue;
+        const caseDirs = readdirSync(casesDir, { withFileTypes: true })
+          .filter(d => d.isDirectory())
+          .map(d => d.name);
+
+        if (caseDirs.length === 0) {
+          console.log('No cases found.');
+          return;
         }
 
-        rows.push({ caseId, status, updated });
+        for (const caseId of caseDirs) {
+          const caseDir = join(casesDir, caseId);
+          const caseYamlPath = join(caseDir, 'case.yaml');
+          const stateJsonPath = join(caseDir, 'state.json');
+
+          let status = 'unknown';
+          let updated = '';
+
+          if (existsSync(caseYamlPath)) {
+            const content = readFileSync(caseYamlPath, 'utf-8');
+            const meta = yaml.load(content) as Record<string, unknown>;
+            status = String(meta.status || 'unknown');
+            updated = String(meta.updated_at || '');
+          } else if (existsSync(stateJsonPath)) {
+            const content = readFileSync(stateJsonPath, 'utf-8');
+            const state = JSON.parse(content) as Record<string, unknown>;
+            status = String(state.status || 'unknown');
+            updated = String(state.updated_at || '');
+          }
+
+          if (options.status && status !== options.status) {
+            continue;
+          }
+
+          rows.push({ caseId, status, updated });
+        }
       }
 
       if (rows.length === 0) {

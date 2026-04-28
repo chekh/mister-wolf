@@ -2,6 +2,7 @@ import { FileStateStore } from './file-store.js';
 import { WorkflowDefinition } from '../types/workflow.js';
 import { ExecutionState } from '../types/state.js';
 import { CaseMetadata, CaseStatus } from '../types/case.js';
+import { SQLiteIndex } from './sqlite-index.js';
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import yaml from 'js-yaml';
@@ -9,7 +10,7 @@ import yaml from 'js-yaml';
 export class CaseStore {
   private fileStore: FileStateStore;
 
-  constructor(baseDir: string) {
+  constructor(baseDir: string, private index?: SQLiteIndex) {
     this.fileStore = new FileStateStore(baseDir);
   }
 
@@ -29,6 +30,15 @@ export class CaseStore {
 
     writeFileSync(join(caseDir, 'case.yaml'), yaml.dump(meta));
     writeFileSync(join(caseDir, 'workflow.yaml'), yaml.dump(workflow));
+
+    this.index?.insertCase({
+      id: caseId,
+      workflow_id: workflow.id,
+      status: meta.status,
+      created_at: meta.created_at,
+      updated_at: meta.updated_at,
+      path: caseDir,
+    });
 
     const state: ExecutionState = {
       case_id: caseId,
@@ -60,6 +70,15 @@ export class CaseStore {
     meta.status = status;
     meta.updated_at = new Date().toISOString();
     writeFileSync(path, yaml.dump(meta));
+
+    this.index?.insertCase({
+      id: caseId,
+      workflow_id: String(meta.workflow_id || ''),
+      status: String(meta.status),
+      created_at: String(meta.created_at || ''),
+      updated_at: String(meta.updated_at),
+      path: caseDir,
+    });
   }
 
   writeState(caseId: string, state: ExecutionState): void {

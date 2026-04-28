@@ -1,8 +1,9 @@
 import { CaseStore } from './case-store.js';
 import { GateState } from '../types/state.js';
+import { SQLiteIndex } from './sqlite-index.js';
 
 export class GateStore {
-  constructor(private caseStore: CaseStore) {}
+  constructor(private caseStore: CaseStore, private index?: SQLiteIndex) {}
 
   createGate(caseId: string, stepId: string): string {
     const gateId = `gate_${caseId}_${stepId}`;
@@ -17,6 +18,14 @@ export class GateStore {
 
     state.gates[gateId] = gate;
     this.caseStore.writeState(caseId, state);
+
+    this.index?.insertGate({
+      id: gateId,
+      case_id: caseId,
+      step_id: stepId,
+      status: gate.status,
+      requested_at: gate.requested_at,
+    });
 
     return gateId;
   }
@@ -42,10 +51,13 @@ export class GateStore {
 
     const { caseId } = found;
     const state = this.caseStore.readState(caseId)!;
+    const respondedAt = new Date().toISOString();
     state.gates[gateId].status = 'approved';
-    state.gates[gateId].responded_at = new Date().toISOString();
+    state.gates[gateId].responded_at = respondedAt;
     state.gates[gateId].responded_by = approvedBy;
     this.caseStore.writeState(caseId, state);
+
+    this.index?.updateGate(gateId, 'approved', respondedAt);
   }
 
   rejectGate(gateId: string, rejectedBy: string): void {
@@ -54,10 +66,13 @@ export class GateStore {
 
     const { caseId } = found;
     const state = this.caseStore.readState(caseId)!;
+    const respondedAt = new Date().toISOString();
     state.gates[gateId].status = 'rejected';
-    state.gates[gateId].responded_at = new Date().toISOString();
+    state.gates[gateId].responded_at = respondedAt;
     state.gates[gateId].responded_by = rejectedBy;
     state.status = 'failed';
     this.caseStore.writeState(caseId, state);
+
+    this.index?.updateGate(gateId, 'rejected', respondedAt);
   }
 }
