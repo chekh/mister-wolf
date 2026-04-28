@@ -1,11 +1,11 @@
 import { StepDefinition } from './workflow.js';
-import { StepResult } from './state.js';
+import { GateState, StepResult } from './state.js';
 
 export interface ExecutionContext {
   case_id: string;
   workflow_id: string;
   variables: Record<string, unknown>;
-  gates?: Record<string, import('./state.js').GateState>;
+  gates?: Record<string, GateState>;
   config: unknown;
 }
 

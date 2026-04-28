@@ -9,7 +9,7 @@ export enum CaseStatus {
 }
 
 export interface Case {
-  id: string;
+  case_id: string;
   title: string;
   status: CaseStatus;
   request: {
