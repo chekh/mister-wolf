@@ -1,0 +1,36 @@
+# examples/hello-world.yaml
+id: hello_world
+version: "0.1.0"
+name: "Hello World"
+description: "Minimal MVP1A workflow"
+
+steps:
+  - id: greet
+    type: builtin
+    runner: echo
+    input:
+      message: "Starting Mr. Wolf workflow"
+    output: greet_result
+
+  - id: check_env
+    type: builtin
+    runner: shell
+    input:
+      command: "pwd"
+    output: current_directory
+
+  - id: confirm_continue
+    type: builtin
+    runner: manual_gate
+    input:
+      title: "Continue?"
+      message: "Proceed to final step?"
+
+  - id: finish
+    type: builtin
+    runner: echo
+    input:
+      message: "Workflow completed!"
+    output: finish_result
+    depends_on:
+      - confirm_continue
