@@ -204,23 +204,11 @@ defaults:
 - Runner responsible for respecting timeout (or engine kills after timeout)
 - On timeout: step result = `failure`, error type = `TimeoutError`, retryable = false
 
-### 3.4 Simple Artifacts
+### 3.4 Simple Artifacts (Output-Only)
+
+MVP1B artifact support is intentionally minimal. Artifacts are always created from `StepResult.output`. Copying arbitrary files from workspace or runner temp directories is deferred to MVP6 (full Artifact System).
 
 #### Syntax
-
-```yaml
-steps:
-  - id: generate_report
-    type: builtin
-    runner: shell
-    input:
-      command: "echo 'Build OK' > /tmp/build-report.txt"
-    artifact:
-      path: "reports/build-report.txt"
-      from_output: false       # copy from absolute path
-```
-
-Or capture stdout as artifact:
 
 ```yaml
 steps:
@@ -231,21 +219,26 @@ steps:
       command: "ls -la"
     artifact:
       path: "outputs/file-list.txt"
-      from_output: true        # write stdout to artifact path
 ```
 
-#### Storage
+#### Behavior
 
-- Path: `.wolf/state/cases/{case_id}/artifacts/{artifact.path}`
-- Directory structure preserved
-- No lifecycle management (no cleanup, no schemas)
-- Event: `artifact.created` with `{ case_id, step_id, path }`
+- If `artifact.path` is specified and step succeeds, `StepResult.output` is written to `.wolf/state/cases/{case_id}/artifacts/{artifact.path}`
+- Artifact path must be **relative** (no leading `/`, no `../`)
+- Directory structure within `artifacts/` is preserved
+- No lifecycle management (no cleanup, no schemas, no validation)
+- Event emitted: `artifact.created` with `{ case_id, step_id, path }`
 
 #### API
 
 ```typescript
 // CaseStore
-writeArtifact(caseId: string, stepId: string, artifactPath: string, content: Buffer | string): void
+writeArtifact(
+  caseId: string,
+  stepId: string,
+  artifactPath: string,
+  content: Buffer | string
+): void
 ```
 
 ### 3.5 wolf.yaml — Project Configuration
@@ -479,6 +472,7 @@ src/cli/index.ts                  # + validate command
 | Condition evaluator scope creep | Hard limit: 4 operators only. No expression language |
 | wolf.yaml schema expansion | Strict Zod schema, reject unknown keys |
 | Artifact path traversal | Normalize paths, reject `../` and absolute paths |
+| Artifact source ambiguity | MVP1B supports output-only artifacts. External file copying deferred to MVP6 |
 
 ---
 
