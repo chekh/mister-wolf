@@ -82,3 +82,57 @@ describe('types', () => {
     expect(result.success).toBe(true);
   });
 });
+
+import { RetryPolicySchema, ConditionSchema, ArtifactSchema } from '../../src/types/workflow.js';
+
+describe('MVP1B types', () => {
+  it('should validate retry policy', () => {
+    const result = RetryPolicySchema.safeParse({ max_attempts: 3, delay: '1s', backoff: 'linear' });
+    expect(result.success).toBe(true);
+  });
+
+  it('should validate condition with equals', () => {
+    const result = ConditionSchema.safeParse({ var: 'foo', equals: 'bar' });
+    expect(result.success).toBe(true);
+  });
+
+  it('should validate artifact', () => {
+    const result = ArtifactSchema.safeParse({ path: 'outputs/result.txt' });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject absolute artifact path', () => {
+    const result = ArtifactSchema.safeParse({ path: '/etc/passwd' });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject artifact path with parent traversal', () => {
+    const result = ArtifactSchema.safeParse({ path: '../secret.txt' });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject condition with multiple operators', () => {
+    const result = ConditionSchema.safeParse({ var: 'foo', equals: 'bar', exists: true });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('MVP1B state types', () => {
+  it('should validate execution state with skipped_steps and step_statuses', () => {
+    const result = ExecutionStateSchema.safeParse({
+      case_id: 'c1',
+      workflow_id: 'w1',
+      status: 'running',
+      completed_steps: [],
+      failed_steps: [],
+      skipped_steps: ['step1'],
+      step_results: {},
+      step_statuses: { step1: 'skipped' },
+      variables: {},
+      gates: {},
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    expect(result.success).toBe(true);
+  });
+});

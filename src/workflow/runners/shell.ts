@@ -41,7 +41,7 @@ function isBlocked(command: string): boolean {
 export class ShellRunner implements StepRunner {
   type = 'shell';
 
-  async run(step: StepDefinition, _ctx: ExecutionContext): Promise<StepResult> {
+  async run(step: StepDefinition, ctx: ExecutionContext): Promise<StepResult> {
     const command = (step.input?.command as string) || '';
 
     if (!command) {
@@ -66,7 +66,7 @@ export class ShellRunner implements StepRunner {
       };
     }
 
-    const timeout = parseTimeout(step.input?.timeout);
+    const timeout = ctx.timeoutMs ?? parseTimeout(step.input?.timeout);
 
     return new Promise<StepResult>((resolve) => {
       const child = spawn(command, {
@@ -118,7 +118,7 @@ export class ShellRunner implements StepRunner {
           resolve({
             status: 'failure',
             error: {
-              type: 'shell_error',
+              type: 'TimeoutError',
               message: `Command timed out after ${timeout}ms`,
               retryable: true,
               details: { stderr: stderr.toString() },

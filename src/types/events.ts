@@ -21,3 +21,12 @@ export const RuntimeEventSchema = z.object({
 });
 
 export type RuntimeEvent = z.infer<typeof RuntimeEventSchema>;
+
+/*
+ * MVP1B Event Types:
+ * - step.skipped       { case_id, step_id, reason: "condition_false", condition }
+ * - step.retrying      { case_id, step_id, attempt, max_attempts, reason }
+ * - artifact.created   { case_id, step_id, path }
+ * - case.cancelled     { case_id, cancelled_by }
+ * - step.timed_out     { case_id, step_id, timeout_ms }
+ */

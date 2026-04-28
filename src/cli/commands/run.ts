@@ -1,6 +1,7 @@
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import { loadWorkflow } from '../../config/loader.js';
 import { validateWorkflow } from '../../config/validator.js';
+import { loadProjectConfig } from '../../config/project-config.js';
 import { WorkflowEngine } from '../../workflow/engine.js';
 import { RunnerRegistry } from '../../workflow/runner-registry.js';
 import { EchoRunner } from '../../workflow/runners/echo.js';
@@ -16,9 +17,11 @@ export function createRunCommand(): Command {
   return new Command('run')
     .description('Run a workflow')
     .argument('<workflow>', 'Path to workflow YAML file')
-    .action(async (workflowPath: string) => {
+    .addOption(new Option('--config <path>', 'Path to wolf.yaml config file'))
+    .action(async (workflowPath: string, options: { config?: string }) => {
       const cwd = process.cwd();
-      const stateDir = join(cwd, '.wolf', 'state');
+      const projectConfig = loadProjectConfig(options.config);
+      const stateDir = join(cwd, projectConfig.state_dir);
 
       const registry = new RunnerRegistry();
       registry.register(new EchoRunner());
