@@ -27,7 +27,9 @@ export class WorkflowEngine {
       status: 'running',
       completed_steps: [],
       failed_steps: [],
+      skipped_steps: [],
       step_results: {},
+      step_statuses: {},
       variables: {},
       gates: {},
       started_at: new Date().toISOString(),
@@ -56,6 +58,8 @@ export class WorkflowEngine {
     }
 
     state.status = 'running';
+    state.step_statuses ??= {};
+    state.skipped_steps ??= [];
     state.updated_at = new Date().toISOString();
     this.states.set(caseId, state);
     this.caseStore.writeState(caseId, state);
@@ -165,7 +169,6 @@ export class WorkflowEngine {
 
   private async executeStep(step: StepDefinition, state: ExecutionState): Promise<StepResult> {
     const interpolatedInput = interpolateObject(step.input, state.variables);
-    const runner = this.registry.get(step.runner);
 
     await this.emitEvent({
       type: 'step.started',
@@ -174,6 +177,13 @@ export class WorkflowEngine {
       step_id: step.id,
       payload: { input: interpolatedInput },
     });
+
+    return this.executeStepWithRetry(step, state);
+  }
+
+  private async executeSingleAttempt(step: StepDefinition, state: ExecutionState): Promise<StepResult> {
+    const interpolatedInput = interpolateObject(step.input, state.variables);
+    const runner = this.registry.get(step.runner);
 
     const context = {
       case_id: state.case_id,
@@ -184,6 +194,54 @@ export class WorkflowEngine {
     };
 
     return runner.run({ ...step, input: interpolatedInput as Record<string, unknown> | undefined }, context);
+  }
+
+  private async executeStepWithRetry(step: StepDefinition, state: ExecutionState): Promise<StepResult> {
+    state.step_statuses ??= {};
+    const maxAttempts = step.retry?.max_attempts ?? 1;
+    const delayMs = this.parseDuration(step.retry?.delay ?? '1s');
+    const backoff = step.retry?.backoff ?? 'fixed';
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      state.step_statuses[step.id] = attempt > 1 ? 'retrying' : 'running';
+      state.updated_at = new Date().toISOString();
+      this.caseStore.writeState(state.case_id, state);
+
+      const result = await this.executeSingleAttempt(step, state);
+
+      if (result.status !== 'failure' || attempt === maxAttempts) {
+        return result;
+      }
+
+      // Emit retrying event
+      const event: RuntimeEvent = {
+        id: uuidv4(),
+        type: 'step.retrying',
+        case_id: state.case_id,
+        step_id: step.id,
+        timestamp: new Date().toISOString(),
+        actor: { type: 'system', id: 'workflow-engine' },
+        payload: { attempt, max_attempts: maxAttempts, reason: result.error?.type || 'unknown' },
+      };
+      await this.bus.publish(event);
+      this.caseStore.appendEvent(state.case_id, event);
+
+      const waitMs = backoff === 'linear' ? delayMs * attempt : delayMs;
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+
+    return { status: 'failure' };
+  }
+
+  private parseDuration(duration: string): number {
+    const match = duration.match(/^(\d+)(ms|s|m)$/);
+    if (!match) return 1000;
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+    if (unit === 'ms') return value;
+    if (unit === 's') return value * 1000;
+    if (unit === 'm') return value * 60 * 1000;
+    return 1000;
   }
 
   private async emitEvent(partial: Omit<RuntimeEvent, 'id' | 'timestamp' | 'actor'>): Promise<void> {

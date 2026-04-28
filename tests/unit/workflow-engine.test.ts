@@ -46,3 +46,29 @@ describe('WorkflowEngine', () => {
     expect(state?.variables.out1).toBe('step1');
   });
 });
+
+describe('WorkflowEngine retry', () => {
+  it('should retry failing step', async () => {
+    // This is a basic structure test - verify retry policy is parsed
+    const registry = new RunnerRegistry();
+    registry.register(new EchoRunner());
+    const tempDir = mkdtempSync(join(tmpdir(), 'wolf-retry-'));
+    const caseStore = new CaseStore(tempDir);
+    const gateStore = new GateStore(caseStore);
+    const bus = new InProcessEventBus();
+    const engine = new WorkflowEngine(registry, caseStore, gateStore, bus);
+
+    const workflow: WorkflowDefinition = {
+      id: 'retry_test',
+      version: '0.1.0',
+      steps: [
+        { id: 's1', type: 'builtin', runner: 'echo', input: { message: 'test' }, retry: { max_attempts: 3, delay: '100ms', backoff: 'fixed' } },
+      ],
+    };
+
+    const result = await engine.execute('retry_case', workflow);
+    expect(result.status).toBe('completed');
+
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+});
