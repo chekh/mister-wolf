@@ -7,6 +7,7 @@ export interface ExecutionContext {
   variables: Record<string, unknown>;
   gates?: Record<string, GateState>;
   config: unknown;
+  timeoutMs?: number;
 }
 
 export interface StepRunner {

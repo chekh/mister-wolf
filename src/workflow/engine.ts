@@ -184,6 +184,7 @@ export class WorkflowEngine {
   private async executeSingleAttempt(step: StepDefinition, state: ExecutionState): Promise<StepResult> {
     const interpolatedInput = interpolateObject(step.input, state.variables);
     const runner = this.registry.get(step.runner);
+    const timeoutMs = this.resolveTimeout(step);
 
     const context = {
       case_id: state.case_id,
@@ -191,9 +192,34 @@ export class WorkflowEngine {
       variables: state.variables,
       gates: state.gates,
       config: {},
+      timeoutMs,
     };
 
-    return runner.run({ ...step, input: interpolatedInput as Record<string, unknown> | undefined }, context);
+    return this.runWithTimeout(
+      () => runner.run({ ...step, input: interpolatedInput as Record<string, unknown> | undefined }, context),
+      timeoutMs,
+      step.id,
+    );
+  }
+
+  private resolveTimeout(step: StepDefinition): number {
+    if (step.timeout) {
+      return this.parseDuration(step.timeout);
+    }
+    return this.parseDuration('60s');
+  }
+
+  private async runWithTimeout<T>(
+    fn: () => Promise<T>,
+    timeoutMs: number,
+    stepId: string,
+  ): Promise<T> {
+    return Promise.race([
+      fn(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Step ${stepId} timed out after ${timeoutMs}ms`)), timeoutMs),
+      ),
+    ]);
   }
 
   private async executeStepWithRetry(step: StepDefinition, state: ExecutionState): Promise<StepResult> {

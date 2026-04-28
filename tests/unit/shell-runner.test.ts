@@ -40,4 +40,23 @@ describe('ShellRunner', () => {
     expect(result.status).toBe('failure');
     expect((result.error?.message || '')).toContain('blocked');
   });
+
+  it('should respect timeout', async () => {
+    const runner = new ShellRunner();
+    const step: StepDefinition = {
+      id: 'step1',
+      type: 'builtin',
+      runner: 'shell',
+      input: { command: 'sleep 10' },
+    };
+    const result = await runner.run(step, {
+      case_id: 'c1',
+      workflow_id: 'w1',
+      variables: {},
+      config: {},
+      timeoutMs: 100,
+    });
+    expect(result.status).toBe('failure');
+    expect(result.error?.type).toBe('TimeoutError');
+  });
 });
