@@ -1,4 +1,4 @@
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import { readdirSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import yaml from 'js-yaml';
@@ -92,7 +92,8 @@ export function createCasesCommand(): Command {
     .description('Inspect a specific case')
     .argument('<case_id>', 'Case ID to inspect')
     .option('--events', 'Include events')
-    .action(async (caseId: string, options: { events?: boolean }) => {
+    .addOption(new Option('--json', 'Output as JSON'))
+    .action(async (caseId: string, options: { events?: boolean; json?: boolean }) => {
       const cwd = process.cwd();
       const caseDir = join(cwd, '.wolf', 'state', 'cases', caseId);
 
@@ -105,6 +106,12 @@ export function createCasesCommand(): Command {
       if (existsSync(stateJsonPath)) {
         const content = readFileSync(stateJsonPath, 'utf-8');
         const state = JSON.parse(content);
+
+        if (options.json) {
+          console.log(JSON.stringify(state, null, 2));
+          return;
+        }
+
         console.log('State:');
         console.log(JSON.stringify(state, null, 2));
       }
