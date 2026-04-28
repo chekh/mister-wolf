@@ -110,7 +110,7 @@ steps:
 // Add to WorkflowDefinitionSchema
 const ExecutionConfigSchema = z.object({
   mode: z.enum(['sequential', 'graph']).default('sequential'),
-  max_parallel: z.number().int().min(1).default(1),
+  max_parallel: z.number().int().min(1).optional(), // no default here
 });
 
 // Update WorkflowDefinitionSchema
@@ -243,14 +243,32 @@ A step is **blocked** when:
 ```
 If step fails:
   1. Mark step status = 'failure'
-  2. For each dependent step:
+  2. Find all transitive downstream dependents not yet completed/success
+  3. For each such step:
      a. Mark status = 'skipped'
-     b. Skip reason = 'dependency_failed'
+     b. Skip reason = dependency_failed
      c. Emit step.skipped event
-  3. Workflow status = 'failed'
+  4. Workflow status = 'failed'
+  5. No new steps are scheduled
+  6. Already running steps are allowed to finish and persist results
 ```
 
-### 4.5 Parallelism
+**Transitive rule:** If A fails and B depends on A and C depends on B, then both B and C are skipped.
+
+**Fail-fast scheduling:** When any step fails, the workflow enters failed status immediately. Running steps complete naturally, but no additional steps are started.
+
+### 4.5 Gate Behavior in Graph Mode
+
+When any step returns `gated`:
+1. No new steps are scheduled
+2. Workflow status becomes `paused`
+3. Already running steps are allowed to finish
+4. Their results are persisted normally
+5. Resume recomputes ready queue from persisted state
+
+**Why:** In graph mode multiple steps may be running concurrently. Attempting to cancel running steps would introduce complexity (cancellation tokens, partial results, cleanup). It is simpler and safer to let them finish.
+
+### 4.6 Parallelism
 
 ```typescript
 interface ParallelConfig {
