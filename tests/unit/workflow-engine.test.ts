@@ -72,3 +72,35 @@ describe('WorkflowEngine retry', () => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 });
+
+describe('WorkflowEngine conditions', () => {
+  it('should skip step when condition is false', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'wolf-cond-'));
+    const registry = new RunnerRegistry();
+    registry.register(new EchoRunner());
+    const caseStore = new CaseStore(tempDir);
+    const gateStore = new GateStore(caseStore);
+    const bus = new InProcessEventBus();
+    const engine = new WorkflowEngine(registry, caseStore, gateStore, bus);
+
+    const workflow: WorkflowDefinition = {
+      id: 'cond_test',
+      version: '0.1.0',
+      steps: [
+        { id: 's1', type: 'builtin', runner: 'echo', input: { message: 'hello' }, output: 'greeting' },
+        { id: 's2', type: 'builtin', runner: 'echo', when: { var: 'greeting', equals: 'wrong' }, input: { message: 'should not run' } },
+        { id: 's3', type: 'builtin', runner: 'echo', input: { message: 'done' } },
+      ],
+    };
+
+    const result = await engine.execute('cond_case', workflow);
+    expect(result.status).toBe('completed');
+
+    const finalState = engine.getState('cond_case');
+    expect(finalState?.skipped_steps).toContain('s2');
+    expect(finalState?.completed_steps).toContain('s1');
+    expect(finalState?.completed_steps).toContain('s3');
+
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+});

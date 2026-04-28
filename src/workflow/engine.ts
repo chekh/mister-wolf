@@ -6,6 +6,7 @@ import { WorkflowDefinition, StepDefinition } from '../types/workflow.js';
 import { ExecutionState, StepResult } from '../types/state.js';
 import { RuntimeEvent } from '../types/events.js';
 import { interpolateObject } from './template.js';
+import { evaluateCondition } from './conditions.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class WorkflowEngine {
@@ -79,6 +80,29 @@ export class WorkflowEngine {
     for (const step of workflow.steps) {
       if (state.completed_steps.includes(step.id)) {
         continue;
+      }
+
+      if (step.when) {
+        const shouldRun = evaluateCondition(step.when, state.variables);
+        if (!shouldRun) {
+          state.skipped_steps.push(step.id);
+          state.step_statuses[step.id] = 'skipped';
+          state.step_results[step.id] = { status: 'skipped' };
+
+          const event: RuntimeEvent = {
+            id: uuidv4(),
+            type: 'step.skipped',
+            case_id: state.case_id,
+            step_id: step.id,
+            timestamp: new Date().toISOString(),
+            actor: { type: 'system', id: 'workflow-engine' },
+            payload: { reason: 'condition_false', condition: step.when },
+          };
+          await this.bus.publish(event);
+          this.caseStore.appendEvent(state.case_id, event);
+          this.caseStore.writeState(state.case_id, state);
+          continue;
+        }
       }
 
       state.current_step_id = step.id;
