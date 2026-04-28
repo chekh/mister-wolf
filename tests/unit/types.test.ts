@@ -116,3 +116,23 @@ describe('MVP1B types', () => {
     expect(result.success).toBe(false);
   });
 });
+
+describe('MVP1B state types', () => {
+  it('should validate execution state with skipped_steps and step_statuses', () => {
+    const result = ExecutionStateSchema.safeParse({
+      case_id: 'c1',
+      workflow_id: 'w1',
+      status: 'running',
+      completed_steps: [],
+      failed_steps: [],
+      skipped_steps: ['step1'],
+      step_results: {},
+      step_statuses: { step1: 'skipped' },
+      variables: {},
+      gates: {},
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    expect(result.success).toBe(true);
+  });
+});
