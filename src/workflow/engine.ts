@@ -106,15 +106,17 @@ export class WorkflowEngine {
           payload: { output: result.output },
         });
       } else if (result.status === 'gated') {
-        state.status = 'paused';
         this.gateStore.createGate(state.case_id, step.id);
-        this.caseStore.writeState(state.case_id, state);
+        const updatedState = this.caseStore.readState(state.case_id)!;
+        updatedState.status = 'paused';
+        this.caseStore.writeState(state.case_id, updatedState);
+        this.states.set(state.case_id, updatedState);
         this.caseStore.updateCaseStatus(state.case_id, 'paused');
 
         await this.emitEvent({
           type: 'gate.requested',
-          case_id: state.case_id,
-          workflow_id: state.workflow_id,
+          case_id: updatedState.case_id,
+          workflow_id: updatedState.workflow_id,
           step_id: step.id,
           payload: {},
         });
