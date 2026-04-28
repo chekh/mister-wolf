@@ -31,7 +31,7 @@ export function createRunCommand(): Command {
       const caseStore = new CaseStore(stateDir);
       const gateStore = new GateStore(caseStore);
       const bus = new InProcessEventBus();
-      const engine = new WorkflowEngine(registry, caseStore, gateStore, bus);
+      const engine = new WorkflowEngine(registry, caseStore, gateStore, bus, projectConfig);
 
       let workflow;
       try {

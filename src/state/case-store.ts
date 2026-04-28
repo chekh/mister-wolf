@@ -100,6 +100,9 @@ export class CaseStore {
   }
 
   writeArtifact(caseId: string, stepId: string, artifactPath: string, content: string): void {
+    if (artifactPath.startsWith('/') || artifactPath.includes('..')) {
+      throw new Error(`Invalid artifact path: ${artifactPath}. Must be relative and not contain parent traversal.`);
+    }
     const caseDir = this.fileStore.getCaseDir(caseId);
     const fullPath = join(caseDir, 'artifacts', artifactPath);
     mkdirSync(dirname(fullPath), { recursive: true });
