@@ -326,6 +326,43 @@ export class WorkflowEngine {
     await this.bus.publish(event);
   }
 
+  async cancel(caseId: string): Promise<void> {
+    const state = this.caseStore.readState(caseId);
+    if (!state) throw new Error(`Case not found: ${caseId}`);
+    if (state.status === 'completed' || state.status === 'failed' || state.status === 'cancelled') {
+      throw new Error(`Cannot cancel case in status: ${state.status}`);
+    }
+
+    state.status = 'cancelled';
+    state.updated_at = new Date().toISOString();
+    state.step_statuses ??= {};
+    state.skipped_steps ??= [];
+
+    // Mark remaining steps as skipped
+    const workflow = this.caseStore.loadWorkflowSnapshot(caseId);
+    for (const step of workflow.steps) {
+      if (!state.step_statuses[step.id]) {
+        state.step_statuses[step.id] = 'skipped';
+        state.skipped_steps.push(step.id);
+      }
+    }
+
+    this.states.set(caseId, state);
+    this.caseStore.writeState(caseId, state);
+    this.caseStore.updateCaseStatus(caseId, 'cancelled');
+
+    const event: RuntimeEvent = {
+      id: uuidv4(),
+      type: 'case.cancelled',
+      case_id: caseId,
+      timestamp: new Date().toISOString(),
+      actor: { type: 'user', id: 'cli' },
+      payload: { cancelled_by: 'cli-user' },
+    };
+    await this.bus.publish(event);
+    this.caseStore.appendEvent(caseId, event);
+  }
+
   getState(caseId: string): ExecutionState | null {
     return this.states.get(caseId) || this.caseStore.readState(caseId);
   }

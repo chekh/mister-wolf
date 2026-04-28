@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { WorkflowEngine } from '../../src/workflow/engine.js';
 import { RunnerRegistry } from '../../src/workflow/runner-registry.js';
 import { EchoRunner } from '../../src/workflow/runners/echo.js';
+import { ManualGateRunner } from '../../src/workflow/runners/manual-gate.js';
 import { CaseStore } from '../../src/state/case-store.js';
 import { GateStore } from '../../src/state/gate-store.js';
 import { InProcessEventBus } from '../../src/kernel/event-bus.js';
@@ -100,6 +101,36 @@ describe('WorkflowEngine conditions', () => {
     expect(finalState?.skipped_steps).toContain('s2');
     expect(finalState?.completed_steps).toContain('s1');
     expect(finalState?.completed_steps).toContain('s3');
+
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+});
+
+describe('WorkflowEngine cancel', () => {
+  it('should cancel running case', async () => {
+    const registry = new RunnerRegistry();
+    registry.register(new EchoRunner());
+    registry.register(new ManualGateRunner());
+    const tempDir = mkdtempSync(join(tmpdir(), 'wolf-cancel-'));
+    const caseStore = new CaseStore(tempDir);
+    const gateStore = new GateStore(caseStore);
+    const bus = new InProcessEventBus();
+    const engine = new WorkflowEngine(registry, caseStore, gateStore, bus);
+
+    const gateWorkflow: WorkflowDefinition = {
+      id: 'gate_cancel',
+      version: '0.1.0',
+      steps: [
+        { id: 'setup', type: 'builtin', runner: 'echo', input: { message: 'setup' } },
+        { id: 'approval', type: 'builtin', runner: 'manual_gate', input: { message: 'approve?' } },
+      ],
+    };
+
+    await engine.execute('cancel_case', gateWorkflow);
+    await engine.cancel('cancel_case');
+
+    const state = engine.getState('cancel_case');
+    expect(state?.status).toBe('cancelled');
 
     rmSync(tempDir, { recursive: true, force: true });
   });

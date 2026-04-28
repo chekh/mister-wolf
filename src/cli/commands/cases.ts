@@ -3,6 +3,14 @@ import { readdirSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import yaml from 'js-yaml';
 import { SQLiteIndex } from '../../state/sqlite-index.js';
+import { CaseStore } from '../../state/case-store.js';
+import { GateStore } from '../../state/gate-store.js';
+import { InProcessEventBus } from '../../kernel/event-bus.js';
+import { WorkflowEngine } from '../../workflow/engine.js';
+import { RunnerRegistry } from '../../workflow/runner-registry.js';
+import { EchoRunner } from '../../workflow/runners/echo.js';
+import { ShellRunner } from '../../workflow/runners/shell.js';
+import { ManualGateRunner } from '../../workflow/runners/manual-gate.js';
 
 export function createCasesCommand(): Command {
   const cases = new Command('cases')
@@ -116,6 +124,34 @@ export function createCasesCommand(): Command {
         }
       }
     });
+
+  cases
+    .addCommand(
+      new Command('cancel')
+        .description('Cancel a running or paused case')
+        .argument('<case_id>', 'Case ID to cancel')
+        .action(async (caseId: string) => {
+          const cwd = process.cwd();
+          const stateDir = join(cwd, '.wolf', 'state');
+          const caseStore = new CaseStore(stateDir);
+          const gateStore = new GateStore(caseStore);
+          const bus = new InProcessEventBus();
+          const registry = new RunnerRegistry();
+          registry.register(new EchoRunner());
+          registry.register(new ShellRunner());
+          registry.register(new ManualGateRunner());
+          const engine = new WorkflowEngine(registry, caseStore, gateStore, bus);
+
+          try {
+            await engine.cancel(caseId);
+            console.log(`Case ${caseId} cancelled.`);
+            process.exit(0);
+          } catch (err) {
+            console.error('Error:', err instanceof Error ? err.message : String(err));
+            process.exit(1);
+          }
+        })
+    );
 
   return cases;
 }
