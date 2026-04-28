@@ -4,6 +4,7 @@ import { createRunCommand } from './commands/run.js';
 import { createResumeCommand } from './commands/resume.js';
 import { createCasesCommand } from './commands/cases.js';
 import { createGatesCommand, createApproveCommand, createRejectCommand } from './commands/gates.js';
+import { createValidateCommand } from './commands/validate.js';
 
 const program = new Command();
 
@@ -18,5 +19,6 @@ program.addCommand(createCasesCommand());
 program.addCommand(createGatesCommand());
 program.addCommand(createApproveCommand());
 program.addCommand(createRejectCommand());
+program.addCommand(createValidateCommand());
 
 program.parse();
