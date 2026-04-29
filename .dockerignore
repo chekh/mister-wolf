@@ -1,0 +1,12 @@
+node_modules
+dist
+.wolf
+.worktrees
+.git
+*.log
+.DS_Store
+coverage
+Dockerfile
+docker-compose.yml
+.dockerignore
+.github

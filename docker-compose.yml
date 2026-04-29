@@ -1,0 +1,20 @@
+services:
+  wolf:
+    build:
+      context: .
+      target: test
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm run check
+
+  shell:
+    build:
+      context: .
+      target: base
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+    entrypoint: /bin/bash
