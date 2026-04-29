@@ -4,7 +4,7 @@ import { ExecutionState } from '../types/state.js';
 import { CaseMetadata, CaseStatus } from '../types/case.js';
 import { SQLiteIndex } from './sqlite-index.js';
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
+import { join, dirname, resolve, sep } from 'path';
 import yaml from 'js-yaml';
 
 export class CaseStore {
@@ -96,16 +96,23 @@ export class CaseStore {
     this.fileStore.appendEvent(caseId, event as any);
   }
 
+  readEvents(caseId: string): unknown[] {
+    return this.fileStore.readEvents(caseId);
+  }
+
   writeOutput(caseId: string, stepId: string, stdout: string, stderr?: string): void {
     this.fileStore.writeOutput(caseId, stepId, stdout, stderr);
   }
 
   writeArtifact(caseId: string, stepId: string, artifactPath: string, content: string): void {
-    if (artifactPath.startsWith('/') || artifactPath.includes('..')) {
-      throw new Error(`Invalid artifact path: ${artifactPath}. Must be relative and not contain parent traversal.`);
-    }
     const caseDir = this.fileStore.getCaseDir(caseId);
-    const fullPath = join(caseDir, 'artifacts', artifactPath);
+    const artifactsRoot = resolve(caseDir, 'artifacts');
+    const fullPath = resolve(artifactsRoot, artifactPath);
+
+    if (!fullPath.startsWith(artifactsRoot + sep)) {
+      throw new Error(`Invalid artifact path: ${artifactPath}. Path traversal detected.`);
+    }
+
     mkdirSync(dirname(fullPath), { recursive: true });
     writeFileSync(fullPath, content);
   }
