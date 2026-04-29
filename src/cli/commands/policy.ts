@@ -1,18 +1,7 @@
 import { Command, Option } from 'commander';
 import { PolicyPreflight } from '../../policy/preflight.js';
 import { loadProjectConfig } from '../../config/project-config.js';
-import { WorkflowDefinitionSchema } from '../../types/workflow.js';
-import yaml from 'js-yaml';
-import { readFileSync } from 'fs';
-
-function loadWorkflow(path: string) {
-  const content = readFileSync(path, 'utf-8');
-  const parsed = yaml.load(content);
-  if (!parsed || typeof parsed !== 'object') {
-    throw new Error(`Invalid workflow file: ${path}`);
-  }
-  return WorkflowDefinitionSchema.parse(parsed);
-}
+import { loadWorkflow } from '../../config/loader.js';
 
 export function createPolicyCommand(): Command {
   const policy = new Command('policy').description('Manage workflow policies');
