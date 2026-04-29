@@ -8,7 +8,7 @@ import { RuntimeEvent } from '../types/events.js';
 import { interpolateObject } from './template.js';
 import { evaluateCondition } from './conditions.js';
 import { buildGraph, getReadySteps, getTransitiveDependents, DependencyGraph } from './graph.js';
-import { ProjectConfig } from '../config/project-config.js';
+import { ProjectConfig, ProjectConfigSchema } from '../config/project-config.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class WorkflowEngine {
@@ -19,7 +19,7 @@ export class WorkflowEngine {
     private caseStore: CaseStore,
     private gateStore: GateStore,
     private bus: InProcessEventBus,
-    private config: ProjectConfig = { state_dir: '.wolf/state', defaults: { timeout: '30s' } }
+    private config: ProjectConfig = ProjectConfigSchema.parse({})
   ) {}
 
   async execute(caseId: string, workflow: WorkflowDefinition): Promise<{ status: string }> {
