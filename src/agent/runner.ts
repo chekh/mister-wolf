@@ -17,7 +17,8 @@ function validateContextBundlePath(path: string, stateDir: string): { valid: boo
     return { valid: false, reason: 'context_bundle must not contain parent traversal' };
   }
 
-  const projectRoot = dirname(stateDir);
+  const absoluteStateDir = resolve(stateDir);
+  const projectRoot = dirname(absoluteStateDir);
   const resolved = resolve(projectRoot, path);
   if (!resolved.startsWith(projectRoot)) {
     return { valid: false, reason: 'context_bundle must be inside project root' };
@@ -53,7 +54,8 @@ export class AgentRunner implements StepRunner {
     if (path.includes('..')) {
       return { valid: false, reason: 'context_bundle must not contain parent traversal' };
     }
-    const projectRoot = dirname(stateDir);
+    const absoluteStateDir = resolve(stateDir);
+    const projectRoot = dirname(absoluteStateDir);
     const resolved = resolve(projectRoot, path);
     if (!resolved.startsWith(projectRoot)) {
       return { valid: false, reason: 'context_bundle must be inside project root' };

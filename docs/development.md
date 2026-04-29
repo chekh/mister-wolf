@@ -342,6 +342,101 @@ policy:
 
 Policy decisions (allow / ask / deny) work the same way for `runner: agent` as for any other runner. The Agent Runner does **not** call the Policy Engine directly — evaluation happens in the WorkflowEngine via PolicyStepGuard before the runner executes.
 
+## Model Provider Runtime
+
+The Model Provider Runtime (MVP5) adds real LLM execution to the Agent Runner. It supports two execution modes and includes a deterministic MockProvider for testing.
+
+### Execution Modes
+
+Configure the global execution mode in `wolf.yaml`:
+
+```yaml
+models:
+  execution:
+    mode: stub # stub | invoke
+```
+
+- **stub** — Returns an `AgentInvocationPlan` JSON without calling any provider (MVP4 behavior)
+- **invoke** — Calls the configured provider and returns an `AgentModelResult` JSON
+
+Routes can override the global mode:
+
+```yaml
+models:
+  routes:
+    default_coding:
+      provider: mock
+      model: mock-chat
+      execution_mode: invoke # Overrides global mode for this route
+```
+
+### MockProvider
+
+The built-in `MockProvider` is deterministic and requires no API keys. It is always registered and is ideal for CI tests.
+
+```yaml
+models:
+  routes:
+    test_route:
+      provider: mock
+      model: mock-chat
+```
+
+MockProvider output format: `[mock:<model>] <input truncated to 200 chars>`
+
+### OpenAIProvider
+
+The `OpenAIProvider` calls the OpenAI API. It requires the `OPENAI_API_KEY` environment variable.
+
+```yaml
+models:
+  routes:
+    openai_route:
+      provider: openai
+      model: gpt-4
+      temperature: 0.7
+      system_prompt: 'You are a helpful assistant.'
+```
+
+If `OPENAI_API_KEY` is missing, the provider throws `ProviderAuthError`.
+
+### Context Bundle Usage
+
+In invoke mode, pass a context bundle to the agent:
+
+```yaml
+steps:
+  - id: review
+    type: builtin
+    runner: agent
+    input:
+      agent: reviewer
+      task: 'Review the codebase'
+      context_bundle: '.wolf/context/context.md'
+```
+
+The runner reads the bundle file and passes it as `context` in the `ModelInvocationRequest`. Supported formats:
+
+- `.md` — read as UTF-8 text
+- `.json` — parsed and stringified with indentation
+
+### Example Workflow with Invoke Mode
+
+```yaml
+id: agent_invoke_demo
+version: '0.1.0'
+
+steps:
+  - id: ask_agent
+    type: builtin
+    runner: agent
+    input:
+      agent: helper
+      task: 'Explain the project structure'
+```
+
+With `models.execution.mode: invoke` and a mock route, this calls the MockProvider and returns a structured result with output and usage statistics.
+
 ## CI
 
 GitHub Actions runs on every PR and push to `main` / `dev`:

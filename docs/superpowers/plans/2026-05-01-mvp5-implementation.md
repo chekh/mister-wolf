@@ -14,30 +14,30 @@
 
 ### New Files
 
-| File | Responsibility |
-|------|---------------|
-| `src/model/types.ts` | `ModelInvocationRequest`, `ModelInvocationResult`, `ModelProvider`, `AgentModelResult` interfaces |
-| `src/model/errors.ts` | Provider error taxonomy: `ProviderNotFound`, `ProviderAuthError`, `ProviderRequestError`, `ProviderNetworkError`, `ContextReadError` |
-| `src/model/registry.ts` | `ModelProviderRegistry` — get, require, list |
-| `src/model/mock-provider.ts` | `MockProvider` — deterministic test provider |
-| `src/model/openai-provider.ts` | `OpenAIProvider` — native fetch to OpenAI API |
-| `tests/unit/model-provider-registry.test.ts` | Registry unit tests |
-| `tests/unit/mock-provider.test.ts` | MockProvider unit tests |
-| `tests/unit/openai-provider.test.ts` | OpenAIProvider unit tests with mocked fetch |
-| `tests/unit/agent-runner-invoke.test.ts` | AgentRunner invoke mode tests |
-| `tests/integration/mvp5-model-provider.test.ts` | Integration tests for policy + execution modes |
+| File                                            | Responsibility                                                                                                                       |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/model/types.ts`                            | `ModelInvocationRequest`, `ModelInvocationResult`, `ModelProvider`, `AgentModelResult` interfaces                                    |
+| `src/model/errors.ts`                           | Provider error taxonomy: `ProviderNotFound`, `ProviderAuthError`, `ProviderRequestError`, `ProviderNetworkError`, `ContextReadError` |
+| `src/model/registry.ts`                         | `ModelProviderRegistry` — get, require, list                                                                                         |
+| `src/model/mock-provider.ts`                    | `MockProvider` — deterministic test provider                                                                                         |
+| `src/model/openai-provider.ts`                  | `OpenAIProvider` — native fetch to OpenAI API                                                                                        |
+| `tests/unit/model-provider-registry.test.ts`    | Registry unit tests                                                                                                                  |
+| `tests/unit/mock-provider.test.ts`              | MockProvider unit tests                                                                                                              |
+| `tests/unit/openai-provider.test.ts`            | OpenAIProvider unit tests with mocked fetch                                                                                          |
+| `tests/unit/agent-runner-invoke.test.ts`        | AgentRunner invoke mode tests                                                                                                        |
+| `tests/integration/mvp5-model-provider.test.ts` | Integration tests for policy + execution modes                                                                                       |
 
 ### Modified Files
 
-| File | Changes |
-|------|---------|
-| `src/types/agent.ts` | Add `system_prompt` to `AgentDefinitionSchema`; add `temperature`, `execution_mode`, `system_prompt` to `ModelRouteSchema`; add `AgentModelResult` interface |
-| `src/config/project-config.ts` | Add `models.execution.mode` to `ModelsConfigSchema`; update `ProjectConfigSchema` |
-| `src/agent/runner.ts` | Add invoke mode, execution mode resolution, task validation, context bundle reading, provider registry integration |
-| `src/cli/commands/run.ts` | Register `MockProvider` and `OpenAIProvider` in `ModelProviderRegistry`; pass registry + global mode to `AgentRunner` |
-| `tests/unit/project-config.test.ts` | Add tests for `models.execution.mode` and route fields |
-| `README.md` | Update MVP5 status to Complete |
-| `docs/development.md` | Add Model Provider Runtime section |
+| File                                | Changes                                                                                                                                                      |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/types/agent.ts`                | Add `system_prompt` to `AgentDefinitionSchema`; add `temperature`, `execution_mode`, `system_prompt` to `ModelRouteSchema`; add `AgentModelResult` interface |
+| `src/config/project-config.ts`      | Add `models.execution.mode` to `ModelsConfigSchema`; update `ProjectConfigSchema`                                                                            |
+| `src/agent/runner.ts`               | Add invoke mode, execution mode resolution, task validation, context bundle reading, provider registry integration                                           |
+| `src/cli/commands/run.ts`           | Register `MockProvider` and `OpenAIProvider` in `ModelProviderRegistry`; pass registry + global mode to `AgentRunner`                                        |
+| `tests/unit/project-config.test.ts` | Add tests for `models.execution.mode` and route fields                                                                                                       |
+| `README.md`                         | Update MVP5 status to Complete                                                                                                                               |
+| `docs/development.md`               | Add Model Provider Runtime section                                                                                                                           |
 
 ---
 
@@ -50,6 +50,7 @@
 ### Task 1.1: Create `src/model/types.ts`
 
 **Files:**
+
 - Create: `src/model/types.ts`
 
 - [ ] **Step 1: Write `src/model/types.ts`**
@@ -111,6 +112,7 @@ git commit -m "feat(mvp5): add ModelProvider core types"
 ### Task 1.2: Create `src/model/errors.ts`
 
 **Files:**
+
 - Create: `src/model/errors.ts`
 
 - [ ] **Step 1: Write `src/model/errors.ts`**
@@ -159,6 +161,7 @@ git commit -m "feat(mvp5): add provider error taxonomy"
 ### Task 1.3: Extend `src/types/agent.ts`
 
 **Files:**
+
 - Modify: `src/types/agent.ts`
 
 - [ ] **Step 1: Modify `AgentDefinitionSchema` to add `system_prompt`**
@@ -234,6 +237,7 @@ git commit -m "feat(mvp5): extend AgentDefinition and ModelRoute schemas"
 ### Task 1.4: Extend `src/config/project-config.ts`
 
 **Files:**
+
 - Modify: `src/config/project-config.ts`
 
 - [ ] **Step 1: Replace `ModelsConfigSchema` and update `ProjectConfigSchema`**
@@ -296,6 +300,7 @@ git commit -m "feat(mvp5): add models.execution.mode to project config"
 ### Task 1.5: Add config tests in `tests/unit/project-config.test.ts`
 
 **Files:**
+
 - Modify: `tests/unit/project-config.test.ts`
 
 - [ ] **Step 1: Add test for `models.execution.mode` default**
@@ -303,15 +308,15 @@ git commit -m "feat(mvp5): add models.execution.mode to project config"
 Append inside the `describe('loadProjectConfig', ...)` block:
 
 ```typescript
-  it('should default models.execution.mode to stub', () => {
-    const config = loadProjectConfig(join(tempDir, 'nonexistent.yaml'));
-    expect(config.models.execution.mode).toBe('stub');
-  });
+it('should default models.execution.mode to stub', () => {
+  const config = loadProjectConfig(join(tempDir, 'nonexistent.yaml'));
+  expect(config.models.execution.mode).toBe('stub');
+});
 
-  it('should load custom models.execution.mode', () => {
-    writeFileSync(
-      join(tempDir, 'wolf.yaml'),
-      `
+it('should load custom models.execution.mode', () => {
+  writeFileSync(
+    join(tempDir, 'wolf.yaml'),
+    `
 models:
   execution:
     mode: invoke
@@ -320,17 +325,17 @@ models:
       provider: mock
       model: mock-chat
 `
-    );
-    const config = loadProjectConfig(join(tempDir, 'wolf.yaml'));
-    expect(config.models.execution.mode).toBe('invoke');
-    expect(config.models.routes['default'].provider).toBe('mock');
-    expect(config.models.routes['default'].model).toBe('mock-chat');
-  });
+  );
+  const config = loadProjectConfig(join(tempDir, 'wolf.yaml'));
+  expect(config.models.execution.mode).toBe('invoke');
+  expect(config.models.routes['default'].provider).toBe('mock');
+  expect(config.models.routes['default'].model).toBe('mock-chat');
+});
 
-  it('should load route with temperature, execution_mode, and system_prompt', () => {
-    writeFileSync(
-      join(tempDir, 'wolf.yaml'),
-      `
+it('should load route with temperature, execution_mode, and system_prompt', () => {
+  writeFileSync(
+    join(tempDir, 'wolf.yaml'),
+    `
 agents:
   - id: reviewer
     model_route: openai-gpt4
@@ -344,14 +349,14 @@ models:
       execution_mode: invoke
       system_prompt: "You are a helpful assistant."
 `
-    );
-    const config = loadProjectConfig(join(tempDir, 'wolf.yaml'));
-    expect(config.agents[0].system_prompt).toBe('You are a code reviewer.');
-    const route = config.models.routes['openai-gpt4'];
-    expect(route.temperature).toBe(0.7);
-    expect(route.execution_mode).toBe('invoke');
-    expect(route.system_prompt).toBe('You are a helpful assistant.');
-  });
+  );
+  const config = loadProjectConfig(join(tempDir, 'wolf.yaml'));
+  expect(config.agents[0].system_prompt).toBe('You are a code reviewer.');
+  const route = config.models.routes['openai-gpt4'];
+  expect(route.temperature).toBe(0.7);
+  expect(route.execution_mode).toBe('invoke');
+  expect(route.system_prompt).toBe('You are a helpful assistant.');
+});
 ```
 
 - [ ] **Step 2: Run tests**
@@ -380,6 +385,7 @@ git commit -m "test(mvp5): add config schema tests for execution mode and route 
 ### Task 2.1: Create `src/model/registry.ts`
 
 **Files:**
+
 - Create: `src/model/registry.ts`
 
 - [ ] **Step 1: Write `src/model/registry.ts`**
@@ -427,6 +433,7 @@ git commit -m "feat(mvp5): add ModelProviderRegistry"
 ### Task 2.2: Create `src/model/mock-provider.ts`
 
 **Files:**
+
 - Create: `src/model/mock-provider.ts`
 
 - [ ] **Step 1: Write `src/model/mock-provider.ts`**
@@ -472,6 +479,7 @@ git commit -m "feat(mvp5): add deterministic MockProvider"
 ### Task 2.3: Write registry tests
 
 **Files:**
+
 - Create: `tests/unit/model-provider-registry.test.ts`
 
 - [ ] **Step 1: Write the test file**
@@ -536,6 +544,7 @@ git commit -m "test(mvp5): add ModelProviderRegistry tests"
 ### Task 2.4: Write MockProvider tests
 
 **Files:**
+
 - Create: `tests/unit/mock-provider.test.ts`
 
 - [ ] **Step 1: Write the test file**
@@ -629,6 +638,7 @@ git commit -m "test(mvp5): add MockProvider deterministic behavior tests"
 ### Task 3.1: Create `src/model/openai-provider.ts`
 
 **Files:**
+
 - Create: `src/model/openai-provider.ts`
 
 - [ ] **Step 1: Write `src/model/openai-provider.ts`**
@@ -726,6 +736,7 @@ git commit -m "feat(mvp5): add OpenAIProvider with fetch and error mapping"
 ### Task 3.2: Write OpenAIProvider tests with mocked fetch
 
 **Files:**
+
 - Create: `tests/unit/openai-provider.test.ts`
 
 - [ ] **Step 1: Write the test file**
@@ -935,6 +946,7 @@ git commit -m "test(mvp5): add OpenAIProvider tests with mocked fetch"
 ### Task 4.1: Modify `src/agent/runner.ts`
 
 **Files:**
+
 - Modify: `src/agent/runner.ts`
 
 - [ ] **Step 1: Replace imports and add helper functions**
@@ -1174,8 +1186,7 @@ export class AgentRunner implements StepRunner {
       provider: route.provider,
       model: route.model,
       input: task,
-      system_prompt:
-        (step.input?.system_prompt as string | undefined) ?? agent?.system_prompt ?? route.system_prompt,
+      system_prompt: (step.input?.system_prompt as string | undefined) ?? agent?.system_prompt ?? route.system_prompt,
       context: contextContent,
       max_tokens: route.max_tokens,
       temperature: route.temperature,
@@ -1234,6 +1245,7 @@ git commit -m "feat(mvp5): add AgentRunner invoke mode with context bundle readi
 ### Task 4.2: Modify `src/cli/commands/run.ts`
 
 **Files:**
+
 - Modify: `src/cli/commands/run.ts`
 
 - [ ] **Step 1: Add imports for model providers**
@@ -1268,22 +1280,15 @@ import { v4 as uuidv4 } from 'uuid';
 Replace lines 29–36 with:
 
 ```typescript
-      const registry = new RunnerRegistry();
-      registry.register(new EchoRunner());
-      registry.register(new ShellRunner());
-      registry.register(new ManualGateRunner());
+const registry = new RunnerRegistry();
+registry.register(new EchoRunner());
+registry.register(new ShellRunner());
+registry.register(new ManualGateRunner());
 
-      const agentRegistry = new AgentRegistry(projectConfig.agents);
-      const modelRouter = new ModelRouter(projectConfig.models.routes);
-      const providerRegistry = new ModelProviderRegistry([new MockProvider(), new OpenAIProvider()]);
-      registry.register(
-        new AgentRunner(
-          agentRegistry,
-          modelRouter,
-          providerRegistry,
-          projectConfig.models.execution.mode
-        )
-      );
+const agentRegistry = new AgentRegistry(projectConfig.agents);
+const modelRouter = new ModelRouter(projectConfig.models.routes);
+const providerRegistry = new ModelProviderRegistry([new MockProvider(), new OpenAIProvider()]);
+registry.register(new AgentRunner(agentRegistry, modelRouter, providerRegistry, projectConfig.models.execution.mode));
 ```
 
 - [ ] **Step 3: Run type check**
@@ -1306,6 +1311,7 @@ git commit -m "feat(mvp5): register MockProvider and OpenAIProvider in CLI run c
 ### Task 4.3: Write `tests/unit/agent-runner-invoke.test.ts`
 
 **Files:**
+
 - Create: `tests/unit/agent-runner-invoke.test.ts`
 
 - [ ] **Step 1: Write the test file**
@@ -1608,6 +1614,7 @@ git commit -m "test(mvp5): add AgentRunner invoke mode tests"
 ### Task 4.4: Verify existing AgentRunner tests still pass
 
 **Files:**
+
 - Test: `tests/unit/agent-runner.test.ts`
 
 - [ ] **Step 1: Run existing agent runner tests**
@@ -1633,6 +1640,7 @@ If any existing tests fail due to constructor changes, fix them in `tests/unit/a
 ### Task 5.1: Write integration tests
 
 **Files:**
+
 - Create: `tests/integration/mvp5-model-provider.test.ts`
 
 - [ ] **Step 1: Write the integration test file**
@@ -2211,6 +2219,7 @@ git commit -m "test(mvp5): add integration tests for model provider runtime"
 ### Task 5.2: Update `README.md`
 
 **Files:**
+
 - Modify: `README.md`
 
 - [ ] **Step 1: Update MVP5 status line**
@@ -2218,13 +2227,13 @@ git commit -m "test(mvp5): add integration tests for model provider runtime"
 In `README.md`, replace:
 
 ```markdown
-| **MVP5**  | ⏭️ Next        | Real LLM execution, provider SDK integration                                                                       |
+| **MVP5** | ⏭️ Next | Real LLM execution, provider SDK integration |
 ```
 
 With:
 
 ```markdown
-| **MVP5**  | ✅ Complete    | Model Provider Runtime — provider abstraction, MockProvider, OpenAIProvider, invoke mode, context bundles          |
+| **MVP5** | ✅ Complete | Model Provider Runtime — provider abstraction, MockProvider, OpenAIProvider, invoke mode, context bundles |
 ```
 
 - [ ] **Step 2: Commit**
@@ -2239,13 +2248,14 @@ git commit -m "docs(mvp5): update README with MVP5 complete status"
 ### Task 5.3: Update `docs/development.md`
 
 **Files:**
+
 - Modify: `docs/development.md`
 
 - [ ] **Step 1: Insert Model Provider Runtime section after Agent Registry section**
 
 After the Agent Registry section (after line 343: "Policy decisions (allow / ask / deny) work the same way for `runner: agent` as for any other runner. The Agent Runner does **not** call the Policy Engine directly — evaluation happens in the WorkflowEngine via PolicyStepGuard before the runner executes."), insert:
 
-```markdown
+````markdown
 ## Model Provider Runtime
 
 The Model Provider Runtime (MVP5) executes real LLM calls through provider adapters. It builds on MVP4's `AgentInvocationPlan` stub and adds an `invoke` execution mode.
@@ -2257,17 +2267,19 @@ Add `models.execution` and route-level overrides to `wolf.yaml`:
 ```yaml
 models:
   execution:
-    mode: stub  # stub | invoke
+    mode: stub # stub | invoke
   routes:
     default_coding:
       provider: mock
       model: mock-chat
-      execution_mode: invoke  # optional override
+      execution_mode: invoke # optional override
       temperature: 0.7
-      system_prompt: "You are a code reviewer."
+      system_prompt: 'You are a code reviewer.'
 ```
+````
 
 **Execution mode resolution:**
+
 1. If `route.execution_mode` is set, use it
 2. Else use `models.execution.mode`
 3. If neither is set, default to `stub`
@@ -2276,29 +2288,29 @@ models:
 
 In addition to MVP4 fields, steps can include:
 
-| Field            | Type   | Required | Description                               |
-| ---------------- | ------ | -------- | ----------------------------------------- |
-| `agent`          | string | yes      | Agent id from registry                    |
-| `task`           | string | yes*     | Required in invoke mode                   |
-| `context_bundle` | string | no       | Relative path to context file             |
-| `system_prompt`  | string | no       | Overrides agent and route system prompts  |
+| Field            | Type   | Required | Description                              |
+| ---------------- | ------ | -------- | ---------------------------------------- |
+| `agent`          | string | yes      | Agent id from registry                   |
+| `task`           | string | yes\*    | Required in invoke mode                  |
+| `context_bundle` | string | no       | Relative path to context file            |
+| `system_prompt`  | string | no       | Overrides agent and route system prompts |
 
 ### Providers
 
 | Provider | ID       | Description                          |
-| -------- | -------- | -------------------------------------|
+| -------- | -------- | ------------------------------------ |
 | Mock     | `mock`   | Deterministic test provider          |
 | OpenAI   | `openai` | Real LLM via native fetch (optional) |
 
 ### Error Types
 
-| Error                  | Retryable | Cause                              |
-| ---------------------- | --------- | ---------------------------------- |
-| `ProviderNotFound`     | no        | Unknown provider id                |
-| `ProviderAuthError`    | no        | Missing or invalid API key         |
-| `ProviderRequestError` | no        | Bad request (400, 404)             |
-| `ProviderNetworkError` | yes       | Network failure or rate limit      |
-| `ContextReadError`     | no        | Invalid JSON or file > 1MB         |
+| Error                  | Retryable | Cause                         |
+| ---------------------- | --------- | ----------------------------- |
+| `ProviderNotFound`     | no        | Unknown provider id           |
+| `ProviderAuthError`    | no        | Missing or invalid API key    |
+| `ProviderRequestError` | no        | Bad request (400, 404)        |
+| `ProviderNetworkError` | yes       | Network failure or rate limit |
+| `ContextReadError`     | no        | Invalid JSON or file > 1MB    |
 
 ### CLI
 
@@ -2307,20 +2319,22 @@ No new CLI commands. Agent execution mode is controlled via `wolf.yaml`:
 ```bash
 node dist/cli/index.js run workflow.yaml --config wolf.yaml
 ```
-```
+
+````
 
 - [ ] **Step 2: Commit**
 
 ```bash
 git add docs/development.md
 git commit -m "docs(mvp5): add Model Provider Runtime section to development guide"
-```
+````
 
 ---
 
 ### Task 5.4: Final acceptance verification
 
 **Files:**
+
 - All modified and new files
 
 - [ ] **Step 1: Run full check locally**
@@ -2330,6 +2344,7 @@ npm run check
 ```
 
 Expected output sequence:
+
 1. `prettier --check` passes
 2. `tsc --noEmit` passes
 3. `vitest run` passes (all unit + integration tests)
@@ -2357,26 +2372,26 @@ git commit -m "feat(mvp5): Model Provider Runtime — complete implementation"
 
 ### 1. Spec Coverage
 
-| Spec Section | Implementing Task |
-|--------------|-------------------|
-| 1.1 Execution Mode | Task 1.4, Task 4.2 |
-| 1.2 Extended ModelRoute | Task 1.3 |
-| 1.3 AgentDefinition Extension | Task 1.3 |
-| 1.4 ProjectConfig Extension | Task 1.4 |
-| 2.1 Core Types | Task 1.1 |
-| 2.2 Provider Error Taxonomy | Task 1.2 |
-| 3.1–3.3 ModelProviderRegistry | Task 2.1, Task 2.3 |
-| 4.1–4.3 MockProvider | Task 2.2, Task 2.4 |
-| 5.1–5.3 OpenAIProvider | Task 3.1, Task 3.2 |
-| 6.1 Execution Mode Resolution | Task 4.1 |
-| 6.2 Stub Mode | Task 4.1 (preserved), Task 4.3 |
-| 6.3 Invoke Mode | Task 4.1, Task 4.3 |
-| 6.4 AgentModelResult | Task 1.1, Task 4.1 |
-| 6.5 Context Bundle Reading | Task 4.1, Task 4.3, Task 5.1 |
-| 6.6 Failure Modes | Task 4.1, Task 4.3, Task 3.2 |
-| 8.1 Unit Tests | Tasks 1.5, 2.3, 2.4, 3.2, 4.3 |
-| 8.2 Integration Tests | Task 5.1 |
-| 9. Acceptance Criteria | Task 5.4 |
+| Spec Section                  | Implementing Task              |
+| ----------------------------- | ------------------------------ |
+| 1.1 Execution Mode            | Task 1.4, Task 4.2             |
+| 1.2 Extended ModelRoute       | Task 1.3                       |
+| 1.3 AgentDefinition Extension | Task 1.3                       |
+| 1.4 ProjectConfig Extension   | Task 1.4                       |
+| 2.1 Core Types                | Task 1.1                       |
+| 2.2 Provider Error Taxonomy   | Task 1.2                       |
+| 3.1–3.3 ModelProviderRegistry | Task 2.1, Task 2.3             |
+| 4.1–4.3 MockProvider          | Task 2.2, Task 2.4             |
+| 5.1–5.3 OpenAIProvider        | Task 3.1, Task 3.2             |
+| 6.1 Execution Mode Resolution | Task 4.1                       |
+| 6.2 Stub Mode                 | Task 4.1 (preserved), Task 4.3 |
+| 6.3 Invoke Mode               | Task 4.1, Task 4.3             |
+| 6.4 AgentModelResult          | Task 1.1, Task 4.1             |
+| 6.5 Context Bundle Reading    | Task 4.1, Task 4.3, Task 5.1   |
+| 6.6 Failure Modes             | Task 4.1, Task 4.3, Task 3.2   |
+| 8.1 Unit Tests                | Tasks 1.5, 2.3, 2.4, 3.2, 4.3  |
+| 8.2 Integration Tests         | Task 5.1                       |
+| 9. Acceptance Criteria        | Task 5.4                       |
 
 ### 2. Placeholder Scan
 

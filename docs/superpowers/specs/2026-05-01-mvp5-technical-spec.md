@@ -46,18 +46,19 @@ Execution flow:
 ```yaml
 models:
   execution:
-    mode: stub  # stub | invoke
+    mode: stub # stub | invoke
 
   routes:
     default_coding:
       provider: mock
       model: mock-chat
-      execution_mode: invoke  # optional override
+      execution_mode: invoke # optional override
       temperature: 0.7
-      system_prompt: "You are a code reviewer."
+      system_prompt: 'You are a code reviewer.'
 ```
 
 **Execution mode resolution:**
+
 1. If `route.execution_mode` is set, use it
 2. Else use `models.execution.mode`
 3. If neither is set, default to `stub`
@@ -82,11 +83,11 @@ export const ModelRouteSchema = z.object({
 
 **New fields:**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `temperature` | number (0–2) | no | Sampling temperature |
-| `execution_mode` | `stub` \| `invoke` | no | Override global execution mode |
-| `system_prompt` | string | no | System prompt for the model |
+| Field            | Type               | Required | Description                    |
+| ---------------- | ------------------ | -------- | ------------------------------ |
+| `temperature`    | number (0–2)       | no       | Sampling temperature           |
+| `execution_mode` | `stub` \| `invoke` | no       | Override global execution mode |
+| `system_prompt`  | string             | no       | System prompt for the model    |
 
 ### 1.3 AgentDefinition Extension
 
@@ -193,13 +194,13 @@ export class ContextReadError extends Error {
 
 **Retryable mapping:**
 
-| Error | Retryable |
-|-------|-----------|
-| `ProviderNotFound` | `false` |
-| `ProviderAuthError` | `false` |
-| `ProviderRequestError` | `false` |
-| `ProviderNetworkError` | `true` |
-| `ContextReadError` | `false` |
+| Error                  | Retryable |
+| ---------------------- | --------- |
+| `ProviderNotFound`     | `false`   |
+| `ProviderAuthError`    | `false`   |
+| `ProviderRequestError` | `false`   |
+| `ProviderNetworkError` | `true`    |
+| `ContextReadError`     | `false`   |
 
 ---
 
@@ -225,6 +226,7 @@ export class ModelProviderRegistry {
 ### 3.3 Default Registration
 
 Default provider registry always includes:
+
 - `MockProvider` — required, registered unconditionally
 - `OpenAIProvider` — registered normally; checks `OPENAI_API_KEY` at invocation time
 
@@ -266,6 +268,7 @@ function estimateTokens(text: string): number {
 ```
 
 **Rules:**
+
 - Output contains `[mock:<model>]` prefix
 - Output truncates input to 200 chars
 - Usage tokens are approximated (chars / 4)
@@ -280,6 +283,7 @@ function estimateTokens(text: string): number {
 **Implemented in MVP5.** Tests requiring real API calls are **not** part of CI.
 
 **Requirements:**
+
 - Requires `OPENAI_API_KEY` environment variable
 - If `OPENAI_API_KEY` is missing:
   - Throw `ProviderAuthError`
@@ -288,14 +292,15 @@ function estimateTokens(text: string): number {
 
 **HTTP Error Mapping:**
 
-| HTTP Status | Error Type | Retryable |
-|-------------|------------|-----------|
-| 401, 403 | `ProviderAuthError` | `false` |
-| 400, 404 | `ProviderRequestError` | `false` |
-| 429, 500, 502, 503, 504 | `ProviderNetworkError` | `true` |
-| Fetch failure | `ProviderNetworkError` | `true` |
+| HTTP Status             | Error Type             | Retryable |
+| ----------------------- | ---------------------- | --------- |
+| 401, 403                | `ProviderAuthError`    | `false`   |
+| 400, 404                | `ProviderRequestError` | `false`   |
+| 429, 500, 502, 503, 504 | `ProviderNetworkError` | `true`    |
+| Fetch failure           | `ProviderNetworkError` | `true`    |
 
 **Implementation notes:**
+
 - Use `fetch` API (Node.js 20+ has native fetch)
 - Base URL: `https://api.openai.com/v1/chat/completions`
 - Map `ModelInvocationRequest` to OpenAI chat completion format
@@ -309,10 +314,7 @@ function estimateTokens(text: string): number {
 ### 6.1 Execution Mode Resolution
 
 ```typescript
-function resolveExecutionMode(
-  route: ModelRoute,
-  globalMode: 'stub' | 'invoke'
-): 'stub' | 'invoke' {
+function resolveExecutionMode(route: ModelRoute, globalMode: 'stub' | 'invoke'): 'stub' | 'invoke' {
   return route.execution_mode ?? globalMode ?? 'stub';
 }
 ```
@@ -346,10 +348,8 @@ const request: ModelInvocationRequest = {
   provider: route.provider,
   model: route.model,
   input: task,
-  system_prompt: (step.input?.system_prompt as string | undefined)
-    ?? agent.system_prompt
-    ?? route.system_prompt,
-  context: contextBundleContent,  // if context_bundle provided
+  system_prompt: (step.input?.system_prompt as string | undefined) ?? agent.system_prompt ?? route.system_prompt,
+  context: contextBundleContent, // if context_bundle provided
   max_tokens: route.max_tokens,
   temperature: route.temperature,
 };
@@ -421,29 +421,29 @@ If `context_bundle` is provided:
 
 ### 6.6 Failure Modes
 
-| Condition | Error Type | Retryable |
-|-----------|-----------|-----------|
-| Missing or invalid `input.agent` | `AgentInputValidationError` | `false` |
-| Unknown agent id | `AgentNotFound` | `false` |
-| Unknown model route | `ModelRouteNotFound` | `false` |
-| Unknown provider | `ProviderNotFound` | `false` |
-| Missing API key | `ProviderAuthError` | `false` |
-| Network error | `ProviderNetworkError` | `true` |
-| Invalid request | `ProviderRequestError` | `false` |
-| Invalid context bundle path | `ContextBundleValidationError` | `false` |
-| Invalid context bundle JSON | `ContextReadError` | `false` |
+| Condition                        | Error Type                     | Retryable |
+| -------------------------------- | ------------------------------ | --------- |
+| Missing or invalid `input.agent` | `AgentInputValidationError`    | `false`   |
+| Unknown agent id                 | `AgentNotFound`                | `false`   |
+| Unknown model route              | `ModelRouteNotFound`           | `false`   |
+| Unknown provider                 | `ProviderNotFound`             | `false`   |
+| Missing API key                  | `ProviderAuthError`            | `false`   |
+| Network error                    | `ProviderNetworkError`         | `true`    |
+| Invalid request                  | `ProviderRequestError`         | `false`   |
+| Invalid context bundle path      | `ContextBundleValidationError` | `false`   |
+| Invalid context bundle JSON      | `ContextReadError`             | `false`   |
 
 ---
 
 ## 7. Integration Points
 
-| Component | Change | Details |
-|-----------|--------|---------|
-| **AgentRunner** | Extend | Add invoke mode, provider registry, context reading |
-| **ProjectConfig** | Extend | Add `models.execution.mode` and route fields |
-| **Policy Engine** | No changes | PolicyStepGuard still runs before AgentRunner |
+| Component           | Change     | Details                                                     |
+| ------------------- | ---------- | ----------------------------------------------------------- |
+| **AgentRunner**     | Extend     | Add invoke mode, provider registry, context reading         |
+| **ProjectConfig**   | Extend     | Add `models.execution.mode` and route fields                |
+| **Policy Engine**   | No changes | PolicyStepGuard still runs before AgentRunner               |
 | **Workflow Engine** | No changes | Standard runner interface, retry applies to provider errors |
-| **CLI** | No changes | Agent commands from MVP4 remain |
+| **CLI**             | No changes | Agent commands from MVP4 remain                             |
 
 ---
 
@@ -525,6 +525,7 @@ If `context_bundle` is provided:
 ## 11. Future Direction
 
 MVP6 may add:
+
 - Tool calling by agents
 - Streaming responses
 - Multi-agent delegation
