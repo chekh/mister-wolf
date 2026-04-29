@@ -208,10 +208,23 @@ policy:
 ### Match Semantics
 
 - `runner`: exact match against `step.runner`
-- `command_contains`: substring match against `step.input.command` (case-sensitive)
+- `command_contains`: substring match against `step.input.command` (case-sensitive). If `step.input.command` is missing or not a string, rule does not match.
 - `step_id`: exact match against `step.id`
 - All conditions in `match` must be true (AND logic)
 - If `match` is empty `{}`, rule matches everything (use with caution)
+
+### Default Decision
+
+If no rules match a step:
+
+```typescript
+{
+  decision: 'allow',
+  risk: 'low',
+  reason: 'No matching policy rule',
+  matched_rules: [],
+}
+```
 
 ---
 
@@ -230,9 +243,9 @@ policy:
    - `overall = ask` if no `deny` but at least one `ask`
    - `overall = allow` if all steps are `allow`
 3. If `overall = deny`:
-   - Reject workflow execution
-   - Emit `policy.denied` event
+   - Reject workflow execution **before case creation**
    - CLI: exit code 1, print rejected steps
+   - No case state created; no events persisted to case
 4. If `overall = ask`:
    - Persist decisions in case state (when case is created)
    - Do **not** pause workflow
@@ -242,7 +255,7 @@ policy:
    - Normal execution
    - Persist decisions for audit
 
-**Note:** Preflight does **not** create gates. It is audit + early visibility only.
+**Note:** Preflight does **not** create gates. It is audit + early visibility only. Preflight deny prevents case creation entirely.
 
 ### 7.2 Step Runtime Guard
 
@@ -279,6 +292,16 @@ When multiple rules match a step:
 2. **Risk precedence:** `critical` > `high` > `medium` > `low`
 3. **Tie-breaker:** First matching rule in config order wins for `rule_id` and `reason`
 4. **`matched_rules`:** Contains IDs of **all** matching rules
+
+### max_risk Enforcement
+
+After computing the primary decision from rules:
+- If evaluated risk exceeds `policy.defaults.max_risk`:
+  - `allow` is upgraded to `ask`
+  - `ask` remains `ask`
+  - `deny` remains `deny`
+- If `autonomy = autonomous` and risk <= `max_risk`, explicit rule decision is preserved
+- Explicit `deny` always takes precedence over `max_risk`
 
 Example:
 ```yaml
@@ -383,8 +406,16 @@ When a step evaluates to `ask` during graph execution:
 3. No new steps start while any policy approval is pending
 4. On `wolf resume`:
    - Recompute graph readiness
-   - Approved steps execute
+   - For steps with an **approved** `policy_approval` gate for the same logical decision: bypass re-evaluation, execute using snapshotted `resolved_input` from gate payload
+   - For new steps: normal policy evaluation
    - Denied steps fail; downstream dependents skipped (existing graph fail-fast)
+
+**Resume Gate Bypass:**
+When `runGraph()` or `runSteps()` encounters a step whose status is `gated`:
+1. Check if a `policy_approval` gate exists for this step
+2. If gate status is `approved` → execute step directly using `gate.payload.resolved_input`
+3. If gate status is `rejected` → mark step as failed
+4. Do **not** create a new policy gate on resume
 
 ### Policy Deny in Graph Mode
 
@@ -412,6 +443,8 @@ interface ExecutionState {
 - Preflight decisions added when case is created
 - Step runtime decisions appended as they occur
 - Gate payload includes snapshot of `resolved_input`
+- Deduplicate by `decision.id + enforcement + step_id` to avoid duplicate entries on retries
+- Keep `policy.evaluated` event payload compact (omit full step content, include only decision_id, rule_id, decision, reason)
 
 ---
 
@@ -421,14 +454,18 @@ interface ExecutionState {
 
 - [ ] `wolf policy check` evaluates workflow and prints report.
 - [ ] `wolf policy check --json` outputs valid JSON.
-- [ ] Preflight `deny` prevents workflow from starting.
+- [ ] Preflight `deny` prevents workflow from starting; no case state created.
 - [ ] Preflight `ask` persists decisions but does not pause.
+- [ ] Default decision (no matching rule) is `allow` / `low` risk.
+- [ ] `max_risk` enforcement upgrades `allow` → `ask` when risk exceeds threshold.
 - [ ] Step guard `deny` fails step with `PolicyViolation`.
 - [ ] Step guard `ask` creates policy approval gate.
 - [ ] Approving policy gate allows step execution.
 - [ ] Rejecting policy gate fails step.
 - [ ] Gate payload includes `resolved_input` snapshot.
 - [ ] Policy decisions persisted in case state.
+- [ ] Resume after policy approval bypasses re-evaluation using approved gate payload.
+- [ ] Resume does not create duplicate policy gates.
 
 ### Rule Matching
 
