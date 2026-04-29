@@ -48,11 +48,19 @@ export const StepDefinitionSchema = z.object({
 
 export type StepDefinition = z.infer<typeof StepDefinitionSchema>;
 
+export const ExecutionConfigSchema = z.object({
+  mode: z.enum(['sequential', 'graph']).default('sequential'),
+  max_parallel: z.number().int().min(1).optional(),
+});
+
+export type ExecutionConfig = z.infer<typeof ExecutionConfigSchema>;
+
 export const WorkflowDefinitionSchema = z.object({
   id: z.string(),
   version: z.string(),
   name: z.string().optional(),
   description: z.string().optional(),
+  execution: ExecutionConfigSchema.default({ mode: 'sequential' }),
   steps: z.array(StepDefinitionSchema).min(1),
 });
 

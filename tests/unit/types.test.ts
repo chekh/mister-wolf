@@ -136,3 +136,38 @@ describe('MVP1B state types', () => {
     expect(result.success).toBe(true);
   });
 });
+
+describe('MVP1C types', () => {
+  it('should validate workflow with graph execution config', () => {
+    const result = WorkflowDefinitionSchema.safeParse({
+      id: 'test',
+      version: '0.1.0',
+      execution: { mode: 'graph', max_parallel: 4 },
+      steps: [{ id: 's1', type: 'builtin', runner: 'echo' }],
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.execution?.mode).toBe('graph');
+    expect(result.data?.execution?.max_parallel).toBe(4);
+  });
+
+  it('should validate workflow without execution config (sequential default)', () => {
+    const result = WorkflowDefinitionSchema.safeParse({
+      id: 'test',
+      version: '0.1.0',
+      steps: [{ id: 's1', type: 'builtin', runner: 'echo' }],
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.execution?.mode).toBe('sequential');
+  });
+
+  it('should allow optional max_parallel', () => {
+    const result = WorkflowDefinitionSchema.safeParse({
+      id: 'test',
+      version: '0.1.0',
+      execution: { mode: 'graph' },
+      steps: [{ id: 's1', type: 'builtin', runner: 'echo' }],
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.execution?.max_parallel).toBeUndefined();
+  });
+});
