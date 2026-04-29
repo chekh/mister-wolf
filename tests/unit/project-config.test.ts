@@ -74,4 +74,73 @@ policy:
     expect(config.policy.rules[0].id).toBe('block-shell');
     expect(config.policy.rules[0].decision).toBe('deny');
   });
+
+  it('should load config with agents and model routes', () => {
+    writeFileSync(
+      join(tempDir, 'wolf.yaml'),
+      `
+agents:
+  - id: planner
+    name: Planner Agent
+    description: Plans tasks
+    capabilities:
+      - planning
+    model_route: openai-gpt4
+    tools:
+      - search
+models:
+  routes:
+    openai-gpt4:
+      provider: openai
+      model: gpt-4
+      purpose: Planning
+      max_tokens: 4096
+`
+    );
+    const config = loadProjectConfig(join(tempDir, 'wolf.yaml'));
+    expect(config.agents).toHaveLength(1);
+    expect(config.agents[0].id).toBe('planner');
+    expect(config.agents[0].model_route).toBe('openai-gpt4');
+    expect(config.models.routes['openai-gpt4']).toBeDefined();
+    expect(config.models.routes['openai-gpt4'].provider).toBe('openai');
+    expect(config.models.routes['openai-gpt4'].model).toBe('gpt-4');
+  });
+
+  it('should reject config with duplicate agent ids', () => {
+    writeFileSync(
+      join(tempDir, 'wolf.yaml'),
+      `
+agents:
+  - id: planner
+    model_route: openai-gpt4
+  - id: planner
+    model_route: openai-gpt4
+models:
+  routes:
+    openai-gpt4:
+      provider: openai
+      model: gpt-4
+`
+    );
+    expect(() => loadProjectConfig(join(tempDir, 'wolf.yaml'))).toThrow('Duplicate agent id: planner');
+  });
+
+  it('should reject config with missing model route reference', () => {
+    writeFileSync(
+      join(tempDir, 'wolf.yaml'),
+      `
+agents:
+  - id: planner
+    model_route: unknown-route
+models:
+  routes:
+    openai-gpt4:
+      provider: openai
+      model: gpt-4
+`
+    );
+    expect(() => loadProjectConfig(join(tempDir, 'wolf.yaml'))).toThrow(
+      "Agent 'planner' references unknown model route 'unknown-route'"
+    );
+  });
 });

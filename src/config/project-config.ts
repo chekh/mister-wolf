@@ -2,6 +2,7 @@ import { z } from 'zod';
 import yaml from 'js-yaml';
 import { readFileSync, existsSync } from 'fs';
 import { PolicyRuleSchema, RiskLevelSchema } from '../types/policy.js';
+import { AgentDefinitionSchema, ModelRouteSchema } from '../types/agent.js';
 
 export const ContextConfigSchema = z.object({
   include: z
@@ -80,6 +81,12 @@ export const ProjectConfigSchema = z.object({
   index_path: z.string().optional(),
   context: ContextConfigSchema.default({}),
   policy: PolicyConfigSchema.default({}),
+  agents: z.array(AgentDefinitionSchema).default([]),
+  models: z
+    .object({
+      routes: z.record(ModelRouteSchema).default({}),
+    })
+    .default({ routes: {} }),
   defaults: z
     .object({
       timeout: z.string().default('30s'),
@@ -98,6 +105,22 @@ export const ProjectConfigSchema = z.object({
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
 
+function validateCrossReferences(config: ProjectConfig): void {
+  const routeIds = new Set(Object.keys(config.models.routes));
+  const agentIds = new Set<string>();
+
+  for (const agent of config.agents) {
+    if (agentIds.has(agent.id)) {
+      throw new Error(`Duplicate agent id: ${agent.id}`);
+    }
+    agentIds.add(agent.id);
+
+    if (!routeIds.has(agent.model_route)) {
+      throw new Error(`Agent '${agent.id}' references unknown model route '${agent.model_route}'`);
+    }
+  }
+}
+
 export function loadProjectConfig(path?: string): ProjectConfig {
   const configPath = path || 'wolf.yaml';
 
@@ -112,5 +135,7 @@ export function loadProjectConfig(path?: string): ProjectConfig {
     throw new Error(`Invalid config file: ${configPath}`);
   }
 
-  return ProjectConfigSchema.parse(parsed);
+  const config = ProjectConfigSchema.parse(parsed);
+  validateCrossReferences(config);
+  return config;
 }
