@@ -13,6 +13,7 @@
 ## File Structure
 
 **New files:**
+
 - `src/types/context.ts` — ContextBundle, ContextFile, ContextCase, ScanMetadata, etc.
 - `src/context/scanner.ts` — ContextScanner
 - `src/context/case-memory.ts` — CaseMemoryReader
@@ -28,6 +29,7 @@
 - `tests/integration/context-cli.test.ts`
 
 **Modified files:**
+
 - `src/config/project-config.ts` — add context config schema
 - `src/cli/index.ts` — register context command
 - `README.md` — document `wolf context` commands
@@ -40,6 +42,7 @@
 ### Task 1.1: Add Context Types
 
 **Files:**
+
 - Create: `src/types/context.ts`
 
 - [ ] **Step 1: Write context types**
@@ -134,57 +137,67 @@ git commit -m "feat(context): add ContextBundle, ContextFile, ContextCase types 
 ### Task 1.2: Update Project Config Schema
 
 **Files:**
+
 - Modify: `src/config/project-config.ts`
 
 - [ ] **Step 1: Add context config schema**
 
 ```typescript
 export const ContextConfigSchema = z.object({
-  include: z.array(z.string()).default([
-    'src/**/*',
-    'tests/**/*',
-    'docs/**/*.md',
-    'README.md',
-    'AGENTS.md',
-    'examples/**/*',
-  ]),
-  exclude: z.array(z.string()).default([
-    'node_modules/**',
-    'dist/**',
-    '.git/**',
-    '.wolf/state/**',
-    '.wolf/context/**',
-    'coverage/**',
-    '.worktrees/**',
-  ]),
-  limits: z.object({
-    max_files: z.number().int().positive().default(100),
-    max_bytes: z.number().int().positive().default(10485760),
-    max_file_bytes: z.number().int().positive().default(1048576),
-    max_cases: z.number().int().positive().default(10),
-  }).default({}),
+  include: z
+    .array(z.string())
+    .default(['src/**/*', 'tests/**/*', 'docs/**/*.md', 'README.md', 'AGENTS.md', 'examples/**/*']),
+  exclude: z
+    .array(z.string())
+    .default([
+      'node_modules/**',
+      'dist/**',
+      '.git/**',
+      '.wolf/state/**',
+      '.wolf/context/**',
+      'coverage/**',
+      '.worktrees/**',
+    ]),
+  limits: z
+    .object({
+      max_files: z.number().int().positive().default(100),
+      max_bytes: z.number().int().positive().default(10485760),
+      max_file_bytes: z.number().int().positive().default(1048576),
+      max_cases: z.number().int().positive().default(10),
+    })
+    .default({}),
   include_content: z.boolean().default(true),
   markdown_render_chars: z.number().int().positive().default(1000),
-  output: z.object({
-    bundle: z.string().default('.wolf/context/context-bundle.json'),
-    markdown: z.string().default('.wolf/context/context.md'),
-  }).default({}),
-  scenarios: z.array(z.object({
-    id: z.string(),
-    match: z.object({
-      keywords: z.array(z.string()),
-    }),
-    context: z.object({
-      include: z.array(z.string()).optional(),
-      exclude: z.array(z.string()).optional(),
-      limits: z.object({
-        max_files: z.number().int().positive().optional(),
-        max_bytes: z.number().int().positive().optional(),
-        max_file_bytes: z.number().int().positive().optional(),
-        max_cases: z.number().int().positive().optional(),
-      }).optional(),
-    }).optional(),
-  })).default([]),
+  output: z
+    .object({
+      bundle: z.string().default('.wolf/context/context-bundle.json'),
+      markdown: z.string().default('.wolf/context/context.md'),
+    })
+    .default({}),
+  scenarios: z
+    .array(
+      z.object({
+        id: z.string(),
+        match: z.object({
+          keywords: z.array(z.string()),
+        }),
+        context: z
+          .object({
+            include: z.array(z.string()).optional(),
+            exclude: z.array(z.string()).optional(),
+            limits: z
+              .object({
+                max_files: z.number().int().positive().optional(),
+                max_bytes: z.number().int().positive().optional(),
+                max_file_bytes: z.number().int().positive().optional(),
+                max_cases: z.number().int().positive().optional(),
+              })
+              .optional(),
+          })
+          .optional(),
+      })
+    )
+    .default([]),
 });
 
 export type ContextConfig = z.infer<typeof ContextConfigSchema>;
@@ -215,6 +228,7 @@ git commit -m "feat(context): add context config schema to wolf.yaml"
 ### Task 2.1: Implement ContextScanner
 
 **Files:**
+
 - Create: `src/context/scanner.ts`
 
 - [ ] **Step 1: Write scanner implementation**
@@ -235,8 +249,8 @@ export interface ScanResult {
 export class ContextScanner {
   async scan(projectRoot: string, config: ContextConfig): Promise<ScanResult> {
     const resolvedRoot = resolve(projectRoot);
-    const includePatterns = config.include.map(p => join(resolvedRoot, p));
-    const excludePatterns = config.exclude.map(p => join(resolvedRoot, p));
+    const includePatterns = config.include.map((p) => join(resolvedRoot, p));
+    const excludePatterns = config.exclude.map((p) => join(resolvedRoot, p));
 
     const allPaths = await glob(includePatterns, {
       cwd: resolvedRoot,
@@ -376,6 +390,7 @@ git commit -m "feat(context): implement ContextScanner with glob, guards, limits
 ### Task 2.2: Write Scanner Tests
 
 **Files:**
+
 - Create: `tests/unit/context-scanner.test.ts`
 
 - [ ] **Step 1: Write tests**
@@ -418,8 +433,8 @@ describe('ContextScanner', () => {
 
     const result = await scanner.scan(tempDir, config);
     expect(result.files.length).toBe(2);
-    expect(result.files.map(f => f.path)).toContain('src/main.ts');
-    expect(result.files.map(f => f.path)).toContain('README.md');
+    expect(result.files.map((f) => f.path)).toContain('src/main.ts');
+    expect(result.files.map((f) => f.path)).toContain('README.md');
   });
 
   it('should exclude node_modules by default', async () => {
@@ -514,6 +529,7 @@ git commit -m "test(context): add ContextScanner tests for discovery, exclusion,
 ### Task 3.1: Implement CaseMemoryReader
 
 **Files:**
+
 - Create: `src/context/case-memory.ts`
 
 - [ ] **Step 1: Write case memory reader**
@@ -540,8 +556,8 @@ export class CaseMemoryReader {
     }
 
     const caseIds = readdirSync(casesDir, { withFileTypes: true })
-      .filter(d => d.isDirectory())
-      .map(d => d.name);
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name);
 
     const cases: ContextCase[] = [];
     const skippedCases: string[] = [];
@@ -568,8 +584,10 @@ export class CaseMemoryReader {
           created_at: String(caseYaml.created_at || ''),
           updated_at: String(caseYaml.updated_at || ''),
           artifact_count: artifactCount,
-          completed_steps: Array.isArray(stateJson.completed_steps) ? stateJson.completed_steps as string[] : undefined,
-          failed_steps: Array.isArray(stateJson.failed_steps) ? stateJson.failed_steps as string[] : undefined,
+          completed_steps: Array.isArray(stateJson.completed_steps)
+            ? (stateJson.completed_steps as string[])
+            : undefined,
+          failed_steps: Array.isArray(stateJson.failed_steps) ? (stateJson.failed_steps as string[]) : undefined,
         });
       } catch {
         skippedCases.push(caseId);
@@ -600,7 +618,7 @@ export class CaseMemoryReader {
     const artifactsDir = join(caseDir, 'artifacts');
     if (!existsSync(artifactsDir)) return 0;
     try {
-      return readdirSync(artifactsDir, { recursive: true }).filter(f => {
+      return readdirSync(artifactsDir, { recursive: true }).filter((f) => {
         const stat = statSync(join(artifactsDir, f));
         return stat.isFile();
       }).length;
@@ -621,6 +639,7 @@ git commit -m "feat(context): implement CaseMemoryReader with sorting, limits, a
 ### Task 3.2: Write Case Memory Tests
 
 **Files:**
+
 - Create: `tests/unit/context-case-memory.test.ts`
 
 - [ ] **Step 1: Write tests**
@@ -660,18 +679,24 @@ describe('CaseMemoryReader', () => {
   function createCase(caseId: string, status: string, updatedAt: string) {
     const caseDir = join(tempDir, caseId);
     mkdirSync(caseDir, { recursive: true });
-    writeFileSync(join(caseDir, 'case.yaml'), yaml.dump({
-      case_id: caseId,
-      workflow_id: 'test',
-      status,
-      created_at: updatedAt,
-      updated_at: updatedAt,
-    }));
-    writeFileSync(join(caseDir, 'state.json'), JSON.stringify({
-      status,
-      completed_steps: ['step1'],
-      updated_at: updatedAt,
-    }));
+    writeFileSync(
+      join(caseDir, 'case.yaml'),
+      yaml.dump({
+        case_id: caseId,
+        workflow_id: 'test',
+        status,
+        created_at: updatedAt,
+        updated_at: updatedAt,
+      })
+    );
+    writeFileSync(
+      join(caseDir, 'state.json'),
+      JSON.stringify({
+        status,
+        completed_steps: ['step1'],
+        updated_at: updatedAt,
+      })
+    );
   }
 
   it('should read case metadata', () => {
@@ -737,6 +762,7 @@ git commit -m "test(context): add CaseMemoryReader tests for sorting, limits, an
 ### Task 4.1: Implement ContextResolver
 
 **Files:**
+
 - Create: `src/context/resolver.ts`
 
 - [ ] **Step 1: Write resolver**
@@ -756,7 +782,12 @@ export interface ResolvedContext {
 }
 
 export class ContextResolver {
-  resolve(scanResult: ScanResult, caseMemory: CaseMemoryResult, config: ContextConfig, scenarioId?: string): ResolvedContext {
+  resolve(
+    scanResult: ScanResult,
+    caseMemory: CaseMemoryResult,
+    config: ContextConfig,
+    scenarioId?: string
+  ): ResolvedContext {
     const effectiveConfig = this.mergeScenario(config, scenarioId);
 
     const files: ContextFile[] = [];
@@ -806,7 +837,7 @@ export class ContextResolver {
   private mergeScenario(config: ContextConfig, scenarioId?: string): ContextConfig {
     if (!scenarioId) return config;
 
-    const scenario = config.scenarios.find(s => s.id === scenarioId);
+    const scenario = config.scenarios.find((s) => s.id === scenarioId);
     if (!scenario) {
       throw new Error(`Scenario not found: ${scenarioId}`);
     }
@@ -826,7 +857,12 @@ export class ContextResolver {
     const path = file.path.toLowerCase();
 
     // project_docs
-    if (path === 'readme.md' || path === 'agents.md' || path.startsWith('docs/') || path.startsWith('.wolf/') && path.endsWith('.md')) {
+    if (
+      path === 'readme.md' ||
+      path === 'agents.md' ||
+      path.startsWith('docs/') ||
+      (path.startsWith('.wolf/') && path.endsWith('.md'))
+    ) {
       return 'project_doc';
     }
 
@@ -842,7 +878,7 @@ export class ContextResolver {
       path === 'vitest.config.ts' ||
       path === 'dockerfile' ||
       path === 'docker-compose.yml' ||
-      path.startsWith('.github/workflows/') && (path.endsWith('.yml') || path.endsWith('.yaml')) ||
+      (path.startsWith('.github/workflows/') && (path.endsWith('.yml') || path.endsWith('.yaml'))) ||
       path.startsWith('.prettierrc')
     ) {
       return 'project_config';
@@ -863,6 +899,7 @@ git commit -m "feat(context): implement ContextResolver with classification and 
 ### Task 4.2: Implement ContextBundleBuilder
 
 **Files:**
+
 - Create: `src/context/bundle-builder.ts`
 
 - [ ] **Step 1: Write bundle builder**
@@ -890,7 +927,9 @@ export class ContextBundleBuilder {
         total_count: resolved.caseMemoryMetadata.total_cases,
         metadata: resolved.caseMemoryMetadata,
       },
-      scan_metadata: { /* filled by caller */ } as any,
+      scan_metadata: {
+        /* filled by caller */
+      } as any,
       resolve_metadata: resolved.resolveMetadata,
     };
   }
@@ -906,12 +945,7 @@ import { ContextBundle, ScanMetadata } from '../types/context.js';
 import { ResolvedContext } from './resolver.js';
 
 export class ContextBundleBuilder {
-  build(
-    resolved: ResolvedContext,
-    scanMetadata: ScanMetadata,
-    projectRoot: string,
-    scenario: string,
-  ): ContextBundle {
+  build(resolved: ResolvedContext, scanMetadata: ScanMetadata, projectRoot: string, scenario: string): ContextBundle {
     return {
       version: '1.0.0',
       generated_at: new Date().toISOString(),
@@ -946,11 +980,12 @@ git commit -m "feat(context): implement ContextBundleBuilder"
 ### Task 4.3: Implement ContextMdGenerator
 
 **Files:**
+
 - Create: `src/context/md-generator.ts`
 
 - [ ] **Step 1: Write markdown generator**
 
-```typescript
+````typescript
 import { ContextBundle } from '../types/context.js';
 
 export class ContextMdGenerator {
@@ -972,9 +1007,8 @@ export class ContextMdGenerator {
         lines.push(`- Size: ${this.formatBytes(file.size)}`);
         lines.push(`- Modified: ${file.mtime}`);
         if (file.content_included && file.content) {
-          const truncated = file.content.length > maxChars
-            ? file.content.substring(0, maxChars) + '\n\n... (truncated)'
-            : file.content;
+          const truncated =
+            file.content.length > maxChars ? file.content.substring(0, maxChars) + '\n\n... (truncated)' : file.content;
           lines.push('');
           lines.push('```' + file.extension.replace('.', ''));
           lines.push(truncated);
@@ -1068,7 +1102,7 @@ export class ContextMdGenerator {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 }
-```
+````
 
 - [ ] **Step 2: Commit**
 
@@ -1080,6 +1114,7 @@ git commit -m "feat(context): implement ContextMdGenerator with per-file truncat
 ### Task 4.4: Write Resolver & Bundle Tests
 
 **Files:**
+
 - Create: `tests/unit/context-resolver.test.ts`
 - Create: `tests/unit/context-bundle.test.ts`
 
@@ -1121,7 +1156,14 @@ describe('ContextResolver', () => {
   it('should classify docs', () => {
     const scanResult = {
       files: [makeFile('README.md'), makeFile('docs/guide.md'), makeFile('src/app.ts')],
-      metadata: { files_scanned: 3, files_included: 3, files_skipped: 0, bytes_included: 300, bytes_truncated: 0, limits_applied: [] } as ScanMetadata,
+      metadata: {
+        files_scanned: 3,
+        files_included: 3,
+        files_skipped: 0,
+        bytes_included: 300,
+        bytes_truncated: 0,
+        limits_applied: [],
+      } as ScanMetadata,
     };
 
     const caseMemory = {
@@ -1137,7 +1179,14 @@ describe('ContextResolver', () => {
   it('should classify configs', () => {
     const scanResult = {
       files: [makeFile('package.json'), makeFile('tsconfig.json'), makeFile('.github/workflows/ci.yml')],
-      metadata: { files_scanned: 3, files_included: 3, files_skipped: 0, bytes_included: 300, bytes_truncated: 0, limits_applied: [] } as ScanMetadata,
+      metadata: {
+        files_scanned: 3,
+        files_included: 3,
+        files_skipped: 0,
+        bytes_included: 300,
+        bytes_truncated: 0,
+        limits_applied: [],
+      } as ScanMetadata,
     };
 
     const caseMemory = {
@@ -1150,8 +1199,21 @@ describe('ContextResolver', () => {
   });
 
   it('should throw on unknown scenario', () => {
-    const scanResult = { files: [], metadata: { files_scanned: 0, files_included: 0, files_skipped: 0, bytes_included: 0, bytes_truncated: 0, limits_applied: [] } as ScanMetadata };
-    const caseMemory = { cases: [], metadata: { cases_read: 0, total_cases: 0, skipped_cases: [] } as CaseMemoryMetadata };
+    const scanResult = {
+      files: [],
+      metadata: {
+        files_scanned: 0,
+        files_included: 0,
+        files_skipped: 0,
+        bytes_included: 0,
+        bytes_truncated: 0,
+        limits_applied: [],
+      } as ScanMetadata,
+    };
+    const caseMemory = {
+      cases: [],
+      metadata: { cases_read: 0, total_cases: 0, skipped_cases: [] } as CaseMemoryMetadata,
+    };
 
     expect(() => resolver.resolve(scanResult, caseMemory, defaultConfig, 'nonexistent')).toThrow('Scenario not found');
   });
@@ -1172,7 +1234,19 @@ describe('ContextBundleBuilder', () => {
     const builder = new ContextBundleBuilder();
     const resolved: ResolvedContext = {
       files: [],
-      docs: [{ path: 'README.md', kind: 'project_doc', size: 100, extension: '.md', hash: 'sha256:abc', mtime: '2026-04-29T10:00:00Z', content_included: true, content_truncated: false, content: '# Hello' }],
+      docs: [
+        {
+          path: 'README.md',
+          kind: 'project_doc',
+          size: 100,
+          extension: '.md',
+          hash: 'sha256:abc',
+          mtime: '2026-04-29T10:00:00Z',
+          content_included: true,
+          content_truncated: false,
+          content: '# Hello',
+        },
+      ],
       rules: [],
       configs: [],
       cases: [],
@@ -1207,12 +1281,36 @@ describe('ContextMdGenerator', () => {
       project: {
         root: '/project',
         files: [],
-        docs: [{ path: 'README.md', kind: 'project_doc', size: 100, extension: '.md', hash: 'sha256:abc', mtime: '2026-04-29T10:00:00Z', content_included: true, content_truncated: false, content: '# Hello World\n\nThis is a test.' }],
+        docs: [
+          {
+            path: 'README.md',
+            kind: 'project_doc',
+            size: 100,
+            extension: '.md',
+            hash: 'sha256:abc',
+            mtime: '2026-04-29T10:00:00Z',
+            content_included: true,
+            content_truncated: false,
+            content: '# Hello World\n\nThis is a test.',
+          },
+        ],
         rules: [],
         configs: [],
       },
-      case_memory: { cases: [], count: 0, total_count: 0, metadata: { cases_read: 0, total_cases: 0, skipped_cases: [] } },
-      scan_metadata: { files_scanned: 1, files_included: 1, files_skipped: 0, bytes_included: 100, bytes_truncated: 0, limits_applied: [] },
+      case_memory: {
+        cases: [],
+        count: 0,
+        total_count: 0,
+        metadata: { cases_read: 0, total_cases: 0, skipped_cases: [] },
+      },
+      scan_metadata: {
+        files_scanned: 1,
+        files_included: 1,
+        files_skipped: 0,
+        bytes_included: 100,
+        bytes_truncated: 0,
+        limits_applied: [],
+      },
       resolve_metadata: { groups: { project_docs: 1 } },
     };
 
@@ -1247,6 +1345,7 @@ git commit -m "test(context): add resolver, bundle builder, and markdown generat
 ### Task 5.1: Create CLI Commands
 
 **Files:**
+
 - Create: `src/cli/commands/context.ts`
 
 - [ ] **Step 1: Write CLI commands**
@@ -1266,8 +1365,7 @@ import { InProcessEventBus } from '../../kernel/event-bus.js';
 import { CaseStore } from '../../state/case-store.js';
 
 export function createContextCommand(): Command {
-  const context = new Command('context')
-    .description('Manage project context');
+  const context = new Command('context').description('Manage project context');
 
   context
     .command('scan')
@@ -1293,9 +1391,7 @@ export function createContextCommand(): Command {
       caseStore.appendEvent('', event);
 
       const scanner = new ContextScanner();
-      const effectiveConfig = options.scenario
-        ? mergeScenario(config.context, options.scenario)
-        : config.context;
+      const effectiveConfig = options.scenario ? mergeScenario(config.context, options.scenario) : config.context;
 
       const result = await scanner.scan(cwd, effectiveConfig);
 
@@ -1316,11 +1412,17 @@ export function createContextCommand(): Command {
       caseStore.appendEvent('', completedEvent);
 
       if (options.json) {
-        console.log(JSON.stringify({
-          scenario: options.scenario || 'default',
-          files: result.files.map(f => ({ path: f.path, size: f.size, kind: f.kind })),
-          metadata: result.metadata,
-        }, null, 2));
+        console.log(
+          JSON.stringify(
+            {
+              scenario: options.scenario || 'default',
+              files: result.files.map((f) => ({ path: f.path, size: f.size, kind: f.kind })),
+              metadata: result.metadata,
+            },
+            null,
+            2
+          )
+        );
       } else {
         console.log(`Scanned: ${result.metadata.files_scanned} files`);
         console.log(`Included: ${result.metadata.files_included} files (${result.metadata.bytes_included} bytes)`);
@@ -1342,7 +1444,7 @@ export function createContextCommand(): Command {
       const caseStore = new CaseStore(join(cwd, config.state_dir));
 
       // Validate scenario
-      if (options.scenario && !config.context.scenarios.find(s => s.id === options.scenario)) {
+      if (options.scenario && !config.context.scenarios.find((s) => s.id === options.scenario)) {
         console.error(`Scenario not found: ${options.scenario}`);
         process.exit(1);
       }
@@ -1353,9 +1455,7 @@ export function createContextCommand(): Command {
       const bundleBuilder = new ContextBundleBuilder();
       const mdGenerator = new ContextMdGenerator();
 
-      const effectiveConfig = options.scenario
-        ? mergeScenario(config.context, options.scenario)
-        : config.context;
+      const effectiveConfig = options.scenario ? mergeScenario(config.context, options.scenario) : config.context;
 
       // Scan
       await bus.publish({
@@ -1431,13 +1531,19 @@ export function createContextCommand(): Command {
       });
 
       if (options.json) {
-        console.log(JSON.stringify({
-          bundle_path: bundlePath,
-          markdown_path: mdPath,
-          files_included: scanResult.metadata.files_included,
-          bytes_included: scanResult.metadata.bytes_included,
-          cases_included: caseMemory.cases.length,
-        }, null, 2));
+        console.log(
+          JSON.stringify(
+            {
+              bundle_path: bundlePath,
+              markdown_path: mdPath,
+              files_included: scanResult.metadata.files_included,
+              bytes_included: scanResult.metadata.bytes_included,
+              cases_included: caseMemory.cases.length,
+            },
+            null,
+            2
+          )
+        );
       } else {
         console.log(`Context built:`);
         console.log(`  Bundle: ${bundlePath}`);
@@ -1483,6 +1589,7 @@ git commit -m "feat(context): add wolf context scan and build CLI commands"
 ### Task 5.2: Write Integration Tests
 
 **Files:**
+
 - Create: `tests/integration/context-cli.test.ts`
 
 - [ ] **Step 1: Write tests**
@@ -1581,6 +1688,7 @@ git commit -m "test(context): add CLI integration tests for scan and build"
 ### Task 5.3: Update Documentation
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/development.md`
 
@@ -1632,19 +1740,19 @@ git commit --allow-empty -m "acceptance: MVP2 Context Resolver complete"
 
 ### Spec Coverage
 
-| Spec Section | Plan Task | Status |
-|-------------|-----------|--------|
-| Data Model (ContextBundle, ContextFile, etc.) | PR1 Task 1.1 | ✅ |
-| Config Schema | PR1 Task 1.2 | ✅ |
-| ContextScanner (glob, guards, limits) | PR2 | ✅ |
-| CaseMemoryReader (sorting, limits, tolerance) | PR3 | ✅ |
-| ContextResolver (classification, scenario merge) | PR4 Task 4.1 | ✅ |
-| ContextBundleBuilder | PR4 Task 4.2 | ✅ |
-| ContextMdGenerator | PR4 Task 4.3 | ✅ |
-| CLI (scan, build, --scenario, --json) | PR5 Task 5.1 | ✅ |
-| Events | PR5 Task 5.1 | ✅ |
-| Tests (unit + integration) | PR2–5 | ✅ |
-| Documentation | PR5 Task 5.3 | ✅ |
+| Spec Section                                     | Plan Task    | Status |
+| ------------------------------------------------ | ------------ | ------ |
+| Data Model (ContextBundle, ContextFile, etc.)    | PR1 Task 1.1 | ✅     |
+| Config Schema                                    | PR1 Task 1.2 | ✅     |
+| ContextScanner (glob, guards, limits)            | PR2          | ✅     |
+| CaseMemoryReader (sorting, limits, tolerance)    | PR3          | ✅     |
+| ContextResolver (classification, scenario merge) | PR4 Task 4.1 | ✅     |
+| ContextBundleBuilder                             | PR4 Task 4.2 | ✅     |
+| ContextMdGenerator                               | PR4 Task 4.3 | ✅     |
+| CLI (scan, build, --scenario, --json)            | PR5 Task 5.1 | ✅     |
+| Events                                           | PR5 Task 5.1 | ✅     |
+| Tests (unit + integration)                       | PR2–5        | ✅     |
+| Documentation                                    | PR5 Task 5.3 | ✅     |
 
 ### Placeholder Scan
 

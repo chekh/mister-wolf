@@ -29,33 +29,33 @@ The Context Resolver is a **standalone tool**. It does not require workflow exec
 
 ### In Scope
 
-| Feature | Description |
-|---------|-------------|
-| Project file discovery | Scan project root with include/exclude glob patterns |
-| Project docs discovery | `README.md`, `AGENTS.md`, `docs/**/*.md` |
-| Project rules discovery | `wolf.yaml`, `.wolf/**/*.md`, `.wolf/**/*.yaml` |
+| Feature                  | Description                                                                                                        |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| Project file discovery   | Scan project root with include/exclude glob patterns                                                               |
+| Project docs discovery   | `README.md`, `AGENTS.md`, `docs/**/*.md`                                                                           |
+| Project rules discovery  | `wolf.yaml`, `.wolf/**/*.md`, `.wolf/**/*.yaml`                                                                    |
 | Project config discovery | `package.json`, `tsconfig.json`, `vitest.config.ts`, `Dockerfile`, `docker-compose.yml`, `.github/workflows/*.yml` |
-| Case memory (read-only) | Read local `.wolf/state/cases` metadata; no LLM summarization |
-| Scenario overrides | Keyword-based scenario matching; scenario-specific include/exclude/limits |
-| Structured bundle output | `.wolf/context/context-bundle.json` with bounded text content |
-| Markdown output | `.wolf/context/context.md` human/LLM-readable rendered context |
-| CLI commands | `wolf context scan`, `wolf context build`, `wolf context build --scenario <id>`, `--json` |
-| Events | `context.scan.started`, `context.scan.completed`, `context.case_memory.read`, `context.bundle.created` |
-| Guards | Path traversal prevention, symlink root boundary, hidden dir exclusion, self-ingestion exclusion |
+| Case memory (read-only)  | Read local `.wolf/state/cases` metadata; no LLM summarization                                                      |
+| Scenario overrides       | Keyword-based scenario matching; scenario-specific include/exclude/limits                                          |
+| Structured bundle output | `.wolf/context/context-bundle.json` with bounded text content                                                      |
+| Markdown output          | `.wolf/context/context.md` human/LLM-readable rendered context                                                     |
+| CLI commands             | `wolf context scan`, `wolf context build`, `wolf context build --scenario <id>`, `--json`                          |
+| Events                   | `context.scan.started`, `context.scan.completed`, `context.case_memory.read`, `context.bundle.created`             |
+| Guards                   | Path traversal prevention, symlink root boundary, hidden dir exclusion, self-ingestion exclusion                   |
 
 ### Out of Scope
 
-| Feature | Reason |
-|---------|--------|
-| Email / Calendar / CRM | External systems, require auth |
-| Web search | External API, non-deterministic |
-| External knowledge base | Out of local filesystem scope |
+| Feature                     | Reason                                       |
+| --------------------------- | -------------------------------------------- |
+| Email / Calendar / CRM      | External systems, require auth               |
+| Web search                  | External API, non-deterministic              |
+| External knowledge base     | Out of local filesystem scope                |
 | Vector DB / semantic search | Requires embedding model; too heavy for MVP2 |
-| LLM summarization | Non-deterministic; deferred to future MVP |
-| Remote docs / URLs | External I/O |
-| MCP / A2A integrations | Protocol integrations out of scope |
-| Memory layer (learning) | Read-only deterministic scope only |
-| Binary file content | Metadata only; content excluded |
+| LLM summarization           | Non-deterministic; deferred to future MVP    |
+| Remote docs / URLs          | External I/O                                 |
+| MCP / A2A integrations      | Protocol integrations out of scope           |
+| Memory layer (learning)     | Read-only deterministic scope only           |
+| Binary file content         | Metadata only; content excluded              |
 
 ---
 
@@ -84,14 +84,14 @@ wolf context build [--scenario <id>]
 
 ### Component Responsibilities
 
-| Component | Responsibility |
-|-----------|--------------|
-| `ContextScanner` | Walk project directory tree, apply include/exclude patterns, collect file metadata, detect text vs binary, read bounded text content |
-| `CaseMemoryReader` | Read `.wolf/state/cases/*/case.yaml` and `state.json`, collect safe metadata, tolerate missing/corrupt files, sort by `updated_at desc` then `case_id asc`, derive `artifact_count` from `outputs/` |
-| `ContextResolver` | Classify scanned files into groups (`project_files`, `project_docs`, `project_rules`, `project_configs`), merge with case memory, apply scenario overrides |
-| `ContextBundleBuilder` | Serialize resolved context into `context-bundle.json` with deterministic ordering |
-| `ContextMdGenerator` | Render bundle into human-readable `context.md` with sections, summaries, and per-file renderer truncation |
-| `ContextCLI` | Parse CLI args, load config, orchestrate components, emit events, handle output modes |
+| Component              | Responsibility                                                                                                                                                                                      |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ContextScanner`       | Walk project directory tree, apply include/exclude patterns, collect file metadata, detect text vs binary, read bounded text content                                                                |
+| `CaseMemoryReader`     | Read `.wolf/state/cases/*/case.yaml` and `state.json`, collect safe metadata, tolerate missing/corrupt files, sort by `updated_at desc` then `case_id asc`, derive `artifact_count` from `outputs/` |
+| `ContextResolver`      | Classify scanned files into groups (`project_files`, `project_docs`, `project_rules`, `project_configs`), merge with case memory, apply scenario overrides                                          |
+| `ContextBundleBuilder` | Serialize resolved context into `context-bundle.json` with deterministic ordering                                                                                                                   |
+| `ContextMdGenerator`   | Render bundle into human-readable `context.md` with sections, summaries, and per-file renderer truncation                                                                                           |
+| `ContextCLI`           | Parse CLI args, load config, orchestrate components, emit events, handle output modes                                                                                                               |
 
 ---
 
@@ -103,7 +103,7 @@ wolf context build [--scenario <id>]
 interface ContextBundle {
   version: '1.0.0';
   generated_at: string; // ISO 8601
-  scenario: string;     // "default" or scenario id
+  scenario: string; // "default" or scenario id
   project: {
     root: string;
     files: ContextFile[];
@@ -126,15 +126,15 @@ interface ContextBundle {
 
 ```typescript
 interface ContextFile {
-  path: string;              // Relative to project root
+  path: string; // Relative to project root
   kind: 'project_file' | 'project_doc' | 'project_rule' | 'project_config';
-  size: number;              // Bytes
+  size: number; // Bytes
   extension: string;
-  hash: string;              // sha256 of raw file bytes for all files, including binary
-  mtime: string;             // ISO 8601
+  hash: string; // sha256 of raw file bytes for all files, including binary
+  mtime: string; // ISO 8601
   content_included: boolean;
   content_truncated: boolean;
-  content?: string;          // Present if content_included
+  content?: string; // Present if content_included
 }
 ```
 
@@ -167,7 +167,7 @@ interface CaseMemoryMetadata {
 
 ```typescript
 interface ResolveMetadata {
-  groups: Record<string, number>;  // e.g. { project_files: 12, project_docs: 3 }
+  groups: Record<string, number>; // e.g. { project_files: 12, project_docs: 3 }
 }
 ```
 
@@ -181,7 +181,7 @@ interface ScanMetadata {
   bytes_included: number;
   bytes_truncated: number;
   limits_applied: string[];
-  skipped_files?: string[];  // Paths of files skipped due to limits
+  skipped_files?: string[]; // Paths of files skipped due to limits
 }
 ```
 
@@ -210,11 +210,11 @@ context:
     - '.worktrees/**'
   limits:
     max_files: 100
-    max_bytes: 10485760      # 10MB total
-    max_file_bytes: 1048576  # 1MB per file (byte limit, not character limit)
+    max_bytes: 10485760 # 10MB total
+    max_file_bytes: 1048576 # 1MB per file (byte limit, not character limit)
     max_cases: 10
-  include_content: true       # Default: include text content
-  markdown_render_chars: 1000  # Fixed per-file char limit for context.md renderer (MVP2)
+  include_content: true # Default: include text content
+  markdown_render_chars: 1000 # Fixed per-file char limit for context.md renderer (MVP2)
   output:
     bundle: '.wolf/context/context-bundle.json'
     markdown: '.wolf/context/context.md'
@@ -257,12 +257,12 @@ context:
 
 `ContextResolver` classifies each included file into exactly one group using deterministic rules (first match wins):
 
-| Group | Patterns |
-|-------|----------|
-| `project_docs` | `README.md`, `AGENTS.md`, `docs/**/*.md`, `.wolf/**/*.md` |
-| `project_rules` | `wolf.yaml`, `.wolf/**/*.yaml` (excluding `.wolf/state/**`) |
+| Group             | Patterns                                                                                                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `project_docs`    | `README.md`, `AGENTS.md`, `docs/**/*.md`, `.wolf/**/*.md`                                                                                                                      |
+| `project_rules`   | `wolf.yaml`, `.wolf/**/*.yaml` (excluding `.wolf/state/**`)                                                                                                                    |
 | `project_configs` | `package.json`, `tsconfig.json`, `vitest.config.ts`, `Dockerfile`, `docker-compose.yml`, `.github/workflows/*.yml`, `.github/workflows/*.yaml`, `.prettierrc`, `.prettierrc.*` |
-| `project_files` | Everything else included |
+| `project_files`   | Everything else included                                                                                                                                                       |
 
 ### Content Inclusion Rules
 
@@ -283,7 +283,7 @@ Scenario matching is **deterministic keyword-based**. No LLM classifier.
 function matchScenario(scenarios: Scenario[], input: string): Scenario | null {
   for (const scenario of scenarios) {
     const inputLower = input.toLowerCase();
-    const matches = scenario.match.keywords.some(k => inputLower.includes(k.toLowerCase()));
+    const matches = scenario.match.keywords.some((k) => inputLower.includes(k.toLowerCase()));
     if (matches) return scenario;
   }
   return null;
@@ -302,24 +302,24 @@ function matchScenario(scenarios: Scenario[], input: string): Scenario | null {
 
 ### Limits
 
-| Limit | Default | Behavior when exceeded |
-|-------|---------|------------------------|
-| `max_files` | 100 | Stop including new files; record remainder in `skipped_files` |
-| `max_bytes` | 10MB | Stop including new files when total bytes would exceed; record in `skipped_files` |
-| `max_file_bytes` | 1MB | Truncate file content; mark `content_truncated: true` |
-| `max_cases` | 10 | Read only most recent N cases by `updated_at` |
+| Limit            | Default | Behavior when exceeded                                                            |
+| ---------------- | ------- | --------------------------------------------------------------------------------- |
+| `max_files`      | 100     | Stop including new files; record remainder in `skipped_files`                     |
+| `max_bytes`      | 10MB    | Stop including new files when total bytes would exceed; record in `skipped_files` |
+| `max_file_bytes` | 1MB     | Truncate file content; mark `content_truncated: true`                             |
+| `max_cases`      | 10      | Read only most recent N cases by `updated_at`                                     |
 
 ### Guards
 
-| Guard | Implementation |
-|-------|----------------|
-| Path traversal | Config paths (include, exclude, output) must not be absolute and must not escape project root after normalization. Scanned file paths are always stored relative to project root. Any resolved candidate path outside project root is skipped. |
-| Symlink escape | Resolve symlinks; if resolved path is outside project root → skip |
-| Hidden dirs | Exclude dirs starting with `.` unless explicitly in include patterns. `.github` and `.wolf` paths are explicitly included by default config, except `.wolf/state/**` and `.wolf/context/**` which are always excluded. |
-| Self-ingestion | Exclude `.wolf/context/**` and `.wolf/state/**` by default |
-| Binary files | Detect null bytes; skip content, include metadata only |
-| Corrupt case files | Tolerate missing `case.yaml` or unreadable `state.json`; skip and report in metadata |
-| Case sorting | Cases sorted by `updated_at` descending, then `case_id` ascending; `max_cases` applied after sorting |
+| Guard              | Implementation                                                                                                                                                                                                                                 |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Path traversal     | Config paths (include, exclude, output) must not be absolute and must not escape project root after normalization. Scanned file paths are always stored relative to project root. Any resolved candidate path outside project root is skipped. |
+| Symlink escape     | Resolve symlinks; if resolved path is outside project root → skip                                                                                                                                                                              |
+| Hidden dirs        | Exclude dirs starting with `.` unless explicitly in include patterns. `.github` and `.wolf` paths are explicitly included by default config, except `.wolf/state/**` and `.wolf/context/**` which are always excluded.                         |
+| Self-ingestion     | Exclude `.wolf/context/**` and `.wolf/state/**` by default                                                                                                                                                                                     |
+| Binary files       | Detect null bytes; skip content, include metadata only                                                                                                                                                                                         |
+| Corrupt case files | Tolerate missing `case.yaml` or unreadable `state.json`; skip and report in metadata                                                                                                                                                           |
+| Case sorting       | Cases sorted by `updated_at` descending, then `case_id` ascending; `max_cases` applied after sorting                                                                                                                                           |
 
 ---
 
@@ -369,21 +369,21 @@ wolf context build --json
 
 ### Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | Error (invalid config, path traversal, I/O error) |
+| Code | Meaning                                           |
+| ---- | ------------------------------------------------- |
+| 0    | Success                                           |
+| 1    | Error (invalid config, path traversal, I/O error) |
 
 ---
 
 ## 11. Events
 
-| Event | When | Payload |
-|-------|------|---------|
-| `context.scan.started` | Before scanning | `{ root, scenario }` |
-| `context.scan.completed` | After scanning | `{ files_scanned, files_included, bytes_included }` |
-| `context.case_memory.read` | After reading case memory | `{ cases_read, total_cases, skipped_cases }` |
-| `context.bundle.created` | After writing bundle | `{ bundle_path, markdown_path, file_count, byte_count }` |
+| Event                      | When                      | Payload                                                  |
+| -------------------------- | ------------------------- | -------------------------------------------------------- |
+| `context.scan.started`     | Before scanning           | `{ root, scenario }`                                     |
+| `context.scan.completed`   | After scanning            | `{ files_scanned, files_included, bytes_included }`      |
+| `context.case_memory.read` | After reading case memory | `{ cases_read, total_cases, skipped_cases }`             |
+| `context.bundle.created`   | After writing bundle      | `{ bundle_path, markdown_path, file_count, byte_count }` |
 
 ---
 
@@ -406,6 +406,7 @@ Scenario: dev
 ## Project Files
 
 ### src/workflow/engine.ts
+
 - Size: 12.4 KB
 - Modified: 2026-04-29
 
@@ -422,9 +423,9 @@ Scenario: dev
 
 ## Case Memory
 
-| Case ID | Workflow | Status | Updated |
-|---------|----------|--------|---------|
-| case_001 | review | completed | 2026-04-28 |
+| Case ID  | Workflow | Status    | Updated    |
+| -------- | -------- | --------- | ---------- |
+| case_001 | review   | completed | 2026-04-28 |
 
 ## Scan Metadata
 
@@ -481,13 +482,13 @@ Scenario: dev
 
 Split into 5 PRs for incremental delivery:
 
-| PR | Focus | Components |
-|----|-------|------------|
-| **PR1** | Config, Schema, Types | `wolf.yaml` context section, Zod schemas, TypeScript types, config loader updates |
-| **PR2** | Context Scanner | `ContextScanner`, glob matching, guards, limits, text/binary detection, metadata/content collection |
-| **PR3** | Case Memory Reader | `CaseMemoryReader`, case metadata extraction, corrupt file tolerance, sorting by `updated_at desc` |
-| **PR4** | Resolver, Bundle, Markdown | `ContextResolver` (classification + scenario merge), `ContextBundleBuilder`, `ContextMdGenerator` |
-| **PR5** | CLI, Events, Tests, Docs | `wolf context` commands, event emission, integration tests, README/docs updates |
+| PR      | Focus                      | Components                                                                                          |
+| ------- | -------------------------- | --------------------------------------------------------------------------------------------------- |
+| **PR1** | Config, Schema, Types      | `wolf.yaml` context section, Zod schemas, TypeScript types, config loader updates                   |
+| **PR2** | Context Scanner            | `ContextScanner`, glob matching, guards, limits, text/binary detection, metadata/content collection |
+| **PR3** | Case Memory Reader         | `CaseMemoryReader`, case metadata extraction, corrupt file tolerance, sorting by `updated_at desc`  |
+| **PR4** | Resolver, Bundle, Markdown | `ContextResolver` (classification + scenario merge), `ContextBundleBuilder`, `ContextMdGenerator`   |
+| **PR5** | CLI, Events, Tests, Docs   | `wolf context` commands, event emission, integration tests, README/docs updates                     |
 
 ---
 
