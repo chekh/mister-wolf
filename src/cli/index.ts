@@ -7,6 +7,7 @@ import { createGatesCommand, createApproveCommand, createRejectCommand } from '.
 import { createValidateCommand } from './commands/validate.js';
 import { createEventsCommand } from './commands/events.js';
 import { createContextCommand } from './commands/context.js';
+import { createPolicyCommand } from './commands/policy.js';
 
 const program = new Command();
 
@@ -21,5 +22,6 @@ program.addCommand(createRejectCommand());
 program.addCommand(createValidateCommand());
 program.addCommand(createEventsCommand());
 program.addCommand(createContextCommand());
+program.addCommand(createPolicyCommand());
 
 program.parse();
