@@ -135,3 +135,146 @@ describe('WorkflowEngine cancel', () => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 });
+
+describe('WorkflowEngine graph mode', () => {
+  let engine: WorkflowEngine;
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), 'wolf-graph-'));
+    const registry = new RunnerRegistry();
+    registry.register(new EchoRunner());
+    const caseStore = new CaseStore(tempDir);
+    const gateStore = new GateStore(caseStore);
+    const bus = new InProcessEventBus();
+    engine = new WorkflowEngine(registry, caseStore, gateStore, bus);
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('should execute graph steps in parallel respecting dependencies', async () => {
+    const workflow: WorkflowDefinition = {
+      id: 'graph_test',
+      version: '0.1.0',
+      execution: { mode: 'graph', max_parallel: 2 },
+      steps: [
+        { id: 'a', type: 'builtin', runner: 'echo', input: { message: 'a' } },
+        { id: 'b', type: 'builtin', runner: 'echo', input: { message: 'b' } },
+        { id: 'c', type: 'builtin', runner: 'echo', input: { message: 'c' }, depends_on: ['a', 'b'] },
+      ],
+    };
+
+    const result = await engine.execute('graph_case', workflow);
+    expect(result.status).toBe('completed');
+
+    const state = engine.getState('graph_case');
+    expect(state?.completed_steps).toContain('a');
+    expect(state?.completed_steps).toContain('b');
+    expect(state?.completed_steps).toContain('c');
+    expect(state?.execution_mode).toBe('graph');
+  });
+
+  it('should skip transitive dependents on failure in graph mode', async () => {
+    // Register a failing runner
+    class FailingRunner {
+      type = 'failing';
+      async run(): Promise<{ status: string; error?: unknown }> {
+        return { status: 'failure', error: { type: 'TestError', message: 'fail', retryable: false } };
+      }
+    }
+
+    const registry = new RunnerRegistry();
+    registry.register(new EchoRunner());
+    registry.register(new FailingRunner());
+    const caseStore = new CaseStore(tempDir);
+    const gateStore = new GateStore(caseStore);
+    const bus = new InProcessEventBus();
+    const customEngine = new WorkflowEngine(registry, caseStore, gateStore, bus);
+
+    const workflow: WorkflowDefinition = {
+      id: 'fail_graph',
+      version: '0.1.0',
+      execution: { mode: 'graph', max_parallel: 2 },
+      steps: [
+        { id: 'root', type: 'builtin', runner: 'failing' },
+        { id: 'child', type: 'builtin', runner: 'echo', depends_on: ['root'] },
+        { id: 'orphan', type: 'builtin', runner: 'echo' },
+      ],
+    };
+
+    const result = await customEngine.execute('fail_case', workflow);
+    expect(result.status).toBe('failed');
+
+    const state = customEngine.getState('fail_case');
+    expect(state?.failed_steps).toContain('root');
+    expect(state?.skipped_steps).toContain('child');
+    expect(state?.completed_steps).toContain('orphan');
+  });
+
+  it('should gate in graph mode and pause workflow', async () => {
+    const registry = new RunnerRegistry();
+    registry.register(new EchoRunner());
+    registry.register(new ManualGateRunner());
+    const caseStore = new CaseStore(tempDir);
+    const gateStore = new GateStore(caseStore);
+    const bus = new InProcessEventBus();
+    const customEngine = new WorkflowEngine(registry, caseStore, gateStore, bus);
+
+    const workflow: WorkflowDefinition = {
+      id: 'gate_graph',
+      version: '0.1.0',
+      execution: { mode: 'graph' },
+      steps: [
+        { id: 'pre', type: 'builtin', runner: 'echo' },
+        { id: 'gate', type: 'builtin', runner: 'manual_gate' },
+        { id: 'post', type: 'builtin', runner: 'echo', depends_on: ['gate'] },
+      ],
+    };
+
+    const result = await customEngine.execute('gate_case', workflow);
+    expect(result.status).toBe('paused');
+
+    const state = customEngine.getState('gate_case');
+    expect(state?.step_statuses['gate']).toBe('gated');
+    expect(state?.step_statuses['pre']).toBe('success');
+  });
+
+  it('should respect max_parallel in graph mode', async () => {
+    let concurrent = 0;
+    let maxConcurrent = 0;
+
+    class CountingRunner {
+      type = 'counting';
+      async run(): Promise<{ status: string; output?: string }> {
+        concurrent++;
+        maxConcurrent = Math.max(maxConcurrent, concurrent);
+        await new Promise((r) => setTimeout(r, 50));
+        concurrent--;
+        return { status: 'success', output: 'done' };
+      }
+    }
+
+    const registry = new RunnerRegistry();
+    registry.register(new CountingRunner());
+    const caseStore = new CaseStore(tempDir);
+    const gateStore = new GateStore(caseStore);
+    const bus = new InProcessEventBus();
+    const customEngine = new WorkflowEngine(registry, caseStore, gateStore, bus);
+
+    const workflow: WorkflowDefinition = {
+      id: 'parallel_test',
+      version: '0.1.0',
+      execution: { mode: 'graph', max_parallel: 2 },
+      steps: [
+        { id: 'a', type: 'builtin', runner: 'counting' },
+        { id: 'b', type: 'builtin', runner: 'counting' },
+        { id: 'c', type: 'builtin', runner: 'counting' },
+      ],
+    };
+
+    await customEngine.execute('parallel_case', workflow);
+    expect(maxConcurrent).toBeLessThanOrEqual(2);
+  });
+});

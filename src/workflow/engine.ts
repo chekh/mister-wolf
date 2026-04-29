@@ -7,6 +7,7 @@ import { ExecutionState, StepResult } from '../types/state.js';
 import { RuntimeEvent } from '../types/events.js';
 import { interpolateObject } from './template.js';
 import { evaluateCondition } from './conditions.js';
+import { buildGraph, getReadySteps, getTransitiveDependents, DependencyGraph } from './graph.js';
 import { ProjectConfig } from '../config/project-config.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -28,6 +29,7 @@ export class WorkflowEngine {
       case_id: caseId,
       workflow_id: workflow.id,
       status: 'running',
+      execution_mode: workflow.execution?.mode || 'sequential',
       completed_steps: [],
       failed_steps: [],
       skipped_steps: [],
@@ -38,6 +40,10 @@ export class WorkflowEngine {
       started_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
+
+    for (const step of workflow.steps) {
+      state.step_statuses[step.id] = 'pending';
+    }
 
     this.states.set(caseId, state);
     this.caseStore.writeState(caseId, state);
@@ -50,6 +56,9 @@ export class WorkflowEngine {
       payload: { version: workflow.version },
     });
 
+    if (workflow.execution?.mode === 'graph') {
+      return this.runGraph(workflow, state);
+    }
     return this.runSteps(workflow, state);
   }
 
@@ -75,10 +84,20 @@ export class WorkflowEngine {
       payload: { resumed: true },
     });
 
+    if (workflow.execution?.mode === 'graph') {
+      return this.runGraph(workflow, state);
+    }
     return this.runSteps(workflow, state);
   }
 
   private async runSteps(workflow: WorkflowDefinition, state: ExecutionState): Promise<{ status: string }> {
+    state.step_statuses ??= {};
+    for (const step of workflow.steps) {
+      if (!state.step_statuses[step.id]) {
+        state.step_statuses[step.id] = 'pending';
+      }
+    }
+
     for (const step of workflow.steps) {
       if (state.completed_steps.includes(step.id)) {
         continue;
@@ -211,6 +230,227 @@ export class WorkflowEngine {
     });
 
     return { status: 'completed' };
+  }
+
+  private async runGraph(workflow: WorkflowDefinition, state: ExecutionState): Promise<{ status: string }> {
+    const graph = buildGraph(workflow);
+    const maxParallel = workflow.execution?.max_parallel
+      ?? this.config.defaults.max_parallel
+      ?? 1;
+
+    // Initialize pending statuses for all steps
+    state.step_statuses ??= {};
+    for (const step of workflow.steps) {
+      if (!state.step_statuses[step.id]) {
+        state.step_statuses[step.id] = 'pending';
+      }
+    }
+
+    let hasFailure = false;
+    let hasGated = false;
+
+    while (true) {
+      if (hasFailure) {
+        // Fail-fast: don't start new steps
+        break;
+      }
+
+      if (hasGated) {
+        // Gate behavior: running steps allowed to finish, no new steps
+        break;
+      }
+
+      const ready = getReadySteps(graph, state.step_statuses);
+      if (ready.length === 0) break;
+
+      // Respect max_parallel
+      const toRun = ready.slice(0, maxParallel);
+
+      // Mark as running
+      for (const stepId of toRun) {
+        state.step_statuses[stepId] = 'running';
+      }
+      state.updated_at = new Date().toISOString();
+      this.caseStore.writeState(state.case_id, state);
+
+      // Execute in parallel
+      const promises = toRun.map(async (stepId) => {
+        const step = workflow.steps.find((s) => s.id === stepId)!;
+
+        // Check when condition
+        if (step.when) {
+          const shouldRun = evaluateCondition(step.when, state.variables);
+          if (!shouldRun) {
+            state.skipped_steps.push(step.id);
+            state.step_statuses[step.id] = 'skipped';
+            state.step_results[step.id] = { status: 'skipped' };
+
+            const event: RuntimeEvent = {
+              id: uuidv4(),
+              type: 'step.skipped',
+              case_id: state.case_id,
+              step_id: step.id,
+              timestamp: new Date().toISOString(),
+              actor: { type: 'system', id: 'workflow-engine' },
+              payload: { reason: 'condition_false', condition: step.when },
+            };
+            await this.bus.publish(event);
+            this.caseStore.appendEvent(state.case_id, event);
+            return { stepId, result: { status: 'skipped' } as StepResult };
+          }
+        }
+
+        const result = await this.executeStep(step, state);
+        return { stepId, result };
+      });
+
+      const settled = await Promise.allSettled(promises);
+
+      for (const outcome of settled) {
+        if (outcome.status === 'rejected') {
+          // Should not happen, but handle defensively
+          continue;
+        }
+        const { stepId, result } = outcome.value;
+        state.step_results[stepId] = result;
+        state.updated_at = new Date().toISOString();
+
+        if (result.status === 'success') {
+          state.step_statuses[stepId] = 'success';
+          state.completed_steps.push(stepId);
+
+          const step = workflow.steps.find((s) => s.id === stepId)!;
+          if (step.output && result.output !== undefined) {
+            state.variables[step.output] = result.output;
+          }
+          if (result.output !== undefined) {
+            this.caseStore.writeOutput(state.case_id, stepId, String(result.output));
+          }
+          if (step.artifact && result.output !== undefined) {
+            this.caseStore.writeArtifact(state.case_id, stepId, step.artifact.path, String(result.output));
+            await this.emitEvent({
+              type: 'artifact.created',
+              case_id: state.case_id,
+              workflow_id: state.workflow_id,
+              step_id: stepId,
+              payload: { path: step.artifact.path },
+            });
+          }
+
+          this.caseStore.writeState(state.case_id, state);
+          await this.emitEvent({
+            type: 'step.completed',
+            case_id: state.case_id,
+            workflow_id: state.workflow_id,
+            step_id: stepId,
+            payload: { output: result.output },
+          });
+        } else if (result.status === 'gated') {
+          state.step_statuses[stepId] = 'gated';
+          this.gateStore.createGate(state.case_id, stepId);
+          hasGated = true;
+
+          this.caseStore.writeState(state.case_id, state);
+          await this.emitEvent({
+            type: 'gate.requested',
+            case_id: state.case_id,
+            workflow_id: state.workflow_id,
+            step_id: stepId,
+            payload: {},
+          });
+        } else if (result.status === 'failure') {
+          state.step_statuses[stepId] = 'failure';
+          state.failed_steps.push(stepId);
+          hasFailure = true;
+
+          this.caseStore.writeState(state.case_id, state);
+          await this.emitEvent({
+            type: 'step.failed',
+            case_id: state.case_id,
+            workflow_id: state.workflow_id,
+            step_id: stepId,
+            payload: { error: result.error },
+          });
+        } else if (result.status === 'skipped') {
+          // Already handled above in when condition
+        }
+      }
+    }
+
+    // After main loop, handle final state
+    if (hasGated) {
+      state.status = 'paused';
+      state.current_step_id = undefined;
+      state.updated_at = new Date().toISOString();
+      this.caseStore.writeState(state.case_id, state);
+      this.caseStore.updateCaseStatus(state.case_id, 'paused');
+      return { status: 'paused' };
+    }
+
+    if (hasFailure) {
+      // Mark pending steps and their transitive dependents as skipped
+      const pendingSteps = workflow.steps
+        .filter((s) => state.step_statuses[s.id] === 'pending')
+        .map((s) => s.id);
+
+      const toSkip = new Set<string>();
+      for (const stepId of pendingSteps) {
+        toSkip.add(stepId);
+        const dependents = getTransitiveDependents(graph, stepId);
+        for (const dep of dependents) {
+          toSkip.add(dep);
+        }
+      }
+
+      for (const stepId of toSkip) {
+        if (state.step_statuses[stepId] === 'pending') {
+          state.step_statuses[stepId] = 'skipped';
+          state.skipped_steps.push(stepId);
+          state.step_results[stepId] = { status: 'skipped' };
+        }
+      }
+
+      state.status = 'failed';
+      state.current_step_id = undefined;
+      state.updated_at = new Date().toISOString();
+      this.caseStore.writeState(state.case_id, state);
+      this.caseStore.updateCaseStatus(state.case_id, 'failed');
+
+      await this.emitEvent({
+        type: 'workflow.failed',
+        case_id: state.case_id,
+        workflow_id: state.workflow_id,
+        payload: { failed_steps: state.failed_steps },
+      });
+
+      return { status: 'failed' };
+    }
+
+    // Check if all steps are done (success, skipped, or gated)
+    const allDone = workflow.steps.every((s) => {
+      const st = state.step_statuses[s.id];
+      return st === 'success' || st === 'skipped' || st === 'gated';
+    });
+
+    if (allDone) {
+      state.status = 'completed';
+      state.current_step_id = undefined;
+      state.updated_at = new Date().toISOString();
+      this.caseStore.writeState(state.case_id, state);
+      this.caseStore.updateCaseStatus(state.case_id, 'completed');
+
+      await this.emitEvent({
+        type: 'workflow.completed',
+        case_id: state.case_id,
+        workflow_id: state.workflow_id,
+        payload: { completed_steps: state.completed_steps },
+      });
+
+      return { status: 'completed' };
+    }
+
+    // Should not reach here in normal operation
+    return { status: state.status };
   }
 
   private async executeStep(step: StepDefinition, state: ExecutionState): Promise<StepResult> {
