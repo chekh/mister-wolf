@@ -168,6 +168,42 @@ defaults:
     max_output_size: "1MB"
 ```
 
+## Graph Mode
+
+Run steps in parallel by defining a dependency graph:
+
+```yaml
+id: parallel_demo
+version: "0.1.0"
+execution:
+  mode: graph
+  max_parallel: 2
+
+steps:
+  - id: task_a
+    type: builtin
+    runner: echo
+    input:
+      message: "Task A"
+
+  - id: task_b
+    type: builtin
+    runner: echo
+    input:
+      message: "Task B"
+
+  - id: combine
+    type: builtin
+    runner: echo
+    depends_on: [task_a, task_b]
+    input:
+      message: "Combined result"
+```
+
+- `mode: graph` enables DAG-based scheduling
+- `max_parallel` limits concurrent execution
+- `depends_on` specifies prerequisite steps
+
 ## Next Steps
 
 - Learn [workflow syntax](../workflow-syntax.md) in detail

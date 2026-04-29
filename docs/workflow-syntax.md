@@ -10,9 +10,42 @@ version: "0.1.0"         # Required: semantic version
 name: "My Workflow"      # Optional: human-readable name
 description: "..."       # Optional: what this workflow does
 
+execution:               # Optional: execution configuration
+  mode: graph            # Options: sequential (default) | graph
+  max_parallel: 3        # Optional: max concurrent steps in graph mode
+
 steps:                   # Required: array of steps (minimum 1)
   - ...
 ```
+
+## Execution Configuration
+
+Control how the workflow engine schedules steps.
+
+### Sequential Mode (default)
+
+Steps execute one at a time in definition order. `depends_on` is validated to only reference earlier steps.
+
+### Graph Mode
+
+Steps execute as a DAG (directed acyclic graph):
+
+```yaml
+execution:
+  mode: graph
+  max_parallel: 2
+```
+
+- Steps with no `depends_on` are roots and start immediately
+- Steps wait for ALL dependencies to complete with `success`
+- Up to `max_parallel` steps run concurrently
+- `depends_on` can reference any step (future or past)
+
+**Scheduling behavior:**
+- Running steps are allowed to finish even if another step fails
+- No new steps start after a failure (fail-fast)
+- Pending steps and their transitive dependents are skipped
+- Gate behavior: running steps finish, no new steps start
 
 ## Step Definition
 
@@ -205,8 +238,13 @@ Workflows are validated before execution:
 1. **Schema validation** — all fields must match Zod schemas
 2. **Duplicate step IDs** — each step must have unique `id`
 3. **Duplicate output variables** — each `output` name must be unique
-4. **Dependency references** — `depends_on` must reference existing steps (MVP1C+)
-5. **Minimum steps** — workflow must have at least 1 step
+4. **Dependency references** — `depends_on` must reference existing steps
+5. **Graph validation** (graph mode only):
+   - No circular dependencies
+   - All `depends_on` references exist
+6. **Sequential validation** (sequential mode only):
+   - `depends_on` must reference earlier steps (no future dependencies)
+7. **Minimum steps** — workflow must have at least 1 step
 
 Use `wolf validate <workflow.yaml>` to check without running.
 

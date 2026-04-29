@@ -7,6 +7,7 @@ const ProjectConfigSchema = z.object({
   index_path: z.string().optional(),
   defaults: z.object({
     timeout: z.string().default('30s'),
+    max_parallel: z.number().int().positive().optional(),
     shell: z.object({
       max_output_size: z.string().default('1MB'),
       blocked_commands: z.array(z.string()).default(['sudo', 'su', 'ssh', 'vim', 'nano', 'less', 'more', 'top', 'watch']),

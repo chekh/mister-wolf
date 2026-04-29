@@ -52,3 +52,49 @@ describe('validator', () => {
     expect(result.success).toBe(false);
   });
 });
+
+describe('graph validation', () => {
+  it('should reject graph with circular dependency', () => {
+    const workflow: WorkflowDefinition = {
+      id: 'test',
+      version: '0.1.0',
+      execution: { mode: 'graph' },
+      steps: [
+        { id: 'a', type: 'builtin', runner: 'echo', depends_on: ['c'] },
+        { id: 'b', type: 'builtin', runner: 'echo', depends_on: ['a'] },
+        { id: 'c', type: 'builtin', runner: 'echo', depends_on: ['b'] },
+      ],
+    };
+    const result = validateWorkflow(workflow);
+    expect(result.success).toBe(false);
+    expect(result.errors?.some((e) => e.includes('Circular'))).toBe(true);
+  });
+
+  it('should allow future dependency in graph mode', () => {
+    const workflow: WorkflowDefinition = {
+      id: 'test',
+      version: '0.1.0',
+      execution: { mode: 'graph' },
+      steps: [
+        { id: 'a', type: 'builtin', runner: 'echo', depends_on: ['b'] },
+        { id: 'b', type: 'builtin', runner: 'echo' },
+      ],
+    };
+    const result = validateWorkflow(workflow);
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject future dependency in sequential mode', () => {
+    const workflow: WorkflowDefinition = {
+      id: 'test',
+      version: '0.1.0',
+      steps: [
+        { id: 'a', type: 'builtin', runner: 'echo', depends_on: ['b'] },
+        { id: 'b', type: 'builtin', runner: 'echo' },
+      ],
+    };
+    const result = validateWorkflow(workflow);
+    expect(result.success).toBe(false);
+    expect(result.errors?.some((e) => e.includes('future'))).toBe(true);
+  });
+});

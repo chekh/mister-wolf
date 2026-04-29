@@ -44,6 +44,7 @@ export class CaseStore {
       case_id: caseId,
       workflow_id: workflow.id,
       status: 'pending',
+      execution_mode: 'sequential',
       completed_steps: [],
       failed_steps: [],
       skipped_steps: [],

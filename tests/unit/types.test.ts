@@ -136,3 +136,83 @@ describe('MVP1B state types', () => {
     expect(result.success).toBe(true);
   });
 });
+
+describe('MVP1C types', () => {
+  it('should validate workflow with graph execution config', () => {
+    const result = WorkflowDefinitionSchema.safeParse({
+      id: 'test',
+      version: '0.1.0',
+      execution: { mode: 'graph', max_parallel: 4 },
+      steps: [{ id: 's1', type: 'builtin', runner: 'echo' }],
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.execution?.mode).toBe('graph');
+    expect(result.data?.execution?.max_parallel).toBe(4);
+  });
+
+  it('should validate workflow without execution config (sequential default)', () => {
+    const result = WorkflowDefinitionSchema.safeParse({
+      id: 'test',
+      version: '0.1.0',
+      steps: [{ id: 's1', type: 'builtin', runner: 'echo' }],
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.execution?.mode).toBe('sequential');
+  });
+
+  it('should allow optional max_parallel', () => {
+    const result = WorkflowDefinitionSchema.safeParse({
+      id: 'test',
+      version: '0.1.0',
+      execution: { mode: 'graph' },
+      steps: [{ id: 's1', type: 'builtin', runner: 'echo' }],
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.execution?.max_parallel).toBeUndefined();
+  });
+});
+
+describe('MVP1C state types', () => {
+  it('should validate execution state with execution_mode', () => {
+    const result = ExecutionStateSchema.safeParse({
+      case_id: 'c1',
+      workflow_id: 'w1',
+      status: 'running',
+      execution_mode: 'graph',
+      completed_steps: [],
+      failed_steps: [],
+      skipped_steps: [],
+      step_results: {},
+      step_statuses: {},
+      variables: {},
+      gates: {},
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should validate step_statuses with new statuses', () => {
+    const result = ExecutionStateSchema.safeParse({
+      case_id: 'c1',
+      workflow_id: 'w1',
+      status: 'running',
+      execution_mode: 'graph',
+      completed_steps: [],
+      failed_steps: [],
+      skipped_steps: [],
+      step_results: {},
+      step_statuses: {
+        s1: 'pending',
+        s2: 'ready',
+        s3: 'running',
+        s4: 'blocked',
+      },
+      variables: {},
+      gates: {},
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    expect(result.success).toBe(true);
+  });
+});
