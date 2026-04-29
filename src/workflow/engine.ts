@@ -246,6 +246,19 @@ export class WorkflowEngine {
       }
     }
 
+    // Reset gated steps that have been approved so they can re-run on resume
+    for (const step of workflow.steps) {
+      if (state.step_statuses[step.id] === 'gated') {
+        const gateId = `gate_${state.case_id}_${step.id}`;
+        const gate = state.gates?.[gateId];
+        if (gate?.status === 'approved') {
+          state.step_statuses[step.id] = 'pending';
+        }
+      }
+    }
+    this.caseStore.writeState(state.case_id, state);
+    this.states.set(state.case_id, state);
+
     let hasFailure = false;
     let hasGated = false;
 
@@ -259,6 +272,9 @@ export class WorkflowEngine {
         // Gate behavior: running steps allowed to finish, no new steps
         break;
       }
+
+      // Refresh state from disk to pick up changes from parallel steps in previous iterations
+      state = this.caseStore.readState(state.case_id) || state;
 
       const ready = getReadySteps(graph, state.step_statuses);
       if (ready.length === 0) break;
@@ -312,16 +328,19 @@ export class WorkflowEngine {
           continue;
         }
         const { stepId, result } = outcome.value;
-        state.step_results[stepId] = result;
-        state.updated_at = new Date().toISOString();
+
+        // Read latest state to avoid overwriting concurrent changes from parallel steps
+        const currentState = this.caseStore.readState(state.case_id)!;
+        currentState.step_results[stepId] = result;
+        currentState.updated_at = new Date().toISOString();
 
         if (result.status === 'success') {
-          state.step_statuses[stepId] = 'success';
-          state.completed_steps.push(stepId);
+          currentState.step_statuses[stepId] = 'success';
+          currentState.completed_steps.push(stepId);
 
           const step = workflow.steps.find((s) => s.id === stepId)!;
           if (step.output && result.output !== undefined) {
-            state.variables[step.output] = result.output;
+            currentState.variables[step.output] = result.output;
           }
           if (result.output !== undefined) {
             this.caseStore.writeOutput(state.case_id, stepId, String(result.output));
@@ -330,44 +349,49 @@ export class WorkflowEngine {
             this.caseStore.writeArtifact(state.case_id, stepId, step.artifact.path, String(result.output));
             await this.emitEvent({
               type: 'artifact.created',
-              case_id: state.case_id,
-              workflow_id: state.workflow_id,
+              case_id: currentState.case_id,
+              workflow_id: currentState.workflow_id,
               step_id: stepId,
               payload: { path: step.artifact.path },
             });
           }
 
-          this.caseStore.writeState(state.case_id, state);
+          this.caseStore.writeState(state.case_id, currentState);
+          this.states.set(state.case_id, currentState);
           await this.emitEvent({
             type: 'step.completed',
-            case_id: state.case_id,
-            workflow_id: state.workflow_id,
+            case_id: currentState.case_id,
+            workflow_id: currentState.workflow_id,
             step_id: stepId,
             payload: { output: result.output },
           });
         } else if (result.status === 'gated') {
-          state.step_statuses[stepId] = 'gated';
+          currentState.step_statuses[stepId] = 'gated';
           this.gateStore.createGate(state.case_id, stepId);
           hasGated = true;
 
-          this.caseStore.writeState(state.case_id, state);
+          const updatedState = this.caseStore.readState(state.case_id)!;
+          updatedState.step_statuses[stepId] = 'gated';
+          this.caseStore.writeState(state.case_id, updatedState);
+          this.states.set(state.case_id, updatedState);
           await this.emitEvent({
             type: 'gate.requested',
-            case_id: state.case_id,
-            workflow_id: state.workflow_id,
+            case_id: updatedState.case_id,
+            workflow_id: updatedState.workflow_id,
             step_id: stepId,
             payload: {},
           });
         } else if (result.status === 'failure') {
-          state.step_statuses[stepId] = 'failure';
-          state.failed_steps.push(stepId);
+          currentState.step_statuses[stepId] = 'failure';
+          currentState.failed_steps.push(stepId);
           hasFailure = true;
 
-          this.caseStore.writeState(state.case_id, state);
+          this.caseStore.writeState(state.case_id, currentState);
+          this.states.set(state.case_id, currentState);
           await this.emitEvent({
             type: 'step.failed',
-            case_id: state.case_id,
-            workflow_id: state.workflow_id,
+            case_id: currentState.case_id,
+            workflow_id: currentState.workflow_id,
             step_id: stepId,
             payload: { error: result.error },
           });
@@ -378,11 +402,15 @@ export class WorkflowEngine {
     }
 
     // After main loop, handle final state
+    // Refresh state from disk to ensure we're working with latest data
+    state = this.caseStore.readState(state.case_id) || state;
+
     if (hasGated) {
       state.status = 'paused';
       state.current_step_id = undefined;
       state.updated_at = new Date().toISOString();
       this.caseStore.writeState(state.case_id, state);
+      this.states.set(state.case_id, state);
       this.caseStore.updateCaseStatus(state.case_id, 'paused');
       return { status: 'paused' };
     }
@@ -414,6 +442,7 @@ export class WorkflowEngine {
       state.current_step_id = undefined;
       state.updated_at = new Date().toISOString();
       this.caseStore.writeState(state.case_id, state);
+      this.states.set(state.case_id, state);
       this.caseStore.updateCaseStatus(state.case_id, 'failed');
 
       await this.emitEvent({
@@ -437,6 +466,7 @@ export class WorkflowEngine {
       state.current_step_id = undefined;
       state.updated_at = new Date().toISOString();
       this.caseStore.writeState(state.case_id, state);
+      this.states.set(state.case_id, state);
       this.caseStore.updateCaseStatus(state.case_id, 'completed');
 
       await this.emitEvent({

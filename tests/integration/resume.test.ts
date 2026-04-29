@@ -60,3 +60,96 @@ describe('Gate + Resume E2E', () => {
     expect(state?.completed_steps).toContain('finalize');
   });
 });
+
+describe('graph mode resume', () => {
+  it('should resume graph workflow after gate approval', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'wolf-graph-resume-'));
+    const registry = new RunnerRegistry();
+    registry.register(new EchoRunner());
+    registry.register(new ManualGateRunner());
+    const caseStore = new CaseStore(tempDir);
+    const gateStore = new GateStore(caseStore);
+    const bus = new InProcessEventBus();
+    const engine = new WorkflowEngine(registry, caseStore, gateStore, bus);
+
+    const workflow: WorkflowDefinition = {
+      id: 'graph_resume',
+      version: '0.1.0',
+      execution: { mode: 'graph' },
+      steps: [
+        { id: 'setup', type: 'builtin', runner: 'echo', input: { message: 'setup' }, output: 'setup_out' },
+        { id: 'approval', type: 'builtin', runner: 'manual_gate', input: { message: 'approve?' } },
+        { id: 'cleanup', type: 'builtin', runner: 'echo', input: { message: 'cleanup' }, depends_on: ['approval'] },
+      ],
+    };
+
+    // Execute: should pause at gate
+    const firstResult = await engine.execute('case_graphresume', workflow);
+    expect(firstResult.status).toBe('paused');
+
+    const pausedState = engine.getState('case_graphresume');
+    expect(pausedState?.step_statuses['setup']).toBe('success');
+    expect(pausedState?.step_statuses['approval']).toBe('gated');
+    expect(pausedState?.step_statuses['cleanup']).toBe('pending');
+
+    // Approve gate
+    gateStore.approveGate('gate_case_graphresume_approval', 'tester');
+
+    // Resume
+    const resumeResult = await engine.resume('case_graphresume');
+    expect(resumeResult.status).toBe('completed');
+
+    const finalState = engine.getState('case_graphresume');
+    expect(finalState?.step_statuses['setup']).toBe('success');
+    expect(finalState?.step_statuses['approval']).toBe('success');
+    expect(finalState?.step_statuses['cleanup']).toBe('success');
+    expect(finalState?.completed_steps).toContain('cleanup');
+
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('should resume graph workflow and run remaining independent steps', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'wolf-graph-resume2-'));
+    const registry = new RunnerRegistry();
+    registry.register(new EchoRunner());
+    registry.register(new ManualGateRunner());
+    const caseStore = new CaseStore(tempDir);
+    const gateStore = new GateStore(caseStore);
+    const bus = new InProcessEventBus();
+    const engine = new WorkflowEngine(registry, caseStore, gateStore, bus);
+
+    const workflow: WorkflowDefinition = {
+      id: 'graph_resume2',
+      version: '0.1.0',
+      execution: { mode: 'graph', max_parallel: 2 },
+      steps: [
+        { id: 'gate_step', type: 'builtin', runner: 'manual_gate' },
+        { id: 'independent', type: 'builtin', runner: 'echo', input: { message: 'independent' } },
+        { id: 'after_gate', type: 'builtin', runner: 'echo', depends_on: ['gate_step'] },
+      ],
+    };
+
+    // Execute: gate_step gates, independent should have already run
+    const firstResult = await engine.execute('case_graphresume2', workflow);
+    expect(firstResult.status).toBe('paused');
+
+    const pausedState = engine.getState('case_graphresume2');
+    expect(pausedState?.step_statuses['gate_step']).toBe('gated');
+    expect(pausedState?.step_statuses['independent']).toBe('success');
+    expect(pausedState?.step_statuses['after_gate']).toBe('pending');
+
+    // Approve gate
+    gateStore.approveGate('gate_case_graphresume2_gate_step', 'tester');
+
+    // Resume
+    const resumeResult = await engine.resume('case_graphresume2');
+    expect(resumeResult.status).toBe('completed');
+
+    const finalState = engine.getState('case_graphresume2');
+    expect(finalState?.step_statuses['gate_step']).toBe('success');
+    expect(finalState?.step_statuses['independent']).toBe('success');
+    expect(finalState?.step_statuses['after_gate']).toBe('success');
+
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+});
