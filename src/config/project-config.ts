@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import yaml from 'js-yaml';
 import { readFileSync, existsSync } from 'fs';
+import { PolicyRuleSchema } from '../types/policy.js';
 
 export const ContextConfigSchema = z.object({
   include: z
@@ -61,10 +62,24 @@ export const ContextConfigSchema = z.object({
 
 export type ContextConfig = z.infer<typeof ContextConfigSchema>;
 
+export const PolicyConfigSchema = z.object({
+  defaults: z
+    .object({
+      enabled: z.boolean().default(true),
+      autonomy: z.enum(['supervised', 'autonomous']).default('supervised'),
+      max_risk: z.enum(['low', 'medium', 'high', 'critical']).default('high'),
+    })
+    .default({}),
+  rules: z.array(PolicyRuleSchema).default([]),
+});
+
+export type PolicyConfig = z.infer<typeof PolicyConfigSchema>;
+
 export const ProjectConfigSchema = z.object({
   state_dir: z.string().default('.wolf/state'),
   index_path: z.string().optional(),
   context: ContextConfigSchema.default({}),
+  policy: PolicyConfigSchema.default({}),
   defaults: z
     .object({
       timeout: z.string().default('30s'),

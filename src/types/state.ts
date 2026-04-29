@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PolicyDecisionSchema } from './policy.js';
 
 export const StepErrorSchema = z.object({
   type: z.string(),
@@ -42,6 +43,7 @@ export const ExecutionStateSchema = z.object({
     .default({}),
   variables: z.record(z.unknown()).default({}),
   gates: z.record(GateStateSchema).default({}),
+  policy_decisions: z.array(PolicyDecisionSchema).optional(),
   started_at: z.string(),
   updated_at: z.string(),
 });
