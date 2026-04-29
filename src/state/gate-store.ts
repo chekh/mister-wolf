@@ -70,33 +70,28 @@ export class GateStore {
   }
 
   approveGate(gateId: string, approvedBy: string): void {
-    const found = this.getGate(gateId);
-    if (!found) throw new Error(`Gate not found: ${gateId}`);
-
-    const { caseId } = found;
-    const state = this.caseStore.readState(caseId)!;
-    const respondedAt = new Date().toISOString();
-    state.gates[gateId].status = 'approved';
-    state.gates[gateId].responded_at = respondedAt;
-    state.gates[gateId].responded_by = approvedBy;
-    this.caseStore.writeState(caseId, state);
-
-    this.index?.updateGate(gateId, 'approved', respondedAt);
+    this.updateGate(gateId, 'approved', approvedBy);
   }
 
   rejectGate(gateId: string, rejectedBy: string): void {
+    this.updateGate(gateId, 'rejected', rejectedBy);
+  }
+
+  private updateGate(gateId: string, status: 'approved' | 'rejected', actor: string): void {
     const found = this.getGate(gateId);
     if (!found) throw new Error(`Gate not found: ${gateId}`);
 
     const { caseId } = found;
     const state = this.caseStore.readState(caseId)!;
     const respondedAt = new Date().toISOString();
-    state.gates[gateId].status = 'rejected';
+    state.gates[gateId].status = status;
     state.gates[gateId].responded_at = respondedAt;
-    state.gates[gateId].responded_by = rejectedBy;
-    state.status = 'failed';
+    state.gates[gateId].responded_by = actor;
+    if (status === 'rejected') {
+      state.status = 'failed';
+    }
     this.caseStore.writeState(caseId, state);
 
-    this.index?.updateGate(gateId, 'rejected', respondedAt);
+    this.index?.updateGate(gateId, status, respondedAt);
   }
 }

@@ -17,6 +17,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export class WorkflowEngine {
   private states = new Map<string, ExecutionState>();
+  private policyGateAdapter: PolicyGateAdapter;
 
   constructor(
     private registry: RunnerRegistry,
@@ -24,7 +25,9 @@ export class WorkflowEngine {
     private gateStore: GateStore,
     private bus: InProcessEventBus,
     private config: ProjectConfig = ProjectConfigSchema.parse({})
-  ) {}
+  ) {
+    this.policyGateAdapter = new PolicyGateAdapter(gateStore);
+  }
 
   async execute(caseId: string, workflow: WorkflowDefinition): Promise<{ status: string }> {
     const preflight = new PolicyPreflight();
@@ -514,8 +517,7 @@ export class WorkflowEngine {
     state: ExecutionState,
     trackState: boolean = true
   ): Promise<StepResult> {
-    const gateAdapter = new PolicyGateAdapter(this.gateStore);
-    if (gateAdapter.isPolicyGateApproved(state.case_id, step.id)) {
+    if (this.policyGateAdapter.isPolicyGateApproved(state.case_id, step.id)) {
       return this.executeStepWithRetry(step, state, trackState);
     }
 
@@ -538,7 +540,7 @@ export class WorkflowEngine {
     const interpolatedInput = interpolateObject(step.input, state.variables);
 
     if (decision.decision === 'ask') {
-      gateAdapter.createPolicyGate(state.case_id, step.id, decision, interpolatedInput);
+      this.policyGateAdapter.createPolicyGate(state.case_id, step.id, decision, interpolatedInput);
       return { status: 'gated' };
     }
 
