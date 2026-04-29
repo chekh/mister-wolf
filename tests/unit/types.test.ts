@@ -3,6 +3,13 @@ import { WorkflowDefinitionSchema, StepDefinitionSchema } from '../../src/types/
 import { CaseStatus } from '../../src/types/case.js';
 import { RuntimeEventSchema } from '../../src/types/events.js';
 import { ExecutionStateSchema } from '../../src/types/state.js';
+import {
+  PolicyRuleSchema,
+  PolicyDecisionSchema,
+  PolicyReportSchema,
+  RiskLevelSchema,
+  DecisionTypeSchema,
+} from '../../src/types/policy.js';
 
 describe('types', () => {
   it('should export WorkflowDefinitionSchema', () => {
@@ -171,25 +178,6 @@ describe('MVP1C types', () => {
 });
 
 describe('MVP1C state types', () => {
-  it('should validate execution state with execution_mode', () => {
-    const result = ExecutionStateSchema.safeParse({
-      case_id: 'c1',
-      workflow_id: 'w1',
-      status: 'running',
-      execution_mode: 'graph',
-      completed_steps: [],
-      failed_steps: [],
-      skipped_steps: [],
-      step_results: {},
-      step_statuses: {},
-      variables: {},
-      gates: {},
-      started_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-    expect(result.success).toBe(true);
-  });
-
   it('should validate step_statuses with new statuses', () => {
     const result = ExecutionStateSchema.safeParse({
       case_id: 'c1',
@@ -206,6 +194,142 @@ describe('MVP1C state types', () => {
         s3: 'running',
         s4: 'blocked',
       },
+      variables: {},
+      gates: {},
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('MVP3 policy types', () => {
+  it('should validate RiskLevelSchema', () => {
+    expect(RiskLevelSchema.safeParse('low').success).toBe(true);
+    expect(RiskLevelSchema.safeParse('critical').success).toBe(true);
+    expect(RiskLevelSchema.safeParse('invalid').success).toBe(false);
+  });
+
+  it('should validate DecisionTypeSchema', () => {
+    expect(DecisionTypeSchema.safeParse('allow').success).toBe(true);
+    expect(DecisionTypeSchema.safeParse('deny').success).toBe(true);
+    expect(DecisionTypeSchema.safeParse('invalid').success).toBe(false);
+  });
+
+  it('should validate a correct PolicyRule', () => {
+    const result = PolicyRuleSchema.safeParse({
+      id: 'rule-1',
+      match: { runner: 'shell' },
+      decision: 'ask',
+      risk: 'high',
+      reason: 'Shell execution requires approval',
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.match).toEqual({ runner: 'shell' });
+  });
+
+  it('should validate PolicyRule with empty match (defaults)', () => {
+    const result = PolicyRuleSchema.safeParse({
+      id: 'rule-2',
+      decision: 'deny',
+      reason: 'Blocked by default',
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.match).toEqual({});
+    expect(result.data?.risk).toBeUndefined();
+  });
+
+  it('should reject PolicyRule with invalid decision', () => {
+    const result = PolicyRuleSchema.safeParse({
+      id: 'rule-3',
+      decision: 'maybe',
+      reason: 'Invalid',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should validate a correct PolicyDecision', () => {
+    const result = PolicyDecisionSchema.safeParse({
+      id: 'dec-1',
+      decision: 'allow',
+      risk: 'low',
+      rule_id: 'rule-1',
+      reason: 'Matched allow rule',
+      enforcement: 'step_runtime',
+      subject: { workflow_id: 'wf-1', step_id: 'step-1', runner: 'echo' },
+      matched_rules: ['rule-1'],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should validate PolicyDecision without optional fields', () => {
+    const result = PolicyDecisionSchema.safeParse({
+      id: 'dec-2',
+      decision: 'deny',
+      risk: 'critical',
+      reason: 'Denied by policy',
+      enforcement: 'workflow_preflight',
+      subject: { workflow_id: 'wf-1' },
+      matched_rules: [],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should validate a correct PolicyReport', () => {
+    const result = PolicyReportSchema.safeParse({
+      workflow_id: 'wf-1',
+      overall: 'ask',
+      decisions: [
+        {
+          id: 'dec-1',
+          decision: 'ask',
+          risk: 'medium',
+          reason: 'Ask rule matched',
+          enforcement: 'step_runtime',
+          subject: { workflow_id: 'wf-1', step_id: 'step-1' },
+          matched_rules: ['rule-1'],
+        },
+      ],
+      steps_allowed: 0,
+      steps_ask: 1,
+      steps_denied: 0,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject PolicyReport with negative counter', () => {
+    const result = PolicyReportSchema.safeParse({
+      workflow_id: 'wf-1',
+      overall: 'allow',
+      decisions: [],
+      steps_allowed: -1,
+      steps_ask: 0,
+      steps_denied: 0,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should validate ExecutionState with policy_decisions', () => {
+    const result = ExecutionStateSchema.safeParse({
+      case_id: 'c1',
+      workflow_id: 'w1',
+      status: 'running',
+      policy_decisions: [
+        {
+          id: 'dec-1',
+          decision: 'allow',
+          risk: 'low',
+          reason: 'Allowed',
+          enforcement: 'step_runtime',
+          subject: { workflow_id: 'w1', step_id: 'step-1' },
+          matched_rules: ['rule-1'],
+        },
+      ],
+      completed_steps: [],
+      failed_steps: [],
+      skipped_steps: [],
+      step_results: {},
+      step_statuses: {},
       variables: {},
       gates: {},
       started_at: new Date().toISOString(),

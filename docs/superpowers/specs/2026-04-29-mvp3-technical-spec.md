@@ -29,32 +29,32 @@ The Policy Engine is declarative: rules are defined in `wolf.yaml` and evaluated
 
 ### In Scope
 
-| Feature | Description |
-|---------|-------------|
-| Workflow preflight | Static evaluation of all steps before execution; deny blocks workflow start |
-| Step runtime guard | Dynamic evaluation of resolved step input before runner execution |
-| Rule-based matching | Match by runner, command_contains, step_id, and other static attributes |
-| Policy decisions | `allow`, `ask`, `deny` with deterministic precedence |
-| Gate integration | `ask` creates policy approval gate using existing gate infrastructure |
-| State persistence | Policy decisions stored in case state |
-| Events | `policy.evaluated`, `.denied`, `.approval_required`, `.approved`, `.rejected` |
-| CLI | `wolf policy check` with `--json` |
-| Graph mode | Policy ask pauses workflow; running steps finish; resume after approval |
+| Feature             | Description                                                                   |
+| ------------------- | ----------------------------------------------------------------------------- |
+| Workflow preflight  | Static evaluation of all steps before execution; deny blocks workflow start   |
+| Step runtime guard  | Dynamic evaluation of resolved step input before runner execution             |
+| Rule-based matching | Match by runner, command_contains, step_id, and other static attributes       |
+| Policy decisions    | `allow`, `ask`, `deny` with deterministic precedence                          |
+| Gate integration    | `ask` creates policy approval gate using existing gate infrastructure         |
+| State persistence   | Policy decisions stored in case state                                         |
+| Events              | `policy.evaluated`, `.denied`, `.approval_required`, `.approved`, `.rejected` |
+| CLI                 | `wolf policy check` with `--json`                                             |
+| Graph mode          | Policy ask pauses workflow; running steps finish; resume after approval       |
 
 ### Out of Scope
 
-| Feature | Reason |
-|---------|--------|
-| LLM risk assessment | Non-deterministic; deferred |
-| RBAC / identity | Out of MVP3 scope |
-| External policy server | External dependency |
-| OPA/Rego integration | Complex integration; future |
-| Network sandboxing | Infrastructure concern |
-| Model routing policy | Belongs to MVP5 |
-| Per-user approvals | Requires identity layer |
-| Policy learning / adaptation | Requires feedback loops |
-| Runner-specific policy registry | Rules config covers this for MVP3 |
-| `wolf policy explain` | Stretch goal; not required for MVP3 |
+| Feature                         | Reason                              |
+| ------------------------------- | ----------------------------------- |
+| LLM risk assessment             | Non-deterministic; deferred         |
+| RBAC / identity                 | Out of MVP3 scope                   |
+| External policy server          | External dependency                 |
+| OPA/Rego integration            | Complex integration; future         |
+| Network sandboxing              | Infrastructure concern              |
+| Model routing policy            | Belongs to MVP5                     |
+| Per-user approvals              | Requires identity layer             |
+| Policy learning / adaptation    | Requires feedback loops             |
+| Runner-specific policy registry | Rules config covers this for MVP3   |
+| `wolf policy explain`           | Stretch goal; not required for MVP3 |
 
 ---
 
@@ -86,15 +86,15 @@ wolf run workflow.yaml
 
 ### Component Responsibilities
 
-| Component | Responsibility |
-|-----------|--------------|
-| `PolicyConfig` | Parse and validate policy rules from `wolf.yaml` |
-| `PolicyEngine` | Core rule evaluator: match step against rules, compute decision |
-| `PolicyPreflight` | Static workflow evaluation before execution; persist decisions |
-| `PolicyStepGuard` | Runtime step evaluation before runner; handle allow/ask/deny |
+| Component           | Responsibility                                                   |
+| ------------------- | ---------------------------------------------------------------- |
+| `PolicyConfig`      | Parse and validate policy rules from `wolf.yaml`                 |
+| `PolicyEngine`      | Core rule evaluator: match step against rules, compute decision  |
+| `PolicyPreflight`   | Static workflow evaluation before execution; persist decisions   |
+| `PolicyStepGuard`   | Runtime step evaluation before runner; handle allow/ask/deny     |
 | `PolicyGateAdapter` | Create `policy_approval` gate using existing gate infrastructure |
-| `PolicyEvents` | Emit policy lifecycle events |
-| `PolicyCLI` | `wolf policy check` command |
+| `PolicyEvents`      | Emit policy lifecycle events                                     |
+| `PolicyCLI`         | `wolf policy check` command                                      |
 
 ---
 
@@ -104,10 +104,10 @@ wolf run workflow.yaml
 
 ```typescript
 interface PolicyDecision {
-  id: string;              // e.g. "policy_<workflow_id>_<step_id>_<rule_id>_<enforcement>"
+  id: string; // e.g. "policy_<workflow_id>_<step_id>_<rule_id>_<enforcement>"
   decision: 'allow' | 'ask' | 'deny';
   risk: 'low' | 'medium' | 'high' | 'critical';
-  rule_id?: string;        // Primary matching rule
+  rule_id?: string; // Primary matching rule
   reason: string;
   enforcement: 'workflow_preflight' | 'step_runtime';
   subject: {
@@ -180,29 +180,29 @@ policy:
       match:
         runner: shell
         command_contains:
-          - "sudo"
-          - "rm -rf"
+          - 'sudo'
+          - 'rm -rf'
       decision: deny
       risk: critical
-      reason: "Dangerous shell command"
+      reason: 'Dangerous shell command'
 
     - id: ask-shell-write
       match:
         runner: shell
         command_contains:
-          - ">"
-          - "mv "
-          - "cp "
+          - '>'
+          - 'mv '
+          - 'cp '
       decision: ask
       risk: high
-      reason: "Shell command may modify files"
+      reason: 'Shell command may modify files'
 
     - id: allow-echo
       match:
         runner: echo
       decision: allow
       risk: low
-      reason: "Echo is safe"
+      reason: 'Echo is safe'
 ```
 
 ### Match Semantics
@@ -237,6 +237,7 @@ If no rules match a step:
 **Input:** Raw workflow definition (before runtime interpolation).
 
 **Behavior:**
+
 1. Evaluate `PolicyEngine` for each step with raw definition.
 2. Compute `PolicyReport`:
    - `overall = deny` if any step is `deny`
@@ -264,6 +265,7 @@ If no rules match a step:
 **Input:** Resolved step definition (after template interpolation).
 
 **Behavior:**
+
 1. Evaluate `PolicyEngine` for resolved step.
 2. If `decision = allow`:
    - Execute step normally
@@ -296,6 +298,7 @@ When multiple rules match a step:
 ### max_risk Enforcement
 
 After computing the primary decision from rules:
+
 - If evaluated risk exceeds `policy.defaults.max_risk`:
   - `allow` is upgraded to `ask`
   - `ask` remains `ask`
@@ -304,10 +307,11 @@ After computing the primary decision from rules:
 - Explicit `deny` always takes precedence over `max_risk`
 
 Example:
+
 ```yaml
 rules:
-  - id: rule-a  # matches, decision: ask
-  - id: rule-b  # matches, decision: deny
+  - id: rule-a # matches, decision: ask
+  - id: rule-b # matches, decision: deny
 ```
 
 Result: `decision: deny`, `rule_id: 'rule-b'`, `matched_rules: ['rule-a', 'rule-b']`
@@ -356,14 +360,14 @@ Reuse existing gate infrastructure:
 
 ## 10. Events
 
-| Event | When | Payload |
-|-------|------|---------|
-| `policy.evaluated` | After any policy evaluation | `{ decision_id, decision, rule_id, reason }` |
-| `policy.denied` | When decision = deny | `{ decision_id, decision, rule_id, reason, step_id }` |
-| `policy.approval_required` | When decision = ask | `{ decision_id, gate_id, step_id }` |
-| `policy.approved` | When policy gate approved | `{ decision_id, gate_id, step_id }` |
-| `policy.rejected` | When policy gate rejected | `{ decision_id, gate_id, step_id }` |
-| `workflow.policy_preflight.completed` | After preflight evaluation | `{ workflow_id, overall, decisions_count }` |
+| Event                                 | When                        | Payload                                               |
+| ------------------------------------- | --------------------------- | ----------------------------------------------------- |
+| `policy.evaluated`                    | After any policy evaluation | `{ decision_id, decision, rule_id, reason }`          |
+| `policy.denied`                       | When decision = deny        | `{ decision_id, decision, rule_id, reason, step_id }` |
+| `policy.approval_required`            | When decision = ask         | `{ decision_id, gate_id, step_id }`                   |
+| `policy.approved`                     | When policy gate approved   | `{ decision_id, gate_id, step_id }`                   |
+| `policy.rejected`                     | When policy gate rejected   | `{ decision_id, gate_id, step_id }`                   |
+| `workflow.policy_preflight.completed` | After preflight evaluation  | `{ workflow_id, overall, decisions_count }`           |
 
 ---
 
@@ -388,10 +392,10 @@ wolf policy explain workflow.yaml --step <step_id>
 
 ### Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Policy check passed (allow or ask) |
-| 1 | Policy check failed (deny) or error |
+| Code | Meaning                             |
+| ---- | ----------------------------------- |
+| 0    | Policy check passed (allow or ask)  |
+| 1    | Policy check failed (deny) or error |
 
 ---
 
@@ -412,6 +416,7 @@ When a step evaluates to `ask` during graph execution:
 
 **Resume Gate Bypass:**
 When `runGraph()` or `runSteps()` encounters a step whose status is `gated`:
+
 1. Check if a `policy_approval` gate exists for this step
 2. If gate status is `approved` → execute step directly using `gate.payload.resolved_input`
 3. If gate status is `rejected` → mark step as failed
@@ -498,13 +503,13 @@ interface ExecutionState {
 
 ## 15. Implementation Plan
 
-| PR | Focus | Components |
-|----|-------|------------|
-| **PR1** | Config, Schema, Types | PolicyConfig schema, PolicyDecision/PolicyRule/PolicyReport types, Zod schemas |
-| **PR2** | Policy Engine Core | PolicyEngine (rule matching, precedence, evaluation), unit tests |
-| **PR3** | Preflight + Step Guard | PolicyPreflight, PolicyStepGuard, integration with WorkflowEngine, events |
-| **PR4** | Gate Integration | PolicyGateAdapter, gate payload, approve/reject flow, resume |
-| **PR5** | CLI, Events, Tests, Docs | `wolf policy check`, event emission, integration tests, README/docs |
+| PR      | Focus                    | Components                                                                     |
+| ------- | ------------------------ | ------------------------------------------------------------------------------ |
+| **PR1** | Config, Schema, Types    | PolicyConfig schema, PolicyDecision/PolicyRule/PolicyReport types, Zod schemas |
+| **PR2** | Policy Engine Core       | PolicyEngine (rule matching, precedence, evaluation), unit tests               |
+| **PR3** | Preflight + Step Guard   | PolicyPreflight, PolicyStepGuard, integration with WorkflowEngine, events      |
+| **PR4** | Gate Integration         | PolicyGateAdapter, gate payload, approve/reject flow, resume                   |
+| **PR5** | CLI, Events, Tests, Docs | `wolf policy check`, event emission, integration tests, README/docs            |
 
 ---
 

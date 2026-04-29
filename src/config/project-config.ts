@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import yaml from 'js-yaml';
 import { readFileSync, existsSync } from 'fs';
-import { PolicyRuleSchema } from '../types/policy.js';
+import { PolicyRuleSchema, RiskLevelSchema } from '../types/policy.js';
 
 export const ContextConfigSchema = z.object({
   include: z
@@ -67,7 +67,7 @@ export const PolicyConfigSchema = z.object({
     .object({
       enabled: z.boolean().default(true),
       autonomy: z.enum(['supervised', 'autonomous']).default('supervised'),
-      max_risk: z.enum(['low', 'medium', 'high', 'critical']).default('high'),
+      max_risk: RiskLevelSchema.default('high'),
     })
     .default({}),
   rules: z.array(PolicyRuleSchema).default([]),

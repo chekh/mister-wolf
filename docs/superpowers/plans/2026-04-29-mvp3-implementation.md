@@ -13,6 +13,7 @@
 ## File Structure
 
 **New files:**
+
 - `src/types/policy.ts` — PolicyDecision, PolicyRule, PolicyReport, etc.
 - `src/policy/config.ts` — PolicyConfig schema and loader
 - `src/policy/engine.ts` — PolicyEngine (rule matching, precedence, max_risk)
@@ -27,6 +28,7 @@
 - `tests/integration/policy-cli.test.ts`
 
 **Modified files:**
+
 - `src/config/project-config.ts` — add policy config schema
 - `src/workflow/engine.ts` — integrate preflight + step guard
 - `src/cli/index.ts` — register policy command
@@ -40,6 +42,7 @@
 ### Task 1.1: Add Policy Types
 
 **Files:**
+
 - Create: `src/types/policy.ts`
 
 - [ ] **Step 1: Write policy types**
@@ -49,11 +52,13 @@ import { z } from 'zod';
 
 export const PolicyRuleSchema = z.object({
   id: z.string(),
-  match: z.object({
-    runner: z.string().optional(),
-    command_contains: z.array(z.string()).optional(),
-    step_id: z.string().optional(),
-  }).default({}),
+  match: z
+    .object({
+      runner: z.string().optional(),
+      command_contains: z.array(z.string()).optional(),
+      step_id: z.string().optional(),
+    })
+    .default({}),
   decision: z.enum(['allow', 'ask', 'deny']),
   risk: z.enum(['low', 'medium', 'high', 'critical']).optional(),
   reason: z.string(),
@@ -100,6 +105,7 @@ git commit -m "feat(policy): add PolicyDecision, PolicyRule, PolicyReport types"
 ### Task 1.2: Update Config Schema
 
 **Files:**
+
 - Modify: `src/config/project-config.ts`
 - Modify: `src/types/state.ts`
 
@@ -107,11 +113,13 @@ git commit -m "feat(policy): add PolicyDecision, PolicyRule, PolicyReport types"
 
 ```typescript
 export const PolicyConfigSchema = z.object({
-  defaults: z.object({
-    enabled: z.boolean().default(true),
-    autonomy: z.enum(['supervised', 'autonomous']).default('supervised'),
-    max_risk: z.enum(['low', 'medium', 'high', 'critical']).default('high'),
-  }).default({}),
+  defaults: z
+    .object({
+      enabled: z.boolean().default(true),
+      autonomy: z.enum(['supervised', 'autonomous']).default('supervised'),
+      max_risk: z.enum(['low', 'medium', 'high', 'critical']).default('high'),
+    })
+    .default({}),
   rules: z.array(PolicyRuleSchema).default([]),
 });
 
@@ -141,6 +149,7 @@ git commit -m "feat(policy): add policy config schema and state field"
 ### Task 2.1: Implement PolicyEngine
 
 **Files:**
+
 - Create: `src/policy/engine.ts`
 
 - [ ] **Step 1: Write engine**
@@ -154,7 +163,7 @@ export class PolicyEngine {
     step: StepDefinition,
     config: PolicyConfig,
     workflowId: string,
-    enforcement: 'workflow_preflight' | 'step_runtime',
+    enforcement: 'workflow_preflight' | 'step_runtime'
   ): PolicyDecision {
     const matchedRules: PolicyRule[] = [];
 
@@ -199,7 +208,7 @@ export class PolicyEngine {
         step_id: step.id,
         runner: step.runner,
       },
-      matched_rules: matchedRules.map(r => r.id),
+      matched_rules: matchedRules.map((r) => r.id),
     };
   }
 
@@ -208,7 +217,7 @@ export class PolicyEngine {
     if (rule.match.step_id && rule.match.step_id !== step.id) return false;
     if (rule.match.command_contains && rule.match.command_contains.length > 0) {
       const command = String(step.input?.command || '');
-      if (!rule.match.command_contains.some(pattern => command.includes(pattern))) {
+      if (!rule.match.command_contains.some((pattern) => command.includes(pattern))) {
         return false;
       }
     }
@@ -250,11 +259,13 @@ git commit -m "feat(policy): implement PolicyEngine with rule matching, preceden
 ### Task 2.2: Write Engine Tests
 
 **Files:**
+
 - Create: `tests/unit/policy-engine.test.ts`
 
 - [ ] **Step 1: Write tests**
 
 Tests for:
+
 1. Allow rule matches
 2. Deny rule matches
 3. Ask rule matches
@@ -287,6 +298,7 @@ git commit -m "test(policy): add PolicyEngine unit tests"
 ### Task 3.1: Implement PolicyPreflight
 
 **Files:**
+
 - Create: `src/policy/preflight.ts`
 
 - [ ] **Step 1: Write preflight**
@@ -300,12 +312,12 @@ export class PolicyPreflight {
   private engine = new PolicyEngine();
 
   evaluate(workflow: WorkflowDefinition, config: PolicyConfig): PolicyReport {
-    const decisions = workflow.steps.map(step =>
+    const decisions = workflow.steps.map((step) =>
       this.engine.evaluate(step, config, workflow.id, 'workflow_preflight')
     );
 
-    const hasDeny = decisions.some(d => d.decision === 'deny');
-    const hasAsk = decisions.some(d => d.decision === 'ask');
+    const hasDeny = decisions.some((d) => d.decision === 'deny');
+    const hasAsk = decisions.some((d) => d.decision === 'ask');
 
     const overall: PolicyReport['overall'] = hasDeny ? 'deny' : hasAsk ? 'ask' : 'allow';
 
@@ -313,9 +325,9 @@ export class PolicyPreflight {
       workflow_id: workflow.id,
       overall,
       decisions,
-      steps_allowed: decisions.filter(d => d.decision === 'allow').length,
-      steps_ask: decisions.filter(d => d.decision === 'ask').length,
-      steps_denied: decisions.filter(d => d.decision === 'deny').length,
+      steps_allowed: decisions.filter((d) => d.decision === 'allow').length,
+      steps_ask: decisions.filter((d) => d.decision === 'ask').length,
+      steps_denied: decisions.filter((d) => d.decision === 'deny').length,
     };
   }
 }
@@ -331,6 +343,7 @@ git commit -m "feat(policy): implement PolicyPreflight"
 ### Task 3.2: Implement PolicyStepGuard
 
 **Files:**
+
 - Create: `src/policy/step-guard.ts`
 
 - [ ] **Step 1: Write step guard**
@@ -359,6 +372,7 @@ git commit -m "feat(policy): implement PolicyStepGuard"
 ### Task 3.3: Integrate with WorkflowEngine
 
 **Files:**
+
 - Modify: `src/workflow/engine.ts`
 
 - [ ] **Step 1: Add preflight to execute()**
@@ -379,7 +393,10 @@ if (policyReport.overall === 'deny') {
     type: 'policy.denied',
     case_id: '',
     workflow_id: workflow.id,
-    payload: { reason: 'Workflow denied by policy', decisions: policyReport.decisions.filter(d => d.decision === 'deny') },
+    payload: {
+      reason: 'Workflow denied by policy',
+      decisions: policyReport.decisions.filter((d) => d.decision === 'deny'),
+    },
   });
   throw new Error(`Workflow denied by policy: ${workflow.id}`);
 }
@@ -422,17 +439,20 @@ git commit -m "feat(policy): integrate PolicyPreflight and PolicyStepGuard into 
 ### Task 3.4: Write Preflight + Guard Tests
 
 **Files:**
+
 - Create: `tests/unit/policy-preflight.test.ts`
 - Create: `tests/unit/policy-step-guard.test.ts`
 
 - [ ] **Step 1: Write tests**
 
 Tests for preflight:
+
 1. Allow workflow
 2. Deny workflow
 3. Ask workflow
 
 Tests for step guard:
+
 1. Allow step
 2. Deny step
 3. Ask step
@@ -457,6 +477,7 @@ git commit -m "test(policy): add preflight and step guard tests"
 ### Task 4.1: Implement PolicyGateAdapter
 
 **Files:**
+
 - Create: `src/policy/gate-adapter.ts`
 - Modify: `src/workflow/engine.ts`
 
@@ -494,6 +515,7 @@ If not already supported, extend `GateStore.createGate()` to accept optional `ty
 - [ ] **Step 3: Update engine.ts for gate creation and resume bypass**
 
 In `executeStep()`:
+
 - If `ask` → create policy gate and return gated result
 - On resume → check if policy gate exists and is approved; if so, bypass re-evaluation
 
@@ -507,11 +529,13 @@ git commit -m "feat(policy): implement PolicyGateAdapter with resume bypass"
 ### Task 4.2: Write Gate Integration Tests
 
 **Files:**
+
 - Create: `tests/unit/policy-gate.test.ts`
 
 - [ ] **Step 1: Write tests**
 
 Tests for:
+
 1. Create policy gate
 2. Approve policy gate allows execution
 3. Reject policy gate fails step
@@ -537,6 +561,7 @@ git commit -m "test(policy): add gate integration tests"
 ### Task 5.1: Create CLI Commands
 
 **Files:**
+
 - Create: `src/cli/commands/policy.ts`
 - Modify: `src/cli/index.ts`
 
@@ -548,8 +573,7 @@ import { PolicyPreflight } from '../../policy/preflight.js';
 import { loadProjectConfig } from '../../config/loader.js';
 
 export function createPolicyCommand(): Command {
-  const policy = new Command('policy')
-    .description('Manage workflow policies');
+  const policy = new Command('policy').description('Manage workflow policies');
 
   policy
     .command('check')
@@ -603,11 +627,13 @@ git commit -m "feat(policy): add wolf policy check CLI command"
 ### Task 5.2: Write Integration Tests
 
 **Files:**
+
 - Create: `tests/integration/policy-cli.test.ts`
 
 - [ ] **Step 1: Write tests**
 
 Tests for:
+
 1. `wolf policy check` allows workflow
 2. `wolf policy check` denies workflow
 3. `wolf policy check --json` outputs JSON
@@ -633,6 +659,7 @@ git commit -m "test(policy): add CLI integration tests"
 ### Task 5.3: Update Documentation
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/development.md`
 
@@ -678,18 +705,18 @@ git commit --allow-empty -m "acceptance: MVP3 Policy Engine complete"
 
 ### Spec Coverage
 
-| Spec Section | Plan Task | Status |
-|-------------|-----------|--------|
-| Policy types | PR1 | ✅ |
-| Policy config | PR1 | ✅ |
-| PolicyEngine (matching, precedence, max_risk) | PR2 | ✅ |
-| PolicyPreflight | PR3a | ✅ |
-| PolicyStepGuard | PR3b | ✅ |
-| Gate integration (create, approve, reject, resume bypass) | PR4 | ✅ |
-| Events | PR3-4 | ✅ |
-| CLI (`wolf policy check`) | PR5 | ✅ |
-| Tests (unit + integration) | PR2-5 | ✅ |
-| Documentation | PR5 | ✅ |
+| Spec Section                                              | Plan Task | Status |
+| --------------------------------------------------------- | --------- | ------ |
+| Policy types                                              | PR1       | ✅     |
+| Policy config                                             | PR1       | ✅     |
+| PolicyEngine (matching, precedence, max_risk)             | PR2       | ✅     |
+| PolicyPreflight                                           | PR3a      | ✅     |
+| PolicyStepGuard                                           | PR3b      | ✅     |
+| Gate integration (create, approve, reject, resume bypass) | PR4       | ✅     |
+| Events                                                    | PR3-4     | ✅     |
+| CLI (`wolf policy check`)                                 | PR5       | ✅     |
+| Tests (unit + integration)                                | PR2-5     | ✅     |
+| Documentation                                             | PR5       | ✅     |
 
 ### Placeholder Scan
 

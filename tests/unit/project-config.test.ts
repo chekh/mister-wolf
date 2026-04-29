@@ -39,4 +39,39 @@ defaults:
     expect(config.defaults.timeout).toBe('60s');
     expect(config.defaults.shell?.max_output_size).toBe('2MB');
   });
+
+  it('should load policy defaults when no policy config exists', () => {
+    const config = loadProjectConfig(join(tempDir, 'nonexistent.yaml'));
+    expect(config.policy.defaults.enabled).toBe(true);
+    expect(config.policy.defaults.autonomy).toBe('supervised');
+    expect(config.policy.defaults.max_risk).toBe('high');
+    expect(config.policy.rules).toEqual([]);
+  });
+
+  it('should load custom policy config', () => {
+    writeFileSync(
+      join(tempDir, 'wolf.yaml'),
+      `
+policy:
+  defaults:
+    enabled: false
+    autonomy: autonomous
+    max_risk: critical
+  rules:
+    - id: block-shell
+      match:
+        runner: shell
+      decision: deny
+      risk: high
+      reason: Shell execution blocked
+`
+    );
+    const config = loadProjectConfig(join(tempDir, 'wolf.yaml'));
+    expect(config.policy.defaults.enabled).toBe(false);
+    expect(config.policy.defaults.autonomy).toBe('autonomous');
+    expect(config.policy.defaults.max_risk).toBe('critical');
+    expect(config.policy.rules).toHaveLength(1);
+    expect(config.policy.rules[0].id).toBe('block-shell');
+    expect(config.policy.rules[0].decision).toBe('deny');
+  });
 });

@@ -10,14 +10,14 @@
 
 ## Status
 
-| Milestone  | Status         | Description                                                                                                        |
-| ---------- | -------------- | ------------------------------------------------------------------------------------------------------------------ |
-| **MVP1A**  | ✅ Complete    | Sequential workflow runner with YAML workflows, builtin runners (echo, shell, manual_gate), state persistence, CLI |
-| **MVP1B**  | ✅ Complete    | Enhanced workflow engine with conditions, retry, timeout, artifacts, project config, cancel/validate commands      |
-| **MVP1C**  | ✅ Complete    | Graph orchestration — DAG execution, parallel scheduling, transitive failure propagation                           |
-| **MVP2**   | ✅ Complete    | Context resolver — deterministic project file discovery, context bundle, case memory                               |
-| **MVP3**   | 📋 Planned     | Governance layer — policy engine, tool risk model, approval rules                                                  |
-| **MVP4–5** | 📋 Planned     | Agent registry + model router                                                                                      |
+| Milestone  | Status      | Description                                                                                                        |
+| ---------- | ----------- | ------------------------------------------------------------------------------------------------------------------ |
+| **MVP1A**  | ✅ Complete | Sequential workflow runner with YAML workflows, builtin runners (echo, shell, manual_gate), state persistence, CLI |
+| **MVP1B**  | ✅ Complete | Enhanced workflow engine with conditions, retry, timeout, artifacts, project config, cancel/validate commands      |
+| **MVP1C**  | ✅ Complete | Graph orchestration — DAG execution, parallel scheduling, transitive failure propagation                           |
+| **MVP2**   | ✅ Complete | Context resolver — deterministic project file discovery, context bundle, case memory                               |
+| **MVP3**   | 📋 Planned  | Governance layer — policy engine, tool risk model, approval rules                                                  |
+| **MVP4–5** | 📋 Planned  | Agent registry + model router                                                                                      |
 
 ## Quick Start
 
