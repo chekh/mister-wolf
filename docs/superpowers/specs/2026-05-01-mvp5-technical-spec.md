@@ -88,7 +88,23 @@ export const ModelRouteSchema = z.object({
 | `execution_mode` | `stub` \| `invoke` | no | Override global execution mode |
 | `system_prompt` | string | no | System prompt for the model |
 
-### 1.3 ProjectConfig Extension
+### 1.3 AgentDefinition Extension
+
+Add `system_prompt` to `AgentDefinitionSchema`:
+
+```typescript
+export const AgentDefinitionSchema = z.object({
+  id: z.string(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  capabilities: z.array(z.string()).default([]),
+  model_route: z.string(),
+  tools: z.array(z.string()).default([]),
+  system_prompt: z.string().optional(),
+});
+```
+
+### 1.4 ProjectConfig Extension
 
 Add `models.execution` to `ProjectConfigSchema`:
 
@@ -138,6 +154,8 @@ export interface ModelProvider {
   invoke(request: ModelInvocationRequest): Promise<ModelInvocationResult>;
 }
 ```
+
+**Note:** `ModelInvocationResult.raw` contains the full provider response for debugging. It is **not** included in `AgentModelResult` or persisted to `StepResult.output` in MVP5.
 
 ### 2.2 Provider Error Taxonomy
 
@@ -204,6 +222,12 @@ export class ModelProviderRegistry {
 - `require(id)` — returns provider or throws `ProviderNotFound`
 - `list()` — returns all registered providers
 
+### 3.3 Default Registration
+
+Default provider registry always includes:
+- `MockProvider` — required, registered unconditionally
+- `OpenAIProvider` — registered normally; checks `OPENAI_API_KEY` at invocation time
+
 ---
 
 ## 4. MockProvider
@@ -253,21 +277,30 @@ function estimateTokens(text: string): number {
 
 ### 5.1 Behavior
 
-**Optional.** Implemented in MVP5 if feasible.
+**Implemented in MVP5.** Tests requiring real API calls are **not** part of CI.
 
 **Requirements:**
 - Requires `OPENAI_API_KEY` environment variable
-- If `OPENAI_API_KEY` is missing and route uses `openai` provider:
+- If `OPENAI_API_KEY` is missing:
   - Throw `ProviderAuthError`
   - `retryable: false`
   - Do **not** silently skip
+
+**HTTP Error Mapping:**
+
+| HTTP Status | Error Type | Retryable |
+|-------------|------------|-----------|
+| 401, 403 | `ProviderAuthError` | `false` |
+| 400, 404 | `ProviderRequestError` | `false` |
+| 429, 500, 502, 503, 504 | `ProviderNetworkError` | `true` |
+| Fetch failure | `ProviderNetworkError` | `true` |
 
 **Implementation notes:**
 - Use `fetch` API (Node.js 20+ has native fetch)
 - Base URL: `https://api.openai.com/v1/chat/completions`
 - Map `ModelInvocationRequest` to OpenAI chat completion format
 - Map response to `ModelInvocationResult`
-- Handle HTTP errors with appropriate error taxonomy
+- Do not include `raw` response in `AgentModelResult`
 
 ---
 
@@ -290,13 +323,29 @@ Returns `AgentInvocationPlan` JSON (MVP4 behavior preserved).
 
 ### 6.3 Invoke Mode
 
+**Step 0: Validate task**
+
+```typescript
+const task = step.input?.task;
+if (!task || typeof task !== 'string' || task.trim().length === 0) {
+  return {
+    status: 'failure',
+    error: {
+      type: 'AgentInputValidationError',
+      message: 'Missing or empty input.task field in invoke mode',
+      retryable: false,
+    },
+  };
+}
+```
+
 **Step 1: Build ModelInvocationRequest**
 
 ```typescript
 const request: ModelInvocationRequest = {
   provider: route.provider,
   model: route.model,
-  input: step.input?.task as string || '',
+  input: task,
   system_prompt: (step.input?.system_prompt as string | undefined)
     ?? agent.system_prompt
     ?? route.system_prompt,
@@ -362,12 +411,13 @@ export interface AgentModelResult {
 If `context_bundle` is provided:
 
 1. Validate path (MVP4 guards: relative, no traversal, inside project root, exists)
-2. Read file:
+2. Check file size ≤ 1MB (1,048,576 bytes). Exceeding limit → `ContextReadError` with `retryable: false`
+3. Read file:
    - `.md` → read as UTF-8 text
    - `.json` → parse JSON, then `JSON.stringify(value, null, 2)`
    - Other → read as UTF-8 text
-3. Invalid JSON → `ContextReadError` with `retryable: false`
-4. Pass content as `context` in `ModelInvocationRequest`
+4. Invalid JSON → `ContextReadError` with `retryable: false`
+5. Pass content as `context` in `ModelInvocationRequest`
 
 ### 6.6 Failure Modes
 
@@ -409,6 +459,10 @@ If `context_bundle` is provided:
 - AgentRunner global invoke: calls MockProvider
 - Unknown provider: ProviderNotFound
 - Context bundle reading: .md, .json, invalid JSON
+- Context bundle size limit: exceeds 1MB fails
+- Task validation: empty task in invoke mode fails
+- OpenAIProvider missing key: ProviderAuthError
+- OpenAIProvider HTTP error mapping: 401/403/429/5xx
 
 ### 8.2 Integration Tests
 
@@ -418,7 +472,10 @@ If `context_bundle` is provided:
 - Route invoke overrides global stub
 - Missing provider → failure
 - Policy deny prevents provider invocation
+- Policy ask gate prevents provider invocation until approved
 - Context bundle passed to provider
+- Context bundle size limit enforced
+- Empty task in invoke mode fails before provider call
 
 ---
 
@@ -426,19 +483,23 @@ If `context_bundle` is provided:
 
 1. `wolf.yaml` supports `models.execution.mode`.
 2. `wolf.yaml` supports route-level `execution_mode`, `temperature`, `system_prompt`.
-3. Global stub returns MVP4 `AgentInvocationPlan`.
-4. Global invoke calls `MockProvider`.
-5. Route-level invoke overrides global stub.
-6. Route-level stub overrides global invoke.
-7. Unknown provider fails with `ProviderNotFound`.
-8. OpenAI route without `OPENAI_API_KEY` fails with `ProviderAuthError` (if OpenAIProvider implemented).
-9. `context_bundle` content is passed to `ModelInvocationRequest.context`.
-10. Invalid/missing `context_bundle` fails before provider invocation.
-11. Policy ask/deny prevents provider invocation.
-12. Provider errors integrate with existing retry behavior.
-13. MockProvider output is deterministic.
-14. No streaming, tool-calling, or multi-agent behavior introduced.
-15. Tests pass locally and in Docker.
+3. `wolf.yaml` supports `agent.system_prompt`.
+4. Global stub returns MVP4 `AgentInvocationPlan`.
+5. Global invoke calls `MockProvider`.
+6. Route-level invoke overrides global stub.
+7. Route-level stub overrides global invoke.
+8. Unknown provider fails with `ProviderNotFound`.
+9. OpenAI route without `OPENAI_API_KEY` fails with `ProviderAuthError`.
+10. `context_bundle` content is passed to `ModelInvocationRequest.context`.
+11. Invalid/missing `context_bundle` fails before provider invocation.
+12. Context bundle exceeding 1MB fails with `ContextReadError`.
+13. Empty `task` in invoke mode fails with `AgentInputValidationError`.
+14. Policy ask/deny prevents provider invocation.
+15. Provider errors integrate with existing retry behavior.
+16. MockProvider output is deterministic.
+17. OpenAI HTTP errors map correctly (401/403 → auth, 429/5xx → network).
+18. No streaming, tool-calling, or multi-agent behavior introduced.
+19. Tests pass locally and in Docker.
 
 ---
 
