@@ -110,17 +110,13 @@ export class WorkflowEngine {
           state.step_statuses[step.id] = 'skipped';
           state.step_results[step.id] = { status: 'skipped' };
 
-          const event: RuntimeEvent = {
-            id: uuidv4(),
+          await this.emitEvent({
             type: 'step.skipped',
             case_id: state.case_id,
+            workflow_id: state.workflow_id,
             step_id: step.id,
-            timestamp: new Date().toISOString(),
-            actor: { type: 'system', id: 'workflow-engine' },
             payload: { reason: 'condition_false', condition: step.when },
-          };
-          await this.bus.publish(event);
-          this.caseStore.appendEvent(state.case_id, event);
+          });
           this.caseStore.writeState(state.case_id, state);
           continue;
         }
@@ -246,20 +242,31 @@ export class WorkflowEngine {
       }
     }
 
-    // Reset gated steps that have been approved so they can re-run on resume
+    // Normalize gated steps on resume/load
     for (const step of workflow.steps) {
       if (state.step_statuses[step.id] === 'gated') {
         const gateId = `gate_${state.case_id}_${step.id}`;
         const gate = state.gates?.[gateId];
         if (gate?.status === 'approved') {
           state.step_statuses[step.id] = 'pending';
+        } else if (gate?.status === 'rejected') {
+          state.step_statuses[step.id] = 'failure';
+          state.failed_steps.push(step.id);
+          state.step_results[step.id] = {
+            status: 'failure',
+            error: {
+              type: 'GateRejected',
+              message: `Gate ${gateId} was rejected`,
+              retryable: false,
+            },
+          };
         }
       }
     }
     this.caseStore.writeState(state.case_id, state);
     this.states.set(state.case_id, state);
 
-    let hasFailure = false;
+    let hasFailure = state.failed_steps.length > 0;
     let hasGated = false;
 
     while (true) {
@@ -301,22 +308,18 @@ export class WorkflowEngine {
             state.step_statuses[step.id] = 'skipped';
             state.step_results[step.id] = { status: 'skipped' };
 
-            const event: RuntimeEvent = {
-              id: uuidv4(),
+            await this.emitEvent({
               type: 'step.skipped',
               case_id: state.case_id,
+              workflow_id: state.workflow_id,
               step_id: step.id,
-              timestamp: new Date().toISOString(),
-              actor: { type: 'system', id: 'workflow-engine' },
               payload: { reason: 'condition_false', condition: step.when },
-            };
-            await this.bus.publish(event);
-            this.caseStore.appendEvent(state.case_id, event);
+            });
             return { stepId, result: { status: 'skipped' } as StepResult };
           }
         }
 
-        const result = await this.executeStep(step, state);
+        const result = await this.executeStep(step, state, false);
         return { stepId, result };
       });
 
@@ -455,10 +458,11 @@ export class WorkflowEngine {
       return { status: 'failed' };
     }
 
-    // Check if all steps are done (success, skipped, or gated)
+    // Check if all steps are done (success or skipped only)
+    // Gated steps are NOT considered done — they require explicit resolution
     const allDone = workflow.steps.every((s) => {
       const st = state.step_statuses[s.id];
-      return st === 'success' || st === 'skipped' || st === 'gated';
+      return st === 'success' || st === 'skipped';
     });
 
     if (allDone) {
@@ -483,7 +487,7 @@ export class WorkflowEngine {
     return { status: state.status };
   }
 
-  private async executeStep(step: StepDefinition, state: ExecutionState): Promise<StepResult> {
+  private async executeStep(step: StepDefinition, state: ExecutionState, trackState: boolean = true): Promise<StepResult> {
     const interpolatedInput = interpolateObject(step.input, state.variables);
 
     await this.emitEvent({
@@ -494,7 +498,7 @@ export class WorkflowEngine {
       payload: { input: interpolatedInput },
     });
 
-    return this.executeStepWithRetry(step, state);
+    return this.executeStepWithRetry(step, state, trackState);
   }
 
   private async executeSingleAttempt(step: StepDefinition, state: ExecutionState): Promise<StepResult> {
@@ -507,7 +511,7 @@ export class WorkflowEngine {
       workflow_id: state.workflow_id,
       variables: state.variables,
       gates: state.gates,
-      config: {},
+      config: this.config,
       timeoutMs,
     };
 
@@ -552,16 +556,18 @@ export class WorkflowEngine {
     ]);
   }
 
-  private async executeStepWithRetry(step: StepDefinition, state: ExecutionState): Promise<StepResult> {
+  private async executeStepWithRetry(step: StepDefinition, state: ExecutionState, trackState: boolean = true): Promise<StepResult> {
     state.step_statuses ??= {};
     const maxAttempts = step.retry?.max_attempts ?? 1;
     const delayMs = this.parseDuration(step.retry?.delay ?? '1s');
     const backoff = step.retry?.backoff ?? 'fixed';
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      state.step_statuses[step.id] = attempt > 1 ? 'retrying' : 'running';
-      state.updated_at = new Date().toISOString();
-      this.caseStore.writeState(state.case_id, state);
+      if (trackState) {
+        state.step_statuses[step.id] = attempt > 1 ? 'retrying' : 'running';
+        state.updated_at = new Date().toISOString();
+        this.caseStore.writeState(state.case_id, state);
+      }
 
       const result = await this.executeSingleAttempt(step, state);
 
@@ -569,18 +575,13 @@ export class WorkflowEngine {
         return result;
       }
 
-      // Emit retrying event
-      const event: RuntimeEvent = {
-        id: uuidv4(),
+      await this.emitEvent({
         type: 'step.retrying',
         case_id: state.case_id,
+        workflow_id: state.workflow_id,
         step_id: step.id,
-        timestamp: new Date().toISOString(),
-        actor: { type: 'system', id: 'workflow-engine' },
         payload: { attempt, max_attempts: maxAttempts, reason: result.error?.type || 'unknown' },
-      };
-      await this.bus.publish(event);
-      this.caseStore.appendEvent(state.case_id, event);
+      });
 
       const waitMs = backoff === 'linear' ? delayMs * attempt : delayMs;
       await new Promise((resolve) => setTimeout(resolve, waitMs));
@@ -637,16 +638,12 @@ export class WorkflowEngine {
     this.caseStore.writeState(caseId, state);
     this.caseStore.updateCaseStatus(caseId, 'cancelled');
 
-    const event: RuntimeEvent = {
-      id: uuidv4(),
+    await this.emitEvent({
       type: 'case.cancelled',
       case_id: caseId,
-      timestamp: new Date().toISOString(),
-      actor: { type: 'user', id: 'cli' },
+      workflow_id: state.workflow_id,
       payload: { cancelled_by: 'cli-user' },
-    };
-    await this.bus.publish(event);
-    this.caseStore.appendEvent(caseId, event);
+    });
   }
 
   getState(caseId: string): ExecutionState | null {
