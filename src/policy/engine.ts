@@ -63,7 +63,10 @@ export class PolicyEngine {
       return false;
     }
     if (rule.match.command_contains && rule.match.command_contains.length > 0) {
-      const command = String(step.input?.command || '');
+      const command = step.input?.command;
+      if (typeof command !== 'string') {
+        return false;
+      }
       if (!rule.match.command_contains.some((pattern) => command.includes(pattern))) {
         return false;
       }

@@ -268,4 +268,63 @@ describe('PolicyEngine', () => {
     expect(decision.rule_id).toBe('r_high');
     expect(decision.risk).toBe('high');
   });
+
+  it('should generate correct decision ID format', () => {
+    const rule: PolicyRule = {
+      id: 'r1',
+      match: { runner: 'echo' },
+      decision: 'allow',
+      risk: 'low',
+      reason: 'Test',
+    };
+    const step = makeStep({ id: 'step1', runner: 'echo' });
+    const config = makeConfig([rule]);
+
+    const decision = engine.evaluate(step, config, 'wf1', 'step_runtime');
+
+    expect(decision.id).toBe('policy_wf1_step1_r1_step_runtime');
+  });
+
+  it('should generate default decision ID when no rule matches', () => {
+    const step = makeStep({ id: 'step1', runner: 'echo' });
+    const config = makeConfig([]);
+
+    const decision = engine.evaluate(step, config, 'wf1', 'workflow_preflight');
+
+    expect(decision.id).toBe('policy_wf1_step1_default_workflow_preflight');
+  });
+
+  it('should not match command_contains when command is not a string', () => {
+    const rule: PolicyRule = {
+      id: 'r_cmd',
+      match: { command_contains: ['rm'] },
+      decision: 'deny',
+      risk: 'critical',
+      reason: 'No rm allowed',
+    };
+    const step = makeStep({ input: { command: 123 } });
+    const config = makeConfig([rule]);
+
+    const decision = engine.evaluate(step, config, 'wf1', 'step_runtime');
+
+    expect(decision.decision).toBe('allow');
+    expect(decision.matched_rules).toEqual([]);
+  });
+
+  it('should not match command_contains when command is missing', () => {
+    const rule: PolicyRule = {
+      id: 'r_cmd',
+      match: { command_contains: ['rm'] },
+      decision: 'deny',
+      risk: 'critical',
+      reason: 'No rm allowed',
+    };
+    const step = makeStep();
+    const config = makeConfig([rule]);
+
+    const decision = engine.evaluate(step, config, 'wf1', 'step_runtime');
+
+    expect(decision.decision).toBe('allow');
+    expect(decision.matched_rules).toEqual([]);
+  });
 });
