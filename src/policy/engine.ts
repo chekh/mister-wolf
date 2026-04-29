@@ -1,6 +1,9 @@
-import { PolicyRule, PolicyDecision } from '../types/policy.js';
+import { PolicyRule, PolicyDecision, RiskLevel } from '../types/policy.js';
 import { PolicyConfig } from '../config/project-config.js';
 import { StepDefinition } from '../types/workflow.js';
+
+const DECISION_PRECEDENCE = { deny: 3, ask: 2, allow: 1 } as const;
+const RISK_ORDER = { low: 1, medium: 2, high: 3, critical: 4 } as const;
 
 export class PolicyEngine {
   evaluate(
@@ -75,24 +78,20 @@ export class PolicyEngine {
   }
 
   private selectPrimary(rules: PolicyRule[]): PolicyRule {
-    const precedence = { deny: 3, ask: 2, allow: 1 };
-    const riskPrecedence = { critical: 4, high: 3, medium: 2, low: 1 };
-
     return rules.reduce((best, current) => {
-      const bestPrec = precedence[best.decision];
-      const currPrec = precedence[current.decision];
+      const bestPrec = DECISION_PRECEDENCE[best.decision];
+      const currPrec = DECISION_PRECEDENCE[current.decision];
       if (currPrec > bestPrec) return current;
       if (currPrec < bestPrec) return best;
 
-      const bestRisk = riskPrecedence[best.risk || 'low'];
-      const currRisk = riskPrecedence[current.risk || 'low'];
+      const bestRisk = RISK_ORDER[best.risk || 'low'];
+      const currRisk = RISK_ORDER[current.risk || 'low'];
       if (currRisk > bestRisk) return current;
       return best;
     });
   }
 
-  private riskLevel(risk: string): number {
-    const levels = { low: 1, medium: 2, high: 3, critical: 4 };
-    return levels[risk as keyof typeof levels] || 1;
+  private riskLevel(risk: RiskLevel): number {
+    return RISK_ORDER[risk];
   }
 }
