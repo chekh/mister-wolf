@@ -1,0 +1,43 @@
+id: graph-demo
+version: "0.1.0"
+name: Parallel Data Processing Demo
+execution:
+  mode: graph
+  max_parallel: 2
+
+steps:
+  - id: fetch_users
+    name: Fetch Users
+    type: builtin
+    runner: echo
+    input:
+      message: "Fetching user list..."
+    output: users_data
+
+  - id: fetch_orders
+    name: Fetch Orders
+    type: builtin
+    runner: echo
+    input:
+      message: "Fetching order list..."
+    output: orders_data
+
+  - id: validate_data
+    name: Validate Data
+    type: builtin
+    runner: echo
+    input:
+      message: "Validating {{ users_data }} and {{ orders_data }}"
+    output: validation_result
+    depends_on:
+      - fetch_users
+      - fetch_orders
+
+  - id: generate_report
+    name: Generate Report
+    type: builtin
+    runner: echo
+    input:
+      message: "Report: {{ validation_result }}"
+    depends_on:
+      - validate_data
