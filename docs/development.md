@@ -234,6 +234,114 @@ When multiple rules match, precedence is:
 
 If no rules match, the default decision is **allow**. The `max_risk` setting can automatically upgrade an `allow` to `ask` when a step's risk exceeds the configured threshold.
 
+## Agent Registry
+
+The Agent Registry (MVP4) provides declarative agent definitions and deterministic model routing. It prepares agent invocations as structured plans but does **not** execute real LLM calls — that boundary belongs to MVP5.
+
+### Configuration
+
+Add `agents` and `models.routes` to `wolf.yaml`:
+
+```yaml
+agents:
+  - id: reviewer
+    name: Code Reviewer
+    description: Reviews code and suggests changes
+    capabilities:
+      - code_review
+      - test_analysis
+    model_route: default_coding
+    tools:
+      - context.read
+
+models:
+  routes:
+    default_coding:
+      provider: openai
+      model: gpt-5.5-thinking
+      purpose: coding
+      max_tokens: 12000
+```
+
+**Agent fields:**
+
+| Field          | Type     | Required | Description                      |
+| -------------- | -------- | -------- | -------------------------------- |
+| `id`           | string   | yes      | Unique identifier                |
+| `name`         | string   | no       | Human-readable name              |
+| `description`  | string   | no       | Purpose description              |
+| `capabilities` | string[] | no       | Capability tags for matching     |
+| `model_route`  | string   | yes      | Reference to `models.routes` key |
+| `tools`        | string[] | no       | Tool references                  |
+
+**Model route fields:**
+
+| Field        | Type   | Required | Description               |
+| ------------ | ------ | -------- | ------------------------- |
+| `provider`   | string | yes      | Provider name (non-empty) |
+| `model`      | string | yes      | Model identifier          |
+| `purpose`    | string | no       | Purpose tag               |
+| `max_tokens` | number | no       | Token limit               |
+
+### CLI Commands
+
+```bash
+# List all configured agents
+node dist/cli/index.js agents list
+node dist/cli/index.js agents list --json
+
+# Inspect a specific agent (includes resolved model route)
+node dist/cli/index.js agents inspect reviewer
+node dist/cli/index.js agents inspect reviewer --json
+```
+
+### Using the Agent Runner in Workflows
+
+Use `runner: agent` in workflow steps:
+
+```yaml
+steps:
+  - id: review
+    type: builtin
+    runner: agent
+    input:
+      agent: reviewer
+      task: 'Review current context bundle'
+      context_bundle: '.wolf/context/context-bundle.json'
+```
+
+**Input fields:**
+
+| Field            | Type   | Required | Description                               |
+| ---------------- | ------ | -------- | ----------------------------------------- |
+| `agent`          | string | yes      | Agent id from registry                    |
+| `task`           | string | no       | Task description passed to the agent      |
+| `context_bundle` | string | no       | Relative path to context bundle JSON file |
+
+The agent runner resolves the agent definition and model route, then outputs an `AgentInvocationPlan` as a JSON string. No real LLM call is made in MVP4.
+
+### Policy Rules for Agent Runner
+
+The Policy Engine (MVP3) already supports `runner: agent` through step guard matching. Example policy rules:
+
+```yaml
+policy:
+  rules:
+    - id: ask_agent_review
+      match:
+        runner: agent
+      decision: ask
+      risk: high
+      reason: Agent invocations require approval
+    - id: deny_unknown_agents
+      match:
+        step_id: review
+      decision: deny
+      reason: Only specific steps are allowed
+```
+
+Policy decisions (allow / ask / deny) work the same way for `runner: agent` as for any other runner. The Agent Runner does **not** call the Policy Engine directly — evaluation happens in the WorkflowEngine via PolicyStepGuard before the runner executes.
+
 ## CI
 
 GitHub Actions runs on every PR and push to `main` / `dev`:

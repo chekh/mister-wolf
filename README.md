@@ -10,14 +10,15 @@
 
 ## Status
 
-| Milestone  | Status      | Description                                                                                                        |
-| ---------- | ----------- | ------------------------------------------------------------------------------------------------------------------ |
-| **MVP1A**  | ✅ Complete | Sequential workflow runner with YAML workflows, builtin runners (echo, shell, manual_gate), state persistence, CLI |
-| **MVP1B**  | ✅ Complete | Enhanced workflow engine with conditions, retry, timeout, artifacts, project config, cancel/validate commands      |
-| **MVP1C**  | ✅ Complete | Graph orchestration — DAG execution, parallel scheduling, transitive failure propagation                           |
-| **MVP2**   | ✅ Complete | Context resolver — deterministic project file discovery, context bundle, case memory                               |
-| **MVP3**   | ✅ Complete | Policy engine — rule-based workflow preflight, step runtime guard, policy gates, risk levels, CLI                  |
-| **MVP4–5** | 📋 Planned  | Agent registry + model router                                                                                      |
+| Milestone | Status         | Description                                                                                                        |
+| --------- | -------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **MVP1A** | ✅ Complete    | Sequential workflow runner with YAML workflows, builtin runners (echo, shell, manual_gate), state persistence, CLI |
+| **MVP1B** | ✅ Complete    | Enhanced workflow engine with conditions, retry, timeout, artifacts, project config, cancel/validate commands      |
+| **MVP1C** | ✅ Complete    | Graph orchestration — DAG execution, parallel scheduling, transitive failure propagation                           |
+| **MVP2**  | ✅ Complete    | Context resolver — deterministic project file discovery, context bundle, case memory                               |
+| **MVP3**  | ✅ Complete    | Policy engine — rule-based workflow preflight, step runtime guard, policy gates, risk levels, CLI                  |
+| **MVP4**  | 🔄 In Progress | Agent registry + model router                                                                                      |
+| **MVP5**  | ⏭️ Next        | Real LLM execution, provider SDK integration                                                                       |
 
 ## Quick Start
 
@@ -218,6 +219,10 @@ wolf policy check <workflow.yaml> [--json]
 # Context resolver
 wolf context scan [--scenario <id>] [--json]
 wolf context build [--scenario <id>] [--json]
+
+# Agent registry
+wolf agents list [--json]
+wolf agents inspect <id> [--json]
 ```
 
 ### Exit Codes
