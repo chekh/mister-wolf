@@ -3,10 +3,24 @@ import { StepDefinition } from '../../types/workflow.js';
 import { StepResult } from '../../types/state.js';
 import { spawn } from 'child_process';
 
-const BLOCKED_COMMANDS = ['sudo', 'su', 'ssh', 'vim', 'nano', 'less', 'more', 'top', 'watch'];
-const MAX_OUTPUT_SIZE = 1024 * 1024;
+const DEFAULT_BLOCKED_COMMANDS = ['sudo', 'su', 'ssh', 'vim', 'nano', 'less', 'more', 'top', 'watch'];
+const DEFAULT_MAX_OUTPUT_SIZE = 1024 * 1024;
 const DEFAULT_TIMEOUT = 30000;
 const MAX_TIMEOUT = 300000;
+
+function parseSize(input: string): number {
+  const trimmed = input.trim().toLowerCase();
+  if (trimmed.endsWith('mb')) {
+    const value = parseInt(trimmed.slice(0, -2), 10);
+    return isNaN(value) ? DEFAULT_MAX_OUTPUT_SIZE : value * 1024 * 1024;
+  }
+  if (trimmed.endsWith('kb')) {
+    const value = parseInt(trimmed.slice(0, -2), 10);
+    return isNaN(value) ? DEFAULT_MAX_OUTPUT_SIZE : value * 1024;
+  }
+  const value = parseInt(trimmed, 10);
+  return isNaN(value) ? DEFAULT_MAX_OUTPUT_SIZE : value;
+}
 
 function parseTimeout(input: unknown): number {
   if (typeof input !== 'string') {
@@ -32,10 +46,10 @@ function parseTimeout(input: unknown): number {
   return DEFAULT_TIMEOUT;
 }
 
-function isBlocked(command: string): boolean {
+function isBlocked(command: string, blockedCommands: string[]): boolean {
   const trimmed = command.trim();
   const firstWord = trimmed.split(/\s+/)[0];
-  return BLOCKED_COMMANDS.includes(firstWord);
+  return blockedCommands.includes(firstWord);
 }
 
 export class ShellRunner implements StepRunner {
@@ -43,6 +57,9 @@ export class ShellRunner implements StepRunner {
 
   async run(step: StepDefinition, ctx: ExecutionContext): Promise<StepResult> {
     const command = (step.input?.command as string) || '';
+
+    const blockedCommands = ctx.config.defaults?.shell?.blocked_commands ?? DEFAULT_BLOCKED_COMMANDS;
+    const maxOutputSize = parseSize(ctx.config.defaults?.shell?.max_output_size ?? '1MB');
 
     if (!command) {
       return {
@@ -55,7 +72,7 @@ export class ShellRunner implements StepRunner {
       };
     }
 
-    if (isBlocked(command)) {
+    if (isBlocked(command, blockedCommands)) {
       return {
         status: 'failure',
         error: {
@@ -84,16 +101,16 @@ export class ShellRunner implements StepRunner {
       }, timeout);
 
       child.stdout?.on('data', (data: Buffer) => {
-        if (stdout.length + data.length > MAX_OUTPUT_SIZE) {
-          stdout = Buffer.concat([stdout, data]).subarray(0, MAX_OUTPUT_SIZE);
+        if (stdout.length + data.length > maxOutputSize) {
+          stdout = Buffer.concat([stdout, data]).subarray(0, maxOutputSize);
         } else {
           stdout = Buffer.concat([stdout, data]);
         }
       });
 
       child.stderr?.on('data', (data: Buffer) => {
-        if (stderr.length + data.length > MAX_OUTPUT_SIZE) {
-          stderr = Buffer.concat([stderr, data]).subarray(0, MAX_OUTPUT_SIZE);
+        if (stderr.length + data.length > maxOutputSize) {
+          stderr = Buffer.concat([stderr, data]).subarray(0, maxOutputSize);
         } else {
           stderr = Buffer.concat([stderr, data]);
         }
