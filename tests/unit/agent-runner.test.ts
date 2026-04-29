@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { AgentRunner } from '../../src/agent/runner.js';
 import { AgentRegistry } from '../../src/agent/registry.js';
 import { ModelRouter } from '../../src/agent/router.js';
+import { ModelProviderRegistry } from '../../src/model/registry.js';
+import { MockProvider } from '../../src/model/mock-provider.js';
 import { AgentDefinition } from '../../src/types/agent.js';
 import { StepDefinition } from '../../src/types/workflow.js';
 import { mkdirSync, writeFileSync, rmSync } from 'fs';
@@ -31,7 +33,8 @@ const mockRoutes = {
 function createRunner(agents = mockAgents, routes = mockRoutes) {
   const registry = new AgentRegistry(agents);
   const router = new ModelRouter(routes);
-  return new AgentRunner(registry, router);
+  const providerRegistry = new ModelProviderRegistry([new MockProvider()]);
+  return new AgentRunner(registry, router, providerRegistry);
 }
 
 function createContext(stateDir: string) {

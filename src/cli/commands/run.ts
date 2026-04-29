@@ -10,6 +10,9 @@ import { ManualGateRunner } from '../../workflow/runners/manual-gate.js';
 import { AgentRunner } from '../../agent/runner.js';
 import { AgentRegistry } from '../../agent/registry.js';
 import { ModelRouter } from '../../agent/router.js';
+import { ModelProviderRegistry } from '../../model/registry.js';
+import { MockProvider } from '../../model/mock-provider.js';
+import { OpenAIProvider } from '../../model/openai-provider.js';
 import { CaseStore } from '../../state/case-store.js';
 import { GateStore } from '../../state/gate-store.js';
 import { InProcessEventBus } from '../../kernel/event-bus.js';
@@ -33,7 +36,8 @@ export function createRunCommand(): Command {
 
       const agentRegistry = new AgentRegistry(projectConfig.agents);
       const modelRouter = new ModelRouter(projectConfig.models.routes);
-      registry.register(new AgentRunner(agentRegistry, modelRouter));
+      const providerRegistry = new ModelProviderRegistry([new MockProvider(), new OpenAIProvider()]);
+      registry.register(new AgentRunner(agentRegistry, modelRouter, providerRegistry));
 
       const caseStore = new CaseStore(stateDir);
       const gateStore = new GateStore(caseStore);
