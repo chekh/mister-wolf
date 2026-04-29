@@ -143,4 +143,51 @@ models:
       "Agent 'planner' references unknown model route 'unknown-route'"
     );
   });
+
+  it('should load config with models.execution.mode and route fields', () => {
+    writeFileSync(
+      join(tempDir, 'wolf.yaml'),
+      `
+agents:
+  - id: planner
+    model_route: openai-gpt4
+models:
+  execution:
+    mode: invoke
+  routes:
+    openai-gpt4:
+      provider: openai
+      model: gpt-4
+      purpose: Planning
+      max_tokens: 4096
+      temperature: 0.7
+      execution_mode: invoke
+      system_prompt: You are a helpful planner
+`
+    );
+    const config = loadProjectConfig(join(tempDir, 'wolf.yaml'));
+    expect(config.models.execution.mode).toBe('invoke');
+    expect(config.models.routes['openai-gpt4'].temperature).toBe(0.7);
+    expect(config.models.routes['openai-gpt4'].execution_mode).toBe('invoke');
+    expect(config.models.routes['openai-gpt4'].system_prompt).toBe('You are a helpful planner');
+  });
+
+  it('should load config with agent.system_prompt', () => {
+    writeFileSync(
+      join(tempDir, 'wolf.yaml'),
+      `
+agents:
+  - id: planner
+    model_route: openai-gpt4
+    system_prompt: You are a planner agent
+models:
+  routes:
+    openai-gpt4:
+      provider: openai
+      model: gpt-4
+`
+    );
+    const config = loadProjectConfig(join(tempDir, 'wolf.yaml'));
+    expect(config.agents[0].system_prompt).toBe('You are a planner agent');
+  });
 });

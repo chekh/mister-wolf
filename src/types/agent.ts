@@ -7,6 +7,7 @@ export const AgentDefinitionSchema = z.object({
   capabilities: z.array(z.string()).default([]),
   model_route: z.string(),
   tools: z.array(z.string()).default([]),
+  system_prompt: z.string().optional(),
 });
 
 export type AgentDefinition = z.infer<typeof AgentDefinitionSchema>;
@@ -16,6 +17,9 @@ export const ModelRouteSchema = z.object({
   model: z.string().min(1),
   purpose: z.string().optional(),
   max_tokens: z.number().int().positive().optional(),
+  temperature: z.number().min(0).max(2).optional(),
+  execution_mode: z.enum(['stub', 'invoke']).optional(),
+  system_prompt: z.string().optional(),
 });
 
 export type ModelRoute = z.infer<typeof ModelRouteSchema>;

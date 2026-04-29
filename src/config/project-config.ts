@@ -85,8 +85,13 @@ export const ProjectConfigSchema = z.object({
   models: z
     .object({
       routes: z.record(ModelRouteSchema).default({}),
+      execution: z
+        .object({
+          mode: z.enum(['stub', 'invoke']).default('stub'),
+        })
+        .default({ mode: 'stub' }),
     })
-    .default({ routes: {} }),
+    .default({ routes: {}, execution: { mode: 'stub' } }),
   defaults: z
     .object({
       timeout: z.string().default('30s'),
