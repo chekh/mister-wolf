@@ -13,6 +13,7 @@
 ## File Structure
 
 **New files:**
+
 - `src/types/agent.ts` — AgentDefinition, ModelRoute, AgentInvocationPlan schemas
 - `src/agent/registry.ts` — AgentRegistry class
 - `src/agent/router.ts` — ModelRouter class
@@ -24,6 +25,7 @@
 - `tests/integration/agent-cli.test.ts`
 
 **Modified files:**
+
 - `src/config/project-config.ts` — add agents/models schemas + cross-reference validation
 - `src/types/runner.ts` — no changes needed (AgentRunner implements StepRunner)
 - `src/workflow/runner-registry.ts` — register AgentRunner
@@ -38,6 +40,7 @@
 ### Task 1.1: Add Agent Types
 
 **Files:**
+
 - Create: `src/types/agent.ts`
 
 - [ ] **Step 1: Write schemas and types**
@@ -93,11 +96,13 @@ git commit -m "feat(agent): add AgentDefinition, ModelRoute, AgentInvocationPlan
 ### Task 1.2: Extend ProjectConfig
 
 **Files:**
+
 - Modify: `src/config/project-config.ts`
 
 - [ ] **Step 1: Import new schemas**
 
 Add to imports:
+
 ```typescript
 import { AgentDefinitionSchema, ModelRouteSchema } from '../types/agent.js';
 ```
@@ -149,15 +154,14 @@ function validateCrossReferences(config: ProjectConfig): void {
     agentIds.add(agent.id);
 
     if (!routeIds.has(agent.model_route)) {
-      throw new Error(
-        `Agent '${agent.id}' references unknown model route '${agent.model_route}'`
-      );
+      throw new Error(`Agent '${agent.id}' references unknown model route '${agent.model_route}'`);
     }
   }
 }
 ```
 
 Update `loadProjectConfig`:
+
 ```typescript
 const config = ProjectConfigSchema.parse(parsed);
 validateCrossReferences(config);
@@ -174,6 +178,7 @@ git commit -m "feat(config): add agents and models to ProjectConfig with cross-r
 ### Task 1.3: Write Config Tests
 
 **Files:**
+
 - Modify: `tests/unit/project-config.test.ts`
 
 - [ ] **Step 1: Add tests for agents and models**
@@ -269,6 +274,7 @@ git commit -m "test(config): add agents and models config validation tests"
 ### Task 2.1: Implement AgentRegistry
 
 **Files:**
+
 - Create: `src/agent/registry.ts`
 
 - [ ] **Step 1: Write AgentRegistry**
@@ -317,7 +323,9 @@ export class AgentRegistry {
   findByCapability(capability: string): AgentDefinition[] {
     const ids = this.byCapability.get(capability);
     if (!ids) return [];
-    return Array.from(ids).map((id) => this.byId.get(id)!).filter(Boolean);
+    return Array.from(ids)
+      .map((id) => this.byId.get(id)!)
+      .filter(Boolean);
   }
 }
 ```
@@ -332,6 +340,7 @@ git commit -m "feat(agent): implement AgentRegistry with id/capability indexing"
 ### Task 2.2: Implement ModelRouter
 
 **Files:**
+
 - Create: `src/agent/router.ts`
 
 - [ ] **Step 1: Write ModelRouter**
@@ -374,6 +383,7 @@ git commit -m "feat(agent): implement ModelRouter with direct lookup"
 ### Task 2.3: Write Registry + Router Tests
 
 **Files:**
+
 - Create: `tests/unit/agent-registry.test.ts`
 - Create: `tests/unit/model-router.test.ts`
 
@@ -485,6 +495,7 @@ git commit -m "test(agent): add AgentRegistry and ModelRouter unit tests"
 ### Task 3.1: Implement AgentRunner
 
 **Files:**
+
 - Create: `src/agent/runner.ts`
 
 - [ ] **Step 1: Write AgentRunner**
@@ -499,10 +510,7 @@ import { AgentInvocationPlan } from '../types/agent.js';
 import { dirname, resolve } from 'path';
 import { existsSync } from 'fs';
 
-function validateContextBundlePath(
-  path: string,
-  stateDir: string
-): { valid: boolean; reason?: string } {
+function validateContextBundlePath(path: string, stateDir: string): { valid: boolean; reason?: string } {
   if (path.startsWith('/')) {
     return { valid: false, reason: 'context_bundle must be a relative path' };
   }
@@ -605,6 +613,7 @@ git commit -m "feat(agent): implement AgentRunner with invocation plan and conte
 ### Task 3.2: Register AgentRunner
 
 **Files:**
+
 - Modify: `src/workflow/runner-registry.ts` — no changes needed (registration happens in CLI setup)
 - Modify: `src/cli/index.ts` — register AgentRunner
 
@@ -638,6 +647,7 @@ git commit -m "feat(agent): register AgentRunner in CLI"
 ### Task 3.3: Write AgentRunner Tests
 
 **Files:**
+
 - Create: `tests/unit/agent-runner.test.ts`
 
 - [ ] **Step 1: Write tests**
@@ -743,10 +753,7 @@ describe('AgentRunner', () => {
     const step = makeStep({
       input: { agent: 'reviewer', task: 'Review', context_bundle: bundlePath },
     });
-    const result = await runner.run(
-      step,
-      makeCtx({ config: { state_dir: join(tempDir, '.wolf', 'state') } as any })
-    );
+    const result = await runner.run(step, makeCtx({ config: { state_dir: join(tempDir, '.wolf', 'state') } as any }));
 
     expect(result.status).toBe('success');
     const plan = JSON.parse(result.output as string);
@@ -779,6 +786,7 @@ git commit -m "test(agent): add AgentRunner unit tests"
 ### Task 4.1: Implement CLI Commands
 
 **Files:**
+
 - Create: `src/cli/commands/agents.ts`
 
 - [ ] **Step 1: Write agents CLI**
@@ -883,6 +891,7 @@ git commit -m "feat(cli): add wolf agents list and wolf agents inspect commands"
 ### Task 4.2: Write CLI Integration Tests
 
 **Files:**
+
 - Create: `tests/integration/agent-cli.test.ts`
 
 - [ ] **Step 1: Write tests**
@@ -1005,6 +1014,7 @@ git commit -m "test(agent): add agents CLI integration tests"
 ### Task 5.1: Update README
 
 **Files:**
+
 - Modify: `README.md`
 
 - [ ] **Step 1: Update status table**
@@ -1014,6 +1024,7 @@ Change MVP4 from `⏭️ Next` to `🔄 In Progress` or `📋 Planned` depending
 - [ ] **Step 2: Add CLI reference**
 
 Add to CLI Reference section:
+
 ```markdown
 ### `wolf agents list [--json]`
 
@@ -1034,11 +1045,13 @@ git commit -m "docs: add wolf agents commands to README"
 ### Task 5.2: Update Development Docs
 
 **Files:**
+
 - Modify: `docs/development.md`
 
 - [ ] **Step 1: Add Agent Registry section**
 
 Add section covering:
+
 - Configuring agents in wolf.yaml
 - Configuring model routes
 - Agent runner usage in workflows
@@ -1082,18 +1095,18 @@ git commit --allow-empty -m "acceptance: MVP4 Agent Registry + Model Router comp
 
 ### Spec Coverage
 
-| Spec Requirement | Plan Task |
-|------------------|-----------|
+| Spec Requirement               | Plan Task         |
+| ------------------------------ | ----------------- |
 | Config schema (agents, models) | PR1 Task 1.1, 1.2 |
-| Cross-reference validation | PR1 Task 1.2 |
-| AgentRegistry | PR2 Task 2.1 |
-| ModelRouter | PR2 Task 2.2 |
-| AgentRunner | PR3 Task 3.1 |
-| Context bundle validation | PR3 Task 3.1 |
-| CLI (list, inspect) | PR4 Task 4.1 |
-| Tests (unit + integration) | All PRs |
-| README + docs | PR5 Task 5.1, 5.2 |
-| No real LLM calls | N/A (stub only) |
+| Cross-reference validation     | PR1 Task 1.2      |
+| AgentRegistry                  | PR2 Task 2.1      |
+| ModelRouter                    | PR2 Task 2.2      |
+| AgentRunner                    | PR3 Task 3.1      |
+| Context bundle validation      | PR3 Task 3.1      |
+| CLI (list, inspect)            | PR4 Task 4.1      |
+| Tests (unit + integration)     | All PRs           |
+| README + docs                  | PR5 Task 5.1, 5.2 |
+| No real LLM calls              | N/A (stub only)   |
 
 ### Placeholder Scan
 

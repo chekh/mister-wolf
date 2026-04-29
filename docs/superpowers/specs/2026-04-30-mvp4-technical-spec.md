@@ -59,16 +59,17 @@ agents:
 
 **Fields:**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | string | yes | Unique identifier |
-| `name` | string | no | Human-readable name |
-| `description` | string | no | Purpose description |
-| `capabilities` | string[] | no | Capability tags for matching |
-| `model_route` | string | yes | Reference to models.routes entry |
-| `tools` | string[] | no | Tool references (default: `[]`) |
+| Field          | Type     | Required | Description                      |
+| -------------- | -------- | -------- | -------------------------------- |
+| `id`           | string   | yes      | Unique identifier                |
+| `name`         | string   | no       | Human-readable name              |
+| `description`  | string   | no       | Purpose description              |
+| `capabilities` | string[] | no       | Capability tags for matching     |
+| `model_route`  | string   | yes      | Reference to models.routes entry |
+| `tools`        | string[] | no       | Tool references (default: `[]`)  |
 
 **Validation:**
+
 - `id` must be unique across all agents
 - `model_route` must reference an existing route in `models.routes`
 - `capabilities` elements must be non-empty strings
@@ -88,14 +89,15 @@ models:
 
 **Fields:**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `provider` | string | yes | Provider name (non-empty) |
-| `model` | string | yes | Model identifier |
-| `purpose` | string | no | Purpose tag |
-| `max_tokens` | number | no | Token limit |
+| Field        | Type   | Required | Description               |
+| ------------ | ------ | -------- | ------------------------- |
+| `provider`   | string | yes      | Provider name (non-empty) |
+| `model`      | string | yes      | Model identifier          |
+| `purpose`    | string | no       | Purpose tag               |
+| `max_tokens` | number | no       | Token limit               |
 
 **Validation:**
+
 - Route keys (ids) must be unique
 - `provider` must be non-empty string
 - `model` must be non-empty string
@@ -129,9 +131,11 @@ export const ProjectConfigSchema = z.object({
   context: ContextConfigSchema.default({}),
   policy: PolicyConfigSchema.default({}),
   agents: z.array(AgentDefinitionSchema).default([]),
-  models: z.object({
-    routes: z.record(ModelRouteSchema).default({}),
-  }).default({ routes: {} }),
+  models: z
+    .object({
+      routes: z.record(ModelRouteSchema).default({}),
+    })
+    .default({ routes: {} }),
   defaults: z
     .object({
       timeout: z.string().default('30s'),
@@ -180,16 +184,14 @@ function validateCrossReferences(config: ProjectConfig): void {
     agentIds.add(agent.id);
 
     if (!routeIds.has(agent.model_route)) {
-      throw new Error(
-        `Agent '${agent.id}' references unknown model route '${agent.model_route}'`
-      );
+      throw new Error(`Agent '${agent.id}' references unknown model route '${agent.model_route}'`);
     }
   }
 }
 
 export class AgentRegistry {
   constructor(agents: AgentDefinition[]);
-  
+
   get(id: string): AgentDefinition | undefined;
   require(id: string): AgentDefinition;
   list(): AgentDefinition[];
@@ -217,6 +219,7 @@ class AgentNotFound extends Error {
 ### 2.4 Indexing
 
 Internal structure:
+
 - `byId: Map<string, AgentDefinition>`
 - `byCapability: Map<string, Set<string>>` (capability → set of agent ids)
 
@@ -236,7 +239,7 @@ export interface ModelRoute {
 
 export class ModelRouter {
   constructor(routes: Record<string, ModelRoute>);
-  
+
   resolve(routeId: string): ModelRoute;
 }
 ```
@@ -272,8 +275,8 @@ steps:
     runner: agent
     input:
       agent: reviewer
-      input: "Review current context bundle"
-      context_bundle: ".wolf/context/context-bundle.json"
+      input: 'Review current context bundle'
+      context_bundle: '.wolf/context/context-bundle.json'
 ```
 
 Uses existing `step.input` field (not `with`). `context_bundle` is optional.
@@ -302,12 +305,12 @@ export interface AgentInvocationPlan {
 ```typescript
 class AgentRunner implements StepRunner {
   type = 'agent';
-  
+
   constructor(
     private registry: AgentRegistry,
     private router: ModelRouter
   ) {}
-  
+
   async run(step: StepDefinition, ctx: ExecutionContext): Promise<StepResult> {
     const agentId = step.input?.agent;
     if (!agentId || typeof agentId !== 'string') {
@@ -320,7 +323,7 @@ class AgentRunner implements StepRunner {
         },
       };
     }
-    
+
     const agent = this.registry.get(agentId);
     if (!agent) {
       return {
@@ -332,9 +335,9 @@ class AgentRunner implements StepRunner {
         },
       };
     }
-    
+
     const route = this.router.resolve(agent.model_route);
-    
+
     const contextBundle = step.input?.context_bundle as string | undefined;
     if (contextBundle) {
       const validation = validateContextBundlePath(contextBundle, ctx.config.state_dir);
@@ -349,7 +352,7 @@ class AgentRunner implements StepRunner {
         };
       }
     }
-    
+
     const plan: AgentInvocationPlan = {
       type: 'agent_invocation_plan',
       agent_id: agent.id,
@@ -361,10 +364,10 @@ class AgentRunner implements StepRunner {
       max_tokens: route.max_tokens,
       capabilities: agent.capabilities,
       tools: agent.tools,
-      task: step.input?.task as string || '',
+      task: (step.input?.task as string) || '',
       context_bundle: contextBundle,
     };
-    
+
     return {
       status: 'success',
       output: JSON.stringify(plan, null, 2),
@@ -376,6 +379,7 @@ class AgentRunner implements StepRunner {
 ### 4.4 Context Bundle Validation
 
 If `context_bundle` is provided, validation must:
+
 - Reject absolute paths (starting with `/`)
 - Reject parent traversal (`..`)
 - Resolve against project root (parent of `state_dir` or cwd)
@@ -383,17 +387,14 @@ If `context_bundle` is provided, validation must:
 - Check file exists at resolved path
 
 ```typescript
-function validateContextBundlePath(
-  path: string,
-  stateDir: string
-): { valid: boolean; reason?: string } {
+function validateContextBundlePath(path: string, stateDir: string): { valid: boolean; reason?: string } {
   if (path.startsWith('/')) {
     return { valid: false, reason: 'context_bundle must be a relative path' };
   }
   if (path.includes('..')) {
     return { valid: false, reason: 'context_bundle must not contain parent traversal' };
   }
-  
+
   const projectRoot = dirname(stateDir);
   const resolved = resolve(projectRoot, path);
   if (!resolved.startsWith(projectRoot)) {
@@ -402,20 +403,20 @@ function validateContextBundlePath(
   if (!existsSync(resolved)) {
     return { valid: false, reason: `context_bundle not found: ${path}` };
   }
-  
+
   return { valid: true };
 }
 ```
 
 ### 4.5 Failure Modes
 
-| Condition | Error Type |
-|-----------|-----------|
-| Missing or invalid `input.agent` | `AgentInputValidationError` |
-| Unknown agent id | `AgentNotFound` |
-| Unknown model route | `ModelRouteNotFound` |
-| Invalid `context_bundle` path | `ContextBundleValidationError` |
-| Missing `context_bundle` file | `ContextBundleValidationError` |
+| Condition                        | Error Type                     |
+| -------------------------------- | ------------------------------ |
+| Missing or invalid `input.agent` | `AgentInputValidationError`    |
+| Unknown agent id                 | `AgentNotFound`                |
+| Unknown model route              | `ModelRouteNotFound`           |
+| Invalid `context_bundle` path    | `ContextBundleValidationError` |
+| Missing `context_bundle` file    | `ContextBundleValidationError` |
 
 All failures return `StepResult` with `status: 'failure'` and typed error.
 
@@ -431,6 +432,7 @@ wolf agents list --json       # JSON output
 ```
 
 Text output:
+
 ```
 Agents (2):
   reviewer     Code Reviewer        route: default_coding
@@ -445,6 +447,7 @@ wolf agents inspect reviewer --json  # JSON output
 ```
 
 Text output:
+
 ```
 Agent: reviewer
   Name: Code Reviewer
@@ -462,13 +465,13 @@ Missing agent → exit code 1.
 
 ## 6. Integration Points
 
-| Component | Change | Details |
-|-----------|--------|---------|
-| **ProjectConfig** | Extend schema | Add `agents` and `models` fields |
-| **RunnerRegistry** | Register new runner | `AgentRunner` with type `'agent'` |
-| **Policy Engine** | No changes needed | `runner: agent` already matches via PolicyStepGuard |
-| **Workflow Engine** | No changes needed | Standard runner interface |
-| **Context Resolver** | No changes needed | AgentRunner references bundle path only |
+| Component            | Change              | Details                                             |
+| -------------------- | ------------------- | --------------------------------------------------- |
+| **ProjectConfig**    | Extend schema       | Add `agents` and `models` fields                    |
+| **RunnerRegistry**   | Register new runner | `AgentRunner` with type `'agent'`                   |
+| **Policy Engine**    | No changes needed   | `runner: agent` already matches via PolicyStepGuard |
+| **Workflow Engine**  | No changes needed   | Standard runner interface                           |
+| **Context Resolver** | No changes needed   | AgentRunner references bundle path only             |
 
 ---
 
@@ -541,6 +544,7 @@ Missing agent → exit code 1.
 MVP4 designs types so separate files can be added later without changing AgentRegistry consumers. AgentRegistry receives already-loaded definitions, not filesystem discovery.
 
 MVP5 will:
+
 - Introduce real model execution
 - Add provider SDK integrations
 - Support streaming and tool calling
