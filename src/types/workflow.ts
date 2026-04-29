@@ -38,7 +38,7 @@ export type Artifact = z.infer<typeof ArtifactSchema>;
 export const StepDefinitionSchema = z.object({
   id: z.string(),
   type: z.literal('builtin'),
-  runner: z.enum(['echo', 'shell', 'manual_gate']),
+  runner: z.enum(['echo', 'shell', 'manual_gate', 'agent']),
   name: z.string().optional(),
   description: z.string().optional(),
   input: z.record(z.unknown()).optional(),

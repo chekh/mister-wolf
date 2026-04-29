@@ -7,6 +7,9 @@ import { RunnerRegistry } from '../../workflow/runner-registry.js';
 import { EchoRunner } from '../../workflow/runners/echo.js';
 import { ShellRunner } from '../../workflow/runners/shell.js';
 import { ManualGateRunner } from '../../workflow/runners/manual-gate.js';
+import { AgentRunner } from '../../agent/runner.js';
+import { AgentRegistry } from '../../agent/registry.js';
+import { ModelRouter } from '../../agent/router.js';
 import { CaseStore } from '../../state/case-store.js';
 import { GateStore } from '../../state/gate-store.js';
 import { InProcessEventBus } from '../../kernel/event-bus.js';
@@ -27,6 +30,10 @@ export function createRunCommand(): Command {
       registry.register(new EchoRunner());
       registry.register(new ShellRunner());
       registry.register(new ManualGateRunner());
+
+      const agentRegistry = new AgentRegistry(projectConfig.agents);
+      const modelRouter = new ModelRouter(projectConfig.models.routes);
+      registry.register(new AgentRunner(agentRegistry, modelRouter));
 
       const caseStore = new CaseStore(stateDir);
       const gateStore = new GateStore(caseStore);
