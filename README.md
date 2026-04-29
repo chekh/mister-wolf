@@ -10,14 +10,14 @@
 
 ## Status
 
-| Milestone  | Status      | Description                                                                                                        |
-| ---------- | ----------- | ------------------------------------------------------------------------------------------------------------------ |
-| **MVP1A**  | ✅ Complete | Sequential workflow runner with YAML workflows, builtin runners (echo, shell, manual_gate), state persistence, CLI |
-| **MVP1B**  | ✅ Complete | Enhanced workflow engine with conditions, retry, timeout, artifacts, project config, cancel/validate commands      |
-| **MVP1C**  | ✅ Complete | Graph orchestration — DAG execution, parallel scheduling, transitive failure propagation                           |
-| **MVP2**   | 📋 Planned  | Context resolver — project file discovery, context bundle, case memory                                             |
-| **MVP3**   | 📋 Planned  | Governance layer — policy engine, tool risk model, approval rules                                                  |
-| **MVP4–5** | 📋 Planned  | Agent registry + model router                                                                                      |
+| Milestone  | Status         | Description                                                                                                        |
+| ---------- | -------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **MVP1A**  | ✅ Complete    | Sequential workflow runner with YAML workflows, builtin runners (echo, shell, manual_gate), state persistence, CLI |
+| **MVP1B**  | ✅ Complete    | Enhanced workflow engine with conditions, retry, timeout, artifacts, project config, cancel/validate commands      |
+| **MVP1C**  | ✅ Complete    | Graph orchestration — DAG execution, parallel scheduling, transitive failure propagation                           |
+| **MVP2**   | 🚧 In Progress | Context resolver — project file discovery, context bundle, case memory                                             |
+| **MVP3**   | 📋 Planned     | Governance layer — policy engine, tool risk model, approval rules                                                  |
+| **MVP4–5** | 📋 Planned     | Agent registry + model router                                                                                      |
 
 ## Quick Start
 
@@ -211,6 +211,10 @@ wolf reject <gate_id>
 
 # Event inspection
 wolf events <case_id> [--type <event_type>]
+
+# Context resolver
+wolf context scan [--scenario <id>] [--json]
+wolf context build [--scenario <id>] [--json]
 ```
 
 ### Exit Codes
@@ -239,6 +243,7 @@ Mr. Wolf
 │   └── Artifact Store # Output artifacts
 ├── Event Bus          # In-process pub/sub
 ├── Config System      # YAML loader + Zod validation
+├── Context Resolver   # Project file discovery, bundle builder, case memory
 └── SQLite Index       # Optional fast queries over file storage
 ```
 

@@ -1,4 +1,5 @@
-import { glob } from 'fast-glob';
+import fg from 'fast-glob';
+const { glob } = fg;
 import { createHash } from 'crypto';
 import { readFileSync, lstatSync, realpathSync } from 'fs';
 import { resolve, relative } from 'path';

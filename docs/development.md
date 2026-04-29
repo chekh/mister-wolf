@@ -107,6 +107,64 @@ docker compose run --rm shell
 
 The `shell` service mounts your local directory, so you can iterate without rebuilding the image.
 
+## Context Resolver
+
+The Context Resolver (MVP2) builds a structured context bundle from project files and case memory. It is used to provide agents with relevant project context.
+
+### Commands
+
+```bash
+# Dry-run scan — shows metadata without writing files
+node dist/cli/index.js context scan [--scenario <id>] [--json]
+
+# Full build — scans, resolves, and writes bundle + markdown
+node dist/cli/index.js context build [--scenario <id>] [--json]
+```
+
+### Pipeline
+
+1. **Scanner** — discovers project files using `include`/`exclude` globs from `wolf.yaml`
+2. **CaseMemoryReader** — reads historical case data from `.wolf/state/cases/`
+3. **Resolver** — classifies files into groups (files, docs, rules, configs) and applies scenario overrides
+4. **BundleBuilder** — assembles the final `ContextBundle` JSON structure
+5. **MdGenerator** — renders a human-readable markdown summary
+
+### Configuration
+
+Add a `context` section to `wolf.yaml`:
+
+```yaml
+context:
+  include:
+    - src/**/*
+    - tests/**/*
+    - docs/**/*.md
+    - README.md
+  exclude:
+    - node_modules/**
+    - dist/**
+    - .git/**
+  limits:
+    max_files: 100
+    max_bytes: 10485760
+    max_file_bytes: 1048576
+    max_cases: 10
+  scenarios:
+    - id: dev
+      match:
+        keywords: [develop, debug]
+      context:
+        include:
+          - src/**/*.ts
+        limits:
+          max_files: 50
+```
+
+### Output
+
+- `.wolf/context/context-bundle.json` — structured JSON bundle
+- `.wolf/context/context.md` — human-readable markdown summary
+
 ## CI
 
 GitHub Actions runs on every PR and push to `main` / `dev`:

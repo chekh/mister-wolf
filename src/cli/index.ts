@@ -6,6 +6,7 @@ import { createCasesCommand } from './commands/cases.js';
 import { createGatesCommand, createApproveCommand, createRejectCommand } from './commands/gates.js';
 import { createValidateCommand } from './commands/validate.js';
 import { createEventsCommand } from './commands/events.js';
+import { createContextCommand } from './commands/context.js';
 
 const program = new Command();
 
@@ -19,5 +20,6 @@ program.addCommand(createApproveCommand());
 program.addCommand(createRejectCommand());
 program.addCommand(createValidateCommand());
 program.addCommand(createEventsCommand());
+program.addCommand(createContextCommand());
 
 program.parse();
