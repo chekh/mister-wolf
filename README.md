@@ -16,7 +16,7 @@
 | **MVP1B**  | ✅ Complete | Enhanced workflow engine with conditions, retry, timeout, artifacts, project config, cancel/validate commands      |
 | **MVP1C**  | ✅ Complete | Graph orchestration — DAG execution, parallel scheduling, transitive failure propagation                           |
 | **MVP2**   | ✅ Complete | Context resolver — deterministic project file discovery, context bundle, case memory                               |
-| **MVP3**   | 📋 Planned  | Governance layer — policy engine, tool risk model, approval rules                                                  |
+| **MVP3**   | ✅ Complete | Policy engine — rule-based workflow preflight, step runtime guard, policy gates, risk levels, CLI                  |
 | **MVP4–5** | 📋 Planned  | Agent registry + model router                                                                                      |
 
 ## Quick Start

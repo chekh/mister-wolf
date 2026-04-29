@@ -369,4 +369,42 @@ steps:
 
     rmSync(tempDir, { recursive: true, force: true });
   });
+
+  it('should return exit 0 on ask decision', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'wolf-policy-'));
+
+    const config = `policy:
+  rules:
+    - id: ask_shell
+      match:
+        runner: shell
+      decision: ask
+      risk: medium
+      reason: Shell requires approval
+`;
+    const workflow = `id: ask_test
+version: "0.1.0"
+steps:
+  - id: run_shell
+    type: builtin
+    runner: shell
+    input:
+      command: echo hello
+`;
+
+    writeFileSync(join(tempDir, 'wolf.yaml'), config);
+    writeFileSync(join(tempDir, 'workflow.yaml'), workflow);
+    mkdirSync(join(tempDir, '.wolf', 'state'), { recursive: true });
+
+    const output = execSync(`node ${cliPath} policy check workflow.yaml`, {
+      cwd: tempDir,
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    });
+
+    expect(output).toContain('Policy check: ASK');
+    expect(output).toContain('Ask: 1');
+
+    rmSync(tempDir, { recursive: true, force: true });
+  });
 });
