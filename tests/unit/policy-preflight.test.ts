@@ -127,4 +127,21 @@ describe('PolicyPreflight', () => {
     expect(report.steps_denied).toBe(0);
     expect(report.decisions.every((d) => d.decision === 'allow')).toBe(true);
   });
+
+  it('should upgrade allow to ask via max_risk enforcement', () => {
+    const rules: PolicyRule[] = [
+      { id: 'r1', match: { runner: 'shell' }, decision: 'allow', risk: 'high', reason: 'Shell allowed' },
+    ];
+    const workflow = makeWorkflow([makeStep({ id: 's1', runner: 'shell' })]);
+    const config = makeConfig(rules, 'medium');
+
+    const report = preflight.evaluate(workflow, config);
+
+    expect(report.overall).toBe('ask');
+    expect(report.steps_allowed).toBe(0);
+    expect(report.steps_ask).toBe(1);
+    expect(report.steps_denied).toBe(0);
+    expect(report.decisions[0].decision).toBe('ask');
+    expect(report.decisions[0].risk).toBe('high');
+  });
 });
