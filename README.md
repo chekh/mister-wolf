@@ -212,6 +212,9 @@ wolf reject <gate_id>
 # Event inspection
 wolf events <case_id> [--type <event_type>]
 
+# Policy engine
+wolf policy check <workflow.yaml> [--json]
+
 # Context resolver
 wolf context scan [--scenario <id>] [--json]
 wolf context build [--scenario <id>] [--json]

@@ -165,6 +165,75 @@ context:
 - `.wolf/context/context-bundle.json` — structured JSON bundle
 - `.wolf/context/context.md` — human-readable markdown summary
 
+## Policy Engine
+
+The Policy Engine (MVP3) enforces governance rules over workflow execution. It evaluates each step against configurable policy rules and can allow, ask for approval, or deny execution.
+
+### Commands
+
+```bash
+# Check workflow against policy before running
+node dist/cli/index.js policy check <workflow.yaml>
+
+# Output report as JSON
+node dist/cli/index.js policy check <workflow.yaml> --json
+```
+
+### Behavior
+
+1. **Preflight check** — before a workflow runs, the policy engine evaluates every step against the configured rules. If any step is denied, the entire workflow is rejected before execution begins.
+2. **Step guard** — during execution, each step is evaluated again at runtime. This ensures policy decisions respect the current context.
+3. **Policy gates** — when a rule decides `ask`, a policy approval gate is created. The workflow pauses until the gate is approved (`wolf approve <gate_id>`) or rejected (`wolf reject <gate_id>`). Approving allows the step to execute; rejecting fails the step and the workflow.
+
+### Configuration
+
+Add a `policy` section to `wolf.yaml`:
+
+```yaml
+policy:
+  defaults:
+    enabled: true
+    autonomy: supervised
+    max_risk: high
+  rules:
+    - id: deny_shell
+      match:
+        runner: shell
+      decision: deny
+      reason: Shell runner is not allowed in this environment
+    - id: ask_destructive
+      match:
+        command_contains:
+          - rm
+          - drop
+      decision: ask
+      risk: high
+      reason: Destructive commands require manual approval
+    - id: allow_echo
+      match:
+        runner: echo
+      decision: allow
+      reason: Echo runner is safe
+```
+
+### Rule Matching
+
+Rules match steps by:
+
+- `runner` — the builtin runner name (`echo`, `shell`, `manual_gate`)
+- `step_id` — exact step identifier
+- `command_contains` — substring matches in the shell command input
+
+### Decision Precedence
+
+When multiple rules match, precedence is:
+
+1. **Deny** (highest priority)
+2. **Ask**
+3. **Allow**
+
+If no rules match, the default decision is **allow**. The `max_risk` setting can automatically upgrade an `allow` to `ask` when a step's risk exceeds the configured threshold.
+
 ## CI
 
 GitHub Actions runs on every PR and push to `main` / `dev`:
