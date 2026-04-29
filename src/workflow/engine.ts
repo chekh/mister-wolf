@@ -9,6 +9,8 @@ import { interpolateObject } from './template.js';
 import { evaluateCondition } from './conditions.js';
 import { buildGraph, getReadySteps, getTransitiveDependents, DependencyGraph } from './graph.js';
 import { ProjectConfig, ProjectConfigSchema } from '../config/project-config.js';
+import { PolicyPreflight } from '../policy/preflight.js';
+import { PolicyStepGuard } from '../policy/step-guard.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class WorkflowEngine {
@@ -23,6 +25,22 @@ export class WorkflowEngine {
   ) {}
 
   async execute(caseId: string, workflow: WorkflowDefinition): Promise<{ status: string }> {
+    const preflight = new PolicyPreflight();
+    const policyReport = preflight.evaluate(workflow, this.config.policy);
+
+    if (policyReport.overall === 'deny') {
+      await this.emitEvent({
+        type: 'policy.denied',
+        case_id: caseId,
+        workflow_id: workflow.id,
+        payload: {
+          reason: 'Workflow denied by policy',
+          decisions: policyReport.decisions.filter((d) => d.decision === 'deny'),
+        },
+      });
+      throw new Error(`Workflow denied by policy: ${workflow.id}`);
+    }
+
     this.caseStore.createCase(caseId, workflow, JSON.stringify(workflow));
 
     const state: ExecutionState = {
@@ -37,6 +55,7 @@ export class WorkflowEngine {
       step_statuses: {},
       variables: {},
       gates: {},
+      policy_decisions: policyReport.decisions,
       started_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -483,6 +502,27 @@ export class WorkflowEngine {
     state: ExecutionState,
     trackState: boolean = true
   ): Promise<StepResult> {
+    const guard = new PolicyStepGuard();
+    const decision = guard.evaluate(step, this.config.policy, state.workflow_id);
+
+    state.policy_decisions ??= [];
+    state.policy_decisions.push(decision);
+
+    if (decision.decision === 'deny') {
+      return {
+        status: 'failure',
+        error: {
+          type: 'PolicyViolation',
+          message: decision.reason,
+          retryable: false,
+        },
+      };
+    }
+
+    if (decision.decision === 'ask') {
+      return { status: 'gated' };
+    }
+
     const interpolatedInput = interpolateObject(step.input, state.variables);
 
     await this.emitEvent({
