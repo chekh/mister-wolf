@@ -11,6 +11,7 @@ import { buildGraph, getReadySteps, getTransitiveDependents, DependencyGraph } f
 import { ProjectConfig, ProjectConfigSchema } from '../config/project-config.js';
 import { PolicyPreflight } from '../policy/preflight.js';
 import { PolicyStepGuard } from '../policy/step-guard.js';
+import { PolicyDecision } from '../types/policy.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class WorkflowEngine {
@@ -497,6 +498,16 @@ export class WorkflowEngine {
     return { status: state.status };
   }
 
+  private persistPolicyDecision(caseId: string, decision: PolicyDecision): void {
+    const state = this.caseStore.readState(caseId)!;
+    state.policy_decisions ??= [];
+    // Deduplicate by decision id
+    if (!state.policy_decisions.some((d) => d.id === decision.id)) {
+      state.policy_decisions.push(decision);
+    }
+    this.caseStore.writeState(caseId, state);
+  }
+
   private async executeStep(
     step: StepDefinition,
     state: ExecutionState,
@@ -505,8 +516,7 @@ export class WorkflowEngine {
     const guard = new PolicyStepGuard();
     const decision = guard.evaluate(step, this.config.policy, state.workflow_id);
 
-    state.policy_decisions ??= [];
-    state.policy_decisions.push(decision);
+    this.persistPolicyDecision(state.case_id, decision);
 
     if (decision.decision === 'deny') {
       return {
