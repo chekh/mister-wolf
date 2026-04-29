@@ -8,6 +8,7 @@ import { createValidateCommand } from './commands/validate.js';
 import { createEventsCommand } from './commands/events.js';
 import { createContextCommand } from './commands/context.js';
 import { createPolicyCommand } from './commands/policy.js';
+import { createAgentsCommand } from './commands/agents.js';
 
 const program = new Command();
 
@@ -23,5 +24,6 @@ program.addCommand(createValidateCommand());
 program.addCommand(createEventsCommand());
 program.addCommand(createContextCommand());
 program.addCommand(createPolicyCommand());
+program.addCommand(createAgentsCommand());
 
 program.parse();
