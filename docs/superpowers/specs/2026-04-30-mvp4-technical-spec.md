@@ -24,7 +24,7 @@ Workflow step:
   runner: agent
   input:
     agent: reviewer
-    input: "Review current context bundle"
+    task: "Review current context bundle"
     context_bundle: ".wolf/context/context-bundle.json"
 
 Execution flow:
@@ -123,46 +123,68 @@ export const ModelRouteSchema = z.object({
   max_tokens: z.number().int().positive().optional(),
 });
 
-export const ModelsConfigSchema = z.object({
-  routes: z.record(ModelRouteSchema).default({}),
-});
-
-export const AgentsConfigSchema = z.object({
+export const ProjectConfigSchema = z.object({
+  state_dir: z.string().default('.wolf/state'),
+  index_path: z.string().optional(),
+  context: ContextConfigSchema.default({}),
+  policy: PolicyConfigSchema.default({}),
   agents: z.array(AgentDefinitionSchema).default([]),
+  models: z.object({
+    routes: z.record(ModelRouteSchema).default({}),
+  }).default({ routes: {} }),
+  defaults: z
+    .object({
+      timeout: z.string().default('30s'),
+      max_parallel: z.number().int().positive().optional(),
+      shell: z
+        .object({
+          max_output_size: z.string().default('1MB'),
+          blocked_commands: z
+            .array(z.string())
+            .default(['sudo', 'su', 'ssh', 'vim', 'nano', 'less', 'more', 'top', 'watch']),
+        })
+        .optional(),
+    })
+    .default({}),
 });
-```
 
-Add to `ProjectConfigSchema`:
-```typescript
-agents: AgentsConfigSchema.default({ agents: [] }),
-models: ModelsConfigSchema.default({ routes: {} }),
-```
+export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
 
-### 1.4 Cross-Reference Validation
+export function loadProjectConfig(path?: string): ProjectConfig {
+  const configPath = path || 'wolf.yaml';
 
-ProjectConfig validation must verify:
-1. Agent ids are unique
-2. Route ids are unique by object keys
-3. Every `agent.model_route` exists in `models.routes`
-4. Agent capabilities are non-empty strings
-5. Agent tools are optional and default to `[]`
+  if (!existsSync(configPath)) {
+    return ProjectConfigSchema.parse({});
+  }
 
-Cross-reference validation runs **after** Zod schema parse, using custom validation logic.
+  const content = readFileSync(configPath, 'utf-8');
+  const parsed = yaml.load(content);
 
----
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error(`Invalid config file: ${configPath}`);
+  }
 
-## 2. AgentRegistry
+  const config = ProjectConfigSchema.parse(parsed);
+  validateCrossReferences(config);
+  return config;
+}
 
-### 2.1 API
+function validateCrossReferences(config: ProjectConfig): void {
+  const routeIds = new Set(Object.keys(config.models.routes));
+  const agentIds = new Set<string>();
 
-```typescript
-export interface AgentDefinition {
-  id: string;
-  name?: string;
-  description?: string;
-  capabilities: string[];
-  model_route: string;
-  tools: string[];
+  for (const agent of config.agents) {
+    if (agentIds.has(agent.id)) {
+      throw new Error(`Duplicate agent id: ${agent.id}`);
+    }
+    agentIds.add(agent.id);
+
+    if (!routeIds.has(agent.model_route)) {
+      throw new Error(
+        `Agent '${agent.id}' references unknown model route '${agent.model_route}'`
+      );
+    }
+  }
 }
 
 export class AgentRegistry {
@@ -270,7 +292,7 @@ export interface AgentInvocationPlan {
   max_tokens?: number;
   capabilities: string[];
   tools: string[];
-  input: string;
+  task: string;
   context_bundle?: string;
 }
 ```
@@ -287,14 +309,45 @@ class AgentRunner implements StepRunner {
   ) {}
   
   async run(step: StepDefinition, ctx: ExecutionContext): Promise<StepResult> {
-    const agentId = step.input?.agent as string;
-    const agent = this.registry.require(agentId);
+    const agentId = step.input?.agent;
+    if (!agentId || typeof agentId !== 'string') {
+      return {
+        status: 'failure',
+        error: {
+          type: 'AgentInputValidationError',
+          message: 'Missing or invalid input.agent field',
+          retryable: false,
+        },
+      };
+    }
+    
+    const agent = this.registry.get(agentId);
+    if (!agent) {
+      return {
+        status: 'failure',
+        error: {
+          type: 'AgentNotFound',
+          message: `Agent not found: ${agentId}`,
+          retryable: false,
+        },
+      };
+    }
     
     const route = this.router.resolve(agent.model_route);
     
     const contextBundle = step.input?.context_bundle as string | undefined;
     if (contextBundle) {
-      validateContextBundlePath(contextBundle);
+      const validation = validateContextBundlePath(contextBundle, ctx.config.state_dir);
+      if (!validation.valid) {
+        return {
+          status: 'failure',
+          error: {
+            type: 'ContextBundleValidationError',
+            message: validation.reason,
+            retryable: false,
+          },
+        };
+      }
     }
     
     const plan: AgentInvocationPlan = {
@@ -308,7 +361,7 @@ class AgentRunner implements StepRunner {
       max_tokens: route.max_tokens,
       capabilities: agent.capabilities,
       tools: agent.tools,
-      input: step.input?.input as string || '',
+      task: step.input?.task as string || '',
       context_bundle: contextBundle,
     };
     
@@ -322,31 +375,47 @@ class AgentRunner implements StepRunner {
 
 ### 4.4 Context Bundle Validation
 
-If `context_bundle` is provided:
-- Must be relative path (not starting with `/`)
-- Must not contain parent traversal (`..`)
-- May check file existence (optional for MVP4)
+If `context_bundle` is provided, validation must:
+- Reject absolute paths (starting with `/`)
+- Reject parent traversal (`..`)
+- Resolve against project root (parent of `state_dir` or cwd)
+- Ensure resolved path stays inside project root
+- Check file exists at resolved path
 
-If validation fails:
 ```typescript
-return {
-  status: 'failure',
-  error: {
-    type: 'ContextBundleValidationError',
-    message: 'Invalid context_bundle path',
-    retryable: false,
-  },
-};
+function validateContextBundlePath(
+  path: string,
+  stateDir: string
+): { valid: boolean; reason?: string } {
+  if (path.startsWith('/')) {
+    return { valid: false, reason: 'context_bundle must be a relative path' };
+  }
+  if (path.includes('..')) {
+    return { valid: false, reason: 'context_bundle must not contain parent traversal' };
+  }
+  
+  const projectRoot = dirname(stateDir);
+  const resolved = resolve(projectRoot, path);
+  if (!resolved.startsWith(projectRoot)) {
+    return { valid: false, reason: 'context_bundle must be inside project root' };
+  }
+  if (!existsSync(resolved)) {
+    return { valid: false, reason: `context_bundle not found: ${path}` };
+  }
+  
+  return { valid: true };
+}
 ```
 
 ### 4.5 Failure Modes
 
-| Condition | Result |
-|-----------|--------|
-| Missing `agent` in step input | `AgentNotFound` error |
-| Unknown agent id | `AgentNotFound` error |
-| Unknown model route | `ModelRouteNotFound` error |
+| Condition | Error Type |
+|-----------|-----------|
+| Missing or invalid `input.agent` | `AgentInputValidationError` |
+| Unknown agent id | `AgentNotFound` |
+| Unknown model route | `ModelRouteNotFound` |
 | Invalid `context_bundle` path | `ContextBundleValidationError` |
+| Missing `context_bundle` file | `ContextBundleValidationError` |
 
 All failures return `StepResult` with `status: 'failure'` and typed error.
 
