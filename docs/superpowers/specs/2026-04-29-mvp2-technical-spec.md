@@ -86,11 +86,11 @@ wolf context build [--scenario <id>]
 
 | Component | Responsibility |
 |-----------|--------------|
-| `ContextScanner` | Walk project directory tree, apply include/exclude patterns, collect file metadata, read bounded text content |
-| `CaseMemoryReader` | Read `.wolf/state/cases/*/case.yaml` and `state.json`, collect safe metadata, tolerate missing/corrupt files |
-| `ContextResolver` | Classify scanned files into groups (`project_files`, `project_docs`, `project_rules`, `project_configs`), merge with case memory |
+| `ContextScanner` | Walk project directory tree, apply include/exclude patterns, collect file metadata, detect text vs binary, read bounded text content |
+| `CaseMemoryReader` | Read `.wolf/state/cases/*/case.yaml` and `state.json`, collect safe metadata, tolerate missing/corrupt files, sort by `updated_at desc` then `case_id asc`, derive `artifact_count` from `outputs/` |
+| `ContextResolver` | Classify scanned files into groups (`project_files`, `project_docs`, `project_rules`, `project_configs`), merge with case memory, apply scenario overrides |
 | `ContextBundleBuilder` | Serialize resolved context into `context-bundle.json` with deterministic ordering |
-| `ContextMdGenerator` | Render bundle into human-readable `context.md` with sections and summaries |
+| `ContextMdGenerator` | Render bundle into human-readable `context.md` with sections, summaries, and per-file renderer truncation |
 | `ContextCLI` | Parse CLI args, load config, orchestrate components, emit events, handle output modes |
 
 ---
@@ -115,8 +115,10 @@ interface ContextBundle {
     cases: ContextCase[];
     count: number;
     total_count: number;
+    metadata: CaseMemoryMetadata;
   };
   scan_metadata: ScanMetadata;
+  resolve_metadata: ResolveMetadata;
 }
 ```
 
@@ -128,7 +130,7 @@ interface ContextFile {
   kind: 'project_file' | 'project_doc' | 'project_rule' | 'project_config';
   size: number;              // Bytes
   extension: string;
-  hash: string;              // sha256 of content (or empty if binary)
+  hash: string;              // sha256 of raw file bytes for all files, including binary
   mtime: string;             // ISO 8601
   content_included: boolean;
   content_truncated: boolean;
@@ -148,6 +150,24 @@ interface ContextCase {
   artifact_count: number;
   completed_steps?: string[];
   failed_steps?: string[];
+}
+```
+
+### CaseMemoryMetadata
+
+```typescript
+interface CaseMemoryMetadata {
+  cases_read: number;
+  total_cases: number;
+  skipped_cases: string[];
+}
+```
+
+### ResolveMetadata
+
+```typescript
+interface ResolveMetadata {
+  groups: Record<string, number>;  // e.g. { project_files: 12, project_docs: 3 }
 }
 ```
 
@@ -191,9 +211,10 @@ context:
   limits:
     max_files: 100
     max_bytes: 10485760      # 10MB total
-    max_file_bytes: 1048576  # 1MB per file
+    max_file_bytes: 1048576  # 1MB per file (byte limit, not character limit)
     max_cases: 10
   include_content: true       # Default: include text content
+  markdown_render_chars: 1000  # Fixed per-file char limit for context.md renderer (MVP2)
   output:
     bundle: '.wolf/context/context-bundle.json'
     markdown: '.wolf/context/context.md'
@@ -247,7 +268,7 @@ context:
 
 - `include_content: true` (default): text files under `max_file_bytes` get content included.
 - Binary files: `content_included: false`, only metadata.
-- Files over `max_file_bytes`: `content_included: true`, `content_truncated: true`, content truncated to `max_file_bytes` chars.
+- Files over `max_file_bytes`: `content_included: true`, `content_truncated: true`. Content is read up to `max_file_bytes` bytes and decoded as UTF-8. Truncation is byte-based, not character-based.
 - Text detection: check if file contains null bytes; if yes → binary.
 
 ---
@@ -292,12 +313,13 @@ function matchScenario(scenarios: Scenario[], input: string): Scenario | null {
 
 | Guard | Implementation |
 |-------|----------------|
-| Path traversal | Reject paths with `..` or absolute paths; all paths relative to project root |
+| Path traversal | Config paths (include, exclude, output) must not be absolute and must not escape project root after normalization. Scanned file paths are always stored relative to project root. Any resolved candidate path outside project root is skipped. |
 | Symlink escape | Resolve symlinks; if resolved path is outside project root → skip |
-| Hidden dirs | Exclude dirs starting with `.` unless explicitly in include patterns |
+| Hidden dirs | Exclude dirs starting with `.` unless explicitly in include patterns. `.github` and `.wolf` paths are explicitly included by default config, except `.wolf/state/**` and `.wolf/context/**` which are always excluded. |
 | Self-ingestion | Exclude `.wolf/context/**` and `.wolf/state/**` by default |
 | Binary files | Detect null bytes; skip content, include metadata only |
 | Corrupt case files | Tolerate missing `case.yaml` or unreadable `state.json`; skip and report in metadata |
+| Case sorting | Cases sorted by `updated_at` descending, then `case_id` ascending; `max_cases` applied after sorting |
 
 ---
 
@@ -309,10 +331,24 @@ Scan files without persisting bundle. Useful for dry-run and inspection.
 
 ```bash
 wolf context scan
-# → prints summary table
+# → scans files (metadata only, no content)
+# → prints summary / JSON
+# → does not persist bundle
 
-wolf context scan --json
-# → outputs ScanResult as JSON to stdout, writes nothing to disk
+wolf context scan --scenario dev
+# → applies scenario overrides for dry-run preview
+# → metadata only, no content
+
+wolf context build
+# → scans files with content
+# → reads case memory
+# → resolves groups
+# → writes context-bundle.json
+# → writes context.md
+
+wolf context build --scenario dev
+# → applies scenario overrides
+# → exact scenario id match; exits with code 1 if id not found
 ```
 
 ### `wolf context build`
@@ -404,11 +440,12 @@ Scenario: dev
 
 ### Functional
 
-- [ ] `wolf context scan` lists discovered files without writing to disk.
-- [ ] `wolf context scan --json` outputs valid JSON and writes nothing.
+- [ ] `wolf context scan` lists discovered file metadata without writing to disk or reading content.
+- [ ] `wolf context scan --json` outputs valid JSON with metadata only (no file content) and writes nothing.
+- [ ] `wolf context scan --scenario dev` applies scenario overrides for dry-run preview.
 - [ ] `wolf context build` writes `context-bundle.json` and `context.md` to `.wolf/context/`.
 - [ ] `wolf context build --json` outputs JSON summary with written paths.
-- [ ] `wolf context build --scenario dev` applies scenario-specific include/exclude/limits.
+- [ ] `wolf context build --scenario dev` applies scenario-specific include/exclude/limits; exact id match, exits 1 if not found.
 - [ ] Bundle includes bounded text content for text files under `max_file_bytes`.
 - [ ] Binary files appear in bundle as metadata only (`content_included: false`).
 - [ ] Case memory includes metadata from local `.wolf/state/cases` without LLM summarization.
@@ -425,8 +462,8 @@ Scenario: dev
 
 ### Determinism & Reproducibility
 
-- [ ] Same project state produces identical bundle content (except `generated_at`).
-- [ ] File hash is SHA-256 of file content.
+- [ ] Same filesystem state produces deterministic bundle content (including mtimes; `generated_at` varies).
+- [ ] File hash is SHA-256 of raw file bytes for all files, including binary.
 - [ ] Files are sorted deterministically (alphabetically by path).
 
 ### Tests
@@ -447,9 +484,9 @@ Split into 5 PRs for incremental delivery:
 | PR | Focus | Components |
 |----|-------|------------|
 | **PR1** | Config, Schema, Types | `wolf.yaml` context section, Zod schemas, TypeScript types, config loader updates |
-| **PR2** | Context Scanner | `ContextScanner`, glob matching, guards, limits, file classification |
-| **PR3** | Case Memory Reader | `CaseMemoryReader`, case metadata extraction, corrupt file tolerance |
-| **PR4** | Resolver, Bundle, Markdown | `ContextResolver`, `ContextBundleBuilder`, `ContextMdGenerator`, scenario merge |
+| **PR2** | Context Scanner | `ContextScanner`, glob matching, guards, limits, text/binary detection, metadata/content collection |
+| **PR3** | Case Memory Reader | `CaseMemoryReader`, case metadata extraction, corrupt file tolerance, sorting by `updated_at desc` |
+| **PR4** | Resolver, Bundle, Markdown | `ContextResolver` (classification + scenario merge), `ContextBundleBuilder`, `ContextMdGenerator` |
 | **PR5** | CLI, Events, Tests, Docs | `wolf context` commands, event emission, integration tests, README/docs updates |
 
 ---
