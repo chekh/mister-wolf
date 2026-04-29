@@ -1,4 +1,5 @@
 import { WorkflowDefinition, WorkflowDefinitionSchema } from '../types/workflow.js';
+import { validateGraph } from '../workflow/graph.js';
 
 export interface ValidationResult {
   success: boolean;
@@ -35,18 +36,25 @@ export function validateWorkflow(workflow: unknown): ValidationResult {
     }
   }
   
-  const stepIndexMap = new Map<string, number>();
-  validated.steps.forEach((step, idx) => stepIndexMap.set(step.id, idx));
-  
-  for (let i = 0; i < validated.steps.length; i++) {
-    const step = validated.steps[i];
-    if (step.depends_on) {
-      for (const depId of step.depends_on) {
-        const depIndex = stepIndexMap.get(depId);
-        if (depIndex === undefined) {
-          errors.push(`Step ${step.id} depends_on unknown step: ${depId}`);
-        } else if (depIndex >= i) {
-          errors.push(`Step ${step.id} depends_on future step: ${depId}`);
+  if (validated.execution?.mode === 'graph') {
+    const graphResult = validateGraph(validated);
+    if (!graphResult.success) {
+      errors.push(...(graphResult.errors || []));
+    }
+  } else {
+    const stepIndexMap = new Map<string, number>();
+    validated.steps.forEach((step, idx) => stepIndexMap.set(step.id, idx));
+    
+    for (let i = 0; i < validated.steps.length; i++) {
+      const step = validated.steps[i];
+      if (step.depends_on) {
+        for (const depId of step.depends_on) {
+          const depIndex = stepIndexMap.get(depId);
+          if (depIndex === undefined) {
+            errors.push(`Step ${step.id} depends_on unknown step: ${depId}`);
+          } else if (depIndex >= i) {
+            errors.push(`Step ${step.id} depends_on future step: ${depId}`);
+          }
         }
       }
     }
