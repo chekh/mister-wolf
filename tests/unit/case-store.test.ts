@@ -36,4 +36,14 @@ describe('CaseStore', () => {
     expect(existsSync(artifactPath)).toBe(true);
     expect(readFileSync(artifactPath, 'utf-8')).toBe('artifact content');
   });
+
+  it('should reject path traversal in artifact path', () => {
+    store.createCase('case_123', { id: 'w', version: '0.1.0', steps: [] }, 'r');
+    expect(() => store.writeArtifact('case_123', 'step1', '../evil.txt', 'x')).toThrow('Invalid artifact path');
+  });
+
+  it('should reject absolute path in artifact path', () => {
+    store.createCase('case_123', { id: 'w', version: '0.1.0', steps: [] }, 'r');
+    expect(() => store.writeArtifact('case_123', 'step1', '/tmp/evil.txt', 'x')).toThrow('Invalid artifact path');
+  });
 });

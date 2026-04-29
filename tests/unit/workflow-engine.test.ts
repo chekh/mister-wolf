@@ -277,4 +277,49 @@ describe('WorkflowEngine graph mode', () => {
     await customEngine.execute('parallel_case', workflow);
     expect(maxConcurrent).toBeLessThanOrEqual(2);
   });
+
+  it('should preserve all variables and statuses under parallel execution', async () => {
+    class VariableRunner {
+      type = 'var_runner';
+      async run(step: any): Promise<{ status: string; output: string }> {
+        const value = (step.input?.value as string) || '';
+        return { status: 'success', output: value };
+      }
+    }
+
+    const registry = new RunnerRegistry();
+    registry.register(new VariableRunner());
+    const caseStore = new CaseStore(tempDir);
+    const gateStore = new GateStore(caseStore);
+    const bus = new InProcessEventBus();
+    const customEngine = new WorkflowEngine(registry, caseStore, gateStore, bus);
+
+    const workflow: WorkflowDefinition = {
+      id: 'parallel_vars',
+      version: '0.1.0',
+      execution: { mode: 'graph', max_parallel: 3 },
+      steps: [
+        { id: 'a', type: 'builtin', runner: 'var_runner', input: { value: 'alpha' }, output: 'out_a' },
+        { id: 'b', type: 'builtin', runner: 'var_runner', input: { value: 'beta' }, output: 'out_b' },
+        { id: 'c', type: 'builtin', runner: 'var_runner', input: { value: 'gamma' }, output: 'out_c' },
+        { id: 'combine', type: 'builtin', runner: 'var_runner', input: { value: '{{ out_a }}-{{ out_b }}-{{ out_c }}' }, depends_on: ['a', 'b', 'c'] },
+      ],
+    };
+
+    const result = await customEngine.execute('vars_case', workflow);
+    expect(result.status).toBe('completed');
+
+    const state = customEngine.getState('vars_case');
+    expect(state?.variables.out_a).toBe('alpha');
+    expect(state?.variables.out_b).toBe('beta');
+    expect(state?.variables.out_c).toBe('gamma');
+    expect(state?.step_statuses['a']).toBe('success');
+    expect(state?.step_statuses['b']).toBe('success');
+    expect(state?.step_statuses['c']).toBe('success');
+    expect(state?.step_statuses['combine']).toBe('success');
+    expect(state?.completed_steps).toContain('a');
+    expect(state?.completed_steps).toContain('b');
+    expect(state?.completed_steps).toContain('c');
+    expect(state?.completed_steps).toContain('combine');
+  });
 });
