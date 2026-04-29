@@ -11,6 +11,7 @@ import { buildGraph, getReadySteps, getTransitiveDependents, DependencyGraph } f
 import { ProjectConfig, ProjectConfigSchema } from '../config/project-config.js';
 import { PolicyPreflight } from '../policy/preflight.js';
 import { PolicyStepGuard } from '../policy/step-guard.js';
+import { PolicyGateAdapter } from '../policy/gate-adapter.js';
 import { PolicyDecision } from '../types/policy.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -513,6 +514,11 @@ export class WorkflowEngine {
     state: ExecutionState,
     trackState: boolean = true
   ): Promise<StepResult> {
+    const gateAdapter = new PolicyGateAdapter(this.gateStore);
+    if (gateAdapter.isPolicyGateApproved(state.case_id, step.id)) {
+      return this.executeStepWithRetry(step, state, trackState);
+    }
+
     const guard = new PolicyStepGuard();
     const decision = guard.evaluate(step, this.config.policy, state.workflow_id);
 
@@ -529,11 +535,12 @@ export class WorkflowEngine {
       };
     }
 
+    const interpolatedInput = interpolateObject(step.input, state.variables);
+
     if (decision.decision === 'ask') {
+      gateAdapter.createPolicyGate(state.case_id, step.id, decision, interpolatedInput);
       return { status: 'gated' };
     }
-
-    const interpolatedInput = interpolateObject(step.input, state.variables);
 
     await this.emitEvent({
       type: 'step.started',

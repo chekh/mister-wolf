@@ -24,6 +24,8 @@ export const GateStateSchema = z.object({
   requested_at: z.string(),
   responded_at: z.string().optional(),
   responded_by: z.string().optional(),
+  type: z.string().default('manual'),
+  payload: z.record(z.unknown()).optional(),
 });
 
 export type GateState = z.infer<typeof GateStateSchema>;

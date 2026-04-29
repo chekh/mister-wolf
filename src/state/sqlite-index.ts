@@ -25,7 +25,9 @@ export class SQLiteIndex {
         step_id TEXT NOT NULL,
         status TEXT NOT NULL,
         requested_at TEXT NOT NULL,
-        responded_at TEXT
+        responded_at TEXT,
+        type TEXT,
+        payload TEXT
       );
 
       CREATE TABLE IF NOT EXISTS events_index (
@@ -60,12 +62,28 @@ export class SQLiteIndex {
     return this.db.prepare('SELECT id, workflow_id, status FROM cases').all() as any;
   }
 
-  insertGate(data: { id: string; case_id: string; step_id: string; status: string; requested_at: string }): void {
+  insertGate(data: {
+    id: string;
+    case_id: string;
+    step_id: string;
+    status: string;
+    requested_at: string;
+    type?: string;
+    payload?: string;
+  }): void {
     const stmt = this.db.prepare(`
-      INSERT OR REPLACE INTO gates (id, case_id, step_id, status, requested_at)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO gates (id, case_id, step_id, status, requested_at, type, payload)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
-    stmt.run(data.id, data.case_id, data.step_id, data.status, data.requested_at);
+    stmt.run(
+      data.id,
+      data.case_id,
+      data.step_id,
+      data.status,
+      data.requested_at,
+      data.type ?? null,
+      data.payload ?? null
+    );
   }
 
   updateGate(id: string, status: string, responded_at: string): void {

@@ -8,15 +8,22 @@ export class GateStore {
     private index?: SQLiteIndex
   ) {}
 
-  createGate(caseId: string, stepId: string): string {
+  createGate(caseId: string, stepId: string, type?: string, payload?: Record<string, unknown>): string {
     const gateId = `gate_${caseId}_${stepId}`;
     const state = this.caseStore.readState(caseId);
     if (!state) throw new Error(`Case not found: ${caseId}`);
+
+    // If gate already exists, don't overwrite
+    if (state.gates[gateId]) {
+      return gateId;
+    }
 
     const gate: GateState = {
       step_id: stepId,
       status: 'pending',
       requested_at: new Date().toISOString(),
+      type: type ?? 'manual',
+      payload,
     };
 
     state.gates[gateId] = gate;
@@ -28,6 +35,8 @@ export class GateStore {
       step_id: stepId,
       status: gate.status,
       requested_at: gate.requested_at,
+      type: gate.type,
+      payload: gate.payload ? JSON.stringify(gate.payload) : undefined,
     });
 
     return gateId;
