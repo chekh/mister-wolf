@@ -14,7 +14,7 @@
 |-----------|--------|-------------|
 | **MVP1A** | ✅ Complete | Sequential workflow runner with YAML workflows, builtin runners (echo, shell, manual_gate), state persistence, CLI |
 | **MVP1B** | ✅ Complete | Enhanced workflow engine with conditions, retry, timeout, artifacts, project config, cancel/validate commands |
-| **MVP1C** | 🔄 Planned | Graph orchestration — dependency graph, parallel branches, fallback paths, subworkflow |
+| **MVP1C** | ✅ Complete | Graph orchestration — DAG execution, parallel scheduling, transitive failure propagation |
 | **MVP2** | 📋 Planned | Context resolver — project file discovery, context bundle, case memory |
 | **MVP3** | 📋 Planned | Governance layer — policy engine, tool risk model, approval rules |
 | **MVP4–5** | 📋 Planned | Agent registry + model router |
@@ -134,6 +134,41 @@ steps:
 | `not_equals` | String inequality | `{ var: foo, not_equals: "bar" }` |
 | `contains` | Substring match | `{ var: foo, contains: "err" }` |
 
+### Graph Mode (MVP1C)
+
+Run steps in parallel using a dependency graph:
+
+```yaml
+execution:
+  mode: graph
+  max_parallel: 3
+
+steps:
+  - id: fetch_a
+    type: builtin
+    runner: echo
+    input:
+      message: "Fetching A"
+
+  - id: fetch_b
+    type: builtin
+    runner: echo
+    input:
+      message: "Fetching B"
+
+  - id: process
+    type: builtin
+    runner: echo
+    depends_on: [fetch_a, fetch_b]
+    input:
+      message: "Processing results"
+```
+
+- Steps with no `depends_on` run in parallel (up to `max_parallel`)
+- Steps wait for all dependencies to succeed
+- Fail-fast: if a step fails, running steps finish but no new steps start
+- Transitive dependents are automatically skipped on failure
+
 ### Project Configuration (`wolf.yaml`)
 
 Create `wolf.yaml` in your project root:
@@ -216,6 +251,7 @@ See [`examples/`](./examples/) directory:
 - [`retry-and-conditions.yaml`](./examples/retry-and-conditions.yaml) — Conditions, retry, and artifacts (MVP1B)
 - [`shell-error.yaml`](./examples/shell-error.yaml) — Error handling example
 - [`duplicate-output.yaml`](./examples/duplicate-output.yaml) — Validation error example
+- [`graph-demo.yaml`](./examples/graph-demo.yaml) — Parallel execution with dependency graph (MVP1C)
 
 ## Development
 
