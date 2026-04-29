@@ -63,7 +63,13 @@ describe('WorkflowEngine retry', () => {
       id: 'retry_test',
       version: '0.1.0',
       steps: [
-        { id: 's1', type: 'builtin', runner: 'echo', input: { message: 'test' }, retry: { max_attempts: 3, delay: '100ms', backoff: 'fixed' } },
+        {
+          id: 's1',
+          type: 'builtin',
+          runner: 'echo',
+          input: { message: 'test' },
+          retry: { max_attempts: 3, delay: '100ms', backoff: 'fixed' },
+        },
       ],
     };
 
@@ -89,7 +95,13 @@ describe('WorkflowEngine conditions', () => {
       version: '0.1.0',
       steps: [
         { id: 's1', type: 'builtin', runner: 'echo', input: { message: 'hello' }, output: 'greeting' },
-        { id: 's2', type: 'builtin', runner: 'echo', when: { var: 'greeting', equals: 'wrong' }, input: { message: 'should not run' } },
+        {
+          id: 's2',
+          type: 'builtin',
+          runner: 'echo',
+          when: { var: 'greeting', equals: 'wrong' },
+          input: { message: 'should not run' },
+        },
         { id: 's3', type: 'builtin', runner: 'echo', input: { message: 'done' } },
       ],
     };
@@ -302,7 +314,13 @@ describe('WorkflowEngine graph mode', () => {
         { id: 'a', type: 'builtin', runner: 'var_runner', input: { value: 'alpha' }, output: 'out_a' },
         { id: 'b', type: 'builtin', runner: 'var_runner', input: { value: 'beta' }, output: 'out_b' },
         { id: 'c', type: 'builtin', runner: 'var_runner', input: { value: 'gamma' }, output: 'out_c' },
-        { id: 'combine', type: 'builtin', runner: 'var_runner', input: { value: '{{ out_a }}-{{ out_b }}-{{ out_c }}' }, depends_on: ['a', 'b', 'c'] },
+        {
+          id: 'combine',
+          type: 'builtin',
+          runner: 'var_runner',
+          input: { value: '{{ out_a }}-{{ out_b }}-{{ out_c }}' },
+          depends_on: ['a', 'b', 'c'],
+        },
       ],
     };
 

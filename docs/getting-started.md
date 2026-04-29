@@ -32,14 +32,14 @@ Create a file named `hello.yaml`:
 
 ```yaml
 id: hello
-version: "0.1.0"
+version: '0.1.0'
 
 steps:
   - id: greet
     type: builtin
     runner: echo
     input:
-      message: "Hello, World!"
+      message: 'Hello, World!'
 ```
 
 Validate and run:
@@ -68,14 +68,14 @@ steps:
     type: builtin
     runner: echo
     input:
-      message: "Alice"
+      message: 'Alice'
     output: username
 
   - id: greet_user
     type: builtin
     runner: echo
     input:
-      message: "Hello, {{ variables.username }}!"
+      message: 'Hello, {{ variables.username }}!'
 ```
 
 ### Template Interpolation
@@ -84,8 +84,8 @@ Use `{{ variables.name }}` in string values to reference variables:
 
 ```yaml
 input:
-  message: "Processing {{ variables.filename }}..."
-  command: "wc -l {{ variables.filepath }}"
+  message: 'Processing {{ variables.filename }}...'
+  command: 'wc -l {{ variables.filepath }}'
 ```
 
 ## Working with Cases
@@ -137,13 +137,13 @@ steps:
     type: builtin
     runner: manual_gate
     input:
-      message: "Approve deployment to production?"
+      message: 'Approve deployment to production?'
 
   - id: deploy
     type: builtin
     runner: shell
     input:
-      command: "./deploy.sh"
+      command: './deploy.sh'
 ```
 
 Run the workflow, then approve:
@@ -160,12 +160,12 @@ wolf resume case_xyz
 Create `wolf.yaml` in your project root for defaults:
 
 ```yaml
-state_dir: ".wolf/state"
+state_dir: '.wolf/state'
 
 defaults:
-  timeout: "30s"
+  timeout: '30s'
   shell:
-    max_output_size: "1MB"
+    max_output_size: '1MB'
 ```
 
 ## Graph Mode
@@ -174,7 +174,7 @@ Run steps in parallel by defining a dependency graph:
 
 ```yaml
 id: parallel_demo
-version: "0.1.0"
+version: '0.1.0'
 execution:
   mode: graph
   max_parallel: 2
@@ -184,20 +184,20 @@ steps:
     type: builtin
     runner: echo
     input:
-      message: "Task A"
+      message: 'Task A'
 
   - id: task_b
     type: builtin
     runner: echo
     input:
-      message: "Task B"
+      message: 'Task B'
 
   - id: combine
     type: builtin
     runner: echo
     depends_on: [task_a, task_b]
     input:
-      message: "Combined result"
+      message: 'Combined result'
 ```
 
 - `mode: graph` enables DAG-based scheduling

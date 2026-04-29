@@ -323,7 +323,7 @@ policies:
         mode: autonomous
 
       - when:
-          files.match: "**/migrations/**"
+          files.match: '**/migrations/**'
         require_approval: true
 
       - when:
@@ -578,7 +578,7 @@ remote A2A agents
 tools:
   run_tests:
     source: script
-    command: "npm test"
+    command: 'npm test'
     risk: low
 
   gmail.search:
@@ -742,7 +742,7 @@ human signoff
 gates:
   approve_plan:
     type: user_approval
-    message: "Подтвердить план реализации?"
+    message: 'Подтвердить план реализации?'
 
   tests_pass:
     type: command_success
@@ -867,7 +867,7 @@ hooks:
   - on: tool.before
     when:
       tool.name: edit_file
-      files.match: "**/migrations/**"
+      files.match: '**/migrations/**'
     run: require_migration_approval
 
   - on: task.completed
@@ -919,7 +919,7 @@ jsonschema
 when:
   and:
     - scenario: feature_implementation
-    - files.match: "**/auth/**"
+    - files.match: '**/auth/**'
     - risk.gte: medium
 ```
 

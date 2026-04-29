@@ -8,25 +8,29 @@ export const RetryPolicySchema = z.object({
 
 export type RetryPolicy = z.infer<typeof RetryPolicySchema>;
 
-export const ConditionSchema = z.object({
-  var: z.string(),
-  exists: z.boolean().optional(),
-  equals: z.string().optional(),
-  not_equals: z.string().optional(),
-  contains: z.string().optional(),
-}).refine((data) => {
-  const operators = ['exists', 'equals', 'not_equals', 'contains'];
-  const provided = operators.filter((op) => data[op as keyof typeof data] !== undefined);
-  return provided.length === 1;
-}, { message: 'Condition must have exactly one operator' });
+export const ConditionSchema = z
+  .object({
+    var: z.string(),
+    exists: z.boolean().optional(),
+    equals: z.string().optional(),
+    not_equals: z.string().optional(),
+    contains: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      const operators = ['exists', 'equals', 'not_equals', 'contains'];
+      const provided = operators.filter((op) => data[op as keyof typeof data] !== undefined);
+      return provided.length === 1;
+    },
+    { message: 'Condition must have exactly one operator' }
+  );
 
 export type Condition = z.infer<typeof ConditionSchema>;
 
 export const ArtifactSchema = z.object({
-  path: z.string().refine(
-    (path) => !path.startsWith('/') && !path.includes('..'),
-    { message: 'Artifact path must be relative and not contain parent traversal' }
-  ),
+  path: z.string().refine((path) => !path.startsWith('/') && !path.includes('..'), {
+    message: 'Artifact path must be relative and not contain parent traversal',
+  }),
 });
 
 export type Artifact = z.infer<typeof ArtifactSchema>;

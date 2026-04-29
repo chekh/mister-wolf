@@ -37,7 +37,9 @@ export const ExecutionStateSchema = z.object({
   failed_steps: z.array(z.string()).default([]),
   skipped_steps: z.array(z.string()).default([]),
   step_results: z.record(StepResultSchema).default({}),
-  step_statuses: z.record(z.enum(['pending', 'ready', 'running', 'success', 'failure', 'skipped', 'gated', 'retrying', 'blocked'])).default({}),
+  step_statuses: z
+    .record(z.enum(['pending', 'ready', 'running', 'success', 'failure', 'skipped', 'gated', 'retrying', 'blocked']))
+    .default({}),
   variables: z.record(z.unknown()).default({}),
   gates: z.record(GateStateSchema).default({}),
   started_at: z.string(),

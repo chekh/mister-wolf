@@ -10,14 +10,14 @@
 
 ## Status
 
-| Milestone | Status | Description |
-|-----------|--------|-------------|
-| **MVP1A** | ✅ Complete | Sequential workflow runner with YAML workflows, builtin runners (echo, shell, manual_gate), state persistence, CLI |
-| **MVP1B** | ✅ Complete | Enhanced workflow engine with conditions, retry, timeout, artifacts, project config, cancel/validate commands |
-| **MVP1C** | ✅ Complete | Graph orchestration — DAG execution, parallel scheduling, transitive failure propagation |
-| **MVP2** | 📋 Planned | Context resolver — project file discovery, context bundle, case memory |
-| **MVP3** | 📋 Planned | Governance layer — policy engine, tool risk model, approval rules |
-| **MVP4–5** | 📋 Planned | Agent registry + model router |
+| Milestone  | Status      | Description                                                                                                        |
+| ---------- | ----------- | ------------------------------------------------------------------------------------------------------------------ |
+| **MVP1A**  | ✅ Complete | Sequential workflow runner with YAML workflows, builtin runners (echo, shell, manual_gate), state persistence, CLI |
+| **MVP1B**  | ✅ Complete | Enhanced workflow engine with conditions, retry, timeout, artifacts, project config, cancel/validate commands      |
+| **MVP1C**  | ✅ Complete | Graph orchestration — DAG execution, parallel scheduling, transitive failure propagation                           |
+| **MVP2**   | 📋 Planned  | Context resolver — project file discovery, context bundle, case memory                                             |
+| **MVP3**   | 📋 Planned  | Governance layer — policy engine, tool risk model, approval rules                                                  |
+| **MVP4–5** | 📋 Planned  | Agent registry + model router                                                                                      |
 
 ## Quick Start
 
@@ -57,21 +57,21 @@ Create `my-workflow.yaml`:
 
 ```yaml
 id: my_first_workflow
-version: "0.1.0"
-name: "My First Workflow"
+version: '0.1.0'
+name: 'My First Workflow'
 
 steps:
   - id: greet
     type: builtin
     runner: echo
     input:
-      message: "Hello from Mr. Wolf!"
+      message: 'Hello from Mr. Wolf!'
 
   - id: check_system
     type: builtin
     runner: shell
     input:
-      command: "uname -a"
+      command: 'uname -a'
     output: system_info
 
   - id: conditional_step
@@ -79,9 +79,9 @@ steps:
     runner: echo
     when:
       var: system_info
-      contains: "Darwin"
+      contains: 'Darwin'
     input:
-      message: "Running on macOS"
+      message: 'Running on macOS'
 ```
 
 Run it:
@@ -94,45 +94,45 @@ node dist/cli/index.js run my-workflow.yaml
 
 ### Built-in Runners
 
-| Runner | Description | Example Input |
-|--------|-------------|---------------|
-| `echo` | Outputs a message | `{ message: "hello" }` |
-| `shell` | Executes a shell command | `{ command: "ls -la" }` |
+| Runner        | Description               | Example Input             |
+| ------------- | ------------------------- | ------------------------- |
+| `echo`        | Outputs a message         | `{ message: "hello" }`    |
+| `shell`       | Executes a shell command  | `{ command: "ls -la" }`   |
 | `manual_gate` | Pauses for human approval | `{ message: "Approve?" }` |
 
 ### Step Properties
 
 ```yaml
 steps:
-  - id: unique_step_id          # Required
-    type: builtin               # Required
-    runner: echo | shell | manual_gate  # Required
-    name: "Human-readable name" # Optional
-    description: "What this step does"  # Optional
-    input:                       # Optional, runner-specific
-      message: "Hello"
-    output: variable_name        # Optional, saves result to variables
-    depends_on: [step_a]         # Optional (MVP1C+)
-    timeout: "30s"              # Optional, step timeout
-    retry:                       # Optional, retry policy
+  - id: unique_step_id # Required
+    type: builtin # Required
+    runner: echo | shell | manual_gate # Required
+    name: 'Human-readable name' # Optional
+    description: 'What this step does' # Optional
+    input: # Optional, runner-specific
+      message: 'Hello'
+    output: variable_name # Optional, saves result to variables
+    depends_on: [step_a] # Optional (MVP1C+)
+    timeout: '30s' # Optional, step timeout
+    retry: # Optional, retry policy
       max_attempts: 3
-      delay: "1s"
+      delay: '1s'
       backoff: fixed | linear
-    when:                        # Optional, condition
+    when: # Optional, condition
       var: variable_name
-      equals: "expected_value"
-    artifact:                    # Optional, save output as artifact
-      path: "outputs/result.txt"
+      equals: 'expected_value'
+    artifact: # Optional, save output as artifact
+      path: 'outputs/result.txt'
 ```
 
 ### Condition Operators
 
-| Operator | Description | Example |
-|----------|-------------|---------|
-| `exists` | Variable is defined | `{ var: foo, exists: true }` |
-| `equals` | String equality | `{ var: foo, equals: "bar" }` |
-| `not_equals` | String inequality | `{ var: foo, not_equals: "bar" }` |
-| `contains` | Substring match | `{ var: foo, contains: "err" }` |
+| Operator     | Description         | Example                           |
+| ------------ | ------------------- | --------------------------------- |
+| `exists`     | Variable is defined | `{ var: foo, exists: true }`      |
+| `equals`     | String equality     | `{ var: foo, equals: "bar" }`     |
+| `not_equals` | String inequality   | `{ var: foo, not_equals: "bar" }` |
+| `contains`   | Substring match     | `{ var: foo, contains: "err" }`   |
 
 ### Graph Mode (MVP1C)
 
@@ -148,20 +148,20 @@ steps:
     type: builtin
     runner: echo
     input:
-      message: "Fetching A"
+      message: 'Fetching A'
 
   - id: fetch_b
     type: builtin
     runner: echo
     input:
-      message: "Fetching B"
+      message: 'Fetching B'
 
   - id: process
     type: builtin
     runner: echo
     depends_on: [fetch_a, fetch_b]
     input:
-      message: "Processing results"
+      message: 'Processing results'
 ```
 
 - Steps with no `depends_on` run in parallel (up to `max_parallel`)
@@ -174,12 +174,12 @@ steps:
 Create `wolf.yaml` in your project root:
 
 ```yaml
-state_dir: ".wolf/state"
+state_dir: '.wolf/state'
 
 defaults:
-  timeout: "30s"
+  timeout: '30s'
   shell:
-    max_output_size: "1MB"
+    max_output_size: '1MB'
     blocked_commands:
       - sudo
       - su
@@ -215,13 +215,13 @@ wolf events <case_id> [--type <event_type>]
 
 ### Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success / completed |
-| 1 | Error (validation, runtime) |
-| 2 | Paused (gate) |
-| 3 | Failed |
-| 4 | Cancelled |
+| Code | Meaning                     |
+| ---- | --------------------------- |
+| 0    | Success / completed         |
+| 1    | Error (validation, runtime) |
+| 2    | Paused (gate)               |
+| 3    | Failed                      |
+| 4    | Cancelled                   |
 
 ## Architecture
 
@@ -255,22 +255,53 @@ See [`examples/`](./examples/) directory:
 
 ## Development
 
+### Local Node.js Workflow (Primary)
+
 ```bash
-# Run tests
-npm run test:run
+# Install dependencies
+npm install
 
-# Run tests in watch mode
-npm run test
+# Run all checks (format, type check, tests, build)
+npm run check
 
-# Type check
-npm run lint
-
-# Build
-npm run build
-
-# Watch mode build
-npm run dev
+# Individual commands
+npm run format       # Format code with Prettier
+npm run lint         # Type check with TypeScript
+npm run test:run     # Run tests once
+npm run test         # Run tests in watch mode
+npm run build        # Compile TypeScript
+npm run dev          # Watch mode build
 ```
+
+### Docker Workflow (Optional)
+
+Docker provides a reproducible environment for testing, CI, and safer shell-runner experiments. It is **not required** for normal development.
+
+```bash
+# Build and run all checks in Docker
+docker build --target test -t mister-wolf:test .
+docker run --rm mister-wolf:test
+
+# Build runtime image
+docker build --target runtime -t mister-wolf:latest .
+
+# Run CLI from runtime image
+docker run --rm mister-wolf:latest run examples/hello-world.yaml
+
+# Docker Compose for development
+docker compose run --rm wolf   # Run all checks
+docker compose run --rm shell  # Interactive shell in container
+```
+
+### CI
+
+All PRs and pushes to `main` / `dev` run:
+
+- Format check (`prettier --check`)
+- Type check (`tsc --noEmit`)
+- Tests (`vitest run`)
+- Build (`tsc`)
+- Docker build and test
 
 ## Documentation
 
@@ -287,4 +318,4 @@ MIT © 2026 chekh
 
 ---
 
-*Mr. Wolf solves problems. One workflow at a time.*
+_Mr. Wolf solves problems. One workflow at a time._

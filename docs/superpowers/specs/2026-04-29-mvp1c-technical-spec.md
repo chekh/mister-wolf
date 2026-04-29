@@ -24,14 +24,14 @@
 
 ### 1.2 Out of Scope
 
-| Feature | Target | Reason |
-|---------|--------|--------|
-| Subworkflow | MVP1D | Too complex: nested state, event correlation, variable scoping |
-| Fallback paths | MVP1D | Complicates graph semantics |
-| Dynamic graph mutation | Later | Runtime graph changes require robust checkpointing |
-| Distributed execution | MVP8+ | Remote workers, network partitions |
-| Matrix jobs | Later | Combinatorial step expansion |
-| CLI `--max-parallel` flag | Later | Keep MVP1C focused on graph engine |
+| Feature                   | Target | Reason                                                         |
+| ------------------------- | ------ | -------------------------------------------------------------- |
+| Subworkflow               | MVP1D  | Too complex: nested state, event correlation, variable scoping |
+| Fallback paths            | MVP1D  | Complicates graph semantics                                    |
+| Dynamic graph mutation    | Later  | Runtime graph changes require robust checkpointing             |
+| Distributed execution     | MVP8+  | Remote workers, network partitions                             |
+| Matrix jobs               | Later  | Combinatorial step expansion                                   |
+| CLI `--max-parallel` flag | Later  | Keep MVP1C focused on graph engine                             |
 
 ---
 
@@ -43,7 +43,7 @@ Workflows without `execution` block use sequential execution (MVP1A/B behavior):
 
 ```yaml
 id: simple
-version: "0.1.0"
+version: '0.1.0'
 
 steps:
   - id: one
@@ -65,7 +65,7 @@ Explicit opt-in via `execution.mode: graph`:
 
 ```yaml
 id: ci_graph
-version: "0.1.0"
+version: '0.1.0'
 
 execution:
   mode: graph
@@ -101,7 +101,7 @@ steps:
       - lint
       - test
     input:
-      message: "CI complete"
+      message: 'CI complete'
 ```
 
 ### 2.3 Schema Changes
@@ -127,6 +127,7 @@ export const WorkflowDefinitionSchema = z.object({
 ### 2.4 `depends_on` Changes
 
 In graph mode:
+
 - `depends_on` is **required** for ordering (no implicit sequential order)
 - Steps without `depends_on` are **root steps** (run first)
 - Future dependencies are **allowed** (graph sorting handles order)
@@ -138,25 +139,25 @@ In graph mode:
 
 ### 3.1 Validation Rules
 
-| Check | Error | MVP1C Action |
-|-------|-------|--------------|
-| Unknown dependency | `depends_on` references non-existent step | Reject |
-| Circular dependency | Cycle in dependency graph | Reject |
-| Duplicate step ID | Same `id` used twice | Reject (existing) |
-| Disconnected steps | Step has no deps and no dependents | Allow (root step) |
+| Check               | Error                                     | MVP1C Action      |
+| ------------------- | ----------------------------------------- | ----------------- |
+| Unknown dependency  | `depends_on` references non-existent step | Reject            |
+| Circular dependency | Cycle in dependency graph                 | Reject            |
+| Duplicate step ID   | Same `id` used twice                      | Reject (existing) |
+| Disconnected steps  | Step has no deps and no dependents        | Allow (root step) |
 
 ### 3.2 Validator Changes
 
 ```typescript
 // In src/config/validator.ts
 function validateGraph(workflow: WorkflowDefinition): ValidationResult {
-  const stepIds = new Set(workflow.steps.map(s => s.id));
+  const stepIds = new Set(workflow.steps.map((s) => s.id));
   const graph = new Map<string, string[]>();
 
   // Build adjacency list
   for (const step of workflow.steps) {
     graph.set(step.id, step.depends_on || []);
-    
+
     // Check unknown dependencies
     for (const depId of step.depends_on || []) {
       if (!stepIds.has(depId)) {
@@ -168,16 +169,16 @@ function validateGraph(workflow: WorkflowDefinition): ValidationResult {
   // Check circular dependencies via DFS
   const visited = new Set<string>();
   const recStack = new Set<string>();
-  
+
   function hasCycle(node: string): boolean {
     visited.add(node);
     recStack.add(node);
-    
+
     for (const dep of graph.get(node) || []) {
       if (!visited.has(dep) && hasCycle(dep)) return true;
       if (recStack.has(dep)) return true;
     }
-    
+
     recStack.delete(node);
     return false;
   }
@@ -195,6 +196,7 @@ function validateGraph(workflow: WorkflowDefinition): ValidationResult {
 ### 3.3 Sequential Mode Validation
 
 Sequential mode keeps existing MVP1B validation:
+
 - `depends_on` only references past steps (index-based)
 - No cycles possible by construction
 
@@ -205,6 +207,7 @@ Sequential mode keeps existing MVP1B validation:
 ### 4.1 Sequential Mode (Default)
 
 Unchanged from MVP1B:
+
 - Steps execute in array order
 - `depends_on` validated but not used for scheduling
 - One step at a time
@@ -230,11 +233,13 @@ Unchanged from MVP1B:
 ### 4.3 Step Readiness
 
 A step is **ready** when:
+
 1. All dependencies have `status === 'success'`
 2. Condition (`when`) passes
 3. Workflow/case not paused/failed/cancelled
 
 A step is **blocked** when:
+
 1. Any dependency has `status !== 'success'` (pending, running, etc.)
 2. Will be evaluated again when dependencies change
 
@@ -260,6 +265,7 @@ If step fails:
 ### 4.5 Gate Behavior in Graph Mode
 
 When any step returns `gated`:
+
 1. No new steps are scheduled
 2. Workflow status becomes `paused`
 3. Already running steps are allowed to finish
@@ -277,6 +283,7 @@ interface ParallelConfig {
 ```
 
 Engine maintains:
+
 - `readyQueue: string[]` — steps ready to run
 - `runningSet: Set<string>` — currently executing steps
 - Never persist readyQueue (recompute on resume)
@@ -306,6 +313,7 @@ Engine maintains:
 ### 5.2 Key Principle
 
 **Ready queue is never persisted.** It is always recomputed from:
+
 - Workflow snapshot (dependency graph)
 - `ExecutionState.step_statuses` (source of truth)
 
@@ -331,7 +339,7 @@ interface ExecutionState {
   gates: Record<string, GateState>;
   started_at: string;
   updated_at: string;
-  
+
   // MVP1C additions
   execution_mode: 'sequential' | 'graph';
 }
@@ -340,16 +348,16 @@ interface ExecutionState {
 ### 6.2 New Step Status
 
 ```typescript
-type StepStatus = 
-  | 'pending'     // Not yet evaluated
-  | 'ready'       // Dependencies met, waiting for slot
-  | 'running'     // Currently executing
-  | 'success'     // Completed successfully
-  | 'failure'     // Failed
-  | 'skipped'     // Skipped (condition or dependency failure)
-  | 'gated'       // Waiting for approval
-  | 'retrying'    // Between retry attempts
-  | 'blocked';    // Dependencies not yet met
+type StepStatus =
+  | 'pending' // Not yet evaluated
+  | 'ready' // Dependencies met, waiting for slot
+  | 'running' // Currently executing
+  | 'success' // Completed successfully
+  | 'failure' // Failed
+  | 'skipped' // Skipped (condition or dependency failure)
+  | 'gated' // Waiting for approval
+  | 'retrying' // Between retry attempts
+  | 'blocked'; // Dependencies not yet met
 ```
 
 ---
@@ -358,12 +366,12 @@ type StepStatus =
 
 ### 7.1 New Event Types
 
-| Event Type | When | Payload |
-|------------|------|---------|
-| `workflow.graph.started` | Graph execution begins | `{ mode: 'graph', max_parallel }` |
-| `step.ready` | Step becomes ready | `{ step_id }` |
-| `step.blocked` | Step blocked by dependency | `{ step_id, blocked_by: string[] }` |
-| `step.dependency_failed` | Step skipped due to failed dependency | `{ step_id, failed_dependency }` |
+| Event Type               | When                                  | Payload                             |
+| ------------------------ | ------------------------------------- | ----------------------------------- |
+| `workflow.graph.started` | Graph execution begins                | `{ mode: 'graph', max_parallel }`   |
+| `step.ready`             | Step becomes ready                    | `{ step_id }`                       |
+| `step.blocked`           | Step blocked by dependency            | `{ step_id, blocked_by: string[] }` |
+| `step.dependency_failed` | Step skipped due to failed dependency | `{ step_id, failed_dependency }`    |
 
 ### 7.2 Event Emission Rules
 
@@ -387,6 +395,7 @@ wolf cases inspect <case_id> --graph
 ```
 
 Shows graph execution view:
+
 ```
 STEP        STATUS      DEPS        OUTPUT
 install     success     -           -
@@ -402,6 +411,7 @@ wolf validate graph-workflow.yaml
 ```
 
 Validates:
+
 - Schema
 - Graph structure (no cycles, no unknown deps)
 
@@ -421,10 +431,10 @@ workflow.execution.max_parallel
 
 ```yaml
 defaults:
-  timeout: "30s"
+  timeout: '30s'
   max_parallel: 2
   shell:
-    max_output_size: "1MB"
+    max_output_size: '1MB'
 ```
 
 ### 9.3 Engine Integration
@@ -456,13 +466,13 @@ src/
 
 ### 10.2 Component Changes
 
-| Component | Change |
-|-----------|--------|
-| `WorkflowEngine` | Add graph execution path, ready queue, running set |
-| `validateWorkflow` | Add graph validation (cycles, unknown deps) |
-| `WorkflowDefinitionSchema` | Add `execution` block |
-| `ExecutionStateSchema` | Add `execution_mode` |
-| `StepStatus` | Add 'pending', 'ready', 'blocked' |
+| Component                  | Change                                             |
+| -------------------------- | -------------------------------------------------- |
+| `WorkflowEngine`           | Add graph execution path, ready queue, running set |
+| `validateWorkflow`         | Add graph validation (cycles, unknown deps)        |
+| `WorkflowDefinitionSchema` | Add `execution` block                              |
+| `ExecutionStateSchema`     | Add `execution_mode`                               |
+| `StepStatus`               | Add 'pending', 'ready', 'blocked'                  |
 
 ### 10.3 Graph Module
 
@@ -485,47 +495,47 @@ export function getDependents(graph: DependencyGraph, stepId: string): string[];
 
 ## 11. Acceptance Criteria
 
-| # | Criteria | Test |
-|---|----------|------|
-| 1 | `execution.mode: graph` enables DAG execution | Integration test |
-| 2 | Graph validator rejects circular dependencies | Unit test |
-| 3 | Graph validator rejects unknown dependencies | Unit test |
-| 4 | Future dependencies allowed in graph mode | Unit test |
-| 5 | Engine executes ready steps in dependency order | Integration test |
-| 6 | Independent branches run in parallel up to max_parallel | Integration test |
-| 7 | Dependent step runs only after all deps succeed | Integration test |
-| 8 | Failed dependency skips downstream steps | Integration test |
-| 9 | Sequential workflows unchanged | Run full MVP1B test suite |
-| 10 | Resume recomputes ready queue | Integration test |
-| 11 | Resume handles approved gate in graph | Integration test |
-| 12 | max_parallel precedence: workflow > wolf.yaml > default | Unit test |
-| 13 | Example graph workflow passes | Manual test |
-| 14 | `wolf validate` checks graph structure | Integration test |
+| #   | Criteria                                                | Test                      |
+| --- | ------------------------------------------------------- | ------------------------- |
+| 1   | `execution.mode: graph` enables DAG execution           | Integration test          |
+| 2   | Graph validator rejects circular dependencies           | Unit test                 |
+| 3   | Graph validator rejects unknown dependencies            | Unit test                 |
+| 4   | Future dependencies allowed in graph mode               | Unit test                 |
+| 5   | Engine executes ready steps in dependency order         | Integration test          |
+| 6   | Independent branches run in parallel up to max_parallel | Integration test          |
+| 7   | Dependent step runs only after all deps succeed         | Integration test          |
+| 8   | Failed dependency skips downstream steps                | Integration test          |
+| 9   | Sequential workflows unchanged                          | Run full MVP1B test suite |
+| 10  | Resume recomputes ready queue                           | Integration test          |
+| 11  | Resume handles approved gate in graph                   | Integration test          |
+| 12  | max_parallel precedence: workflow > wolf.yaml > default | Unit test                 |
+| 13  | Example graph workflow passes                           | Manual test               |
+| 14  | `wolf validate` checks graph structure                  | Integration test          |
 
 ---
 
 ## 12. Risks & Mitigations
 
-| Risk | Mitigation |
-|------|------------|
+| Risk                                  | Mitigation                                                          |
+| ------------------------------------- | ------------------------------------------------------------------- |
 | Race conditions in parallel execution | Use async/await with Promise.allSettled, never shared mutable state |
-| Memory leak with large graphs | Limit max_parallel, clear running set after completion |
-| Resume complexity | Ready queue always recomputed, never persisted |
-| Step status inconsistency | `step_statuses` is single source of truth, validate on load |
-| Sequential mode regression | Keep sequential path separate, run full test suite |
+| Memory leak with large graphs         | Limit max_parallel, clear running set after completion              |
+| Resume complexity                     | Ready queue always recomputed, never persisted                      |
+| Step status inconsistency             | `step_statuses` is single source of truth, validate on load         |
+| Sequential mode regression            | Keep sequential path separate, run full test suite                  |
 
 ---
 
 ## 13. Post-MVP1C Roadmap
 
-| Milestone | Features |
-|-----------|----------|
-| **MVP1D** | Subworkflow, fallback paths, dynamic graph |
-| **MVP2** | Context resolver, project file discovery |
-| **MVP3** | Policy engine, governance layer |
-| **MVP4–5** | Agent registry, model router |
+| Milestone  | Features                                   |
+| ---------- | ------------------------------------------ |
+| **MVP1D**  | Subworkflow, fallback paths, dynamic graph |
+| **MVP2**   | Context resolver, project file discovery   |
+| **MVP3**   | Policy engine, governance layer            |
+| **MVP4–5** | Agent registry, model router               |
 
 ---
 
-*Spec version: 0.1.0*
-*Next step: Implementation plan*
+_Spec version: 0.1.0_
+_Next step: Implementation plan_

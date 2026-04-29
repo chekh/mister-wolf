@@ -3,7 +3,10 @@ import { GateState } from '../types/state.js';
 import { SQLiteIndex } from './sqlite-index.js';
 
 export class GateStore {
-  constructor(private caseStore: CaseStore, private index?: SQLiteIndex) {}
+  constructor(
+    private caseStore: CaseStore,
+    private index?: SQLiteIndex
+  ) {}
 
   createGate(caseId: string, stepId: string): string {
     const gateId = `gate_${caseId}_${stepId}`;

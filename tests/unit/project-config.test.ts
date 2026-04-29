@@ -22,7 +22,9 @@ describe('loadProjectConfig', () => {
   });
 
   it('should load custom config', () => {
-    writeFileSync(join(tempDir, 'wolf.yaml'), `
+    writeFileSync(
+      join(tempDir, 'wolf.yaml'),
+      `
 state_dir: ".wolf/custom"
 defaults:
   timeout: "60s"
@@ -30,7 +32,8 @@ defaults:
     max_output_size: "2MB"
     blocked_commands:
       - sudo
-`);
+`
+    );
     const config = loadProjectConfig(join(tempDir, 'wolf.yaml'));
     expect(config.state_dir).toBe('.wolf/custom');
     expect(config.defaults.timeout).toBe('60s');

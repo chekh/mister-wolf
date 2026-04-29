@@ -21,6 +21,7 @@ All dependencies from MVP1B already present. No new npm packages needed.
 ### Task 1: Extend WorkflowDefinition with ExecutionConfig
 
 **Files:**
+
 - Modify: `src/types/workflow.ts`
 - Test: `tests/unit/types.test.ts`
 
@@ -102,6 +103,7 @@ git commit -m "feat: add execution config schema for graph mode"
 ### Task 2: Add execution_mode to ExecutionState
 
 **Files:**
+
 - Modify: `src/types/state.ts`
 - Test: `tests/unit/types.test.ts`
 
@@ -141,7 +143,9 @@ export const ExecutionStateSchema = z.object({
   failed_steps: z.array(z.string()).default([]),
   skipped_steps: z.array(z.string()).default([]),
   step_results: z.record(StepResultSchema).default({}),
-  step_statuses: z.record(z.enum(['pending', 'ready', 'running', 'success', 'failure', 'skipped', 'gated', 'retrying', 'blocked'])).default({}),
+  step_statuses: z
+    .record(z.enum(['pending', 'ready', 'running', 'success', 'failure', 'skipped', 'gated', 'retrying', 'blocked']))
+    .default({}),
   variables: z.record(z.unknown()).default({}),
   gates: z.record(GateStateSchema).default({}),
   started_at: z.string(),
@@ -168,6 +172,7 @@ git commit -m "feat: add execution_mode and expanded step_statuses"
 ### Task 3: Create Graph Builder and Validator
 
 **Files:**
+
 - Create: `src/workflow/graph.ts`
 - Test: `tests/unit/graph.test.ts`
 
@@ -215,9 +220,7 @@ describe('graph', () => {
     const workflow: WorkflowDefinition = {
       id: 'test',
       version: '0.1.0',
-      steps: [
-        { id: 'a', type: 'builtin', runner: 'echo', depends_on: ['x'] },
-      ],
+      steps: [{ id: 'a', type: 'builtin', runner: 'echo', depends_on: ['x'] }],
     };
     const result = validateGraph(workflow);
     expect(result.success).toBe(false);
@@ -283,7 +286,7 @@ export function buildGraph(workflow: WorkflowDefinition): DependencyGraph {
     }
   }
 
-  const roots = workflow.steps.filter((s) => !(s.depends_on?.length)).map((s) => s.id);
+  const roots = workflow.steps.filter((s) => !s.depends_on?.length).map((s) => s.id);
 
   return { nodes, edges, dependents, roots };
 }
@@ -329,10 +332,7 @@ export function validateGraph(workflow: WorkflowDefinition): ValidationResult {
   return { success: true };
 }
 
-export function getReadySteps(
-  graph: DependencyGraph,
-  statuses: Record<string, string>
-): string[] {
+export function getReadySteps(graph: DependencyGraph, statuses: Record<string, string>): string[] {
   const ready: string[] = [];
   for (const stepId of graph.nodes) {
     const status = statuses[stepId];
@@ -386,6 +386,7 @@ git commit -m "feat: add DAG graph builder, validator, and ready queue"
 ### Task 4: Update Config Validator for Graph Mode
 
 **Files:**
+
 - Modify: `src/config/validator.ts`
 - Test: `tests/unit/validator.test.ts`
 
@@ -497,10 +498,12 @@ git commit -m "feat: update validator for graph mode with cycle and future-dep c
 ### Task 5: Add Graph Execution Path to WorkflowEngine
 
 **Files:**
+
 - Modify: `src/workflow/engine.ts`
 - Test: `tests/unit/workflow-engine.test.ts`
 
 This is the largest task. The engine needs:
+
 1. Detect execution mode (sequential vs graph)
 2. For graph mode: build graph, run ready queue, manage parallelism
 3. For sequential mode: keep existing behavior unchanged
@@ -526,7 +529,13 @@ describe('WorkflowEngine graph mode', () => {
         { id: 'root', type: 'builtin', runner: 'echo', input: { message: 'root' } },
         { id: 'branch_a', type: 'builtin', runner: 'echo', depends_on: ['root'], input: { message: 'a' } },
         { id: 'branch_b', type: 'builtin', runner: 'echo', depends_on: ['root'], input: { message: 'b' } },
-        { id: 'merge', type: 'builtin', runner: 'echo', depends_on: ['branch_a', 'branch_b'], input: { message: 'done' } },
+        {
+          id: 'merge',
+          type: 'builtin',
+          runner: 'echo',
+          depends_on: ['branch_a', 'branch_b'],
+          input: { message: 'done' },
+        },
       ],
     };
 
@@ -771,7 +780,7 @@ private resolveMaxParallel(workflow: WorkflowDefinition): number {
 async execute(caseId: string, workflow: WorkflowDefinition): Promise<{ status: string }> {
   // ... existing setup ...
   state.execution_mode = workflow.execution?.mode || 'sequential';
-  
+
   if (state.execution_mode === 'graph') {
     return this.runGraphSteps(workflow, state);
   }
@@ -782,9 +791,9 @@ async resume(caseId: string): Promise<{ status: string }> {
   const workflow = this.caseStore.loadWorkflowSnapshot(caseId);
   const state = this.caseStore.readState(caseId);
   if (!state) throw new Error(`Case not found: ${caseId}`);
-  
+
   // ... existing setup ...
-  
+
   if (state.execution_mode === 'graph') {
     return this.runGraphSteps(workflow, state);
   }
@@ -811,6 +820,7 @@ git commit -m "feat: add graph execution with parallel branches and failure prop
 ### Task 6: Add Graph Resume Test
 
 **Files:**
+
 - Test: `tests/integration/resume-graph.test.ts`
 
 - [ ] **Step 1: Write test**
@@ -856,7 +866,13 @@ describe('Graph Resume', () => {
       execution: { mode: 'graph' },
       steps: [
         { id: 'setup', type: 'builtin', runner: 'echo', input: { message: 'setup' } },
-        { id: 'approval', type: 'builtin', runner: 'manual_gate', depends_on: ['setup'], input: { message: 'approve?' } },
+        {
+          id: 'approval',
+          type: 'builtin',
+          runner: 'manual_gate',
+          depends_on: ['setup'],
+          input: { message: 'approve?' },
+        },
         { id: 'finalize', type: 'builtin', runner: 'echo', depends_on: ['approval'], input: { message: 'done' } },
       ],
     };
@@ -899,14 +915,15 @@ git commit -m "test: add graph resume integration test"
 ### Task 7: Add Graph Example Workflow
 
 **Files:**
+
 - Create: `examples/graph-ci.yaml`
 
 - [ ] **Step 1: Create example**
 
 ```yaml
 id: graph_ci
-version: "0.1.0"
-name: "Graph CI Example"
+version: '0.1.0'
+name: 'Graph CI Example'
 
 execution:
   mode: graph
@@ -942,7 +959,7 @@ steps:
       - lint
       - test
     input:
-      message: "CI pipeline complete"
+      message: 'CI pipeline complete'
 ```
 
 - [ ] **Step 2: Commit**
@@ -990,22 +1007,22 @@ git commit -m "chore: MVP1C acceptance testing complete"
 
 ## Spec Coverage Check
 
-| Spec Section | Implementing Task(s) |
-|--------------|---------------------|
-| ExecutionConfig schema (2.3) | Task 1 |
-| execution_mode in state (6.1) | Task 2 |
-| Graph builder/validator (3) | Task 3 |
-| Config validator update (3.3) | Task 4 |
-| Graph execution algorithm (4.2) | Task 5 |
-| Parallelism / max_parallel (4.6, 9) | Task 5 |
-| Failure propagation (4.4) | Task 5 |
-| Gate behavior in graph (4.5) | Task 5 |
-| Resume recomputation (5) | Task 6 |
-| Example workflow | Task 7 |
-| AC 1-14 | All tasks |
+| Spec Section                        | Implementing Task(s) |
+| ----------------------------------- | -------------------- |
+| ExecutionConfig schema (2.3)        | Task 1               |
+| execution_mode in state (6.1)       | Task 2               |
+| Graph builder/validator (3)         | Task 3               |
+| Config validator update (3.3)       | Task 4               |
+| Graph execution algorithm (4.2)     | Task 5               |
+| Parallelism / max_parallel (4.6, 9) | Task 5               |
+| Failure propagation (4.4)           | Task 5               |
+| Gate behavior in graph (4.5)        | Task 5               |
+| Resume recomputation (5)            | Task 6               |
+| Example workflow                    | Task 7               |
+| AC 1-14                             | All tasks            |
 
 ---
 
-*Plan version: 0.1.0*
-*Total tasks: 8*
-*Estimated phases: 6*
+_Plan version: 0.1.0_
+_Total tasks: 8_
+_Estimated phases: 6_

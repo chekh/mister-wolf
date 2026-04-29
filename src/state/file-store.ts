@@ -6,17 +6,17 @@ import { join } from 'path';
 
 export class FileStateStore implements StateStore {
   constructor(private baseDir: string) {}
-  
+
   getCaseDir(caseId: string): string {
     return join(this.baseDir, 'cases', caseId);
   }
-  
+
   private ensureCaseDir(caseId: string): void {
     const dir = this.getCaseDir(caseId);
     mkdirSync(dir, { recursive: true });
     mkdirSync(join(dir, 'outputs'), { recursive: true });
   }
-  
+
   writeState(caseId: string, state: ExecutionState): void {
     this.ensureCaseDir(caseId);
     const statePath = join(this.getCaseDir(caseId), 'state.json');
@@ -24,31 +24,31 @@ export class FileStateStore implements StateStore {
     writeFileSync(tmpPath, JSON.stringify(state, null, 2));
     renameSync(tmpPath, statePath);
   }
-  
+
   readState(caseId: string): ExecutionState | null {
     const statePath = join(this.getCaseDir(caseId), 'state.json');
     if (!existsSync(statePath)) return null;
     const content = readFileSync(statePath, 'utf-8');
     return JSON.parse(content) as ExecutionState;
   }
-  
+
   appendEvent(caseId: string, event: RuntimeEvent): void {
     this.ensureCaseDir(caseId);
     const eventsPath = join(this.getCaseDir(caseId), 'events.jsonl');
     const line = JSON.stringify(event) + '\n';
     appendFileSync(eventsPath, line);
   }
-  
+
   readEvents(caseId: string): RuntimeEvent[] {
     const eventsPath = join(this.getCaseDir(caseId), 'events.jsonl');
     if (!existsSync(eventsPath)) return [];
     const content = readFileSync(eventsPath, 'utf-8');
     return content
       .split('\n')
-      .filter(line => line.trim())
-      .map(line => JSON.parse(line));
+      .filter((line) => line.trim())
+      .map((line) => JSON.parse(line));
   }
-  
+
   writeOutput(caseId: string, stepId: string, stdout: string, stderr?: string): void {
     this.ensureCaseDir(caseId);
     const outputsDir = join(this.getCaseDir(caseId), 'outputs');

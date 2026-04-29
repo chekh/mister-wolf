@@ -44,7 +44,7 @@ export function createRunCommand(): Command {
       const validation = validateWorkflow(workflow);
       if (!validation.success) {
         console.error('Validation failed:');
-        validation.errors?.forEach(e => console.error(`  - ${e}`));
+        validation.errors?.forEach((e) => console.error(`  - ${e}`));
         process.exit(1);
       }
 

@@ -8,10 +8,10 @@ Complete reference for the `wolf` command-line interface.
 wolf [command] [options]
 ```
 
-| Option | Description |
-|--------|-------------|
-| `-V, --version` | Show version number |
-| `-h, --help` | Show help for command |
+| Option          | Description           |
+| --------------- | --------------------- |
+| `-V, --version` | Show version number   |
+| `-h, --help`    | Show help for command |
 
 ## Workflow Commands
 
@@ -24,12 +24,15 @@ wolf run <workflow.yaml> [options]
 ```
 
 **Arguments:**
+
 - `workflow` (required): Path to workflow YAML file
 
 **Options:**
+
 - `--config <path>`: Path to `wolf.yaml` project config
 
 **Exit Codes:**
+
 - `0`: Workflow completed successfully
 - `1`: Error (validation failed, runtime error)
 - `2`: Workflow paused (waiting for gate approval)
@@ -47,6 +50,7 @@ wolf run workflow.yaml --config ./my-wolf.yaml
 ```
 
 **Output:**
+
 ```
 [case_abc123] Created
 [case_abc123] PAUSED. Run: wolf approve gate_case_abc123_step_id
@@ -65,6 +69,7 @@ wolf resume <case_id>
 ```
 
 **Arguments:**
+
 - `case_id` (required): Case ID to resume
 
 **Exit Codes:** Same as `wolf run`
@@ -88,9 +93,11 @@ wolf validate <workflow.yaml>
 ```
 
 **Arguments:**
+
 - `workflow` (required): Path to workflow YAML file
 
 **Exit Codes:**
+
 - `0`: Workflow is valid
 - `1`: Validation failed
 
@@ -106,6 +113,7 @@ wolf validate examples/duplicate-output.yaml
 ```
 
 **Validation checks:**
+
 - YAML syntax
 - Schema compliance (Zod)
 - Duplicate step IDs
@@ -126,6 +134,7 @@ wolf cases list [options]
 ```
 
 **Options:**
+
 - `--status <status>`: Filter by status (`pending`, `running`, `paused`, `completed`, `failed`, `cancelled`)
 
 **Example:**
@@ -139,6 +148,7 @@ wolf cases list --status failed
 ```
 
 **Output:**
+
 ```
 CASE_ID         STATUS    UPDATED
  case_abc123    completed  2026-04-28T12:00:00Z
@@ -156,9 +166,11 @@ wolf cases inspect <case_id> [options]
 ```
 
 **Arguments:**
+
 - `case_id` (required): Case ID to inspect
 
 **Options:**
+
 - `--events`: Include event log
 - `--json`: Output as JSON
 
@@ -179,6 +191,7 @@ wolf cases inspect case_abc123 --events --json
 ```
 
 **Formatted output example:**
+
 ```
 State:
 {
@@ -200,9 +213,11 @@ wolf cases cancel <case_id>
 ```
 
 **Arguments:**
+
 - `case_id` (required): Case ID to cancel
 
 **Exit Codes:**
+
 - `0`: Case cancelled successfully
 - `1`: Error (case not found, already completed/failed/cancelled)
 
@@ -214,6 +229,7 @@ wolf cases cancel case_abc123
 ```
 
 **Behavior:**
+
 - Sets case status to `cancelled`
 - Marks all remaining steps as `skipped`
 - Emits `case.cancelled` event
@@ -232,6 +248,7 @@ wolf gates list [options]
 ```
 
 **Options:**
+
 - `--case <case_id>`: Filter by case ID
 
 **Example:**
@@ -245,6 +262,7 @@ wolf gates list --case case_abc123
 ```
 
 **Output:**
+
 ```
 GATE_ID                    CASE_ID       STEP_ID   STATUS   REQUESTED_AT
 gate_case_abc123_approval  case_abc123   approval  pending  2026-04-28T12:00:00Z
@@ -261,9 +279,11 @@ wolf approve <gate_id>
 ```
 
 **Arguments:**
+
 - `gate_id` (required): Gate ID to approve
 
 **Exit Codes:**
+
 - `0`: Gate approved
 - `1`: Error (gate not found, already responded)
 
@@ -275,6 +295,7 @@ wolf approve gate_case_abc123_approval
 ```
 
 **After approval:**
+
 - Gate status changes to `approved`
 - Resume the case: `wolf resume case_abc123`
 
@@ -289,9 +310,11 @@ wolf reject <gate_id>
 ```
 
 **Arguments:**
+
 - `gate_id` (required): Gate ID to reject
 
 **Exit Codes:**
+
 - `0`: Gate rejected
 - `1`: Error (gate not found, already responded)
 
@@ -303,6 +326,7 @@ wolf reject gate_case_abc123_approval
 ```
 
 **After rejection:**
+
 - Gate status changes to `rejected`
 - Case status changes to `failed`
 - Resume is not useful (case is already failed)
@@ -320,9 +344,11 @@ wolf events <case_id> [options]
 ```
 
 **Arguments:**
+
 - `case_id` (required): Case ID
 
 **Options:**
+
 - `--type <event_type>`: Filter by event type
 
 **Example:**
@@ -339,6 +365,7 @@ wolf events case_abc123 --type step.skipped
 ```
 
 **Output:**
+
 ```
 EVENT_ID    TYPE          STEP_ID  TIMESTAMP
  evt_1      step.started  step1    2026-04-28T12:00:00Z
@@ -406,9 +433,9 @@ wolf cases inspect case_abc123 --json | jq '.completed_steps | length'
 
 ## Files
 
-| File | Description |
-|------|-------------|
-| `wolf.yaml` | Project configuration (optional) |
-| `.wolf/state/` | Default state storage directory |
-| `.wolf/state/cases/<case_id>/` | Case-specific files |
-| `.wolf/state/wolf.sqlite` | SQLite index (optional, created on first use) |
+| File                           | Description                                   |
+| ------------------------------ | --------------------------------------------- |
+| `wolf.yaml`                    | Project configuration (optional)              |
+| `.wolf/state/`                 | Default state storage directory               |
+| `.wolf/state/cases/<case_id>/` | Case-specific files                           |
+| `.wolf/state/wolf.sqlite`      | SQLite index (optional, created on first use) |

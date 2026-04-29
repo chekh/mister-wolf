@@ -10,7 +10,10 @@ import yaml from 'js-yaml';
 export class CaseStore {
   private fileStore: FileStateStore;
 
-  constructor(baseDir: string, private index?: SQLiteIndex) {
+  constructor(
+    baseDir: string,
+    private index?: SQLiteIndex
+  ) {
     this.fileStore = new FileStateStore(baseDir);
   }
 

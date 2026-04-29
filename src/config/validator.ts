@@ -11,13 +11,13 @@ export function validateWorkflow(workflow: unknown): ValidationResult {
   if (!schemaResult.success) {
     return {
       success: false,
-      errors: schemaResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`),
+      errors: schemaResult.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`),
     };
   }
-  
+
   const validated = schemaResult.data;
   const errors: string[] = [];
-  
+
   const stepIds = new Set<string>();
   for (const step of validated.steps) {
     if (stepIds.has(step.id)) {
@@ -25,7 +25,7 @@ export function validateWorkflow(workflow: unknown): ValidationResult {
     }
     stepIds.add(step.id);
   }
-  
+
   const outputs = new Set<string>();
   for (const step of validated.steps) {
     if (step.output) {
@@ -35,7 +35,7 @@ export function validateWorkflow(workflow: unknown): ValidationResult {
       outputs.add(step.output);
     }
   }
-  
+
   if (validated.execution?.mode === 'graph') {
     const graphResult = validateGraph(validated);
     if (!graphResult.success) {
@@ -44,7 +44,7 @@ export function validateWorkflow(workflow: unknown): ValidationResult {
   } else {
     const stepIndexMap = new Map<string, number>();
     validated.steps.forEach((step, idx) => stepIndexMap.set(step.id, idx));
-    
+
     for (let i = 0; i < validated.steps.length; i++) {
       const step = validated.steps[i];
       if (step.depends_on) {
@@ -59,10 +59,10 @@ export function validateWorkflow(workflow: unknown): ValidationResult {
       }
     }
   }
-  
+
   if (errors.length > 0) {
     return { success: false, errors };
   }
-  
+
   return { success: true };
 }

@@ -9,7 +9,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const cliPath = join(__dirname, '..', '..', 'dist', 'cli', 'index.js');
 
 describe('CLI integration', () => {
-
   it('should run a workflow and complete', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'wolf-cli-'));
 

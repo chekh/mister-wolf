@@ -5,16 +5,16 @@ Complete reference for Mr. Wolf workflow YAML files.
 ## Top-Level Fields
 
 ```yaml
-id: my_workflow          # Required: unique workflow identifier
-version: "0.1.0"         # Required: semantic version
-name: "My Workflow"      # Optional: human-readable name
-description: "..."       # Optional: what this workflow does
+id: my_workflow # Required: unique workflow identifier
+version: '0.1.0' # Required: semantic version
+name: 'My Workflow' # Optional: human-readable name
+description: '...' # Optional: what this workflow does
 
-execution:               # Optional: execution configuration
-  mode: graph            # Options: sequential (default) | graph
-  max_parallel: 3        # Optional: max concurrent steps in graph mode
+execution: # Optional: execution configuration
+  mode: graph # Options: sequential (default) | graph
+  max_parallel: 3 # Optional: max concurrent steps in graph mode
 
-steps:                   # Required: array of steps (minimum 1)
+steps: # Required: array of steps (minimum 1)
   - ...
 ```
 
@@ -42,6 +42,7 @@ execution:
 - `depends_on` can reference any step (future or past)
 
 **Scheduling behavior:**
+
 - Running steps are allowed to finish even if another step fails
 - No new steps start after a failure (fail-fast)
 - Pending steps and their transitive dependents are skipped
@@ -51,24 +52,24 @@ execution:
 
 ```yaml
 steps:
-  - id: step_id                    # Required: unique within workflow
-    type: builtin                  # Required: only "builtin" supported
-    runner: echo | shell | manual_gate  # Required
-    name: "Step Name"              # Optional
-    description: "..."             # Optional
-    input:                         # Optional: runner-specific input
+  - id: step_id # Required: unique within workflow
+    type: builtin # Required: only "builtin" supported
+    runner: echo | shell | manual_gate # Required
+    name: 'Step Name' # Optional
+    description: '...' # Optional
+    input: # Optional: runner-specific input
       ...
-    output: variable_name          # Optional: save result to variable
-    depends_on: [step_a, step_b]   # Optional (MVP1C+): prerequisite steps
-    timeout: "30s"                 # Optional: step timeout
-    retry:                         # Optional: retry configuration
+    output: variable_name # Optional: save result to variable
+    depends_on: [step_a, step_b] # Optional (MVP1C+): prerequisite steps
+    timeout: '30s' # Optional: step timeout
+    retry: # Optional: retry configuration
       max_attempts: 3
-      delay: "1s"
+      delay: '1s'
       backoff: fixed | linear
-    when:                          # Optional: execution condition
+    when: # Optional: execution condition
       ...
-    artifact:                      # Optional: save output as file artifact
-      path: "outputs/result.txt"
+    artifact: # Optional: save output as file artifact
+      path: 'outputs/result.txt'
 ```
 
 ## Runners
@@ -82,11 +83,12 @@ Outputs a message. Returns the message as output.
   type: builtin
   runner: echo
   input:
-    message: "Hello, World!"
+    message: 'Hello, World!'
   output: greeting
 ```
 
 **Input fields:**
+
 - `message` (string): Text to output
 
 ### shell
@@ -98,14 +100,16 @@ Executes a shell command with basic safety checks.
   type: builtin
   runner: shell
   input:
-    command: "ls -la"
+    command: 'ls -la'
   output: file_list
 ```
 
 **Input fields:**
+
 - `command` (string): Shell command to execute
 
 **Security restrictions:**
+
 - Blocked commands: `sudo`, `su`, `ssh`, `vim`, `nano`, `less`, `more`, `top`, `watch`
 - Stdin is closed (no interactive commands)
 - Max stdout/stderr: 1 MB each
@@ -120,10 +124,11 @@ Pauses workflow for human approval.
   type: builtin
   runner: manual_gate
   input:
-    message: "Approve this action?"
+    message: 'Approve this action?'
 ```
 
 **Gate lifecycle:**
+
 1. Step executes → status: `gated`, gate created with status `pending`
 2. User runs `wolf approve <gate_id>` → gate status: `approved`
 3. User runs `wolf resume <case_id>` → step completes with `success`
@@ -152,6 +157,7 @@ when:
 ```
 
 **Evaluation rules:**
+
 - Evaluated after template interpolation, before step execution
 - Missing variable + `exists: true` → condition false → step skipped
 - Missing variable + `exists: false` → condition true → step executes
@@ -159,6 +165,7 @@ when:
 - All values compared as strings (numbers are coerced)
 
 **Skip behavior:**
+
 - Step status: `skipped`
 - Not added to `completed_steps`
 - Added to `skipped_steps`
@@ -171,12 +178,13 @@ Configure automatic retry for failing steps.
 
 ```yaml
 retry:
-  max_attempts: 3      # Default: 3, Range: 1-10
-  delay: "1s"          # Default: "1s", Format: "100ms", "1s", "1m"
-  backoff: fixed       # Options: fixed | linear
+  max_attempts: 3 # Default: 3, Range: 1-10
+  delay: '1s' # Default: "1s", Format: "100ms", "1s", "1m"
+  backoff: fixed # Options: fixed | linear
 ```
 
 **Behavior:**
+
 - Retry only applies when step result is `failure`
 - NOT applied for: `success`, `gated`, `skipped`
 - On retry: `step.retrying` event emitted
@@ -188,10 +196,11 @@ retry:
 Set maximum execution time for a step.
 
 ```yaml
-timeout: "30s"   # Format: "100ms", "1s", "1m"
+timeout: '30s' # Format: "100ms", "1s", "1m"
 ```
 
 **Precedence** (highest to lowest):
+
 1. Step-level `timeout` field
 2. Runner-specific default
 3. `wolf.yaml` default
@@ -205,10 +214,11 @@ Save step output as a file artifact.
 
 ```yaml
 artifact:
-  path: "reports/build-report.txt"
+  path: 'reports/build-report.txt'
 ```
 
 **Behavior (MVP1B):**
+
 - Only `output`-only artifacts supported
 - `StepResult.output` is written to `.wolf/state/cases/<case_id>/artifacts/<path>`
 - Path must be relative (no leading `/`, no `../`)
@@ -221,11 +231,12 @@ Use Mustache-style syntax in string values:
 
 ```yaml
 input:
-  message: "Hello, {{ variables.username }}!"
-  command: "echo {{ variables.count }}"
+  message: 'Hello, {{ variables.username }}!'
+  command: 'echo {{ variables.count }}'
 ```
 
 **Rules:**
+
 - Only `{{ variables.name }}` syntax supported
 - Variables must exist (or step will fail with "Missing variable")
 - Applied to all string fields in `input` recursively
@@ -252,8 +263,8 @@ Use `wolf validate <workflow.yaml>` to check without running.
 
 ```yaml
 id: comprehensive_demo
-version: "0.1.0"
-name: "Comprehensive Demo"
+version: '0.1.0'
+name: 'Comprehensive Demo'
 
 description: |
   Demonstrates conditions, retry, timeout,
@@ -264,7 +275,7 @@ steps:
     type: builtin
     runner: echo
     input:
-      message: "Starting comprehensive demo"
+      message: 'Starting comprehensive demo'
     output: setup_result
 
   - id: check_env
@@ -281,16 +292,16 @@ steps:
       var: env_status
       equals: "env_ok\n"
     input:
-      message: "Environment check passed"
+      message: 'Environment check passed'
 
   - id: flaky_operation
     type: builtin
     runner: shell
     retry:
       max_attempts: 3
-      delay: "500ms"
+      delay: '500ms'
       backoff: linear
-    timeout: "5s"
+    timeout: '5s'
     input:
       command: "echo 'operation result'"
     output: op_result
@@ -299,8 +310,8 @@ steps:
     type: builtin
     runner: echo
     input:
-      message: "Demo completed. Result: {{ variables.op_result }}"
+      message: 'Demo completed. Result: {{ variables.op_result }}'
     artifact:
-      path: "reports/demo-report.txt"
+      path: 'reports/demo-report.txt'
     output: report_summary
 ```

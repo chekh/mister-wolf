@@ -12,7 +12,7 @@ describe('validator', () => {
     const result = validateWorkflow(workflow);
     expect(result.success).toBe(true);
   });
-  
+
   it('should reject duplicate step ids', () => {
     const workflow: WorkflowDefinition = {
       id: 'test',
@@ -25,7 +25,7 @@ describe('validator', () => {
     const result = validateWorkflow(workflow);
     expect(result.success).toBe(false);
   });
-  
+
   it('should reject duplicate output variables', () => {
     const workflow: WorkflowDefinition = {
       id: 'test',
@@ -38,7 +38,7 @@ describe('validator', () => {
     const result = validateWorkflow(workflow);
     expect(result.success).toBe(false);
   });
-  
+
   it('should reject depends_on referencing future step', () => {
     const workflow: WorkflowDefinition = {
       id: 'test',

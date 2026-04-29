@@ -38,7 +38,7 @@ describe('ShellRunner', () => {
     };
     const result = await runner.run(step, { case_id: 'c1', workflow_id: 'w1', variables: {}, config: {} });
     expect(result.status).toBe('failure');
-    expect((result.error?.message || '')).toContain('blocked');
+    expect(result.error?.message || '').toContain('blocked');
   });
 
   it('should respect timeout', async () => {

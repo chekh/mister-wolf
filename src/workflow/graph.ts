@@ -22,7 +22,7 @@ export function buildGraph(workflow: WorkflowDefinition): DependencyGraph {
     }
   }
 
-  const roots = workflow.steps.filter((s) => !(s.depends_on?.length)).map((s) => s.id);
+  const roots = workflow.steps.filter((s) => !s.depends_on?.length).map((s) => s.id);
 
   return { nodes, edges, dependents, roots };
 }
@@ -66,10 +66,7 @@ export function validateGraph(workflow: WorkflowDefinition): ValidationResult {
   return { success: true };
 }
 
-export function getReadySteps(
-  graph: DependencyGraph,
-  statuses: Record<string, string>
-): string[] {
+export function getReadySteps(graph: DependencyGraph, statuses: Record<string, string>): string[] {
   const ready: string[] = [];
   for (const stepId of graph.nodes) {
     const status = statuses[stepId];

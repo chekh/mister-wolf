@@ -13,8 +13,7 @@ import { ShellRunner } from '../../workflow/runners/shell.js';
 import { ManualGateRunner } from '../../workflow/runners/manual-gate.js';
 
 export function createCasesCommand(): Command {
-  const cases = new Command('cases')
-    .description('Manage workflow cases');
+  const cases = new Command('cases').description('Manage workflow cases');
 
   cases
     .command('list')
@@ -40,8 +39,8 @@ export function createCasesCommand(): Command {
         }
 
         const caseDirs = readdirSync(casesDir, { withFileTypes: true })
-          .filter(d => d.isDirectory())
-          .map(d => d.name);
+          .filter((d) => d.isDirectory())
+          .map((d) => d.name);
 
         if (caseDirs.length === 0) {
           console.log('No cases found.');
@@ -132,33 +131,32 @@ export function createCasesCommand(): Command {
       }
     });
 
-  cases
-    .addCommand(
-      new Command('cancel')
-        .description('Cancel a running or paused case')
-        .argument('<case_id>', 'Case ID to cancel')
-        .action(async (caseId: string) => {
-          const cwd = process.cwd();
-          const stateDir = join(cwd, '.wolf', 'state');
-          const caseStore = new CaseStore(stateDir);
-          const gateStore = new GateStore(caseStore);
-          const bus = new InProcessEventBus();
-          const registry = new RunnerRegistry();
-          registry.register(new EchoRunner());
-          registry.register(new ShellRunner());
-          registry.register(new ManualGateRunner());
-          const engine = new WorkflowEngine(registry, caseStore, gateStore, bus);
+  cases.addCommand(
+    new Command('cancel')
+      .description('Cancel a running or paused case')
+      .argument('<case_id>', 'Case ID to cancel')
+      .action(async (caseId: string) => {
+        const cwd = process.cwd();
+        const stateDir = join(cwd, '.wolf', 'state');
+        const caseStore = new CaseStore(stateDir);
+        const gateStore = new GateStore(caseStore);
+        const bus = new InProcessEventBus();
+        const registry = new RunnerRegistry();
+        registry.register(new EchoRunner());
+        registry.register(new ShellRunner());
+        registry.register(new ManualGateRunner());
+        const engine = new WorkflowEngine(registry, caseStore, gateStore, bus);
 
-          try {
-            await engine.cancel(caseId);
-            console.log(`Case ${caseId} cancelled.`);
-            process.exit(0);
-          } catch (err) {
-            console.error('Error:', err instanceof Error ? err.message : String(err));
-            process.exit(1);
-          }
-        })
-    );
+        try {
+          await engine.cancel(caseId);
+          console.log(`Case ${caseId} cancelled.`);
+          process.exit(0);
+        } catch (err) {
+          console.error('Error:', err instanceof Error ? err.message : String(err));
+          process.exit(1);
+        }
+      })
+  );
 
   return cases;
 }

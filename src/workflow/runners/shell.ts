@@ -89,6 +89,7 @@ export class ShellRunner implements StepRunner {
       const child = spawn(command, {
         shell: true,
         stdio: ['ignore', 'pipe', 'pipe'],
+        detached: true,
       });
 
       let stdout = Buffer.alloc(0);
@@ -97,7 +98,13 @@ export class ShellRunner implements StepRunner {
 
       const timeoutId = setTimeout(() => {
         timedOut = true;
-        child.kill('SIGTERM');
+        // Kill the entire process group to ensure all subprocesses terminate.
+        // detached: true creates a new process group; -pid targets the group.
+        try {
+          process.kill(-child.pid!, 'SIGKILL');
+        } catch {
+          child.kill('SIGKILL');
+        }
       }, timeout);
 
       child.stdout?.on('data', (data: Buffer) => {

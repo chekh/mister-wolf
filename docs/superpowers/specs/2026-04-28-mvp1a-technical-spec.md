@@ -186,13 +186,13 @@ steps:
   - id: check_env
     runner: shell
     input:
-      command: "pwd"
+      command: 'pwd'
     output: current_directory
 
   - id: show_dir
     runner: echo
     input:
-      message: "Current dir is {{ variables.current_directory }}"
+      message: 'Current dir is {{ variables.current_directory }}'
 ```
 
 **Rules:**
@@ -206,37 +206,37 @@ steps:
 
 ```yaml
 id: hello_world
-version: "0.1.0"
-name: "Hello World"
-description: "Minimal MVP1A workflow"
+version: '0.1.0'
+name: 'Hello World'
+description: 'Minimal MVP1A workflow'
 
 steps:
   - id: greet
     type: builtin
     runner: echo
     input:
-      message: "Starting Mr. Wolf workflow"
+      message: 'Starting Mr. Wolf workflow'
     output: greet_result
 
   - id: check_env
     type: builtin
     runner: shell
     input:
-      command: "pwd"
+      command: 'pwd'
     output: current_directory
 
   - id: confirm_continue
     type: builtin
     runner: manual_gate
     input:
-      title: "Continue?"
-      message: "Proceed to final step?"
+      title: 'Continue?'
+      message: 'Proceed to final step?'
 
   - id: finish
     type: builtin
     runner: echo
     input:
-      message: "Workflow completed!"
+      message: 'Workflow completed!'
     output: finish_result
     depends_on:
       - confirm_continue
@@ -288,11 +288,11 @@ workflow.yaml внутри директории case — неизменяемы�
 ```yaml
 case_id: case_abc123
 workflow_id: hello_world
-workflow_version: "0.1.0"
-title: "Hello World"
+workflow_version: '0.1.0'
+title: 'Hello World'
 status: running | paused | completed | failed | cancelled
-created_at: "2026-04-28T10:00:00Z"
-updated_at: "2026-04-28T10:00:05Z"
+created_at: '2026-04-28T10:00:00Z'
+updated_at: '2026-04-28T10:00:05Z'
 ```
 
 ### state.json
@@ -463,7 +463,7 @@ interface ExecutionContext {
 }
 
 interface StepResult {
-  status: "success" | "failure" | "gated";
+  status: 'success' | 'failure' | 'gated';
   output?: unknown;
   error?: {
     type: string;

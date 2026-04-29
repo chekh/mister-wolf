@@ -10,7 +10,7 @@ export function createValidateCommand(): Command {
       try {
         const workflow = loadWorkflow(workflowPath);
         const result = validateWorkflow(workflow);
-        
+
         if (result.success) {
           console.log('Workflow is valid.');
           process.exit(0);

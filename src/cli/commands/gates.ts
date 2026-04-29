@@ -20,8 +20,8 @@ export function createGatesCommand(): Command {
       }
 
       const caseDirs = readdirSync(casesDir, { withFileTypes: true })
-        .filter(d => d.isDirectory())
-        .map(d => d.name);
+        .filter((d) => d.isDirectory())
+        .map((d) => d.name);
 
       const rows: { gateId: string; caseId: string; stepId: string; status: string; requestedAt: string }[] = [];
 

@@ -59,7 +59,7 @@ event:
   case_id: case_456
   workflow_id: my_workflow
   step_id: step_2
-  timestamp: "2026-04-28T10:00:00Z"
+  timestamp: '2026-04-28T10:00:00Z'
   actor:
     type: system | agent | user | tool
     id: workflow_engine
@@ -278,7 +278,7 @@ memory_policy:
   can_write: true
   can_share_with_agent: true
   can_export: false
-  ttl: "30d"
+  ttl: '30d'
   requires_user_consent: false
   sensitivity: low | medium | high
 ```
@@ -396,17 +396,17 @@ gate_request:
   id: gate_123
   case_id: case_456
   step_id: step_2
-  title: "Approve sending email?"
-  message: "The assistant wants to send an email to client@example.com"
+  title: 'Approve sending email?'
+  message: 'The assistant wants to send an email to client@example.com'
   options:
     - approve
     - reject
     - modify
-  expires_at: "2026-04-28T11:00:00Z"
+  expires_at: '2026-04-28T11:00:00Z'
   consequences:
-    - "Email will be sent immediately"
-    - "Cannot be undone"
-  diff_or_artifact_preview: "Preview of email content..."
+    - 'Email will be sent immediately'
+    - 'Cannot be undone'
+  diff_or_artifact_preview: 'Preview of email content...'
 ```
 
 **Входы:**
@@ -672,8 +672,8 @@ case_runtime:
     legal_assistant: deep
     document_summarizer: fast
   memory_bundle: ...
-  created_at: "2026-04-28T10:00:00Z"
-  updated_at: "2026-04-28T10:05:00Z"
+  created_at: '2026-04-28T10:00:00Z'
+  updated_at: '2026-04-28T10:05:00Z'
   policy_decisions: []
   approvals: []
   execution_trace: []
@@ -1037,14 +1037,14 @@ CLI:         Commander.js или аналог
 ```yaml
 case:
   id: case_abc123
-  title: "Run hello_world workflow"
+  title: 'Run hello_world workflow'
   status: created | planned | running | paused | completed | failed | cancelled
   request:
     raw: string
     normalized?: object
   workflow_id: hello_world
-  created_at: "2026-04-28T10:00:00Z"
-  updated_at: "2026-04-28T10:00:05Z"
+  created_at: '2026-04-28T10:00:00Z'
+  updated_at: '2026-04-28T10:00:05Z'
 ```
 
 **Примечание:** `Case`, `CaseRuntime` и `ExecutionState` — три разные сущности:
@@ -1106,8 +1106,8 @@ execution_state:
 variable_store:
   # Шаг может записать output в переменную
   # Следующие шаги могут использовать через template
-  current_directory: "/home/user/project"
-  greet_output: "Starting Mr. Wolf workflow"
+  current_directory: '/home/user/project'
+  greet_output: 'Starting Mr. Wolf workflow'
 ```
 
 **Template Resolution (MVP1A):**
@@ -1115,7 +1115,7 @@ variable_store:
 ```yaml
 # Простая Mustache-подстановка
 input:
-  message: "Current dir is {{ variables.current_directory }}"
+  message: 'Current dir is {{ variables.current_directory }}'
 ```
 
 **Примечание:** Полноценный expression engine отложен до MVP1B. В MVP1A — только прямая подстановка переменных.
@@ -1171,7 +1171,7 @@ event:
   step_id: step_<id>
 
   # Timing
-  timestamp: "2026-04-28T10:00:00Z"
+  timestamp: '2026-04-28T10:00:00Z'
 
   # Actor
   actor:
@@ -1208,34 +1208,34 @@ gate.rejected
 
 ```yaml
 id: hello_world
-version: "0.1.0"
-description: "Minimal workflow for MVP1A"
+version: '0.1.0'
+description: 'Minimal workflow for MVP1A'
 
 steps:
   - id: greet
     type: builtin
     runner: echo
     input:
-      message: "Starting Mr. Wolf workflow"
+      message: 'Starting Mr. Wolf workflow'
 
   - id: check_env
     type: builtin
     runner: shell
     input:
-      command: "echo $PWD"
+      command: 'echo $PWD'
     output: current_directory
 
   - id: confirm_continue
     type: builtin
     runner: manual_gate
     input:
-      message: "Continue to next step?"
+      message: 'Continue to next step?'
 
   - id: finish
     type: builtin
     runner: echo
     input:
-      message: "Workflow completed!"
+      message: 'Workflow completed!'
     depends_on:
       - confirm_continue
 ```
@@ -1264,8 +1264,8 @@ steps:
 case_id: case_abc123
 workflow_id: hello_world
 status: running
-created_at: "2026-04-28T10:00:00Z"
-updated_at: "2026-04-28T10:00:05Z"
+created_at: '2026-04-28T10:00:00Z'
+updated_at: '2026-04-28T10:00:05Z'
 ```
 
 ---
@@ -1296,20 +1296,14 @@ interface ExecutionContext {
 }
 
 interface StepResult {
-  status: "success" | "failure" | "skipped" | "gated";
+  status: 'success' | 'failure' | 'skipped' | 'gated';
   output?: any;
   error?: StepError;
   artifacts?: string[];
 }
 
 interface StepError {
-  type:
-    | "StepFailed"
-    | "PolicyDenied"
-    | "GateRejected"
-    | "ToolError"
-    | "Timeout"
-    | "Cancelled";
+  type: 'StepFailed' | 'PolicyDenied' | 'GateRejected' | 'ToolError' | 'Timeout' | 'Cancelled';
   message: string;
   retryable: boolean;
   details?: Record<string, any>;
@@ -1379,14 +1373,14 @@ gate_request:
   # Options
   options:
     - id: approve
-      label: "Approve"
-      description: "Proceed with the action"
+      label: 'Approve'
+      description: 'Proceed with the action'
     - id: reject
-      label: "Reject"
-      description: "Cancel the action"
+      label: 'Reject'
+      description: 'Cancel the action'
     - id: modify
-      label: "Modify"
-      description: "Edit before proceeding"
+      label: 'Modify'
+      description: 'Edit before proceeding'
 
   # Metadata
   requested_by:

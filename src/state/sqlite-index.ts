@@ -38,7 +38,14 @@ export class SQLiteIndex {
     `);
   }
 
-  insertCase(data: { id: string; workflow_id: string; status: string; created_at: string; updated_at: string; path: string }): void {
+  insertCase(data: {
+    id: string;
+    workflow_id: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
+    path: string;
+  }): void {
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO cases (id, workflow_id, status, created_at, updated_at, path)
       VALUES (?, ?, ?, ?, ?, ?)

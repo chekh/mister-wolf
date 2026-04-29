@@ -12,10 +12,7 @@ describe('template interpolation', () => {
   });
 
   it('should interpolate object fields recursively', () => {
-    const result = interpolateObject(
-      { message: 'Dir: {{ variables.dir }}', count: 42 },
-      { dir: '/tmp' }
-    );
+    const result = interpolateObject({ message: 'Dir: {{ variables.dir }}', count: 42 }, { dir: '/tmp' });
     expect(result).toEqual({ message: 'Dir: /tmp', count: 42 });
   });
 });

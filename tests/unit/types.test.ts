@@ -30,9 +30,7 @@ describe('types', () => {
     const validWorkflow = {
       id: 'wf-1',
       version: '1.0.0',
-      steps: [
-        { id: 'step-1', type: 'builtin' as const, runner: 'echo' as const },
-      ],
+      steps: [{ id: 'step-1', type: 'builtin' as const, runner: 'echo' as const }],
     };
     const result = WorkflowDefinitionSchema.safeParse(validWorkflow);
     expect(result.success).toBe(true);

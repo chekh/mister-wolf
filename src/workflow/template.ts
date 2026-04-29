@@ -12,7 +12,7 @@ export function interpolateObject(input: unknown, variables: Record<string, unkn
     return interpolateTemplate(input, variables);
   }
   if (Array.isArray(input)) {
-    return input.map(item => interpolateObject(item, variables));
+    return input.map((item) => interpolateObject(item, variables));
   }
   if (input !== null && typeof input === 'object') {
     const result: Record<string, unknown> = {};

@@ -13,12 +13,14 @@
 ## File Structure
 
 ### New Files
+
 - `src/types/conditions.ts` — Condition schemas and types
 - `src/workflow/conditions.ts` — Condition evaluator
 - `src/config/project-config.ts` — wolf.yaml loader + defaults
 - `src/cli/commands/validate.ts` — `wolf validate` command
 
 ### Modified Files
+
 - `src/types/workflow.ts` — + RetryPolicy, Condition, Artifact schemas
 - `src/types/state.ts` — + skipped_steps, step_statuses
 - `src/types/events.ts` — + new event types
@@ -43,6 +45,7 @@ All dependencies from MVP1A already present. No new npm packages needed.
 ### Task 1: Add Condition, RetryPolicy, Artifact to Workflow Types
 
 **Files:**
+
 - Modify: `src/types/workflow.ts`
 - Test: `tests/unit/types.test.ts`
 
@@ -102,25 +105,29 @@ export const RetryPolicySchema = z.object({
 
 export type RetryPolicy = z.infer<typeof RetryPolicySchema>;
 
-export const ConditionSchema = z.object({
-  var: z.string(),
-  exists: z.boolean().optional(),
-  equals: z.string().optional(),
-  not_equals: z.string().optional(),
-  contains: z.string().optional(),
-}).refine((data) => {
-  const operators = ['exists', 'equals', 'not_equals', 'contains'];
-  const provided = operators.filter((op) => data[op as keyof typeof data] !== undefined);
-  return provided.length === 1;
-}, { message: 'Condition must have exactly one operator' });
+export const ConditionSchema = z
+  .object({
+    var: z.string(),
+    exists: z.boolean().optional(),
+    equals: z.string().optional(),
+    not_equals: z.string().optional(),
+    contains: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      const operators = ['exists', 'equals', 'not_equals', 'contains'];
+      const provided = operators.filter((op) => data[op as keyof typeof data] !== undefined);
+      return provided.length === 1;
+    },
+    { message: 'Condition must have exactly one operator' }
+  );
 
 export type Condition = z.infer<typeof ConditionSchema>;
 
 export const ArtifactSchema = z.object({
-  path: z.string().refine(
-    (path) => !path.startsWith('/') && !path.includes('..'),
-    { message: 'Artifact path must be relative and not contain parent traversal' }
-  ),
+  path: z.string().refine((path) => !path.startsWith('/') && !path.includes('..'), {
+    message: 'Artifact path must be relative and not contain parent traversal',
+  }),
 });
 
 export type Artifact = z.infer<typeof ArtifactSchema>;
@@ -159,6 +166,7 @@ git commit -m "feat: add retry, condition, and artifact schemas"
 ### Task 2: Extend ExecutionState with Skipped Steps and Step Statuses
 
 **Files:**
+
 - Modify: `src/types/state.ts`
 - Test: `tests/unit/types.test.ts`
 
@@ -202,7 +210,9 @@ export const ExecutionStateSchema = z.object({
   failed_steps: z.array(z.string()).default([]),
   skipped_steps: z.array(z.string()).default([]),
   step_results: z.record(StepResultSchema).default({}),
-  step_statuses: z.record(z.enum(['pending', 'running', 'success', 'failure', 'skipped', 'gated', 'retrying'])).default({}),
+  step_statuses: z
+    .record(z.enum(['pending', 'running', 'success', 'failure', 'skipped', 'gated', 'retrying']))
+    .default({}),
   variables: z.record(z.unknown()).default({}),
   gates: z.record(GateStateSchema).default({}),
   started_at: z.string(),
@@ -227,6 +237,7 @@ git commit -m "feat: add skipped_steps and step_statuses to execution state"
 ### Task 3: Add New Event Types
 
 **Files:**
+
 - Modify: `src/types/events.ts`
 - Test: `tests/unit/types.test.ts`
 
@@ -260,6 +271,7 @@ git commit -m "docs: document MVP1B event types"
 ### Task 4: Add Project Config Loader (wolf.yaml)
 
 **Files:**
+
 - Create: `src/config/project-config.ts`
 - Test: `tests/unit/project-config.test.ts`
 
@@ -291,7 +303,9 @@ describe('loadProjectConfig', () => {
   });
 
   it('should load custom config', () => {
-    writeFileSync(join(tempDir, 'wolf.yaml'), `
+    writeFileSync(
+      join(tempDir, 'wolf.yaml'),
+      `
 state_dir: ".wolf/custom"
 defaults:
   timeout: "60s"
@@ -299,7 +313,8 @@ defaults:
     max_output_size: "2MB"
     blocked_commands:
       - sudo
-`);
+`
+    );
     const config = loadProjectConfig(join(tempDir, 'wolf.yaml'));
     expect(config.state_dir).toBe('.wolf/custom');
     expect(config.defaults.timeout).toBe('60s');
@@ -318,31 +333,37 @@ import { readFileSync, existsSync } from 'fs';
 const ProjectConfigSchema = z.object({
   state_dir: z.string().default('.wolf/state'),
   index_path: z.string().optional(),
-  defaults: z.object({
-    timeout: z.string().default('30s'),
-    shell: z.object({
-      max_output_size: z.string().default('1MB'),
-      blocked_commands: z.array(z.string()).default(['sudo', 'su', 'ssh', 'vim', 'nano', 'less', 'more', 'top', 'watch']),
-    }).optional(),
-  }).default({}),
+  defaults: z
+    .object({
+      timeout: z.string().default('30s'),
+      shell: z
+        .object({
+          max_output_size: z.string().default('1MB'),
+          blocked_commands: z
+            .array(z.string())
+            .default(['sudo', 'su', 'ssh', 'vim', 'nano', 'less', 'more', 'top', 'watch']),
+        })
+        .optional(),
+    })
+    .default({}),
 });
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
 
 export function loadProjectConfig(path?: string): ProjectConfig {
   const configPath = path || 'wolf.yaml';
-  
+
   if (!existsSync(configPath)) {
     return ProjectConfigSchema.parse({});
   }
-  
+
   const content = readFileSync(configPath, 'utf-8');
   const parsed = yaml.load(content);
-  
+
   if (!parsed || typeof parsed !== 'object') {
     throw new Error(`Invalid config file: ${configPath}`);
   }
-  
+
   return ProjectConfigSchema.parse(parsed);
 }
 ```
@@ -364,6 +385,7 @@ git commit -m "feat: add wolf.yaml project config loader"
 ### Task 5: Add Condition Evaluator
 
 **Files:**
+
 - Create: `src/workflow/conditions.ts`
 - Test: `tests/unit/conditions.test.ts`
 
@@ -459,6 +481,7 @@ git commit -m "feat: add when condition evaluator"
 ### Task 6: Add Retry Loop to WorkflowEngine
 
 **Files:**
+
 - Modify: `src/workflow/engine.ts`
 - Test: `tests/unit/workflow-engine.test.ts`
 
@@ -546,6 +569,7 @@ git commit -m "feat: add retry loop to workflow engine"
 ### Task 7: Add Timeout Resolution
 
 **Files:**
+
 - Modify: `src/workflow/engine.ts`
 - Modify: `src/types/runner.ts`
 - Modify: `src/workflow/runners/shell.ts`
@@ -560,7 +584,7 @@ export interface ExecutionContext {
   variables: Record<string, unknown>;
   gates?: Record<string, import('./state.js').GateState>;
   config: unknown;
-  timeoutMs?: number;  // NEW
+  timeoutMs?: number; // NEW
 }
 ```
 
@@ -656,6 +680,7 @@ git commit -m "feat: add engine-level timeout resolution"
 ### Task 8: Add Condition Check and Skip Logic
 
 **Files:**
+
 - Modify: `src/workflow/engine.ts`
 - Test: `tests/unit/workflow-engine.test.ts`
 
@@ -700,6 +725,7 @@ git commit -m "feat: add when condition check and step skip logic"
 ### Task 9: Add Output-Only Artifacts
 
 **Files:**
+
 - Modify: `src/state/case-store.ts`
 - Modify: `src/workflow/engine.ts`
 - Test: `tests/unit/case-store.test.ts`
@@ -725,12 +751,7 @@ After successful step execution:
 
 ```typescript
 if (step.artifact && result.status === 'success' && result.output !== undefined) {
-  this.caseStore.writeArtifact(
-    state.case_id,
-    step.id,
-    step.artifact.path,
-    String(result.output)
-  );
+  this.caseStore.writeArtifact(state.case_id, step.id, step.artifact.path, String(result.output));
   this.emitEvent('artifact.created', state, step, {
     path: step.artifact.path,
   });
@@ -754,6 +775,7 @@ git commit -m "feat: add output-only artifact support"
 ### Task 10: Add Cancel Command
 
 **Files:**
+
 - Modify: `src/workflow/engine.ts`
 - Modify: `src/state/case-store.ts`
 - Modify: `src/cli/commands/cases.ts`
@@ -823,6 +845,7 @@ git commit -m "feat: add case cancellation command"
 ### Task 11: Add `wolf validate` Command
 
 **Files:**
+
 - Create: `src/cli/commands/validate.ts`
 - Modify: `src/cli/index.ts`
 - Test: `tests/integration/validate.test.ts`
@@ -844,8 +867,11 @@ const cliPath = join(__dirname, '..', '..', 'dist', 'cli', 'index.js');
 describe('wolf validate', () => {
   it('should validate correct workflow', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'wolf-val-'));
-    writeFileSync(join(tempDir, 'good.yaml'), `id: test\nversion: "0.1.0"\nsteps:\n  - id: s1\n    type: builtin\n    runner: echo\n`);
-    
+    writeFileSync(
+      join(tempDir, 'good.yaml'),
+      `id: test\nversion: "0.1.0"\nsteps:\n  - id: s1\n    type: builtin\n    runner: echo\n`
+    );
+
     const output = execSync(`node ${cliPath} validate good.yaml`, {
       cwd: tempDir,
       encoding: 'utf-8',
@@ -857,7 +883,7 @@ describe('wolf validate', () => {
   it('should reject invalid workflow', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'wolf-val-'));
     writeFileSync(join(tempDir, 'bad.yaml'), `id: test\nversion: "0.1.0"\nsteps: []\n`);
-    
+
     let exitCode = 0;
     try {
       execSync(`node ${cliPath} validate bad.yaml`, { cwd: tempDir, encoding: 'utf-8' });
@@ -885,7 +911,7 @@ export function createValidateCommand(): Command {
       try {
         const workflow = loadWorkflow(workflowPath);
         const result = validateWorkflow(workflow);
-        
+
         if (result.success) {
           console.log('Workflow is valid.');
           process.exit(0);
@@ -923,6 +949,7 @@ git commit -m "feat: add wolf validate command"
 ### Task 12: Add `--config` and `--json` Flags
 
 **Files:**
+
 - Modify: `src/cli/commands/run.ts`
 - Modify: `src/cli/commands/cases.ts`
 
@@ -966,6 +993,7 @@ git commit -m "feat: add --config and --json CLI flags"
 ### Task 13: Add MVP1B Example Workflow
 
 **Files:**
+
 - Create: `examples/retry-and-conditions.yaml`
 
 - [ ] **Step 1: Create example**
@@ -973,8 +1001,8 @@ git commit -m "feat: add --config and --json CLI flags"
 ```yaml
 # examples/retry-and-conditions.yaml
 id: retry_conditions_demo
-version: "0.1.0"
-name: "Retry and Conditions Demo"
+version: '0.1.0'
+name: 'Retry and Conditions Demo'
 
 steps:
   - id: check_env
@@ -991,25 +1019,25 @@ steps:
       var: env_status
       equals: "env_ok\n"
     input:
-      message: "Environment is good"
+      message: 'Environment is good'
 
   - id: flaky_health_check
     type: builtin
     runner: shell
     retry:
       max_attempts: 3
-      delay: "500ms"
+      delay: '500ms'
       backoff: linear
     input:
-      command: "curl -s http://localhost:3000/health || exit 1"
+      command: 'curl -s http://localhost:3000/health || exit 1'
 
   - id: save_output
     type: builtin
     runner: echo
     input:
-      message: "Workflow completed successfully"
+      message: 'Workflow completed successfully'
     artifact:
-      path: "results/completion.txt"
+      path: 'results/completion.txt'
 ```
 
 - [ ] **Step 2: Commit**
@@ -1092,23 +1120,23 @@ git commit -m "chore: MVP1B acceptance testing complete"
 
 ## Spec Coverage Check
 
-| Spec Section | Implementing Task(s) |
-|--------------|---------------------|
-| When conditions (3.1) | Task 5 (evaluator), Task 8 (engine integration) |
-| Retry policy (3.2) | Task 6 |
-| Timeout handling (3.3) | Task 7 |
-| Simple artifacts (3.4) | Task 9 |
-| wolf.yaml (3.5) | Task 4 |
-| Enhanced state machine (3.6) | Task 2 |
-| Cancel command (3.7) | Task 10 |
-| New event types (3.8) | Task 3 (docs), Tasks 6-10 (emission) |
-| CLI validate (4.1) | Task 11 |
-| CLI --config/--json (4.1) | Task 12 |
-| Exit code 4 (4.2) | Task 10 |
-| AC 1-10 (Section 5) | All tasks above |
+| Spec Section                 | Implementing Task(s)                            |
+| ---------------------------- | ----------------------------------------------- |
+| When conditions (3.1)        | Task 5 (evaluator), Task 8 (engine integration) |
+| Retry policy (3.2)           | Task 6                                          |
+| Timeout handling (3.3)       | Task 7                                          |
+| Simple artifacts (3.4)       | Task 9                                          |
+| wolf.yaml (3.5)              | Task 4                                          |
+| Enhanced state machine (3.6) | Task 2                                          |
+| Cancel command (3.7)         | Task 10                                         |
+| New event types (3.8)        | Task 3 (docs), Tasks 6-10 (emission)            |
+| CLI validate (4.1)           | Task 11                                         |
+| CLI --config/--json (4.1)    | Task 12                                         |
+| Exit code 4 (4.2)            | Task 10                                         |
+| AC 1-10 (Section 5)          | All tasks above                                 |
 
 ---
 
-*Plan version: 0.1.0*
-*Total tasks: 15*
-*Estimated phases: 6*
+_Plan version: 0.1.0_
+_Total tasks: 15_
+_Estimated phases: 6_

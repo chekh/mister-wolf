@@ -19,7 +19,7 @@ export class WorkflowEngine {
     private caseStore: CaseStore,
     private gateStore: GateStore,
     private bus: InProcessEventBus,
-    private config: ProjectConfig = { state_dir: '.wolf/state', defaults: { timeout: '30s' } },
+    private config: ProjectConfig = { state_dir: '.wolf/state', defaults: { timeout: '30s' } }
   ) {}
 
   async execute(caseId: string, workflow: WorkflowDefinition): Promise<{ status: string }> {
@@ -143,12 +143,7 @@ export class WorkflowEngine {
         }
 
         if (step.artifact && result.output !== undefined) {
-          this.caseStore.writeArtifact(
-            state.case_id,
-            step.id,
-            step.artifact.path,
-            String(result.output)
-          );
+          this.caseStore.writeArtifact(state.case_id, step.id, step.artifact.path, String(result.output));
 
           await this.emitEvent({
             type: 'artifact.created',
@@ -230,9 +225,7 @@ export class WorkflowEngine {
 
   private async runGraph(workflow: WorkflowDefinition, state: ExecutionState): Promise<{ status: string }> {
     const graph = buildGraph(workflow);
-    const maxParallel = workflow.execution?.max_parallel
-      ?? this.config.defaults.max_parallel
-      ?? 1;
+    const maxParallel = workflow.execution?.max_parallel ?? this.config.defaults.max_parallel ?? 1;
 
     // Initialize pending statuses for all steps
     state.step_statuses ??= {};
@@ -420,9 +413,7 @@ export class WorkflowEngine {
 
     if (hasFailure) {
       // Mark pending steps and their transitive dependents as skipped
-      const pendingSteps = workflow.steps
-        .filter((s) => state.step_statuses[s.id] === 'pending')
-        .map((s) => s.id);
+      const pendingSteps = workflow.steps.filter((s) => state.step_statuses[s.id] === 'pending').map((s) => s.id);
 
       const toSkip = new Set<string>();
       for (const stepId of pendingSteps) {
@@ -487,7 +478,11 @@ export class WorkflowEngine {
     return { status: state.status };
   }
 
-  private async executeStep(step: StepDefinition, state: ExecutionState, trackState: boolean = true): Promise<StepResult> {
+  private async executeStep(
+    step: StepDefinition,
+    state: ExecutionState,
+    trackState: boolean = true
+  ): Promise<StepResult> {
     const interpolatedInput = interpolateObject(step.input, state.variables);
 
     await this.emitEvent({
@@ -518,7 +513,7 @@ export class WorkflowEngine {
     return this.runWithTimeout(
       () => runner.run({ ...step, input: interpolatedInput as Record<string, unknown> | undefined }, context),
       timeoutMs,
-      step.id,
+      step.id
     );
   }
 
@@ -532,11 +527,7 @@ export class WorkflowEngine {
     return this.parseDuration('60s');
   }
 
-  private async runWithTimeout(
-    fn: () => Promise<StepResult>,
-    timeoutMs: number,
-    stepId: string,
-  ): Promise<StepResult> {
+  private async runWithTimeout(fn: () => Promise<StepResult>, timeoutMs: number, stepId: string): Promise<StepResult> {
     return Promise.race([
       fn(),
       new Promise<StepResult>((resolve) =>
@@ -550,13 +541,17 @@ export class WorkflowEngine {
                 retryable: false,
               },
             }),
-          timeoutMs,
-        ),
+          timeoutMs
+        )
       ),
     ]);
   }
 
-  private async executeStepWithRetry(step: StepDefinition, state: ExecutionState, trackState: boolean = true): Promise<StepResult> {
+  private async executeStepWithRetry(
+    step: StepDefinition,
+    state: ExecutionState,
+    trackState: boolean = true
+  ): Promise<StepResult> {
     state.step_statuses ??= {};
     const maxAttempts = step.retry?.max_attempts ?? 1;
     const delayMs = this.parseDuration(step.retry?.delay ?? '1s');

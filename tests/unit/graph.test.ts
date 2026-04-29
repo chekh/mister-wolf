@@ -38,9 +38,7 @@ describe('graph', () => {
     const workflow: WorkflowDefinition = {
       id: 'test',
       version: '0.1.0',
-      steps: [
-        { id: 'a', type: 'builtin', runner: 'echo', depends_on: ['x'] },
-      ],
+      steps: [{ id: 'a', type: 'builtin', runner: 'echo', depends_on: ['x'] }],
     };
     const result = validateGraph(workflow);
     expect(result.success).toBe(false);

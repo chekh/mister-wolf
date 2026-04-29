@@ -11,8 +11,11 @@ const cliPath = join(__dirname, '..', '..', 'dist', 'cli', 'index.js');
 describe('wolf validate', () => {
   it('should validate correct workflow', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'wolf-val-'));
-    writeFileSync(join(tempDir, 'good.yaml'), `id: test\nversion: "0.1.0"\nsteps:\n  - id: s1\n    type: builtin\n    runner: echo\n`);
-    
+    writeFileSync(
+      join(tempDir, 'good.yaml'),
+      `id: test\nversion: "0.1.0"\nsteps:\n  - id: s1\n    type: builtin\n    runner: echo\n`
+    );
+
     const output = execSync(`node ${cliPath} validate good.yaml`, {
       cwd: tempDir,
       encoding: 'utf-8',
@@ -24,7 +27,7 @@ describe('wolf validate', () => {
   it('should reject invalid workflow', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'wolf-val-'));
     writeFileSync(join(tempDir, 'bad.yaml'), `id: test\nversion: "0.1.0"\nsteps: []\n`);
-    
+
     let exitCode = 0;
     try {
       execSync(`node ${cliPath} validate bad.yaml`, { cwd: tempDir, encoding: 'utf-8' });

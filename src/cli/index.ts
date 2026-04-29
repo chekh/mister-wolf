@@ -9,10 +9,7 @@ import { createEventsCommand } from './commands/events.js';
 
 const program = new Command();
 
-program
-  .name('wolf')
-  .description('Mr. Wolf — universal adaptive agent framework')
-  .version('0.1.0');
+program.name('wolf').description('Mr. Wolf — universal adaptive agent framework').version('0.1.0');
 
 program.addCommand(createRunCommand());
 program.addCommand(createResumeCommand());
