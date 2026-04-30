@@ -13,6 +13,8 @@ export const PolicyRuleSchema = z.object({
       runner: z.string().optional(),
       command_contains: z.array(z.string()).optional(),
       step_id: z.string().optional(),
+      tool_id: z.string().optional(),
+      tool_risk: RiskLevelSchema.optional(),
     })
     .default({}),
   decision: DecisionTypeSchema,
