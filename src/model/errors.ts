@@ -27,3 +27,15 @@ export class ContextReadError extends Error {
     super(`Context read error (${path}): ${reason}`);
   }
 }
+
+export class ProviderStreamingUnsupported extends Error {
+  constructor(providerId: string) {
+    super(`Provider does not support streaming: ${providerId}`);
+  }
+}
+
+export class StreamingToolCallUnsupported extends Error {
+  constructor() {
+    super('Tool calling with streaming is not supported in MVP7');
+  }
+}
