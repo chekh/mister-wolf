@@ -37,4 +37,30 @@ describe('MockProvider', () => {
     expect(result.usage!.output_tokens).toBeGreaterThan(0);
     expect(result.usage!.total_tokens).toBe(result.usage!.input_tokens! + result.usage!.output_tokens!);
   });
+
+  it('should return tool_call when metadata.mock_tool_call is set', async () => {
+    const provider = new MockProvider();
+    const result = await provider.invoke({
+      provider: 'mock',
+      model: 'mock-chat',
+      input: 'Read context',
+      metadata: {
+        mock_tool_call: { tool_id: 'context.read', input: { path: '.wolf/context/context.md' } },
+      },
+    });
+    expect(result.tool_call).toBeDefined();
+    expect(result.tool_call!.tool_id).toBe('context.read');
+    expect(result.output).toBe('');
+  });
+
+  it('should return text output when metadata.mock_tool_call is not set', async () => {
+    const provider = new MockProvider();
+    const result = await provider.invoke({
+      provider: 'mock',
+      model: 'mock-chat',
+      input: 'Hello',
+    });
+    expect(result.tool_call).toBeUndefined();
+    expect(result.output).toContain('[mock:mock-chat]');
+  });
 });
