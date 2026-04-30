@@ -20,6 +20,7 @@ export const ModelRouteSchema = z.object({
   temperature: z.number().min(0).max(2).optional(),
   execution_mode: z.enum(['stub', 'invoke']).optional(),
   system_prompt: z.string().optional(),
+  streaming: z.boolean().optional(),
 });
 
 export type ModelRoute = z.infer<typeof ModelRouteSchema>;

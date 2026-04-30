@@ -190,4 +190,39 @@ models:
     const config = loadProjectConfig(join(tempDir, 'wolf.yaml'));
     expect(config.agents[0].system_prompt).toBe('You are a planner agent');
   });
+
+  it('should default models.execution.streaming to false', () => {
+    const config = loadProjectConfig(join(tempDir, 'nonexistent.yaml'));
+    expect(config.models.execution.streaming).toBe(false);
+  });
+
+  it('should load custom models.execution.streaming', () => {
+    writeFileSync(
+      join(tempDir, 'wolf.yaml'),
+      `
+models:
+  execution:
+    mode: invoke
+    streaming: true
+`
+    );
+    const config = loadProjectConfig(join(tempDir, 'wolf.yaml'));
+    expect(config.models.execution.streaming).toBe(true);
+  });
+
+  it('should load route with streaming override', () => {
+    writeFileSync(
+      join(tempDir, 'wolf.yaml'),
+      `
+models:
+  routes:
+    openai-gpt4:
+      provider: openai
+      model: gpt-4
+      streaming: true
+`
+    );
+    const config = loadProjectConfig(join(tempDir, 'wolf.yaml'));
+    expect(config.models.routes['openai-gpt4'].streaming).toBe(true);
+  });
 });

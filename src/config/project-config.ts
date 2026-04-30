@@ -88,10 +88,11 @@ export const ProjectConfigSchema = z.object({
       execution: z
         .object({
           mode: z.enum(['stub', 'invoke']).default('stub'),
+          streaming: z.boolean().default(false),
         })
-        .default({ mode: 'stub' }),
+        .default({ mode: 'stub', streaming: false }),
     })
-    .default({ routes: {}, execution: { mode: 'stub' } }),
+    .default({ routes: {}, execution: { mode: 'stub', streaming: false } }),
   defaults: z
     .object({
       timeout: z.string().default('30s'),
