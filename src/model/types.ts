@@ -1,4 +1,5 @@
 import { ToolDefinition } from '../tool/types.js';
+import { ModelStreamCallbacks } from './stream-types.js';
 export { ToolDefinition };
 
 export interface ModelInvocationRequest {
@@ -34,6 +35,10 @@ export interface ModelInvocationResult {
 export interface ModelProvider {
   id: string;
   invoke(request: ModelInvocationRequest): Promise<ModelInvocationResult>;
+  invokeStream?(
+    request: ModelInvocationRequest,
+    callbacks: ModelStreamCallbacks
+  ): Promise<ModelInvocationResult>;
 }
 
 export interface AgentModelResult {
