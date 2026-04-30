@@ -9,3 +9,4 @@ dist/
 coverage/
 *.tsbuildinfo
 .worktrees/
+docs/discussions/
