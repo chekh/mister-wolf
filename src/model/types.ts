@@ -1,4 +1,5 @@
 import { ToolDefinition } from '../tool/types.js';
+export { ToolDefinition };
 
 export interface ModelInvocationRequest {
   provider: string;
