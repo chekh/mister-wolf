@@ -13,6 +13,8 @@ import { ModelRouter } from '../../agent/router.js';
 import { ModelProviderRegistry } from '../../model/registry.js';
 import { MockProvider } from '../../model/mock-provider.js';
 import { OpenAIProvider } from '../../model/openai-provider.js';
+import { ToolRegistry } from '../../tool/registry.js';
+import { ContextReadToolExecutor } from '../../tool/executors/context-read.js';
 import { CaseStore } from '../../state/case-store.js';
 import { GateStore } from '../../state/gate-store.js';
 import { InProcessEventBus } from '../../kernel/event-bus.js';
@@ -37,7 +39,10 @@ export function createRunCommand(): Command {
       const agentRegistry = new AgentRegistry(projectConfig.agents);
       const modelRouter = new ModelRouter(projectConfig.models.routes);
       const providerRegistry = new ModelProviderRegistry([new MockProvider(), new OpenAIProvider()]);
-      registry.register(new AgentRunner(agentRegistry, modelRouter, providerRegistry));
+      const toolRegistry = new ToolRegistry();
+      toolRegistry.registerDefinition({ id: 'context.read', executor: 'context.read', risk: 'low', description: 'Read project context files' });
+      toolRegistry.registerExecutor(new ContextReadToolExecutor());
+      registry.register(new AgentRunner(agentRegistry, modelRouter, providerRegistry, toolRegistry, projectConfig.models.execution.mode));
 
       const caseStore = new CaseStore(stateDir);
       const gateStore = new GateStore(caseStore);
