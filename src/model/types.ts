@@ -1,3 +1,5 @@
+import { ToolDefinition } from '../tool/types.js';
+
 export interface ModelInvocationRequest {
   provider: string;
   model: string;
@@ -6,13 +8,20 @@ export interface ModelInvocationRequest {
   context?: string;
   max_tokens?: number;
   temperature?: number;
+  tools?: ToolDefinition[];
   metadata?: Record<string, unknown>;
+}
+
+export interface ModelToolCall {
+  tool_id: string;
+  input: unknown;
 }
 
 export interface ModelInvocationResult {
   output: string;
   provider: string;
   model: string;
+  tool_call?: ModelToolCall;
   usage?: {
     input_tokens?: number;
     output_tokens?: number;
