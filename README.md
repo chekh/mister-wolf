@@ -19,7 +19,8 @@
 | **MVP3**  | ✅ Complete | Policy engine — rule-based workflow preflight, step runtime guard, policy gates, risk levels, CLI                  |
 | **MVP4**  | ✅ Complete | Agent registry + model router — declarative agents, deterministic routing, invocation plan stub, CLI               |
 | **MVP5**  | ✅ Complete | Model Provider Runtime — stub/invoke modes, MockProvider, OpenAIProvider, context reading, agent execution         |
-| **MVP6**  | ⏭️ Next     | Agent Tool Calling — controlled tool use with Policy Engine guard                                                  |
+| **MVP6**  | ✅ Complete | Agent Tool Calling — ToolExecutor layer, context.read tool, agent allow-list, two-pass execution, policy integration |
+| **MVP7**  | ⏭️ Next     | Streaming responses, multi-agent delegation, memory/learning                                                          |
 
 ## Quick Start
 
