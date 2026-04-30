@@ -20,7 +20,8 @@
 | **MVP4**  | ✅ Complete | Agent registry + model router — declarative agents, deterministic routing, invocation plan stub, CLI                 |
 | **MVP5**  | ✅ Complete | Model Provider Runtime — stub/invoke modes, MockProvider, OpenAIProvider, context reading, agent execution           |
 | **MVP6**  | ✅ Complete | Agent Tool Calling — ToolExecutor layer, context.read tool, agent allow-list, two-pass execution, policy integration |
-| **MVP7**  | ⏭️ Next     | Streaming responses, multi-agent delegation, memory/learning                                                         |
+| **MVP7**  | ✅ Complete | Streaming Model Responses — real-time text streaming, SSE parsing, event-driven CLI output                           |
+| **MVP8**  | ⏭️ Next     | Memory Layer / Case Learning — case history, agent memory, project knowledge accumulation                            |
 
 ## Quick Start
 

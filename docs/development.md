@@ -556,7 +556,7 @@ policy:
 - `tests/unit/openai-provider-streaming.test.ts` — 4 tests
 - `tests/unit/agent-runner-streaming.test.ts` — 4 tests
 - `tests/integration/mvp7-streaming.test.ts` — 6 tests
-- Total: 18 new tests (254 total)
+- Total: 21 new tests (269 total)
 
 **Usage:**
 
