@@ -18,8 +18,8 @@
 | **MVP2**  | ✅ Complete    | Context resolver — deterministic project file discovery, context bundle, case memory                               |
 | **MVP3**  | ✅ Complete    | Policy engine — rule-based workflow preflight, step runtime guard, policy gates, risk levels, CLI                  |
 | **MVP4**  | ✅ Complete    | Agent registry + model router — declarative agents, deterministic routing, invocation plan stub, CLI               |
-| **MVP5**  | 🔄 In Progress | Real LLM execution, provider SDK integration                                                                       |
-| **MVP6**  | ⏭️ Next        | Tool calling, streaming, multi-agent delegation, memory                                                            |
+| **MVP5**  | ✅ Complete    | Model Provider Runtime — stub/invoke modes, MockProvider, OpenAIProvider, context reading, agent execution          |
+| **MVP6**  | ⏭️ Next        | Agent Tool Calling — controlled tool use with Policy Engine guard                                                  |
 
 ## Quick Start
 
