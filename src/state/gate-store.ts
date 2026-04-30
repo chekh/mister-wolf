@@ -3,10 +3,18 @@ import { GateState } from '../types/state.js';
 import { SQLiteIndex } from './sqlite-index.js';
 
 export class GateStore {
+  private caseStore: CaseStore;
+
   constructor(
-    private caseStore: CaseStore,
+    caseStoreOrPath: CaseStore | string,
     private index?: SQLiteIndex
-  ) {}
+  ) {
+    if (typeof caseStoreOrPath === 'string') {
+      this.caseStore = new CaseStore(caseStoreOrPath);
+    } else {
+      this.caseStore = caseStoreOrPath;
+    }
+  }
 
   createGate(caseId: string, stepId: string, type?: string, payload?: Record<string, unknown>): string {
     const gateId = `gate_${caseId}_${stepId}`;

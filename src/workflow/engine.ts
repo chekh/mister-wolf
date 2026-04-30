@@ -17,16 +17,46 @@ import { v4 as uuidv4 } from 'uuid';
 
 export class WorkflowEngine {
   private states = new Map<string, ExecutionState>();
-  private policyGateAdapter: PolicyGateAdapter;
+  private policyGateAdapter!: PolicyGateAdapter;
+  private caseStore!: CaseStore;
+  private gateStore!: GateStore;
+  private bus!: InProcessEventBus;
+  private config: ProjectConfig;
+  private registry: RunnerRegistry;
 
+  constructor(registry: RunnerRegistry);
+  constructor(registry: RunnerRegistry, caseStore: CaseStore, gateStore: GateStore, bus: InProcessEventBus, config?: ProjectConfig);
   constructor(
-    private registry: RunnerRegistry,
-    private caseStore: CaseStore,
-    private gateStore: GateStore,
-    private bus: InProcessEventBus,
-    private config: ProjectConfig = ProjectConfigSchema.parse({})
+    registry: RunnerRegistry,
+    caseStore?: CaseStore,
+    gateStore?: GateStore,
+    bus?: InProcessEventBus,
+    config: ProjectConfig = ProjectConfigSchema.parse({})
   ) {
+    this.registry = registry;
+    this.config = config;
+    if (caseStore) this.caseStore = caseStore;
+    if (gateStore) {
+      this.gateStore = gateStore;
+      this.policyGateAdapter = new PolicyGateAdapter(gateStore);
+    }
+    if (bus) this.bus = bus;
+  }
+
+  async run(
+    workflow: WorkflowDefinition,
+    context: { case_id: string; workflow_id: string; variables: Record<string, unknown>; config: { state_dir: string } },
+    bus: InProcessEventBus,
+    store: CaseStore,
+    gateStore: GateStore
+  ): Promise<{ status: string }> {
+    this.bus = bus;
+    this.caseStore = store;
+    this.gateStore = gateStore;
     this.policyGateAdapter = new PolicyGateAdapter(gateStore);
+    this.config = ProjectConfigSchema.parse({ state_dir: context.config.state_dir });
+
+    return this.execute(context.case_id, workflow);
   }
 
   async execute(caseId: string, workflow: WorkflowDefinition): Promise<{ status: string }> {
