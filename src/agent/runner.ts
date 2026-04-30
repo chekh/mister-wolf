@@ -109,7 +109,8 @@ export class AgentRunner implements StepRunner {
       }
     }
 
-    const mode = resolveExecutionMode(route, this.globalExecutionMode);
+    const globalMode = ctx.config.models?.execution?.mode ?? this.globalExecutionMode;
+    const mode = resolveExecutionMode(route, globalMode);
 
     if (mode === 'invoke') {
       return this.runInvoke(step, ctx, agent, route, contextBundle);
@@ -200,6 +201,7 @@ export class AgentRunner implements StepRunner {
       max_tokens: route.max_tokens,
       temperature: route.temperature,
       tools: availableTools && availableTools.length > 0 ? availableTools : undefined,
+      metadata: (step.input?.metadata as Record<string, unknown> | undefined),
     };
 
     let pass1Result;
@@ -248,7 +250,7 @@ export class AgentRunner implements StepRunner {
       case_id: ctx.case_id,
       workflow_id: ctx.workflow_id,
       step_id: step.id,
-      project_root: dirname(resolve(ctx.config.state_dir)),
+      project_root: dirname(dirname(resolve(ctx.config.state_dir))),
       agent_id: agent.id,
     };
 
