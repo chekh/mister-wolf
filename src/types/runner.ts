@@ -1,6 +1,7 @@
 import { StepDefinition } from './workflow.js';
 import { GateState, StepResult } from './state.js';
 import { ProjectConfig } from '../config/project-config.js';
+import { EventBus } from '../kernel/event-bus.js';
 
 export interface ExecutionContext {
   case_id: string;
@@ -9,6 +10,7 @@ export interface ExecutionContext {
   gates?: Record<string, GateState>;
   config: ProjectConfig;
   timeoutMs?: number;
+  bus?: EventBus;
 }
 
 export interface StepRunner {

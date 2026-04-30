@@ -13,6 +13,9 @@ import { ToolNotAllowed, ToolCallLimitExceeded } from '../tool/errors.js';
 import { ContextReadError, ProviderStreamingUnsupported, StreamingToolCallUnsupported } from '../model/errors.js';
 import { dirname, resolve } from 'path';
 import { existsSync, readFileSync, statSync } from 'fs';
+import { v4 as uuidv4 } from 'uuid';
+import { RuntimeEvent } from '../types/events.js';
+import { EventBus } from '../kernel/event-bus.js';
 
 function validateContextBundlePath(path: string, stateDir: string): { valid: boolean; reason?: string } {
   if (path.startsWith('/')) {
@@ -451,7 +454,19 @@ export class AgentRunner implements StepRunner {
     type: string,
     payload: Record<string, unknown>
   ): Promise<void> {
-    // This is a placeholder for event emission
-    // In the real implementation, this would use the event bus
+    if (!ctx.bus) return;
+
+    const event: RuntimeEvent = {
+      id: uuidv4(),
+      timestamp: new Date().toISOString(),
+      actor: { type: 'system', id: 'agent-runner' },
+      type,
+      case_id: ctx.case_id,
+      workflow_id: ctx.workflow_id,
+      step_id: stepId,
+      payload,
+    };
+
+    await (ctx.bus as EventBus).publish(event);
   }
 }

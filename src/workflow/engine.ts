@@ -608,6 +608,7 @@ export class WorkflowEngine {
       gates: state.gates,
       config: this.config,
       timeoutMs,
+      bus: this.bus,
     };
 
     return this.runWithTimeout(

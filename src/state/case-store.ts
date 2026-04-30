@@ -107,6 +107,11 @@ export class CaseStore {
     this.fileStore.writeOutput(caseId, stepId, stdout, stderr);
   }
 
+  getStepResult(caseId: string, stepId: string): import('../types/state.js').StepResult | undefined {
+    const state = this.readState(caseId);
+    return state?.step_results[stepId];
+  }
+
   writeArtifact(caseId: string, stepId: string, artifactPath: string, content: string): void {
     const caseDir = this.fileStore.getCaseDir(caseId);
     const artifactsRoot = resolve(caseDir, 'artifacts');
