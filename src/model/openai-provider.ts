@@ -1,5 +1,5 @@
 import { ModelProvider, ModelInvocationRequest, ModelInvocationResult, ToolDefinition } from './types.js';
-import { ProviderAuthError, ProviderRequestError, ProviderNetworkError } from './errors.js';
+import { ProviderAuthError, ProviderRequestError, ProviderNetworkError, StreamingToolCallUnsupported } from './errors.js';
 import { ToolCallLimitExceeded } from '../tool/errors.js';
 
 function sanitizeToolId(toolId: string): string {
@@ -25,12 +25,7 @@ export class OpenAIProvider implements ModelProvider {
   id = 'openai';
   private baseUrl = 'https://api.openai.com/v1/chat/completions';
 
-  async invoke(request: ModelInvocationRequest): Promise<ModelInvocationResult> {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new ProviderAuthError(this.id);
-    }
-
+  private buildChatBody(request: ModelInvocationRequest): Record<string, unknown> {
     const body: Record<string, unknown> = {
       model: request.model,
       messages: [
@@ -50,6 +45,16 @@ export class OpenAIProvider implements ModelProvider {
     if (request.tools && request.tools.length > 0) {
       body.tools = request.tools.map(mapToolToOpenAI);
     }
+    return body;
+  }
+
+  async invoke(request: ModelInvocationRequest): Promise<ModelInvocationResult> {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new ProviderAuthError(this.id);
+    }
+
+    const body = this.buildChatBody(request);
 
     let response: Response;
     try {
@@ -128,5 +133,104 @@ export class OpenAIProvider implements ModelProvider {
           }
         : undefined,
     };
+  }
+
+  async invokeStream(
+    request: ModelInvocationRequest,
+    callbacks: import('./stream-types.js').ModelStreamCallbacks
+  ): Promise<ModelInvocationResult> {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new ProviderAuthError(this.id);
+    }
+
+    const body = this.buildChatBody(request);
+    body.stream = true;
+
+    let response: Response;
+    try {
+      response = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      throw new ProviderNetworkError(this.id);
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      throw new ProviderAuthError(this.id);
+    }
+    if (response.status === 400 || response.status === 404) {
+      const errorBody = await response.text();
+      throw new ProviderRequestError(this.id, errorBody);
+    }
+    if (response.status === 429 || response.status >= 500) {
+      throw new ProviderNetworkError(this.id);
+    }
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new ProviderRequestError(this.id, errorBody);
+    }
+
+    if (!response.body) {
+      throw new ProviderNetworkError(this.id);
+    }
+
+    await callbacks.onStart?.({ provider: this.id, model: request.model });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
+    let chunkIndex = 0;
+    let doneSeen = false;
+
+    while (!doneSeen) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6);
+        if (data === '[DONE]') {
+          doneSeen = true;
+          break;
+        }
+
+        const parsed = JSON.parse(data);
+        const delta = parsed.choices?.[0]?.delta;
+
+        if (delta?.tool_calls || delta?.function_call) {
+          throw new StreamingToolCallUnsupported();
+        }
+
+        if (delta?.content) {
+          fullText += delta.content;
+          await callbacks.onChunk?.({
+            provider: this.id,
+            model: request.model,
+            chunk_index: chunkIndex++,
+            text: delta.content,
+          });
+        }
+      }
+    }
+
+    const result: ModelInvocationResult = {
+      output: fullText,
+      provider: this.id,
+      model: request.model,
+    };
+
+    await callbacks.onComplete?.(result);
+    return result;
   }
 }
