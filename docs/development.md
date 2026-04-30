@@ -467,3 +467,52 @@ Some tests (e.g., shell runner timeout) rely on process signal behavior that may
 1. Check that your Docker version supports `detached: true` for process groups
 2. Ensure the Docker daemon has sufficient resources (RAM/CPU)
 3. Run `docker compose run --rm wolf` to test in the standard environment
+
+## Agent Tool Calling (MVP6)
+
+### Overview
+
+Agents can request tool execution during their steps. Each agent step supports at most one tool call, followed by a final model invocation to process the result.
+
+### Built-in Tools
+
+- `context.read` — reads existing `.wolf/context/context.md` (or custom path). Does not rebuild context.
+
+### Agent Configuration
+
+```yaml
+agents:
+  - id: reviewer
+    tools:
+      - context.read
+```
+
+### Execution Flow
+
+1. AgentRunner invokes model with available tools (Pass 1)
+2. If model requests tool call:
+   - Validate against agent allow-list
+   - Evaluate policy
+   - Execute tool via ToolExecutor
+   - Invoke model with tool result (Pass 2)
+3. Return final AgentModelResult
+
+### Tool Calling Modes
+
+- **Invoke mode**: Tool calling active
+- **Stub mode**: Returns AgentInvocationPlan (no tool execution)
+
+### Policy Integration
+
+Policy rules can match by `tool_id` or `tool_risk`:
+
+```yaml
+policy:
+  rules:
+    - id: allow-context-read
+      match:
+        tool_id: context.read
+      decision: allow
+      risk: low
+      reason: "Context read is safe"
+```
