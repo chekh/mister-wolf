@@ -14,31 +14,31 @@
 
 ### New Files
 
-| File | Responsibility |
-|------|---------------|
-| `src/tool/types.ts` | `ToolDefinition`, `ToolExecutor`, `ToolExecutionInput/Result/Context`, `ModelToolCall` |
-| `src/tool/errors.ts` | Tool error taxonomy: `ToolNotFound`, `ToolNotAllowed`, `ToolExecutorNotFound`, `ToolExecutionError`, `ToolApprovalRejected`, `ContextToolError`, `ToolCallLimitExceeded`, `ToolDenied` |
-| `src/tool/registry.ts` | `ToolRegistry` — register, get, require definitions and executors |
-| `src/tool/executors/context-read.ts` | `ContextReadToolExecutor` — reads existing context files |
-| `tests/unit/tool-registry.test.ts` | ToolRegistry unit tests |
-| `tests/unit/context-read-executor.test.ts` | ContextReadToolExecutor unit tests |
-| `tests/unit/agent-runner-tool-call.test.ts` | AgentRunner tool calling unit tests |
-| `tests/integration/mvp6-tool-calling.test.ts` | End-to-end integration tests |
+| File                                          | Responsibility                                                                                                                                                                         |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/tool/types.ts`                           | `ToolDefinition`, `ToolExecutor`, `ToolExecutionInput/Result/Context`, `ModelToolCall`                                                                                                 |
+| `src/tool/errors.ts`                          | Tool error taxonomy: `ToolNotFound`, `ToolNotAllowed`, `ToolExecutorNotFound`, `ToolExecutionError`, `ToolApprovalRejected`, `ContextToolError`, `ToolCallLimitExceeded`, `ToolDenied` |
+| `src/tool/registry.ts`                        | `ToolRegistry` — register, get, require definitions and executors                                                                                                                      |
+| `src/tool/executors/context-read.ts`          | `ContextReadToolExecutor` — reads existing context files                                                                                                                               |
+| `tests/unit/tool-registry.test.ts`            | ToolRegistry unit tests                                                                                                                                                                |
+| `tests/unit/context-read-executor.test.ts`    | ContextReadToolExecutor unit tests                                                                                                                                                     |
+| `tests/unit/agent-runner-tool-call.test.ts`   | AgentRunner tool calling unit tests                                                                                                                                                    |
+| `tests/integration/mvp6-tool-calling.test.ts` | End-to-end integration tests                                                                                                                                                           |
 
 ### Modified Files
 
-| File | Changes |
-|------|---------|
-| `src/model/types.ts` | Add `tools` to `ModelInvocationRequest`, `tool_call` to `ModelInvocationResult`, add `ModelToolCall` |
-| `src/model/mock-provider.ts` | Support `metadata.mock_tool_call` for deterministic tool calls |
-| `src/model/openai-provider.ts` | Map `ToolDefinition` to OpenAI function schema, parse first tool call, sanitize tool IDs |
-| `src/types/policy.ts` | Extend `PolicyRule.match` with `tool_id` and `tool_risk` |
-| `src/policy/engine.ts` | Add `evaluateTool()` method for `tool_runtime` enforcement |
-| `src/agent/runner.ts` | Add tool registry, two-pass execution, tool call handling, invoke-mode-only tool calling |
-| `src/cli/commands/run.ts` | Register `ToolRegistry` with built-in `context.read`, pass to `AgentRunner` |
-| `tests/unit/mock-provider.test.ts` | Add tool call tests |
-| `tests/unit/openai-provider.test.ts` | Add tool calling tests |
-| `docs/development.md` | Add Agent Tool Calling section |
+| File                                 | Changes                                                                                              |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `src/model/types.ts`                 | Add `tools` to `ModelInvocationRequest`, `tool_call` to `ModelInvocationResult`, add `ModelToolCall` |
+| `src/model/mock-provider.ts`         | Support `metadata.mock_tool_call` for deterministic tool calls                                       |
+| `src/model/openai-provider.ts`       | Map `ToolDefinition` to OpenAI function schema, parse first tool call, sanitize tool IDs             |
+| `src/types/policy.ts`                | Extend `PolicyRule.match` with `tool_id` and `tool_risk`                                             |
+| `src/policy/engine.ts`               | Add `evaluateTool()` method for `tool_runtime` enforcement                                           |
+| `src/agent/runner.ts`                | Add tool registry, two-pass execution, tool call handling, invoke-mode-only tool calling             |
+| `src/cli/commands/run.ts`            | Register `ToolRegistry` with built-in `context.read`, pass to `AgentRunner`                          |
+| `tests/unit/mock-provider.test.ts`   | Add tool call tests                                                                                  |
+| `tests/unit/openai-provider.test.ts` | Add tool calling tests                                                                               |
+| `docs/development.md`                | Add Agent Tool Calling section                                                                       |
 
 ---
 
@@ -51,6 +51,7 @@
 ### Task 1.1: Create `src/tool/types.ts`
 
 **Files:**
+
 - Create: `src/tool/types.ts`
 
 - [ ] **Step 1: Write `src/tool/types.ts`**
@@ -111,6 +112,7 @@ git commit -m "feat(mvp6): add tool types and interfaces"
 ### Task 1.2: Create `src/tool/errors.ts`
 
 **Files:**
+
 - Create: `src/tool/errors.ts`
 
 - [ ] **Step 1: Write `src/tool/errors.ts`**
@@ -177,6 +179,7 @@ git commit -m "feat(mvp6): add tool error taxonomy"
 ### Task 1.3: Create `src/tool/registry.ts`
 
 **Files:**
+
 - Create: `src/tool/registry.ts`
 - Create: `tests/unit/tool-registry.test.ts`
 
@@ -299,7 +302,9 @@ describe('ToolRegistry', () => {
   it('should throw when registering duplicate definition', () => {
     const registry = new ToolRegistry();
     registry.registerDefinition({ id: 'tool', executor: 'tool', risk: 'low' as const });
-    expect(() => registry.registerDefinition({ id: 'tool', executor: 'tool', risk: 'low' as const })).toThrow('already registered');
+    expect(() => registry.registerDefinition({ id: 'tool', executor: 'tool', risk: 'low' as const })).toThrow(
+      'already registered'
+    );
   });
 });
 ```
@@ -324,6 +329,7 @@ git commit -m "feat(mvp6): add ToolRegistry with tests"
 ### Task 1.4: Create `src/tool/executors/context-read.ts`
 
 **Files:**
+
 - Create: `src/tool/executors/context-read.ts`
 - Create: `tests/unit/context-read-executor.test.ts`
 
@@ -481,6 +487,7 @@ git commit -m "feat(mvp6): add ContextReadToolExecutor with tests"
 ### Task 2.1: Extend `src/model/types.ts`
 
 **Files:**
+
 - Modify: `src/model/types.ts`
 
 - [ ] **Step 1: Replace `src/model/types.ts` content**
@@ -559,6 +566,7 @@ git commit -m "feat(mvp6): extend model types with tool_call and tools"
 ### Task 2.2: Extend MockProvider for tool calling
 
 **Files:**
+
 - Modify: `src/model/mock-provider.ts`
 
 - [ ] **Step 1: Replace MockProvider to support tool calls**
@@ -607,31 +615,31 @@ export class MockProvider implements ModelProvider {
 Append to `tests/unit/mock-provider.test.ts`:
 
 ```typescript
-  it('should return tool_call when metadata.mock_tool_call is set', async () => {
-    const provider = new MockProvider();
-    const result = await provider.invoke({
-      provider: 'mock',
-      model: 'mock-chat',
-      input: 'Read context',
-      metadata: {
-        mock_tool_call: { tool_id: 'context.read', input: { path: '.wolf/context/context.md' } },
-      },
-    });
-    expect(result.tool_call).toBeDefined();
-    expect(result.tool_call!.tool_id).toBe('context.read');
-    expect(result.output).toBe('');
+it('should return tool_call when metadata.mock_tool_call is set', async () => {
+  const provider = new MockProvider();
+  const result = await provider.invoke({
+    provider: 'mock',
+    model: 'mock-chat',
+    input: 'Read context',
+    metadata: {
+      mock_tool_call: { tool_id: 'context.read', input: { path: '.wolf/context/context.md' } },
+    },
   });
+  expect(result.tool_call).toBeDefined();
+  expect(result.tool_call!.tool_id).toBe('context.read');
+  expect(result.output).toBe('');
+});
 
-  it('should return text output when metadata.mock_tool_call is not set', async () => {
-    const provider = new MockProvider();
-    const result = await provider.invoke({
-      provider: 'mock',
-      model: 'mock-chat',
-      input: 'Hello',
-    });
-    expect(result.tool_call).toBeUndefined();
-    expect(result.output).toContain('[mock:mock-chat]');
+it('should return text output when metadata.mock_tool_call is not set', async () => {
+  const provider = new MockProvider();
+  const result = await provider.invoke({
+    provider: 'mock',
+    model: 'mock-chat',
+    input: 'Hello',
   });
+  expect(result.tool_call).toBeUndefined();
+  expect(result.output).toContain('[mock:mock-chat]');
+});
 ```
 
 - [ ] **Step 3: Run tests**
@@ -654,6 +662,7 @@ git commit -m "feat(mvp6): extend MockProvider with deterministic tool call supp
 ### Task 2.3: Extend OpenAIProvider for tool calling
 
 **Files:**
+
 - Modify: `src/model/openai-provider.ts`
 - Modify: `tests/unit/openai-provider.test.ts`
 
@@ -810,89 +819,89 @@ import { ToolCallLimitExceeded } from '../tool/errors.js';
 Append to `tests/unit/openai-provider.test.ts`:
 
 ```typescript
-  it('should map tools to OpenAI function schema', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
+it('should map tools to OpenAI function schema', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    status: 200,
+    ok: true,
+    json: () =>
+      Promise.resolve({
+        choices: [{ message: { content: 'ok' } }],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      }),
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  const provider = new OpenAIProvider();
+  await provider.invoke({
+    provider: 'openai',
+    model: 'gpt-4',
+    input: 'hello',
+    tools: [{ id: 'context.read', executor: 'context.read', risk: 'low', description: 'Read context' }],
+  });
+  const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+  expect(body.tools).toHaveLength(1);
+  expect(body.tools[0].function.name).toBe('context_read');
+  expect(body.tools[0].function.description).toBe('Read context');
+});
+
+it('should parse first tool call from response', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
       status: 200,
       ok: true,
       json: () =>
         Promise.resolve({
-          choices: [{ message: { content: 'ok' } }],
-          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
-        }),
-    });
-    vi.stubGlobal('fetch', fetchMock);
-    const provider = new OpenAIProvider();
-    await provider.invoke({
-      provider: 'openai',
-      model: 'gpt-4',
-      input: 'hello',
-      tools: [{ id: 'context.read', executor: 'context.read', risk: 'low', description: 'Read context' }],
-    });
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(body.tools).toHaveLength(1);
-    expect(body.tools[0].function.name).toBe('context_read');
-    expect(body.tools[0].function.description).toBe('Read context');
-  });
-
-  it('should parse first tool call from response', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        status: 200,
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            choices: [
-              {
-                message: {
-                  tool_calls: [
-                    {
-                      function: {
-                        name: 'context_read',
-                        arguments: JSON.stringify({ path: '.wolf/context/context.md' }),
-                      },
+          choices: [
+            {
+              message: {
+                tool_calls: [
+                  {
+                    function: {
+                      name: 'context_read',
+                      arguments: JSON.stringify({ path: '.wolf/context/context.md' }),
                     },
-                  ],
-                },
+                  },
+                ],
               },
-            ],
-            usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
-          }),
-      })
-    );
-    const provider = new OpenAIProvider();
-    const result = await provider.invoke({ provider: 'openai', model: 'gpt-4', input: 'hello' });
-    expect(result.tool_call).toBeDefined();
-    expect(result.tool_call!.tool_id).toBe('context.read');
-    expect(result.tool_call!.input).toEqual({ path: '.wolf/context/context.md' });
-  });
+            },
+          ],
+          usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+        }),
+    })
+  );
+  const provider = new OpenAIProvider();
+  const result = await provider.invoke({ provider: 'openai', model: 'gpt-4', input: 'hello' });
+  expect(result.tool_call).toBeDefined();
+  expect(result.tool_call!.tool_id).toBe('context.read');
+  expect(result.tool_call!.input).toEqual({ path: '.wolf/context/context.md' });
+});
 
-  it('should throw ToolCallLimitExceeded for multiple tool calls', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        status: 200,
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            choices: [
-              {
-                message: {
-                  tool_calls: [
-                    { function: { name: 'tool_a', arguments: '{}' } },
-                    { function: { name: 'tool_b', arguments: '{}' } },
-                  ],
-                },
+it('should throw ToolCallLimitExceeded for multiple tool calls', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          choices: [
+            {
+              message: {
+                tool_calls: [
+                  { function: { name: 'tool_a', arguments: '{}' } },
+                  { function: { name: 'tool_b', arguments: '{}' } },
+                ],
               },
-            ],
-          }),
-      })
-    );
-    const provider = new OpenAIProvider();
-    await expect(provider.invoke({ provider: 'openai', model: 'gpt-4', input: 'hello' })).rejects.toThrow(
-      ToolCallLimitExceeded
-    );
-  });
+            },
+          ],
+        }),
+    })
+  );
+  const provider = new OpenAIProvider();
+  await expect(provider.invoke({ provider: 'openai', model: 'gpt-4', input: 'hello' })).rejects.toThrow(
+    ToolCallLimitExceeded
+  );
+});
 ```
 
 Add the import for `ToolCallLimitExceeded` at the top of the test file:
@@ -932,6 +941,7 @@ git commit -m "feat(mvp6): extend OpenAIProvider with tool calling support"
 ### Task 3.1: Extend `src/agent/runner.ts` with tool calling
 
 **Files:**
+
 - Modify: `src/agent/runner.ts`
 - Create: `tests/unit/agent-runner-tool-call.test.ts`
 
@@ -1015,7 +1025,11 @@ export class AgentRunner implements StepRunner {
       if (!validation.valid) {
         return {
           status: 'failure',
-          error: { type: 'ContextBundleValidationError', message: validation.reason || 'Context bundle validation failed', retryable: false },
+          error: {
+            type: 'ContextBundleValidationError',
+            message: validation.reason || 'Context bundle validation failed',
+            retryable: false,
+          },
         };
       }
     }
@@ -1056,7 +1070,11 @@ export class AgentRunner implements StepRunner {
     if (!task || typeof task !== 'string' || task.trim().length === 0) {
       return {
         status: 'failure',
-        error: { type: 'AgentInputValidationError', message: 'Missing or empty input.task field in invoke mode', retryable: false },
+        error: {
+          type: 'AgentInputValidationError',
+          message: 'Missing or empty input.task field in invoke mode',
+          retryable: false,
+        },
       };
     }
 
@@ -1075,7 +1093,10 @@ export class AgentRunner implements StepRunner {
     }
 
     if (!this.providerRegistry) {
-      return { status: 'failure', error: { type: 'ProviderNotFound', message: 'No provider registry configured', retryable: false } };
+      return {
+        status: 'failure',
+        error: { type: 'ProviderNotFound', message: 'No provider registry configured', retryable: false },
+      };
     }
 
     let provider;
@@ -1084,7 +1105,11 @@ export class AgentRunner implements StepRunner {
     } catch (err) {
       return {
         status: 'failure',
-        error: { type: 'ProviderNotFound', message: err instanceof Error ? err.message : String(err), retryable: false },
+        error: {
+          type: 'ProviderNotFound',
+          message: err instanceof Error ? err.message : String(err),
+          retryable: false,
+        },
       };
     }
 
@@ -1119,13 +1144,27 @@ export class AgentRunner implements StepRunner {
     } catch (err) {
       return {
         status: 'failure',
-        error: { type: err instanceof Error ? err.constructor.name : 'ProviderError', message: err instanceof Error ? err.message : String(err), retryable: err instanceof ContextReadError ? false : true },
+        error: {
+          type: err instanceof Error ? err.constructor.name : 'ProviderError',
+          message: err instanceof Error ? err.message : String(err),
+          retryable: err instanceof ContextReadError ? false : true,
+        },
       };
     }
 
     // Check for tool call
     if (pass1Result.tool_call) {
-      return this.handleToolCall(pass1Result.tool_call, agent!, step, ctx, route, pass1Result, provider, task, contextContent);
+      return this.handleToolCall(
+        pass1Result.tool_call,
+        agent!,
+        step,
+        ctx,
+        route,
+        pass1Result,
+        provider,
+        task,
+        contextContent
+      );
     }
 
     // No tool call — return result
@@ -1145,11 +1184,21 @@ export class AgentRunner implements StepRunner {
   ): Promise<StepResult> {
     // Validate allow-list
     if (!agent.tools.includes(toolCall.tool_id)) {
-      return { status: 'failure', error: { type: 'ToolNotAllowed', message: new ToolNotAllowed(toolCall.tool_id, agent.id).message, retryable: false } };
+      return {
+        status: 'failure',
+        error: {
+          type: 'ToolNotAllowed',
+          message: new ToolNotAllowed(toolCall.tool_id, agent.id).message,
+          retryable: false,
+        },
+      };
     }
 
     if (!this.toolRegistry) {
-      return { status: 'failure', error: { type: 'ToolNotFound', message: 'No tool registry configured', retryable: false } };
+      return {
+        status: 'failure',
+        error: { type: 'ToolNotFound', message: 'No tool registry configured', retryable: false },
+      };
     }
 
     const toolDef = this.toolRegistry.requireDefinition(toolCall.tool_id);
@@ -1170,7 +1219,11 @@ export class AgentRunner implements StepRunner {
     } catch (err) {
       return {
         status: 'failure',
-        error: { type: err instanceof Error ? err.constructor.name : 'ToolExecutionError', message: err instanceof Error ? err.message : String(err), retryable: false },
+        error: {
+          type: err instanceof Error ? err.constructor.name : 'ToolExecutionError',
+          message: err instanceof Error ? err.message : String(err),
+          retryable: false,
+        },
       };
     }
 
@@ -1191,12 +1244,19 @@ export class AgentRunner implements StepRunner {
     } catch (err) {
       return {
         status: 'failure',
-        error: { type: err instanceof Error ? err.constructor.name : 'ProviderError', message: err instanceof Error ? err.message : String(err), retryable: false },
+        error: {
+          type: err instanceof Error ? err.constructor.name : 'ProviderError',
+          message: err instanceof Error ? err.message : String(err),
+          retryable: false,
+        },
       };
     }
 
     if (pass2Result.tool_call) {
-      return { status: 'failure', error: { type: 'ToolCallLimitExceeded', message: new ToolCallLimitExceeded().message, retryable: false } };
+      return {
+        status: 'failure',
+        error: { type: 'ToolCallLimitExceeded', message: new ToolCallLimitExceeded().message, retryable: false },
+      };
     }
 
     return this.buildModelResult(pass2Result, agent, route);
@@ -1243,6 +1303,7 @@ git commit -m "feat(mvp6): add two-pass tool execution to AgentRunner"
 ### Task 3.2: Write AgentRunner tool calling tests
 
 **Files:**
+
 - Create: `tests/unit/agent-runner-tool-call.test.ts`
 
 - [ ] **Step 1: Write the test file**
@@ -1263,7 +1324,14 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 
 const mockAgents: AgentDefinition[] = [
-  { id: 'reviewer', name: 'Reviewer', model_route: 'route-a', tools: ['context.read'], capabilities: [], system_prompt: 'You review code' },
+  {
+    id: 'reviewer',
+    name: 'Reviewer',
+    model_route: 'route-a',
+    tools: ['context.read'],
+    capabilities: [],
+    system_prompt: 'You review code',
+  },
   { id: 'no-tools', name: 'No Tools', model_route: 'route-a', tools: [], capabilities: [] },
 ];
 
@@ -1313,7 +1381,13 @@ describe('AgentRunner tool calling', () => {
   });
 
   it('should execute tool call and return final model result in invoke mode', async () => {
-    const runner = createRunner(mockAgents, mockRoutes, 'invoke', new ModelProviderRegistry([new MockProvider()]), toolRegistry);
+    const runner = createRunner(
+      mockAgents,
+      mockRoutes,
+      'invoke',
+      new ModelProviderRegistry([new MockProvider()]),
+      toolRegistry
+    );
     const step: StepDefinition = {
       id: 'step1',
       type: 'builtin',
@@ -1334,7 +1408,13 @@ describe('AgentRunner tool calling', () => {
   });
 
   it('should return AgentInvocationPlan in stub mode even with tools', async () => {
-    const runner = createRunner(mockAgents, mockRoutes, 'stub', new ModelProviderRegistry([new MockProvider()]), toolRegistry);
+    const runner = createRunner(
+      mockAgents,
+      mockRoutes,
+      'stub',
+      new ModelProviderRegistry([new MockProvider()]),
+      toolRegistry
+    );
     const step: StepDefinition = {
       id: 'step1',
       type: 'builtin',
@@ -1349,7 +1429,13 @@ describe('AgentRunner tool calling', () => {
   });
 
   it('should fail with ToolNotAllowed for tool not in agent.tools', async () => {
-    const runner = createRunner(mockAgents, mockRoutes, 'invoke', new ModelProviderRegistry([new MockProvider()]), toolRegistry);
+    const runner = createRunner(
+      mockAgents,
+      mockRoutes,
+      'invoke',
+      new ModelProviderRegistry([new MockProvider()]),
+      toolRegistry
+    );
     const step: StepDefinition = {
       id: 'step1',
       type: 'builtin',
@@ -1376,7 +1462,13 @@ describe('AgentRunner tool calling', () => {
         return mockProvider.invoke(req);
       },
     };
-    const runner = createRunner(mockAgents, mockRoutes, 'invoke', new ModelProviderRegistry([providerWithSecondCall as any]), toolRegistry);
+    const runner = createRunner(
+      mockAgents,
+      mockRoutes,
+      'invoke',
+      new ModelProviderRegistry([providerWithSecondCall as any]),
+      toolRegistry
+    );
     const step: StepDefinition = {
       id: 'step1',
       type: 'builtin',
@@ -1393,7 +1485,13 @@ describe('AgentRunner tool calling', () => {
   });
 
   it('should invoke model without tools when agent has no tools', async () => {
-    const runner = createRunner(mockAgents, mockRoutes, 'invoke', new ModelProviderRegistry([new MockProvider()]), toolRegistry);
+    const runner = createRunner(
+      mockAgents,
+      mockRoutes,
+      'invoke',
+      new ModelProviderRegistry([new MockProvider()]),
+      toolRegistry
+    );
     const step: StepDefinition = {
       id: 'step1',
       type: 'builtin',
@@ -1432,6 +1530,7 @@ git commit -m "test(mvp6): add AgentRunner tool calling tests"
 ### Task 4.1: Extend PolicyRule match schema
 
 **Files:**
+
 - Modify: `src/types/policy.ts`
 
 - [ ] **Step 1: Extend PolicyRuleSchema**
@@ -1476,6 +1575,7 @@ git commit -m "feat(mvp6): extend PolicyRule match with tool_id and tool_risk"
 ### Task 4.2: Add evaluateTool to PolicyEngine
 
 **Files:**
+
 - Modify: `src/policy/engine.ts`
 - Modify: `tests/unit/policy-engine.test.ts`
 
@@ -1649,6 +1749,7 @@ git commit -m "feat(mvp6): add PolicyEngine.evaluateTool for tool_runtime enforc
 ### Task 5.1: Register ToolRegistry in CLI
 
 **Files:**
+
 - Modify: `src/cli/commands/run.ts`
 
 - [ ] **Step 1: Add imports and register ToolRegistry**
@@ -1665,10 +1766,17 @@ Replace the provider registry and AgentRunner registration lines with:
 ```typescript
 const providerRegistry = new ModelProviderRegistry([new MockProvider(), new OpenAIProvider()]);
 const toolRegistry = new ToolRegistry();
-toolRegistry.registerDefinition({ id: 'context.read', executor: 'context.read', risk: 'low', description: 'Read project context files' });
+toolRegistry.registerDefinition({
+  id: 'context.read',
+  executor: 'context.read',
+  risk: 'low',
+  description: 'Read project context files',
+});
 toolRegistry.registerExecutor(new ContextReadToolExecutor());
 
-registry.register(new AgentRunner(agentRegistry, modelRouter, providerRegistry, toolRegistry, projectConfig.models.execution.mode));
+registry.register(
+  new AgentRunner(agentRegistry, modelRouter, providerRegistry, toolRegistry, projectConfig.models.execution.mode)
+);
 ```
 
 - [ ] **Step 2: Run type check**
@@ -1691,6 +1799,7 @@ git commit -m "feat(mvp6): register ToolRegistry with context.read in CLI"
 ### Task 5.2: Write integration tests
 
 **Files:**
+
 - Create: `tests/integration/mvp6-tool-calling.test.ts`
 
 - [ ] **Step 1: Write the integration test file**
@@ -1797,13 +1906,14 @@ git commit -m "test(mvp6): add tool calling integration tests"
 ### Task 5.3: Update docs/development.md
 
 **Files:**
+
 - Modify: `docs/development.md`
 
 - [ ] **Step 1: Add MVP6 section**
 
 Append to `docs/development.md`:
 
-```markdown
+````markdown
 ## Agent Tool Calling (MVP6)
 
 ### Overview
@@ -1822,6 +1932,7 @@ agents:
     tools:
       - context.read
 ```
+````
 
 ### Execution Flow
 
@@ -1850,22 +1961,24 @@ policy:
         tool_id: context.read
       decision: allow
       risk: low
-      reason: "Context read is safe"
+      reason: 'Context read is safe'
 ```
-```
+
+````
 
 - [ ] **Step 2: Commit**
 
 ```bash
 git add docs/development.md
 git commit -m "docs(mvp6): add Agent Tool Calling section"
-```
+````
 
 ---
 
 ### Task 5.4: Final acceptance verification
 
 **Files:**
+
 - All
 
 - [ ] **Step 1: Run full test suite**
@@ -1897,27 +2010,28 @@ git commit -m "chore(mvp6): final acceptance verification"
 
 ### Spec Coverage Check
 
-| Spec Section | Plan Task |
-|-------------|-----------|
-| Tool types (Section 1) | Task 1.1 |
-| Tool errors (Section 2) | Task 1.2 |
-| ToolRegistry (Section 3) | Task 1.3 |
-| context.read executor (Section 4) | Task 1.4 |
-| Agent allow-list (Section 5) | Task 3.1, 3.2 |
-| Two-pass execution (Section 6) | Task 3.1, 3.2 |
-| Policy integration (Section 7) | Task 4.1, 4.2 |
-| Tool approval gate (Section 8) | Task 4.2 (gate payload in policy) |
-| MockProvider tool calling (Section 9.1) | Task 2.2 |
-| OpenAIProvider tool calling (Section 9.2) | Task 2.3 |
-| AgentRunner integration (Section 10) | Task 3.1, 3.2 |
-| Events (Section 11) | Implicit in execution flow |
-| Integration points (Section 12) | Task 5.1, 5.2 |
-| Testing (Section 13) | All PRs |
-| Acceptance criteria (Section 14) | Task 5.4 |
+| Spec Section                              | Plan Task                         |
+| ----------------------------------------- | --------------------------------- |
+| Tool types (Section 1)                    | Task 1.1                          |
+| Tool errors (Section 2)                   | Task 1.2                          |
+| ToolRegistry (Section 3)                  | Task 1.3                          |
+| context.read executor (Section 4)         | Task 1.4                          |
+| Agent allow-list (Section 5)              | Task 3.1, 3.2                     |
+| Two-pass execution (Section 6)            | Task 3.1, 3.2                     |
+| Policy integration (Section 7)            | Task 4.1, 4.2                     |
+| Tool approval gate (Section 8)            | Task 4.2 (gate payload in policy) |
+| MockProvider tool calling (Section 9.1)   | Task 2.2                          |
+| OpenAIProvider tool calling (Section 9.2) | Task 2.3                          |
+| AgentRunner integration (Section 10)      | Task 3.1, 3.2                     |
+| Events (Section 11)                       | Implicit in execution flow        |
+| Integration points (Section 12)           | Task 5.1, 5.2                     |
+| Testing (Section 13)                      | All PRs                           |
+| Acceptance criteria (Section 14)          | Task 5.4                          |
 
 ### Placeholder Scan
 
 No placeholders found. All steps contain:
+
 - Exact file paths
 - Complete code blocks
 - Exact commands with expected output

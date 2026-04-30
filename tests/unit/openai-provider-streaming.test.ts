@@ -59,10 +59,7 @@ describe('OpenAIProvider streaming', () => {
   });
 
   it('should throw ProviderNetworkError when response.body is null', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ status: 200, ok: true, body: null })
-    );
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 200, ok: true, body: null }));
 
     const provider = new OpenAIProvider();
     await expect(
@@ -74,9 +71,7 @@ describe('OpenAIProvider streaming', () => {
   });
 
   it('should throw StreamingToolCallUnsupported on tool_call delta', async () => {
-    const streamData = [
-      'data: {"choices":[{"delta":{"tool_calls":[{"index":0}]}}]}\n\n',
-    ];
+    const streamData = ['data: {"choices":[{"delta":{"tool_calls":[{"index":0}]}}]}\n\n'];
 
     let index = 0;
     const mockReader = {

@@ -522,6 +522,7 @@ policy:
 **Goal:** Stream model responses in real-time to provide visible progress during long-running agent tasks.
 
 **What changed:**
+
 - Added streaming callback types (`ModelStreamStart`, `ModelStreamChunk`, `ModelStreamCallbacks`)
 - Extended `ModelProvider` with optional `invokeStream` method
 - Added `ProviderStreamingUnsupported` and `StreamingToolCallUnsupported` errors
@@ -534,6 +535,7 @@ policy:
 - Added `bus?: EventBus` to `ExecutionContext` for event emission from runners
 
 **How it works:**
+
 - `AgentRunner.runInvoke` resolves `streaming` from config
 - If streaming=true: calls `validateStreaming()` → `provider.invokeStream()` → emits chunk events → returns final `StepResult`
 - If streaming=false: uses existing `invoke()` path
@@ -541,6 +543,7 @@ policy:
 - CLI subscribes to these events and prints chunks only when `process.stdout.isTTY`
 
 **Streaming rules:**
+
 - Only text streaming is supported (tool streaming out of scope for MVP7)
 - Streaming with tools enabled throws `StreamingToolCallUnsupported`
 - Missing `invokeStream` on provider throws `ProviderStreamingUnsupported`
@@ -548,6 +551,7 @@ policy:
 - Final output is always a complete string, never accumulated via mutation
 
 **Tests:**
+
 - `tests/unit/mock-provider-streaming.test.ts` — 4 tests
 - `tests/unit/openai-provider-streaming.test.ts` — 4 tests
 - `tests/unit/agent-runner-streaming.test.ts` — 4 tests
@@ -555,6 +559,7 @@ policy:
 - Total: 18 new tests (254 total)
 
 **Usage:**
+
 ```yaml
 models:
   execution:

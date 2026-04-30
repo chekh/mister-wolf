@@ -10,17 +10,17 @@
 
 ## Status
 
-| Milestone | Status      | Description                                                                                                        |
-| --------- | ----------- | ------------------------------------------------------------------------------------------------------------------ |
-| **MVP1A** | ✅ Complete | Sequential workflow runner with YAML workflows, builtin runners (echo, shell, manual_gate), state persistence, CLI |
-| **MVP1B** | ✅ Complete | Enhanced workflow engine with conditions, retry, timeout, artifacts, project config, cancel/validate commands      |
-| **MVP1C** | ✅ Complete | Graph orchestration — DAG execution, parallel scheduling, transitive failure propagation                           |
-| **MVP2**  | ✅ Complete | Context resolver — deterministic project file discovery, context bundle, case memory                               |
-| **MVP3**  | ✅ Complete | Policy engine — rule-based workflow preflight, step runtime guard, policy gates, risk levels, CLI                  |
-| **MVP4**  | ✅ Complete | Agent registry + model router — declarative agents, deterministic routing, invocation plan stub, CLI               |
-| **MVP5**  | ✅ Complete | Model Provider Runtime — stub/invoke modes, MockProvider, OpenAIProvider, context reading, agent execution         |
+| Milestone | Status      | Description                                                                                                          |
+| --------- | ----------- | -------------------------------------------------------------------------------------------------------------------- |
+| **MVP1A** | ✅ Complete | Sequential workflow runner with YAML workflows, builtin runners (echo, shell, manual_gate), state persistence, CLI   |
+| **MVP1B** | ✅ Complete | Enhanced workflow engine with conditions, retry, timeout, artifacts, project config, cancel/validate commands        |
+| **MVP1C** | ✅ Complete | Graph orchestration — DAG execution, parallel scheduling, transitive failure propagation                             |
+| **MVP2**  | ✅ Complete | Context resolver — deterministic project file discovery, context bundle, case memory                                 |
+| **MVP3**  | ✅ Complete | Policy engine — rule-based workflow preflight, step runtime guard, policy gates, risk levels, CLI                    |
+| **MVP4**  | ✅ Complete | Agent registry + model router — declarative agents, deterministic routing, invocation plan stub, CLI                 |
+| **MVP5**  | ✅ Complete | Model Provider Runtime — stub/invoke modes, MockProvider, OpenAIProvider, context reading, agent execution           |
 | **MVP6**  | ✅ Complete | Agent Tool Calling — ToolExecutor layer, context.read tool, agent allow-list, two-pass execution, policy integration |
-| **MVP7**  | ⏭️ Next     | Streaming responses, multi-agent delegation, memory/learning                                                          |
+| **MVP7**  | ⏭️ Next     | Streaming responses, multi-agent delegation, memory/learning                                                         |
 
 ## Quick Start
 

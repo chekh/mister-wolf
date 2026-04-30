@@ -34,10 +34,7 @@ export class MockProvider implements ModelProvider {
     };
   }
 
-  async invokeStream(
-    request: ModelInvocationRequest,
-    callbacks: ModelStreamCallbacks
-  ): Promise<ModelInvocationResult> {
+  async invokeStream(request: ModelInvocationRequest, callbacks: ModelStreamCallbacks): Promise<ModelInvocationResult> {
     const chunkSize = 20;
     const fullOutput = `[mock:${request.model}] ${request.input.slice(0, 200)}${request.input.length > 200 ? '...' : ''}`;
 

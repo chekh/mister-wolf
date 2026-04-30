@@ -26,9 +26,7 @@ function createEngine(streaming: boolean = false) {
   };
   const modelRouter = new ModelRouter(routes);
   const providerRegistry = new ModelProviderRegistry([new MockProvider()]);
-  registry.register(
-    new AgentRunner(agentRegistry, modelRouter, providerRegistry, undefined, 'invoke')
-  );
+  registry.register(new AgentRunner(agentRegistry, modelRouter, providerRegistry, undefined, 'invoke'));
 
   const caseStore = new CaseStore(stateDir);
   const gateStore = new GateStore(caseStore);
@@ -46,9 +44,7 @@ describe('MVP7 streaming integration', () => {
       id: 'test-streaming',
       version: '0.2.0',
       name: 'test-streaming',
-      steps: [
-        { id: 'step1', type: 'builtin', runner: 'agent', input: { agent: 'reviewer', task: 'Test streaming' } },
-      ],
+      steps: [{ id: 'step1', type: 'builtin', runner: 'agent', input: { agent: 'reviewer', task: 'Test streaming' } }],
     };
 
     const result = await engine.execute('case-1', workflow);
@@ -64,9 +60,7 @@ describe('MVP7 streaming integration', () => {
       id: 'test-events',
       version: '0.2.0',
       name: 'test-events',
-      steps: [
-        { id: 'step1', type: 'builtin', runner: 'agent', input: { agent: 'reviewer', task: 'Test events' } },
-      ],
+      steps: [{ id: 'step1', type: 'builtin', runner: 'agent', input: { agent: 'reviewer', task: 'Test events' } }],
     };
 
     await engine.execute('case-1', workflow);
@@ -84,9 +78,7 @@ describe('MVP7 streaming integration', () => {
       id: 'test-chunks',
       version: '0.2.0',
       name: 'test-chunks',
-      steps: [
-        { id: 'step1', type: 'builtin', runner: 'agent', input: { agent: 'reviewer', task: 'Test chunks' } },
-      ],
+      steps: [{ id: 'step1', type: 'builtin', runner: 'agent', input: { agent: 'reviewer', task: 'Test chunks' } }],
     };
 
     await engine.execute('case-1', workflow);
@@ -102,9 +94,7 @@ describe('MVP7 streaming integration', () => {
       id: 'test-completed',
       version: '0.2.0',
       name: 'test-completed',
-      steps: [
-        { id: 'step1', type: 'builtin', runner: 'agent', input: { agent: 'reviewer', task: 'Test completed' } },
-      ],
+      steps: [{ id: 'step1', type: 'builtin', runner: 'agent', input: { agent: 'reviewer', task: 'Test completed' } }],
     };
 
     await engine.execute('case-1', workflow);
@@ -117,9 +107,7 @@ describe('MVP7 streaming integration', () => {
       id: 'test-storage',
       version: '0.2.0',
       name: 'test-storage',
-      steps: [
-        { id: 'step1', type: 'builtin', runner: 'agent', input: { agent: 'reviewer', task: 'Test storage' } },
-      ],
+      steps: [{ id: 'step1', type: 'builtin', runner: 'agent', input: { agent: 'reviewer', task: 'Test storage' } }],
     };
 
     await engine.execute('case-1', workflow);

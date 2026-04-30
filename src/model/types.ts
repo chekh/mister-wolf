@@ -35,10 +35,7 @@ export interface ModelInvocationResult {
 export interface ModelProvider {
   id: string;
   invoke(request: ModelInvocationRequest): Promise<ModelInvocationResult>;
-  invokeStream?(
-    request: ModelInvocationRequest,
-    callbacks: ModelStreamCallbacks
-  ): Promise<ModelInvocationResult>;
+  invokeStream?(request: ModelInvocationRequest, callbacks: ModelStreamCallbacks): Promise<ModelInvocationResult>;
 }
 
 export interface AgentModelResult {

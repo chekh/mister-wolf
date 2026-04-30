@@ -377,7 +377,10 @@ export class AgentRunner implements StepRunner {
     return { status: 'success', output: JSON.stringify(modelResult, null, 2) };
   }
 
-  private validateStreaming(provider: import('../model/types.js').ModelProvider, availableTools?: import('../tool/types.js').ToolDefinition[]): void {
+  private validateStreaming(
+    provider: import('../model/types.js').ModelProvider,
+    availableTools?: import('../tool/types.js').ToolDefinition[]
+  ): void {
     if (!provider.invokeStream) {
       throw new ProviderStreamingUnsupported(provider.id);
     }
@@ -400,7 +403,10 @@ export class AgentRunner implements StepRunner {
     let request: ModelInvocationRequest;
     const callbacks: import('../model/stream-types.js').ModelStreamCallbacks = {
       onStart: async () => {
-        await this.emitStreamEvent(ctx, step.id, agent.id, 'model.stream.started', { provider: route.provider, model: route.model });
+        await this.emitStreamEvent(ctx, step.id, agent.id, 'model.stream.started', {
+          provider: route.provider,
+          model: route.model,
+        });
       },
       onChunk: async (chunk) => {
         await this.emitStreamEvent(ctx, step.id, agent.id, 'model.stream.chunk', {
@@ -411,7 +417,10 @@ export class AgentRunner implements StepRunner {
         });
       },
       onComplete: async (result) => {
-        await this.emitStreamEvent(ctx, step.id, agent.id, 'model.stream.completed', { provider: result.provider, model: result.model });
+        await this.emitStreamEvent(ctx, step.id, agent.id, 'model.stream.completed', {
+          provider: result.provider,
+          model: result.model,
+        });
       },
     };
 

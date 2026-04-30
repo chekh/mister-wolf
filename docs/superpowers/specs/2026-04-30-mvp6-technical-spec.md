@@ -48,11 +48,11 @@ Execution flow (two-pass):
 
 ```typescript
 export const ToolDefinitionSchema = z.object({
-  id: z.string(),                          // 'context.read'
-  description: z.string().optional(),      // for model prompt
-  executor: z.string(),                    // ID of ToolExecutor, e.g. 'context.read'
-  risk: RiskLevelSchema,                   // 'low' | 'medium' | 'high' | 'critical'
-  input_schema: z.unknown().optional(),    // metadata-only in MVP6
+  id: z.string(), // 'context.read'
+  description: z.string().optional(), // for model prompt
+  executor: z.string(), // ID of ToolExecutor, e.g. 'context.read'
+  risk: RiskLevelSchema, // 'low' | 'medium' | 'high' | 'critical'
+  input_schema: z.unknown().optional(), // metadata-only in MVP6
 });
 
 export type ToolDefinition = z.infer<typeof ToolDefinitionSchema>;
@@ -60,13 +60,13 @@ export type ToolDefinition = z.infer<typeof ToolDefinitionSchema>;
 
 **Fields:**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | string | yes | Unique tool identifier |
-| `description` | string | no | Human-readable description for model prompts |
-| `executor` | string | yes | ID of the `ToolExecutor` implementation |
-| `risk` | `low` \| `medium` \| `high` \| `critical` | yes | Risk level for policy evaluation |
-| `input_schema` | unknown | no | Metadata-only; no generic validation in MVP6 |
+| Field          | Type                                      | Required | Description                                  |
+| -------------- | ----------------------------------------- | -------- | -------------------------------------------- |
+| `id`           | string                                    | yes      | Unique tool identifier                       |
+| `description`  | string                                    | no       | Human-readable description for model prompts |
+| `executor`     | string                                    | yes      | ID of the `ToolExecutor` implementation      |
+| `risk`         | `low` \| `medium` \| `high` \| `critical` | yes      | Risk level for policy evaluation             |
+| `input_schema` | unknown                                   | no       | Metadata-only; no generic validation in MVP6 |
 
 ### 1.2 ToolExecutor
 
@@ -109,7 +109,7 @@ export interface ModelInvocationRequest {
   context?: string;
   max_tokens?: number;
   temperature?: number;
-  tools?: ToolDefinition[];                // available tools for this call
+  tools?: ToolDefinition[]; // available tools for this call
   metadata?: Record<string, unknown>;
 }
 ```
@@ -126,7 +126,7 @@ export interface ModelInvocationResult {
   output: string;
   provider: string;
   model: string;
-  tool_call?: ModelToolCall;               // set if model requested a tool
+  tool_call?: ModelToolCall; // set if model requested a tool
   usage?: {
     input_tokens?: number;
     output_tokens?: number;
@@ -192,16 +192,16 @@ export class ToolDenied extends Error {
 
 **Retryable mapping:**
 
-| Error | Retryable |
-|-------|-----------|
-| `ToolNotFound` | `false` |
-| `ToolNotAllowed` | `false` |
-| `ToolExecutorNotFound` | `false` |
-| `ToolExecutionError` | `false` |
-| `ContextToolError` | `false` |
-| `ToolCallLimitExceeded` | `false` |
-| `ToolDenied` | `false` |
-| `ToolApprovalRejected` | `false` |
+| Error                   | Retryable |
+| ----------------------- | --------- |
+| `ToolNotFound`          | `false`   |
+| `ToolNotAllowed`        | `false`   |
+| `ToolExecutorNotFound`  | `false`   |
+| `ToolExecutionError`    | `false`   |
+| `ContextToolError`      | `false`   |
+| `ToolCallLimitExceeded` | `false`   |
+| `ToolDenied`            | `false`   |
+| `ToolApprovalRejected`  | `false`   |
 
 ---
 
@@ -258,6 +258,7 @@ Reads an existing context file. **Does not** invoke `ContextResolver`, `ContextS
 **Default path:** `.wolf/context/context.md` (relative to project root)
 
 **Input:**
+
 ```typescript
 {
   path?: string;  // optional, relative path, default: '.wolf/context/context.md'
@@ -278,14 +279,14 @@ Reads an existing context file. **Does not** invoke `ContextResolver`, `ContextS
 
 ### 4.2 Error Cases
 
-| Condition | Error | Retryable |
-|-----------|-------|-----------|
-| Absolute path | `ContextToolError` | `false` |
-| Path traversal (`..`) | `ContextToolError` | `false` |
-| Outside project root | `ContextToolError` | `false` |
-| File not found | `ContextToolError` | `false` |
-| Exceeds 1MB | `ContextToolError` | `false` |
-| Read failure | `ToolExecutionError` | `false` |
+| Condition             | Error                | Retryable |
+| --------------------- | -------------------- | --------- |
+| Absolute path         | `ContextToolError`   | `false`   |
+| Path traversal (`..`) | `ContextToolError`   | `false`   |
+| Outside project root  | `ContextToolError`   | `false`   |
+| File not found        | `ContextToolError`   | `false`   |
+| Exceeds 1MB           | `ContextToolError`   | `false`   |
+| Read failure          | `ToolExecutionError` | `false`   |
 
 ### 4.3 Boundary with MVP2
 
@@ -308,24 +309,24 @@ Tool execution **never** triggers context rebuilding.
 agents:
   - id: reviewer
     tools:
-      - context.read      # this agent can call context.read
+      - context.read # this agent can call context.read
 
   - id: architect
-    tools: []             # no tools; model sees no tool definitions
+    tools: [] # no tools; model sees no tool definitions
 
   - id: admin
     tools:
-      - context.read      # shell.command is NOT listed (out of scope)
+      - context.read # shell.command is NOT listed (out of scope)
 ```
 
 ### 5.2 Semantics
 
-| Condition | Behavior |
-|-----------|----------|
-| `tools` absent or `[]` | No tools available; model invoked without tool definitions |
-| Tool in `tools` but not registered | `ToolNotFound` thrown by `listForAgent` |
-| Tool registered but not in `tools` | `ToolNotAllowed` if model requests it |
-| `context.read` not in `tools` | Agent cannot call `context.read` even though it's registered by default |
+| Condition                          | Behavior                                                                |
+| ---------------------------------- | ----------------------------------------------------------------------- |
+| `tools` absent or `[]`             | No tools available; model invoked without tool definitions              |
+| Tool in `tools` but not registered | `ToolNotFound` thrown by `listForAgent`                                 |
+| Tool registered but not in `tools` | `ToolNotAllowed` if model requests it                                   |
+| `context.read` not in `tools`      | Agent cannot call `context.read` even though it's registered by default |
 
 ---
 
@@ -386,7 +387,7 @@ const toolDef = toolRegistry.requireDefinition(toolCall.tool_id);
 const executor = toolRegistry.requireExecutor(toolDef.executor);
 
 // 4. Evaluate policy (see Section 7)
-const policyDecision = policyEngine.evaluateTool(toolDef, /* ... */);
+const policyDecision = policyEngine.evaluateTool(toolDef /* ... */);
 ```
 
 ### 6.4 Tool Execution
@@ -402,10 +403,7 @@ const toolCtx: ToolExecutionContext = {
 };
 
 // Execute
-const toolResult = await executor.execute(
-  { tool_id: toolCall.tool_id, input: toolCall.input },
-  toolCtx
-);
+const toolResult = await executor.execute({ tool_id: toolCall.tool_id, input: toolCall.input }, toolCtx);
 ```
 
 ### 6.5 Pass 2: Final Model Invocation
@@ -438,21 +436,13 @@ return buildAgentModelResult(pass2Result);
 Stable prompt format for Pass 2:
 
 ```typescript
-function buildPass2Input(
-  originalTask: string,
-  toolCall: ModelToolCall,
-  toolResult: ToolExecutionResult
-): string {
-  return [
-    originalTask,
-    '',
-    `[Tool Call Result: ${toolCall.tool_id}]`,
-    toolResult.output,
-  ].join('\n');
+function buildPass2Input(originalTask: string, toolCall: ModelToolCall, toolResult: ToolExecutionResult): string {
+  return [originalTask, '', `[Tool Call Result: ${toolCall.tool_id}]`, toolResult.output].join('\n');
 }
 ```
 
 **Rules:**
+
 - The original task is preserved at the top
 - Tool result is clearly demarcated with `[Tool Call Result: <tool_id>]`
 - No markdown formatting inside the delimiter line
@@ -476,8 +466,8 @@ export const PolicyRuleSchema = z.object({
       runner: z.string().optional(),
       command_contains: z.array(z.string()).optional(),
       step_id: z.string().optional(),
-      tool_id: z.string().optional(),           // NEW: match tool ID
-      tool_risk: RiskLevelSchema.optional(),    // NEW: match tool risk level
+      tool_id: z.string().optional(), // NEW: match tool ID
+      tool_risk: RiskLevelSchema.optional(), // NEW: match tool risk level
     })
     .default({}),
   decision: DecisionTypeSchema,
@@ -515,11 +505,11 @@ function evaluateTool(toolDef: ToolDefinition, ctx: ToolExecutionContext): Polic
 
 ### 7.3 Policy Decisions
 
-| Decision | Behavior |
-|----------|----------|
-| `allow` | Execute tool immediately |
-| `ask` | Create `tool_approval` gate before execution (see Section 8) |
-| `deny` | Throw `ToolDenied` before side effect |
+| Decision | Behavior                                                     |
+| -------- | ------------------------------------------------------------ |
+| `allow`  | Execute tool immediately                                     |
+| `ask`    | Create `tool_approval` gate before execution (see Section 8) |
+| `deny`   | Throw `ToolDenied` before side effect                        |
 
 ### 7.4 Example Policy Rules
 
@@ -531,14 +521,14 @@ policy:
         tool_id: context.read
       decision: allow
       risk: low
-      reason: "Context read is safe"
+      reason: 'Context read is safe'
 
     - id: ask-high-risk-tools
       match:
         tool_risk: critical
       decision: ask
       risk: critical
-      reason: "High-risk tools require approval"
+      reason: 'High-risk tools require approval'
 ```
 
 ---
@@ -552,19 +542,20 @@ When policy returns `ask` for a tool call:
 ```typescript
 const gatePayload = {
   gate_type: 'tool_approval',
-  policy_decision: policyDecision,              // full PolicyDecision object
+  policy_decision: policyDecision, // full PolicyDecision object
   agent_id: agent.id,
   workflow_id: ctx.workflow_id,
   step_id: step.id,
-  tool_call: pass1Result.tool_call,             // ModelToolCall
-  tool_definition: toolDef,                     // ToolDefinition
-  initial_model_result: {                      // Sanitized: no raw provider response
+  tool_call: pass1Result.tool_call, // ModelToolCall
+  tool_definition: toolDef, // ToolDefinition
+  initial_model_result: {
+    // Sanitized: no raw provider response
     output: pass1Result.output,
     provider: pass1Result.provider,
     model: pass1Result.model,
     tool_call: pass1Result.tool_call,
   },
-  tool_execution_context: toolCtx,              // ToolExecutionContext
+  tool_execution_context: toolCtx, // ToolExecutionContext
 };
 
 // Create gate using existing gate infrastructure
@@ -590,10 +581,12 @@ const ToolApprovalGatePayloadSchema = z.object({
     output: z.string(),
     provider: z.string(),
     model: z.string(),
-    tool_call: z.object({
-      tool_id: z.string(),
-      input: z.unknown(),
-    }).optional(),
+    tool_call: z
+      .object({
+        tool_id: z.string(),
+        input: z.unknown(),
+      })
+      .optional(),
     // Note: raw provider response is intentionally excluded
   }),
   tool_execution_context: z.object({
@@ -706,7 +699,7 @@ function unsanitizeToolId(sanitizedId: string): string {
 - Parse first `tool_calls[0]` from response → `ModelToolCall`
 - 0 tool calls → text output (no `tool_call`)
 - 1 tool call → `ModelToolCall`
-- >1 tool calls → throw `ToolCallLimitExceeded`
+- > 1 tool calls → throw `ToolCallLimitExceeded`
 
 **Error mapping:** Same as MVP5 (401/403 → auth, 429/5xx → network).
 
@@ -852,15 +845,15 @@ Use existing event/state infrastructure. Do not add `AuditLogService`.
 
 ### 11.1 Event Types
 
-| Event | When | Payload |
-|-------|------|---------|
-| `tool.requested` | Model returns `tool_call` | `tool_id`, `agent_id`, `step_id`, `workflow_id` |
-| `tool.approval_required` | Policy returns `ask` | `tool_id`, `gate_id`, `policy_decision` |
-| `tool.approval_granted` | Gate approved | `tool_id`, `gate_id`, `approved_by` |
-| `tool.approval_rejected` | Gate rejected | `tool_id`, `gate_id`, `rejected_by` |
-| `tool.executed` | Tool execution succeeds | `tool_id`, `output_length`, `metadata` |
-| `tool.denied` | Policy returns `deny` | `tool_id`, `policy_decision` |
-| `tool.failed` | Tool execution fails | `tool_id`, `error_type`, `error_message` |
+| Event                    | When                      | Payload                                         |
+| ------------------------ | ------------------------- | ----------------------------------------------- |
+| `tool.requested`         | Model returns `tool_call` | `tool_id`, `agent_id`, `step_id`, `workflow_id` |
+| `tool.approval_required` | Policy returns `ask`      | `tool_id`, `gate_id`, `policy_decision`         |
+| `tool.approval_granted`  | Gate approved             | `tool_id`, `gate_id`, `approved_by`             |
+| `tool.approval_rejected` | Gate rejected             | `tool_id`, `gate_id`, `rejected_by`             |
+| `tool.executed`          | Tool execution succeeds   | `tool_id`, `output_length`, `metadata`          |
+| `tool.denied`            | Policy returns `deny`     | `tool_id`, `policy_decision`                    |
+| `tool.failed`            | Tool execution fails      | `tool_id`, `error_type`, `error_message`        |
 
 Events are appended to `events.jsonl` through the existing event mechanism.
 
@@ -868,18 +861,18 @@ Events are appended to `events.jsonl` through the existing event mechanism.
 
 ## 12. Integration Points
 
-| Component | Change | Details |
-|-----------|--------|---------|
-| **AgentRunner** | Extend | Add tool registry, two-pass execution, tool call handling |
-| **ModelProvider** | Extend | Add `tools` to request, `tool_call` to result |
-| **MockProvider** | Extend | Support `metadata.mock_tool_call` |
-| **OpenAIProvider** | Extend | Map tool definitions, parse first tool call |
-| **PolicyEngine** | Extend | Add `tool_id` and `tool_risk` to match schema; add `tool_runtime` enforcement |
-| **ProjectConfig** | No change | `agents[].tools` already exists |
-| **Workflow Engine** | No change | Standard runner interface |
-| **ToolRegistry** | New | Tool definition and executor registry |
-| **ContextReadToolExecutor** | New | Built-in tool for reading context files |
-| **GateSystem** | Extend | Support `tool_approval` gate type with snapshot payload |
+| Component                   | Change    | Details                                                                       |
+| --------------------------- | --------- | ----------------------------------------------------------------------------- |
+| **AgentRunner**             | Extend    | Add tool registry, two-pass execution, tool call handling                     |
+| **ModelProvider**           | Extend    | Add `tools` to request, `tool_call` to result                                 |
+| **MockProvider**            | Extend    | Support `metadata.mock_tool_call`                                             |
+| **OpenAIProvider**          | Extend    | Map tool definitions, parse first tool call                                   |
+| **PolicyEngine**            | Extend    | Add `tool_id` and `tool_risk` to match schema; add `tool_runtime` enforcement |
+| **ProjectConfig**           | No change | `agents[].tools` already exists                                               |
+| **Workflow Engine**         | No change | Standard runner interface                                                     |
+| **ToolRegistry**            | New       | Tool definition and executor registry                                         |
+| **ContextReadToolExecutor** | New       | Built-in tool for reading context files                                       |
+| **GateSystem**              | Extend    | Support `tool_approval` gate type with snapshot payload                       |
 
 ---
 
@@ -887,48 +880,48 @@ Events are appended to `events.jsonl` through the existing event mechanism.
 
 ### 13.1 Unit Tests
 
-| Test | Description |
-|------|-------------|
-| ToolRegistry | Register/get/require definitions and executors |
-| ToolRegistry.listForAgent | Filter by allow-list, throw on unknown IDs |
-| ToolRegistry default registration | `context.read` registered on init |
-| ContextReadToolExecutor | Read default `.wolf/context/context.md` |
-| ContextReadToolExecutor custom path | Read custom relative path |
-| ContextReadToolExecutor path traversal | Reject `..` and absolute paths |
-| ContextReadToolExecutor missing file | Throw `ContextToolError` |
-| ContextReadToolExecutor size limit | Reject files > 1MB |
-| MockProvider with tool call | Return `tool_call` when `metadata.mock_tool_call` set |
-| MockProvider without tool call | Return normal text output |
-| OpenAIProvider tool mapping | Map `ToolDefinition` to OpenAI schema |
-| OpenAIProvider first tool call | Parse `tool_calls[0]` |
-| OpenAIProvider multiple tool calls | Throw `ToolCallLimitExceeded` |
-| AgentRunner no tools | Invoke model without tool definitions |
-| AgentRunner with tools | Pass tool definitions to model |
-| AgentRunner tool call flow | Pass 1 → validate → execute → Pass 2 |
-| AgentRunner tool not allowed | `ToolNotAllowed` error |
-| AgentRunner Pass 2 tool call | `ToolCallLimitExceeded` error |
-| PolicyEngine tool_id match | Match rule by `tool_id` |
-| PolicyEngine tool_risk match | Match rule by `tool_risk` |
-| PolicyEngine tool deny | Throw `ToolDenied` |
-| PolicyEngine tool ask | Create `tool_approval` gate |
-| Gate resume tool call | Execute snapshotted tool, skip Pass 1 |
-| Gate rejection | Step fails with `ToolApprovalRejected`, no Pass 2 |
-| Stub mode with tools | Returns `AgentInvocationPlan`, no tool execution |
-| listForAgent unknown tool | Throws `ToolNotFound` |
-| Gate payload sanitized | No `raw` field in `initial_model_result` |
+| Test                                   | Description                                           |
+| -------------------------------------- | ----------------------------------------------------- |
+| ToolRegistry                           | Register/get/require definitions and executors        |
+| ToolRegistry.listForAgent              | Filter by allow-list, throw on unknown IDs            |
+| ToolRegistry default registration      | `context.read` registered on init                     |
+| ContextReadToolExecutor                | Read default `.wolf/context/context.md`               |
+| ContextReadToolExecutor custom path    | Read custom relative path                             |
+| ContextReadToolExecutor path traversal | Reject `..` and absolute paths                        |
+| ContextReadToolExecutor missing file   | Throw `ContextToolError`                              |
+| ContextReadToolExecutor size limit     | Reject files > 1MB                                    |
+| MockProvider with tool call            | Return `tool_call` when `metadata.mock_tool_call` set |
+| MockProvider without tool call         | Return normal text output                             |
+| OpenAIProvider tool mapping            | Map `ToolDefinition` to OpenAI schema                 |
+| OpenAIProvider first tool call         | Parse `tool_calls[0]`                                 |
+| OpenAIProvider multiple tool calls     | Throw `ToolCallLimitExceeded`                         |
+| AgentRunner no tools                   | Invoke model without tool definitions                 |
+| AgentRunner with tools                 | Pass tool definitions to model                        |
+| AgentRunner tool call flow             | Pass 1 → validate → execute → Pass 2                  |
+| AgentRunner tool not allowed           | `ToolNotAllowed` error                                |
+| AgentRunner Pass 2 tool call           | `ToolCallLimitExceeded` error                         |
+| PolicyEngine tool_id match             | Match rule by `tool_id`                               |
+| PolicyEngine tool_risk match           | Match rule by `tool_risk`                             |
+| PolicyEngine tool deny                 | Throw `ToolDenied`                                    |
+| PolicyEngine tool ask                  | Create `tool_approval` gate                           |
+| Gate resume tool call                  | Execute snapshotted tool, skip Pass 1                 |
+| Gate rejection                         | Step fails with `ToolApprovalRejected`, no Pass 2     |
+| Stub mode with tools                   | Returns `AgentInvocationPlan`, no tool execution      |
+| listForAgent unknown tool              | Throws `ToolNotFound`                                 |
+| Gate payload sanitized                 | No `raw` field in `initial_model_result`              |
 
 ### 13.2 Integration Tests
 
-| Test | Description |
-|------|-------------|
-| End-to-end tool call | Agent with `context.read` → model requests tool → tool executes → final model result |
-| Policy ask gate | Tool policy `ask` → gate created → approve → resume → final result |
-| Policy deny gate | Tool policy `deny` → step fails before execution |
-| Context read in tool call | `context.read` returns context file content |
-| Pass 2 no tools | Pass 2 request has no `tools` field |
-| Tool call limit exceeded | Pass 2 returns tool call → failure |
-| Stub mode preserves MVP4 | Agent with tools in stub mode returns `AgentInvocationPlan` |
-| Gate rejection | Reject → step fails, `tool.approval_rejected` event emitted |
+| Test                      | Description                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------ |
+| End-to-end tool call      | Agent with `context.read` → model requests tool → tool executes → final model result |
+| Policy ask gate           | Tool policy `ask` → gate created → approve → resume → final result                   |
+| Policy deny gate          | Tool policy `deny` → step fails before execution                                     |
+| Context read in tool call | `context.read` returns context file content                                          |
+| Pass 2 no tools           | Pass 2 request has no `tools` field                                                  |
+| Tool call limit exceeded  | Pass 2 returns tool call → failure                                                   |
+| Stub mode preserves MVP4  | Agent with tools in stub mode returns `AgentInvocationPlan`                          |
+| Gate rejection            | Reject → step fails, `tool.approval_rejected` event emitted                          |
 
 ---
 
