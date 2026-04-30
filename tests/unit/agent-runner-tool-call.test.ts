@@ -13,7 +13,14 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 
 const mockAgents: AgentDefinition[] = [
-  { id: 'reviewer', name: 'Reviewer', model_route: 'route-a', tools: ['context.read'], capabilities: [], system_prompt: 'You review code' },
+  {
+    id: 'reviewer',
+    name: 'Reviewer',
+    model_route: 'route-a',
+    tools: ['context.read'],
+    capabilities: [],
+    system_prompt: 'You review code',
+  },
   { id: 'no-tools', name: 'No Tools', model_route: 'route-a', tools: [], capabilities: [] },
 ];
 
@@ -62,7 +69,13 @@ describe('AgentRunner tool calling', () => {
   });
 
   it('should execute tool call and return final model result in invoke mode', async () => {
-    const runner = createRunner(mockAgents, mockRoutes, 'invoke', new ModelProviderRegistry([new MockProvider()]), toolRegistry);
+    const runner = createRunner(
+      mockAgents,
+      mockRoutes,
+      'invoke',
+      new ModelProviderRegistry([new MockProvider()]),
+      toolRegistry
+    );
     const step: StepDefinition = {
       id: 'step1',
       type: 'builtin',
@@ -83,7 +96,13 @@ describe('AgentRunner tool calling', () => {
   });
 
   it('should return AgentInvocationPlan in stub mode even with tools', async () => {
-    const runner = createRunner(mockAgents, mockRoutes, 'stub', new ModelProviderRegistry([new MockProvider()]), toolRegistry);
+    const runner = createRunner(
+      mockAgents,
+      mockRoutes,
+      'stub',
+      new ModelProviderRegistry([new MockProvider()]),
+      toolRegistry
+    );
     const step: StepDefinition = {
       id: 'step1',
       type: 'builtin',
@@ -98,7 +117,13 @@ describe('AgentRunner tool calling', () => {
   });
 
   it('should fail with ToolNotAllowed for tool not in agent.tools', async () => {
-    const runner = createRunner(mockAgents, mockRoutes, 'invoke', new ModelProviderRegistry([new MockProvider()]), toolRegistry);
+    const runner = createRunner(
+      mockAgents,
+      mockRoutes,
+      'invoke',
+      new ModelProviderRegistry([new MockProvider()]),
+      toolRegistry
+    );
     const step: StepDefinition = {
       id: 'step1',
       type: 'builtin',
@@ -125,7 +150,13 @@ describe('AgentRunner tool calling', () => {
         return mockProvider.invoke(req);
       },
     };
-    const runner = createRunner(mockAgents, mockRoutes, 'invoke', new ModelProviderRegistry([providerWithSecondCall as any]), toolRegistry);
+    const runner = createRunner(
+      mockAgents,
+      mockRoutes,
+      'invoke',
+      new ModelProviderRegistry([providerWithSecondCall as any]),
+      toolRegistry
+    );
     const step: StepDefinition = {
       id: 'step1',
       type: 'builtin',
@@ -142,7 +173,13 @@ describe('AgentRunner tool calling', () => {
   });
 
   it('should invoke model without tools when agent has no tools', async () => {
-    const runner = createRunner(mockAgents, mockRoutes, 'invoke', new ModelProviderRegistry([new MockProvider()]), toolRegistry);
+    const runner = createRunner(
+      mockAgents,
+      mockRoutes,
+      'invoke',
+      new ModelProviderRegistry([new MockProvider()]),
+      toolRegistry
+    );
     const step: StepDefinition = {
       id: 'step1',
       type: 'builtin',

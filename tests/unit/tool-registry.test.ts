@@ -52,6 +52,8 @@ describe('ToolRegistry', () => {
   it('should throw when registering duplicate definition', () => {
     const registry = new ToolRegistry();
     registry.registerDefinition({ id: 'tool', executor: 'tool', risk: 'low' as const });
-    expect(() => registry.registerDefinition({ id: 'tool', executor: 'tool', risk: 'low' as const })).toThrow('already registered');
+    expect(() => registry.registerDefinition({ id: 'tool', executor: 'tool', risk: 'low' as const })).toThrow(
+      'already registered'
+    );
   });
 });

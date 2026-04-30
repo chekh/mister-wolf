@@ -40,9 +40,16 @@ export function createRunCommand(): Command {
       const modelRouter = new ModelRouter(projectConfig.models.routes);
       const providerRegistry = new ModelProviderRegistry([new MockProvider(), new OpenAIProvider()]);
       const toolRegistry = new ToolRegistry();
-      toolRegistry.registerDefinition({ id: 'context.read', executor: 'context.read', risk: 'low', description: 'Read project context files' });
+      toolRegistry.registerDefinition({
+        id: 'context.read',
+        executor: 'context.read',
+        risk: 'low',
+        description: 'Read project context files',
+      });
       toolRegistry.registerExecutor(new ContextReadToolExecutor());
-      registry.register(new AgentRunner(agentRegistry, modelRouter, providerRegistry, toolRegistry, projectConfig.models.execution.mode));
+      registry.register(
+        new AgentRunner(agentRegistry, modelRouter, providerRegistry, toolRegistry, projectConfig.models.execution.mode)
+      );
 
       const caseStore = new CaseStore(stateDir);
       const gateStore = new GateStore(caseStore);

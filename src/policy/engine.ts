@@ -146,10 +146,7 @@ export class PolicyEngine {
     };
   }
 
-  private matchesTool(
-    rule: PolicyRule,
-    toolDef: import('../tool/types.js').ToolDefinition
-  ): boolean {
+  private matchesTool(rule: PolicyRule, toolDef: import('../tool/types.js').ToolDefinition): boolean {
     if (rule.match.tool_id && rule.match.tool_id !== toolDef.id) {
       return false;
     }

@@ -25,7 +25,13 @@ export class WorkflowEngine {
   private registry: RunnerRegistry;
 
   constructor(registry: RunnerRegistry);
-  constructor(registry: RunnerRegistry, caseStore: CaseStore, gateStore: GateStore, bus: InProcessEventBus, config?: ProjectConfig);
+  constructor(
+    registry: RunnerRegistry,
+    caseStore: CaseStore,
+    gateStore: GateStore,
+    bus: InProcessEventBus,
+    config?: ProjectConfig
+  );
   constructor(
     registry: RunnerRegistry,
     caseStore?: CaseStore,
@@ -45,7 +51,12 @@ export class WorkflowEngine {
 
   async run(
     workflow: WorkflowDefinition,
-    context: { case_id: string; workflow_id: string; variables: Record<string, unknown>; config: { state_dir: string } },
+    context: {
+      case_id: string;
+      workflow_id: string;
+      variables: Record<string, unknown>;
+      config: { state_dir: string };
+    },
     bus: InProcessEventBus,
     store: CaseStore,
     gateStore: GateStore

@@ -514,5 +514,5 @@ policy:
         tool_id: context.read
       decision: allow
       risk: low
-      reason: "Context read is safe"
+      reason: 'Context read is safe'
 ```

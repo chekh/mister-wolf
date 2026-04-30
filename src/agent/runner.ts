@@ -22,7 +22,8 @@ function validateContextBundlePath(path: string, stateDir: string): { valid: boo
     return { valid: false, reason: 'context_bundle must not contain parent traversal' };
   }
 
-  const projectRoot = dirname(stateDir);
+  const absoluteStateDir = resolve(stateDir);
+  const projectRoot = dirname(absoluteStateDir);
   const resolved = resolve(projectRoot, path);
   if (!resolved.startsWith(projectRoot)) {
     return { valid: false, reason: 'context_bundle must be inside project root' };
@@ -104,7 +105,11 @@ export class AgentRunner implements StepRunner {
       if (!validation.valid) {
         return {
           status: 'failure',
-          error: { type: 'ContextBundleValidationError', message: validation.reason || 'Context bundle validation failed', retryable: false },
+          error: {
+            type: 'ContextBundleValidationError',
+            message: validation.reason || 'Context bundle validation failed',
+            retryable: false,
+          },
         };
       }
     }
@@ -146,13 +151,18 @@ export class AgentRunner implements StepRunner {
     if (!task || typeof task !== 'string' || task.trim().length === 0) {
       return {
         status: 'failure',
-        error: { type: 'AgentInputValidationError', message: 'Missing or empty input.task field in invoke mode', retryable: false },
+        error: {
+          type: 'AgentInputValidationError',
+          message: 'Missing or empty input.task field in invoke mode',
+          retryable: false,
+        },
       };
     }
 
     let contextContent: string | undefined;
     if (contextBundle) {
-      const projectRoot = dirname(ctx.config.state_dir);
+      const absoluteStateDir = resolve(ctx.config.state_dir);
+      const projectRoot = dirname(absoluteStateDir);
       const resolved = resolve(projectRoot, contextBundle);
       try {
         contextContent = readContextBundle(resolved);
@@ -165,7 +175,10 @@ export class AgentRunner implements StepRunner {
     }
 
     if (!this.providerRegistry) {
-      return { status: 'failure', error: { type: 'ProviderNotFound', message: 'No provider registry configured', retryable: false } };
+      return {
+        status: 'failure',
+        error: { type: 'ProviderNotFound', message: 'No provider registry configured', retryable: false },
+      };
     }
 
     let provider;
@@ -174,7 +187,11 @@ export class AgentRunner implements StepRunner {
     } catch (err) {
       return {
         status: 'failure',
-        error: { type: 'ProviderNotFound', message: err instanceof Error ? err.message : String(err), retryable: false },
+        error: {
+          type: 'ProviderNotFound',
+          message: err instanceof Error ? err.message : String(err),
+          retryable: false,
+        },
       };
     }
 
@@ -201,7 +218,7 @@ export class AgentRunner implements StepRunner {
       max_tokens: route.max_tokens,
       temperature: route.temperature,
       tools: availableTools && availableTools.length > 0 ? availableTools : undefined,
-      metadata: (step.input?.metadata as Record<string, unknown> | undefined),
+      metadata: step.input?.metadata as Record<string, unknown> | undefined,
     };
 
     let pass1Result;
@@ -210,13 +227,27 @@ export class AgentRunner implements StepRunner {
     } catch (err) {
       return {
         status: 'failure',
-        error: { type: err instanceof Error ? err.constructor.name : 'ProviderError', message: err instanceof Error ? err.message : String(err), retryable: err instanceof ContextReadError ? false : true },
+        error: {
+          type: err instanceof Error ? err.constructor.name : 'ProviderError',
+          message: err instanceof Error ? err.message : String(err),
+          retryable: err instanceof ContextReadError ? false : true,
+        },
       };
     }
 
     // Check for tool call
     if (pass1Result.tool_call) {
-      return this.handleToolCall(pass1Result.tool_call, agent!, step, ctx, route, pass1Result, provider, task, contextContent);
+      return this.handleToolCall(
+        pass1Result.tool_call,
+        agent!,
+        step,
+        ctx,
+        route,
+        pass1Result,
+        provider,
+        task,
+        contextContent
+      );
     }
 
     // No tool call — return result
@@ -236,11 +267,21 @@ export class AgentRunner implements StepRunner {
   ): Promise<StepResult> {
     // Validate allow-list
     if (!agent.tools.includes(toolCall.tool_id)) {
-      return { status: 'failure', error: { type: 'ToolNotAllowed', message: new ToolNotAllowed(toolCall.tool_id, agent.id).message, retryable: false } };
+      return {
+        status: 'failure',
+        error: {
+          type: 'ToolNotAllowed',
+          message: new ToolNotAllowed(toolCall.tool_id, agent.id).message,
+          retryable: false,
+        },
+      };
     }
 
     if (!this.toolRegistry) {
-      return { status: 'failure', error: { type: 'ToolNotFound', message: 'No tool registry configured', retryable: false } };
+      return {
+        status: 'failure',
+        error: { type: 'ToolNotFound', message: 'No tool registry configured', retryable: false },
+      };
     }
 
     const toolDef = this.toolRegistry.requireDefinition(toolCall.tool_id);
@@ -261,7 +302,11 @@ export class AgentRunner implements StepRunner {
     } catch (err) {
       return {
         status: 'failure',
-        error: { type: err instanceof Error ? err.constructor.name : 'ToolExecutionError', message: err instanceof Error ? err.message : String(err), retryable: false },
+        error: {
+          type: err instanceof Error ? err.constructor.name : 'ToolExecutionError',
+          message: err instanceof Error ? err.message : String(err),
+          retryable: false,
+        },
       };
     }
 
@@ -282,12 +327,19 @@ export class AgentRunner implements StepRunner {
     } catch (err) {
       return {
         status: 'failure',
-        error: { type: err instanceof Error ? err.constructor.name : 'ProviderError', message: err instanceof Error ? err.message : String(err), retryable: false },
+        error: {
+          type: err instanceof Error ? err.constructor.name : 'ProviderError',
+          message: err instanceof Error ? err.message : String(err),
+          retryable: false,
+        },
       };
     }
 
     if (pass2Result.tool_call) {
-      return { status: 'failure', error: { type: 'ToolCallLimitExceeded', message: new ToolCallLimitExceeded().message, retryable: false } };
+      return {
+        status: 'failure',
+        error: { type: 'ToolCallLimitExceeded', message: new ToolCallLimitExceeded().message, retryable: false },
+      };
     }
 
     return this.buildModelResult(pass2Result, agent, route);
