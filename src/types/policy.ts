@@ -30,11 +30,13 @@ export const PolicyDecisionSchema = z.object({
   risk: RiskLevelSchema,
   rule_id: z.string().optional(),
   reason: z.string(),
-  enforcement: z.enum(['workflow_preflight', 'step_runtime']),
+  enforcement: z.enum(['workflow_preflight', 'step_runtime', 'tool_runtime']),
   subject: z.object({
     workflow_id: z.string(),
     step_id: z.string().optional(),
     runner: z.string().optional(),
+    tool_id: z.string().optional(),
+    tool_risk: RiskLevelSchema.optional(),
   }),
   matched_rules: z.array(z.string()),
 });

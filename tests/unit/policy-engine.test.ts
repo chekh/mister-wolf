@@ -328,3 +328,72 @@ describe('PolicyEngine', () => {
     expect(decision.matched_rules).toEqual([]);
   });
 });
+
+describe('PolicyEngine tool evaluation', () => {
+  const toolDef = { id: 'context.read', executor: 'context.read', risk: 'low' as const };
+  const toolCtx = { case_id: 'c1', workflow_id: 'w1', step_id: 's1', project_root: '/tmp', agent_id: 'a1' };
+  const config = makeConfig([]);
+
+  it('should allow context.read by default', () => {
+    const engine = new PolicyEngine();
+    const decision = engine.evaluateTool(toolDef, toolCtx, config);
+    expect(decision.decision).toBe('allow');
+    expect(decision.enforcement).toBe('tool_runtime');
+  });
+
+  it('should match tool_id rule', () => {
+    const engine = new PolicyEngine();
+    const toolConfig = {
+      ...config,
+      rules: [
+        {
+          id: 'allow-context-read',
+          match: { tool_id: 'context.read' },
+          decision: 'allow' as const,
+          risk: 'low' as const,
+          reason: 'Context read is safe',
+        },
+      ],
+    };
+    const decision = engine.evaluateTool(toolDef, toolCtx, toolConfig);
+    expect(decision.decision).toBe('allow');
+    expect(decision.rule_id).toBe('allow-context-read');
+  });
+
+  it('should match tool_risk rule', () => {
+    const engine = new PolicyEngine();
+    const criticalTool = { id: 'shell.command', executor: 'shell.command', risk: 'critical' as const };
+    const toolConfig = {
+      ...config,
+      rules: [
+        {
+          id: 'ask-critical',
+          match: { tool_risk: 'critical' as const },
+          decision: 'ask' as const,
+          risk: 'critical' as const,
+          reason: 'Critical tools require approval',
+        },
+      ],
+    };
+    const decision = engine.evaluateTool(criticalTool, toolCtx, toolConfig);
+    expect(decision.decision).toBe('ask');
+  });
+
+  it('should deny tool by policy', () => {
+    const engine = new PolicyEngine();
+    const toolConfig = {
+      ...config,
+      rules: [
+        {
+          id: 'deny-shell',
+          match: { tool_id: 'context.read' },
+          decision: 'deny' as const,
+          risk: 'low' as const,
+          reason: 'No context reading allowed',
+        },
+      ],
+    };
+    const decision = engine.evaluateTool(toolDef, toolCtx, toolConfig);
+    expect(decision.decision).toBe('deny');
+  });
+});

@@ -94,4 +94,68 @@ export class PolicyEngine {
   private riskLevel(risk: RiskLevel): number {
     return RISK_ORDER[risk];
   }
+
+  evaluateTool(
+    toolDef: import('../tool/types.js').ToolDefinition,
+    ctx: import('../tool/types.js').ToolExecutionContext,
+    config: PolicyConfig
+  ): PolicyDecision {
+    const matchedRules: PolicyRule[] = [];
+
+    for (const rule of config.rules) {
+      if (this.matchesTool(rule, toolDef)) {
+        matchedRules.push(rule);
+      }
+    }
+
+    let decision: PolicyDecision['decision'] = 'allow';
+    let risk: PolicyDecision['risk'] = 'low';
+    let primaryRuleId: string | undefined;
+    let reason = 'No matching policy rule';
+
+    if (matchedRules.length > 0) {
+      const primary = this.selectPrimary(matchedRules);
+      decision = primary.decision;
+      risk = primary.risk || 'low';
+      primaryRuleId = primary.id;
+      reason = primary.reason;
+    }
+
+    const maxRisk = config.defaults.max_risk;
+    if (this.riskLevel(risk) > this.riskLevel(maxRisk) && decision === 'allow') {
+      decision = 'ask';
+    }
+
+    const decisionId = `policy_${ctx.workflow_id}_${ctx.step_id}_${toolDef.id}_${primaryRuleId || 'default'}_tool_runtime`;
+
+    return {
+      id: decisionId,
+      decision,
+      risk,
+      rule_id: primaryRuleId,
+      reason,
+      enforcement: 'tool_runtime',
+      subject: {
+        workflow_id: ctx.workflow_id,
+        step_id: ctx.step_id,
+        runner: 'agent',
+        tool_id: toolDef.id,
+        tool_risk: toolDef.risk,
+      },
+      matched_rules: matchedRules.map((r) => r.id),
+    };
+  }
+
+  private matchesTool(
+    rule: PolicyRule,
+    toolDef: import('../tool/types.js').ToolDefinition
+  ): boolean {
+    if (rule.match.tool_id && rule.match.tool_id !== toolDef.id) {
+      return false;
+    }
+    if (rule.match.tool_risk && rule.match.tool_risk !== toolDef.risk) {
+      return false;
+    }
+    return true;
+  }
 }
