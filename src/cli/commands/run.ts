@@ -74,6 +74,21 @@ export function createRunCommand(): Command {
       const caseId = `case_${uuidv4().split('-')[0]}`;
       console.log(`[${caseId}] Created`);
 
+      if (process.stdout.isTTY) {
+        bus.subscribe('model.stream.started', (event) => {
+          console.log(`\n🤖 [${event.payload.provider}/${event.payload.model}]`);
+        });
+        bus.subscribe('model.stream.chunk', (event) => {
+          process.stdout.write(event.payload.text as string);
+        });
+        bus.subscribe('model.stream.completed', () => {
+          process.stdout.write('\n');
+        });
+        bus.subscribe('model.stream.failed', (event) => {
+          console.error(`\n⚠️ Stream failed: ${event.payload.error}`);
+        });
+      }
+
       const result = await engine.execute(caseId, workflow);
 
       if (result.status === 'paused') {
