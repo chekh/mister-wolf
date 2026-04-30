@@ -10,7 +10,7 @@ import { ModelInvocationRequest, ModelToolCall } from '../model/types.js';
 import { ToolRegistry } from '../tool/registry.js';
 import { ToolExecutionContext } from '../tool/types.js';
 import { ToolNotAllowed, ToolCallLimitExceeded } from '../tool/errors.js';
-import { ContextReadError } from '../model/errors.js';
+import { ContextReadError, ProviderStreamingUnsupported, StreamingToolCallUnsupported } from '../model/errors.js';
 import { dirname, resolve } from 'path';
 import { existsSync, readFileSync, statSync } from 'fs';
 
@@ -55,6 +55,10 @@ function readContextBundle(path: string): string {
 
 function resolveExecutionMode(route: ModelRoute, globalMode: 'stub' | 'invoke'): 'stub' | 'invoke' {
   return route.execution_mode ?? globalMode ?? 'stub';
+}
+
+function resolveStreaming(route: ModelRoute, ctx: ExecutionContext): boolean {
+  return route.streaming ?? ctx.config.models?.execution?.streaming ?? false;
 }
 
 function buildPass2Input(originalTask: string, toolCall: ModelToolCall, toolOutput: string): string {
@@ -206,6 +210,12 @@ export class AgentRunner implements StepRunner {
         }
         throw err;
       }
+    }
+
+    const streaming = resolveStreaming(route, ctx);
+
+    if (streaming) {
+      return this.runInvokeStream(step, ctx, agent, route, contextContent, task, availableTools);
     }
 
     // Pass 1: Invoke model with tools
@@ -362,5 +372,86 @@ export class AgentRunner implements StepRunner {
     };
 
     return { status: 'success', output: JSON.stringify(modelResult, null, 2) };
+  }
+
+  private validateStreaming(provider: import('../model/types.js').ModelProvider, availableTools?: import('../tool/types.js').ToolDefinition[]): void {
+    if (!provider.invokeStream) {
+      throw new ProviderStreamingUnsupported(provider.id);
+    }
+    if (availableTools && availableTools.length > 0) {
+      throw new StreamingToolCallUnsupported();
+    }
+  }
+
+  private async runInvokeStream(
+    step: StepDefinition,
+    ctx: ExecutionContext,
+    agent: NonNullable<ReturnType<AgentRegistry['get']>>,
+    route: ModelRoute,
+    contextContent: string | undefined,
+    task: string,
+    availableTools?: import('../tool/types.js').ToolDefinition[]
+  ): Promise<StepResult> {
+    const provider = this.providerRegistry!.require(route.provider);
+
+    let request: ModelInvocationRequest;
+    const callbacks: import('../model/stream-types.js').ModelStreamCallbacks = {
+      onStart: async () => {
+        await this.emitStreamEvent(ctx, step.id, agent.id, 'model.stream.started', { provider: route.provider, model: route.model });
+      },
+      onChunk: async (chunk) => {
+        await this.emitStreamEvent(ctx, step.id, agent.id, 'model.stream.chunk', {
+          provider: chunk.provider,
+          model: chunk.model,
+          chunk_index: chunk.chunk_index,
+          text: chunk.text,
+        });
+      },
+      onComplete: async (result) => {
+        await this.emitStreamEvent(ctx, step.id, agent.id, 'model.stream.completed', { provider: result.provider, model: result.model });
+      },
+    };
+
+    let result: import('../model/types.js').ModelInvocationResult;
+    try {
+      this.validateStreaming(provider, availableTools);
+
+      request = {
+        provider: route.provider,
+        model: route.model,
+        input: task,
+        system_prompt: (step.input?.system_prompt as string | undefined) ?? agent.system_prompt ?? route.system_prompt,
+        context: contextContent,
+        max_tokens: route.max_tokens,
+        temperature: route.temperature,
+      };
+
+      result = await provider.invokeStream!(request, callbacks);
+    } catch (err) {
+      await this.emitStreamEvent(ctx, step.id, agent.id, 'model.stream.failed', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return {
+        status: 'failure',
+        error: {
+          type: err instanceof Error ? err.constructor.name : 'ProviderError',
+          message: err instanceof Error ? err.message : String(err),
+          retryable: false,
+        },
+      };
+    }
+
+    return this.buildModelResult(result, agent, route);
+  }
+
+  private async emitStreamEvent(
+    ctx: ExecutionContext,
+    stepId: string,
+    agentId: string,
+    type: string,
+    payload: Record<string, unknown>
+  ): Promise<void> {
+    // This is a placeholder for event emission
+    // In the real implementation, this would use the event bus
   }
 }
