@@ -1,0 +1,37 @@
+artifacts:
+  inputs:
+    - repository_files
+    - user_request_text
+    - uploaded_document
+    - meeting_transcript
+    - spreadsheet
+    - database_query_result
+    - api_response
+    - external_reference
+
+  intermediate:
+    - ContextBundle
+    - ScenarioDecision
+    - SolveRequest
+    - ExecutionPlan
+    - ReviewDraft
+    - RiskAssessmentDraft
+
+  outputs:
+    - ReviewReport
+    - NextMVPRecommendation
+    - ADR
+    - ADL
+    - RiskRegister
+    - MeetingBrief
+    - EmailDraft
+    - PRDescription
+    - PolicyDecision
+    - AnalysisSummary
+    - ConfigurationPlan
+
+  persisted:
+    - CaseTrace
+    - MemoryBundle
+    - ArtifactSnapshot
+    - DecisionLog

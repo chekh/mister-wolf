@@ -1,0 +1,23 @@
+policies:
+  allow:
+    - read_project_files
+    - read_docs
+    - read_public_data
+    - draft_communication
+    - generate_report
+
+  ask:
+    - file_write
+    - shell_mutation
+    - external_send
+    - git_commit
+    - deploy_action
+    - financial_transaction
+
+  deny:
+    - dangerous_shell
+    - secrets_exposure
+    - unauthorized_external_send
+    - legal_advice_without_gate
+    - financial_action_without_approval
+    - pii_disclosure

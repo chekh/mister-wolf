@@ -1,0 +1,73 @@
+id: <domain>.<subdomain>.<short_name>.<number>
+title: ""
+domain: ""
+subdomain: ""
+scenario_level: 1
+domain_mode: ""
+methodology: []
+artifact_profile: []
+interaction_surface: []
+user_input: ""
+user_intent:
+  primary: ""
+  secondary: []
+  ambiguity: low
+wolf_configuration:
+  mode: []
+  domain_pack: ""
+  persona: ""
+  autonomy: supervised
+  explicit_config_needed: low
+  adaptive_elements: []
+expected_visible_behavior: []
+internal_behavior: []
+artifacts:
+  inputs: []
+  intermediate: []
+  outputs:
+    - name: ""
+      type: ""
+      lifecycle_state: created  # created | validated | persisted
+      domain_specific: false
+  persisted: []
+capabilities:
+  agents: []
+  skills: []
+  tools: []
+  external: []
+    # - name: ""
+    #   type: mcp | direct_api | imported_skill | wrapper
+    #   trust_level: trusted | untrusted | sandboxed
+    #   fallback_action: ""
+policies:
+  allow: []
+  ask: []
+  deny: []
+gates:
+  - gate_name: ""
+    severity: block  # silent | notify | block
+    rationale: ""
+memory:
+  read: []
+  write_candidates: []
+  control_memory: []
+failure_modes: []
+configuration_effort:
+  level: ""
+  notes: ""
+new_capabilities_introduced: []
+concept_questions: []
+analysis_tags: []
+
+# Optional (backward-compatible)
+execution_result:
+  envelope_type: Answer  # Answer | Plan | Artifact | Refusal | PartialResult
+  summary: ""
+  confidence: high
+  trace_reference: ""
+
+# Required for Level 3+ scenarios
+observability_requirements:
+  metrics: false
+  spans: false
+  alerts: []

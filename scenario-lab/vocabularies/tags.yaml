@@ -1,0 +1,55 @@
+analysis_tags:
+  # interaction
+  - cli
+  - opencode
+  - vscode
+  - api
+  - chat
+
+  # execution
+  - simple_answer
+  - context_answer
+  - dry_run
+  - workflow
+  - tool_call
+  - external_action
+  - multi_agent
+  - a2a
+
+  # configuration
+  - zero_config
+  - generated_config
+  - explicit_config
+  - domain_pack
+  - dynamic_persona
+  - memory_adapted
+  - llm_assisted
+
+  # risk
+  - read_only
+  - writes_files
+  - external_send
+  - financial_action
+  - legal_risk
+  - personal_data
+  - security_sensitive
+  - high_cost
+
+  # governance
+  - allow
+  - ask
+  - deny
+  - expert_gate
+  - policy_conflict
+  - hard_deny
+
+  # capability
+  - mcp
+  - bash_script
+  - http_api
+  - imported_skill
+  - native_skill
+  - wrapper
+  - adapter
+  - memory
+  - artifact

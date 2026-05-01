@@ -1,0 +1,13 @@
+configuration_modes:
+  - zero_config
+  - generated_config
+  - explicit_config
+  - domain_pack
+  - rule_routing
+  - dynamic_persona
+  - llm_assisted_selection
+  - memory_adapted
+  - user_clarified
+  - nested_autoconfig
+  - custom_workflow
+  - custom_plugin

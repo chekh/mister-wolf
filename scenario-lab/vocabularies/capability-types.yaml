@@ -1,0 +1,42 @@
+capabilities:
+  agents:
+    - software_architect
+    - security_reviewer
+    - domain_expert
+    - product_manager
+    - legal_advisor
+    - researcher
+    - data_analyst
+    - hr_specialist
+    - sre_operator
+
+  skills:
+    - software.project_review
+    - software.code_review
+    - legal.contract_analysis
+    - legal.nda_review
+    - research.literature_scan
+    - office.meeting_summary
+    - office.email_draft
+    - finance.budget_planning
+    - data.analysis_report
+
+  tools:
+    - context.read
+    - context.search
+    - file.read
+    - file.write
+    - shell.exec
+    - git.diff
+    - git.commit
+    - http.request
+    - mcp.invoke
+
+  external:
+    - github.mcp
+    - slack.mcp
+    - jira.api
+    - confluence.api
+    - google_calendar.api
+    - openclaw.skill_import
+    - opencode.skill_import

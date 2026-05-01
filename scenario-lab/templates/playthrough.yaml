@@ -1,0 +1,49 @@
+playthrough_id: ""
+scenario_id: ""
+run_id: ""
+played_at: ""
+roles:
+  user_simulator: ""
+  wolf_simulator: ""
+  observer: ""
+
+summary:
+  user_goal: ""
+  wolf_path: ""
+  outcome: success
+
+interaction_steps:
+  - step: 1
+    actor: user
+    type: user_request
+    content: ""
+    gate_explanation: ""  # NEW: for approval_request steps
+    internal_notes: {}
+
+final_visible_result:
+  type: answer
+  summary: ""
+
+runtime_path:
+  scenario: ""
+  persona: ""
+  execution_mode: simple_answer
+  configuration_mode: []
+  components_used: []
+  circuit_breaker_triggered: false  # NEW
+  circuit_breaker_reason: ""        # NEW
+
+artifacts_observed:
+  created: []
+  used: []
+  missing: []
+
+policy_and_gates:
+  decisions: []
+  gates_created: []
+  refusals: []
+
+issues_detected:
+  - description: ""
+    severity: info      # NEW: critical | major | minor | info
+    category: ux        # NEW: architecture | security | ux | performance | domain

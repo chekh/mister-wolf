@@ -1,0 +1,78 @@
+extraction_id: ""
+scenario_id: ""
+playthrough_id: ""
+
+verdict:
+  usefulness: high
+  realism: high
+  concept_pressure: low
+  implementation_risk: low
+
+behavior_findings:
+  user_confusion_points: []
+  wolf_decision_points: []
+  good_behaviors: []
+  bad_behaviors: []
+
+artifact_findings:
+  required_artifacts: []
+  missing_artifacts: []
+  questionable_artifacts: []
+  artifact_lifecycle_questions: []
+
+component_findings:
+  components_confirmed: []
+  components_missing: []
+  components_overkill: []
+  new_components_suggested: []
+
+configuration_findings:
+  configuration_mode_confirmed: []
+  config_needed: []
+  can_be_zero_config: false
+  generated_config_possible: false
+  domain_pack_needed: false
+  custom_plugin_needed: false
+
+policy_findings:
+  required_policies: []
+  required_gates: []
+  hard_denies: []
+  policy_conflicts: []
+  safety_gaps: []
+
+capability_findings:
+  required_tools: []
+  required_skills: []
+  required_adapters: []
+  required_wrappers: []
+  imported_capabilities: []
+
+memory_findings:
+  memory_needed: none
+  memory_items: []
+  stale_memory_risks: []
+  memory_visibility_concerns: []
+
+failure_modes:
+  observed: []
+  potential: []
+  mitigations: []
+
+complexity_assessment:
+  implementation_complexity: 1
+  config_complexity: 1
+  runtime_risk: 1
+  security_risk: 1
+  latency_cost_risk: 1
+  debugging_complexity: 1
+  total: 6
+  recommendation: safe_mvp
+
+concept_updates:
+  must_add: []
+  should_add: []
+  can_defer: []
+  rejected_assumptions: []
+
+next_questions: []
