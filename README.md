@@ -327,7 +327,7 @@ All PRs and pushes to `main` / `dev` run:
 - [`docs/workflow-syntax.md`](./docs/workflow-syntax.md) — Complete workflow YAML reference
 - [`docs/cli-reference.md`](./docs/cli-reference.md) — Full CLI command reference
 - [`docs/concept-v2.md`](./docs/concept-v2.md) — Framework concept v2 (Russian, artifact-first execution, policy model, scope boundaries)
-- [`docs/concept.md`](./docs/concept.md) — Full framework concept (Russian, comprehensive)
+- [`docs/archive/concept-v1.md`](./docs/archive/concept-v1.md) — Full framework concept v1 (Russian, archived)
 - [`docs/superpowers/specs/`](./docs/superpowers/specs/) — Technical specifications
 - [`docs/superpowers/plans/`](./docs/superpowers/plans/) — Implementation plans
 
