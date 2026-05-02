@@ -7,6 +7,8 @@
 > **"I solve problems."**
 >
 > Universal adaptive agent framework. Single entry point that determines what you need and executes scenarios.
+>
+> Concept v2 describes Mr. Wolf as an agentic control plane with artifact-first execution and policy-governed capabilities.
 
 ## Status
 
@@ -324,6 +326,7 @@ All PRs and pushes to `main` / `dev` run:
 - [`docs/getting-started.md`](./docs/getting-started.md) — Detailed quick start guide
 - [`docs/workflow-syntax.md`](./docs/workflow-syntax.md) — Complete workflow YAML reference
 - [`docs/cli-reference.md`](./docs/cli-reference.md) — Full CLI command reference
+- [`docs/concept-v2.md`](./docs/concept-v2.md) — Framework concept v2 (Russian, artifact-first execution, policy model, scope boundaries)
 - [`docs/concept.md`](./docs/concept.md) — Full framework concept (Russian, comprehensive)
 - [`docs/superpowers/specs/`](./docs/superpowers/specs/) — Technical specifications
 - [`docs/superpowers/plans/`](./docs/superpowers/plans/) — Implementation plans
