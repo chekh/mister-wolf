@@ -2,19 +2,19 @@
 
 | Component | Confirmations/Suggestions |
 |-----------|---------------------------|
-| WolfFacade | 60 |
-| ContextResolver | 52 |
-| AgentRunner | 49 |
-| TraceSystem | 45 |
+| WolfFacade | 80 |
+| ContextResolver | 72 |
+| AgentRunner | 69 |
+| TraceSystem | 63 |
+| ScenarioRouter | 50 |
 | ScenarioRouterLight | 30 |
-| ScenarioRouter | 30 |
-| PolicyCore | 15 |
+| PolicyCore | 23 |
+| FileWriteGateWithRollback | 10 |
 | ModelRouter | 8 |
-| MCPWrapper | 6 |
+| MCPWrapper | 8 |
+| AdapterLayer | 4 |
 | LightweightAnswerCache | 4 |
-| FileWriteGateWithRollback | 2 |
 | LegalDisclaimerPrompter | 2 |
-| AdapterLayer | 2 |
 | LightweightSolvePlanner | 1 |
 | CalendarMutationGateWithFallback | 1 |
 | EmergencyPolicy | 1 |

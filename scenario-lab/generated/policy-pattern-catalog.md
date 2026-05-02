@@ -1,14 +1,14 @@
 # Policy Pattern Catalog
 
-- **file_write** — 31 references
+- **file_write** — 44 references
+- **external_send** — 39 references
+- **generate_report** — 34 references
+- **read_project_files** — 30 references
 - **read_only_project_access** — 21 references
-- **external_send** — 19 references
-- **generate_report** — 14 references
+- **dangerous_shell** — 14 references
 - **personal_data_exposure** — 12 references
-- **read_project_files** — 12 references
-- **draft_communication** — 7 references
-- **dangerous_shell** — 6 references
-- **shell_mutation** — 6 references
+- **draft_communication** — 11 references
+- **shell_mutation** — 8 references
 - **pii_handling_gate** — 6 references
 - **read_only_allowed** — 4 references
 - **secrets_handling_gate** — 4 references
