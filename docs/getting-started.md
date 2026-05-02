@@ -208,5 +208,5 @@ steps:
 
 - Learn [workflow syntax](../workflow-syntax.md) in detail
 - Explore [CLI commands](../cli-reference.md)
-- Read the [full concept](../concept.md) (Russian)
+- Read the [full concept](../concept-v2.md) (Russian)
 - Check [examples](../../examples/)

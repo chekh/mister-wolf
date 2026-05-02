@@ -1,3 +1,5 @@
+> **Archived:** this document is superseded by [`docs/concept-v2.md`](../concept-v2.md). Kept for historical context.
+
 <p align="center">
   <img src="./Mr.%20Wolf.png" alt="Mr. Wolf" width="400" />
 </p>
