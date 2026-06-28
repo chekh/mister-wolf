@@ -1,8 +1,7 @@
-import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from 'fs';
+import * as fs from 'fs/promises';
 import { dirname, join } from 'path';
 import yaml from 'js-yaml';
 import { MemoryStore } from '../../ports/memory-store.port.js';
-import { MemoryType } from '../../domain/memory-types.js';
 import { MemoryObject, MemoryObjectSchema } from '../../domain/schemas/memory-object-schema.js';
 import { objectPath, objectsDir } from './project-paths.js';
 
@@ -10,18 +9,17 @@ export class MarkdownMemoryStore implements MemoryStore {
   constructor(private baseDir: string) {}
 
   async save(object: MemoryObject): Promise<void> {
-    const path = objectPath(this.baseDir, object.type as MemoryType, object.id);
-    mkdirSync(dirname(path), { recursive: true });
+    const path = objectPath(this.baseDir, object.type, object.id);
+    await fs.mkdir(dirname(path), { recursive: true });
     const { body, ...frontmatter } = object;
     const content = `---\n${yaml.dump(frontmatter)}---\n\n${body}`;
-    writeFileSync(path, content, 'utf-8');
+    await fs.writeFile(path, content, 'utf-8');
   }
 
   async get(id: string): Promise<MemoryObject | null> {
-    const candidates = this.findFiles(id);
+    const candidates = await this.findFiles(id);
     for (const path of candidates) {
-      if (!existsSync(path)) continue;
-      const parsed = this.parseFile(path);
+      const parsed = await this.parseFile(path);
       if (parsed && parsed.id === id) return parsed;
     }
     return null;
@@ -29,14 +27,12 @@ export class MarkdownMemoryStore implements MemoryStore {
 
   async list(filters?: { type?: string; status?: string }): Promise<MemoryObject[]> {
     const root = objectsDir(this.baseDir);
-    if (!existsSync(root)) return [];
-
     const results: MemoryObject[] = [];
-    const dirs = readdirSync(root, { withFileTypes: true }).filter((d) => d.isDirectory());
+    const dirs = await this.readDirs(root);
     for (const dir of dirs) {
-      const files = readdirSync(join(root, dir.name)).filter((f) => f.endsWith('.md'));
+      const files = await this.readFiles(join(root, dir));
       for (const file of files) {
-        const parsed = this.parseFile(join(root, dir.name, file));
+        const parsed = await this.parseFile(join(root, dir, file));
         if (!parsed) continue;
         if (filters?.type && parsed.type !== filters.type) continue;
         if (filters?.status && parsed.status !== filters.status) continue;
@@ -50,31 +46,72 @@ export class MarkdownMemoryStore implements MemoryStore {
     const existing = await this.get(id);
     if (!existing) throw new Error(`Memory object not found: ${id}`);
     const updated = { ...existing, ...patch, updated_at: new Date().toISOString() };
+    const oldPath = objectPath(this.baseDir, existing.type, existing.id);
     await this.save(updated);
+    const newPath = objectPath(this.baseDir, updated.type, updated.id);
+    if (oldPath !== newPath) {
+      try {
+        await fs.unlink(oldPath);
+      } catch (err) {
+        if (!isEnoent(err)) throw err;
+      }
+    }
     return updated;
   }
 
-  private findFiles(id: string): string[] {
-    const root = objectsDir(this.baseDir);
-    if (!existsSync(root)) return [];
-    const files: string[] = [];
-    const dirs = readdirSync(root, { withFileTypes: true }).filter((d) => d.isDirectory());
-    for (const dir of dirs) {
-      files.push(join(root, dir.name, `${id}.md`));
+  private async readDirs(root: string): Promise<string[]> {
+    try {
+      const entries = await fs.readdir(root, { withFileTypes: true });
+      return entries.filter((d) => d.isDirectory()).map((d) => d.name);
+    } catch (err) {
+      if (isEnoent(err)) return [];
+      throw err;
     }
-    return files;
   }
 
-  private parseFile(path: string): MemoryObject | null {
+  private async readFiles(dir: string): Promise<string[]> {
     try {
-      const content = readFileSync(path, 'utf-8');
+      const entries = await fs.readdir(dir);
+      return entries.filter((f) => f.endsWith('.md'));
+    } catch (err) {
+      if (isEnoent(err)) return [];
+      throw err;
+    }
+  }
+
+  private async findFiles(id: string): Promise<string[]> {
+    const root = objectsDir(this.baseDir);
+    const dirs = await this.readDirs(root);
+    return dirs.map((dir) => join(root, dir, `${id}.md`));
+  }
+
+  private async parseFile(path: string): Promise<MemoryObject | null> {
+    let content: string;
+    try {
+      content = await fs.readFile(path, 'utf-8');
+    } catch (err) {
+      if (isEnoent(err)) return null;
+      throw new Error(`Failed to read memory file ${path}: ${formatError(err)}`);
+    }
+    try {
       const match = content.match(/^---\n([\s\S]*?)\n---\n\n?([\s\S]*)$/);
-      if (!match) return null;
+      if (!match) {
+        throw new Error('Missing or invalid frontmatter delimiter');
+      }
       const frontmatter = yaml.load(match[1]) as Record<string, unknown>;
       const body = match[2] || '';
       return MemoryObjectSchema.parse({ ...frontmatter, body });
-    } catch {
-      return null;
+    } catch (err) {
+      throw new Error(`Failed to parse memory file ${path}: ${formatError(err)}`);
     }
   }
+}
+
+function isEnoent(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && 'code' in err && (err as { code: unknown }).code === 'ENOENT';
+}
+
+function formatError(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
 }

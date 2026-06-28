@@ -3,7 +3,7 @@ import { MEMORY_TYPES } from '../memory-types.js';
 
 export const MemoryObjectSchema = z.object({
   id: z.string().min(1),
-  type: z.enum(MEMORY_TYPES as [string, ...string[]]),
+  type: z.enum(MEMORY_TYPES),
   title: z.string().min(1),
   status: z.enum(['active', 'superseded']),
   review_state: z.enum(['accepted', 'proposed', 'rejected']),
