@@ -1,10 +1,6 @@
 import { Command } from 'commander';
 import { addMemoryObject } from '../../../app/use-cases/add-memory-object.js';
-import { MarkdownMemoryStore } from '../../fs/markdown-memory-store.js';
-import { JsonlEventLog } from '../../fs/jsonl-event-log.js';
-import { SystemClock } from '../../fs/system-clock.js';
-import { HashIdGenerator } from '../../fs/hash-id-generator.js';
-import { eventsPath } from '../../fs/project-paths.js';
+import { createCliContainer } from '../container.js';
 
 export function memoryAddCommand(): Command {
   return new Command('add')
@@ -15,11 +11,9 @@ export function memoryAddCommand(): Command {
     .option('--tags <tags>', 'Comma-separated tags')
     .option('--created-by <actor>', 'Creator actor', 'user:cli')
     .action(async (options) => {
-      const baseDir = process.cwd();
-      const store = new MarkdownMemoryStore(baseDir);
-      const log = new JsonlEventLog(eventsPath(baseDir));
+      const { store, log, clock, idGen } = createCliContainer(process.cwd());
       const result = await addMemoryObject(
-        { store, log, clock: new SystemClock(), idGen: new HashIdGenerator() },
+        { store, log, clock, idGen },
         {
           type: options.type,
           title: options.title,
