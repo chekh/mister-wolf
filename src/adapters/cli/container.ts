@@ -1,6 +1,6 @@
 import { MarkdownMemoryStore } from '../fs/markdown-memory-store.js';
 import { JsonlEventLog } from '../fs/jsonl-event-log.js';
-import { SQLiteSearchIndex } from '../fs/sqlite-search-index.js';
+import { SQLiteSearchIndex } from '../sqlite/sqlite-search-index.js';
 import { SystemClock } from '../fs/system-clock.js';
 import { HashIdGenerator } from '../fs/hash-id-generator.js';
 import { FsProjectInitializer } from '../fs/fs-project-initializer.js';
