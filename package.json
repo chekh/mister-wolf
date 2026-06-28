@@ -4,7 +4,7 @@
   "description": "Mr. Wolf — universal adaptive agent framework",
   "type": "module",
   "bin": {
-    "wolf": "./dist/cli/index.js"
+    "wolf": "./dist/bootstrap/cli.js"
   },
   "scripts": {
     "build": "tsc",
