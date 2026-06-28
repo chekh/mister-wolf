@@ -42,29 +42,37 @@ Mr. Wolf решает эти проблемы через единый runtime с
 ## 3. Design Principles
 
 ### One facade, many capabilities
+
 Пользователь взаимодействует только с WolfFacade. Внутри runtime может собирать десятки компонентов, но пользователь не должен знать их названий. Router выбирает подходящий набор, AgentRunner выполняет, а пользователь получает результат.
 
 ### Core executes, configuration decides
+
 Универсальное ядро (WolfFacade, ContextResolver, AgentRunner, TraceSystem) не меняется от домена к домену. Что именно Wolf делает в ответ на запрос, определяет конфигурация: domain pack, workflow, policies. Без конфигурации ядро умеет только базовый L1-ответ и conversation. С domain pack — полноценный software engineering workflow.
 
 ### Policies stronger than prompts
+
 Политика — это declarative rule, а не пожелание в system prompt. Если политика `file_write_without_approval` требует hard-deny, то ни prompt, ни model hallucination не могут обойти запрет. PolicyCore проверяет политики до исполнения.
 
 ### Artifacts are first-class
+
 Результат работы Wolf — это не только текст ответа. Это структурированные артефакты: `TechnicalSpecification`, `TestPlan`, `ADR`, `ThreatModel`, `FileChangeSet`, `ExecutionReport`. Они создаются, сохраняются и связываются друг с другом. SolveResult содержит ссылки на артефакты, а не их копии.
 
 ### Tools, skills, agents, workflows — different primitives
+
 Не всё является «агентом». Tool — низкоуровневое действие. Skill — доменная логика, использующая tools. Agent — persona со skill set и policy scope. Workflow — многошаговая декларативная оркестрация. Смешивание этих примитивов ведёт к путанице.
 
 > **Skill vs Workflow boundary.**
+>
 > - **Skill** = reusable logic unit, function-like, no gates, no artifact chain ownership. Вызывается агентом или workflow.
 > - **Workflow** = orchestration DAG с artifact passing, conditional logic, gates. Может вызывать skills, но skill не вызывает workflow.
 > - **Пример:** `software.project_review` = skill (анализирует код, возвращает отчёт). `spec_first_flow` = workflow (создаёт spec → tasks → impl → tests с gates между шагами).
 
 ### External capabilities are untrusted by default
+
 MCP server, imported skill, direct API — всё внешнее считается untrusted до тех пор, пока wrapper не применил policy overlay: trust scoring, policy check, gate application, fallback activation, audit logging.
 
 ### Progressive configuration over configuration hell
+
 Конфигурация должна наращиваться постепенно. Configuration modes **не являются взаимоисключающими**: domain pack может быть загружен в `generated_config` режиме (auto-detected) или в `explicit_config` режиме (user-specified).
 
 ```
@@ -80,6 +88,7 @@ zero_config → generated_config → explicit_config → domain_pack → custom_
 > **Design decision.** Почему не «всё сразу через domain pack»? Потому что 12 из 80 сценариев работают на `zero_config`, а 30 — на `generated_config`. Если потребовать domain pack для базовых задач, пользователь откажется от инструмента. Domain pack coverage 68.75% означает, что большинство сценариев выигрывают от domain-specific конфигурации, но first useful product должен работать и без неё.
 
 ### Memory must be cited, bounded, and policy-aware
+
 Memory в Wolf — это не бесконтрольный RAG. Каждое чтение требует citation (source ID) и freshness check. Memory read проходит через те же gates, что и внешние действия: PII detector и secrets gate применяются и к историческим данным.
 
 ---
@@ -95,6 +104,7 @@ Open-ended dialogue без определённой задачи, ожидаем
 **Conversation — это не failed solve. Conversation — валидный interaction mode.**
 
 Отличие от L1:
+
 - **L1 simple answer:** есть понятный вопрос, Wolf отвечает. Результат — `AnswerArtifact` (internal), пользователь видит plain text.
 - **L0 / conversation:** нет чёткой задачи, нет ожидаемого результата, нет условия завершения. Wolf ведёт диалог, задаёт уточняющие вопросы, помогает формализовать мысли.
 
@@ -116,6 +126,7 @@ Conversation становится Case, когда пользователь го
 - «Сделай из обсуждения task list»
 
 Тогда появляются:
+
 - `CaseTrace` — audit trail задачи
 - `SolveResult` — canonical envelope
 - `ArtifactStore` — хранение артефактов
@@ -123,40 +134,50 @@ Conversation становится Case, когда пользователь го
 - Gates, если есть side effects
 
 **Правила памяти для conversation:**
+
 - По умолчанию conversation memory **ephemeral** (session-scoped).
 - Если пользователь просит сохранить — создаётся `ConversationSummary` или другой artifact.
 - Если беседа стала case — selected summary переносится в `CaseTrace`.
 - Если это stable preference/decision — сохраняется только через explicit confirmation.
 
 ### simple_answer / fast path (L1)
+
 Прямой ответ без инструментов, без чтения контекста, без side effects. Пример: «Объясни, что такое spec-first». Модель выбирается ModelRouter для минимальной латентности. Результат — `AnswerArtifact` для аудита (внутренний), пользователь видит plain text.
 
 ### context_aware_answer (L2)
+
 Ответ с чтением контекста (файлы проекта, документация, meeting notes), но без side effects. Пример: «Проанализируй текущий API на соответствие OpenAPI spec». Включает ContextResolver и AgentRunner. Нет gates, нет записи файлов.
 
 ### clarification (L1–L5)
+
 Wolf может запросить уточнение, если запрос неоднозначен или недостаточно контекста. Clarification — это не ошибка, а behavioral mode. Оно происходит на любом уровне, если Router не может однозначно выбрать сценарий.
 
 ### plan / dry_run (L3)
+
 Wolf строит план, спецификацию или чеклист, но не выполняет действий. Пример: «Создай TechnicalSpecification для фичи X». Результат — артефакты (`TechnicalSpecification`, `TaskList`, `TestPlan`), но нет file write, нет external calls. Gates — notification-only.
 
 ### governed_action (L4)
+
 Wolf выполняет действия с применением gates: file write с `file_write_approval`, external send с `external_action_approval`, shell mutation — hard-deny. Пример: «Сгенерируй ImplementationPlan и примени изменения к репозиторию». Артефакты + логи + policy decisions.
 
 > **Governed action — что это значит для пользователя?** Wolf выполняет действия (запись файлов, внешние вызовы), но может приостановиться и запросить одобрение перед продолжением.
 
 ### artifact_producing_workflow (L3–L5)
+
 Многошаговый workflow, где выход одного шага — вход следующего. Пример: spec → tasks → implementation → tests → release. Артефакты связываются через ArtifactStore. Workflow определён декларативно (YAML), не кодом.
 
 > **Governed action vs Artifact-producing workflow.** Governed action — единичное действие с gate. Artifact-producing workflow — многошаговый DAG, где артефакты передаются между шагами. Workflow может содержать governed actions.
 
 ### refusal / why-not explanation (L1–L5)
+
 Wolf отказывает в выполнении, если запрос нарушает hard-deny policy. Отказ сопровождается объяснением: какая политика сработала и почему. Refusal — это валидный SolveResult типа `Refusal`.
 
 ### external_capability_use (L5)
+
 Использование MCP server, imported skill, direct API с полным overlay: discovery → trust scoring → policy check → gate → fallback → audit. Пример: синхронизация с Jira, вызов vulnerability scanner, запрос к внешней базе знаний.
 
 ### cross_domain_orchestration (L4–L5)
+
 Оркестрация, затрагивающая несколько domain packs. Пример: architecture review + security review (arch + sec). Сейчас cross-domain сценариев 6.25% (5 из 80), поэтому для 2-domain случаев достаточно composition rules. Полноценный DomainPackCoordinator отложен.
 
 ---
@@ -236,10 +257,10 @@ SolveResult:
   envelope_type: Answer | Plan | Artifact | Refusal | PartialResult
   summary: string
   confidence: high | medium | low
-  artifacts: []  # references to ArtifactStore IDs, not embedded copies
+  artifacts: [] # references to ArtifactStore IDs, not embedded copies
   trace_reference: CaseTrace ID
-  policy_decisions: []  # which policies were checked
-  gates_triggered: []   # which gates were applied
+  policy_decisions: [] # which policies were checked
+  gates_triggered: [] # which gates were applied
 ```
 
 ### Типы envelope
@@ -254,15 +275,16 @@ SolveResult:
 
 Wolf различает несколько типов записей взаимодействия:
 
-| Record | Когда создаётся | Что содержит |
-|--------|----------------|--------------|
-| **ChatTurn** | Обычный ответ в conversation mode (L0). | Текст ответа, timestamp, session_id. Не создаёт Case. |
-| **SessionTrace** | Лёгкий trace открытой беседы. | Список ChatTurns, тема, duration. Эфемерный по умолчанию. |
-| **CaseTrace** | Trace оформленной задачи / case. | Полный audit trail: inputs, decisions, artifacts, policy checks, gates. |
-| **Artifact** | Сохраняемый результат. | Структурированные данные: specs, code, reports, receipts. |
-| **SolveResult** | Envelope для task/case execution. | Ссылки на артефакты, trace, policy decisions. |
+| Record           | Когда создаётся                         | Что содержит                                                            |
+| ---------------- | --------------------------------------- | ----------------------------------------------------------------------- |
+| **ChatTurn**     | Обычный ответ в conversation mode (L0). | Текст ответа, timestamp, session_id. Не создаёт Case.                   |
+| **SessionTrace** | Лёгкий trace открытой беседы.           | Список ChatTurns, тема, duration. Эфемерный по умолчанию.               |
+| **CaseTrace**    | Trace оформленной задачи / case.        | Полный audit trail: inputs, decisions, artifacts, policy checks, gates. |
+| **Artifact**     | Сохраняемый результат.                  | Структурированные данные: specs, code, reports, receipts.               |
+| **SolveResult**  | Envelope для task/case execution.       | Ссылки на артефакты, trace, policy decisions.                           |
 
 **Краткая формула:**
+
 ```text
 ChatTurn — когда мы просто разговариваем.
 SolveResult — когда Wolf решает задачу.
@@ -274,52 +296,56 @@ Case — когда есть оформленная задача.
 ### Примеры SolveResult
 
 **Answer envelope (L1):**
+
 ```yaml
 envelope_type: Answer
-summary: "Explanation of spec-first methodology"
+summary: 'Explanation of spec-first methodology'
 confidence: high
-artifacts: ["answer-artifact-001"]  # internal AnswerArtifact
-trace_reference: "case-2026-0505-001"
-policy_decisions: ["personal_data_exposure:clean"]
+artifacts: ['answer-artifact-001'] # internal AnswerArtifact
+trace_reference: 'case-2026-0505-001'
+policy_decisions: ['personal_data_exposure:clean']
 gates_triggered: []
 ```
 
 **Refusal envelope (hard-deny):**
+
 ```yaml
 envelope_type: Refusal
-summary: "Cannot perform file write without approval"
+summary: 'Cannot perform file write without approval'
 confidence: high
 artifacts: []
-trace_reference: "case-2026-0505-002"
-policy_decisions: ["file_write_without_approval:hard_deny"]
+trace_reference: 'case-2026-0505-002'
+policy_decisions: ['file_write_without_approval:hard_deny']
 gates_triggered: []
-refusal_reason: "Policy file_write_without_approval prohibits this action. Use explicit_config to enable file_write_approval gate."
+refusal_reason: 'Policy file_write_without_approval prohibits this action. Use explicit_config to enable file_write_approval gate.'
 ```
 
 **PartialResult envelope (gate block):**
+
 ```yaml
 envelope_type: PartialResult
-summary: "Implementation plan partially applied. 3 of 5 files written."
+summary: 'Implementation plan partially applied. 3 of 5 files written.'
 confidence: medium
-artifacts: ["impl-plan-001", "file-changes-001"]
-trace_reference: "case-2026-0505-003"
-policy_decisions: ["file_write:approved", "external_send:blocked"]
-gates_triggered: ["file_write_approval", "external_action_approval:blocked"]
-completed_steps: ["read_spec", "generate_plan", "write_files_1_3"]
-blocked_steps: ["sync_jira", "send_notification"]
+artifacts: ['impl-plan-001', 'file-changes-001']
+trace_reference: 'case-2026-0505-003'
+policy_decisions: ['file_write:approved', 'external_send:blocked']
+gates_triggered: ['file_write_approval', 'external_action_approval:blocked']
+completed_steps: ['read_spec', 'generate_plan', 'write_files_1_3']
+blocked_steps: ['sync_jira', 'send_notification']
 ```
 
 **Artifact envelope (L4 execution):**
+
 ```yaml
 envelope_type: Artifact
-summary: "Tests completed successfully. 128 tests passed, coverage is 84%."
+summary: 'Tests completed successfully. 128 tests passed, coverage is 84%.'
 artifacts:
-  - "execution-report-001"
-  - "test-results-001"
-  - "coverage-report-001"
-trace_reference: "case-2026-0505-004"
-policy_decisions: ["shell_command:approved"]
-gates_triggered: ["command_execution_approval"]
+  - 'execution-report-001'
+  - 'test-results-001'
+  - 'coverage-report-001'
+trace_reference: 'case-2026-0505-004'
+policy_decisions: ['shell_command:approved']
+gates_triggered: ['command_execution_approval']
 ```
 
 ### Ключевые правила
@@ -343,6 +369,7 @@ gates_triggered: ["command_execution_approval"]
 На основе 80 сценариев и anchor domain deep dive следующие артефакты должны иметь полноценный lifecycle и linking:
 
 **Development core:**
+
 - `TechnicalSpecification` — anchor для spec-first flow
 - `TaskList` — разбиение спецификации на задачи
 - `AcceptanceCriteria` — критерии приёмки
@@ -351,22 +378,26 @@ gates_triggered: ["command_execution_approval"]
 - `CoverageReport` — метрики покрытия
 
 **Architecture decisions:**
+
 - `ADR` (Architecture Decision Record) — запись архитектурного решения. Immutable после публикации.
 - `ADL` (Architecture Decision Language) — уточнение/развитие ADR. Может быть superseded новой версией.
 - `ArchitectureDiagram` / `SystemDiagram` — визуальные представления
 
 **Release and operations:**
+
 - `ReleaseChecklist` — readiness checklist
 - `CIReport` — результат CI pipeline
 - `ChangeLog` — список изменений
 
 **Security and governance:**
+
 - `ThreatModel` — модель угроз
 - `SecurityReviewReport` — отчёт security review
 - `PolicyDecision` — решение по политике
 - `DecisionLog` — log архитектурных/политических решений
 
 **Universal:**
+
 - `AnswerArtifact` — **internal representation** даже для L1. Используется для audit/trace/linking. Пользователь видит plain text rendering. Не является user-facing first-class artifact в том же смысле, что `TechnicalSpecification`.
 - `RiskRegister` — реестр рисков
 - `RollbackPlan` — план отката
@@ -388,6 +419,7 @@ gates_triggered: ["command_execution_approval"]
 - `PullRequestDraft` — подготовленный PR как delivery artifact.
 
 **Правило:**
+
 ```text
 TechnicalSpecification объясняет, что нужно сделать.
 ImplementationPlan объясняет, как сделать.
@@ -396,24 +428,25 @@ PullRequestDraft упаковывает изменения для review.
 ```
 
 **Пример descriptor (FileChangeSet):**
+
 ```yaml
 artifact_type: FileChangeSet
 state: proposed | applied | reverted
-repository: "."
-branch: "feat/auth"
+repository: '.'
+branch: 'feat/auth'
 files:
-  - path: "src/auth/login.ts"
+  - path: 'src/auth/login.ts'
     change_type: modified
-    before_hash: "..."
-    after_hash: "..."
-diff_ref: "patch-001"
+    before_hash: '...'
+    after_hash: '...'
+diff_ref: 'patch-001'
 created_from:
-  - "spec-001"
-  - "task-001"
-  - "impl-plan-001"
+  - 'spec-001'
+  - 'task-001'
+  - 'impl-plan-001'
 policy_decisions:
-  - "file_write:approved"
-trace_reference: "case-2026-0505-003"
+  - 'file_write:approved'
+trace_reference: 'case-2026-0505-003'
 ```
 
 **Execution / Verification Artifacts:**
@@ -432,40 +465,43 @@ trace_reference: "case-2026-0505-003"
 - `FailureReport` — структурированная ошибка запуска.
 
 **Distinction:**
+
 ```text
 Trace event records that something happened.
 Execution artifact records that the happening is itself a meaningful result.
 ```
 
 На русском:
+
 ```text
 Trace фиксирует событие для аудита.
 Execution Artifact фиксирует выполненную операцию как результат задачи.
 ```
 
 **Пример ExecutionReport:**
+
 ```yaml
 artifact_type: ExecutionReport
 execution_type: test_run
 state: completed
-command_ref: "cmd-001"
-command_display: "npm test"
+command_ref: 'cmd-001'
+command_display: 'npm test'
 exit_code: 0
 duration_ms: 18420
-stdout_ref: "log-001"
+stdout_ref: 'log-001'
 stderr_ref: null
 environment:
-  runtime: "node"
-  package_manager: "npm"
+  runtime: 'node'
+  package_manager: 'npm'
 inputs:
-  - "file-change-set-001"
-  - "test-plan-001"
+  - 'file-change-set-001'
+  - 'test-plan-001'
 outputs:
-  - "test-results-001"
-  - "coverage-report-001"
+  - 'test-results-001'
+  - 'coverage-report-001'
 policy_decisions:
-  - "shell_command:approved"
-trace_reference: "case-2026-0505-004"
+  - 'shell_command:approved'
+trace_reference: 'case-2026-0505-004'
 ```
 
 **Operational / Receipt Artifacts:**
@@ -482,6 +518,7 @@ trace_reference: "case-2026-0505-004"
 - `CompletionRecord` — запись о завершении процесса.
 
 **Примеры по доменам:**
+
 ```text
 Legal:
   FilingReceipt
@@ -510,17 +547,18 @@ Security:
 ```
 
 **Пример OperationReceipt:**
+
 ```yaml
 artifact_type: OperationReceipt
 operation_type: external_send
 status: completed
-target_system: "calendar"
-external_reference: "event-123"
+target_system: 'calendar'
+external_reference: 'event-123'
 side_effects:
-  - "calendar invite created"
+  - 'calendar invite created'
 policy_decisions:
-  - "external_send:approved"
-trace_reference: "case-2026-0505-005"
+  - 'external_send:approved'
+trace_reference: 'case-2026-0505-005'
 ```
 
 **Conversation Artifacts (lightweight, optional):**
@@ -538,6 +576,7 @@ trace_reference: "case-2026-0505-005"
 ### MVP Artifacts
 
 Для первого useful product достаточно:
+
 - `AnswerArtifact` (internal)
 - `TechnicalSpecification`
 - `TaskList`
@@ -584,6 +623,7 @@ created → persisted
 Если ничего из этого не верно — достаточно trace event.
 
 **Краткая формула:**
+
 ```text
 Execution happened → Trace Event.
 Execution itself matters as outcome → ExecutionConfirmation / OperationReceipt.
@@ -637,12 +677,13 @@ global → domain → scenario → user_override
 Конфликт разрешается в пользу более restrictive политики. Если global говорит «block», а domain говорит «notify», применяется «block».
 
 > **Пример:**
+>
 > ```
 > Global: external_send = block
 > Domain (legal-ops): external_send = notify
 > Scenario (contract_review): external_send = notify
 > User override: external_send = silent
-> 
+>
 > Result: block (global wins as most restrictive)
 > ```
 
@@ -661,6 +702,7 @@ global → domain → scenario → user_override
 **Ключевое правило:** `file_write` и `external_send` с mandatory approval gate являются governed action (L4+), а без gate — hard-deny.
 
 **Пример:**
+
 - `file_write` + `file_write_approval` gate = allowed after approval (governed action)
 - `file_write` without approval = `Refusal`
 
@@ -717,6 +759,7 @@ PII — это conditional подсистема из трёх компонент
 3. **Verifier** — **Deferred.** Проверяет, что redacted output не содержит утечек.
 
 PII subsystem активен когда:
+
 - Обнаружены PII-паттерны в input/output, или
 - Домен требует PII обработки: legal, HR, finance, security, compliance.
 
@@ -743,27 +786,29 @@ Secrets (API keys, tokens, passwords) обрабатываются отдель�
 
 ### Различие примитивов
 
-| Primitive | Level | Scope | Trust | Example |
-|-----------|-------|-------|-------|---------|
-| **Tool** | Low | Stateless action | native → wrapped → mcp → direct_api | `context.read`, `file.write`, `mcp.invoke` |
-| **Skill** | Mid | Reusable logic unit | native / imported | `software.project_review`, `legal.contract_analysis` |
-| **Workflow** | High | Multi-step orchestration | Declarative (YAML) | spec-first flow, TDD workflow |
-| **Agent** | Persona | Skill set + policy scope | Selected by router | `software_architect`, `security_reviewer` |
-| **Adapter** | Integration | External system bridge | Wrapped | `salesforce_adapter`, `vuln_scanner_adapter` |
-| **Wrapper** | Policy layer | Capability decorator | Untrusted by default | `github_mcp_wrapper` |
-| **Domain Pack** | Bundle | All above for domain | Scoped | `software-engineering`, `legal-ops` |
+| Primitive       | Level        | Scope                    | Trust                               | Example                                              |
+| --------------- | ------------ | ------------------------ | ----------------------------------- | ---------------------------------------------------- |
+| **Tool**        | Low          | Stateless action         | native → wrapped → mcp → direct_api | `context.read`, `file.write`, `mcp.invoke`           |
+| **Skill**       | Mid          | Reusable logic unit      | native / imported                   | `software.project_review`, `legal.contract_analysis` |
+| **Workflow**    | High         | Multi-step orchestration | Declarative (YAML)                  | spec-first flow, TDD workflow                        |
+| **Agent**       | Persona      | Skill set + policy scope | Selected by router                  | `software_architect`, `security_reviewer`            |
+| **Adapter**     | Integration  | External system bridge   | Wrapped                             | `salesforce_adapter`, `vuln_scanner_adapter`         |
+| **Wrapper**     | Policy layer | Capability decorator     | Untrusted by default                | `github_mcp_wrapper`                                 |
+| **Domain Pack** | Bundle       | All above for domain     | Scoped                              | `software-engineering`, `legal-ops`                  |
 
 > **Adapter vs Wrapper.** Adapter handles schema/auth translation. Wrapper adds policy overlay. В MVP Adapter functions могут быть объединены с MCPWrapper или Tool Registry. Концептуально они разделены, но implementation может объединить их.
 
 ### Skills
 
 Skills могут быть:
+
 - **Native** — встроены в runtime, доверенные.
 - **Imported** — загружены извне (OpenClaw, OpenCode, custom). Считаются untrusted до применения policy overlay.
 
 ### Tools
 
 Tools могут быть:
+
 - **Native** — базовые инструменты runtime (file read, context search).
 - **Wrapped** — native tool с добавленным policy overlay.
 - **MCP** — инструмент из MCP server.
@@ -774,6 +819,7 @@ Trust scoring: `native > wrapped > MCP > imported_skill > direct_api`.
 ### Wrappers
 
 Wrapper — это policy-enforcing decorator вокруг external capability. Wrapper добавляет:
+
 - Trust check
 - Policy overlay
 - Logging
@@ -799,6 +845,7 @@ Wrapper — это policy-enforcing decorator вокруг external capability. 
 ## 10. Domain Pack Model
 
 Domain pack — это scoped configuration bundle, расширяющий универсальный runtime домен-специфичными:
+
 - skills
 - tools
 - artifact types и templates
@@ -825,8 +872,8 @@ domain_packs/<domain>/
 ```yaml
 # domain_packs/software-engineering/config.yaml
 name: software-engineering
-version: "1.0.0"
-description: "Software engineering domain pack for Mr. Wolf"
+version: '1.0.0'
+description: 'Software engineering domain pack for Mr. Wolf'
 
 default_persona: senior_engineer
 
@@ -883,6 +930,7 @@ workflows:
 ### Cross-domain composition
 
 Cross-domain сценариев — 5 из 80 (6.25%). Для 2-domain случаев достаточно composition rules:
+
 - Policy union (объединение политик с conservative resolution)
 - Artifact merge (артефакты из обоих доменов доступны в workflow)
 - Persona selection (router выбирает lead persona)
@@ -954,12 +1002,12 @@ Configuration modes **не являются mutually exclusive**. Domain pack м
 zero_config → generated_config → explicit_config → domain_pack → custom_plugin
 ```
 
-| Mode | Auto-detect domain | Load domain pack | User config required | Example scenario |
-|------|-------------------|------------------|---------------------|------------------|
-| zero_config | No | No | No | «Объясни spec-first» |
-| generated_config | Yes | Optional | No | «Проанализируй этот репозиторий» |
-| explicit_config | Yes | Optional | Yes | «Используй software-engineering pack» |
-| domain_pack | Yes | Yes | Optional | «Создай spec с TDD workflow» |
+| Mode             | Auto-detect domain | Load domain pack | User config required | Example scenario                      |
+| ---------------- | ------------------ | ---------------- | -------------------- | ------------------------------------- |
+| zero_config      | No                 | No               | No                   | «Объясни spec-first»                  |
+| generated_config | Yes                | Optional         | No                   | «Проанализируй этот репозиторий»      |
+| explicit_config  | Yes                | Optional         | Yes                  | «Используй software-engineering pack» |
+| domain_pack      | Yes                | Yes              | Optional             | «Создай spec с TDD workflow»          |
 
 - **zero_config** — Wolf работает из коробки. Подходит для L1–L2 и conversation. 12 сценариев.
 - **generated_config** — runtime сам генерирует конфигурацию на основе контекста. Подходит для L2–L3. 30 сценариев.
@@ -970,6 +1018,7 @@ zero_config → generated_config → explicit_config → domain_pack → custom_
 ### Configuration hell — известный риск
 
 5 разных режимов конфигурации — это сигнал риска. Митигация:
+
 - First Useful Product должен работать на `zero_config` или `generated_config`.
 - `explicit_config` и `domain_pack` — опциональное углубление.
 - `custom_plugin` < 5% сценариев.
@@ -1077,6 +1126,7 @@ zero_config → generated_config → explicit_config → domain_pack → custom_
 MVP Core — минимальный набор для первого useful product:
 
 **MVP Components:**
+
 - WolfFacade
 - ContextResolver
 - AgentRunner
@@ -1087,6 +1137,7 @@ MVP Core — минимальный набор для первого useful prod
 - ArtifactStore (basic)
 
 **MVP Artifacts:**
+
 - AnswerArtifact (internal-only)
 - TechnicalSpecification
 - TaskList
@@ -1104,12 +1155,14 @@ MVP Core — минимальный набор для первого useful prod
 - OperationReceipt (generic)
 
 **MVP Config:**
+
 - zero_config
 - generated_config
 - explicit_config (включая custom workflow)
 - domain pack loading as optional extension
 
 **NOT in MVP:**
+
 - PII verifier (detector + redactor только)
 - Full CircuitBreaker (hard limits вместо этого)
 - Full artifact validation (basic format check only)
@@ -1125,6 +1178,7 @@ MVP Core — минимальный набор для первого useful prod
 ### Always Core post-MVP
 
 Компоненты, которые становятся core сразу после MVP:
+
 - FileWriteGateWithRollback
 - Artifact validation (schema check)
 - Artifact Link Memory (foreign key links)
@@ -1132,6 +1186,7 @@ MVP Core — минимальный набор для первого useful prod
 ### Conditional
 
 Активируются только при определённых условиях:
+
 - GateManager — L4+ side effects / risky actions
 - AdapterLayer — только при external capabilities
 - Domain packs — только при L3+ или explicit config
@@ -1241,49 +1296,49 @@ MVP Core — минимальный набор для первого useful prod
 
 ## 16. Glossary
 
-| Term | Definition |
-|------|------------|
-| **Agent** | Persona со skill set и policy scope. Выбирается router. |
-| **AgentRunner** | Исполняет single-agent invocation. Multi-agent orchestration — задача Workflow Engine. |
-| **Artifact** | Структурированный результат работы Wolf (spec, plan, report, code, execution result). Живёт в ArtifactStore. |
-| **ArtifactStore** | Хранилище артефактов с lifecycle и linking. |
-| **AnswerArtifact** | Internal representation ответа L1–L2. Пользователь видит plain text. |
-| **Case** | Оформленная задача с CaseTrace, SolveResult и artifacts. |
-| **CaseTrace** | Audit trail сценария. Каждый SolveResult ссылается на CaseTrace ID. |
-| **ChatTurn** | Обычный ответ в conversation mode. Не создаёт Case. |
-| **Conditional** | Компонент, активируемый только при определённых условиях (domain, level, external capability). |
-| **ContextResolver** | Сбор контекста из repo/docs/meeting notes/artifact store. Structured queries, не semantic RAG по умолчанию. |
-| **Control Plane** | Управляющий слой runtime: routing, policy enforcement, artifact orchestration. |
-| **Conversation Mode** | Open-ended dialogue без определённой задачи или ожидаемого результата. |
-| **ConversationSummary** | Лёгкий artifact, создаваемый по запросу пользователя из conversation. |
-| **Domain Pack** | Scoped configuration bundle: skills, tools, artifacts, policies, personas, workflows для домена. |
-| **Execution Artifact** | Результат запуска/исполнения: ExecutionReport, TestResults, CoverageReport. |
-| **ExecutionConfirmation** | Подтверждение, что операция выполнена. |
-| **FileChangeSet** | Набор созданных, изменённых и удалённых файлов как artifact. |
-| **Gate** | Точка проверки перед рискованным действием. Severity: silent / notify / block / expert_gate. |
-| **GateManager** | Conditional компонент (L4+). Управляет approval gates, expert gates, rollback gates. |
-| **Governed Action** | Действие с применением gates. Wolf может запросить одобрение перед продолжением. |
-| **Hard-deny** | Политика, запрещающая действие без исключений. Не может быть overridden. |
-| **MCPWrapper** | Lifecycle manager для MCP capabilities: connect → discover → health → invoke → disconnect. |
-| **ModelRouter** | Always-core. Выбирает модель (lightweight vs reasoning) на основе scenario level. |
-| **Operational Artifact** | Подтверждение выполненной операции: OperationReceipt, ExternalActionReceipt. |
-| **OperationReceipt** | Generic receipt для выполненной операции. |
-| **PartialResult** | Частичный результат из-за gate block или external failure. |
-| **Policy** | Declarative rule, stronger than prompts. Иерархия: global → domain → scenario → user. |
-| **PolicyCore** | Always-core. Hard-deny checks + базовая policy evaluation. Применяется на всех уровнях. |
-| **Refusal** | Валидный SolveResult типа Refusal при нарушении hard-deny. |
-| **Repository Artifact** | Код как artifact: SourcePatch, FileChangeSet, GeneratedSourceFile. |
-| **Router** / **RouterLight** / **RouterFull** | RouterInterface с двумя реализациями: Light (L1–L2) и Full (L3–L5). |
-| **Scenario Level** | L0 (conversation) → L1 (simple answer) → L2 (context-aware) → L3 (plan) → L4 (governed action) → L5 (external). |
-| **SessionTrace** | Лёгкий trace открытой беседы. Эфемерный по умолчанию. |
-| **Skill** | Reusable logic unit, function-like. Не содержит gates и artifact chains. Вызывается workflow. |
-| **SolveResult** | Canonical envelope для task/case execution (L1–L5). Содержит references на артефакты. |
-| **Source Artifact** | Descriptor для кода: path, diff, hash, trace, policy decisions. |
-| **SourcePatch** | Diff/patch, который может быть применён к репозиторию. |
-| **Trace** | Запись о событии для аудита. Trace event ≠ artifact. |
-| **TraceSystem** | Audit + observability. Логирует каждое действие с trace_reference. |
-| **Workflow** | Orchestration DAG с artifact passing, conditional logic, gates. Может вызывать skills. |
-| **Wrapper** | Policy-enforcing decorator вокруг external capability. |
+| Term                                          | Definition                                                                                                      |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **Agent**                                     | Persona со skill set и policy scope. Выбирается router.                                                         |
+| **AgentRunner**                               | Исполняет single-agent invocation. Multi-agent orchestration — задача Workflow Engine.                          |
+| **Artifact**                                  | Структурированный результат работы Wolf (spec, plan, report, code, execution result). Живёт в ArtifactStore.    |
+| **ArtifactStore**                             | Хранилище артефактов с lifecycle и linking.                                                                     |
+| **AnswerArtifact**                            | Internal representation ответа L1–L2. Пользователь видит plain text.                                            |
+| **Case**                                      | Оформленная задача с CaseTrace, SolveResult и artifacts.                                                        |
+| **CaseTrace**                                 | Audit trail сценария. Каждый SolveResult ссылается на CaseTrace ID.                                             |
+| **ChatTurn**                                  | Обычный ответ в conversation mode. Не создаёт Case.                                                             |
+| **Conditional**                               | Компонент, активируемый только при определённых условиях (domain, level, external capability).                  |
+| **ContextResolver**                           | Сбор контекста из repo/docs/meeting notes/artifact store. Structured queries, не semantic RAG по умолчанию.     |
+| **Control Plane**                             | Управляющий слой runtime: routing, policy enforcement, artifact orchestration.                                  |
+| **Conversation Mode**                         | Open-ended dialogue без определённой задачи или ожидаемого результата.                                          |
+| **ConversationSummary**                       | Лёгкий artifact, создаваемый по запросу пользователя из conversation.                                           |
+| **Domain Pack**                               | Scoped configuration bundle: skills, tools, artifacts, policies, personas, workflows для домена.                |
+| **Execution Artifact**                        | Результат запуска/исполнения: ExecutionReport, TestResults, CoverageReport.                                     |
+| **ExecutionConfirmation**                     | Подтверждение, что операция выполнена.                                                                          |
+| **FileChangeSet**                             | Набор созданных, изменённых и удалённых файлов как artifact.                                                    |
+| **Gate**                                      | Точка проверки перед рискованным действием. Severity: silent / notify / block / expert_gate.                    |
+| **GateManager**                               | Conditional компонент (L4+). Управляет approval gates, expert gates, rollback gates.                            |
+| **Governed Action**                           | Действие с применением gates. Wolf может запросить одобрение перед продолжением.                                |
+| **Hard-deny**                                 | Политика, запрещающая действие без исключений. Не может быть overridden.                                        |
+| **MCPWrapper**                                | Lifecycle manager для MCP capabilities: connect → discover → health → invoke → disconnect.                      |
+| **ModelRouter**                               | Always-core. Выбирает модель (lightweight vs reasoning) на основе scenario level.                               |
+| **Operational Artifact**                      | Подтверждение выполненной операции: OperationReceipt, ExternalActionReceipt.                                    |
+| **OperationReceipt**                          | Generic receipt для выполненной операции.                                                                       |
+| **PartialResult**                             | Частичный результат из-за gate block или external failure.                                                      |
+| **Policy**                                    | Declarative rule, stronger than prompts. Иерархия: global → domain → scenario → user.                           |
+| **PolicyCore**                                | Always-core. Hard-deny checks + базовая policy evaluation. Применяется на всех уровнях.                         |
+| **Refusal**                                   | Валидный SolveResult типа Refusal при нарушении hard-deny.                                                      |
+| **Repository Artifact**                       | Код как artifact: SourcePatch, FileChangeSet, GeneratedSourceFile.                                              |
+| **Router** / **RouterLight** / **RouterFull** | RouterInterface с двумя реализациями: Light (L1–L2) и Full (L3–L5).                                             |
+| **Scenario Level**                            | L0 (conversation) → L1 (simple answer) → L2 (context-aware) → L3 (plan) → L4 (governed action) → L5 (external). |
+| **SessionTrace**                              | Лёгкий trace открытой беседы. Эфемерный по умолчанию.                                                           |
+| **Skill**                                     | Reusable logic unit, function-like. Не содержит gates и artifact chains. Вызывается workflow.                   |
+| **SolveResult**                               | Canonical envelope для task/case execution (L1–L5). Содержит references на артефакты.                           |
+| **Source Artifact**                           | Descriptor для кода: path, diff, hash, trace, policy decisions.                                                 |
+| **SourcePatch**                               | Diff/patch, который может быть применён к репозиторию.                                                          |
+| **Trace**                                     | Запись о событии для аудита. Trace event ≠ artifact.                                                            |
+| **TraceSystem**                               | Audit + observability. Логирует каждое действие с trace_reference.                                              |
+| **Workflow**                                  | Orchestration DAG с artifact passing, conditional logic, gates. Может вызывать skills.                          |
+| **Wrapper**                                   | Policy-enforcing decorator вокруг external capability.                                                          |
 
 ---
 
@@ -1298,28 +1353,33 @@ MVP Core — минимальный набор для первого useful prod
 ### Ключевые evidence points
 
 **Core component counts:**
+
 - 4 always-core компонента (присутствуют в ≥60 сценариев)
 - 3 core для L4/L5 (GateManager, MCPWrapper, FileWriteGateWithRollback)
 - 2 router реализации (RouterLight / RouterFull)
 - 5 rejected компонентов (не нужны на основе evidence)
 
 **Policy pattern counts:**
+
 - 37 уникальных policy patterns
 - Топ-3: `external_send` (77), `generate_report` (71), `file_write` (69)
 - 17 hard-deny rules (always deny, no override)
 - 63 block gates, 7 notify gates
 
 **Artifact chains:**
+
 - 6 подтверждённых artifact chains (spec→tasks→impl→tests, ADR→ADL, release→changelog, migration→rollback, API contract→impl, security→approval)
 - 20 first-class artifact types
 - 8 обязательных memory links между артефактами
 
 **Failure clusters:**
+
 - 12 кластеров failure modes
 - Топ-3 по частоте: model hallucination (24), stale data (20), missing context (18)
 - 2 кластера с нулевым occurrence (missing capability) — предупреждение, не проблема
 
 **Configuration mode coverage:**
+
 - zero_config: 12 сценариев (15%)
 - generated_config: 30 сценариев (37.5%)
 - explicit_config: 28 сценариев (35%)
@@ -1331,6 +1391,7 @@ MVP Core — минимальный набор для первого useful prod
 ### Примечание об Artifact & Conversation Patch
 
 Этот раздел документа добавлен как conceptual correction после review discussion, потому что Scenario Lab был document-artifact heavy и недоописывал:
+
 - code as artifact (Source / Repository Artifacts);
 - execution as result (Execution / Verification Artifacts);
 - open-ended conversation as valid interaction mode (Conversation / Exploration Mode).
@@ -1339,4 +1400,4 @@ MVP Core — минимальный набор для первого useful prod
 
 ---
 
-*Документ подготовлен на основе Concept Extraction Pass и Anchor Domain Deep Dive. Не содержит новых идей, не подтверждённых Scenario Lab evidence. Не содержит roadmap.*
+_Документ подготовлен на основе Concept Extraction Pass и Anchor Domain Deep Dive. Не содержит новых идей, не подтверждённых Scenario Lab evidence. Не содержит roadmap._

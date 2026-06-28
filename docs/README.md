@@ -28,4 +28,4 @@
 
 ---
 
-*Documentation index. Canonical concept: Concept v2.*
+_Documentation index. Canonical concept: Concept v2._

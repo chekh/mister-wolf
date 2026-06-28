@@ -29,6 +29,7 @@
 
 **Current recommended MVP assumption:**
 Heuristic-based approach:
+
 - `execution.read_only` (typecheck, lint без записи) → всегда Trace Event, unless пользователь явно просит сохранить результат.
 - `execution.mutating` (codegen, formatter with write, migration) → всегда Execution Artifact (FileChangeSet + ExecutionReport).
 - `execution.external` (calendar invite, email, ticket) → всегда Operational Artifact (OperationReceipt).
@@ -51,7 +52,7 @@ Heuristic-based approach:
 Explicit user signal как primary trigger. Если пользователь говорит «сделай план», «создай спецификацию», «запусти проверку» — promotion происходит немедленно. Keyword-based triggers как fallback. Intent classification deferred до post-MVP.
 
 **Why it does not block Concept v2:**
-Концепция promotion описывает *что* происходит (conversation → case), а не *как* детектируется. Explicit signal — самый надёжный и предсказуемый способ для MVP.
+Концепция promotion описывает _что_ происходит (conversation → case), а не _как_ детектируется. Explicit signal — самый надёжный и предсказуемый способ для MVP.
 
 **When to revisit:**
 При реализации RouterFull или при появлении UX-фидбека, что implicit promotion необходима для плавности работы.
@@ -90,4 +91,4 @@ Domain-specific receipts остаются на уровне domain pack. MVP п�
 
 ---
 
-*Open questions extracted from Artifact & Conversation Model Patch. These are implementation details and do not block Concept v2 publication.*
+_Open questions extracted from Artifact & Conversation Model Patch. These are implementation details and do not block Concept v2 publication._

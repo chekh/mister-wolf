@@ -6,10 +6,7 @@ export class SQLiteSearchIndex implements SearchIndex {
 
   async rebuild(_objects: MemoryObject[]): Promise<void> {}
 
-  async search(
-    _query: string,
-    _options?: { type?: string; includeSuperseded?: boolean }
-  ): Promise<SearchResult[]> {
+  async search(_query: string, _options?: { type?: string; includeSuperseded?: boolean }): Promise<SearchResult[]> {
     return [];
   }
 }

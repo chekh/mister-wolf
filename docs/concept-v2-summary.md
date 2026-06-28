@@ -38,4 +38,4 @@ Wolf покрывает задачи от открытой беседы (L0) д�
 
 ---
 
-*Summary generated for Concept v2 Publication Pass.*
+_Summary generated for Concept v2 Publication Pass._

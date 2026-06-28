@@ -30,16 +30,22 @@ describe('supersedeMemoryObject', () => {
   });
 
   it('marks old object as superseded and logs event', async () => {
-    const oldObj = await addMemoryObject({ store, log, clock, idGen }, {
-      type: 'lesson',
-      title: 'Old',
-      createdBy: 'user:test',
-    });
-    const newObj = await addMemoryObject({ store, log, clock, idGen }, {
-      type: 'lesson',
-      title: 'New',
-      createdBy: 'user:test',
-    });
+    const oldObj = await addMemoryObject(
+      { store, log, clock, idGen },
+      {
+        type: 'lesson',
+        title: 'Old',
+        createdBy: 'user:test',
+      }
+    );
+    const newObj = await addMemoryObject(
+      { store, log, clock, idGen },
+      {
+        type: 'lesson',
+        title: 'New',
+        createdBy: 'user:test',
+      }
+    );
 
     await supersedeMemoryObject({ store, log, clock, idGen }, oldObj.object.id, newObj.object.id);
 
