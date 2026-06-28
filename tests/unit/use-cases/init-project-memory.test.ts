@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { initProjectMemory } from '../../../src/app/use-cases/init-project-memory.js';
+import { FsProjectInitializer } from '../../../src/adapters/fs/fs-project-initializer.js';
 
 describe('initProjectMemory', () => {
   let dir: string;
@@ -16,7 +17,7 @@ describe('initProjectMemory', () => {
   });
 
   it('creates .wolf directories and config', async () => {
-    await initProjectMemory(dir);
+    await initProjectMemory(new FsProjectInitializer(), dir);
     expect(existsSync(join(dir, '.wolf', 'memory', 'objects'))).toBe(true);
     expect(existsSync(join(dir, '.wolf', 'config.yaml'))).toBe(true);
   });
