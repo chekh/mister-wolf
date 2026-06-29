@@ -5,25 +5,23 @@ import { join } from 'path';
 import { SQLiteSearchIndex } from '../../../src/adapters/sqlite/sqlite-search-index.js';
 import { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
 
-function makeObject(id: string, title: string, body: string): MemoryObject {
+function makeObject(partial: Partial<MemoryObject> & Pick<MemoryObject, 'id' | 'title' | 'body'>): MemoryObject {
   return {
-    id,
     type: 'lesson',
-    title,
     status: 'active',
     review_state: 'accepted',
     confidence: 'medium',
     importance: 0.5,
     created_at: '2026-06-29T14:00:00Z',
-    updated_at: '2026-06-29T14:00:00Z',
+    updated_at: '2026-06-29T15:00:00Z',
     created_by: 'user:test',
     schema_version: 1,
     source: { kind: 'manual' },
     related: {},
     tags: ['router'],
     superseded_by: null,
-    body,
-  };
+    ...partial,
+  } as MemoryObject;
 }
 
 describe('SQLiteSearchIndex', () => {
@@ -41,11 +39,85 @@ describe('SQLiteSearchIndex', () => {
 
   it('finds object by body text', async () => {
     await index.rebuild([
-      makeObject('mem_1', 'Router', 'reconnect failure mode'),
-      makeObject('mem_2', 'Auth', 'token rotation'),
+      makeObject({ id: 'mem_1', title: 'Router', body: 'reconnect failure mode' }),
+      makeObject({ id: 'mem_2', title: 'Auth', body: 'token rotation' }),
     ]);
     const results = await index.search('reconnect');
     expect(results).toHaveLength(1);
     expect(results[0].object.id).toBe('mem_1');
+  });
+
+  it('ranks objects by match count', async () => {
+    await index.rebuild([
+      makeObject({ id: 'mem_1', title: 'One', body: 'alpha beta gamma' }),
+      makeObject({ id: 'mem_2', title: 'Two', body: 'alpha alpha beta' }),
+    ]);
+    const results = await index.search('alpha');
+    expect(results.map((r) => r.object.id)).toEqual(['mem_2', 'mem_1']);
+  });
+
+  it('filters by type', async () => {
+    await index.rebuild([
+      makeObject({ id: 'mem_1', type: 'lesson', title: 'Lesson', body: 'shared term' }),
+      makeObject({ id: 'mem_2', type: 'decision', title: 'Decision', body: 'shared term' }),
+    ]);
+    const results = await index.search('shared', { type: 'decision' });
+    expect(results).toHaveLength(1);
+    expect(results[0].object.id).toBe('mem_2');
+  });
+
+  it('excludes superseded objects by default', async () => {
+    await index.rebuild([
+      makeObject({ id: 'mem_1', title: 'Active', body: 'target content', status: 'active' }),
+      makeObject({ id: 'mem_2', title: 'Superseded', body: 'target content', status: 'superseded' }),
+    ]);
+    const results = await index.search('target');
+    expect(results.map((r) => r.object.id)).toEqual(['mem_1']);
+  });
+
+  it('includes superseded objects when requested', async () => {
+    await index.rebuild([
+      makeObject({ id: 'mem_1', title: 'Active', body: 'target content', status: 'active' }),
+      makeObject({ id: 'mem_2', title: 'Superseded', body: 'target content', status: 'superseded' }),
+    ]);
+    const results = await index.search('target', { includeSuperseded: true });
+    expect(results).toHaveLength(2);
+  });
+
+  it('rebuild is idempotent', async () => {
+    const objects = [
+      makeObject({ id: 'mem_1', title: 'First', body: 'unique term alpha' }),
+      makeObject({ id: 'mem_2', title: 'Second', body: 'unique term beta' }),
+    ];
+    await index.rebuild(objects);
+    const first = await index.search('unique');
+    await index.rebuild(objects);
+    const second = await index.search('unique');
+    expect(second.map((r) => r.object.id).sort()).toEqual(first.map((r) => r.object.id).sort());
+  });
+
+  it('reconstructs full memory object', async () => {
+    const obj = makeObject({
+      id: 'mem_1',
+      title: 'Title',
+      body: 'body text',
+      type: 'decision',
+      status: 'superseded',
+      review_state: 'rejected',
+      confidence: 'high',
+      importance: 0.9,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-02T00:00:00Z',
+      created_by: 'user:alice',
+      schema_version: 1,
+      source: { kind: 'file', path: '/docs/spec.md' },
+      related: { files: ['a.ts'], docs: ['b.md'], decisions: ['c'] },
+      tags: ['alpha', 'beta'],
+      superseded_by: 'mem_2',
+    });
+    await index.rebuild([obj]);
+    const results = await index.search('body', { includeSuperseded: true });
+    expect(results).toHaveLength(1);
+    expect(results[0].object).toEqual(obj);
   });
 });
