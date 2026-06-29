@@ -8,7 +8,7 @@
 
 Mr. Wolf is a local-first Project Semantic Memory layer for AI coding agents. It persists structured memory objects (lessons, facts, decisions, context) directly in the project repository and makes them searchable, so agents retain context across sessions without becoming an orchestrator.
 
-**Status:** MVP-A (Core Memory + Search) implemented. Next phase: Project Scan + Agent Brief (MVP-B).
+**Status:** Current: MVP-A complete. MVP-B (Project Scan + Agent Brief) implemented.
 
 ## STRUCTURE
 
@@ -55,7 +55,7 @@ Mr. Wolf is a local-first Project Semantic Memory layer for AI coding agents. It
 ## CONVENTIONS
 
 - **Language**: All communication in Russian. Code/docs may be bilingual.
-- **Status**: MVP-A implemented. Next: Project Scan + Agent Brief (MVP-B).
+- **Status**: Current: MVP-A complete. MVP-B (Project Scan + Agent Brief) implemented.
 - **Framework philosophy**: Mr. Wolf augments agents with memory; it does not orchestrate them.
 - **TypeScript**: Strict mode, Zod schemas, strong typing throughout.
 
@@ -107,6 +107,15 @@ node dist/bootstrap/cli.js memory init
 # Add a memory object
 node dist/bootstrap/cli.js memory add --type lesson --title "..." --body "..."
 
+# Scan project for external documents to register by reference
+node dist/bootstrap/cli.js memory scan
+
+# Generate an agent brief from active memory objects
+node dist/bootstrap/cli.js memory brief
+
+# Write the generated brief to AGENTS.md and active-warnings.md
+node dist/bootstrap/cli.js memory brief --write
+
 # Rebuild the search index from source files
 node dist/bootstrap/cli.js memory rebuild-index
 
@@ -141,6 +150,6 @@ main  ←──  dev  ←──  review/*
 ## NOTES
 
 - Targets: dev assistant, office assistant, concierge, legal, sales, HR, finance, research.
-- MVP roadmap: Core Memory + Search (complete) → Project Scan + Agent Brief → Case Learning → Memory Governance → Code Linking → Agent Integration (MCP).
+- MVP roadmap: Core Memory + Search (complete) → Project Scan + Agent Brief (complete) → Case Learning → Memory Governance → Code Linking → Agent Integration (MCP).
 - Current: MVP-A (Core Memory + Search) complete.
-- Next: Project Scan + Agent Brief (MVP-B).
+- MVP-B (Project Scan + Agent Brief) implemented.

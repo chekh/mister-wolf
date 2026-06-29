@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync } from 'fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
@@ -45,5 +45,41 @@ describe('rebuildMemoryIndex', () => {
     const results = await index.search('rebuild');
     expect(results).toHaveLength(1);
     expect(results[0].object.title).toBe('Stale index behavior');
+  });
+
+  it('excludes brief files from the search index', async () => {
+    const store = new MarkdownMemoryStore(dir);
+    const log = new JsonlEventLog(eventsPath(dir));
+    const clock = new SystemClock();
+    const idGen = new HashIdGenerator();
+    const index = new SQLiteSearchIndex(indexPath(dir));
+
+    const briefDir = join(dir, '.wolf', 'memory', 'briefs');
+    mkdirSync(briefDir, { recursive: true });
+    writeFileSync(
+      join(briefDir, 'agent-brief-latest.md'),
+      '---\ntitle: Agent Brief\n---\n\nThis brief content must not be indexed.\n',
+      'utf-8'
+    );
+
+    await addMemoryObject(
+      { store, log, clock, idGen },
+      {
+        type: 'lesson',
+        title: 'Indexed lesson',
+        body: 'This memory object content should be searchable.',
+        createdBy: 'user:test',
+        tags: ['index'],
+      }
+    );
+
+    await rebuildMemoryIndex({ store, index });
+
+    const briefResults = await index.search('brief content must not be indexed');
+    expect(briefResults).toHaveLength(0);
+
+    const objectResults = await index.search('memory object content should be searchable');
+    expect(objectResults).toHaveLength(1);
+    expect(objectResults[0].object.title).toBe('Indexed lesson');
   });
 });

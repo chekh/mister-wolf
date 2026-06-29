@@ -4,9 +4,12 @@ import { SQLiteSearchIndex } from '../adapters/sqlite/sqlite-search-index.js';
 import { SystemClock } from '../adapters/fs/system-clock.js';
 import { HashIdGenerator } from '../adapters/fs/hash-id-generator.js';
 import { FsProjectInitializer } from '../adapters/fs/fs-project-initializer.js';
+import { FsFileSystem } from '../adapters/fs/fs-file-system.js';
+import { HeuristicProjectScanner } from '../adapters/fs/heuristic-project-scanner.js';
 import { eventsPath, indexPath } from '../adapters/fs/project-paths.js';
 
 export function createCliContainer(baseDir: string) {
+  const fs = new FsFileSystem();
   return {
     store: new MarkdownMemoryStore(baseDir),
     log: new JsonlEventLog(eventsPath(baseDir)),
@@ -14,5 +17,7 @@ export function createCliContainer(baseDir: string) {
     clock: new SystemClock(),
     idGen: new HashIdGenerator(),
     initializer: new FsProjectInitializer(),
+    fs,
+    scanner: new HeuristicProjectScanner(fs),
   };
 }
