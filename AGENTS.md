@@ -1,35 +1,35 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-04-29
-**Commit:** 33d4f49
-**Branch:** main
+**Generated:** 2026-06-29
+**Commit:** see `git log --oneline -1` for current HEAD
+**Branch:** feat/project-memory
 
 ## OVERVIEW
 
-Universal adaptive agent framework ("Mr. Wolf"). Single-user facade that dynamically assembles internal runtime from configuration: agents, workflows, policies, skills, tools, artifacts.
+Mr. Wolf is a local-first Project Semantic Memory layer for AI coding agents. It persists structured memory objects (lessons, facts, decisions, context) directly in the project repository and makes them searchable, so agents retain context across sessions without becoming an orchestrator.
 
-**Status:** Runtime MVP1A–MVP1C implemented and stable. MVP2 (Context Resolver) planned.
+**Status:** MVP-A (Core Memory + Search) implemented. Later phases (context resolution, automatic capture, agent integration) planned.
 
 ## STRUCTURE
 
 ```
 .
 ├── src/                    # TypeScript runtime
-│   ├── cli/               # Commander.js CLI commands
-│   ├── config/            # YAML loader, Zod validation, project config
-│   ├── kernel/            # In-process event bus
-│   ├── state/             # File-based persistence + SQLite index
-│   ├── types/             # Zod schemas + TypeScript types
-│   └── workflow/          # Engine, runners, registry, graph orchestration
+│   ├── domain/            # memory object schemas, types, write protocol
+│   ├── app/use-cases/     # init, add, get, list, search, supersede, rebuild-index
+│   ├── ports/             # outbound contracts
+│   ├── adapters/fs/       # markdown store, jsonl event log, clock, id generator, initializer
+│   ├── adapters/sqlite/   # FTS5 search index
+│   ├── adapters/cli/      # thin CLI commands
+│   ├── bootstrap/         # cli entry point
+│   └── config/            # reserved for future config loader
 ├── tests/                  # Vitest test suite
-│   ├── unit/              # Unit tests
-│   └── integration/       # Integration tests
-├── examples/               # Example workflows
+│   ├── unit/              # domain, adapters, use cases
+│   └── integration/       # end-to-end memory workflow
 ├── docs/                   # Documentation
-│   ├── concept.md         # Full framework concept (Russian, 1476 lines)
-│   ├── getting-started.md # Quick start guide
-│   ├── workflow-syntax.md # Complete YAML reference
-│   └── cli-reference.md   # CLI command reference
+│   ├── superpowers/specs/  # design spec
+│   ├── superpowers/plans/  # implementation plan
+│   └── archive/            # old orchestrator docs
 ├── AGENTS.md              # This file
 ├── README.md              # Project overview
 ├── package.json           # Dependencies and scripts
@@ -41,22 +41,21 @@ Universal adaptive agent framework ("Mr. Wolf"). Single-user facade that dynamic
 
 | Task | Location | Notes |
 |------|----------|-------|
-| Understand framework | `docs/concept.md` | Russian language. Covers architecture, layers, domain packs, MVP roadmap |
-| Workflow syntax | `docs/workflow-syntax.md` | Complete YAML reference with examples |
-| CLI reference | `docs/cli-reference.md` | All commands, flags, exit codes |
-| Core engine | `src/workflow/engine.ts` | Sequential + graph execution, state machine |
-| Graph logic | `src/workflow/graph.ts` | DAG builder, validator, ready queue |
-| Runners | `src/workflow/runners/` | echo, shell, manual_gate |
-| State storage | `src/state/case-store.ts` | File-based persistence + SQLite index |
-| Event bus | `src/kernel/event-bus.ts` | In-process pub/sub |
-| Config | `src/config/` | YAML loader, Zod schemas, project config |
+| Understand architecture | `docs/superpowers/specs/2026-06-29-project-semantic-memory-core-design.md` | Covers architecture, memory object model, write protocol, MVP roadmap |
+| Memory object model | `src/domain/schemas/memory-object-schema.ts` | Zod schemas and TypeScript types for memory objects |
+| Write protocol | `src/domain/policies/write-protocol.ts` | Validation and append-only write rules |
+| Storage adapter | `src/adapters/fs/markdown-memory-store.ts` | Markdown file persistence for memory objects |
+| Event log | `src/adapters/fs/jsonl-event-log.ts` | Append-only JSONL log of memory events |
+| Search index | `src/adapters/sqlite/sqlite-search-index.ts` | FTS5 search index over memory objects |
+| Use cases | `src/app/use-cases/` | init, add, get, list, search, supersede, rebuild-index |
+| CLI commands | `src/adapters/cli/commands/` | Thin command handlers wired to use cases |
 | Tests | `tests/` | Vitest suite (unit + integration) |
 
 ## CONVENTIONS
 
 - **Language**: All communication in Russian. Code/docs may be bilingual.
-- **Status**: Runtime implemented (MVP1A–C). Not concept-only.
-- **Framework philosophy**: Runtime = universal kernel. Project logic = external, declarative, replaceable.
+- **Status**: MVP-A implemented. Not concept-only.
+- **Framework philosophy**: Mr. Wolf augments agents with memory; it does not orchestrate them.
 - **TypeScript**: Strict mode, Zod schemas, strong typing throughout.
 
 ## CORE COMMANDS
@@ -77,8 +76,23 @@ npm run lint
 # Format code
 npm run format
 
-# Run CLI
-node dist/cli/index.js --help
+# Run checks
+npm run check
+
+# Initialize memory in a project
+node dist/bootstrap/cli.js memory init
+
+# Add a memory object
+node dist/bootstrap/cli.js memory add --type lesson --title "..." --body "..."
+
+# Rebuild the search index from source files
+node dist/bootstrap/cli.js memory rebuild-index
+
+# Search memory objects
+node dist/bootstrap/cli.js memory search "..."
+
+# Supersede an older memory object with a newer one
+node dist/bootstrap/cli.js memory supersede <old-id> <new-id>
 ```
 
 ## GIT FLOW
@@ -97,14 +111,14 @@ main  ←──  dev  ←──  review/*
 
 ## ANTI-PATTERNS
 
-- Do not hardcode domain concepts into core (framework explicitly forbids this)
-- Do not expose internal agents to user (single Wolf Agent facade only)
-- Policies must override prompt instructions when they conflict
+- Do not make Mr. Wolf an orchestrator or agent framework.
+- Do not treat SQLite as the source of truth; markdown files are the source of truth.
+- Do not auto-rebuild the search index on every search; rebuild only when requested or after bulk changes.
+- Do not copy user documents into `.wolf/memory`; store summaries, links, or extracted memory objects instead.
 
 ## NOTES
 
-- Framework targets: dev assistant, office assistant, concierge, legal, sales, HR, finance, research
-- Proposed repo structure in concept: `core/`, `sdk/`, `adapters/`, `providers/`, `packs/`, `plugins/`, `templates/`
-- MVP roadmap: Config+Workflow → Context → Policy → Agent Registry → Model Router → Artifact Plugins → Wolf Facade
-- Current: MVP1C (Graph Orchestration) complete
-- Next: MVP2 (Context Resolver)
+- Targets: dev assistant, office assistant, concierge, legal, sales, HR, finance, research.
+- MVP roadmap: Core Memory + Search → Context Resolution → Automatic Capture → Agent Integration.
+- Current: MVP-A (Core Memory + Search) complete.
+- Next: Context resolution and agent-facing retrieval API.

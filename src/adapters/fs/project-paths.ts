@@ -1,0 +1,45 @@
+import { join } from 'path';
+import { MemoryType } from '../../domain/memory-types.js';
+
+export function memoryDir(baseDir: string): string {
+  return join(baseDir, '.wolf', 'memory');
+}
+
+export function objectsDir(baseDir: string): string {
+  return join(memoryDir(baseDir), 'objects');
+}
+
+export function objectDirForType(baseDir: string, type: MemoryType): string {
+  const mapping: Record<MemoryType, string> = {
+    decision: 'decisions',
+    lesson: 'lessons',
+    observation: 'observations',
+    'session-summary': 'sessions',
+    document: 'documents',
+    'open-question': 'questions',
+  };
+  if (!(type in mapping)) {
+    throw new Error(`Unknown memory type: ${type}`);
+  }
+  return join(objectsDir(baseDir), mapping[type]);
+}
+
+export function objectPath(baseDir: string, type: MemoryType, id: string): string {
+  return join(objectDirForType(baseDir, type), `${id}.md`);
+}
+
+export function eventsPath(baseDir: string): string {
+  return join(memoryDir(baseDir), 'events.jsonl');
+}
+
+export function cacheDir(baseDir: string): string {
+  return join(baseDir, '.wolf', 'cache');
+}
+
+export function indexPath(baseDir: string): string {
+  return join(cacheDir(baseDir), 'index.sqlite');
+}
+
+export function configPath(baseDir: string): string {
+  return join(baseDir, '.wolf', 'config.yaml');
+}
