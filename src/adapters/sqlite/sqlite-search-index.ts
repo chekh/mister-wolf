@@ -1,3 +1,5 @@
+import { mkdirSync } from 'fs';
+import { dirname } from 'path';
 import Database from 'better-sqlite3';
 import { SearchIndex, SearchResult } from '../../ports/search-index.port.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
@@ -7,6 +9,7 @@ export class SQLiteSearchIndex implements SearchIndex {
   private db: Database.Database;
 
   constructor(dbPath: string) {
+    mkdirSync(dirname(dbPath), { recursive: true });
     this.db = new Database(dbPath);
     this.db.exec(SQLITE_SCHEMA);
   }
