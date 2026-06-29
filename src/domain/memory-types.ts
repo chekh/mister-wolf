@@ -6,6 +6,9 @@ export const MEMORY_TYPES = [
   'session-summary',
   'open-question',
   'context',
+  'work-thread',
+  'info-request',
+  'article',
 ] as const;
 
 export type MemoryType = (typeof MEMORY_TYPES)[number];

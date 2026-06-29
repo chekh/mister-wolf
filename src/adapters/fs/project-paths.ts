@@ -18,6 +18,9 @@ export function objectDirForType(baseDir: string, type: MemoryType): string {
     document: 'documents',
     'open-question': 'questions',
     context: 'context',
+    'work-thread': 'work-threads',
+    'info-request': 'info-requests',
+    article: 'articles',
   };
   if (!(type in mapping)) {
     throw new Error(`Unknown memory type: ${type}`);
