@@ -2,13 +2,13 @@
 
 **Generated:** 2026-06-29
 **Commit:** see `git log --oneline -1` for current HEAD
-**Branch:** feat/project-memory
+**Branch:** main
 
 ## OVERVIEW
 
 Mr. Wolf is a local-first Project Semantic Memory layer for AI coding agents. It persists structured memory objects (lessons, facts, decisions, context) directly in the project repository and makes them searchable, so agents retain context across sessions without becoming an orchestrator.
 
-**Status:** MVP-A (Core Memory + Search) implemented. Later phases (context resolution, automatic capture, agent integration) planned.
+**Status:** MVP-A (Core Memory + Search) implemented. Next phase: Project Scan + Agent Brief (MVP-B).
 
 ## STRUCTURE
 
@@ -27,9 +27,10 @@ Mr. Wolf is a local-first Project Semantic Memory layer for AI coding agents. It
 │   ├── unit/              # domain, adapters, use cases
 │   └── integration/       # end-to-end memory workflow
 ├── docs/                   # Documentation
+│   ├── concept-v3.md       # current Project Semantic Memory concept
 │   ├── superpowers/specs/  # design spec
 │   ├── superpowers/plans/  # implementation plan
-│   └── archive/            # old orchestrator docs
+│   └── archive/            # old orchestrator docs, discussions, and specs
 ├── AGENTS.md              # This file
 ├── README.md              # Project overview
 ├── package.json           # Dependencies and scripts
@@ -54,7 +55,7 @@ Mr. Wolf is a local-first Project Semantic Memory layer for AI coding agents. It
 ## CONVENTIONS
 
 - **Language**: All communication in Russian. Code/docs may be bilingual.
-- **Status**: MVP-A implemented. Not concept-only.
+- **Status**: MVP-A implemented. Next: Project Scan + Agent Brief (MVP-B).
 - **Framework philosophy**: Mr. Wolf augments agents with memory; it does not orchestrate them.
 - **TypeScript**: Strict mode, Zod schemas, strong typing throughout.
 
@@ -119,6 +120,6 @@ main  ←──  dev  ←──  review/*
 ## NOTES
 
 - Targets: dev assistant, office assistant, concierge, legal, sales, HR, finance, research.
-- MVP roadmap: Core Memory + Search → Context Resolution → Automatic Capture → Agent Integration.
+- MVP roadmap: Core Memory + Search (complete) → Project Scan + Agent Brief → Case Learning → Memory Governance → Code Linking → Agent Integration (MCP).
 - Current: MVP-A (Core Memory + Search) complete.
-- Next: Context resolution and agent-facing retrieval API.
+- Next: Project Scan + Agent Brief (MVP-B).
