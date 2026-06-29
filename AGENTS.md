@@ -40,17 +40,17 @@ Mr. Wolf is a local-first Project Semantic Memory layer for AI coding agents. It
 
 ## WHERE TO LOOK
 
-| Task | Location | Notes |
-|------|----------|-------|
+| Task                    | Location                                                                   | Notes                                                                 |
+| ----------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | Understand architecture | `docs/superpowers/specs/2026-06-29-project-semantic-memory-core-design.md` | Covers architecture, memory object model, write protocol, MVP roadmap |
-| Memory object model | `src/domain/schemas/memory-object-schema.ts` | Zod schemas and TypeScript types for memory objects |
-| Write protocol | `src/domain/policies/write-protocol.ts` | Validation and append-only write rules |
-| Storage adapter | `src/adapters/fs/markdown-memory-store.ts` | Markdown file persistence for memory objects |
-| Event log | `src/adapters/fs/jsonl-event-log.ts` | Append-only JSONL log of memory events |
-| Search index | `src/adapters/sqlite/sqlite-search-index.ts` | FTS5 search index over memory objects |
-| Use cases | `src/app/use-cases/` | init, add, get, list, search, supersede, rebuild-index |
-| CLI commands | `src/adapters/cli/commands/` | Thin command handlers wired to use cases |
-| Tests | `tests/` | Vitest suite (unit + integration) |
+| Memory object model     | `src/domain/schemas/memory-object-schema.ts`                               | Zod schemas and TypeScript types for memory objects                   |
+| Write protocol          | `src/domain/policies/write-protocol.ts`                                    | Validation and append-only write rules                                |
+| Storage adapter         | `src/adapters/fs/markdown-memory-store.ts`                                 | Markdown file persistence for memory objects                          |
+| Event log               | `src/adapters/fs/jsonl-event-log.ts`                                       | Append-only JSONL log of memory events                                |
+| Search index            | `src/adapters/sqlite/sqlite-search-index.ts`                               | FTS5 search index over memory objects                                 |
+| Use cases               | `src/app/use-cases/`                                                       | init, add, get, list, search, supersede, rebuild-index                |
+| CLI commands            | `src/adapters/cli/commands/`                                               | Thin command handlers wired to use cases                              |
+| Tests                   | `tests/`                                                                   | Vitest suite (unit + integration)                                     |
 
 ## CONVENTIONS
 
