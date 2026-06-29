@@ -19,8 +19,8 @@ This is a minimal increment. Scope is intentionally narrow; advanced context ass
 ### 2.1. In Scope
 
 - `wolf memory scan` — scan the file-system structure of the project and persist a snapshot as a `context` memory object with fixed id `project-scan-latest`.
-- `wolf memory brief` — generate/update `agent-brief-latest.md` from the latest scan plus active, accepted memory objects.
-- New memory type: `context`.
+- `wolf memory brief` — generate/update `.wolf/memory/briefs/agent-brief-latest.md` from the latest scan plus active, accepted memory objects.
+- New memory type: `context` (used only for factual project snapshots, not for briefs).
 - New ports: `FileSystem`, `ProjectScanner`.
 - New adapters: `fs-file-system`, `heuristic-project-scanner`.
 - New use-cases: `scan-project`, `generate-agent-brief`.
@@ -53,12 +53,14 @@ Directory mapping:
 Used for:
 
 - `project-scan-latest` — factual repository snapshot.
-- `agent-brief-latest` — generated agent-facing brief.
+
+`context` is **not** used for generated briefs, task-specific contexts, session logs, or cases. It is reserved for factual, generated project context snapshots.
 
 Review state policy:
 
 - Scan objects are `accepted` because they contain factual metadata.
-- Brief objects are `proposed` because they contain interpretation/assembly that a human may want to review.
+
+For MVP-B, `project-scan-latest` is a mutable generated context object. It is not treated as immutable curated memory. Each update still appends a `memory.updated` event. Historical scan versions are deferred.
 
 ---
 
@@ -83,7 +85,7 @@ created_by: agent:mr-wolf
 schema_version: 1
 source:
   kind: scan
-  path: /Users/chekh/Development/mister-wolf
+  path: "."
 related: {}
 tags:
   - scan
@@ -100,7 +102,8 @@ Body is structured Markdown:
 # Project Scan: {projectName}
 
 ## Repository
-- Root: /Users/chekh/Development/mister-wolf
+- Root: .
+- Project name: mister-wolf
 - Branch: main
 - Commit: ea0e676
 
@@ -121,59 +124,53 @@ Body is structured Markdown:
 ### 4.3. Scanner Rules
 
 - Respect `.gitignore`.
-- Always ignore: `node_modules/`, `.git/`, `dist/`, `coverage/`, `.wolf/`, `.codegraph/`, `.worktrees/`.
+- Always ignore: `node_modules/`, `.git/`, `dist/`, `.coverage/`, `.wolf/`, `.codegraph/`, `.worktrees/`.
 - Skip binary files and files larger than 1 MB.
-- Do not read file contents; collect only metadata, paths, and key strings.
-- Never log secrets, API keys, or `.env` contents.
+- Do not read arbitrary file contents. Only allowlisted small metadata files may be read:
+  - `README.md`
+  - `package.json`
+  - `tsconfig.json`
+  - `vitest.config.ts`
+  - `pyproject.toml`
+  - `Cargo.toml`
+  - `go.mod`
+- Never read `.env`, secrets, API keys, lockfiles, binary files, or files over 1 MB.
+- Output must be deterministic: files, tags, dependencies, top-level directories sorted; timestamps controlled through the `Clock` port.
 
 ### 4.4. Heuristics
 
 - **Languages:** derived from file extensions.
 - **Entry points:** from `package.json` `main`/`bin`, then `src/index.*`, then `src/bootstrap/*`.
 - **Config files:** known names (`package.json`, `tsconfig.json`, `vitest.config.ts`, etc.).
-- **Dependencies:** from `package.json` `dependencies`/`devDependencies`, or equivalent in other ecosystems.
+- **Dependencies:** from `package.json` `dependencies`/`devDependencies`, or equivalent in other ecosystems. Lockfiles are noted by presence only, not read.
 - **Top-level directories:** direct children of project root after filtering.
 - **File count:** total number of files scanned.
+- **Project name:** from `package.json` name, then directory name.
 
 ---
 
 ## 5. Agent Brief
 
-### 5.1. Memory Object Format
+Agent Brief is **not** a memory object. It is a generated artifact assembled from memory objects and the latest project scan.
 
-Frontmatter follows the standard `MemoryObjectSchema`:
+Storage:
 
-```yaml
----
-id: agent-brief-latest
-type: context
-title: Agent brief for mister-wolf
-status: active
-review_state: proposed
-confidence: medium
-importance: 0.8
-created_at: 2026-06-29T14:00:00Z
-updated_at: 2026-06-29T14:00:00Z
-created_by: agent:mr-wolf
-schema_version: 1
-source:
-  kind: scan
-  path: /Users/chekh/Development/mister-wolf
-related: {}
-tags:
-  - brief
-superseded_by: null
-body: ""
----
+```text
+.wolf/memory/briefs/agent-brief-latest.md
 ```
 
-### 5.2. Body Structure
+It is overwritten on each `wolf memory brief` run. It is not indexed as a memory object by default. A `brief.generated` event may be appended to `events.jsonl` for audit purposes.
+
+### 5.1. File Format
+
+Plain Markdown file (no YAML frontmatter):
 
 ```markdown
 # Agent Brief: {projectName}
 
 ## Project Snapshot
-- Root: /Users/chekh/Development/mister-wolf
+- Root: .
+- Project name: mister-wolf
 - Branch: main
 - Commit: ea0e676
 - Generated: 2026-06-29T14:00:00Z
@@ -191,10 +188,20 @@ body: ""
 {heuristic notes based on `src/` structure, e.g. ports/adapters pattern.}
 
 ## Active Memory
-{up to 10 most recent active + accepted memory objects, sorted by `updated_at` descending.}
+{up to 10 most recent active + accepted memory objects, sorted by `updated_at` descending. `context` objects are excluded.}
 
 ## Open Questions
 {active memory objects of type `open-question`.}
+
+## Sources
+- Project scan: project-scan-latest
+- README.md
+- package.json
+- Active memory objects: {count}
+
+## Limitations
+- This brief is generated from the latest scan and accepted active memory.
+- It may be incomplete if the scan is outdated.
 
 ## Recommended First Steps
 - Read docs/concept-v3.md
@@ -202,16 +209,16 @@ body: ""
 - Run npm run check
 ```
 
-### 5.3. Inputs
+### 5.2. Inputs
 
 - Latest `project-scan-latest` object.
-- Active, accepted memory objects (`status: active`, `review_state: accepted`).
+- Active, accepted memory objects (`status: active`, `review_state: accepted`), excluding `type: context`.
 - `README.md` and package metadata for project description.
 
-### 5.4. Output Behavior
+### 5.3. Output Behavior
 
-- `wolf memory brief` prints the generated brief to stdout and saves it as `agent-brief-latest.md`.
-- To view the saved brief: `wolf memory get agent-brief-latest`.
+- `wolf memory brief` prints the generated brief to stdout and saves it to `.wolf/memory/briefs/agent-brief-latest.md`.
+- To view the saved brief: `cat .wolf/memory/briefs/agent-brief-latest.md` (future: `wolf memory brief --show`).
 
 ---
 
@@ -245,7 +252,7 @@ src/
 // ports/file-system.port.ts
 export interface FileSystem {
   listDirectory(path: string): Promise<DirectoryEntry[]>;
-  readFile(path: string): Promise<string | null>;
+  readSmallTextFile(path: string): Promise<string | null>;
   isDirectory(path: string): Promise<boolean>;
   exists(path: string): Promise<boolean>;
 }
@@ -274,7 +281,7 @@ export interface ProjectScanner {
 ### 6.4. Use-Case Dependencies
 
 - `scan-project` depends on `ProjectScanner`, `MemoryStore`, `EventLog`, `Clock`, `IdGenerator`.
-- `generate-agent-brief` depends on `MemoryStore`, `EventLog`, `Clock`, `IdGenerator`.
+- `generate-agent-brief` depends on `MemoryStore`, `FileSystem`, `Clock`. It writes directly to `.wolf/memory/briefs/agent-brief-latest.md` and optionally appends a `brief.generated` event to `EventLog`.
 
 ---
 
@@ -288,7 +295,7 @@ node dist/bootstrap/cli.js memory scan
 node dist/bootstrap/cli.js memory brief
 
 # View the saved brief
-node dist/bootstrap/cli.js memory get agent-brief-latest
+cat .wolf/memory/briefs/agent-brief-latest.md
 ```
 
 No required arguments. Both commands operate relative to the current working directory as the project root.
@@ -316,7 +323,7 @@ No required arguments. Both commands operate relative to the current working dir
 
 - `npm run check` passes without errors.
 - `wolf memory scan` creates a valid `context` object at `.wolf/memory/objects/context/project-scan-latest.md`.
-- `wolf memory brief` creates a valid `context` object at `.wolf/memory/objects/context/agent-brief-latest.md` and prints it to stdout.
+- `wolf memory brief` creates/updates `.wolf/memory/briefs/agent-brief-latest.md`, prints it to stdout, and does not index it as a memory object.
 - Scan ignores `node_modules`, `.git`, `.wolf`, binary files, and files >1 MB.
 - Tests cover the scanner, use-cases, and CLI commands.
 
