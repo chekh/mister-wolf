@@ -19,7 +19,7 @@ export const ProjectSnapshotSchema = z.object({
       path: z.string(),
       extension: z.string().optional(),
       size: z.number().int().min(0),
-    }),
+    })
   ),
 });
 

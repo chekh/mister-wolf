@@ -17,10 +17,7 @@ describe('scanProject', () => {
   beforeEach(() => {
     projectDir = mkdtempSync(join(tmpdir(), 'wolf-scan-'));
     mkdirSync(join(projectDir, 'src'), { recursive: true });
-    writeFileSync(
-      join(projectDir, 'package.json'),
-      JSON.stringify({ name: 'demo-project', version: '1.0.0' })
-    );
+    writeFileSync(join(projectDir, 'package.json'), JSON.stringify({ name: 'demo-project', version: '1.0.0' }));
     writeFileSync(join(projectDir, 'src', 'index.ts'), 'console.log("hello");');
   });
 
@@ -35,10 +32,7 @@ describe('scanProject', () => {
     const idGen = new HashIdGenerator();
     const scanner = new HeuristicProjectScanner(new FsFileSystem());
 
-    const result = await scanProject(
-      { store, log, clock, idGen, scanner },
-      projectDir
-    );
+    const result = await scanProject({ store, log, clock, idGen, scanner }, projectDir);
 
     expect(result.object.id).toBe('project-scan-latest');
     expect(result.object.type).toBe('context');

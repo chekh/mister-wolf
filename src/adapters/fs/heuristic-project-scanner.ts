@@ -30,12 +30,35 @@ const CONFIG_FILE_NAMES = new Set([
 ]);
 
 const BINARY_EXTENSIONS = new Set([
-  'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'webp',
-  'mp3', 'mp4', 'wav', 'avi', 'mov',
-  'pdf', 'doc', 'docx', 'xls', 'xlsx',
-  'zip', 'tar', 'gz', 'rar', '7z',
-  'exe', 'dll', 'so', 'dylib',
-  'sqlite', 'db', 'wasm',
+  'png',
+  'jpg',
+  'jpeg',
+  'gif',
+  'svg',
+  'ico',
+  'webp',
+  'mp3',
+  'mp4',
+  'wav',
+  'avi',
+  'mov',
+  'pdf',
+  'doc',
+  'docx',
+  'xls',
+  'xlsx',
+  'zip',
+  'tar',
+  'gz',
+  'rar',
+  '7z',
+  'exe',
+  'dll',
+  'so',
+  'dylib',
+  'sqlite',
+  'db',
+  'wasm',
 ]);
 
 const MAX_FILE_BYTES = 1024 * 1024;
@@ -119,10 +142,7 @@ export class HeuristicProjectScanner implements ProjectScanner {
     }
   }
 
-  private detectEntryPoints(
-    packageJson: Record<string, unknown> | null,
-    files: ProjectSnapshot['files']
-  ): string[] {
+  private detectEntryPoints(packageJson: Record<string, unknown> | null, files: ProjectSnapshot['files']): string[] {
     const entries: string[] = [];
 
     if (packageJson) {

@@ -12,33 +12,34 @@
 
 ## File Map
 
-| File | Responsibility |
-|------|----------------|
-| `src/domain/memory-types.ts` | Add `context` to `MEMORY_TYPES`. |
-| `src/domain/schemas/project-scan-schema.ts` | Zod schema and TypeScript types for `ProjectSnapshot`. |
-| `src/ports/file-system.port.ts` | Outbound contract for FS reads. |
-| `src/ports/project-scanner.port.ts` | Outbound contract for project scanning. |
-| `src/adapters/fs/fs-file-system.ts` | Node.js `fs/promises` implementation of `FileSystem`. |
-| `src/adapters/fs/heuristic-project-scanner.ts` | Builds `ProjectSnapshot` from FS metadata and allowlisted files. |
-| `src/adapters/fs/project-paths.ts` | Adds `briefsDir()` and `contextDir()` helpers. |
-| `src/adapters/fs/fs-project-initializer.ts` | Creates `objects/context/` on `init`. |
-| `src/app/use-cases/scan-project.ts` | Orchestrates scanning and saving `project-scan-latest`. |
-| `src/app/use-cases/generate-agent-brief.ts` | Assembles `agent-brief-latest.md` from scan + memory. |
-| `src/adapters/cli/commands/memory-scan.ts` | CLI command for `memory scan`. |
-| `src/adapters/cli/commands/memory-brief.ts` | CLI command for `memory brief`. |
-| `src/adapters/cli/cli-entry.ts` | Registers new commands. |
-| `src/bootstrap/container.ts` | Wires new adapters. |
-| `tests/unit/adapters/heuristic-project-scanner.test.ts` | Scanner unit tests. |
-| `tests/unit/use-cases/scan-project.test.ts` | Scan use-case unit tests. |
-| `tests/unit/use-cases/generate-agent-brief.test.ts` | Brief use-case unit tests. |
-| `tests/integration/mvp-b-workflow.test.ts` | End-to-end `scan` + `brief` integration test. |
-| `AGENTS.md`, `README.md`, `docs/concept-v3.md` | Documentation updates. |
+| File                                                    | Responsibility                                                   |
+| ------------------------------------------------------- | ---------------------------------------------------------------- |
+| `src/domain/memory-types.ts`                            | Add `context` to `MEMORY_TYPES`.                                 |
+| `src/domain/schemas/project-scan-schema.ts`             | Zod schema and TypeScript types for `ProjectSnapshot`.           |
+| `src/ports/file-system.port.ts`                         | Outbound contract for FS reads.                                  |
+| `src/ports/project-scanner.port.ts`                     | Outbound contract for project scanning.                          |
+| `src/adapters/fs/fs-file-system.ts`                     | Node.js `fs/promises` implementation of `FileSystem`.            |
+| `src/adapters/fs/heuristic-project-scanner.ts`          | Builds `ProjectSnapshot` from FS metadata and allowlisted files. |
+| `src/adapters/fs/project-paths.ts`                      | Adds `briefsDir()` and `contextDir()` helpers.                   |
+| `src/adapters/fs/fs-project-initializer.ts`             | Creates `objects/context/` on `init`.                            |
+| `src/app/use-cases/scan-project.ts`                     | Orchestrates scanning and saving `project-scan-latest`.          |
+| `src/app/use-cases/generate-agent-brief.ts`             | Assembles `agent-brief-latest.md` from scan + memory.            |
+| `src/adapters/cli/commands/memory-scan.ts`              | CLI command for `memory scan`.                                   |
+| `src/adapters/cli/commands/memory-brief.ts`             | CLI command for `memory brief`.                                  |
+| `src/adapters/cli/cli-entry.ts`                         | Registers new commands.                                          |
+| `src/bootstrap/container.ts`                            | Wires new adapters.                                              |
+| `tests/unit/adapters/heuristic-project-scanner.test.ts` | Scanner unit tests.                                              |
+| `tests/unit/use-cases/scan-project.test.ts`             | Scan use-case unit tests.                                        |
+| `tests/unit/use-cases/generate-agent-brief.test.ts`     | Brief use-case unit tests.                                       |
+| `tests/integration/mvp-b-workflow.test.ts`              | End-to-end `scan` + `brief` integration test.                    |
+| `AGENTS.md`, `README.md`, `docs/concept-v3.md`          | Documentation updates.                                           |
 
 ---
 
 ## Task 1: Add `context` memory type and project paths
 
 **Files:**
+
 - Modify: `src/domain/memory-types.ts:1-8`
 - Modify: `src/adapters/fs/project-paths.ts:12-25`
 - Modify: `src/adapters/fs/fs-project-initializer.ts:6-33`
@@ -117,6 +118,7 @@ git commit -m "feat(domain): add context memory type and briefs directory"
 ## Task 2: Define `ProjectSnapshot` schema and ports
 
 **Files:**
+
 - Create: `src/domain/schemas/project-scan-schema.ts`
 - Create: `src/ports/file-system.port.ts`
 - Create: `src/ports/project-scanner.port.ts`
@@ -223,6 +225,7 @@ git commit -m "feat(ports): add FileSystem and ProjectScanner ports with snapsho
 ## Task 3: Implement FS adapter
 
 **Files:**
+
 - Create: `src/adapters/fs/fs-file-system.ts`
 - Test: `tests/unit/adapters/fs-file-system.test.ts`
 
@@ -344,6 +347,7 @@ git commit -m "feat(adapters): implement FsFileSystem adapter"
 ## Task 4: Implement heuristic project scanner
 
 **Files:**
+
 - Create: `src/adapters/fs/heuristic-project-scanner.ts`
 - Test: `tests/unit/adapters/heuristic-project-scanner.test.ts`
 
@@ -392,12 +396,35 @@ const CONFIG_FILE_NAMES = new Set([
 ]);
 
 const BINARY_EXTENSIONS = new Set([
-  'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'webp',
-  'mp3', 'mp4', 'wav', 'avi', 'mov',
-  'pdf', 'doc', 'docx', 'xls', 'xlsx',
-  'zip', 'tar', 'gz', 'rar', '7z',
-  'exe', 'dll', 'so', 'dylib',
-  'sqlite', 'db', 'wasm',
+  'png',
+  'jpg',
+  'jpeg',
+  'gif',
+  'svg',
+  'ico',
+  'webp',
+  'mp3',
+  'mp4',
+  'wav',
+  'avi',
+  'mov',
+  'pdf',
+  'doc',
+  'docx',
+  'xls',
+  'xlsx',
+  'zip',
+  'tar',
+  'gz',
+  'rar',
+  '7z',
+  'exe',
+  'dll',
+  'so',
+  'dylib',
+  'sqlite',
+  'db',
+  'wasm',
 ]);
 
 const MAX_FILE_BYTES = 1024 * 1024;
@@ -406,46 +433,46 @@ export class HeuristicProjectScanner implements ProjectScanner {
   constructor(private fs: FileSystem) {}
 
   async scan(root: string): Promise<ProjectSnapshot> {
-  const files: ProjectSnapshot['files'] = [];
-  const languages = new Set<string>();
-  const configFiles = new Set<string>();
-  const topLevelDirectories = new Set<string>();
-  const counters = { fileCount: 0 };
+    const files: ProjectSnapshot['files'] = [];
+    const languages = new Set<string>();
+    const configFiles = new Set<string>();
+    const topLevelDirectories = new Set<string>();
+    const counters = { fileCount: 0 };
 
-  await this.walk(root, root, files, languages, configFiles, topLevelDirectories, counters);
+    await this.walk(root, root, files, languages, configFiles, topLevelDirectories, counters);
 
-  const packageJson = await this.readPackageJson(root);
-  const entryPoints = this.detectEntryPoints(root, packageJson, files);
-  const dependencies = this.extractDependencies(packageJson);
-  const projectName = packageJson?.name ?? basename(root);
+    const packageJson = await this.readPackageJson(root);
+    const entryPoints = this.detectEntryPoints(root, packageJson, files);
+    const dependencies = this.extractDependencies(packageJson);
+    const projectName = packageJson?.name ?? basename(root);
 
-  return {
-    projectName,
-    root: '.',
-    branch: await this.currentBranch(root),
-    commit: await this.currentCommit(root),
-    generatedAt: new Date().toISOString(),
-    summary: {
-      languages: [...languages].sort(),
-      entryPoints: entryPoints.sort(),
-      configFiles: [...configFiles].sort(),
-      dependencies: dependencies.sort(),
-      topLevelDirectories: [...topLevelDirectories].sort(),
-      fileCount: counters.fileCount,
-    },
-    files: files.sort((a, b) => a.path.localeCompare(b.path)),
-  };
-}
+    return {
+      projectName,
+      root: '.',
+      branch: await this.currentBranch(root),
+      commit: await this.currentCommit(root),
+      generatedAt: new Date().toISOString(),
+      summary: {
+        languages: [...languages].sort(),
+        entryPoints: entryPoints.sort(),
+        configFiles: [...configFiles].sort(),
+        dependencies: dependencies.sort(),
+        topLevelDirectories: [...topLevelDirectories].sort(),
+        fileCount: counters.fileCount,
+      },
+      files: files.sort((a, b) => a.path.localeCompare(b.path)),
+    };
+  }
 
-private async walk(
-  root: string,
-  current: string,
-  files: ProjectSnapshot['files'],
-  languages: Set<string>,
-  configFiles: Set<string>,
-  topLevelDirectories: Set<string>,
-  counters: { fileCount: number }
-): Promise<void> {
+  private async walk(
+    root: string,
+    current: string,
+    files: ProjectSnapshot['files'],
+    languages: Set<string>,
+    configFiles: Set<string>,
+    topLevelDirectories: Set<string>,
+    counters: { fileCount: number }
+  ): Promise<void> {
     const entries = await this.fs.listDirectory(current);
     for (const entry of entries) {
       const rel = relative(root, entry.path);
@@ -504,8 +531,8 @@ private async walk(
   private extractDependencies(packageJson: Record<string, unknown> | null): string[] {
     if (!packageJson) return [];
     const deps = [
-      ...(Object.keys((packageJson.dependencies as Record<string, unknown>) ?? {})),
-      ...(Object.keys((packageJson.devDependencies as Record<string, unknown>) ?? {})),
+      ...Object.keys((packageJson.dependencies as Record<string, unknown>) ?? {}),
+      ...Object.keys((packageJson.devDependencies as Record<string, unknown>) ?? {}),
     ];
     return [...new Set(deps)];
   }
@@ -556,7 +583,11 @@ describe('HeuristicProjectScanner', () => {
   it('ignores node_modules and returns sorted metadata', async () => {
     mkdirSync(join(dir, 'src'), { recursive: true });
     mkdirSync(join(dir, 'node_modules', 'foo'), { recursive: true });
-    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'test-proj', dependencies: { zod: '^3' } }), 'utf-8');
+    writeFileSync(
+      join(dir, 'package.json'),
+      JSON.stringify({ name: 'test-proj', dependencies: { zod: '^3' } }),
+      'utf-8'
+    );
     writeFileSync(join(dir, 'src', 'index.ts'), 'export {}', 'utf-8');
     writeFileSync(join(dir, 'README.md'), '# Test', 'utf-8');
 
@@ -587,6 +618,7 @@ git commit -m "feat(adapters): implement heuristic project scanner"
 ## Task 5: Implement `scan-project` use-case
 
 **Files:**
+
 - Create: `src/app/use-cases/scan-project.ts`
 - Test: `tests/unit/use-cases/scan-project.test.ts`
 
@@ -747,6 +779,7 @@ git commit -m "feat(use-cases): implement scan-project use-case"
 ## Task 6: Implement `generate-agent-brief` use-case
 
 **Files:**
+
 - Create: `src/app/use-cases/generate-agent-brief.ts`
 - Test: `tests/unit/use-cases/generate-agent-brief.test.ts`
 
@@ -782,19 +815,28 @@ describe('generateAgentBrief', () => {
     const idGen = new HashIdGenerator();
 
     mkdirSync(join(dir, 'src'), { recursive: true });
-    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'brief-test', description: 'A test project' }), 'utf-8');
+    writeFileSync(
+      join(dir, 'package.json'),
+      JSON.stringify({ name: 'brief-test', description: 'A test project' }),
+      'utf-8'
+    );
     writeFileSync(join(dir, 'README.md'), '# Brief Test\n\nThis project tests brief generation.', 'utf-8');
     writeFileSync(join(dir, 'src', 'index.ts'), 'export {}', 'utf-8');
 
-    const scanner = new (await import('../../../src/adapters/fs/heuristic-project-scanner.js')).HeuristicProjectScanner(fs);
+    const scanner = new (await import('../../../src/adapters/fs/heuristic-project-scanner.js')).HeuristicProjectScanner(
+      fs
+    );
     const snapshot = await scanner.scan(dir);
 
-    await addMemoryObject({ store, log: { append: async () => {}, readAll: async () => [] } as any, clock, idGen }, {
-      type: 'decision',
-      title: 'Use TypeScript',
-      body: 'Strict TypeScript everywhere.',
-      createdBy: 'user:test',
-    });
+    await addMemoryObject(
+      { store, log: { append: async () => {}, readAll: async () => [] } as any, clock, idGen },
+      {
+        type: 'decision',
+        title: 'Use TypeScript',
+        body: 'Strict TypeScript everywhere.',
+        createdBy: 'user:test',
+      }
+    );
 
     const brief = await generateAgentBrief({ store, fs, clock }, dir, snapshot);
 
@@ -854,7 +896,10 @@ export async function generateAgentBrief(
 async function buildProjectDescription(fs: FileSystem, root: string, snapshot: ProjectSnapshot): Promise<string> {
   const readme = await fs.readSmallTextFile(join(root, 'README.md'));
   if (readme) {
-    const paragraphs = readme.split(/\n\n+/).map((p) => p.trim().replace(/^#+\s*/, '')).filter((p) => p.length > 0);
+    const paragraphs = readme
+      .split(/\n\n+/)
+      .map((p) => p.trim().replace(/^#+\s*/, ''))
+      .filter((p) => p.length > 0);
     const first = paragraphs.slice(0, 2).join(' ');
     if (first.length > 20) return first;
   }
@@ -882,8 +927,18 @@ function renderBrief(
   lines.push(`- Generated: ${snapshot.generatedAt}`, '');
 
   lines.push('## What This Project Is', description, '');
-  lines.push('## Technology Stack', `- Languages: ${snapshot.summary.languages.join(', ') || 'none'}`, `- Key dependencies: ${snapshot.summary.dependencies.slice(0, 10).join(', ') || 'none'}`, '');
-  lines.push('## Key Files & Entry Points', ...snapshot.summary.entryPoints.map((ep) => `- ${ep}`), ...snapshot.summary.configFiles.map((cf) => `- ${cf} (config)`), '');
+  lines.push(
+    '## Technology Stack',
+    `- Languages: ${snapshot.summary.languages.join(', ') || 'none'}`,
+    `- Key dependencies: ${snapshot.summary.dependencies.slice(0, 10).join(', ') || 'none'}`,
+    ''
+  );
+  lines.push(
+    '## Key Files & Entry Points',
+    ...snapshot.summary.entryPoints.map((ep) => `- ${ep}`),
+    ...snapshot.summary.configFiles.map((cf) => `- ${cf} (config)`),
+    ''
+  );
   lines.push('## Architecture Notes', renderArchitectureNotes(snapshot), '');
 
   lines.push('## Active Memory');
@@ -955,6 +1010,7 @@ git commit -m "feat(use-cases): implement generate-agent-brief use-case"
 ## Task 7: Add `writeFile` to `FileSystem` port and adapter
 
 **Files:**
+
 - Modify: `src/ports/file-system.port.ts`
 - Modify: `src/adapters/fs/fs-file-system.ts`
 - Modify: `src/app/use-cases/generate-agent-brief.ts` (remove direct fs/promises fallback)
@@ -1010,6 +1066,7 @@ git commit -m "feat(ports): add writeFile to FileSystem port"
 ## Task 8: Add CLI commands and wire container
 
 **Files:**
+
 - Modify: `src/bootstrap/container.ts`
 - Create: `src/adapters/cli/commands/memory-scan.ts`
 - Create: `src/adapters/cli/commands/memory-brief.ts`
@@ -1045,13 +1102,11 @@ import { scanProject } from '../../../app/use-cases/scan-project.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 
 export function memoryScanCommand(): Command {
-  return new Command('scan')
-    .description('Scan the project and save a context snapshot')
-    .action(async () => {
-      const { store, log, clock, idGen, scanner } = createCliContainer(process.cwd());
-      const result = await scanProject({ store, log, clock, idGen, scanner }, process.cwd());
-      console.log(`Project scan saved: ${result.object.id}`);
-    });
+  return new Command('scan').description('Scan the project and save a context snapshot').action(async () => {
+    const { store, log, clock, idGen, scanner } = createCliContainer(process.cwd());
+    const result = await scanProject({ store, log, clock, idGen, scanner }, process.cwd());
+    console.log(`Project scan saved: ${result.object.id}`);
+  });
 }
 ```
 
@@ -1101,7 +1156,11 @@ describe('MVP-B workflow', () => {
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'wolf-mvpb-'));
     mkdirSync(join(dir, 'src'), { recursive: true });
-    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'mvpb-test', dependencies: { zod: '^3' } }), 'utf-8');
+    writeFileSync(
+      join(dir, 'package.json'),
+      JSON.stringify({ name: 'mvpb-test', dependencies: { zod: '^3' } }),
+      'utf-8'
+    );
     writeFileSync(join(dir, 'README.md'), '# MVP-B Test\n\nTesting scan and brief.', 'utf-8');
     writeFileSync(join(dir, 'src', 'index.ts'), 'export {}', 'utf-8');
   });
@@ -1126,10 +1185,12 @@ describe('MVP-B workflow', () => {
 - [ ] **Step 6: Build project and run integration test**
 
 Run:
+
 ```bash
 npm run build
 npm run test:run -- tests/integration/mvp-b-workflow.test.ts
 ```
+
 Expected: PASS
 
 - [ ] **Step 7: Commit**
@@ -1144,6 +1205,7 @@ git commit -m "feat(cli): wire memory scan and brief commands"
 ## Task 9: Ensure search index excludes briefs and rebuild works
 
 **Files:**
+
 - Modify: `src/adapters/fs/markdown-memory-store.ts` (no change needed if briefs are outside `objects/`)
 - Modify: `src/app/use-cases/rebuild-memory-index.ts` (no change needed)
 - Test: `tests/unit/use-cases/rebuild-memory-index.test.ts`
@@ -1179,6 +1241,7 @@ git commit -m "test(index): ensure briefs are not indexed as memory objects"
 ## Task 10: Documentation updates
 
 **Files:**
+
 - Modify: `AGENTS.md`
 - Modify: `README.md`
 - Modify: `docs/concept-v3.md`

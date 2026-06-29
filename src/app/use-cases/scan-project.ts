@@ -57,18 +57,11 @@ export async function scanProject(
 }
 
 export function renderScanBody(snapshot: ProjectSnapshot): string {
-  const optionalLine = (label: string, value: string | undefined) =>
-    value ? `- ${label}: ${value}\n` : '';
+  const optionalLine = (label: string, value: string | undefined) => (value ? `- ${label}: ${value}\n` : '');
 
-  const list = (items: string[]) =>
-    items.length > 0 ? items.map((item) => `- ${item}`).join('\n') : '- none';
+  const list = (items: string[]) => (items.length > 0 ? items.map((item) => `- ${item}`).join('\n') : '- none');
 
-  const fileRows = snapshot.files
-    .map(
-      (file) =>
-        `| ${file.path} | ${file.extension ?? ''} | ${file.size} |`
-    )
-    .join('\n');
+  const fileRows = snapshot.files.map((file) => `| ${file.path} | ${file.extension ?? ''} | ${file.size} |`).join('\n');
 
   return `# Project Scan: ${snapshot.projectName}
 
@@ -76,10 +69,7 @@ export function renderScanBody(snapshot: ProjectSnapshot): string {
 
 - Root: ${snapshot.root}
 - Project name: ${snapshot.projectName}
-${optionalLine('Branch', snapshot.branch)}${optionalLine(
-    'Commit',
-    snapshot.commit
-  )}
+${optionalLine('Branch', snapshot.branch)}${optionalLine('Commit', snapshot.commit)}
 ## Summary
 
 ### Languages

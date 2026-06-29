@@ -46,9 +46,9 @@ This is a minimal increment. Scope is intentionally narrow; advanced context ass
 
 Directory mapping:
 
-| Type      | Directory                    |
-|-----------|------------------------------|
-| `context` | `objects/context/`           |
+| Type      | Directory          |
+| --------- | ------------------ |
+| `context` | `objects/context/` |
 
 Used for:
 
@@ -85,12 +85,12 @@ created_by: agent:mr-wolf
 schema_version: 1
 source:
   kind: scan
-  path: "."
+  path: '.'
 related: {}
 tags:
   - scan
 superseded_by: null
-body: ""
+body: ''
 ---
 ```
 
@@ -102,12 +102,14 @@ Body is structured Markdown:
 # Project Scan: {projectName}
 
 ## Repository
+
 - Root: .
 - Project name: mister-wolf
 - Branch: main
 - Commit: ea0e676
 
 ## Summary
+
 - Languages: TypeScript, JavaScript
 - Entry points: src/bootstrap/cli.ts
 - Config files: package.json, tsconfig.json, vitest.config.ts
@@ -116,8 +118,9 @@ Body is structured Markdown:
 - File count: 42
 
 ## Files
+
 | Path | Extension | Size (bytes) |
-|------|-----------|--------------|
+| ---- | --------- | ------------ |
 | ...  | ...       | ...          |
 ```
 
@@ -169,6 +172,7 @@ Plain Markdown file (no YAML frontmatter):
 # Agent Brief: {projectName}
 
 ## Project Snapshot
+
 - Root: .
 - Project name: mister-wolf
 - Branch: main
@@ -176,34 +180,43 @@ Plain Markdown file (no YAML frontmatter):
 - Generated: 2026-06-29T14:00:00Z
 
 ## What This Project Is
+
 {2-3 sentences from README first paragraphs; fallback to package metadata description.}
 
 ## Technology Stack
+
 {languages and key dependencies}
 
 ## Key Files & Entry Points
+
 {list from scan}
 
 ## Architecture Notes
+
 {heuristic notes based on `src/` structure, e.g. ports/adapters pattern.}
 
 ## Active Memory
+
 {up to 10 most recent active + accepted memory objects, sorted by `updated_at` descending. `context` objects are excluded.}
 
 ## Open Questions
+
 {active memory objects of type `open-question`.}
 
 ## Sources
+
 - Project scan: project-scan-latest
 - README.md
 - package.json
 - Active memory objects: {count}
 
 ## Limitations
+
 - This brief is generated from the latest scan and accepted active memory.
 - It may be incomplete if the scan is outdated.
 
 ## Recommended First Steps
+
 - Read docs/concept-v3.md
 - Read AGENTS.md
 - Run npm run check

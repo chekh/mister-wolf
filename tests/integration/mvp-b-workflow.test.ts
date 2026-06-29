@@ -47,10 +47,7 @@ describe('MVP-B workflow', () => {
     mkdirSync(srcDir, { recursive: true });
     writeFileSync(join(dir, 'package.json'), JSON.stringify(pkg, null, 2));
     writeFileSync(indexPath, 'export const app = () => "hello";\n');
-    writeFileSync(
-      join(dir, 'README.md'),
-      `# ${projectName}\n\nA test project for the MVP-B workflow.\n`
-    );
+    writeFileSync(join(dir, 'README.md'), `# ${projectName}\n\nA test project for the MVP-B workflow.\n`);
 
     runCli('memory init', dir);
     const scanResult = runCli('memory scan', dir);

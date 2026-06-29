@@ -40,7 +40,10 @@ describe('HeuristicProjectScanner', () => {
     expect(snapshot.summary.topLevelDirectories).toEqual(['src']);
     expect(snapshot.summary.entryPoints).toContain('src/index.ts');
     expect(snapshot.files.map((f) => f.path)).toEqual(
-      snapshot.files.map((f) => f.path).slice().sort((a, b) => a.localeCompare(b))
+      snapshot.files
+        .map((f) => f.path)
+        .slice()
+        .sort((a, b) => a.localeCompare(b))
     );
     expect(snapshot.files.map((f) => f.path)).not.toContain(expect.stringContaining('node_modules'));
     expect(snapshot.summary.fileCount).toBe(3);
