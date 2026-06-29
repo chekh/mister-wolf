@@ -444,7 +444,7 @@ GitHub Actions runs on every PR and push to `main` / `dev`:
 - **Node.js checks**: `npm run check` on Ubuntu with Node.js 20
 - **Docker checks**: build test image and run `npm run check` inside it
 
-See [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) for details.
+See `.github/workflows/ci.yml` for details.
 
 ## Troubleshooting
 
