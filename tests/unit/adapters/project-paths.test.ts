@@ -16,17 +16,24 @@ describe('project-paths', () => {
       'session-summary',
       'open-question',
       'context',
+      'work-thread',
+      'info-request',
+      'article',
     ];
+    const expectedDir: Record<MemoryType, string> = {
+      document: 'documents',
+      decision: 'decisions',
+      lesson: 'lessons',
+      observation: 'observations',
+      'session-summary': 'sessions',
+      'open-question': 'questions',
+      context: 'context',
+      'work-thread': 'threads',
+      'info-request': 'info-requests',
+      article: 'articles',
+    };
     for (const type of knownTypes) {
-      const expected =
-        type === 'session-summary'
-          ? 'sessions'
-          : type === 'open-question'
-            ? 'questions'
-            : type === 'context'
-              ? 'context'
-              : `${type}s`;
-      expect(objectDirForType('/base', type)).toContain(expected);
+      expect(objectDirForType('/base', type)).toContain(expectedDir[type]);
     }
   });
 });

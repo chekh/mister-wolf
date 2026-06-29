@@ -18,7 +18,7 @@ export function objectDirForType(baseDir: string, type: MemoryType): string {
     document: 'documents',
     'open-question': 'questions',
     context: 'context',
-    'work-thread': 'work-threads',
+    'work-thread': 'threads',
     'info-request': 'info-requests',
     article: 'articles',
   };

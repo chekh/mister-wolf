@@ -19,6 +19,9 @@ describe('initProjectMemory', () => {
   it('creates .wolf directories and config', async () => {
     await initProjectMemory(new FsProjectInitializer(), dir);
     expect(existsSync(join(dir, '.wolf', 'memory', 'objects', 'context'))).toBe(true);
+    expect(existsSync(join(dir, '.wolf', 'memory', 'objects', 'threads'))).toBe(true);
+    expect(existsSync(join(dir, '.wolf', 'memory', 'objects', 'info-requests'))).toBe(true);
+    expect(existsSync(join(dir, '.wolf', 'memory', 'objects', 'articles'))).toBe(true);
     expect(existsSync(join(dir, '.wolf', 'memory', 'briefs'))).toBe(true);
     expect(existsSync(join(dir, '.wolf', 'memory', 'objects'))).toBe(true);
     expect(existsSync(join(dir, '.wolf', 'config.yaml'))).toBe(true);

@@ -14,6 +14,9 @@ memory:
     - session-summary
     - open-question
     - context
+    - work-thread
+    - info-request
+    - article
 search:
   default_limit: 20
 `;
@@ -29,6 +32,9 @@ export class FsProjectInitializer implements ProjectInitializer {
     await fs.mkdir(join(objectsDir(baseDir), 'documents'), { recursive: true });
     await fs.mkdir(join(objectsDir(baseDir), 'questions'), { recursive: true });
     await fs.mkdir(join(objectsDir(baseDir), 'context'), { recursive: true });
+    await fs.mkdir(join(objectsDir(baseDir), 'threads'), { recursive: true });
+    await fs.mkdir(join(objectsDir(baseDir), 'info-requests'), { recursive: true });
+    await fs.mkdir(join(objectsDir(baseDir), 'articles'), { recursive: true });
     await fs.mkdir(briefsDir(baseDir), { recursive: true });
     await fs.mkdir(cacheDir(baseDir), { recursive: true });
     await fs.writeFile(configPath(baseDir), DEFAULT_CONFIG, 'utf-8');
