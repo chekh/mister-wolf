@@ -17,6 +17,7 @@ export function objectDirForType(baseDir: string, type: MemoryType): string {
     'session-summary': 'sessions',
     document: 'documents',
     'open-question': 'questions',
+    context: 'context',
   };
   if (!(type in mapping)) {
     throw new Error(`Unknown memory type: ${type}`);
@@ -38,6 +39,10 @@ export function cacheDir(baseDir: string): string {
 
 export function indexPath(baseDir: string): string {
   return join(cacheDir(baseDir), 'index.sqlite');
+}
+
+export function briefsDir(baseDir: string): string {
+  return join(memoryDir(baseDir), 'briefs');
 }
 
 export function configPath(baseDir: string): string {

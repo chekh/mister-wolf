@@ -15,11 +15,18 @@ describe('project-paths', () => {
       'observation',
       'session-summary',
       'open-question',
+      'context',
     ];
     for (const type of knownTypes) {
-      expect(objectDirForType('/base', type)).toContain(
-        type === 'session-summary' ? 'sessions' : type === 'open-question' ? 'questions' : `${type}s`
-      );
+      const expected =
+        type === 'session-summary'
+          ? 'sessions'
+          : type === 'open-question'
+            ? 'questions'
+            : type === 'context'
+              ? 'context'
+              : `${type}s`;
+      expect(objectDirForType('/base', type)).toContain(expected);
     }
   });
 });
