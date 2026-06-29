@@ -59,6 +59,27 @@ Mr. Wolf is a local-first Project Semantic Memory layer for AI coding agents. It
 - **Framework philosophy**: Mr. Wolf augments agents with memory; it does not orchestrate them.
 - **TypeScript**: Strict mode, Zod schemas, strong typing throughout.
 
+## FOR AGENTS: USE PROJECT MEMORY
+
+This project uses **Mr. Wolf** — a local-first Project Semantic Memory layer.
+**Before starting work**, search memory for context related to your task.
+
+```bash
+# Search relevant memory
+node dist/bootstrap/cli.js memory search "<topic or task keywords>"
+
+# If memory seems stale, rebuild the index from markdown source files
+node dist/bootstrap/cli.js memory rebuild-index
+
+# Add a new memory object when you learn something worth keeping
+node dist/bootstrap/cli.js memory add --type lesson --title "..." --body "..."
+```
+
+**Guidelines:**
+- Always check memory before making architectural decisions or repeating past work.
+- Prefer `lesson` for things learned, `decision` for choices made, `observation` for facts noticed, `open-question` for unresolved issues.
+- Do not copy raw user documents into `.wolf/memory`; store summaries, links, or extracted memory objects instead.
+
 ## CORE COMMANDS
 
 ```bash
