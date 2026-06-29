@@ -206,7 +206,7 @@ steps:
 
 ## Next Steps
 
-- Learn [workflow syntax](../workflow-syntax.md) in detail
-- Explore [CLI commands](../cli-reference.md)
-- Read the [full concept](../concept-v2.md) (Russian)
+- Learn [workflow syntax](./workflow-syntax.md) in detail
+- Explore [CLI commands](./cli-reference.md)
+- Read the [full concept](./concept-v2.md) (Russian)
 - Check [examples](../../examples/)

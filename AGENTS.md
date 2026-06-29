@@ -42,8 +42,8 @@ Universal adaptive agent framework ("Mr. Wolf"). Single-user facade that dynamic
 | Task | Location | Notes |
 |------|----------|-------|
 | Understand framework | `docs/concept.md` | Russian language. Covers architecture, layers, domain packs, MVP roadmap |
-| Workflow syntax | `docs/workflow-syntax.md` | Complete YAML reference with examples |
-| CLI reference | `docs/cli-reference.md` | All commands, flags, exit codes |
+| Workflow syntax | `docs/archive/workflow-syntax.md` | Complete YAML reference with examples |
+| CLI reference | `docs/archive/cli-reference.md` | All commands, flags, exit codes |
 | Core engine | `src/workflow/engine.ts` | Sequential + graph execution, state machine |
 | Graph logic | `src/workflow/graph.ts` | DAG builder, validator, ready queue |
 | Runners | `src/workflow/runners/` | echo, shell, manual_gate |
