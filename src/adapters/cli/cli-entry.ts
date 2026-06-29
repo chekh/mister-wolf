@@ -8,6 +8,7 @@ import { memoryListCommand } from './commands/memory-list.js';
 import { memoryGetCommand } from './commands/memory-get.js';
 import { memorySearchCommand } from './commands/memory-search.js';
 import { memoryRebuildIndexCommand } from './commands/memory-rebuild-index.js';
+import { memorySupersedeCommand } from './commands/memory-supersede.js';
 
 function readPackageVersion(): string {
   const baseDir = dirname(fileURLToPath(import.meta.url));
@@ -26,6 +27,7 @@ export function createCli(): Command {
   memory.addCommand(memoryGetCommand());
   memory.addCommand(memorySearchCommand());
   memory.addCommand(memoryRebuildIndexCommand());
+  memory.addCommand(memorySupersedeCommand());
 
   program.addCommand(memory);
   return program;

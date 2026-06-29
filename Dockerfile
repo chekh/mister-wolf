@@ -39,4 +39,4 @@ COPY --from=build /app/dist ./dist
 COPY README.md ./README.md
 COPY LICENSE ./LICENSE
 
-ENTRYPOINT ["node", "dist/bootstrap/cli.js"]
+ENTRYPOINT ["node", "/app/dist/bootstrap/cli.js"]
