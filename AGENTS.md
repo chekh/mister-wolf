@@ -41,7 +41,7 @@ Universal adaptive agent framework ("Mr. Wolf"). Single-user facade that dynamic
 
 | Task | Location | Notes |
 |------|----------|-------|
-| Understand framework | `docs/concept.md` | Russian language. Covers architecture, layers, domain packs, MVP roadmap |
+| Understand framework | `docs/archive/concept-v2.md` | Russian language. Covers architecture, layers, domain packs, MVP roadmap |
 | Workflow syntax | `docs/archive/workflow-syntax.md` | Complete YAML reference with examples |
 | CLI reference | `docs/archive/cli-reference.md` | All commands, flags, exit codes |
 | Core engine | `src/workflow/engine.ts` | Sequential + graph execution, state machine |
@@ -78,7 +78,7 @@ npm run lint
 npm run format
 
 # Run CLI
-node dist/cli/index.js --help
+node dist/bootstrap/cli.js --help
 ```
 
 ## GIT FLOW
