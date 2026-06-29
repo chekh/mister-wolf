@@ -26,10 +26,10 @@ Universal adaptive agent framework ("Mr. Wolf"). Single-user facade that dynamic
 │   └── integration/       # Integration tests
 ├── examples/               # Example workflows
 ├── docs/                   # Documentation
-│   ├── concept.md         # Full framework concept (Russian, 1476 lines)
-│   ├── getting-started.md # Quick start guide
-│   ├── workflow-syntax.md # Complete YAML reference
-│   └── cli-reference.md   # CLI command reference
+│   ├── archive/concept-v2.md     # Full framework concept (Russian, 1476 lines)
+│   ├── archive/getting-started.md # Quick start guide
+│   ├── archive/workflow-syntax.md # Complete YAML reference
+│   └── archive/cli-reference.md   # CLI command reference
 ├── AGENTS.md              # This file
 ├── README.md              # Project overview
 ├── package.json           # Dependencies and scripts
