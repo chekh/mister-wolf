@@ -62,23 +62,20 @@ Mr. Wolf is a local-first Project Semantic Memory layer for AI coding agents. It
 ## FOR AGENTS: USE PROJECT MEMORY
 
 This project uses **Mr. Wolf** — a local-first Project Semantic Memory layer.
-**Before starting work**, search memory for context related to your task.
+See full rules in [`MEMORY.md`](./MEMORY.md).
+
+Quick commands:
 
 ```bash
-# Search relevant memory
+# Search relevant memory before starting work
 node dist/bootstrap/cli.js memory search "<topic or task keywords>"
-
-# If memory seems stale, rebuild the index from markdown source files
-node dist/bootstrap/cli.js memory rebuild-index
 
 # Add a new memory object when you learn something worth keeping
 node dist/bootstrap/cli.js memory add --type lesson --title "..." --body "..."
-```
 
-**Guidelines:**
-- Always check memory before making architectural decisions or repeating past work.
-- Prefer `lesson` for things learned, `decision` for choices made, `observation` for facts noticed, `open-question` for unresolved issues.
-- Do not copy raw user documents into `.wolf/memory`; store summaries, links, or extracted memory objects instead.
+# Update the agent brief at the end of a significant session
+node dist/bootstrap/cli.js memory brief --write
+```
 
 ## CORE COMMANDS
 
