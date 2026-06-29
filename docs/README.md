@@ -19,8 +19,8 @@
 
 ## Technical Specifications & Plans
 
-- [`superpowers/specs/`](./superpowers/specs/) — MVP technical specifications
-- [`superpowers/plans/`](./superpowers/plans/) — MVP implementation plans
+- [Project Semantic Memory Core Design](./superpowers/specs/2026-06-29-project-semantic-memory-core-design.md) — Architecture spec
+- [Project Semantic Memory MVP-A Implementation Plan](./superpowers/plans/2026-06-29-project-semantic-memory-mvp-a.md) — Implementation plan
 
 ---
 

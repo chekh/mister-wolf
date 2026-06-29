@@ -22,7 +22,7 @@ Mr. Wolf is a local-first Project Semantic Memory layer for AI coding agents. It
 │   ├── adapters/sqlite/   # FTS5 search index
 │   ├── adapters/cli/      # thin CLI commands
 │   ├── bootstrap/         # cli entry point
-│   └── config/            # project config loader
+│   └── config/            # reserved for future config loader
 ├── tests/                  # Vitest test suite
 │   ├── unit/              # domain, adapters, use cases
 │   └── integration/       # end-to-end memory workflow
