@@ -49,6 +49,9 @@ export class SQLiteSearchIndex implements SearchIndex {
   }
 
   async search(query: string, options?: { type?: string; includeSuperseded?: boolean }): Promise<SearchResult[]> {
+    const escapedQuery = query.replace(/"/g, '""');
+    const ftsQuery = `"${escapedQuery}"`;
+
     let sql = `
       SELECT s.memory_id, s.type, s.title, s.body, s.status, s.review_state,
              m.confidence, m.importance, m.created_at, m.updated_at, m.created_by,
@@ -58,7 +61,7 @@ export class SQLiteSearchIndex implements SearchIndex {
       JOIN memory_meta m ON s.memory_id = m.memory_id
       WHERE memory_search MATCH ?
     `;
-    const params: (string | number)[] = [query];
+    const params: (string | number)[] = [ftsQuery];
 
     if (!options?.includeSuperseded) {
       sql += ` AND s.status = 'active'`;
