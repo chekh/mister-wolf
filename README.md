@@ -10,7 +10,7 @@
 
 ## Status
 
-MVP-A (Core Memory + Search) implemented.
+MVP-A (Core Memory + Search) implemented. Next: Project Scan + Agent Brief (MVP-B).
 
 ## Quick Start
 
@@ -21,8 +21,12 @@ node dist/bootstrap/cli.js memory init
 node dist/bootstrap/cli.js memory add --type lesson --title "First lesson" --body "What we learned"
 node dist/bootstrap/cli.js memory rebuild-index
 node dist/bootstrap/cli.js memory search "lesson"
-node dist/bootstrap/cli.js memory supersede <old-id> <new-id>
 ```
+
+## Documentation
+
+- [Concept v3](docs/concept-v3.md) — architecture and concept
+- [Docs index](docs/README.md) — specs, plans, and archived materials
 
 ## Development
 
