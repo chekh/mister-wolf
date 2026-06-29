@@ -52,17 +52,17 @@ Mr. Wolf stores project memory as typed, file-native artifacts with metadata, li
 
 Only the types needed for the MVP are implemented initially. The data model must not block future schema-driven types.
 
-| Type | Purpose |
-|---|---|
-| `work-thread` | Long-running line of work across sessions |
-| `info-request` | Deferred side investigation |
-| `article` | Reusable answer or project knowledge |
-| `decision` | Accepted or proposed project decision |
-| `blocker` | Obstacle preventing progress |
-| `open-question` | Lightweight unresolved question |
-| `session-checkpoint` | Summary of what changed in a session |
-| `document` | Registered project document |
-| `external-artifact` | File produced by external skill/framework |
+| Type                 | Purpose                                   |
+| -------------------- | ----------------------------------------- |
+| `work-thread`        | Long-running line of work across sessions |
+| `info-request`       | Deferred side investigation               |
+| `article`            | Reusable answer or project knowledge      |
+| `decision`           | Accepted or proposed project decision     |
+| `blocker`            | Obstacle preventing progress              |
+| `open-question`      | Lightweight unresolved question           |
+| `session-checkpoint` | Summary of what changed in a session      |
+| `document`           | Registered project document               |
+| `external-artifact`  | File produced by external skill/framework |
 
 `document` and `external-artifact` differ mainly in provenance: `document` is project-native, `external-artifact` is produced by a skill/framework like Superpowers or OpenSpec.
 
@@ -243,14 +243,23 @@ Body sections:
 # Title
 
 ## Summary
+
 ## Context
+
 ## Assumptions
+
 ## Answer
+
 ## Options Considered
+
 ## Recommendation
+
 ## Risks
+
 ## Evidence
+
 ## When To Revisit
+
 ## Links
 ```
 
@@ -471,14 +480,14 @@ The architecture may prepare boundaries for these, but they are not implemented.
 
 ## 14. Phased Roadmap
 
-| Phase | Focus | Deliverable |
-|---|---|---|
-| 1 | Work threads, info requests, articles | Create and link the three core artifacts; thread brief |
-| 2 | Decisions and blockers | Decisions based on articles; blockers resolved by articles |
-| 3 | Document and artifact registration | Configurable scan of project files and external skill outputs |
-| 4 | Relations and session checkpoints | `relations.jsonl`, session checkpoints, thread diff |
-| 5 | Search and indexing | SQLite FTS5, search, list filters, rebuild-index |
-| 6 | Agent brief and governance readiness | Thread-aware agent brief, validation rules, lifecycle transitions |
+| Phase | Focus                                 | Deliverable                                                       |
+| ----- | ------------------------------------- | ----------------------------------------------------------------- |
+| 1     | Work threads, info requests, articles | Create and link the three core artifacts; thread brief            |
+| 2     | Decisions and blockers                | Decisions based on articles; blockers resolved by articles        |
+| 3     | Document and artifact registration    | Configurable scan of project files and external skill outputs     |
+| 4     | Relations and session checkpoints     | `relations.jsonl`, session checkpoints, thread diff               |
+| 5     | Search and indexing                   | SQLite FTS5, search, list filters, rebuild-index                  |
+| 6     | Agent brief and governance readiness  | Thread-aware agent brief, validation rules, lifecycle transitions |
 
 Phase 1 is the only scope for the first implementation plan.
 

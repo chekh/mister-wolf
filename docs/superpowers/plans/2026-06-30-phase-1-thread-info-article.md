@@ -12,38 +12,39 @@
 
 ## File Map
 
-| File | Responsibility |
-|------|----------------|
-| `src/domain/memory-types.ts` | Add `work-thread`, `info-request`, `article` to `MEMORY_TYPES`. |
-| `src/domain/schemas/memory-object-schema.ts` | Extend base schema with new type enum values. |
-| `src/domain/schemas/thread-schema.ts` | Zod schema and TypeScript type for `WorkThread`. |
-| `src/domain/schemas/info-request-schema.ts` | Zod schema and TypeScript type for `InfoRequest`. |
-| `src/domain/schemas/article-schema.ts` | Zod schema and TypeScript type for `Article`. |
-| `src/adapters/fs/project-paths.ts` | Add directory mappings for new types. |
-| `src/adapters/fs/fs-project-initializer.ts` | Create new object directories on init. |
-| `src/app/use-cases/create-work-thread.ts` | Create a `work-thread` object. |
-| `src/app/use-cases/create-info-request.ts` | Create an `info-request` linked to a thread. |
-| `src/app/use-cases/create-article.ts` | Create an `article` optionally linked to a thread and requests. |
-| `src/app/use-cases/get-thread-brief.ts` | Assemble brief from thread + linked artifacts. |
-| `src/app/use-cases/list-memory-objects.ts` | Already exists; may need filter extension. |
-| `src/adapters/cli/commands/memory-thread.ts` | CLI subcommand for `wolf memory thread`. |
-| `src/adapters/cli/commands/memory-info-request.ts` | CLI subcommand for `wolf memory info-request`. |
-| `src/adapters/cli/commands/memory-article.ts` | CLI subcommand for `wolf memory article`. |
-| `src/adapters/cli/cli-entry.ts` | Register new subcommands. |
-| `tests/unit/domain/thread-schema.test.ts` | Schema validation tests. |
-| `tests/unit/domain/info-request-schema.test.ts` | Schema validation tests. |
-| `tests/unit/domain/article-schema.test.ts` | Schema validation tests. |
-| `tests/unit/use-cases/create-work-thread.test.ts` | Use-case tests. |
-| `tests/unit/use-cases/create-info-request.test.ts` | Use-case tests. |
-| `tests/unit/use-cases/create-article.test.ts` | Use-case tests. |
-| `tests/unit/use-cases/get-thread-brief.test.ts` | Brief assembly tests. |
-| `tests/integration/thread-info-article-workflow.test.ts` | End-to-end CLI workflow test. |
+| File                                                     | Responsibility                                                  |
+| -------------------------------------------------------- | --------------------------------------------------------------- |
+| `src/domain/memory-types.ts`                             | Add `work-thread`, `info-request`, `article` to `MEMORY_TYPES`. |
+| `src/domain/schemas/memory-object-schema.ts`             | Extend base schema with new type enum values.                   |
+| `src/domain/schemas/thread-schema.ts`                    | Zod schema and TypeScript type for `WorkThread`.                |
+| `src/domain/schemas/info-request-schema.ts`              | Zod schema and TypeScript type for `InfoRequest`.               |
+| `src/domain/schemas/article-schema.ts`                   | Zod schema and TypeScript type for `Article`.                   |
+| `src/adapters/fs/project-paths.ts`                       | Add directory mappings for new types.                           |
+| `src/adapters/fs/fs-project-initializer.ts`              | Create new object directories on init.                          |
+| `src/app/use-cases/create-work-thread.ts`                | Create a `work-thread` object.                                  |
+| `src/app/use-cases/create-info-request.ts`               | Create an `info-request` linked to a thread.                    |
+| `src/app/use-cases/create-article.ts`                    | Create an `article` optionally linked to a thread and requests. |
+| `src/app/use-cases/get-thread-brief.ts`                  | Assemble brief from thread + linked artifacts.                  |
+| `src/app/use-cases/list-memory-objects.ts`               | Already exists; may need filter extension.                      |
+| `src/adapters/cli/commands/memory-thread.ts`             | CLI subcommand for `wolf memory thread`.                        |
+| `src/adapters/cli/commands/memory-info-request.ts`       | CLI subcommand for `wolf memory info-request`.                  |
+| `src/adapters/cli/commands/memory-article.ts`            | CLI subcommand for `wolf memory article`.                       |
+| `src/adapters/cli/cli-entry.ts`                          | Register new subcommands.                                       |
+| `tests/unit/domain/thread-schema.test.ts`                | Schema validation tests.                                        |
+| `tests/unit/domain/info-request-schema.test.ts`          | Schema validation tests.                                        |
+| `tests/unit/domain/article-schema.test.ts`               | Schema validation tests.                                        |
+| `tests/unit/use-cases/create-work-thread.test.ts`        | Use-case tests.                                                 |
+| `tests/unit/use-cases/create-info-request.test.ts`       | Use-case tests.                                                 |
+| `tests/unit/use-cases/create-article.test.ts`            | Use-case tests.                                                 |
+| `tests/unit/use-cases/get-thread-brief.test.ts`          | Brief assembly tests.                                           |
+| `tests/integration/thread-info-article-workflow.test.ts` | End-to-end CLI workflow test.                                   |
 
 ---
 
 ## Task 1: Extend domain types and schemas
 
 **Files:**
+
 - Modify: `src/domain/memory-types.ts:1-9`
 - Modify: `src/domain/schemas/memory-object-schema.ts:6`
 - Create: `src/domain/schemas/thread-schema.ts`
@@ -223,6 +224,7 @@ git commit -m "feat(domain): add work-thread, info-request, article schemas"
 ## Task 2: Update storage paths and initializer
 
 **Files:**
+
 - Modify: `src/adapters/fs/project-paths.ts:12-26`
 - Modify: `src/adapters/fs/fs-project-initializer.ts:25-31`
 - Test: `tests/unit/adapters/project-paths.test.ts`
@@ -276,6 +278,7 @@ git commit -m "feat(fs): add storage paths and initializer dirs for new artifact
 ## Task 3: Implement create-work-thread use-case
 
 **Files:**
+
 - Create: `src/app/use-cases/create-work-thread.ts`
 - Test: `tests/unit/use-cases/create-work-thread.test.ts`
 
@@ -421,6 +424,7 @@ git commit -m "feat(use-cases): implement create-work-thread"
 ## Task 4: Implement create-info-request use-case
 
 **Files:**
+
 - Create: `src/app/use-cases/create-info-request.ts`
 - Test: `tests/unit/use-cases/create-info-request.test.ts`
 
@@ -461,11 +465,14 @@ describe('createInfoRequest', () => {
   });
 
   it('creates an info request linked to a thread', async () => {
-    const thread = await createWorkThread({ store, log, clock, idGen }, {
-      title: 'Memory Harness',
-      goal: 'Build memory',
-      createdBy: 'agent:test',
-    });
+    const thread = await createWorkThread(
+      { store, log, clock, idGen },
+      {
+        title: 'Memory Harness',
+        goal: 'Build memory',
+        createdBy: 'agent:test',
+      }
+    );
 
     const result = await createInfoRequest(
       { store, log, clock, idGen },
@@ -487,11 +494,14 @@ describe('createInfoRequest', () => {
   });
 
   it('rejects an info request with missing required fields', async () => {
-    const thread = await createWorkThread({ store, log, clock, idGen }, {
-      title: 'Memory Harness',
-      goal: 'Build memory',
-      createdBy: 'agent:test',
-    });
+    const thread = await createWorkThread(
+      { store, log, clock, idGen },
+      {
+        title: 'Memory Harness',
+        goal: 'Build memory',
+        createdBy: 'agent:test',
+      }
+    );
 
     await expect(
       createInfoRequest(
@@ -613,6 +623,7 @@ git commit -m "feat(use-cases): implement create-info-request"
 ## Task 5: Implement create-article use-case
 
 **Files:**
+
 - Create: `src/app/use-cases/create-article.ts`
 - Test: `tests/unit/use-cases/create-article.test.ts`
 
@@ -654,19 +665,25 @@ describe('createArticle', () => {
   });
 
   it('creates an article linked to a thread and requests', async () => {
-    const thread = await createWorkThread({ store, log, clock, idGen }, {
-      title: 'Memory Harness',
-      goal: 'Build memory',
-      createdBy: 'agent:test',
-    });
-    const request = await createInfoRequest({ store, log, clock, idGen }, {
-      title: 'Where to store relations?',
-      thread: thread.object.id,
-      question: 'Should relations live in relations.jsonl or SQLite?',
-      detourReason: 'Comparison would derail session.',
-      expectedAnswer: ['Recommendation'],
-      createdBy: 'agent:test',
-    });
+    const thread = await createWorkThread(
+      { store, log, clock, idGen },
+      {
+        title: 'Memory Harness',
+        goal: 'Build memory',
+        createdBy: 'agent:test',
+      }
+    );
+    const request = await createInfoRequest(
+      { store, log, clock, idGen },
+      {
+        title: 'Where to store relations?',
+        thread: thread.object.id,
+        question: 'Should relations live in relations.jsonl or SQLite?',
+        detourReason: 'Comparison would derail session.',
+        expectedAnswer: ['Recommendation'],
+        createdBy: 'agent:test',
+      }
+    );
 
     const result = await createArticle(
       { store, log, clock, idGen },
@@ -785,6 +802,7 @@ git commit -m "feat(use-cases): implement create-article"
 ## Task 6: Implement get-thread-brief use-case
 
 **Files:**
+
 - Create: `src/app/use-cases/get-thread-brief.ts`
 - Test: `tests/unit/use-cases/get-thread-brief.test.ts`
 
@@ -827,29 +845,38 @@ describe('getThreadBrief', () => {
   });
 
   it('assembles a brief with thread, open requests, and articles', async () => {
-    const thread = await createWorkThread({ store, log, clock, idGen }, {
-      title: 'Memory Harness',
-      goal: 'Build memory',
-      currentState: 'Designing types',
-      nextSteps: ['Add CLI'],
-      createdBy: 'agent:test',
-    });
-    const request = await createInfoRequest({ store, log, clock, idGen }, {
-      title: 'Where to store relations?',
-      thread: thread.object.id,
-      question: 'Relations storage?',
-      detourReason: 'Derails session.',
-      expectedAnswer: ['Recommendation'],
-      createdBy: 'agent:test',
-    });
-    const article = await createArticle({ store, log, clock, idGen }, {
-      title: 'Relations Storage Recommendation',
-      thread: thread.object.id,
-      summary: 'Use relations.jsonl.',
-      body: '## Answer\n\nrelations.jsonl is canonical.',
-      answers: [request.object.id],
-      createdBy: 'agent:test',
-    });
+    const thread = await createWorkThread(
+      { store, log, clock, idGen },
+      {
+        title: 'Memory Harness',
+        goal: 'Build memory',
+        currentState: 'Designing types',
+        nextSteps: ['Add CLI'],
+        createdBy: 'agent:test',
+      }
+    );
+    const request = await createInfoRequest(
+      { store, log, clock, idGen },
+      {
+        title: 'Where to store relations?',
+        thread: thread.object.id,
+        question: 'Relations storage?',
+        detourReason: 'Derails session.',
+        expectedAnswer: ['Recommendation'],
+        createdBy: 'agent:test',
+      }
+    );
+    const article = await createArticle(
+      { store, log, clock, idGen },
+      {
+        title: 'Relations Storage Recommendation',
+        thread: thread.object.id,
+        summary: 'Use relations.jsonl.',
+        body: '## Answer\n\nrelations.jsonl is canonical.',
+        answers: [request.object.id],
+        createdBy: 'agent:test',
+      }
+    );
 
     const brief = await getThreadBrief({ store }, thread.object.id);
 
@@ -890,15 +917,14 @@ export interface ThreadBrief {
   rendered: string;
 }
 
-export async function getThreadBrief(
-  deps: { store: MemoryStore },
-  threadId: string
-): Promise<ThreadBrief> {
+export async function getThreadBrief(deps: { store: MemoryStore }, threadId: string): Promise<ThreadBrief> {
   const all = await deps.store.list();
   const thread = all.find((o) => o.id === threadId && o.type === 'work-thread') as WorkThread | undefined;
   if (!thread) throw new Error(`Thread not found: ${threadId}`);
 
-  const requests = all.filter((o) => o.type === 'info-request' && (o as InfoRequest).thread === threadId) as InfoRequest[];
+  const requests = all.filter(
+    (o) => o.type === 'info-request' && (o as InfoRequest).thread === threadId
+  ) as InfoRequest[];
   const articles = all.filter((o) => o.type === 'article' && (o as Article).thread === threadId) as Article[];
 
   const openInfoRequests = requests.filter((r) => r.status === 'open');
@@ -979,6 +1005,7 @@ git commit -m "feat(use-cases): implement get-thread-brief"
 ## Task 7: Add CLI commands
 
 **Files:**
+
 - Create: `src/adapters/cli/commands/memory-thread.ts`
 - Create: `src/adapters/cli/commands/memory-info-request.ts`
 - Create: `src/adapters/cli/commands/memory-article.ts`
@@ -1265,6 +1292,7 @@ git commit -m "feat(cli): add thread, info-request, article commands"
 ## Task 8: Final verification and documentation
 
 **Files:**
+
 - Modify: `AGENTS.md`
 - Modify: `MEMORY.md`
 

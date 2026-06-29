@@ -13,7 +13,21 @@ export const MEMORY_TYPES = [
 
 export type MemoryType = (typeof MEMORY_TYPES)[number];
 
-export type MemoryStatus = 'active' | 'superseded';
+export type MemoryStatus =
+  | 'active'
+  | 'open'
+  | 'resolved'
+  | 'stale'
+  | 'conflicting'
+  | 'superseded'
+  | 'archived'
+  | 'paused'
+  | 'completed'
+  | 'answered'
+  | 'rejected'
+  | 'obsolete'
+  | 'proposed'
+  | 'accepted';
 export type ReviewState = 'accepted' | 'proposed' | 'rejected';
 export type Confidence = 'low' | 'medium' | 'high';
 export type SourceKind = 'manual' | 'session' | 'file' | 'scan';

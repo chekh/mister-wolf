@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
-import { join } from 'path';
 import { ProjectInitializer } from '../../ports/project-initializer.port.js';
-import { briefsDir, cacheDir, configPath, memoryDir, objectsDir } from './project-paths.js';
+import { MEMORY_TYPES } from '../../domain/memory-types.js';
+import { briefsDir, cacheDir, configPath, memoryDir, objectsDir, objectDirForType } from './project-paths.js';
 
 const DEFAULT_CONFIG = `# Mr. Wolf Project Memory Configuration
 version: 1
@@ -25,16 +25,9 @@ export class FsProjectInitializer implements ProjectInitializer {
   async initialize(baseDir: string): Promise<void> {
     await fs.mkdir(memoryDir(baseDir), { recursive: true });
     await fs.mkdir(objectsDir(baseDir), { recursive: true });
-    await fs.mkdir(join(objectsDir(baseDir), 'decisions'), { recursive: true });
-    await fs.mkdir(join(objectsDir(baseDir), 'lessons'), { recursive: true });
-    await fs.mkdir(join(objectsDir(baseDir), 'observations'), { recursive: true });
-    await fs.mkdir(join(objectsDir(baseDir), 'sessions'), { recursive: true });
-    await fs.mkdir(join(objectsDir(baseDir), 'documents'), { recursive: true });
-    await fs.mkdir(join(objectsDir(baseDir), 'questions'), { recursive: true });
-    await fs.mkdir(join(objectsDir(baseDir), 'context'), { recursive: true });
-    await fs.mkdir(join(objectsDir(baseDir), 'threads'), { recursive: true });
-    await fs.mkdir(join(objectsDir(baseDir), 'info-requests'), { recursive: true });
-    await fs.mkdir(join(objectsDir(baseDir), 'articles'), { recursive: true });
+    for (const type of MEMORY_TYPES) {
+      await fs.mkdir(objectDirForType(baseDir, type), { recursive: true });
+    }
     await fs.mkdir(briefsDir(baseDir), { recursive: true });
     await fs.mkdir(cacheDir(baseDir), { recursive: true });
     await fs.writeFile(configPath(baseDir), DEFAULT_CONFIG, 'utf-8');

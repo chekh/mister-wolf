@@ -1,11 +1,26 @@
 import { z } from 'zod';
-import { MEMORY_TYPES } from '../memory-types.js';
+import { MEMORY_TYPES, MemoryStatus } from '../memory-types.js';
 
 export const MemoryObjectSchema = z.object({
   id: z.string().min(1),
   type: z.enum(MEMORY_TYPES),
   title: z.string().min(1),
-  status: z.enum(['active', 'superseded']),
+  status: z.enum([
+    'active',
+    'open',
+    'resolved',
+    'stale',
+    'conflicting',
+    'superseded',
+    'archived',
+    'paused',
+    'completed',
+    'answered',
+    'rejected',
+    'obsolete',
+    'proposed',
+    'accepted',
+  ]),
   review_state: z.enum(['accepted', 'proposed', 'rejected']),
   confidence: z.enum(['low', 'medium', 'high']),
   importance: z.number().min(0).max(1),
