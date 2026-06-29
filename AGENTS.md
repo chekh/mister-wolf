@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
 **Generated:** 2026-06-29
-**Commit:** c8b173d57c04b8b15a5086c0eff26077c715aa33
+**Commit:** see `git log --oneline -1` for current HEAD
 **Branch:** feat/project-memory
 
 ## OVERVIEW
