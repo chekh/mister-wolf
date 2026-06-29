@@ -277,17 +277,17 @@ MVP-A use-cases:
 
 ## 9. Дорожная карта
 
-| Фаза | Название                  | Суть                                                                                                |
-| ---- | ------------------------- | --------------------------------------------------------------------------------------------------- |
-| 1    | Reframe                   | Новый README, архивация старых concept/spec, публикация `docs/concept-v3.md`                        |
-| 2    | Core Memory               | Доменная модель, Markdown-хранилище, JSONL-лог, команды `init`, `add`, `list`, `get`, `supersede`   |
-| 3    | Index & Search            | `rebuild-index`, SQLite FTS5, `search`, теги, связи, ранжирование                                   |
-| 4    | Project Scan              | `scan` регистрирует внешние документы по ссылке, находит orphan docs                                |
-| 5    | Agent Brief (MVP-B)       | `brief`, `brief --write`, экспорт `AGENTS.md`, `active-warnings.md`                                 |
-| 6    | Case Learning (MVP-C)     | `session-summary`, lessons, decisions, observations                                                 |
-| 7    | Memory Governance (MVP-D) | `validate`, `check-before-edit`, stale-memory detection, `invalidated`, decay confidence/importance |
-| 8    | Code Linking (MVP-E)      | `link`, memory object → file, memory object → symbol, code-intelligence backends                    |
-| 9    | Integrations              | MCP server проверен для OpenCode, Claude Code, Codex, Cursor                                        |
+| Фаза | Название                  | Суть                                                                                                              |
+| ---- | ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| 1    | Reframe                   | Новый README, архивация старых concept/spec, публикация `docs/concept-v3.md` — **завершена**                      |
+| 2    | Core Memory               | Доменная модель, Markdown-хранилище, JSONL-лог, команды `init`, `add`, `list`, `get`, `supersede` — **завершена** |
+| 3    | Index & Search            | `rebuild-index`, SQLite FTS5, `search`, теги, связи, ранжирование — **завершена**                                 |
+| 4    | Project Scan              | `scan` регистрирует внешние документы по ссылке, находит orphan docs                                              |
+| 5    | Agent Brief (MVP-B)       | `brief`, `brief --write`, экспорт `AGENTS.md`, `active-warnings.md`                                               |
+| 6    | Case Learning (MVP-C)     | `session-summary`, lessons, decisions, observations                                                               |
+| 7    | Memory Governance (MVP-D) | `validate`, `check-before-edit`, stale-memory detection, `invalidated`, decay confidence/importance               |
+| 8    | Code Linking (MVP-E)      | `link`, memory object → file, memory object → symbol, code-intelligence backends                                  |
+| 9    | Integrations              | MCP server проверен для OpenCode, Claude Code, Codex, Cursor                                                      |
 
 ---
 
@@ -344,4 +344,4 @@ MVP-A use-cases:
 
 ## 13. Статус
 
-MVP-A (Core Memory + Search) реализуется. Фокус: сделать память проекта доступной через CLI и подготовить поверхность для MCP.
+MVP-A (Core Memory + Search) реализован. Фокус следующей фазы: Project Scan + Agent Brief (MVP-B).
