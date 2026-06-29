@@ -25,6 +25,7 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@dietrichgebert/ponytail": "^4.8.4",
     "@types/better-sqlite3": "^7.6.0",
     "@types/glob": "^8.1.0",
     "@types/js-yaml": "^4.0.0",

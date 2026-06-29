@@ -11,3 +11,4 @@ coverage/
 .worktrees/
 docs/discussions/
 .codegraph/
+opencode.json
