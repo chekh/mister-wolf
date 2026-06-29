@@ -201,6 +201,7 @@
 ### 2.1 Unified Front-Agent
 
 Ни один проект не предоставляет единую точку входа, которая:
+
 - Принимает пользовательский запрос.
 - Определяет тип задачи.
 - Выбирает сценарий.
@@ -217,11 +218,13 @@
 ### 2.2 Process-Level Routing
 
 Существующие проекты имеют routing на уровне:
+
 - Per agent (статический frontmatter).
 - Per category (предопределённые категории).
 - Per command (slash-команда триггерит workflow).
 
 Но нет routing на уровне process:
+
 - Scenario → Steps → Skill → Model Route → Policy → Artifact Contract → Adapter.
 
 **Wolf gap:** Process-level routing engine, который на каждом шаге решает: какой runner, какой skill, какая модель, какие policy checks, какой artifact должен появиться.
@@ -231,6 +234,7 @@
 ### 2.3 Step-Level Model Routing
 
 Все проекты с model routing делают это на уровне агента/категории, не на уровне шага:
+
 - Нет dynamic routing на основе содержимого задачи.
 - Нет routing на основе token budget.
 - Нет routing на основе artifact complexity.
@@ -243,6 +247,7 @@
 ### 2.4 Artifact-Aware Skill/Model Selection
 
 Ни один проект не связывает artifacts с skill selection или model routing:
+
 - Нет "для создания architecture doc нужен skill X и модель Y".
 - Нет artifact contracts (какой artifact должен вернуться после шага).
 - Нет artifact-based routing.
@@ -254,6 +259,7 @@
 ### 2.5 Host-Agnostic Policy Overlay
 
 Approval gates, permissions, tool restrictions существуют, но:
+
 - Hardcoded в markdown агентов (OpenAgents Control, Agentic).
 - Зависят от host tool permissions (oh-my-opencode-slim).
 - Нет centralized policy engine.
@@ -268,6 +274,7 @@ Approval gates, permissions, tool restrictions существуют, но:
 ### 2.6 Artifact Memory Graph
 
 Artifacts существуют, но:
+
 - Файлы на диске без связей (Superpowers, Agentic).
 - Task dependencies в JSON, но не artifact relationships (Oh My OpenAgent).
 - Нет query interface.
@@ -281,6 +288,7 @@ Artifacts существуют, но:
 ### 2.7 Projection / Adaptation Between Host Tools
 
 Каждый проект привязан к одному host tool. Нет слоя адаптации между:
+
 - OpenCode → Claude Code.
 - Claude Code → Cursor.
 - IDE → CLI.
@@ -292,6 +300,7 @@ Artifacts существуют, но:
 ### 2.8 Imported Skills / Agents Registry
 
 Skills и агенты существуют, но:
+
 - Нет unified registry (каждый проект — свой каталог).
 - Нет import/install из внешних источников (кроме bash installer в Awesome Subagents).
 - Нет namespace resolution (кроме opencode-agent-skills).
@@ -305,6 +314,7 @@ Skills и агенты существуют, но:
 ### 2.9 Trace and Evidence Model Across Tools
 
 Traces существуют фрагментарно:
+
 - Git history (Superpowers, Agentic).
 - Session tools (Oh My OpenAgent).
 - Eval framework (OpenAgents Control).
@@ -323,6 +333,7 @@ Traces существуют фрагментарно:
 **Определение:** Reusable behavior packs в формате SKILL.md. Focus на delivery skills в контекст агента.
 
 **Примеры:**
+
 - Superpowers (cross-platform, 13 skills, auto-discovery)
 - opencode-agent-skills (OpenCode-only, semantic matching, compaction resilience)
 
@@ -336,6 +347,7 @@ Traces существуют фрагментарно:
 **Определение:** Platform-specific plugins, которые инжектируют behavior в host tool через hooks/API.
 
 **Примеры:**
+
 - opencode-background-agents (OpenCode plugin, background delegation)
 - Context Analysis Plugin (OpenCode plugin, token visibility)
 - opentmux (OpenCode plugin, tmux visualization)
@@ -350,6 +362,7 @@ Traces существуют фрагментарно:
 **Определение:** Multi-agent orchestration через delegation, category-based routing, model-per-agent.
 
 **Примеры:**
+
 - Oh My OpenAgent (11+ agents, category routing, tmux, MCPs)
 - oh-my-opencode-slim (Pantheon agents, Council consensus, presets)
 - OpenAgents Control (15+ subagents, context hierarchy, approval gates)
@@ -364,6 +377,7 @@ Traces существуют фрагментарно:
 **Определение:** Управление контекстом, token visibility, context compression, knowledge accumulation.
 
 **Примеры:**
+
 - Context Analysis Plugin (token analysis, multi-tokenizer)
 - Agentic (thoughts/ directory, context engineering, phase-based work)
 - OpenAgents Control (ContextScout, MVI, context hierarchy)
@@ -378,6 +392,7 @@ Traces существуют фрагментарно:
 **Определение:** Live monitoring выполнения агентов через UI (tmux, terminal, dashboard).
 
 **Примеры:**
+
 - opentmux (tmux pane per subagent)
 - Oh My OpenAgent (tmux integration for background agents)
 
@@ -391,6 +406,7 @@ Traces существуют фрагментарно:
 **Определение:** Safety, governance, approval gates, tool restrictions.
 
 **Примеры:**
+
 - OpenAgents Control (approval gates before any execution, permission matrix)
 - Agentic (interactive planning checkpoints, tool restrictions in frontmatter)
 - Oh My OpenAgent (ask/allow/deny permissions, Hashline edit tool)
@@ -405,6 +421,7 @@ Traces существуют фрагментарно:
 **Определение:** Курируемые коллекции subagent definitions для делегирования.
 
 **Примеры:**
+
 - Awesome Claude Code Subagents (131+ agents, 10 categories, marketplace)
 
 **Что решают:** Как найти и установить специализированного агента.
@@ -417,6 +434,7 @@ Traces существуют фрагментарно:
 **Определение:** Процессные методологии, дисциплины, workflow patterns.
 
 **Примеры:**
+
 - Superpowers (TDD, brainstorming, code review, subagent-driven development)
 - Agentic (Research → Plan → Execute → Commit → Review)
 - OpenAgents Control (Discover → Propose → Approve → Execute → Validate → Ship)
@@ -431,6 +449,7 @@ Traces существуют фрагментарно:
 **Определение:** Фреймворки для structured planning через markdown-артефакты с delta-спецификациями и архивированием.
 
 **Примеры:**
+
 - OpenSpec (SDD framework: proposal → specs → design → tasks, delta-specs, archive flow)
 
 **Что решают:** Как планировать изменения структурированно, как отслеживать specs как source of truth, как работать с brownfield-кодом через delta-спецификации.
@@ -440,20 +459,20 @@ Traces существуют фрагментарно:
 
 ## 4. Coverage Matrix
 
-| Layer | Skill Libs | Host Plugins | Agent Orchestration | Context/Memory | Runtime Visibility | Approval/Governance | Subagent Catalogs | Methodology Packs | Spec-Driven Dev |
-|-------|-----------|--------------|---------------------|----------------|-------------------|---------------------|-------------------|-------------------|-----------------|
-| Skills | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Subagents | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Model Routing | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Context Mgmt | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Token Visibility | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Artifacts | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Approval Gates | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ⚠️ |
-| Workflow Engine | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Persistent State | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ⚠️ |
-| Trace/Evidence | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ⚠️ |
-| Cross-Platform | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Runtime UI | ❌ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Layer            | Skill Libs | Host Plugins | Agent Orchestration | Context/Memory | Runtime Visibility | Approval/Governance | Subagent Catalogs | Methodology Packs | Spec-Driven Dev |
+| ---------------- | ---------- | ------------ | ------------------- | -------------- | ------------------ | ------------------- | ----------------- | ----------------- | --------------- |
+| Skills           | ✅         | ❌           | ✅                  | ❌             | ❌                 | ❌                  | ❌                | ✅                | ✅              |
+| Subagents        | ❌         | ✅           | ✅                  | ❌             | ❌                 | ❌                  | ✅                | ❌                | ❌              |
+| Model Routing    | ❌         | ❌           | ✅                  | ❌             | ❌                 | ❌                  | ✅                | ❌                | ❌              |
+| Context Mgmt     | ❌         | ✅           | ✅                  | ✅             | ❌                 | ❌                  | ❌                | ❌                | ❌              |
+| Token Visibility | ❌         | ✅           | ❌                  | ✅             | ❌                 | ❌                  | ❌                | ❌                | ❌              |
+| Artifacts        | ❌         | ❌           | ✅                  | ✅             | ❌                 | ❌                  | ❌                | ❌                | ✅              |
+| Approval Gates   | ❌         | ❌           | ✅                  | ❌             | ❌                 | ✅                  | ❌                | ❌                | ⚠️              |
+| Workflow Engine  | ❌         | ❌           | ❌                  | ❌             | ❌                 | ❌                  | ❌                | ❌                | ❌              |
+| Persistent State | ❌         | ✅           | ❌                  | ✅             | ❌                 | ❌                  | ❌                | ❌                | ⚠️              |
+| Trace/Evidence   | ❌         | ❌           | ❌                  | ❌             | ❌                 | ❌                  | ❌                | ❌                | ⚠️              |
+| Cross-Platform   | ✅         | ❌           | ❌                  | ❌             | ❌                 | ❌                  | ❌                | ✅                | ✅              |
+| Runtime UI       | ❌         | ✅           | ❌                  | ❌             | ✅                 | ❌                  | ❌                | ❌                | ❌              |
 
 **Вывод:** Ни один класс решений не покрывает Workflow Engine. Только Spec-Driven Dev (OpenSpec) покрывает Artifacts хорошо, но без runtime. Persistent State и Trace/Evidence покрыты фрагментарно. Только Superpowers и OpenSpec покрывают Cross-Platform.
 
@@ -462,9 +481,11 @@ Traces существуют фрагментарно:
 ## 5. Key Insight
 
 Все 11 проектов решают **одну и ту же проблему** разными способами:
+
 > Как сделать так, чтобы AI-агент делал качественную работу в сложных проектах.
 
 Но каждый проект решает **один аспект** этой проблемы:
+
 - Superpowers — дисциплина и методология.
 - opencode-agent-skills — доставка skills в контекст.
 - opencode-background-agents — фоновое делегирование с persistence.

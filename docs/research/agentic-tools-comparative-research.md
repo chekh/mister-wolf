@@ -49,18 +49,18 @@ See `agentic-tools-project-cards.md` for detailed Project Cards.
 
 Every project solves **one aspect** well, but leaves the rest unaddressed:
 
-| Layer | Covered By | Gap |
-|-------|-----------|-----|
-| Skills | Superpowers, opencode-agent-skills | No orchestration, no policy enforcement |
-| Subagents | opencode-background-agents, Awesome Subagents | No runtime state, no workflow engine |
-| Model Routing | Oh My OpenAgent, oh-my-opencode-slim | Static per-agent, no dynamic step-level routing |
-| Context | Context Analysis Plugin, Agentic | Reactive, no predictive compaction |
-| Visibility | opentmux | Host-specific (tmux only), no artifact awareness |
-| Approval | OpenAgents Control, Agentic | Prompt-level, no deterministic enforcement |
-| Workflows | Agentic, OpenAgents Control | Prompt-driven, not executable state machines |
-| Persistence | opencode-background-agents | Files only, no structured artifact memory |
-| Cross-Platform | Superpowers, OpenSpec | Plugin-per-platform или code generation, no standalone runtime |
-| Spec/Planning | OpenSpec | Planning only, no runtime execution, no policy enforcement |
+| Layer          | Covered By                                    | Gap                                                            |
+| -------------- | --------------------------------------------- | -------------------------------------------------------------- |
+| Skills         | Superpowers, opencode-agent-skills            | No orchestration, no policy enforcement                        |
+| Subagents      | opencode-background-agents, Awesome Subagents | No runtime state, no workflow engine                           |
+| Model Routing  | Oh My OpenAgent, oh-my-opencode-slim          | Static per-agent, no dynamic step-level routing                |
+| Context        | Context Analysis Plugin, Agentic              | Reactive, no predictive compaction                             |
+| Visibility     | opentmux                                      | Host-specific (tmux only), no artifact awareness               |
+| Approval       | OpenAgents Control, Agentic                   | Prompt-level, no deterministic enforcement                     |
+| Workflows      | Agentic, OpenAgents Control                   | Prompt-driven, not executable state machines                   |
+| Persistence    | opencode-background-agents                    | Files only, no structured artifact memory                      |
+| Cross-Platform | Superpowers, OpenSpec                         | Plugin-per-platform или code generation, no standalone runtime |
+| Spec/Planning  | OpenSpec                                      | Planning only, no runtime execution, no policy enforcement     |
 
 **Conclusion:** There is no unified layer that ties skills, subagents, models, context, artifacts, policies, and workflows together into a coherent runtime. OpenSpec covers planning/specification well, but lacks execution.
 
@@ -152,6 +152,7 @@ opencode-background-agents is the only project that provides **persistent backgr
 - Fire-and-forget model.
 
 But it lacks:
+
 - Workflow orchestration (what happens after delegation completes?).
 - Artifact integration (results are markdown files, not typed artifacts).
 - Cross-session tracking (in-memory state is lost on restart).
@@ -166,12 +167,12 @@ But it lacks:
 
 **A:** Wolf does not replace existing skill systems. Wolf adds **orchestration**:
 
-| Existing | Wolf Adds |
-|----------|-----------|
-| Skill format (YAML frontmatter + markdown) | Skill registry with namespace, versioning, dependencies |
-| Skill loading into context | Skill selection based on workflow step, artifact type, model route |
-| Skill auto-discovery | Skill enforcement (allowed-tools checked at runtime) |
-| Skill as prompt injection | Skill as executable step in declarative workflow |
+| Existing                                   | Wolf Adds                                                          |
+| ------------------------------------------ | ------------------------------------------------------------------ |
+| Skill format (YAML frontmatter + markdown) | Skill registry with namespace, versioning, dependencies            |
+| Skill loading into context                 | Skill selection based on workflow step, artifact type, model route |
+| Skill auto-discovery                       | Skill enforcement (allowed-tools checked at runtime)               |
+| Skill as prompt injection                  | Skill as executable step in declarative workflow                   |
 
 **Wolf skill system = existing format + runtime integration.**
 
@@ -181,13 +182,13 @@ But it lacks:
 
 **A:** Existing subagent catalogs provide **definitions**, not **orchestration**:
 
-| Existing | Wolf Adds |
-|----------|-----------|
-| Subagent definition (role + model + prompt) | When to delegate (step-level decision) |
-| Manual delegation (`@agent` or `task()`) | Whom to delegate (dynamic selection based on task) |
-| Per-agent model preset | Which model to use (step-level routing with fallback) |
-| Subagent runs in isolation | What artifact must return (artifact contract) |
-| Result in chat or file | How to record in trace/memory (Case Store integration) |
+| Existing                                    | Wolf Adds                                              |
+| ------------------------------------------- | ------------------------------------------------------ |
+| Subagent definition (role + model + prompt) | When to delegate (step-level decision)                 |
+| Manual delegation (`@agent` or `task()`)    | Whom to delegate (dynamic selection based on task)     |
+| Per-agent model preset                      | Which model to use (step-level routing with fallback)  |
+| Subagent runs in isolation                  | What artifact must return (artifact contract)          |
+| Result in chat or file                      | How to record in trace/memory (Case Store integration) |
 
 **Wolf subagent management = catalog + orchestration + governance.**
 
@@ -197,12 +198,12 @@ But it lacks:
 
 **A:** Existing routing is **static per-agent/category**, not dynamic per-step:
 
-| Existing | Wolf Adds |
-|----------|-----------|
-| Per-agent model preset | Step-level model selection based on task complexity |
-| Category-based routing (`visual-engineering` → model X) | Token budget-aware routing ("only 20% budget left → use cheaper model") |
-| Fallback chains on API error | Artifact-type routing ("architecture doc → capable model, test → fast model") |
-| Static frontmatter | Dynamic routing based on content analysis |
+| Existing                                                | Wolf Adds                                                                     |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Per-agent model preset                                  | Step-level model selection based on task complexity                           |
+| Category-based routing (`visual-engineering` → model X) | Token budget-aware routing ("only 20% budget left → use cheaper model")       |
+| Fallback chains on API error                            | Artifact-type routing ("architecture doc → capable model, test → fast model") |
+| Static frontmatter                                      | Dynamic routing based on content analysis                                     |
 
 **Wolf model router = static presets + dynamic overlay.**
 
@@ -212,12 +213,12 @@ But it lacks:
 
 **A:** Existing approvals are **prompt-based or host-dependent**, not deterministic:
 
-| Existing | Wolf Adds |
-|----------|-----------|
-| `@approval_gate` in markdown | Runtime state machine: `approved?` checked before execution |
-| Host tool permissions (ask/allow/deny) | Deterministic denylist (regex match, instant block) |
-| Human-in-the-loop checkpoints | Policy inheritance (org → team → project → workflow) |
-| Tool restrictions in frontmatter | Audit trail (every decision recorded in Case Store) |
+| Existing                               | Wolf Adds                                                   |
+| -------------------------------------- | ----------------------------------------------------------- |
+| `@approval_gate` in markdown           | Runtime state machine: `approved?` checked before execution |
+| Host tool permissions (ask/allow/deny) | Deterministic denylist (regex match, instant block)         |
+| Human-in-the-loop checkpoints          | Policy inheritance (org → team → project → workflow)        |
+| Tool restrictions in frontmatter       | Audit trail (every decision recorded in Case Store)         |
 
 **Wolf policy engine = prompt suggestions + deterministic enforcement + audit.**
 
@@ -227,12 +228,12 @@ But it lacks:
 
 **A:** Existing tools are **reactive or manual**, not predictive:
 
-| Existing | Wolf Adds |
-|----------|-----------|
-| Token visibility (after consumption) | Token budget (before execution, with estimation) |
-| Compaction on event | Predictive compaction ("based on usage pattern, compact now") |
-| Manual context management | Automatic context assembly (what to load, why, from which source) |
-| Ephemeral analysis | Persistent context profiles (trends across sessions) |
+| Existing                             | Wolf Adds                                                         |
+| ------------------------------------ | ----------------------------------------------------------------- |
+| Token visibility (after consumption) | Token budget (before execution, with estimation)                  |
+| Compaction on event                  | Predictive compaction ("based on usage pattern, compact now")     |
+| Manual context management            | Automatic context assembly (what to load, why, from which source) |
+| Ephemeral analysis                   | Persistent context profiles (trends across sessions)              |
 
 **Wolf context resolver = visibility + budgeting + prediction + persistence.**
 
@@ -242,14 +243,14 @@ But it lacks:
 
 **A:** OpenSpec excels at **planning and specification**, but lacks **runtime integration**:
 
-| OpenSpec | Wolf Adds |
-|----------|-----------|
-| Delta-spec format for brownfield changes | Runtime execution of spec-driven workflows |
-| Schema-driven artifact dependency graph | Artifact Memory Graph with query + lifecycle |
-| Specs/Changes separation | Policy enforcement before `apply` |
-| Archive flow with audit trail | Structured persistence (SQLite) + cross-session query |
-| Markdown-only artifacts | Typed artifacts (code, test, structured outputs) |
-| Code generation for 25+ AI tools | Runtime adapters (not just code generation) |
+| OpenSpec                                 | Wolf Adds                                             |
+| ---------------------------------------- | ----------------------------------------------------- |
+| Delta-spec format for brownfield changes | Runtime execution of spec-driven workflows            |
+| Schema-driven artifact dependency graph  | Artifact Memory Graph with query + lifecycle          |
+| Specs/Changes separation                 | Policy enforcement before `apply`                     |
+| Archive flow with audit trail            | Structured persistence (SQLite) + cross-session query |
+| Markdown-only artifacts                  | Typed artifacts (code, test, structured outputs)      |
+| Code generation for 25+ AI tools         | Runtime adapters (not just code generation)           |
 
 **Wolf artifact system = OpenSpec's planning model + runtime execution + structured persistence.**
 
@@ -267,6 +268,7 @@ OpenSpec is the only project that focuses on **structured planning** through spe
 - Archive flow — full context of why/how/what is preserved.
 
 But OpenSpec has **no runtime execution engine**:
+
 - AI directly executes code from `tasks.md` without governance.
 - No policy enforcement before `apply`.
 - No model routing or multi-agent orchestration.
@@ -278,6 +280,7 @@ But OpenSpec has **no runtime execution engine**:
 **Wolf opportunity:** Wolf can be the **runtime layer for spec-driven development**. OpenSpec creates the plan (proposal, specs, design, tasks), Wolf executes it with policy checks, model routing, artifact management, and trace recording.
 
 **Synergy:**
+
 - OpenSpec → Planning layer (what to build, why, how).
 - Wolf → Execution layer (orchestrate, govern, observe, persist).
 
@@ -326,19 +329,19 @@ Wolf is a **front-agent + process-control layer** that:
 
 ### Wolf vs. Existing Projects
 
-| Dimension | Existing Projects | Mr. Wolf |
-|-----------|------------------|----------|
-| Runtime | Host tool (OpenCode, Claude) | Standalone kernel + adapters |
-| Workflows | Prompt-driven sequences | Declarative YAML DAG + state machine |
-| Skills | Prompt injection | Registry + executable steps |
-| Subagents | Manual delegation (`task()`, `@agent`) | Orchestrated delegation (when/whom/how) |
-| Model Routing | Static per-agent/category | Dynamic per-step with budget awareness |
-| Artifacts | Files on disk | Typed objects with graph + lifecycle |
-| Safety | Prompt instructions | Deterministic policy + audit trail |
-| Context | Reactive compaction | Predictive resolver with budget |
-| Persistence | Ephemeral or file-based | Case Store (SQLite + files) |
-| Visibility | Host-specific (tmux, chat) | Projection model (CLI, web, IDE, logs) |
-| Cross-Platform | Plugin-per-platform | Host-agnostic adapters |
+| Dimension      | Existing Projects                      | Mr. Wolf                                |
+| -------------- | -------------------------------------- | --------------------------------------- |
+| Runtime        | Host tool (OpenCode, Claude)           | Standalone kernel + adapters            |
+| Workflows      | Prompt-driven sequences                | Declarative YAML DAG + state machine    |
+| Skills         | Prompt injection                       | Registry + executable steps             |
+| Subagents      | Manual delegation (`task()`, `@agent`) | Orchestrated delegation (when/whom/how) |
+| Model Routing  | Static per-agent/category              | Dynamic per-step with budget awareness  |
+| Artifacts      | Files on disk                          | Typed objects with graph + lifecycle    |
+| Safety         | Prompt instructions                    | Deterministic policy + audit trail      |
+| Context        | Reactive compaction                    | Predictive resolver with budget         |
+| Persistence    | Ephemeral or file-based                | Case Store (SQLite + files)             |
+| Visibility     | Host-specific (tmux, chat)             | Projection model (CLI, web, IDE, logs)  |
+| Cross-Platform | Plugin-per-platform                    | Host-agnostic adapters                  |
 
 ---
 
@@ -347,6 +350,7 @@ Wolf is a **front-agent + process-control layer** that:
 The research reinforces 10 existing concepts and adds 3 new ones:
 
 **Reinforced:**
+
 1. Wolf as front-agent (not replacement runtime)
 2. Process-level control (declarative workflow engine)
 3. Step-level model routing (dynamic, budget-aware)
@@ -358,10 +362,7 @@ The research reinforces 10 existing concepts and adds 3 new ones:
 9. Context Budget / Visibility (first-class primitive)
 10. Read-only background delegation by default
 
-**New:**
-11. Deterministic policy (not prompt instruction) — runtime checks before execution
-12. Workflow as Skill, Skill as Workflow — unified abstraction
-13. Artifact Contract — input/output artifact validation per step
+**New:** 11. Deterministic policy (not prompt instruction) — runtime checks before execution 12. Workflow as Skill, Skill as Workflow — unified abstraction 13. Artifact Contract — input/output artifact validation per step
 
 See `wolf-concept-implications.md` for detailed analysis.
 
@@ -372,12 +373,14 @@ See `wolf-concept-implications.md` for detailed analysis.
 The research reshapes FUP from "standalone CLI-agent" to **"reference sidecar / adapter for OpenCode"**:
 
 **FUP Should Prove:**
+
 1. Declarative process control works (YAML workflow + state machine).
 2. Policy enforcement is real (deterministic block, not prompt suggestion).
 3. Artifact memory persists across sessions (typed artifacts in Case Store).
 4. Host-agnostic runtime is feasible (OpenCode + Standalone adapters).
 
 **FUP Should NOT Try to Prove:**
+
 1. Replacement of host tools.
 2. Multi-domain universality.
 3. AI model superiority.
@@ -387,6 +390,7 @@ The research reshapes FUP from "standalone CLI-agent" to **"reference sidecar / 
 **Most Realistic First Integration:** OpenCode Adapter (plugin architecture, TypeScript, event bus, alignment with existing ecosystem).
 
 **Capability Boundaries (Read-Only by Default):**
+
 - Background delegation → read-only.
 - Subagent execution → read-only.
 - Context analysis, artifact query, trace reading → read-only.
@@ -394,6 +398,7 @@ The research reshapes FUP from "standalone CLI-agent" to **"reference sidecar / 
 - Destructive operations (`rm -rf`, `sudo`, `*.env*`) → deterministic block.
 
 **Where Deterministic Policy Is Needed (Not Prompt):**
+
 - File path allowlists (regex match).
 - Command denylist (regex match).
 - Token budget (arithmetic check).
@@ -416,6 +421,7 @@ See `wolf-fup-implications.md` for detailed FUP definition, success criteria, ti
 **Existing projects solve individual pieces. Wolf solves the integration.**
 
 Every analyzed project is valuable in its domain:
+
 - Superpowers teaches discipline and methodology.
 - opencode-agent-skills teaches skill discovery and compaction resilience.
 - opencode-background-agents teaches persistent background delegation.
@@ -433,6 +439,7 @@ But **no project ties these pieces together** into a coherent, declarative, poli
 **Wolf is that layer.**
 
 Wolf does not compete with any of these projects. Wolf **orchestrates** them:
+
 - Wolf can load Superpowers skills as workflow steps.
 - Wolf can use opencode-agent-skills for skill discovery.
 - Wolf can delegate background work through opencode-background-agents patterns.
@@ -453,28 +460,28 @@ The research validates that this layer is missing and needed.
 
 This research produced the following artifacts:
 
-| File | Content |
-|------|---------|
-| `docs/research/agentic-tools-comparative-research.md` | This file — main research document |
-| `docs/research/agentic-tools-project-cards.md` | Detailed Project Cards for all 11 repositories |
-| `docs/research/agentic-tools-cross-findings.md` | Cross-project analysis: patterns, gaps, taxonomy |
-| `docs/research/wolf-concept-implications.md` | How research impacts Mr. Wolf concept |
-| `docs/research/wolf-fup-implications.md` | How research reshapes First Useful Product |
+| File                                                  | Content                                          |
+| ----------------------------------------------------- | ------------------------------------------------ |
+| `docs/research/agentic-tools-comparative-research.md` | This file — main research document               |
+| `docs/research/agentic-tools-project-cards.md`        | Detailed Project Cards for all 11 repositories   |
+| `docs/research/agentic-tools-cross-findings.md`       | Cross-project analysis: patterns, gaps, taxonomy |
+| `docs/research/wolf-concept-implications.md`          | How research impacts Mr. Wolf concept            |
+| `docs/research/wolf-fup-implications.md`              | How research reshapes First Useful Product       |
 
 ---
 
 ## Appendix: Repositories Analyzed
 
-| # | Repository | Host | Primary Purpose |
-|---|-----------|------|-----------------|
-| 1 | [obra/superpowers](https://github.com/obra/superpowers) | Multi-platform | Skill library + methodology |
-| 2 | [joshuadavidthomas/opencode-agent-skills](https://github.com/joshuadavidthomas/opencode-agent-skills) | OpenCode | Skill discovery & loading |
-| 3 | [kdcokenny/opencode-background-agents](https://github.com/kdcokenny/opencode-background-agents) | OpenCode | Background delegation |
-| 4 | [IgorWarzocha/Opencode-Context-Analysis-Plugin](https://github.com/IgorWarzocha/Opencode-Context-Analysis-Plugin) | OpenCode | Token visibility |
-| 5 | [code-yeongyu/oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent) | OpenCode | Multi-agent orchestration |
-| 6 | [alvinunreal/oh-my-opencode-slim](https://github.com/alvinunreal/oh-my-opencode-slim) | OpenCode | Multi-agent orchestration (slim) |
-| 7 | [AnganSamadder/opentmux](https://github.com/AnganSamadder/opentmux) | OpenCode | Runtime visibility |
-| 8 | [Cluster444/agentic](https://github.com/Cluster444/agentic) | OpenCode | Context engineering |
-| 9 | [VoltAgent/awesome-claude-code-subagents](https://github.com/VoltAgent/awesome-claude-code-subagents) | Claude Code | Subagent catalog |
-| 10 | [darrenhinde/OpenAgentsControl](https://github.com/darrenhinde/OpenAgentsControl) | OpenCode | Approval / governance |
-| 11 | [Fission-AI/OpenSpec](https://github.com/Fission-AI/OpenSpec/) | Node.js CLI (25+ AI tools) | Spec-driven development |
+| #   | Repository                                                                                                        | Host                       | Primary Purpose                  |
+| --- | ----------------------------------------------------------------------------------------------------------------- | -------------------------- | -------------------------------- |
+| 1   | [obra/superpowers](https://github.com/obra/superpowers)                                                           | Multi-platform             | Skill library + methodology      |
+| 2   | [joshuadavidthomas/opencode-agent-skills](https://github.com/joshuadavidthomas/opencode-agent-skills)             | OpenCode                   | Skill discovery & loading        |
+| 3   | [kdcokenny/opencode-background-agents](https://github.com/kdcokenny/opencode-background-agents)                   | OpenCode                   | Background delegation            |
+| 4   | [IgorWarzocha/Opencode-Context-Analysis-Plugin](https://github.com/IgorWarzocha/Opencode-Context-Analysis-Plugin) | OpenCode                   | Token visibility                 |
+| 5   | [code-yeongyu/oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent)                                   | OpenCode                   | Multi-agent orchestration        |
+| 6   | [alvinunreal/oh-my-opencode-slim](https://github.com/alvinunreal/oh-my-opencode-slim)                             | OpenCode                   | Multi-agent orchestration (slim) |
+| 7   | [AnganSamadder/opentmux](https://github.com/AnganSamadder/opentmux)                                               | OpenCode                   | Runtime visibility               |
+| 8   | [Cluster444/agentic](https://github.com/Cluster444/agentic)                                                       | OpenCode                   | Context engineering              |
+| 9   | [VoltAgent/awesome-claude-code-subagents](https://github.com/VoltAgent/awesome-claude-code-subagents)             | Claude Code                | Subagent catalog                 |
+| 10  | [darrenhinde/OpenAgentsControl](https://github.com/darrenhinde/OpenAgentsControl)                                 | OpenCode                   | Approval / governance            |
+| 11  | [Fission-AI/OpenSpec](https://github.com/Fission-AI/OpenSpec/)                                                    | Node.js CLI (25+ AI tools) | Spec-driven development          |

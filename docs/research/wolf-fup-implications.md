@@ -24,6 +24,7 @@
 **Почему важно:** Все существующие проекты используют prompt-driven workflows (Superpowers, Agentic, Oh My OpenAgent). OpenSpec имеет schema-driven artifact workflows, но без runtime execution. Ни один проект не имеет executable state machine, который выполняет declarative workflows с policy checks и artifact contracts. Если Wolf покажет, что YAML workflow может orchestrate real work — это differentiation.
 
 **Как доказать:**
+
 - Один YAML workflow (5-7 шагов).
 - Выполнение через Wolf engine.
 - State visible в CLI и файловом trace.
@@ -39,6 +40,7 @@
 **Почему важно:** Все существующие проекты полагаются на prompt-based safety (Superpowers: "ask your human partner", OpenAgents Control: "@approval_gate" в markdown). OpenSpec имеет validation перед archive, но нет enforcement перед `apply`. Нет deterministic enforcement. Если Wolf покажет, что `rm -rf /*` blocked независимо от того, что "думает" агент — это differentiation.
 
 **Как доказать:**
+
 - Workflow с шагом, который пытается выполнить запрещённую операцию.
 - Wolf block'ит операцию до выполнения.
 - Audit trail записывает попытку и block.
@@ -53,6 +55,7 @@
 **Почему важно:** Все существующие проекты создают файлы, но нет managed artifact system. Agentic имеет `thoughts/`, но нет query, lifecycle, relationships. Если Wolf покажет, что artifact созданный вчера можно найти по типу и связям — это differentiation.
 
 **Как доказать:**
+
 - Сессия 1: workflow создаёт artifact типа `research_doc`.
 - Сессия 2 (новый процесс): workflow запрашивает "найти последний research_doc по теме X".
 - Wolf находит artifact через SQLite index.
@@ -67,6 +70,7 @@
 **Почему важно:** OpenSpec показывает, что spec-driven development имеет спрос. Но OpenSpec не имеет runtime execution. Если Wolf покажет, что может выполнять spec-driven workflows — это открывает новый use case.
 
 **Как доказать:**
+
 - OpenSpec создаёт `proposal.md` + `specs/` + `design.md` + `tasks.md`.
 - Wolf читает эти artifacts и создаёт workflow.
 - Wolf выполняет workflow с policy checks, model routing, artifact tracking.
@@ -133,6 +137,7 @@
 ### OpenCode Adapter (Recommended)
 
 **Почему OpenCode:**
+
 1. **Plugin architecture** — OpenCode имеет mature plugin API (hooks, tools, events).
 2. **Wolf codebase already uses OpenCode** — AGENTS.md предписывает OpenCode conventions.
 3. **Alignment with existing projects** — 8 из 10 проектов target OpenCode. Это validates ecosystem.
@@ -140,6 +145,7 @@
 5. **Event bus** — OpenCode имеет event system, который может map на Wolf Event Bus.
 
 **Integration surface:**
+
 - Wolf как OpenCode plugin (`opencode.json` → `wolf-plugin`).
 - Commands: `/wolf run <workflow>`, `/wolf status`, `/wolf artifacts`.
 - Hooks: `session.start` → inject Wolf bootstrap, `session.compacted` → re-inject context.
@@ -147,6 +153,7 @@
 - Events: Wolf слушает OpenCode events и записывает в Case Store.
 
 **Alternative:** Claude Code Adapter
+
 - Claude Code имеет plugin system (`.claude/plugins/`), но менее mature чем OpenCode.
 - Superpowers уже покрывает Claude Code ecosystem.
 - Wolf для Claude Code — secondary priority.
@@ -161,36 +168,36 @@
 
 На основе анализа opencode-background-agents и oh-my-opencode-slim:
 
-| Capability | Default | Override |
-|------------|---------|----------|
+| Capability            | Default   | Override                          |
+| --------------------- | --------- | --------------------------------- |
 | Background delegation | Read-only | Policy allows write with approval |
-| Subagent execution | Read-only | Parent workflow can grant write |
-| Context analysis | Read-only | N/A |
-| Artifact query | Read-only | N/A |
-| Trace reading | Read-only | N/A |
-| Policy checking | Read-only | N/A |
+| Subagent execution    | Read-only | Parent workflow can grant write   |
+| Context analysis      | Read-only | N/A                               |
+| Artifact query        | Read-only | N/A                               |
+| Trace reading         | Read-only | N/A                               |
+| Policy checking       | Read-only | N/A                               |
 
 ### Require Approval
 
-| Capability | Approval Required | Exception |
-|------------|-------------------|-----------|
-| File write/edit | Yes | Trusted agents by policy |
-| Bash execution | Yes | Allowlisted commands |
-| Git operations | Yes | Read-only ops exempt |
-| Tool use (webfetch, etc.) | Yes | Read-only tools exempt |
-| Model switch | Yes | Fallback chains auto-approved |
-| Workflow modification | Yes | Policy allows auto-update |
+| Capability                | Approval Required | Exception                     |
+| ------------------------- | ----------------- | ----------------------------- |
+| File write/edit           | Yes               | Trusted agents by policy      |
+| Bash execution            | Yes               | Allowlisted commands          |
+| Git operations            | Yes               | Read-only ops exempt          |
+| Tool use (webfetch, etc.) | Yes               | Read-only tools exempt        |
+| Model switch              | Yes               | Fallback chains auto-approved |
+| Workflow modification     | Yes               | Policy allows auto-update     |
 
 ### Never Allowed (Deterministic Block)
 
-| Operation | Block Reason |
-|-----------|--------------|
-| `rm -rf /`, `rm -rf /*` | Destructive |
-| `sudo *` | Privilege escalation |
-| Write to `*.env*`, `*.key` | Sensitive files |
-| Write to `node_modules/` | Generated files |
-| Subagent depth > 3 | Recursion prevention |
-| Token budget exceeded | Budget protection |
+| Operation                  | Block Reason         |
+| -------------------------- | -------------------- |
+| `rm -rf /`, `rm -rf /*`    | Destructive          |
+| `sudo *`                   | Privilege escalation |
+| Write to `*.env*`, `*.key` | Sensitive files      |
+| Write to `node_modules/`   | Generated files      |
+| Subagent depth > 3         | Recursion prevention |
+| Token budget exceeded      | Budget protection    |
 
 ---
 
@@ -198,33 +205,33 @@
 
 ### Critical: Deterministic Policy
 
-| Area | Why Deterministic | Example |
-|------|-------------------|---------|
-| File path allowlists | Regex match, instant | `*.env*` → block |
-| Command denylist | Regex match, instant | `sudo`, `rm -rf` → block |
-| Token budget | Arithmetic check, instant | `used > budget` → pause |
-| Subagent depth | Counter, instant | `depth > 3` → block |
-| Approval gate | State check, instant | `not approved` → block |
-| Tool allowlist | Set membership, instant | `tool not in allowed` → block |
+| Area                 | Why Deterministic         | Example                       |
+| -------------------- | ------------------------- | ----------------------------- |
+| File path allowlists | Regex match, instant      | `*.env*` → block              |
+| Command denylist     | Regex match, instant      | `sudo`, `rm -rf` → block      |
+| Token budget         | Arithmetic check, instant | `used > budget` → pause       |
+| Subagent depth       | Counter, instant          | `depth > 3` → block           |
+| Approval gate        | State check, instant      | `not approved` → block        |
+| Tool allowlist       | Set membership, instant   | `tool not in allowed` → block |
 
 ### Acceptable: Prompt Instruction
 
-| Area | Why Prompt-Based OK | Example |
-|------|---------------------|---------|
-| Code style | Guideline, not safety | "Use snake_case" |
-| Design patterns | Recommendation | "Prefer dependency injection" |
-| Testing approach | Methodology | "Use TDD" |
-| Documentation format | Convention | "Use Google-style docstrings" |
-| Review checklist | Guidance | "Check for SQL injection" |
+| Area                 | Why Prompt-Based OK   | Example                       |
+| -------------------- | --------------------- | ----------------------------- |
+| Code style           | Guideline, not safety | "Use snake_case"              |
+| Design patterns      | Recommendation        | "Prefer dependency injection" |
+| Testing approach     | Methodology           | "Use TDD"                     |
+| Documentation format | Convention            | "Use Google-style docstrings" |
+| Review checklist     | Guidance              | "Check for SQL injection"     |
 
 ### Hybrid: Prompt + Runtime Check
 
-| Area | Prompt | Runtime Check |
-|------|--------|---------------|
-| Approval workflow | "Ask before write" | State machine: `approved?` |
-| Context budget | "Stay within budget" | Token counter + alert |
-| Tool usage | "Use only allowed tools" | Tool allowlist enforcement |
-| Artifact creation | "Create artifact type X" | Contract validation |
+| Area              | Prompt                   | Runtime Check              |
+| ----------------- | ------------------------ | -------------------------- |
+| Approval workflow | "Ask before write"       | State machine: `approved?` |
+| Context budget    | "Stay within budget"     | Token counter + alert      |
+| Tool usage        | "Use only allowed tools" | Tool allowlist enforcement |
+| Artifact creation | "Create artifact type X" | Contract validation        |
 
 **Rule:** Safety-critical → deterministic policy. Style/methodology → prompt instruction. Mixed → both.
 
@@ -235,6 +242,7 @@
 ### Goal
 
 Доказать, что Wolf может orchestrate declarative workflow через OpenCode с:
+
 1. **State machine** — отслеживание шагов, зависимостей, статусов.
 2. **Policy enforcement** — deterministic block на запрещённых операциях.
 3. **Artifact persistence** — создание, сохранение, query artifacts между сессиями.
@@ -242,18 +250,18 @@
 
 ### Scope
 
-| Included | Excluded |
-|----------|----------|
-| 1 YAML workflow (5-7 шагов) | Multi-domain workflows |
-| OpenCode Adapter | Claude Code Adapter (planned) |
-| Standalone Adapter (proof) | IDE Adapter (future) |
-| CLI projection (text status) | Tmux/Web dashboard (future) |
-| Local skills/workflows | Marketplace/Registry (future) |
-| File-based Case Store | Vector store (future) |
-| Deterministic policy (denylists) | ML-based policy (future) |
-| Single model | Model router (future) |
-| Basic artifact types | Delta-spec artifacts (future) |
-| Simple artifact relationships | Schema-driven workflows (future) |
+| Included                         | Excluded                         |
+| -------------------------------- | -------------------------------- |
+| 1 YAML workflow (5-7 шагов)      | Multi-domain workflows           |
+| OpenCode Adapter                 | Claude Code Adapter (planned)    |
+| Standalone Adapter (proof)       | IDE Adapter (future)             |
+| CLI projection (text status)     | Tmux/Web dashboard (future)      |
+| Local skills/workflows           | Marketplace/Registry (future)    |
+| File-based Case Store            | Vector store (future)            |
+| Deterministic policy (denylists) | ML-based policy (future)         |
+| Single model                     | Model router (future)            |
+| Basic artifact types             | Delta-spec artifacts (future)    |
+| Simple artifact relationships    | Schema-driven workflows (future) |
 
 ### Success Criteria
 
@@ -278,27 +286,27 @@
 
 ## Timeline Estimate
 
-| Phase | Duration | Deliverable |
-|-------|----------|-------------|
-| FUP Spec | 1 week | Revised FUP document |
-| Workflow Engine + OpenCode Adapter | 2 weeks | Runnable workflow через OpenCode |
-| Policy Engine + Case Store | 2 weeks | Deterministic policy + artifact persistence |
-| Standalone Adapter | 1 week | Proof of host-agnostic concept |
-| Integration Testing | 1 week | End-to-end FUP demo |
-| Documentation | 1 week | FUP report, architecture update |
-| **Total** | **8 weeks** | **Working FUP with proof** |
+| Phase                              | Duration    | Deliverable                                 |
+| ---------------------------------- | ----------- | ------------------------------------------- |
+| FUP Spec                           | 1 week      | Revised FUP document                        |
+| Workflow Engine + OpenCode Adapter | 2 weeks     | Runnable workflow через OpenCode            |
+| Policy Engine + Case Store         | 2 weeks     | Deterministic policy + artifact persistence |
+| Standalone Adapter                 | 1 week      | Proof of host-agnostic concept              |
+| Integration Testing                | 1 week      | End-to-end FUP demo                         |
+| Documentation                      | 1 week      | FUP report, architecture update             |
+| **Total**                          | **8 weeks** | **Working FUP with proof**                  |
 
 ---
 
 ## Risk Register (FUP-Specific)
 
-| Risk | Impact | Likelihood | Mitigation |
-|------|--------|------------|------------|
-| OpenCode plugin API changes | High | Medium | Abstract adapter, monitor API changelog |
-| Token budget unpredictable | Medium | High | Conservative defaults, proactive alerts |
-| Policy false positives | Medium | Medium | Configurable policies, override by user |
-| Case Store performance | Low | Low | SQLite with indexing, lazy loading |
-| User expects replacement runtime | High | Low | Clear messaging: "Wolf = sidecar, not replacement" |
+| Risk                             | Impact | Likelihood | Mitigation                                         |
+| -------------------------------- | ------ | ---------- | -------------------------------------------------- |
+| OpenCode plugin API changes      | High   | Medium     | Abstract adapter, monitor API changelog            |
+| Token budget unpredictable       | Medium | High       | Conservative defaults, proactive alerts            |
+| Policy false positives           | Medium | Medium     | Configurable policies, override by user            |
+| Case Store performance           | Low    | Low        | SQLite with indexing, lazy loading                 |
+| User expects replacement runtime | High   | Low        | Clear messaging: "Wolf = sidecar, not replacement" |
 
 ---
 
