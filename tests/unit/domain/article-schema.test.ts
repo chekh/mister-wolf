@@ -5,7 +5,7 @@ const baseArticle = {
   id: 'mem_20260630_article_e5f6',
   type: 'article',
   title: 'Rate-limiting policy summary',
-  status: 'active',
+  status: 'accepted',
   review_state: 'accepted',
   confidence: 'high',
   importance: 0.85,

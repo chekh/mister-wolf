@@ -5,7 +5,7 @@ const baseInfoRequest = {
   id: 'mem_20260630_info_c3d4',
   type: 'info-request',
   title: 'Clarify rate-limiting policy',
-  status: 'active',
+  status: 'open',
   review_state: 'proposed',
   confidence: 'medium',
   importance: 0.7,

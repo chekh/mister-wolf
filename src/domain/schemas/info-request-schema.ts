@@ -3,6 +3,7 @@ import { MemoryObjectSchema } from './memory-object-schema.js';
 
 export const InfoRequestSchema = MemoryObjectSchema.extend({
   type: z.literal('info-request'),
+  status: z.enum(['open', 'answered', 'rejected', 'obsolete', 'archived']),
   thread: z.string().min(1),
   question: z.string().min(1),
   detour_reason: z.string().min(1),
