@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { addMemoryObject } from '../../../app/use-cases/add-memory-object.js';
-import { createCliContainer } from '../container.js';
+import { createCliContainer } from '../../../bootstrap/container.js';
 
 export function memoryAddCommand(): Command {
   return new Command('add')

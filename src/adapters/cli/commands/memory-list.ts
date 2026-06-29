@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { listMemoryObjects } from '../../../app/use-cases/list-memory-objects.js';
-import { createCliContainer } from '../container.js';
+import { createCliContainer } from '../../../bootstrap/container.js';
 
 export function memoryListCommand(): Command {
   return new Command('list')

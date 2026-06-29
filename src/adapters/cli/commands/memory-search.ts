@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { searchMemory } from '../../../app/use-cases/search-memory.js';
-import { createCliContainer } from '../container.js';
+import { createCliContainer } from '../../../bootstrap/container.js';
 
 export function memorySearchCommand(): Command {
   return new Command('search')

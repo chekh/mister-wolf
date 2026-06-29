@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { supersedeMemoryObject } from '../../../app/use-cases/supersede-memory-object.js';
-import { createCliContainer } from '../container.js';
+import { createCliContainer } from '../../../bootstrap/container.js';
 
 export function memorySupersedeCommand(): Command {
   return new Command('supersede')

@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { rebuildMemoryIndex } from '../../../app/use-cases/rebuild-memory-index.js';
-import { createCliContainer } from '../container.js';
+import { createCliContainer } from '../../../bootstrap/container.js';
 
 export function memoryRebuildIndexCommand(): Command {
   return new Command('rebuild-index')
