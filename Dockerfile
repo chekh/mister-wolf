@@ -26,7 +26,7 @@ CMD ["npm", "run", "check"]
 
 FROM base AS build
 RUN npm run build
-CMD ["node", "dist/cli/index.js", "--help"]
+CMD ["node", "dist/bootstrap/cli.js", "--help"]
 
 FROM node:20-bookworm-slim AS runtime
 WORKDIR /app
@@ -36,8 +36,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 COPY --from=build /app/dist ./dist
-COPY examples ./examples
 COPY README.md ./README.md
 COPY LICENSE ./LICENSE
 
-ENTRYPOINT ["node", "dist/cli/index.js"]
+ENTRYPOINT ["node", "dist/bootstrap/cli.js"]
