@@ -43,6 +43,6 @@ export const MemoryObjectSchema = z.object({
   tags: z.array(z.string()).default([]),
   superseded_by: z.string().nullable().default(null),
   body: z.string().default(''),
-});
+}).passthrough();
 
 export type MemoryObject = z.infer<typeof MemoryObjectSchema>;
