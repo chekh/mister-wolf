@@ -25,15 +25,7 @@ export class SQLiteSearchIndex implements SearchIndex {
     const rebuild = this.db.transaction(() => {
       this.db.exec('DELETE FROM memory_search; DELETE FROM memory_meta;');
       for (const obj of objects) {
-        insertSearch.run(
-          obj.id,
-          obj.type,
-          obj.title,
-          obj.body,
-          obj.tags.join(','),
-          obj.status,
-          obj.review_state
-        );
+        insertSearch.run(obj.id, obj.type, obj.title, obj.body, obj.tags.join(','), obj.status, obj.review_state);
         insertMeta.run(
           obj.id,
           obj.type,

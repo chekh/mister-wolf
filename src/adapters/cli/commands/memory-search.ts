@@ -10,11 +10,14 @@ export function memorySearchCommand(): Command {
     .option('--include-superseded', 'Include superseded objects', false)
     .action(async (query, options) => {
       const { store, index } = createCliContainer(process.cwd());
-      const results = await searchMemory({ store, index }, {
-        query,
-        type: options.type,
-        includeSuperseded: options.includeSuperseded,
-      });
+      const results = await searchMemory(
+        { store, index },
+        {
+          query,
+          type: options.type,
+          includeSuperseded: options.includeSuperseded,
+        }
+      );
       for (const result of results) {
         console.log(`${result.object.id} [${result.object.type}] ${result.object.title}`);
       }
