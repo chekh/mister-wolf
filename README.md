@@ -5,10 +5,12 @@
 > Local-first Project Semantic Memory layer for AI coding agents.
 >
 > Not another agent. A memory substrate for agents.
+>
+> See [docs/concept-v3.md](docs/concept-v3.md) for the full architecture and concept.
 
 ## Status
 
-Pivot in progress. MVP-A (Core Memory + Search) is being implemented.
+MVP-A (Core Memory + Search) implemented.
 
 ## Quick Start
 
