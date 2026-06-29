@@ -1,7 +1,7 @@
 {
   "name": "mr-wolf",
   "version": "0.1.0",
-  "description": "Mr. Wolf — universal adaptive agent framework",
+  "description": "Mr. Wolf — local-first Project Semantic Memory layer for AI coding agents",
   "type": "module",
   "bin": {
     "wolf": "./dist/bootstrap/cli.js"

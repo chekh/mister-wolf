@@ -34,13 +34,16 @@ describe('Memory workflow', () => {
     const clock = new SystemClock();
     const idGen = new HashIdGenerator();
 
-    const { object } = await addMemoryObject({ store, log, clock, idGen }, {
-      type: 'lesson',
-      title: 'Avoid mutable shared state',
-      body: 'Shared mutable state caused the router bug.',
-      createdBy: 'user:test',
-      tags: ['architecture'],
-    });
+    const { object } = await addMemoryObject(
+      { store, log, clock, idGen },
+      {
+        type: 'lesson',
+        title: 'Avoid mutable shared state',
+        body: 'Shared mutable state caused the router bug.',
+        createdBy: 'user:test',
+        tags: ['architecture'],
+      }
+    );
 
     expect(existsSync(join(dir, '.wolf', 'memory', 'objects', 'lessons', `${object.id}.md`))).toBe(true);
 
