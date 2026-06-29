@@ -41,7 +41,14 @@ async function buildProjectDescription(fsPort: FileSystem, root: string, snapsho
   if (readme) {
     const paragraphs = readme
       .split(/\n\n+/)
-      .map((p) => p.trim().replace(/^#+\s*/, ''))
+      .map((p) =>
+        p
+          .trim()
+          .replace(/^#+\s*/, '')
+          .replace(/!\[([^\]]*)\]\([^)]+\)/g, '')
+          .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+          .trim()
+      )
       .filter((p) => p.length > 0);
     const first = paragraphs.slice(0, 2).join('\n\n');
     if (first.length > 20) return first;

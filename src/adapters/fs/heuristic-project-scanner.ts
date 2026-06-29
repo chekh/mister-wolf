@@ -162,7 +162,11 @@ export class HeuristicProjectScanner implements ProjectScanner {
       if (files.some((file) => file.path === candidate)) entries.push(candidate);
     }
 
-    return [...new Set(entries)];
+    const cleaned = entries
+      .map((entry) => entry.replace(/^\.\/dist\//, 'src/').replace(/\.js$/, '.ts'))
+      .filter((entry) => !entry.startsWith('dist/'));
+
+    return [...new Set(cleaned)];
   }
 
   private extractDependencies(packageJson: Record<string, unknown> | null): string[] {
@@ -175,20 +179,54 @@ export class HeuristicProjectScanner implements ProjectScanner {
   }
 
   private async currentBranch(root: string): Promise<string | undefined> {
-    const head = await this.fs.readSmallTextFile(path.join(root, '.git', 'HEAD'));
+    const head = await this.readGitHead(root);
     if (!head) return undefined;
     const refMatch = head.match(/ref: refs\/heads\/(\S+)/);
     return refMatch?.[1];
   }
 
   private async currentCommit(root: string): Promise<string | undefined> {
-    const head = await this.fs.readSmallTextFile(path.join(root, '.git', 'HEAD'));
+    const head = await this.readGitHead(root);
     if (!head) return undefined;
     const refMatch = head.match(/ref: (\S+)/);
     if (refMatch) {
-      const commit = await this.fs.readSmallTextFile(path.join(root, '.git', refMatch[1]));
+      const gitDir = await this.resolveGitDir(root);
+      const commit = await this.fs.readSmallTextFile(path.join(gitDir, refMatch[1]));
       return commit?.trim() ?? undefined;
     }
     return head.trim();
+  }
+
+  private async resolveGitDir(root: string): Promise<string> {
+    const gitPath = path.join(root, '.git');
+    const stat = await this.safeStat(gitPath);
+    if (stat?.isFile()) {
+      const content = await this.fs.readSmallTextFile(gitPath);
+      const match = content?.match(/^gitdir: (.+)$/m);
+      if (match) {
+        const resolved = path.resolve(root, match[1].trim());
+        return resolved;
+      }
+    }
+    return gitPath;
+  }
+
+  private async readGitHead(root: string): Promise<string | null> {
+    const gitDir = await this.resolveGitDir(root);
+    return this.fs.readSmallTextFile(path.join(gitDir, 'HEAD'));
+  }
+
+  private async safeStat(filePath: string): Promise<{ isFile(): boolean; isDirectory(): boolean } | null> {
+    try {
+      const entries = await this.fs.listDirectory(path.dirname(filePath));
+      const entry = entries.find((e) => e.path === filePath);
+      if (!entry) return null;
+      return {
+        isFile: () => !entry.isDirectory,
+        isDirectory: () => entry.isDirectory,
+      };
+    } catch {
+      return null;
+    }
   }
 }
