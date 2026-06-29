@@ -2,9 +2,7 @@
 
 ## Current Concept
 
-- [Concept v2 Summary](./archive/concept-v2-summary.md) — Quick overview, key decisions, and links
-- [Concept v2](./archive/concept-v2.md) — Full framework concept (Russian): architecture, behavioral model, artifact model, policy model, scope boundaries, glossary
-- [Concept v2 Open Questions](./archive/concept-v2-open-questions.md) — Implementation details deferred from Concept v2
+- [Concept v3](./concept-v3.md) — Project Semantic Memory pivot: architecture, memory object model, write protocol, scope boundaries, glossary (Russian)
 
 ## Guides
 
@@ -16,6 +14,9 @@
 ## Historical / Archive
 
 - [Concept v1 (Archived)](./archive/concept-v1.md) — Superseded by Concept v2. Kept for historical context.
+- [Concept v2 Summary (Archived)](./archive/concept-v2-summary.md) — Superseded by Concept v3.
+- [Concept v2 (Archived)](./archive/concept-v2.md) — Full orchestrator-era framework concept (Russian). Superseded by Concept v3.
+- [Concept v2 Open Questions (Archived)](./archive/concept-v2-open-questions.md) — Deferred implementation details from Concept v2. Superseded by Concept v3.
 
 ## Technical Specifications & Plans
 
@@ -24,4 +25,4 @@
 
 ---
 
-_Documentation index. Canonical concept: Concept v2._
+_Documentation index. Canonical concept: Concept v3._
