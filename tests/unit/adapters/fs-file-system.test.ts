@@ -124,4 +124,16 @@ describe('FsFileSystem', () => {
       expect(result).toBe(false);
     });
   });
+
+  describe('writeFile', () => {
+    test('creates parent directories and writes UTF-8 content', async () => {
+      const filePath = path.join(tempDir, 'nested', 'deep', 'file.txt');
+      const content = 'hello world';
+
+      await fsFileSystem.writeFile(filePath, content);
+
+      const written = await fs.readFile(filePath, 'utf8');
+      expect(written).toBe(content);
+    });
+  });
 });

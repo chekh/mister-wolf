@@ -1,5 +1,4 @@
-import fs from 'node:fs/promises';
-import { dirname, join } from 'path';
+import { join } from 'path';
 import { MemoryStore } from '../../ports/memory-store.port.js';
 import { FileSystem } from '../../ports/file-system.port.js';
 import { Clock } from '../../ports/clock.port.js';
@@ -32,9 +31,7 @@ export async function generateAgentBrief(
   const content = renderBrief(deps.clock, snapshot, description, acceptedMemory, openQuestions);
 
   const briefPath = join(briefsDir(root), 'agent-brief-latest.md');
-  // TODO: switch to deps.fs.writeFile once FileSystem port gains it in Task 7.
-  await fs.mkdir(dirname(briefPath), { recursive: true });
-  await fs.writeFile(briefPath, content, 'utf-8');
+  await deps.fs.writeFile(briefPath, content);
 
   return { content, path: briefPath };
 }

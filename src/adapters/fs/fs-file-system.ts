@@ -64,6 +64,11 @@ export class FsFileSystem implements FileSystem {
       return false;
     }
   }
+
+  async writeFile(filePath: string, content: string): Promise<void> {
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, content, 'utf8');
+  }
 }
 
 function isNoSuchFileError(error: unknown): boolean {
