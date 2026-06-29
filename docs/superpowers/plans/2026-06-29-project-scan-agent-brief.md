@@ -2,6 +2,7 @@
 
 **Статус:** черновик плана  
 **Связанные документы:**
+
 - [Concept v3](../concept-v3.md)
 - [Core Design Spec](../specs/2026-06-29-project-semantic-memory-core-design.md)
 - [MVP-A Plan](./2026-06-29-project-semantic-memory-mvp-a.md)
@@ -13,6 +14,7 @@
 ## Границы MVP-B
 
 **Входит:**
+
 - Сканирование файловой структуры проекта.
 - Извлечение базовой метаинформации: языки, зависимости, entry points, конфиги.
 - Сохранение слепка как memory-объекта типа `context`.
@@ -20,6 +22,7 @@
 - CLI-команды: `wolf scan` и `wolf brief`.
 
 **Не входит:**
+
 - Полный AST-анализ или семантический поиск по коду.
 - Автоматическое извлечение уроков из истории коммитов.
 - Интеграция с внешними LLM (только локальные эвристики и шаблоны).
@@ -93,30 +96,38 @@ export const projectScanSchema = z.object({
 # Agent Brief: {projectName}
 
 ## Project Snapshot
+
 - Root: {root}
 - Branch: {branch}
 - Commit: {commit}
 - Generated: {timestamp}
 
 ## What This Project Is
+
 {2-3 предложения на основе README и package metadata}
 
 ## Technology Stack
+
 {языки, фреймворки, key dependencies}
 
 ## Key Files & Entry Points
+
 {список с пояснениями}
 
 ## Architecture Notes
+
 {heuristics: ports/adapters pattern, monorepo signals, etc.}
 
 ## Active Memory
+
 {3-5 последних memory-объектов}
 
 ## Open Questions
+
 {выводимые из memory типа question или пустой раздел}
 
 ## Recommended First Steps
+
 {для нового агента}
 ```
 
@@ -139,6 +150,7 @@ node dist/bootstrap/cli.js wolf scan --list
 ## Этапы реализации
 
 ### Этап 1 — File-system port и базовый сканер
+
 - Создать `ports/file-system.port.ts`.
 - Реализовать `adapters/fs/fs-file-system.ts`.
 - Реализовать `domain/services/project-scanner.ts` с обходом директорий.
@@ -146,12 +158,14 @@ node dist/bootstrap/cli.js wolf scan --list
 - Написать unit-тесты на сканер.
 
 ### Этап 2 — Use case scan-project
+
 - Создать `app/use-cases/scan-project.ts`.
 - Сохранять результат как memory-объект `context`.
 - Добавить CLI-команду `wolf scan`.
 - Написать интеграционный тест.
 
 ### Этап 3 — Генерация Agent Brief
+
 - Создать `app/use-cases/generate-agent-brief.ts`.
 - Брать последний scan + последние memory-объекты.
 - Формировать markdown по шаблону.
@@ -159,6 +173,7 @@ node dist/bootstrap/cli.js wolf scan --list
 - Добавить CLI-команду `wolf brief`.
 
 ### Этап 4 — Интеграция и документация
+
 - Обновить `AGENTS.md`: новые команды и статус MVP-B.
 - Обновить `README.md`: добавить `wolf scan` / `wolf brief`.
 - Обновить `docs/concept-v3.md`: отметить MVP-B в разработке.
