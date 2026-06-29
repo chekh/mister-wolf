@@ -1,4 +1,3 @@
-import { MemoryStore } from '../../ports/memory-store.port.js';
 import { SearchIndex, SearchResult } from '../../ports/search-index.port.js';
 
 export interface SearchMemoryInput {
@@ -7,10 +6,7 @@ export interface SearchMemoryInput {
   includeSuperseded?: boolean;
 }
 
-export async function searchMemory(
-  deps: { store: MemoryStore; index: SearchIndex },
-  input: SearchMemoryInput
-): Promise<SearchResult[]> {
+export async function searchMemory(deps: { index: SearchIndex }, input: SearchMemoryInput): Promise<SearchResult[]> {
   return deps.index.search(input.query, {
     type: input.type,
     includeSuperseded: input.includeSuperseded,

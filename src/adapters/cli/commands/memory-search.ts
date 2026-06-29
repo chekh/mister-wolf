@@ -9,9 +9,9 @@ export function memorySearchCommand(): Command {
     .option('--type <type>', 'Filter by type')
     .option('--include-superseded', 'Include superseded objects', false)
     .action(async (query, options) => {
-      const { store, index } = createCliContainer(process.cwd());
+      const { index } = createCliContainer(process.cwd());
       const results = await searchMemory(
-        { store, index },
+        { index },
         {
           query,
           type: options.type,

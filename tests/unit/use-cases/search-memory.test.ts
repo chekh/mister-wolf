@@ -53,8 +53,29 @@ describe('searchMemory', () => {
 
     await rebuildMemoryIndex({ store, index });
 
-    const results = await searchMemory({ store, index }, { query: 'reconnect' });
+    const results = await searchMemory({ index }, { query: 'reconnect' });
     expect(results).toHaveLength(1);
     expect(results[0].object.title).toBe('Router reconnect failure mode');
+  });
+
+  it('does not auto-rebuild index when searching', async () => {
+    const store = new MarkdownMemoryStore(dir);
+    const log = new JsonlEventLog(eventsPath(dir));
+    const clock = new SystemClock();
+    const idGen = new HashIdGenerator();
+    const index = new SQLiteSearchIndex(indexPath(dir));
+
+    await addMemoryObject(
+      { store, log, clock, idGen },
+      {
+        type: 'lesson',
+        title: 'Stale cache invalidation',
+        body: 'Cache invalidation is hard.',
+        createdBy: 'user:test',
+      }
+    );
+
+    const results = await searchMemory({ index }, { query: 'cache' });
+    expect(results).toHaveLength(0);
   });
 });
