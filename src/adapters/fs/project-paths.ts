@@ -18,6 +18,9 @@ export function objectDirForType(baseDir: string, type: MemoryType): string {
     document: 'documents',
     'open-question': 'questions',
   };
+  if (!(type in mapping)) {
+    throw new Error(`Unknown memory type: ${type}`);
+  }
   return join(objectsDir(baseDir), mapping[type]);
 }
 

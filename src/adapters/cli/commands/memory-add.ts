@@ -1,11 +1,12 @@
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import { addMemoryObject } from '../../../app/use-cases/add-memory-object.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
+import { MEMORY_TYPES } from '../../../domain/memory-types.js';
 
 export function memoryAddCommand(): Command {
   return new Command('add')
     .description('Add a memory object')
-    .requiredOption('--type <type>', 'Memory type')
+    .addOption(new Option('--type <type>', 'Memory type').choices([...MEMORY_TYPES]).makeOptionMandatory(true))
     .requiredOption('--title <title>', 'Title')
     .option('--body <body>', 'Body text')
     .option('--tags <tags>', 'Comma-separated tags')
