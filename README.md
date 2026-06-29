@@ -21,6 +21,7 @@ node dist/bootstrap/cli.js memory init
 node dist/bootstrap/cli.js memory add --type lesson --title "First lesson" --body "What we learned"
 node dist/bootstrap/cli.js memory rebuild-index
 node dist/bootstrap/cli.js memory search "lesson"
+node dist/bootstrap/cli.js memory supersede <old-id> <new-id>
 ```
 
 ## Development

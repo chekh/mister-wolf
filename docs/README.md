@@ -6,14 +6,18 @@
 
 ## Guides
 
-- [Getting Started](./archive/getting-started.md) — Detailed quick start guide
-- [Workflow Syntax](./archive/workflow-syntax.md) — Complete workflow YAML reference
-- [CLI Reference](./archive/cli-reference.md) — Full CLI command reference
-- [Development Guide](./archive/development.md) — Development setup and workflows
+_No current-era guides yet. See Current Concept above and the Technical Specifications below._
 
 ## Historical / Archive
 
 - [Concept v1 (Archived)](./archive/concept-v1.md) — Superseded by Concept v2. Kept for historical context.
+- [Concept v2 Summary (Archived)](./archive/concept-v2-summary.md) — Superseded by Concept v3.
+- [Concept v2 (Archived)](./archive/concept-v2.md) — Full orchestrator-era framework concept (Russian). Superseded by Concept v3.
+- [Concept v2 Open Questions (Archived)](./archive/concept-v2-open-questions.md) — Deferred implementation details from Concept v2. Superseded by Concept v3.
+- [Getting Started (Orchestrator-era archive)](./archive/getting-started.md) — Legacy quick start guide from the orchestrator-era concept.
+- [Workflow Syntax (Orchestrator-era archive)](./archive/workflow-syntax.md) — Legacy workflow YAML reference from the orchestrator-era concept.
+- [CLI Reference (Orchestrator-era archive)](./archive/cli-reference.md) — Legacy CLI command reference from the orchestrator-era concept.
+- [Development Guide (Orchestrator-era archive)](./archive/development.md) — Legacy development setup and workflows from the orchestrator-era concept.
 - [Concept v2 Summary (Archived)](./archive/concept-v2-summary.md) — Superseded by Concept v3.
 - [Concept v2 (Archived)](./archive/concept-v2.md) — Full orchestrator-era framework concept (Russian). Superseded by Concept v3.
 - [Concept v2 Open Questions (Archived)](./archive/concept-v2-open-questions.md) — Deferred implementation details from Concept v2. Superseded by Concept v3.

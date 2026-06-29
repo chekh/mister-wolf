@@ -238,11 +238,6 @@ wolf memory add --type lesson
 wolf memory list [--type lesson] [--status active]
 wolf memory search "router reconnect"
 wolf memory get <id>
-wolf memory link <id> src/router/index.ts
-wolf memory brief
-wolf memory brief --for-agent <name>
-wolf memory brief --write .wolf/memory/briefs/project-brief.md
-wolf memory scan
 wolf memory supersede <old-id> <new-id>
 wolf memory rebuild-index
 ```
@@ -251,13 +246,18 @@ MVP-A use-cases:
 
 - `init-project-memory.ts`
 - `add-memory-object.ts`
+- `list-memory-objects.ts`
 - `search-memory.ts`
 - `get-memory-object.ts`
-- `link-memory-object.ts`
-- `build-agent-brief.ts`
 - `supersede-memory-object.ts`
-- `scan-project.ts`
-- `validate-memory.ts`
+- `rebuild-index.ts`
+
+Команды будущих фаз (вне MVP-A):
+
+- `scan` — Phase 4 Project Scan: регистрация внешних документов по ссылке, поиск orphan docs.
+- `brief` / `brief --write` — Phase 5 Agent Brief: экспорт в `AGENTS.md`, `active-warnings.md`.
+- `link` — Phase 8 Code Linking: явная связь memory object → файл / символ.
+- `validate` — Phase 7 Memory Governance: проверка объектов по write protocol до принятия.
 
 ---
 
@@ -277,17 +277,17 @@ MVP-A use-cases:
 
 ## 9. Дорожная карта
 
-| Фаза | Название                  | Суть                                                                                             |
-| ---- | ------------------------- | ------------------------------------------------------------------------------------------------ |
-| 1    | Reframe                   | Новый README, архивация старых concept/spec, публикация `docs/concept-v3.md`                     |
-| 2    | Core Memory               | Доменная модель, Markdown-хранилище, JSONL-лог, команды `init`, `add`, `list`, `get`, `validate` |
-| 3    | Index & Search            | `rebuild-index`, SQLite FTS5, `search`, теги, связи, ранжирование                                |
-| 4    | Project Scan              | `scan` регистрирует внешние документы по ссылке, находит orphan docs                             |
-| 5    | Agent Brief (MVP-B)       | `brief`, `brief --write`, экспорт `AGENTS.md`, `active-warnings.md`                              |
-| 6    | Case Learning (MVP-C)     | `session-summary`, lessons, decisions, observations, `supersede`                                 |
-| 7    | Memory Governance (MVP-D) | `check-before-edit`, stale-memory detection, `invalidated`, decay confidence/importance          |
-| 8    | Code Linking (MVP-E)      | memory object → file, memory object → symbol, code-intelligence backends                         |
-| 9    | Integrations              | MCP server проверен для OpenCode, Claude Code, Codex, Cursor                                     |
+| Фаза | Название                  | Суть                                                                                                |
+| ---- | ------------------------- | --------------------------------------------------------------------------------------------------- |
+| 1    | Reframe                   | Новый README, архивация старых concept/spec, публикация `docs/concept-v3.md`                        |
+| 2    | Core Memory               | Доменная модель, Markdown-хранилище, JSONL-лог, команды `init`, `add`, `list`, `get`, `supersede`   |
+| 3    | Index & Search            | `rebuild-index`, SQLite FTS5, `search`, теги, связи, ранжирование                                   |
+| 4    | Project Scan              | `scan` регистрирует внешние документы по ссылке, находит orphan docs                                |
+| 5    | Agent Brief (MVP-B)       | `brief`, `brief --write`, экспорт `AGENTS.md`, `active-warnings.md`                                 |
+| 6    | Case Learning (MVP-C)     | `session-summary`, lessons, decisions, observations                                                 |
+| 7    | Memory Governance (MVP-D) | `validate`, `check-before-edit`, stale-memory detection, `invalidated`, decay confidence/importance |
+| 8    | Code Linking (MVP-E)      | `link`, memory object → file, memory object → symbol, code-intelligence backends                    |
+| 9    | Integrations              | MCP server проверен для OpenCode, Claude Code, Codex, Cursor                                        |
 
 ---
 

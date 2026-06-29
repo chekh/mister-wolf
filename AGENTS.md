@@ -90,6 +90,9 @@ node dist/bootstrap/cli.js memory rebuild-index
 
 # Search memory objects
 node dist/bootstrap/cli.js memory search "..."
+
+# Supersede an older memory object with a newer one
+node dist/bootstrap/cli.js memory supersede <old-id> <new-id>
 ```
 
 ## GIT FLOW
