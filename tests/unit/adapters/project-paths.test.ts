@@ -19,6 +19,7 @@ describe('project-paths', () => {
       'work-thread',
       'info-request',
       'article',
+      'blocker',
     ];
     const expectedDir: Record<MemoryType, string> = {
       document: 'documents',
@@ -31,6 +32,7 @@ describe('project-paths', () => {
       'work-thread': 'threads',
       'info-request': 'info-requests',
       article: 'articles',
+      blocker: 'blockers',
     };
     for (const type of knownTypes) {
       expect(objectDirForType('/base', type)).toContain(expectedDir[type]);
