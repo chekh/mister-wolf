@@ -15,6 +15,8 @@ import { memoryThreadCommand } from './commands/memory-thread.js';
 import { memoryInfoRequestCommand } from './commands/memory-info-request.js';
 import { memoryArticleCommand } from './commands/memory-article.js';
 
+import { memoryDecisionCommand } from './commands/memory-decision.js';
+
 function readPackageVersion(): string {
   const baseDir = dirname(fileURLToPath(import.meta.url));
   const pkg = JSON.parse(readFileSync(join(baseDir, '../../../package.json'), 'utf-8')) as { version: string };
@@ -36,6 +38,7 @@ export function createCli(): Command {
   memory.addCommand(memoryScanCommand());
   memory.addCommand(memoryBriefCommand());
   memory.addCommand(memoryThreadCommand());
+  memory.addCommand(memoryDecisionCommand());
   memory.addCommand(memoryInfoRequestCommand());
   memory.addCommand(memoryArticleCommand());
 
