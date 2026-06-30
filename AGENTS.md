@@ -1,163 +1,77 @@
-# PROJECT KNOWLEDGE BASE
+# Agent Brief: mr-wolf
 
-**Generated:** 2026-06-29
-**Commit:** see `git log --oneline -1` for current HEAD
-**Branch:** main
+## Project Snapshot
+- Root: .
+- Project name: mr-wolf
+- Branch: main
+- Commit: a48d167d38d0a6039f7df9170a727fc1b5c34c59
+- Generated: 2026-06-30T13:45:28.237Z
 
-## OVERVIEW
+## What This Project Is
+Mr. Wolf
 
-Mr. Wolf is a local-first Project Semantic Memory layer for AI coding agents. It persists structured memory objects (lessons, facts, decisions, context) directly in the project repository and makes them searchable, so agents retain context across sessions without becoming an orchestrator.
+> **"I solve problems."**
+>
+> Local-first Project Semantic Memory layer for AI coding agents.
+>
+> Not another agent. A memory substrate for agents.
+>
+> See docs/concept-v3.md for the full architecture and concept.
 
-**Status:** Current: MVP-A complete. MVP-B (Project Scan + Agent Brief) implemented. Phase 1 (Work Threads, Info Requests, Articles) implemented.
+## Technology Stack
+- Languages: json, jsonl, log, md, py, ts, yaml, yml
+- Key dependencies: @dietrichgebert/ponytail, @types/better-sqlite3, @types/glob, @types/js-yaml, @types/node, @types/uuid, better-sqlite3, commander, fast-glob, js-yaml
 
-## STRUCTURE
+## Key Files & Entry Points
+- src/bootstrap/cli.ts
+- .opencode/package.json (config)
+- .prettierrc (config)
+- package.json (config)
+- tsconfig.json (config)
+- vitest.config.ts (config)
 
-```
-.
-├── src/                    # TypeScript runtime
-│   ├── domain/            # memory object schemas, types, write protocol
-│   ├── app/use-cases/     # init, add, get, list, search, supersede, rebuild-index
-│   ├── ports/             # outbound contracts
-│   ├── adapters/fs/       # markdown store, jsonl event log, clock, id generator, initializer
-│   ├── adapters/sqlite/   # FTS5 search index
-│   ├── adapters/cli/      # thin CLI commands
-│   ├── bootstrap/         # cli entry point
-│   └── config/            # reserved for future config loader
-├── tests/                  # Vitest test suite
-│   ├── unit/              # domain, adapters, use cases
-│   └── integration/       # end-to-end memory workflow
-├── docs/                   # Documentation
-│   ├── concept-v3.md       # current Project Semantic Memory concept
-│   ├── superpowers/specs/  # design spec
-│   ├── superpowers/plans/  # implementation plan
-│   └── archive/            # old orchestrator docs, discussions, and specs
-├── AGENTS.md              # This file
-├── README.md              # Project overview
-├── package.json           # Dependencies and scripts
-├── tsconfig.json          # TypeScript config
-└── vitest.config.ts       # Vitest config
-```
+## Architecture Notes
+Project appears to use a ports-and-adapters (hexagonal) architecture.
 
-## WHERE TO LOOK
+## Active Memory
+- [decision] Use decision and blocker types for Phase 2
+  Phase 2 implements first-class decision and blocker memory objects with CLI commands and brief integration.
+- [session-summary] Session 2026-06-30: гэп в onboarding устранён, готовность к Phase 2
+  Проблема: при старте сессии информация о текущей работе была размазана по git, thread, article, events.jsonl, brief; пои
+- [document] Роадмап MVP Mr. Wolf
+  MVP-A: Core Memory + Search — реализован. MVP-B: Project Scan + Agent Brief — в плане, цель: wolf scan и wolf brief. MVP
+- [observation] Источник правды — markdown-файлы в .wolf/memory
+  Memory-объекты хранятся как markdown-файлы в .wolf/memory/<type>/<id>.md. События пишутся в .wolf/memory/events.jsonl. S
+- [observation] Доступные CLI-команды в MVP-A
+  Доступные команды: memory init, memory add --type <type> --title <title> --body <body>, memory get <id>, memory list, me
+- [decision] Не коммитить .codegraph/ в репозиторий
+  Каталог .codegraph/ содержит SQLite-индекс CodeGraph и не должен попадать в git. Добавлен в .gitignore. Если индекс отсу
+- [decision] Использовать git-flow: все изменения через dev
+  Решено: вся разработка ведётся через ветку dev. Фичи и фиксы создаются как feat/* и fix/*, мёржатся в dev, а в main попа
+- [lesson] Документирование сессии: cleanup docs + план MVP-B
+  В этой сессии выполнили документальный cleanup после пивота Mr. Wolf на Project Semantic Memory: перенесли устаревшие об
 
-| Task                    | Location                                                                   | Notes                                                                 |
-| ----------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Understand architecture | `docs/superpowers/specs/2026-06-29-project-semantic-memory-core-design.md` | Covers architecture, memory object model, write protocol, MVP roadmap |
-| Memory object model     | `src/domain/schemas/memory-object-schema.ts`                               | Zod schemas and TypeScript types for memory objects                   |
-| Write protocol          | `src/domain/policies/write-protocol.ts`                                    | Validation and append-only write rules                                |
-| Storage adapter         | `src/adapters/fs/markdown-memory-store.ts`                                 | Markdown file persistence for memory objects                          |
-| Event log               | `src/adapters/fs/jsonl-event-log.ts`                                       | Append-only JSONL log of memory events                                |
-| Search index            | `src/adapters/sqlite/sqlite-search-index.ts`                               | FTS5 search index over memory objects                                 |
-| Use cases               | `src/app/use-cases/`                                                       | init, add, get, list, search, supersede, rebuild-index                |
-| CLI commands            | `src/adapters/cli/commands/`                                               | Thin command handlers wired to use cases                              |
-| Tests                   | `tests/`                                                                   | Vitest suite (unit + integration)                                     |
+## Open Questions
+- Автоматическая регистрация проектных документов при scan
+  Сейчас memory scan (MVP-B) создаёт только context-объект project-scan-latest. Нужно ли расширить сканер, чтобы он находи
+- Нужна ли инкрементальная индексация вместо rebuild-index?
+  Сейчас после каждого memory add поиск не видит новые объекты, пока не выполнить memory rebuild-index. Это соответствует 
 
-## CONVENTIONS
+## Blockers
+- Need incremental indexing
 
-- **Language**: All communication in Russian. Code/docs may be bilingual.
-- **Status**: Current: MVP-A complete. MVP-B (Project Scan + Agent Brief) implemented. Phase 1 (Work Threads, Info Requests, Articles) implemented.
-- **Framework philosophy**: Mr. Wolf augments agents with memory; it does not orchestrate them.
-- **TypeScript**: Strict mode, Zod schemas, strong typing throughout.
+## Sources
+- Project scan: project-scan-latest
+- README.md
+- package.json
+- Active memory objects: 8
 
-## FOR AGENTS: USE PROJECT MEMORY
+## Limitations
+- This brief is generated from the latest scan and accepted active memory.
+- It may be incomplete if the scan is outdated or memory has not been reviewed.
 
-This project uses **Mr. Wolf** — a local-first Project Semantic Memory layer.
-See full rules in [`MEMORY.md`](./MEMORY.md).
+## Recommended First Steps
+- Review the active memory and open questions below.
+- Read project documentation (README.md, docs/concept-v3.md, AGENTS.md).
+- Run the project checks (`npm run check` or equivalent).
 
-Quick commands:
-
-```bash
-# Search relevant memory before starting work
-node dist/bootstrap/cli.js memory search "<topic or task keywords>"
-
-# Add a new memory object when you learn something worth keeping
-node dist/bootstrap/cli.js memory add --type lesson --title "..." --body "..."
-
-# Update the agent brief at the end of a significant session
-node dist/bootstrap/cli.js memory brief
-```
-## CORE COMMANDS
-
-```bash
-# Install dependencies
-npm install
-
-# Build
-npm run build
-
-# Run tests
-npm run test:run
-
-# Type check
-npm run lint
-
-# Format code
-npm run format
-
-# Run checks
-npm run check
-
-# Initialize memory in a project
-node dist/bootstrap/cli.js memory init
-
-# Add a memory object
-node dist/bootstrap/cli.js memory add --type lesson --title "..." --body "..."
-
-# Scan project for external documents to register by reference
-node dist/bootstrap/cli.js memory scan
-
-# Generate an agent brief from active memory objects
-node dist/bootstrap/cli.js memory brief
-
-# Write the generated brief to AGENTS.md and active-warnings.md
-node dist/bootstrap/cli.js memory brief --write
-
-# Rebuild the search index from source files
-node dist/bootstrap/cli.js memory rebuild-index
-
-# Search memory objects
-node dist/bootstrap/cli.js memory search "..."
-
-# Supersede an older memory object with a newer one
-node dist/bootstrap/cli.js memory supersede <old-id> <new-id>
-
-# Create a work thread
-node dist/bootstrap/cli.js memory thread create --title "..." --goal "..."
-
-# Create an info request (defer a side investigation)
-node dist/bootstrap/cli.js memory info-request create --title "..." --thread <thread-id> --question "..." --detour-reason "..." --expected-answer "..."
-
-# Add an article (answer an info request or capture reusable knowledge)
-node dist/bootstrap/cli.js memory article add --title "..." --thread <thread-id> --summary "..." --body "..."
-
-# Show thread brief for session startup context
-node dist/bootstrap/cli.js memory thread brief <thread-id>
-```
-
-## GIT FLOW
-
-```text
-main  ←──  dev  ←──  feat/*
-main  ←──  dev  ←──  fix/*
-main  ←──  dev  ←──  review/*
-```
-
-- All development goes through `dev`
-- Feature branches: `feat/description`
-- Fix branches: `fix/description`
-- Review/exploration branches: `review/description`
-- Merge to `main` only via `dev`
-
-## ANTI-PATTERNS
-
-- Do not make Mr. Wolf an orchestrator or agent framework.
-- Do not treat SQLite as the source of truth; markdown files are the source of truth.
-- Do not auto-rebuild the search index on every search; rebuild only when requested or after bulk changes.
-- Do not copy user documents into `.wolf/memory`; store summaries, links, or extracted memory objects instead.
-
-## NOTES
-
-- Targets: dev assistant, office assistant, concierge, legal, sales, HR, finance, research.
-- MVP roadmap: Core Memory + Search (complete) → Project Scan + Agent Brief (complete) → Case Learning → Memory Governance → Code Linking → Agent Integration (MCP).
-- Current: MVP-A (Core Memory + Search) complete.
-- MVP-B (Project Scan + Agent Brief) implemented.
