@@ -1,0 +1,253 @@
+# Руководство пользователя Mr. Wolf
+
+**Версия:** соответствует Phase 1 (work-thread, info-request, article)  
+**Статус:** активно развивается
+
+---
+
+## 1. Что такое Mr. Wolf
+
+Mr. Wolf — это локальная память проекта для работы с AI-ассистентами. Он не заменяет агентов, OpenCode, документацию или тесты. Он сохраняет важные артефакты проекта — решения, вопросы, ответы, правила — так, чтобы их можно было найти и использовать в следующей сессии.
+
+Вся память хранится в файлах Markdown с YAML frontmatter внутри `.wolf/memory/`. Это значит, что вы можете читать и редактировать её обычными инструментами.
+
+---
+
+## 2. Основные сущности Phase 1
+
+### 2.1. Work Thread (Рабочий тред)
+
+**Что это:** долгоживущая линия работы, которая объединяет несколько сессий.
+
+**Когда создавать:**
+- Когда вы начинаете работу, которая займёт больше одной сессии.
+- Когда хотите, чтобы новая сессия могла быстро войти в контекст.
+- Когда появляются связанные вопросы, статьи и решения.
+
+**Пример:**
+```bash
+node dist/bootstrap/cli.js memory thread create \
+  --title "Переход на schema-driven memory" \
+  --goal "Сделать Mr. Wolf конфигурируемым движком памяти" \
+  --current-state "Завершена Phase 1" \
+  --next-steps "Phase 2: decisions и blockers"
+```
+
+**Что хранится в треде:**
+- `title` — название
+- `goal` — цель
+- `current_state` — текущее состояние (обновляется вручную)
+- `next_steps` — следующие шаги
+- `status` — `active`, `paused`, `completed`, `archived`
+
+### 2.2. Info Request (Запрос на информацию)
+
+**Что это:** отложенный побочный вопрос, ответ на который должен стать частью проектной памяти.
+
+**Когда создавать:**
+- Вопрос требует большого отступления от основной темы сессии.
+- Ответ будет полезен не только сейчас, но и в будущем.
+- Вы можете дать предварительный ответ, но нужна глубокая проверка.
+
+**Не создавайте info-request:**
+- для обычных TODO;
+- чтобы избежать размышления;
+- для вопросов, которые можно ответить прямо сейчас.
+
+**Пример:**
+```bash
+node dist/bootstrap/cli.js memory info-request create \
+  --title "Где хранить relations?" \
+  --thread <thread-id> \
+  --question "Должны ли связи между артефактами храниться в relations.jsonl или в SQLite?" \
+  --detour-reason "Сравнение хранилищ отвлечёт от проектирования поведения" \
+  --expected-answer "Сравнение вариантов с рекомендацией" \
+  --preliminary-answer "Скорее всего, relations.jsonl для MVP."
+```
+
+**Обязательные поля:**
+- `question` — вопрос
+- `detour_reason` — почему откладываем
+- `expected_answer` — какой ответ ожидается
+- `thread` — к какому треду относится
+
+### 2.3. Article (Статья)
+
+**Что это:** переиспользуемый ответ на info-request или самостоятельная заметка о проекте.
+
+**Когда создавать:**
+- Вы подготовили ответ на info-request.
+- Нужно зафиксировать объяснение, которое будут читать другие сессии.
+- Хотите собрать знание в структурированном виде.
+
+**Пример:**
+```bash
+node dist/bootstrap/cli.js memory article add \
+  --title "Хранение relations в Mr. Wolf" \
+  --thread <thread-id> \
+  --summary "Используем relations.jsonl как canonical source, SQLite индексирует связи." \
+  --body "## Ответ\n\nrelations.jsonl — canonical source of truth для связей. SQLite перестраивается при необходимости." \
+  --answers <info-request-id>
+```
+
+**Рекомендуемые разделы тела статьи:**
+- Summary
+- Context
+- Answer
+- Options Considered
+- Recommendation
+- Evidence
+- When To Revisit
+
+### 2.4. Thread Brief (Бриф треда)
+
+**Что это:** собранный контекст для старта новой сессии.
+
+**Что показывает:**
+- цель и текущее состояние треда;
+- открытые info-request;
+- статьи;
+- отвеченные запросы.
+
+**Когда использовать:**
+- В начале новой сессии, чтобы вспомнить, где остановились.
+- Перед тем как продолжить работу после перерыва.
+
+```bash
+node dist/bootstrap/cli.js memory thread brief <thread-id>
+```
+
+---
+
+## 3. Связи между сущностями
+
+```text
+work-thread
+  ├── info-request
+  │     └── answered_by article
+  └── article
+        └── may support future decision
+```
+
+- `info-request` всегда привязан к `work-thread`.
+- `article` привязан к `work-thread` и может отвечать на один или несколько `info-request`.
+- В будущем появятся `decision` и `blocker`, которые будут ссылаться на статьи.
+
+---
+
+## 4. Типичный рабочий процесс
+
+### Сессия A: основная работа
+
+```bash
+# Создать тред
+node dist/bootstrap/cli.js memory thread create \
+  --title "Название задачи" \
+  --goal "Чего хотим достичь"
+
+# В процессе работы возникает отложенный вопрос
+node dist/bootstrap/cli.js memory info-request create \
+  --title "Вопрос" \
+  --thread <thread-id> \
+  --question "..." \
+  --detour-reason "..." \
+  --expected-answer "..." \
+  --preliminary-answer "..."
+```
+
+### Сессия B: ответ на вопрос
+
+```bash
+# Посмотреть открытые запросы
+node dist/bootstrap/cli.js memory info-request list --thread <thread-id>
+
+# Написать статью-ответ
+node dist/bootstrap/cli.js memory article add \
+  --title "Ответ на вопрос" \
+  --thread <thread-id> \
+  --summary "..." \
+  --body "..." \
+  --answers <info-request-id>
+```
+
+### Сессия C: продолжение основной работы
+
+```bash
+# Получить контекст
+node dist/bootstrap/cli.js memory thread brief <thread-id>
+```
+
+---
+
+## 5. Статусы артефактов
+
+**Work thread:**
+- `active` — в работе
+- `paused` — приостановлен
+- `completed` — завершён
+- `archived` — в архиве
+
+**Info request:**
+- `open` — открыт
+- `answered` — отвечен
+- `rejected` — отклонён
+- `obsolete` — устарел
+- `archived` — в архиве
+
+**Article:**
+- `proposed` — предложен агентом
+- `accepted` — принят
+- `stale` — устарел
+- `superseded` — замещён
+- `archived` — в архиве
+
+---
+
+## 6. Важные правила
+
+1. **Не копируйте документы целиком.** Регистрируйте их по ссылке и добавляйте выжимку.
+2. **Не используйте info-request как TODO.** Это для знаний, а не задач.
+3. **Давайте предварительный ответ.** Перед созданием info-request скажите, что вы думаете сейчас.
+4. **Обновляйте current_state треда.** В конце сессии кратко опишите, что изменилось.
+5. **Используйте thread brief в начале сессии.** Это экономит контекст.
+
+---
+
+## 7. Что будет дальше
+
+Следующие фазы:
+
+- **Phase 2:** decisions и blockers — фиксация решений и препятствий.
+- **Phase 3:** регистрация документов и внешних артефактов из проекта.
+- **Phase 4:** явные связи между артефактами и session checkpoints.
+- **Phase 5:** поиск и индексация.
+- **Phase 6:** governance: memory_class, truth_role, lifetime.
+
+---
+
+## 8. Обновление документации
+
+> **Правило:** после завершения каждой фазы Mr. Wolf необходимо обновлять пользовательскую документацию.
+
+Это руководство должно отражать актуальные сущности, команды и рабочий процесс. При появлении новых типов артефактов, команд или шаблонов поведения — дополняйте этот файл.
+
+Если документация отстаёт от кода, агенты и пользователи будут теряться в реальном поведении системы.
+
+---
+
+## 9. Быстрая шпаргалка команд
+
+```bash
+# Треды
+node dist/bootstrap/cli.js memory thread create --title "..." --goal "..."
+node dist/bootstrap/cli.js memory thread list
+node dist/bootstrap/cli.js memory thread brief <thread-id>
+
+# Info requests
+node dist/bootstrap/cli.js memory info-request create --title "..." --thread <id> --question "..." --detour-reason "..." --expected-answer "..."
+node dist/bootstrap/cli.js memory info-request list --thread <id>
+
+# Статьи
+node dist/bootstrap/cli.js memory article add --title "..." --thread <id> --summary "..." --body "..."
+node dist/bootstrap/cli.js memory article list --thread <id>
+```
