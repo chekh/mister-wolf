@@ -19,7 +19,7 @@ export async function generateAgentBrief(
   const memoryObjects = await deps.store.list({ status: 'active' });
 
   const acceptedMemory = memoryObjects
-    .filter((obj) => obj.review_state === 'accepted' && obj.type !== 'context')
+    .filter((obj) => obj.review_state === 'accepted' && obj.type !== 'context' && obj.type !== 'blocker')
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
     .slice(0, 10);
 
@@ -27,8 +27,12 @@ export async function generateAgentBrief(
     .filter((obj) => obj.type === 'open-question' && obj.status === 'active')
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
+  const blockers = memoryObjects
+    .filter((obj) => obj.type === 'blocker' && obj.status === 'active')
+    .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+
   const description = await buildProjectDescription(deps.fs, root, snapshot);
-  const content = renderBrief(deps.clock, snapshot, description, acceptedMemory, openQuestions);
+  const content = renderBrief(deps.clock, snapshot, description, acceptedMemory, openQuestions, blockers);
 
   const briefPath = join(briefsDir(root), 'agent-brief-latest.md');
   await deps.fs.writeFile(briefPath, content);
@@ -66,7 +70,8 @@ function renderBrief(
   snapshot: ProjectSnapshot,
   description: string,
   activeMemory: MemoryObject[],
-  openQuestions: MemoryObject[]
+  openQuestions: MemoryObject[],
+  blockers: MemoryObject[]
 ): string {
   const lines: string[] = [
     `# Agent Brief: ${snapshot.projectName}`,
@@ -116,6 +121,16 @@ function renderBrief(
     }
   }
   if (openQuestions.length === 0) lines.push('_No open questions._');
+  lines.push('');
+
+  lines.push('## Blockers');
+  for (const b of blockers) {
+    lines.push(`- ${b.title}`);
+    if (b.body) {
+      lines.push(`  ${b.body.split('\n')[0].slice(0, 120)}`);
+    }
+  }
+  if (blockers.length === 0) lines.push('_No active blockers._');
   lines.push('');
 
   lines.push(
