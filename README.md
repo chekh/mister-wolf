@@ -31,7 +31,7 @@ node dist/bootstrap/cli.js memory search "lesson"
 ### Core memory
 
 - `wolf memory init` — initialize Mr. Wolf memory in the project.
-- `wolf memory add` — add a memory object (lesson, decision, observation, etc.). Search sees it immediately.
+- `wolf memory add` — add a memory object. Supports `--tags`, `--confidence`, `--importance`. Search sees it immediately.
 - `wolf memory list` — list memory objects, optionally filtered by type, status, or stale objects.
 - `wolf memory get <id>` — retrieve a single memory object by ID.
 - `wolf memory search <query>` — full-text search over memory objects.
