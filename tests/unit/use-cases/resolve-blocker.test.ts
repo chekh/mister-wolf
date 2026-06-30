@@ -4,6 +4,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { resolveBlocker } from '../../../src/app/use-cases/resolve-blocker.js';
 import { createBlocker } from '../../../src/app/use-cases/create-blocker.js';
+import { createDecision } from '../../../src/app/use-cases/create-decision.js';
 import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
 import { JsonlEventLog } from '../../../src/adapters/fs/jsonl-event-log.js';
 import { SystemClock } from '../../../src/adapters/fs/system-clock.js';
@@ -49,8 +50,19 @@ describe('resolveBlocker', () => {
   });
 
   it('throws if blocker is not found', async () => {
-    await expect(
-      resolveBlocker({ store, log, clock, idGen }, 'missing-blocker-id')
-    ).rejects.toThrow('Memory object not found: missing-blocker-id');
+    await expect(resolveBlocker({ store, log, clock, idGen }, 'missing-blocker-id')).rejects.toThrow(
+      'Memory object not found: missing-blocker-id'
+    );
+  });
+
+  it('throws if object is not a blocker', async () => {
+    const created = await createDecision(
+      { store, log, clock, idGen },
+      { title: 'Architecture choice', body: 'Use SQLite.', createdBy: 'user:test' }
+    );
+
+    await expect(resolveBlocker({ store, log, clock, idGen }, created.object.id)).rejects.toThrow(
+      `Memory object is not a blocker: ${created.object.id}`
+    );
   });
 });

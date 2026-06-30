@@ -42,12 +42,8 @@ describe('createBlocker', () => {
 
     expect(result.object.type).toBe('blocker');
     expect(result.object.title).toBe('Missing CI lint step');
-    expect(result.object.impact).toBe(
-      'Main branch can receive unformatted code.'
-    );
-    expect(result.object.workaround).toBe(
-      'Run npm run lint manually before merging.'
-    );
+    expect(result.object.impact).toBe('Main branch can receive unformatted code.');
+    expect(result.object.workaround).toBe('Run npm run lint manually before merging.');
     expect(result.object.status).toBe('active');
     expect(result.object.confidence).toBe('medium');
     expect(result.object.importance).toBe(0.8);

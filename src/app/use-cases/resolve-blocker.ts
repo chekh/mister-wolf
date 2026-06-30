@@ -9,6 +9,7 @@ export async function resolveBlocker(
 ): Promise<void> {
   const existing = await deps.store.get(id);
   if (!existing) throw new Error(`Memory object not found: ${id}`);
+  if (existing.type !== 'blocker') throw new Error(`Memory object is not a blocker: ${id}`);
 
   const now = deps.clock.now();
   await deps.store.update(id, { status: 'resolved' });

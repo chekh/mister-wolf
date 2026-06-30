@@ -41,9 +41,7 @@ describe('createDecision', () => {
 
     expect(result.object.type).toBe('decision');
     expect(result.object.title).toBe('Use SQLite FTS5 for search');
-    expect(result.object.body).toBe(
-      'SQLite FTS5 gives fast full-text search without an external service.'
-    );
+    expect(result.object.body).toBe('SQLite FTS5 gives fast full-text search without an external service.');
     expect(result.object.status).toBe('active');
     expect(result.object.confidence).toBe('medium');
     expect(result.object.importance).toBe(0.7);

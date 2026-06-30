@@ -20,11 +20,13 @@ Mr. Wolf — это локальная память проекта для раб
 **Что это:** долгоживущая линия работы, которая объединяет несколько сессий.
 
 **Когда создавать:**
+
 - Когда вы начинаете работу, которая займёт больше одной сессии.
 - Когда хотите, чтобы новая сессия могла быстро войти в контекст.
 - Когда появляются связанные вопросы, статьи и решения.
 
 **Пример:**
+
 ```bash
 node dist/bootstrap/cli.js memory thread create \
   --title "Переход на schema-driven memory" \
@@ -34,6 +36,7 @@ node dist/bootstrap/cli.js memory thread create \
 ```
 
 **Что хранится в треде:**
+
 - `title` — название
 - `goal` — цель
 - `current_state` — текущее состояние (обновляется вручную)
@@ -45,16 +48,19 @@ node dist/bootstrap/cli.js memory thread create \
 **Что это:** отложенный побочный вопрос, ответ на который должен стать частью проектной памяти.
 
 **Когда создавать:**
+
 - Вопрос требует большого отступления от основной темы сессии.
 - Ответ будет полезен не только сейчас, но и в будущем.
 - Вы можете дать предварительный ответ, но нужна глубокая проверка.
 
 **Не создавайте info-request:**
+
 - для обычных TODO;
 - чтобы избежать размышления;
 - для вопросов, которые можно ответить прямо сейчас.
 
 **Пример:**
+
 ```bash
 node dist/bootstrap/cli.js memory info-request create \
   --title "Где хранить relations?" \
@@ -66,6 +72,7 @@ node dist/bootstrap/cli.js memory info-request create \
 ```
 
 **Обязательные поля:**
+
 - `question` — вопрос
 - `detour_reason` — почему откладываем
 - `expected_answer` — какой ответ ожидается
@@ -76,11 +83,13 @@ node dist/bootstrap/cli.js memory info-request create \
 **Что это:** переиспользуемый ответ на info-request или самостоятельная заметка о проекте.
 
 **Когда создавать:**
+
 - Вы подготовили ответ на info-request.
 - Нужно зафиксировать объяснение, которое будут читать другие сессии.
 - Хотите собрать знание в структурированном виде.
 
 **Пример:**
+
 ```bash
 node dist/bootstrap/cli.js memory article add \
   --title "Хранение relations в Mr. Wolf" \
@@ -91,6 +100,7 @@ node dist/bootstrap/cli.js memory article add \
 ```
 
 **Рекомендуемые разделы тела статьи:**
+
 - Summary
 - Context
 - Answer
@@ -104,12 +114,14 @@ node dist/bootstrap/cli.js memory article add \
 **Что это:** собранный контекст для старта новой сессии.
 
 **Что показывает:**
+
 - цель и текущее состояние треда;
 - открытые info-request;
 - статьи;
 - отвеченные запросы.
 
 **Когда использовать:**
+
 - В начале новой сессии, чтобы вспомнить, где остановились.
 - Перед тем как продолжить работу после перерыва.
 
@@ -182,12 +194,14 @@ node dist/bootstrap/cli.js memory thread brief <thread-id>
 ## 5. Статусы артефактов
 
 **Work thread:**
+
 - `active` — в работе
 - `paused` — приостановлен
 - `completed` — завершён
 - `archived` — в архиве
 
 **Info request:**
+
 - `open` — открыт
 - `answered` — отвечен
 - `rejected` — отклонён
@@ -195,6 +209,7 @@ node dist/bootstrap/cli.js memory thread brief <thread-id>
 - `archived` — в архиве
 
 **Article:**
+
 - `proposed` — предложен агентом
 - `accepted` — принят
 - `stale` — устарел
