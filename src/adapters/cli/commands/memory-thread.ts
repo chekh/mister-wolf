@@ -16,9 +16,9 @@ export function memoryThreadCommand(): Command {
     .option('--next-steps <steps>', 'Comma-separated next steps')
     .option('--created-by <actor>', 'Creator actor', 'user:cli')
     .action(async (options) => {
-      const { store, log, clock, idGen } = createCliContainer(process.cwd());
+      const { store, log, clock, idGen, index } = createCliContainer(process.cwd());
       const result = await createWorkThread(
-        { store, log, clock, idGen },
+        { store, log, clock, idGen, index },
         {
           title: options.title,
           goal: options.goal,

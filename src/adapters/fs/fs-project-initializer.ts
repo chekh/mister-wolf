@@ -18,6 +18,7 @@ memory:
     - info-request
     - article
     - blocker
+    - session-checkpoint
 search:
   default_limit: 20
 `;

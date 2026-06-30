@@ -5,7 +5,22 @@ export interface SearchResult {
   score: number;
 }
 
+export interface SearchOptions {
+  type?: string;
+  includeSuperseded?: boolean;
+  tags?: string[];
+  status?: string;
+  confidence?: 'low' | 'medium' | 'high';
+  minImportance?: number;
+  maxImportance?: number;
+  createdAfter?: string;
+  createdBefore?: string;
+  limit?: number;
+}
+
 export interface SearchIndex {
   rebuild(objects: MemoryObject[]): Promise<void>;
-  search(query: string, options?: { type?: string; includeSuperseded?: boolean }): Promise<SearchResult[]>;
+  indexObject(object: MemoryObject): Promise<void>;
+  removeObject(id: string): Promise<void>;
+  search(query: string, options?: SearchOptions): Promise<SearchResult[]>;
 }

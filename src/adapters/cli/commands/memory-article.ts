@@ -19,9 +19,9 @@ export function memoryArticleCommand(): Command {
     .option('--evidence <items>', 'Comma-separated evidence items')
     .option('--created-by <actor>', 'Creator actor', 'user:cli')
     .action(async (options) => {
-      const { store, log, clock, idGen } = createCliContainer(process.cwd());
+      const { store, log, clock, idGen, index, relations } = createCliContainer(process.cwd());
       const result = await createArticle(
-        { store, log, clock, idGen },
+        { store, log, clock, idGen, index, relations },
         {
           title: options.title,
           thread: options.thread,

@@ -14,6 +14,9 @@ const IGNORED_DIRS = new Set([
   '.worktrees',
 ]);
 
+const DOCUMENT_DIRS = new Set(['docs', 'specs', 'adr', 'plans', 'notes']);
+const DOCUMENT_EXTENSIONS = new Set(['md']);
+
 const CONFIG_FILE_NAMES = new Set([
   'package.json',
   'tsconfig.json',
@@ -68,12 +71,13 @@ export class HeuristicProjectScanner implements ProjectScanner {
 
   async scan(root: string): Promise<ProjectSnapshot> {
     const files: ProjectSnapshot['files'] = [];
+    const docs: ProjectSnapshot['docs'] = [];
     const languages = new Set<string>();
     const configFiles = new Set<string>();
     const topLevelDirectories = new Set<string>();
     const counters = { fileCount: 0 };
 
-    await this.walk(root, root, files, languages, configFiles, topLevelDirectories, counters);
+    await this.walk(root, root, files, docs, languages, configFiles, topLevelDirectories, counters);
 
     const packageJson = await this.readPackageJson(root);
     const entryPoints = this.detectEntryPoints(packageJson, files);
@@ -95,6 +99,7 @@ export class HeuristicProjectScanner implements ProjectScanner {
         fileCount: counters.fileCount,
       },
       files: files.sort((a, b) => a.path.localeCompare(b.path)),
+      docs: docs.sort((a, b) => a.path.localeCompare(b.path)),
     };
   }
 
@@ -102,6 +107,7 @@ export class HeuristicProjectScanner implements ProjectScanner {
     root: string,
     current: string,
     files: ProjectSnapshot['files'],
+    docs: ProjectSnapshot['docs'],
     languages: Set<string>,
     configFiles: Set<string>,
     topLevelDirectories: Set<string>,
@@ -116,7 +122,7 @@ export class HeuristicProjectScanner implements ProjectScanner {
       if (entry.isDirectory) {
         if (IGNORED_DIRS.has(entry.name)) continue;
         if (depth === 1) topLevelDirectories.add(entry.name);
-        await this.walk(root, entry.path, files, languages, configFiles, topLevelDirectories, counters);
+        await this.walk(root, entry.path, files, docs, languages, configFiles, topLevelDirectories, counters);
       } else {
         if (entry.size > MAX_FILE_BYTES) continue;
 
@@ -128,8 +134,28 @@ export class HeuristicProjectScanner implements ProjectScanner {
 
         if (ext) languages.add(ext);
         if (CONFIG_FILE_NAMES.has(entry.name)) configFiles.add(rel);
+
+        if (this.isProjectDocument(rel, ext)) {
+          const title = (await this.inferDocumentTitle(root, rel)) ?? entry.name;
+          docs.push({ path: rel, title });
+        }
       }
     }
+  }
+
+  private isProjectDocument(rel: string, ext: string): boolean {
+    if (!DOCUMENT_EXTENSIONS.has(ext)) return false;
+    const parts = rel.split(path.sep);
+    if (parts.length === 1) return true;
+    return DOCUMENT_DIRS.has(parts[0]);
+  }
+
+  private async inferDocumentTitle(root: string, rel: string): Promise<string | null> {
+    const content = await this.fs.readSmallTextFile(path.join(root, rel));
+    if (!content) return null;
+    const firstLine = content.split('\n')[0]?.trim() ?? '';
+    const match = firstLine.match(/^#+\s*(.+)$/);
+    return match?.[1].trim() ?? null;
   }
 
   private async readPackageJson(root: string): Promise<Record<string, unknown> | null> {

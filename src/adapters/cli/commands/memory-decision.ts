@@ -13,15 +13,17 @@ export function memoryDecisionCommand(): Command {
     .requiredOption('--title <title>', 'Decision title')
     .requiredOption('--body <body>', 'Decision body')
     .option('--thread <thread-id>', 'Parent thread id')
+    .option('--based-on <ids>', 'Comma-separated artifact ids this decision is based on')
     .option('--created-by <actor>', 'Creator actor', 'user:cli')
     .action(async (options) => {
-      const { store, log, clock, idGen } = createCliContainer(process.cwd());
+      const { store, log, clock, idGen, index, relations } = createCliContainer(process.cwd());
       const result = await createDecision(
-        { store, log, clock, idGen },
+        { store, log, clock, idGen, index, relations },
         {
           title: options.title,
           body: options.body,
           thread: options.thread,
+          basedOn: options.basedOn ? options.basedOn.split(',').map((s: string) => s.trim()) : [],
           createdBy: options.createdBy,
         }
       );

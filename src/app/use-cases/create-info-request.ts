@@ -2,7 +2,10 @@ import { MemoryStore } from '../../ports/memory-store.port.js';
 import { EventLog } from '../../ports/event-log.port.js';
 import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
+import { SearchIndex } from '../../ports/search-index.port.js';
+import { RelationLog } from '../../ports/relation-log.port.js';
 import { InfoRequest, InfoRequestSchema } from '../../domain/schemas/info-request-schema.js';
+import { recordRelation } from './record-relation.js';
 
 export interface CreateInfoRequestInput {
   title: string;
@@ -20,7 +23,14 @@ export interface CreateInfoRequestResult {
 }
 
 export async function createInfoRequest(
-  deps: { store: MemoryStore; log: EventLog; clock: Clock; idGen: IdGenerator },
+  deps: {
+    store: MemoryStore;
+    log: EventLog;
+    clock: Clock;
+    idGen: IdGenerator;
+    index?: SearchIndex;
+    relations?: RelationLog;
+  },
   input: CreateInfoRequestInput
 ): Promise<CreateInfoRequestResult> {
   if (!input.detourReason.trim()) throw new Error('detour_reason is required');
@@ -62,6 +72,12 @@ export async function createInfoRequest(
     actor: input.createdBy,
     payload: { memory_id: object.id, type: object.type },
   });
+  if (deps.index) {
+    await deps.index.indexObject(object);
+  }
+  if (deps.relations) {
+    await recordRelation(deps, now, object.id, 'related_to', object.thread);
+  }
 
   return { object };
 }

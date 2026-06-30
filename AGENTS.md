@@ -3,75 +3,71 @@
 ## Project Snapshot
 - Root: .
 - Project name: mr-wolf
-- Branch: main
-- Commit: a48d167d38d0a6039f7df9170a727fc1b5c34c59
-- Generated: 2026-06-30T13:45:28.237Z
+- Branch: feat/phase-4
+- Commit: 0750ee9
+- Generated: 2026-06-30
 
 ## What This Project Is
 Mr. Wolf
 
 > **"I solve problems."**
 >
-> Local-first Project Semantic Memory layer for AI coding agents.
+> Local-first project memory harness for AI coding agents.
 >
 > Not another agent. A memory substrate for agents.
 >
-> See docs/concept-v3.md for the full architecture and concept.
+> See `docs/superpowers/specs/2026-06-30-project-memory-harness-base-concept.md` for the base concept.
 
 ## Technology Stack
-- Languages: json, jsonl, log, md, py, ts, yaml, yml
-- Key dependencies: @dietrichgebert/ponytail, @types/better-sqlite3, @types/glob, @types/js-yaml, @types/node, @types/uuid, better-sqlite3, commander, fast-glob, js-yaml
+- Languages: json, jsonl, md, ts, yaml
+- Key dependencies: better-sqlite3, commander, fast-glob, js-yaml, vitest
 
 ## Key Files & Entry Points
-- src/bootstrap/cli.ts
-- .opencode/package.json (config)
-- .prettierrc (config)
-- package.json (config)
-- tsconfig.json (config)
-- vitest.config.ts (config)
+- `src/bootstrap/cli.ts` — CLI bootstrap
+- `src/adapters/cli/cli-entry.ts` — command registration
+- `src/domain/memory-types.ts` — canonical memory type list
+- `package.json` — scripts and dependencies
+- `tsconfig.json`, `vitest.config.ts` — config
 
 ## Architecture Notes
-Project appears to use a ports-and-adapters (hexagonal) architecture.
+- Ports-and-adapters (hexagonal) architecture.
+- `domain` imports nothing.
+- `app/use-cases` import `domain` and `ports`.
+- `adapters` implement `ports`.
+- CLI and MCP are thin inbound adapters.
+
+## Completed phases
+- Phase 0: Core Memory — markdown object store, JSONL event log, `init`/`add`/`list`/`get`/`supersede`.
+- Phase 1: Work Threads, Info Requests, Articles — `work-thread`, `info-request`, `article`, `thread brief`.
+- Phase 2: Decisions and Blockers — `decision`, `blocker`, `blocker resolve`, brief integration.
+- Phase 3: Incremental Indexing + Document Registration — `search` sees new objects immediately; `scan` registers project documents as `document` artifacts by reference.
+- Phase 4: Relations and Session Checkpoints — `relations.jsonl`, explicit artifact links, `session-checkpoint` type, `thread diff`.
+
+## Next phase
+- Phase 5: Search and Retrieval Improvements — ranking, filters, tag search, stale detection.
 
 ## Active Memory
-- [decision] Use decision and blocker types for Phase 2
-  Phase 2 implements first-class decision and blocker memory objects with CLI commands and brief integration.
-- [session-summary] Session 2026-06-30: гэп в onboarding устранён, готовность к Phase 2
-  Проблема: при старте сессии информация о текущей работе была размазана по git, thread, article, events.jsonl, brief; пои
-- [document] Роадмап MVP Mr. Wolf
-  MVP-A: Core Memory + Search — реализован. MVP-B: Project Scan + Agent Brief — в плане, цель: wolf scan и wolf brief. MVP
-- [observation] Источник правды — markdown-файлы в .wolf/memory
-  Memory-объекты хранятся как markdown-файлы в .wolf/memory/<type>/<id>.md. События пишутся в .wolf/memory/events.jsonl. S
-- [observation] Доступные CLI-команды в MVP-A
-  Доступные команды: memory init, memory add --type <type> --title <title> --body <body>, memory get <id>, memory list, me
-- [decision] Не коммитить .codegraph/ в репозиторий
-  Каталог .codegraph/ содержит SQLite-индекс CodeGraph и не должен попадать в git. Добавлен в .gitignore. Если индекс отсу
-- [decision] Использовать git-flow: все изменения через dev
-  Решено: вся разработка ведётся через ветку dev. Фичи и фиксы создаются как feat/* и fix/*, мёржатся в dev, а в main попа
-- [lesson] Документирование сессии: cleanup docs + план MVP-B
-  В этой сессии выполнили документальный cleanup после пивота Mr. Wolf на Project Semantic Memory: перенесли устаревшие об
+- [decision] Use decision and blocker types for Phase 2 — Completed.
+- [decision] Do not commit `.codegraph/` to the repository — `.codegraph/` is ignored.
+- [decision] Use git-flow: all changes through `dev` — create features/fixes as `feat/*` or `fix/*`, merge to `dev`, then to `main`.
+- [lesson] Session 2026-06-30: documentation cleanup after pivot; outdated concept docs archived.
+- [decision] Incremental indexing — `add`, create-*, `scan`, `supersede`, and `resolve` update the FTS5 index automatically.
+- [decision] Canonical relations in `relations.jsonl` — frontmatter mirrors are for readability only.
 
 ## Open Questions
-- Автоматическая регистрация проектных документов при scan
-  Сейчас memory scan (MVP-B) создаёт только context-объект project-scan-latest. Нужно ли расширить сканер, чтобы он находи
-- Нужна ли инкрементальная индексация вместо rebuild-index?
-  Сейчас после каждого memory add поиск не видит новые объекты, пока не выполнить memory rebuild-index. Это соответствует 
+- Should relation predicates be user-extensible or fixed to the core set?
+- Should session checkpoints capture full artifact snapshots or only ids?
 
 ## Blockers
-- Need incremental indexing
+- None.
 
 ## Sources
 - Project scan: project-scan-latest
 - README.md
 - package.json
-- Active memory objects: 8
-
-## Limitations
-- This brief is generated from the latest scan and accepted active memory.
-- It may be incomplete if the scan is outdated or memory has not been reviewed.
+- Active memory objects: derived from `.wolf/memory/objects/**/*.md`
 
 ## Recommended First Steps
-- Review the active memory and open questions below.
-- Read project documentation (README.md, docs/concept-v3.md, AGENTS.md).
-- Run the project checks (`npm run check` or equivalent).
-
+1. Review `docs/superpowers/plans/roadmap.md` for the canonical plan.
+2. Pick Phase 5 work: ranking, filters, tag search, stale detection.
+3. Run `npm run check` before and after changes.

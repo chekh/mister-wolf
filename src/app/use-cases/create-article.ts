@@ -2,7 +2,10 @@ import { MemoryStore } from '../../ports/memory-store.port.js';
 import { EventLog } from '../../ports/event-log.port.js';
 import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
+import { SearchIndex } from '../../ports/search-index.port.js';
+import { RelationLog } from '../../ports/relation-log.port.js';
 import { Article, ArticleSchema } from '../../domain/schemas/article-schema.js';
+import { recordRelation } from './record-relation.js';
 
 export interface CreateArticleInput {
   title: string;
@@ -20,7 +23,14 @@ export interface CreateArticleResult {
 }
 
 export async function createArticle(
-  deps: { store: MemoryStore; log: EventLog; clock: Clock; idGen: IdGenerator },
+  deps: {
+    store: MemoryStore;
+    log: EventLog;
+    clock: Clock;
+    idGen: IdGenerator;
+    index?: SearchIndex;
+    relations?: RelationLog;
+  },
   input: CreateArticleInput
 ): Promise<CreateArticleResult> {
   const now = deps.clock.now();
@@ -58,6 +68,17 @@ export async function createArticle(
     actor: input.createdBy,
     payload: { memory_id: object.id, type: object.type },
   });
+  if (deps.index) {
+    await deps.index.indexObject(object);
+  }
+  if (deps.relations) {
+    for (const answerId of object.answers) {
+      await recordRelation(deps, now, object.id, 'answers', answerId);
+    }
+    for (const supportId of object.supports) {
+      await recordRelation(deps, now, object.id, 'supports', supportId);
+    }
+  }
 
   return { object };
 }

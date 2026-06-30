@@ -8,8 +8,8 @@ export function memorySupersedeCommand(): Command {
     .argument('<old-id>', 'Id of the memory object to supersede')
     .argument('<new-id>', 'Id of the replacement memory object')
     .action(async (oldId: string, newId: string) => {
-      const { store, log, clock, idGen } = createCliContainer(process.cwd());
-      await supersedeMemoryObject({ store, log, clock, idGen }, oldId, newId);
+      const { store, log, clock, idGen, index } = createCliContainer(process.cwd());
+      await supersedeMemoryObject({ store, log, clock, idGen, index }, oldId, newId);
       console.log(`Superseded ${oldId} with ${newId}.`);
     });
 }

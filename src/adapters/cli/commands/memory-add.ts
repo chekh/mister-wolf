@@ -10,17 +10,21 @@ export function memoryAddCommand(): Command {
     .requiredOption('--title <title>', 'Title')
     .option('--body <body>', 'Body text')
     .option('--tags <tags>', 'Comma-separated tags')
+    .option('--confidence <confidence>', 'Confidence level (low|medium|high)')
+    .option('--importance <n>', 'Importance from 0 to 1', parseFloat)
     .option('--created-by <actor>', 'Creator actor', 'user:cli')
     .action(async (options) => {
-      const { store, log, clock, idGen } = createCliContainer(process.cwd());
+      const { store, log, clock, idGen, index } = createCliContainer(process.cwd());
       const result = await addMemoryObject(
-        { store, log, clock, idGen },
+        { store, log, clock, idGen, index },
         {
           type: options.type,
           title: options.title,
           body: options.body,
           createdBy: options.createdBy,
           tags: options.tags ? options.tags.split(',').map((t: string) => t.trim()) : [],
+          confidence: options.confidence,
+          importance: options.importance,
         }
       );
       console.log(`Created memory object: ${result.object.id}`);

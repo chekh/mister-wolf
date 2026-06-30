@@ -22,6 +22,7 @@ export function objectDirForType(baseDir: string, type: MemoryType): string {
     'info-request': 'info-requests',
     article: 'articles',
     blocker: 'blockers',
+    'session-checkpoint': 'checkpoints',
   };
   if (!(type in mapping)) {
     throw new Error(`Unknown memory type: ${type}`);
@@ -47,6 +48,10 @@ export function indexPath(baseDir: string): string {
 
 export function briefsDir(baseDir: string): string {
   return join(memoryDir(baseDir), 'briefs');
+}
+
+export function relationsPath(baseDir: string): string {
+  return join(memoryDir(baseDir), 'relations.jsonl');
 }
 
 export function configPath(baseDir: string): string {

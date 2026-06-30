@@ -297,28 +297,76 @@ node dist/bootstrap/cli.js memory thread brief <thread-id>
 
 ---
 
-## 6. Важные правила
+## 6. Связи между артефактами (Phase 4)
+
+Mr. Wolf хранит явные связи между артефактами в `.wolf/memory/relations.jsonl`. Каноническое хранилище — этот файл; frontmatter остаётся только для читаемости.
+
+Автоматические связи:
+
+- `article` с `--answers <ireq-id>` → `article answers info-request` и обратная `info-request answered_by article`.
+- `decision` с `--based-on <artifact-id>` → `decision based_on article` и `article basis_for decision`.
+- `blocker` с `--thread <thread-id>` → `blocker blocks work-thread`.
+- `blocker resolve <id> --by <artifact-id>` → `artifact resolves blocker`.
+
+Пример:
+
+```bash
+node dist/bootstrap/cli.js memory article add \
+  --title "Хранение relations" \
+  --thread <thread-id> \
+  --summary "..." \
+  --body "..." \
+  --answers <info-request-id>
+```
+
+## 7. Session checkpoints и thread diff (Phase 4)
+
+`session-checkpoint` — снимок состояния треда в момент завершения сессии. Он фиксирует `current_state` и список связанных артефактов.
+
+Создать чекпоинт:
+
+```bash
+node dist/bootstrap/cli.js memory session checkpoint --thread <thread-id>
+```
+
+Посмотреть, что изменилось с момента чекпоинта:
+
+```bash
+node dist/bootstrap/cli.js memory thread diff <thread-id> --since <checkpoint-id>
+```
+
+Вывод показывает:
+
+- изменение `current_state`;
+- добавленные и удалённые связанные артефакты;
+- новые relations.
+
+---
+
+## 8. Важные правила
 
 1. **Не копируйте документы целиком.** Регистрируйте их по ссылке и добавляйте выжимку.
 2. **Не используйте info-request как TODO.** Это для знаний, а не задач.
 3. **Давайте предварительный ответ.** Перед созданием info-request скажите, что вы думаете сейчас.
 4. **Обновляйте current_state треда.** В конце сессии кратко опишите, что изменилось.
 5. **Используйте thread brief в начале сессии.** Это экономит контекст.
+6. **Создавайте session checkpoint перед перерывом.** Это позволит потом сделать `thread diff`.
+7. **Явно связывайте артефакты.** Relations помогают понять, почему появилось решение или статья.
 
 ---
 
-## 7. Что будет дальше
+## 9. Что будет дальше
 
 Следующие фазы:
 
-- **Phase 3:** регистрация документов и внешних артефактов из проекта.
-- **Phase 4:** явные связи между артефактами и session checkpoints.
-- **Phase 5:** поиск и индексация.
+- **Phase 3:** регистрация документов и внешних артефактов из проекта — **завершена**.
+- **Phase 4:** явные связи между артефактами и session checkpoints — **завершена**.
+- **Phase 5:** улучшения поиска и ранжирования.
 - **Phase 6:** governance: memory_class, truth_role, lifetime.
 
 ---
 
-## 8. Обновление документации
+## 10. Обновление документации
 
 > **Правило:** после завершения каждой фазы Mr. Wolf необходимо обновлять пользовательскую документацию.
 
@@ -328,28 +376,32 @@ node dist/bootstrap/cli.js memory thread brief <thread-id>
 
 ---
 
-## 9. Быстрая шпаргалка команд
+## 11. Быстрая шпаргалка команд
 
 ```bash
 # Треды
 node dist/bootstrap/cli.js memory thread create --title "..." --goal "..."
 node dist/bootstrap/cli.js memory thread list
 node dist/bootstrap/cli.js memory thread brief <thread-id>
+node dist/bootstrap/cli.js memory thread diff <thread-id> --since <checkpoint-id>
 
 # Info requests
 node dist/bootstrap/cli.js memory info-request create --title "..." --thread <id> --question "..." --detour-reason "..." --expected-answer "..."
 node dist/bootstrap/cli.js memory info-request list --thread <id>
 
 # Статьи
-node dist/bootstrap/cli.js memory article add --title "..." --thread <id> --summary "..." --body "..."
+node dist/bootstrap/cli.js memory article add --title "..." --thread <id> --summary "..." --body "..." --answers <ireq-id>
 node dist/bootstrap/cli.js memory article list --thread <id>
 
 # Решения
-node dist/bootstrap/cli.js memory decision add --title "..." --body "..." --thread <id>
+node dist/bootstrap/cli.js memory decision add --title "..." --body "..." --thread <id> --based-on <artifact-id>
 node dist/bootstrap/cli.js memory decision list --thread <id>
 
 # Препятствия
 node dist/bootstrap/cli.js memory blocker add --title "..." --impact "..." --workaround "..." --thread <id>
 node dist/bootstrap/cli.js memory blocker list --thread <id>
-node dist/bootstrap/cli.js memory blocker resolve <blocker-id>
+node dist/bootstrap/cli.js memory blocker resolve <blocker-id> --by <artifact-id>
+
+# Session checkpoints
+node dist/bootstrap/cli.js memory session checkpoint --thread <thread-id>
 ```

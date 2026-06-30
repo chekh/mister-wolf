@@ -19,6 +19,10 @@ const validSnapshot = {
     { path: 'src/bootstrap/cli.ts', extension: 'ts', size: 1200 },
     { path: 'README.md', extension: 'md', size: 0 },
   ],
+  docs: [
+    { path: 'README.md', title: 'Readme' },
+    { path: 'docs/architecture.md', title: 'Architecture' },
+  ],
 };
 
 describe('ProjectSnapshotSchema', () => {

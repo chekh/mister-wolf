@@ -17,9 +17,9 @@ export function memoryBlockerCommand(): Command {
     .option('--thread <thread-id>', 'Parent thread id')
     .option('--created-by <actor>', 'Creator actor', 'user:cli')
     .action(async (options) => {
-      const { store, log, clock, idGen } = createCliContainer(process.cwd());
+      const { store, log, clock, idGen, index, relations } = createCliContainer(process.cwd());
       const result = await createBlocker(
-        { store, log, clock, idGen },
+        { store, log, clock, idGen, index, relations },
         {
           title: options.title,
           impact: options.impact,
@@ -48,9 +48,10 @@ export function memoryBlockerCommand(): Command {
     .command('resolve')
     .description('Resolve a blocker')
     .argument('<id>', 'Blocker id')
-    .action(async (id) => {
-      const { store, log, clock, idGen } = createCliContainer(process.cwd());
-      await resolveBlocker({ store, log, clock, idGen }, id);
+    .option('--by <artifact-id>', 'Artifact that resolves the blocker')
+    .action(async (id, options) => {
+      const { store, log, clock, idGen, index, relations } = createCliContainer(process.cwd());
+      await resolveBlocker({ store, log, clock, idGen, index, relations }, id, options.by);
       console.log(`Resolved blocker: ${id}`);
     });
 

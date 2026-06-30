@@ -21,6 +21,12 @@ export const ProjectSnapshotSchema = z.object({
       size: z.number().int().min(0),
     })
   ),
+  docs: z.array(
+    z.object({
+      path: z.string(),
+      title: z.string(),
+    })
+  ),
 });
 
 export type ProjectSnapshot = z.infer<typeof ProjectSnapshotSchema>;

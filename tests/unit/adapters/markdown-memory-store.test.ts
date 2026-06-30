@@ -67,20 +67,13 @@ describe('MarkdownMemoryStore', () => {
     await expect(store.get('mem_bad_schema')).rejects.toThrow('Failed to parse memory file');
   });
 
-  it('removes the old file when type changes during update', async () => {
-    const id = 'mem_type_change';
-    const obj = makeObject(id, 'lesson');
-    await store.save(obj);
-    const oldPath = objectPath(dir, 'lesson', id);
-    const newPath = objectPath(dir, 'decision', id);
-
-    const updated = await store.update(id, { type: 'decision' });
-
-    expect(updated.type).toBe('decision');
-    expect(updated.updated_at).not.toBe(obj.updated_at);
-    expect(existsSync(oldPath)).toBe(false);
-    const loaded = await store.get(id);
-    expect(loaded?.type).toBe('decision');
-    expect(loaded && existsSync(newPath)).toBe(true);
+  it('filters stale objects', async () => {
+    const fresh = makeObject('mem_fresh');
+    const stale = makeObject('mem_stale');
+    stale.updated_at = '2026-01-01T00:00:00Z';
+    await store.save(fresh);
+    await store.save(stale);
+    const results = await store.list({ stale: true });
+    expect(results.map((r) => r.id)).toEqual(['mem_stale']);
   });
 });

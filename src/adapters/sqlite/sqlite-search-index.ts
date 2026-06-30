@@ -1,7 +1,7 @@
 import { mkdirSync } from 'fs';
 import { dirname } from 'path';
 import Database from 'better-sqlite3';
-import { SearchIndex, SearchResult } from '../../ports/search-index.port.js';
+import { SearchIndex, SearchOptions, SearchResult } from '../../ports/search-index.port.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import { SQLITE_SCHEMA } from './sqlite-schema.js';
 
@@ -14,41 +14,27 @@ export class SQLiteSearchIndex implements SearchIndex {
     this.db.exec(SQLITE_SCHEMA);
   }
 
-  async rebuild(objects: MemoryObject[]): Promise<void> {
-    const insertSearch = this.db.prepare(
-      'INSERT INTO memory_search (memory_id, type, title, body, tags, status, review_state) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    );
-    const insertMeta = this.db.prepare(
-      'INSERT INTO memory_meta (memory_id, type, status, review_state, importance, created_at, confidence, created_by, updated_at, superseded_by, source, related, tags, schema_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    );
+  async indexObject(object: MemoryObject): Promise<void> {
+    this.removeFromIndex(object.id);
+    this.insertIntoIndex(object);
+  }
 
+  async removeObject(id: string): Promise<void> {
+    this.removeFromIndex(id);
+  }
+
+  async rebuild(objects: MemoryObject[]): Promise<void> {
     const rebuild = this.db.transaction(() => {
       this.db.exec('DELETE FROM memory_search; DELETE FROM memory_meta;');
       for (const obj of objects) {
-        insertSearch.run(obj.id, obj.type, obj.title, obj.body, obj.tags.join(','), obj.status, obj.review_state);
-        insertMeta.run(
-          obj.id,
-          obj.type,
-          obj.status,
-          obj.review_state,
-          obj.importance,
-          obj.created_at,
-          obj.confidence,
-          obj.created_by,
-          obj.updated_at,
-          obj.superseded_by,
-          JSON.stringify(obj.source),
-          JSON.stringify(obj.related),
-          JSON.stringify(obj.tags),
-          obj.schema_version
-        );
+        this.insertIntoIndex(obj);
       }
     });
 
     rebuild();
   }
 
-  async search(query: string, options?: { type?: string; includeSuperseded?: boolean }): Promise<SearchResult[]> {
+  async search(query: string, options: SearchOptions = {}): Promise<SearchResult[]> {
     const escapedQuery = query.replace(/"/g, '""');
     const ftsQuery = `"${escapedQuery}"`;
 
@@ -63,18 +49,46 @@ export class SQLiteSearchIndex implements SearchIndex {
     `;
     const params: (string | number)[] = [ftsQuery];
 
-    if (!options?.includeSuperseded) {
+    if (!options.includeSuperseded) {
       sql += ` AND s.status = 'active'`;
     }
-    if (options?.type) {
+    if (options.type) {
       sql += ` AND s.type = ?`;
       params.push(options.type);
+    }
+    if (options.status) {
+      sql += ` AND s.status = ?`;
+      params.push(options.status);
+    }
+    if (options.confidence) {
+      sql += ` AND m.confidence = ?`;
+      params.push(options.confidence);
+    }
+    if (options.tags && options.tags.length > 0) {
+      const tagList = options.tags.map((t) => t.replace(/'/g, "''")).join(',');
+      sql += ` AND m.tags LIKE '%${tagList}%'`;
+    }
+    if (typeof options.minImportance === 'number') {
+      sql += ` AND m.importance >= ?`;
+      params.push(options.minImportance);
+    }
+    if (typeof options.maxImportance === 'number') {
+      sql += ` AND m.importance <= ?`;
+      params.push(options.maxImportance);
+    }
+    if (options.createdAfter) {
+      sql += ` AND m.created_at >= ?`;
+      params.push(options.createdAfter);
+    }
+    if (options.createdBefore) {
+      sql += ` AND m.created_at <= ?`;
+      params.push(options.createdBefore);
     }
 
     sql += ` ORDER BY rank`;
 
     const rows = this.db.prepare(sql).all(...params) as any[];
-    return rows.map((row) => ({
+    const results = rows.map((row) => ({
       object: {
         id: row.memory_id,
         type: row.type,
@@ -92,8 +106,59 @@ export class SQLiteSearchIndex implements SearchIndex {
         related: JSON.parse(row.related),
         tags: JSON.parse(row.tags),
         superseded_by: row.superseded_by,
-      },
-      score: row.rank,
+      } as MemoryObject,
+      score: this.computeScore(row.rank, row.importance, row.confidence),
     }));
+
+    if (options.limit) {
+      return results.slice(0, options.limit);
+    }
+    return results;
+  }
+
+  private computeScore(rawRank: number, importance: number, confidence: string): number {
+    const confidenceWeight = confidence === 'high' ? 1.2 : confidence === 'medium' ? 1.0 : 0.8;
+    return -rawRank * (1 + importance) * confidenceWeight;
+  }
+
+  private removeFromIndex(id: string): void {
+    this.db.prepare('DELETE FROM memory_search WHERE memory_id = ?').run(id);
+    this.db.prepare('DELETE FROM memory_meta WHERE memory_id = ?').run(id);
+  }
+
+  private insertIntoIndex(object: MemoryObject): void {
+    this.db
+      .prepare(
+        'INSERT INTO memory_search (memory_id, type, title, body, tags, status, review_state) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      )
+      .run(
+        object.id,
+        object.type,
+        object.title,
+        object.body,
+        object.tags.join(','),
+        object.status,
+        object.review_state
+      );
+    this.db
+      .prepare(
+        'INSERT INTO memory_meta (memory_id, type, status, review_state, importance, created_at, confidence, created_by, updated_at, superseded_by, source, related, tags, schema_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      )
+      .run(
+        object.id,
+        object.type,
+        object.status,
+        object.review_state,
+        object.importance,
+        object.created_at,
+        object.confidence,
+        object.created_by,
+        object.updated_at,
+        object.superseded_by,
+        JSON.stringify(object.source),
+        JSON.stringify(object.related),
+        JSON.stringify(object.tags),
+        object.schema_version
+      );
   }
 }

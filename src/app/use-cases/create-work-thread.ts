@@ -2,6 +2,7 @@ import { MemoryStore } from '../../ports/memory-store.port.js';
 import { EventLog } from '../../ports/event-log.port.js';
 import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
+import { SearchIndex } from '../../ports/search-index.port.js';
 import { WorkThread, WorkThreadSchema } from '../../domain/schemas/thread-schema.js';
 
 export interface CreateWorkThreadInput {
@@ -17,7 +18,7 @@ export interface CreateWorkThreadResult {
 }
 
 export async function createWorkThread(
-  deps: { store: MemoryStore; log: EventLog; clock: Clock; idGen: IdGenerator },
+  deps: { store: MemoryStore; log: EventLog; clock: Clock; idGen: IdGenerator; index?: SearchIndex },
   input: CreateWorkThreadInput
 ): Promise<CreateWorkThreadResult> {
   const now = deps.clock.now();
@@ -53,6 +54,9 @@ export async function createWorkThread(
     actor: input.createdBy,
     payload: { memory_id: object.id, type: object.type },
   });
+  if (deps.index) {
+    await deps.index.indexObject(object);
+  }
 
   return { object };
 }
