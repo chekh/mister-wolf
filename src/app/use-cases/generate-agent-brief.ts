@@ -19,7 +19,13 @@ export async function generateAgentBrief(
   const memoryObjects = await deps.store.list({ status: 'active' });
 
   const acceptedMemory = memoryObjects
-    .filter((obj) => obj.review_state === 'accepted' && obj.type !== 'context' && obj.type !== 'open-question' && obj.type !== 'blocker')
+    .filter(
+      (obj) =>
+        obj.review_state === 'accepted' &&
+        obj.type !== 'context' &&
+        obj.type !== 'open-question' &&
+        obj.type !== 'blocker'
+    )
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
     .slice(0, 10);
 
@@ -130,23 +136,9 @@ function renderBrief(
     )
   );
 
-  lines.push(
-    ...renderListSection(
-      'Open Questions',
-      openQuestions,
-      '_No open questions._',
-      (q) => `- ${q.title}`
-    )
-  );
+  lines.push(...renderListSection('Open Questions', openQuestions, '_No open questions._', (q) => `- ${q.title}`));
 
-  lines.push(
-    ...renderListSection(
-      'Blockers',
-      blockers,
-      '_No active blockers._',
-      (b) => `- ${b.title}`
-    )
-  );
+  lines.push(...renderListSection('Blockers', blockers, '_No active blockers._', (b) => `- ${b.title}`));
 
   lines.push(
     '## Sources',
