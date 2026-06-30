@@ -6,6 +6,8 @@ import { getThreadBrief } from '../../../src/app/use-cases/get-thread-brief.js';
 import { createWorkThread } from '../../../src/app/use-cases/create-work-thread.js';
 import { createInfoRequest } from '../../../src/app/use-cases/create-info-request.js';
 import { createArticle } from '../../../src/app/use-cases/create-article.js';
+import { createDecision } from '../../../src/app/use-cases/create-decision.js';
+import { createBlocker } from '../../../src/app/use-cases/create-blocker.js';
 import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
 import { JsonlEventLog } from '../../../src/adapters/fs/jsonl-event-log.js';
 import { SystemClock } from '../../../src/adapters/fs/system-clock.js';
@@ -63,15 +65,42 @@ describe('getThreadBrief', () => {
       }
     );
 
+    const { object: decision } = await createDecision(
+      { store, log, clock, idGen },
+      {
+        title: 'Use OAuth2',
+        body: 'OAuth2 is simpler to integrate and maintain.',
+        thread: thread.id,
+        createdBy: 'user:test',
+      }
+    );
+
+    const { object: blocker } = await createBlocker(
+      { store, log, clock, idGen },
+      {
+        title: 'No test environment',
+        impact: 'Cannot validate the login flow end-to-end.',
+        workaround: 'Use a staging account for manual testing.',
+        thread: thread.id,
+        createdBy: 'user:test',
+      }
+    );
+
     const brief = await getThreadBrief({ store }, thread.id);
 
     expect(brief.thread.id).toBe(thread.id);
     expect(brief.openInfoRequests.map((r) => r.id)).toContain(request.id);
     expect(brief.articles.map((a) => a.id)).toContain(article.id);
+    expect(brief.decisions.map((d) => d.id)).toContain(decision.id);
+    expect(brief.blockers.map((b) => b.id)).toContain(blocker.id);
     expect(brief.rendered).toContain(thread.title);
     expect(brief.rendered).toContain(request.title);
     expect(brief.rendered).toContain(article.title);
     expect(brief.rendered).toContain(request.question);
     expect(brief.rendered).toContain(article.summary);
+    expect(brief.rendered).toContain(decision.title);
+    expect(brief.rendered).toContain(blocker.title);
+    expect(brief.rendered).toContain('## Decisions');
+    expect(brief.rendered).toContain('## Blockers');
   });
 });
