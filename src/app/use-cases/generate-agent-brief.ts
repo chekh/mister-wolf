@@ -19,16 +19,16 @@ export async function generateAgentBrief(
   const memoryObjects = await deps.store.list({ status: 'active' });
 
   const acceptedMemory = memoryObjects
-    .filter((obj) => obj.review_state === 'accepted' && obj.type !== 'context' && obj.type !== 'blocker')
+    .filter((obj) => obj.review_state === 'accepted' && obj.type !== 'context' && obj.type !== 'open-question' && obj.type !== 'blocker')
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
     .slice(0, 10);
 
   const openQuestions = memoryObjects
-    .filter((obj) => obj.type === 'open-question' && obj.status === 'active')
+    .filter((obj) => obj.type === 'open-question')
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
   const blockers = memoryObjects
-    .filter((obj) => obj.type === 'blocker' && obj.status === 'active')
+    .filter((obj) => obj.type === 'blocker')
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
   const description = await buildProjectDescription(deps.fs, root, snapshot);
@@ -63,6 +63,24 @@ async function buildProjectDescription(fsPort: FileSystem, root: string, snapsho
   }
 
   return `${snapshot.projectName} is a software project.`;
+}
+
+function renderListSection(
+  title: string,
+  items: MemoryObject[],
+  emptyMessage: string,
+  formatItem: (obj: MemoryObject) => string
+): string[] {
+  const section = [`## ${title}`];
+  for (const obj of items) {
+    section.push(formatItem(obj));
+    if (obj.body) {
+      section.push(`  ${obj.body.split('\n')[0].slice(0, 120)}`);
+    }
+  }
+  if (items.length === 0) section.push(emptyMessage);
+  section.push('');
+  return section;
 }
 
 function renderBrief(
@@ -103,35 +121,32 @@ function renderBrief(
 
   lines.push('## Architecture Notes', renderArchitectureNotes(snapshot), '');
 
-  lines.push('## Active Memory');
-  for (const obj of activeMemory) {
-    lines.push(`- [${obj.type}] ${obj.title}`);
-    if (obj.body) {
-      lines.push(`  ${obj.body.split('\n')[0].slice(0, 120)}`);
-    }
-  }
-  if (activeMemory.length === 0) lines.push('_No active accepted memory._');
-  lines.push('');
+  lines.push(
+    ...renderListSection(
+      'Active Memory',
+      activeMemory,
+      '_No active accepted memory._',
+      (obj) => `- [${obj.type}] ${obj.title}`
+    )
+  );
 
-  lines.push('## Open Questions');
-  for (const q of openQuestions) {
-    lines.push(`- ${q.title}`);
-    if (q.body) {
-      lines.push(`  ${q.body.split('\n')[0].slice(0, 120)}`);
-    }
-  }
-  if (openQuestions.length === 0) lines.push('_No open questions._');
-  lines.push('');
+  lines.push(
+    ...renderListSection(
+      'Open Questions',
+      openQuestions,
+      '_No open questions._',
+      (q) => `- ${q.title}`
+    )
+  );
 
-  lines.push('## Blockers');
-  for (const b of blockers) {
-    lines.push(`- ${b.title}`);
-    if (b.body) {
-      lines.push(`  ${b.body.split('\n')[0].slice(0, 120)}`);
-    }
-  }
-  if (blockers.length === 0) lines.push('_No active blockers._');
-  lines.push('');
+  lines.push(
+    ...renderListSection(
+      'Blockers',
+      blockers,
+      '_No active blockers._',
+      (b) => `- ${b.title}`
+    )
+  );
 
   lines.push(
     '## Sources',

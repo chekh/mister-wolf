@@ -92,6 +92,10 @@ describe('generateAgentBrief', () => {
     expect(content).toContain('Auth strategy');
     expect(content).toContain('## Blockers');
     expect(content).toContain('Missing OAuth provider');
+
+    expect(content.match(/Auth strategy/g)).toHaveLength(1);
+    expect(content.match(/Missing OAuth provider/g)).toHaveLength(1);
+
     expect(content).toContain('## Sources');
     expect(content).toContain('## Limitations');
     expect(content).toContain('## Recommended First Steps');
