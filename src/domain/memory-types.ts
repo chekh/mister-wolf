@@ -9,6 +9,7 @@ export const MEMORY_TYPES = [
   'work-thread',
   'info-request',
   'article',
+  'blocker',
 ] as const;
 
 export type MemoryType = (typeof MEMORY_TYPES)[number];

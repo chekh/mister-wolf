@@ -17,6 +17,7 @@ memory:
     - work-thread
     - info-request
     - article
+    - blocker
 search:
   default_limit: 20
 `;
