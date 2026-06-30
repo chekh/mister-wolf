@@ -120,6 +120,18 @@ node dist/bootstrap/cli.js memory search "..."
 
 # Supersede an older memory object with a newer one
 node dist/bootstrap/cli.js memory supersede <old-id> <new-id>
+
+# Create a work thread
+node dist/bootstrap/cli.js memory thread create --title "..." --goal "..."
+
+# Create an info request (defer a side investigation)
+node dist/bootstrap/cli.js memory info-request create --title "..." --thread <thread-id> --question "..." --detour-reason "..." --expected-answer "..."
+
+# Add an article (answer an info request or capture reusable knowledge)
+node dist/bootstrap/cli.js memory article add --title "..." --thread <thread-id> --summary "..." --body "..."
+
+# Show thread brief for session startup context
+node dist/bootstrap/cli.js memory thread brief <thread-id>
 ```
 
 ## GIT FLOW

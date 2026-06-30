@@ -11,27 +11,18 @@ export interface ThreadBrief {
   rendered: string;
 }
 
-export async function getThreadBrief(
-  deps: { store: MemoryStore },
-  threadId: string
-): Promise<ThreadBrief> {
+export async function getThreadBrief(deps: { store: MemoryStore }, threadId: string): Promise<ThreadBrief> {
   const all = await deps.store.list();
-  const thread = all.find(
-    (o) => o.id === threadId && o.type === 'work-thread'
-  ) as WorkThread | undefined;
+  const thread = all.find((o) => o.id === threadId && o.type === 'work-thread') as WorkThread | undefined;
   if (!thread) throw new Error(`Thread not found: ${threadId}`);
 
   const requests = all.filter(
     (o) => o.type === 'info-request' && (o as InfoRequest).thread === threadId
   ) as InfoRequest[];
-  const articles = all.filter(
-    (o) => o.type === 'article' && (o as Article).thread === threadId
-  ) as Article[];
+  const articles = all.filter((o) => o.type === 'article' && (o as Article).thread === threadId) as Article[];
 
   const openInfoRequests = requests.filter((r) => r.status === 'open');
-  const answeredInfoRequests = requests.filter(
-    (r) => r.status === 'answered' || r.status === 'archived'
-  );
+  const answeredInfoRequests = requests.filter((r) => r.status === 'answered' || r.status === 'archived');
 
   const rendered = renderBrief(thread, openInfoRequests, answeredInfoRequests, articles);
 

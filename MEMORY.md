@@ -123,7 +123,35 @@ node dist/bootstrap/cli.js memory brief
 
 ---
 
-## 6. Anti-patterns
+## 6. Thread / Info Request / Article Flow
+
+For long-running work that spans sessions:
+
+1. Create a work thread:
+   ```bash
+   node dist/bootstrap/cli.js memory thread create --title "..." --goal "..."
+   ```
+
+2. When a side question would derail the main session, create an info request:
+   ```bash
+   node dist/bootstrap/cli.js memory info-request create --title "..." --thread <thread-id> --question "..." --detour-reason "..." --expected-answer "..."
+   ```
+
+3. In another session, answer the request with an article:
+   ```bash
+   node dist/bootstrap/cli.js memory article add --title "..." --thread <thread-id> --summary "..." --body "..." --answers <info-request-id>
+   ```
+
+4. At session start, read the thread brief:
+   ```bash
+   node dist/bootstrap/cli.js memory thread brief <thread-id>
+   ```
+
+This keeps the main session clean while preserving reusable project knowledge.
+
+---
+
+## 7. Anti-patterns
 
 - Не делать Mr. Wolf оркестратором — это слой памяти.
 - Не считать SQLite источником правды — источником правды являются markdown-файлы.
@@ -132,7 +160,7 @@ node dist/bootstrap/cli.js memory brief
 
 ---
 
-## 7. Важные команды
+## 8. Важные команды
 
 ```bash
 # Поиск
@@ -156,7 +184,7 @@ node dist/bootstrap/cli.js memory rebuild-index
 
 ---
 
-## 8. Источники
+## 9. Источники
 
 - Архитектура и концепция: `docs/concept-v3.md`
 - Схемы объектов памяти: `src/domain/schemas/memory-object-schema.ts`
