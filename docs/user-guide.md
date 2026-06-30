@@ -95,7 +95,7 @@ node dist/bootstrap/cli.js memory article add \
   --title "Хранение relations в Mr. Wolf" \
   --thread <thread-id> \
   --summary "Используем relations.jsonl как canonical source, SQLite индексирует связи." \
-  --body "## Ответ\n\nrelations.jsonl — canonical source of truth для связей. SQLite перестраивается при необходимости." \
+  --body '## Ответ\n\nrelations.jsonl — canonical source of truth для связей. SQLite перестраивается при необходимости.' \
   --answers <info-request-id>
 ```
 
