@@ -73,6 +73,7 @@ node dist/bootstrap/cli.js memory info-request create \
 
 **Обязательные поля:**
 
+- `title` — название запроса
 - `question` — вопрос
 - `detour_reason` — почему откладываем
 - `expected_answer` — какой ответ ожидается
@@ -178,7 +179,10 @@ node dist/bootstrap/cli.js memory blocker resolve <blocker-id>
 - цель и текущее состояние треда;
 - открытые info-request;
 - статьи;
-- отвеченные запросы.
+- отвеченные запросы;
+- `next_steps` — следующие шаги;
+- `decisions` — принятые решения;
+- `blockers` — активные препятствия.
 
 **Когда использовать:**
 
