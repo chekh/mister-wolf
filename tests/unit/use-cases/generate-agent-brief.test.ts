@@ -66,6 +66,16 @@ describe('generateAgentBrief', () => {
       }
     );
 
+    await addMemoryObject(
+      { store, log, clock, idGen },
+      {
+        type: 'blocker',
+        title: 'Missing OAuth provider',
+        body: 'No OAuth provider selected yet.',
+        createdBy: 'user:test',
+      }
+    );
+
     const { content, path } = await generateAgentBrief({ store, fs, clock }, dir, snapshot);
 
     expect(path).toBe(join(dir, '.wolf', 'memory', 'briefs', 'agent-brief-latest.md'));
@@ -80,6 +90,12 @@ describe('generateAgentBrief', () => {
     expect(content).toContain('Use TypeScript');
     expect(content).toContain('## Open Questions');
     expect(content).toContain('Auth strategy');
+    expect(content).toContain('## Blockers');
+    expect(content).toContain('Missing OAuth provider');
+
+    expect(content.match(/Auth strategy/g)).toHaveLength(1);
+    expect(content.match(/Missing OAuth provider/g)).toHaveLength(1);
+
     expect(content).toContain('## Sources');
     expect(content).toContain('## Limitations');
     expect(content).toContain('## Recommended First Steps');

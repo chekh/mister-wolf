@@ -1,6 +1,6 @@
 # Руководство пользователя Mr. Wolf
 
-**Версия:** соответствует Phase 1 (work-thread, info-request, article)  
+**Версия:** соответствует Phase 2 (work-thread, info-request, article, decision, blocker)  
 **Статус:** активно развивается
 
 ---
@@ -13,18 +13,20 @@ Mr. Wolf — это локальная память проекта для раб
 
 ---
 
-## 2. Основные сущности Phase 1
+## 2. Основные сущности Phase 2
 
 ### 2.1. Work Thread (Рабочий тред)
 
 **Что это:** долгоживущая линия работы, которая объединяет несколько сессий.
 
 **Когда создавать:**
+
 - Когда вы начинаете работу, которая займёт больше одной сессии.
 - Когда хотите, чтобы новая сессия могла быстро войти в контекст.
 - Когда появляются связанные вопросы, статьи и решения.
 
 **Пример:**
+
 ```bash
 node dist/bootstrap/cli.js memory thread create \
   --title "Переход на schema-driven memory" \
@@ -34,6 +36,7 @@ node dist/bootstrap/cli.js memory thread create \
 ```
 
 **Что хранится в треде:**
+
 - `title` — название
 - `goal` — цель
 - `current_state` — текущее состояние (обновляется вручную)
@@ -45,16 +48,19 @@ node dist/bootstrap/cli.js memory thread create \
 **Что это:** отложенный побочный вопрос, ответ на который должен стать частью проектной памяти.
 
 **Когда создавать:**
+
 - Вопрос требует большого отступления от основной темы сессии.
 - Ответ будет полезен не только сейчас, но и в будущем.
 - Вы можете дать предварительный ответ, но нужна глубокая проверка.
 
 **Не создавайте info-request:**
+
 - для обычных TODO;
 - чтобы избежать размышления;
 - для вопросов, которые можно ответить прямо сейчас.
 
 **Пример:**
+
 ```bash
 node dist/bootstrap/cli.js memory info-request create \
   --title "Где хранить relations?" \
@@ -66,6 +72,8 @@ node dist/bootstrap/cli.js memory info-request create \
 ```
 
 **Обязательные поля:**
+
+- `title` — название запроса
 - `question` — вопрос
 - `detour_reason` — почему откладываем
 - `expected_answer` — какой ответ ожидается
@@ -76,21 +84,24 @@ node dist/bootstrap/cli.js memory info-request create \
 **Что это:** переиспользуемый ответ на info-request или самостоятельная заметка о проекте.
 
 **Когда создавать:**
+
 - Вы подготовили ответ на info-request.
 - Нужно зафиксировать объяснение, которое будут читать другие сессии.
 - Хотите собрать знание в структурированном виде.
 
 **Пример:**
+
 ```bash
 node dist/bootstrap/cli.js memory article add \
   --title "Хранение relations в Mr. Wolf" \
   --thread <thread-id> \
   --summary "Используем relations.jsonl как canonical source, SQLite индексирует связи." \
-  --body "## Ответ\n\nrelations.jsonl — canonical source of truth для связей. SQLite перестраивается при необходимости." \
+  --body '## Ответ\n\nrelations.jsonl — canonical source of truth для связей. SQLite перестраивается при необходимости.' \
   --answers <info-request-id>
 ```
 
 **Рекомендуемые разделы тела статьи:**
+
 - Summary
 - Context
 - Answer
@@ -99,17 +110,82 @@ node dist/bootstrap/cli.js memory article add \
 - Evidence
 - When To Revisit
 
-### 2.4. Thread Brief (Бриф треда)
+### 2.4. Decision (Решение)
+
+**Что это:** зафиксированный выбор, который влияет на архитектуру, поведение или процесс проекта.
+
+**Когда создавать:**
+
+- Вы выбрали подход, библиотеку, формат или соглашение и хотите, чтобы будущие сессии знали, почему.
+- Нужно отменить или заменить предыдущее решение.
+- Решение связано с тредом и должно отображаться в его контексте.
+
+**Пример:**
+
+```bash
+node dist/bootstrap/cli.js memory decision add \
+  --title "Хранить связи в relations.jsonl" \
+  --thread <thread-id> \
+  --body "Источник правды для связей — relations.jsonl. SQLite-индекс перестраивается при необходимости."
+```
+
+**Что хранится в решении:**
+
+- `title` — название решения
+- `body` — обоснование и детали
+- `thread` — к какому треду относится (опционально)
+- `status` — `active`, `superseded`, `rejected`, `obsolete`
+
+### 2.5. Blocker (Препятствие)
+
+**Что это:** проблема, которая останавливает или замедляет работу, с описанием влияния и возможного обходного пути.
+
+**Когда создавать:**
+
+- Работа не может продолжаться, пока не решена внешняя или внутренняя проблема.
+- Нужно зафиксировать риск и его влияние на тред.
+- Вы нашли обходной путь, но хотите отслеживать первопричину.
+
+**Пример:**
+
+```bash
+node dist/bootstrap/cli.js memory blocker add \
+  --title "Нет доступа к production API" \
+  --thread <thread-id> \
+  --impact "Невозможно проверить интеграцию с платёжным шлюзом" \
+  --workaround "Использовать мок-сервер и тестовые учётные данные"
+```
+
+**Что хранится в препятствии:**
+
+- `title` — название проблемы
+- `impact` — как именно это мешает работе
+- `workaround` — возможный обходной путь (опционально)
+- `thread` — к какому треду относится (опционально)
+- `status` — `active`, `resolved`, `obsolete`
+
+Чтобы отметить препятствие решённым:
+
+```bash
+node dist/bootstrap/cli.js memory blocker resolve <blocker-id>
+```
+
+### 2.6. Thread Brief (Бриф треда)
 
 **Что это:** собранный контекст для старта новой сессии.
 
 **Что показывает:**
+
 - цель и текущее состояние треда;
 - открытые info-request;
 - статьи;
-- отвеченные запросы.
+- отвеченные запросы;
+- `next_steps` — следующие шаги;
+- `decisions` — принятые решения;
+- `blockers` — активные препятствия.
 
 **Когда использовать:**
+
 - В начале новой сессии, чтобы вспомнить, где остановились.
 - Перед тем как продолжить работу после перерыва.
 
@@ -125,13 +201,15 @@ node dist/bootstrap/cli.js memory thread brief <thread-id>
 work-thread
   ├── info-request
   │     └── answered_by article
-  └── article
-        └── may support future decision
+  ├── article
+  │     └── may support future decision
+  ├── decision
+  └── blocker
 ```
 
 - `info-request` всегда привязан к `work-thread`.
 - `article` привязан к `work-thread` и может отвечать на один или несколько `info-request`.
-- В будущем появятся `decision` и `blocker`, которые будут ссылаться на статьи.
+- `decision` и `blocker` могут быть привязаны к `work-thread` или существовать независимо.
 
 ---
 
@@ -182,12 +260,14 @@ node dist/bootstrap/cli.js memory thread brief <thread-id>
 ## 5. Статусы артефактов
 
 **Work thread:**
+
 - `active` — в работе
 - `paused` — приостановлен
 - `completed` — завершён
 - `archived` — в архиве
 
 **Info request:**
+
 - `open` — открыт
 - `answered` — отвечен
 - `rejected` — отклонён
@@ -195,11 +275,25 @@ node dist/bootstrap/cli.js memory thread brief <thread-id>
 - `archived` — в архиве
 
 **Article:**
+
 - `proposed` — предложен агентом
 - `accepted` — принят
 - `stale` — устарел
 - `superseded` — замещён
 - `archived` — в архиве
+
+**Decision:**
+
+- `active` — действует
+- `superseded` — замещено новым решением
+- `rejected` — отклонено
+- `obsolete` — устарело
+
+**Blocker:**
+
+- `active` — активно мешает
+- `resolved` — решено
+- `obsolete` — устарело
 
 ---
 
@@ -217,7 +311,6 @@ node dist/bootstrap/cli.js memory thread brief <thread-id>
 
 Следующие фазы:
 
-- **Phase 2:** decisions и blockers — фиксация решений и препятствий.
 - **Phase 3:** регистрация документов и внешних артефактов из проекта.
 - **Phase 4:** явные связи между артефактами и session checkpoints.
 - **Phase 5:** поиск и индексация.
@@ -250,4 +343,13 @@ node dist/bootstrap/cli.js memory info-request list --thread <id>
 # Статьи
 node dist/bootstrap/cli.js memory article add --title "..." --thread <id> --summary "..." --body "..."
 node dist/bootstrap/cli.js memory article list --thread <id>
+
+# Решения
+node dist/bootstrap/cli.js memory decision add --title "..." --body "..." --thread <id>
+node dist/bootstrap/cli.js memory decision list --thread <id>
+
+# Препятствия
+node dist/bootstrap/cli.js memory blocker add --title "..." --impact "..." --workaround "..." --thread <id>
+node dist/bootstrap/cli.js memory blocker list --thread <id>
+node dist/bootstrap/cli.js memory blocker resolve <blocker-id>
 ```
