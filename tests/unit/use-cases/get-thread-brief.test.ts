@@ -86,6 +86,17 @@ describe('getThreadBrief', () => {
       }
     );
 
+    const { object: resolvedBlocker } = await createBlocker(
+      { store, log, clock, idGen },
+      {
+        title: 'Resolved dependency issue',
+        impact: 'Package was temporarily unavailable.',
+        thread: thread.id,
+        createdBy: 'user:test',
+      }
+    );
+    await store.update(resolvedBlocker.id, { status: 'resolved' });
+
     const brief = await getThreadBrief({ store }, thread.id);
 
     expect(brief.thread.id).toBe(thread.id);
@@ -93,6 +104,7 @@ describe('getThreadBrief', () => {
     expect(brief.articles.map((a) => a.id)).toContain(article.id);
     expect(brief.decisions.map((d) => d.id)).toContain(decision.id);
     expect(brief.blockers.map((b) => b.id)).toContain(blocker.id);
+    expect(brief.blockers.map((b) => b.id)).not.toContain(resolvedBlocker.id);
     expect(brief.rendered).toContain(thread.title);
     expect(brief.rendered).toContain(request.title);
     expect(brief.rendered).toContain(article.title);
@@ -102,5 +114,6 @@ describe('getThreadBrief', () => {
     expect(brief.rendered).toContain(blocker.title);
     expect(brief.rendered).toContain('## Decisions');
     expect(brief.rendered).toContain('## Blockers');
+    expect(brief.rendered).not.toContain(resolvedBlocker.title);
   });
 });

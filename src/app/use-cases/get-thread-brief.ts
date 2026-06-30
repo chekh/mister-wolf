@@ -28,7 +28,7 @@ export async function getThreadBrief(deps: { store: MemoryStore }, threadId: str
     (o) => o.type === 'decision' && (o as Decision).thread === threadId
   ) as Decision[];
   const blockers = all.filter(
-    (o) => o.type === 'blocker' && (o as Blocker).thread === threadId
+    (o) => o.type === 'blocker' && (o as Blocker).thread === threadId && (o as Blocker).status === 'active'
   ) as Blocker[];
 
   const openInfoRequests = requests.filter((r) => r.status === 'open');
