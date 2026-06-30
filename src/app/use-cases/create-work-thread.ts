@@ -2,7 +2,7 @@ import { MemoryStore } from '../../ports/memory-store.port.js';
 import { EventLog } from '../../ports/event-log.port.js';
 import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
-import { WorkThread } from '../../domain/schemas/thread-schema.js';
+import { WorkThread, WorkThreadSchema } from '../../domain/schemas/thread-schema.js';
 
 export interface CreateWorkThreadInput {
   title: string;
@@ -42,6 +42,8 @@ export async function createWorkThread(
     current_state: input.currentState || '',
     next_steps: input.nextSteps || [],
   };
+
+  WorkThreadSchema.parse(object);
 
   await deps.store.save(object);
   await deps.log.append({

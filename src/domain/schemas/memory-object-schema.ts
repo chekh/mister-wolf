@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MEMORY_TYPES, MemoryStatus } from '../memory-types.js';
+import { MEMORY_TYPES } from '../memory-types.js';
 
 export const MemoryObjectSchema = z
   .object({

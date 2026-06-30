@@ -8,7 +8,7 @@
 
 Mr. Wolf is a local-first Project Semantic Memory layer for AI coding agents. It persists structured memory objects (lessons, facts, decisions, context) directly in the project repository and makes them searchable, so agents retain context across sessions without becoming an orchestrator.
 
-**Status:** Current: MVP-A complete. MVP-B (Project Scan + Agent Brief) implemented.
+**Status:** Current: MVP-A complete. MVP-B (Project Scan + Agent Brief) implemented. Phase 1 (Work Threads, Info Requests, Articles) implemented.
 
 ## STRUCTURE
 
@@ -55,7 +55,7 @@ Mr. Wolf is a local-first Project Semantic Memory layer for AI coding agents. It
 ## CONVENTIONS
 
 - **Language**: All communication in Russian. Code/docs may be bilingual.
-- **Status**: Current: MVP-A complete. MVP-B (Project Scan + Agent Brief) implemented.
+- **Status**: Current: MVP-A complete. MVP-B (Project Scan + Agent Brief) implemented. Phase 1 (Work Threads, Info Requests, Articles) implemented.
 - **Framework philosophy**: Mr. Wolf augments agents with memory; it does not orchestrate them.
 - **TypeScript**: Strict mode, Zod schemas, strong typing throughout.
 
