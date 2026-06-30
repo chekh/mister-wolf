@@ -1,9 +1,11 @@
 import * as fs from 'fs/promises';
 import { dirname, join } from 'path';
 import yaml from 'js-yaml';
-import { MemoryStore } from '../../ports/memory-store.port.js';
+import { MemoryStore, ListFilters } from '../../ports/memory-store.port.js';
 import { MemoryObject, MemoryObjectSchema } from '../../domain/schemas/memory-object-schema.js';
 import { objectPath, objectsDir } from './project-paths.js';
+
+const STALE_DAYS = 30;
 
 export class MarkdownMemoryStore implements MemoryStore {
   constructor(private baseDir: string) {}
@@ -25,7 +27,7 @@ export class MarkdownMemoryStore implements MemoryStore {
     return null;
   }
 
-  async list(filters?: { type?: string; status?: string }): Promise<MemoryObject[]> {
+  async list(filters?: ListFilters): Promise<MemoryObject[]> {
     const root = objectsDir(this.baseDir);
     const results: MemoryObject[] = [];
     const dirs = await this.readDirs(root);
@@ -36,6 +38,7 @@ export class MarkdownMemoryStore implements MemoryStore {
         if (!parsed) continue;
         if (filters?.type && parsed.type !== filters.type) continue;
         if (filters?.status && parsed.status !== filters.status) continue;
+        if (filters?.stale && !isStale(parsed)) continue;
         results.push(parsed);
       }
     }
@@ -105,6 +108,12 @@ export class MarkdownMemoryStore implements MemoryStore {
       throw new Error(`Failed to parse memory file ${path}: ${formatError(err)}`);
     }
   }
+}
+
+function isStale(object: MemoryObject): boolean {
+  const updated = new Date(object.updated_at).getTime();
+  const ageMs = Date.now() - updated;
+  return ageMs > STALE_DAYS * 24 * 60 * 60 * 1000;
 }
 
 function isEnoent(err: unknown): boolean {

@@ -84,6 +84,47 @@ describe('SQLiteSearchIndex', () => {
     expect(results).toHaveLength(2);
   });
 
+  it('filters by tag', async () => {
+    await index.rebuild([
+      makeObject({ id: 'mem_1', title: 'Lesson', body: 'shared term', tags: ['alpha'] }),
+      makeObject({ id: 'mem_2', title: 'Decision', body: 'shared term', tags: ['beta'] }),
+    ]);
+    const results = await index.search('shared', { tags: ['alpha'] });
+    expect(results).toHaveLength(1);
+    expect(results[0].object.id).toBe('mem_1');
+  });
+
+  it('filters by importance range', async () => {
+    await index.rebuild([
+      makeObject({ id: 'mem_1', title: 'Low', body: 'target', importance: 0.2 }),
+      makeObject({ id: 'mem_2', title: 'Mid', body: 'target', importance: 0.5 }),
+      makeObject({ id: 'mem_3', title: 'High', body: 'target', importance: 0.9 }),
+    ]);
+    const results = await index.search('target', { minImportance: 0.4, maxImportance: 0.7 });
+    expect(results.map((r) => r.object.id)).toEqual(['mem_2']);
+  });
+
+  it('applies confidence and importance boost to score', async () => {
+    await index.rebuild([
+      makeObject({ id: 'mem_1', title: 'One', body: 'target term', confidence: 'low', importance: 0.1 }),
+      makeObject({ id: 'mem_2', title: 'Two', body: 'target term', confidence: 'high', importance: 0.9 }),
+    ]);
+    const results = await index.search('target');
+    const mem1 = results.find((r) => r.object.id === 'mem_1')!;
+    const mem2 = results.find((r) => r.object.id === 'mem_2')!;
+    expect(mem2.score).toBeGreaterThan(mem1.score);
+  });
+
+  it('limits results', async () => {
+    await index.rebuild([
+      makeObject({ id: 'mem_1', title: 'One', body: 'target term' }),
+      makeObject({ id: 'mem_2', title: 'Two', body: 'target term' }),
+      makeObject({ id: 'mem_3', title: 'Three', body: 'target term' }),
+    ]);
+    const results = await index.search('target', { limit: 2 });
+    expect(results).toHaveLength(2);
+  });
+
   it('rebuild is idempotent', async () => {
     const objects = [
       makeObject({ id: 'mem_1', title: 'First', body: 'unique term alpha' }),

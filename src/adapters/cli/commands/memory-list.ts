@@ -7,9 +7,14 @@ export function memoryListCommand(): Command {
     .description('List memory objects')
     .option('--type <type>', 'Filter by type')
     .option('--status <status>', 'Filter by status')
+    .option('--stale', 'List stale objects (not updated in 30 days)', false)
     .action(async (options) => {
       const { store } = createCliContainer(process.cwd());
-      const objects = await listMemoryObjects(store, { type: options.type, status: options.status });
+      const objects = await listMemoryObjects(store, {
+        type: options.type,
+        status: options.status,
+        stale: options.stale,
+      });
       for (const obj of objects) {
         console.log(`${obj.id} [${obj.type}] [${obj.status}] ${obj.title}`);
       }

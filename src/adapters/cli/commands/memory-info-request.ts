@@ -19,9 +19,9 @@ export function memoryInfoRequestCommand(): Command {
     .option('--preliminary-answer <answer>', 'Preliminary answer', '')
     .option('--created-by <actor>', 'Creator actor', 'user:cli')
     .action(async (options) => {
-      const { store, log, clock, idGen } = createCliContainer(process.cwd());
+      const { store, log, clock, idGen, index, relations } = createCliContainer(process.cwd());
       const result = await createInfoRequest(
-        { store, log, clock, idGen },
+        { store, log, clock, idGen, index, relations },
         {
           title: options.title,
           thread: options.thread,

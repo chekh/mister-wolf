@@ -58,7 +58,7 @@ describe('searchMemory', () => {
     expect(results[0].object.title).toBe('Router reconnect failure mode');
   });
 
-  it('does not auto-rebuild index when searching', async () => {
+  it('passes advanced filters to the index', async () => {
     const store = new MarkdownMemoryStore(dir);
     const log = new JsonlEventLog(eventsPath(dir));
     const clock = new SystemClock();
@@ -68,14 +68,33 @@ describe('searchMemory', () => {
     await addMemoryObject(
       { store, log, clock, idGen },
       {
-        type: 'lesson',
-        title: 'Stale cache invalidation',
-        body: 'Cache invalidation is hard.',
+        type: 'decision',
+        title: 'Use SQLite',
+        body: 'We chose SQLite for the search index.',
         createdBy: 'user:test',
+        tags: ['storage'],
+        confidence: 'high',
+        importance: 0.9,
       }
     );
 
-    const results = await searchMemory({ index }, { query: 'cache' });
-    expect(results).toHaveLength(0);
+    await addMemoryObject(
+      { store, log, clock, idGen },
+      {
+        type: 'lesson',
+        title: 'Cache invalidation',
+        body: 'Cache invalidation is hard.',
+        createdBy: 'user:test',
+        tags: ['cache'],
+        confidence: 'low',
+        importance: 0.3,
+      }
+    );
+
+    await rebuildMemoryIndex({ store, index });
+
+    const results = await searchMemory({ index }, { query: 'SQLite', tags: ['storage'], minImportance: 0.5 });
+    expect(results).toHaveLength(1);
+    expect(results[0].object.title).toBe('Use SQLite');
   });
 });

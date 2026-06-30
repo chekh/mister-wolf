@@ -2,6 +2,7 @@ import { MemoryStore } from '../../ports/memory-store.port.js';
 import { EventLog } from '../../ports/event-log.port.js';
 import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
+import { SearchIndex } from '../../ports/search-index.port.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import { validateMemoryObject } from '../../domain/policies/write-protocol.js';
 
@@ -24,7 +25,7 @@ export interface AddMemoryObjectResult {
 }
 
 export async function addMemoryObject(
-  deps: { store: MemoryStore; log: EventLog; clock: Clock; idGen: IdGenerator },
+  deps: { store: MemoryStore; log: EventLog; clock: Clock; idGen: IdGenerator; index?: SearchIndex },
   input: AddMemoryObjectInput
 ): Promise<AddMemoryObjectResult> {
   const now = deps.clock.now();
@@ -56,6 +57,9 @@ export async function addMemoryObject(
     actor: input.createdBy,
     payload: { memory_id: object.id, type: object.type },
   });
+  if (deps.index) {
+    await deps.index.indexObject(object);
+  }
 
   return { object, warnings: validation.warnings };
 }

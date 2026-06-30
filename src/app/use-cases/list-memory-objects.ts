@@ -4,6 +4,7 @@ import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 export interface ListMemoryObjectsFilters {
   type?: string;
   status?: string;
+  stale?: boolean;
 }
 
 export async function listMemoryObjects(

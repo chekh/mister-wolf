@@ -6,7 +6,8 @@ import { HashIdGenerator } from '../adapters/fs/hash-id-generator.js';
 import { FsProjectInitializer } from '../adapters/fs/fs-project-initializer.js';
 import { FsFileSystem } from '../adapters/fs/fs-file-system.js';
 import { HeuristicProjectScanner } from '../adapters/fs/heuristic-project-scanner.js';
-import { eventsPath, indexPath } from '../adapters/fs/project-paths.js';
+import { eventsPath, indexPath, relationsPath } from '../adapters/fs/project-paths.js';
+import { JsonlRelationLog } from '../adapters/fs/jsonl-relation-log.js';
 
 export function createCliContainer(baseDir: string) {
   const fs = new FsFileSystem();
@@ -14,6 +15,7 @@ export function createCliContainer(baseDir: string) {
     store: new MarkdownMemoryStore(baseDir),
     log: new JsonlEventLog(eventsPath(baseDir)),
     index: new SQLiteSearchIndex(indexPath(baseDir)),
+    relations: new JsonlRelationLog(relationsPath(baseDir)),
     clock: new SystemClock(),
     idGen: new HashIdGenerator(),
     initializer: new FsProjectInitializer(),

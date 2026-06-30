@@ -2,12 +2,16 @@ import { MemoryStore } from '../../ports/memory-store.port.js';
 import { EventLog } from '../../ports/event-log.port.js';
 import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
+import { SearchIndex } from '../../ports/search-index.port.js';
+import { RelationLog } from '../../ports/relation-log.port.js';
 import { Decision, DecisionSchema } from '../../domain/schemas/decision-schema.js';
+import { recordRelation } from './record-relation.js';
 
 export interface CreateDecisionInput {
   title: string;
   body: string;
   thread?: string;
+  basedOn?: string[];
   createdBy: string;
 }
 
@@ -16,7 +20,14 @@ export interface CreateDecisionResult {
 }
 
 export async function createDecision(
-  deps: { store: MemoryStore; log: EventLog; clock: Clock; idGen: IdGenerator },
+  deps: {
+    store: MemoryStore;
+    log: EventLog;
+    clock: Clock;
+    idGen: IdGenerator;
+    index?: SearchIndex;
+    relations?: RelationLog;
+  },
   input: CreateDecisionInput
 ): Promise<CreateDecisionResult> {
   const now = deps.clock.now();
@@ -50,6 +61,17 @@ export async function createDecision(
     actor: input.createdBy,
     payload: { memory_id: object.id, type: object.type },
   });
+  if (deps.index) {
+    await deps.index.indexObject(object);
+  }
+  if (deps.relations) {
+    if (object.thread) {
+      await recordRelation(deps, now, object.id, 'updates', object.thread);
+    }
+    for (const basisId of input.basedOn ?? []) {
+      await recordRelation(deps, now, object.id, 'based_on', basisId);
+    }
+  }
 
   return { object };
 }

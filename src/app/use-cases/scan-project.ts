@@ -3,12 +3,14 @@ import { EventLog } from '../../ports/event-log.port.js';
 import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
 import { ProjectScanner } from '../../ports/project-scanner.port.js';
+import { SearchIndex } from '../../ports/search-index.port.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import { ProjectSnapshot } from '../../domain/schemas/project-scan-schema.js';
 
 export interface ScanProjectResult {
   object: MemoryObject;
   snapshot: ProjectSnapshot;
+  documents: MemoryObject[];
 }
 
 export async function scanProject(
@@ -18,6 +20,7 @@ export async function scanProject(
     clock: Clock;
     idGen: IdGenerator;
     scanner: ProjectScanner;
+    index?: SearchIndex;
   },
   root: string
 ): Promise<ScanProjectResult> {
@@ -52,8 +55,64 @@ export async function scanProject(
     actor,
     payload: { memory_id: object.id, type: object.type },
   });
+  if (deps.index) {
+    await deps.index.indexObject(object);
+  }
 
-  return { object, snapshot };
+  const documents = await registerDocuments(deps, snapshot, now, actor);
+
+  return { object, snapshot, documents };
+}
+
+async function registerDocuments(
+  deps: {
+    store: MemoryStore;
+    log: EventLog;
+    idGen: IdGenerator;
+    index?: SearchIndex;
+  },
+  snapshot: ProjectSnapshot,
+  now: Date,
+  actor: string
+): Promise<MemoryObject[]> {
+  const results: MemoryObject[] = [];
+  for (const doc of snapshot.docs) {
+    const id = `doc_${doc.path.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const existing = await deps.store.get(id);
+    const object: MemoryObject = {
+      id,
+      type: 'document',
+      title: doc.title,
+      body: `Registered project document: ${doc.path}`,
+      status: 'active',
+      review_state: 'accepted',
+      confidence: 'high',
+      importance: 0.6,
+      created_at: existing?.created_at ?? now.toISOString(),
+      updated_at: now.toISOString(),
+      created_by: existing?.created_by ?? actor,
+      schema_version: 1,
+      source: { kind: 'scan', path: doc.path },
+      related: { files: [], docs: [doc.path], decisions: [] },
+      tags: ['document'],
+      superseded_by: null,
+    };
+    await deps.store.save(object);
+    if (!existing) {
+      await deps.log.append({
+        id: deps.idGen.generateEventId(now),
+        type: 'memory.added',
+        timestamp: now.toISOString(),
+        actor,
+        payload: { memory_id: object.id, type: object.type },
+      });
+    }
+    if (deps.index) {
+      await deps.index.indexObject(object);
+    }
+    results.push(object);
+  }
+  return results;
 }
 
 export function renderScanBody(snapshot: ProjectSnapshot): string {

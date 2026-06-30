@@ -2,7 +2,10 @@ import { MemoryStore } from '../../ports/memory-store.port.js';
 import { EventLog } from '../../ports/event-log.port.js';
 import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
+import { SearchIndex } from '../../ports/search-index.port.js';
+import { RelationLog } from '../../ports/relation-log.port.js';
 import { Blocker, BlockerSchema } from '../../domain/schemas/blocker-schema.js';
+import { recordRelation } from './record-relation.js';
 
 export interface CreateBlockerInput {
   title: string;
@@ -17,7 +20,14 @@ export interface CreateBlockerResult {
 }
 
 export async function createBlocker(
-  deps: { store: MemoryStore; log: EventLog; clock: Clock; idGen: IdGenerator },
+  deps: {
+    store: MemoryStore;
+    log: EventLog;
+    clock: Clock;
+    idGen: IdGenerator;
+    index?: SearchIndex;
+    relations?: RelationLog;
+  },
   input: CreateBlockerInput
 ): Promise<CreateBlockerResult> {
   const now = deps.clock.now();
@@ -53,6 +63,12 @@ export async function createBlocker(
     actor: input.createdBy,
     payload: { memory_id: object.id, type: object.type },
   });
+  if (deps.index) {
+    await deps.index.indexObject(object);
+  }
+  if (deps.relations && object.thread) {
+    await recordRelation(deps, now, object.id, 'blocks', object.thread);
+  }
 
   return { object };
 }

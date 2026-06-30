@@ -12,9 +12,9 @@ export function memoryAddCommand(): Command {
     .option('--tags <tags>', 'Comma-separated tags')
     .option('--created-by <actor>', 'Creator actor', 'user:cli')
     .action(async (options) => {
-      const { store, log, clock, idGen } = createCliContainer(process.cwd());
+      const { store, log, clock, idGen, index } = createCliContainer(process.cwd());
       const result = await addMemoryObject(
-        { store, log, clock, idGen },
+        { store, log, clock, idGen, index },
         {
           type: options.type,
           title: options.title,
