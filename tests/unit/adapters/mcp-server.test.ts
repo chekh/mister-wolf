@@ -23,7 +23,14 @@ describe('buildMcpServer', () => {
 
   it('searches memory objects', async () => {
     const server = buildMcpServer(dir);
-    const tools = (server as unknown as { _registeredTools: Record<string, { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }> })._registeredTools;
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
     const result = await tools.memory_search.handler({ query: 'router' });
     expect(result.content).toHaveLength(1);
     expect(result.content[0].type).toBe('text');
@@ -31,7 +38,14 @@ describe('buildMcpServer', () => {
 
   it('adds a memory object', async () => {
     const server = buildMcpServer(dir);
-    const tools = (server as unknown as { _registeredTools: Record<string, { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }> })._registeredTools;
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
     const result = await tools.memory_add.handler({
       type: 'lesson',
       title: 'Router reconnect failure',
@@ -41,5 +55,53 @@ describe('buildMcpServer', () => {
     });
     expect(result.content).toHaveLength(1);
     expect(result.content[0].text).toMatch(/Created memory object: mem_/);
+  });
+
+  it('gets a memory object by id', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    const addResult = await tools.memory_add.handler({
+      type: 'lesson',
+      title: 'Get by id test',
+      body: 'We can fetch an object by id.',
+      createdBy: 'agent:mcp-test',
+    });
+    const id = addResult.content[0].text.replace('Created memory object: ', '');
+    const result = await tools.memory_get.handler({ id });
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0].text).toContain('Get by id test');
+  });
+
+  it('lists memory objects with a filter', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    await tools.memory_add.handler({
+      type: 'lesson',
+      title: 'List lesson one',
+      createdBy: 'agent:mcp-test',
+    });
+    await tools.memory_add.handler({
+      type: 'decision',
+      title: 'List decision one',
+      createdBy: 'agent:mcp-test',
+    });
+    const result = await tools.memory_list.handler({ type: 'lesson' });
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0].text).toContain('List lesson one');
+    expect(result.content[0].text).not.toContain('List decision one');
   });
 });

@@ -1,13 +1,17 @@
 import { fromJsonSchema, type McpServer } from '@modelcontextprotocol/server';
-import { MemorySearchInputSchema, MemoryAddInputSchema } from './mcp-schemas.js';
+import {
+  MemorySearchInputSchema,
+  MemoryAddInputSchema,
+  MemoryGetInputSchema,
+  MemoryListInputSchema,
+} from './mcp-schemas.js';
 import { searchMemory } from '../../app/use-cases/search-memory.js';
 import { addMemoryObject } from '../../app/use-cases/add-memory-object.js';
+import { getMemoryObject } from '../../app/use-cases/get-memory-object.js';
+import { listMemoryObjects } from '../../app/use-cases/list-memory-objects.js';
 import { createCliContainer } from '../../bootstrap/container.js';
 
-export function registerMemoryTools(
-  server: McpServer,
-  deps: ReturnType<typeof createCliContainer>
-): void {
+export function registerMemoryTools(server: McpServer, deps: ReturnType<typeof createCliContainer>): void {
   server.registerTool(
     'memory_search',
     {
@@ -32,10 +36,45 @@ export function registerMemoryTools(
         includeSuperseded?: boolean;
       };
       const results = await searchMemory({ index: deps.index }, args);
-      const text = results
-        .map((r) => `${r.object.id} [${r.object.type}] ${r.object.title}`)
-        .join('\n');
+      const text = results.map((r) => `${r.object.id} [${r.object.type}] ${r.object.title}`).join('\n');
       return { content: [{ type: 'text' as const, text: text || 'No results.' }] };
+    }
+  );
+
+  server.registerTool(
+    'memory_get',
+    {
+      description: 'Get a memory object by id',
+      inputSchema: fromJsonSchema(MemoryGetInputSchema),
+    },
+    async (input: unknown) => {
+      const args = input as { id: string };
+      const object = await getMemoryObject(deps.store, args.id);
+      if (!object) {
+        return { content: [{ type: 'text' as const, text: `Memory object not found: ${args.id}` }] };
+      }
+      return { content: [{ type: 'text' as const, text: JSON.stringify(object, null, 2) }] };
+    }
+  );
+
+  server.registerTool(
+    'memory_list',
+    {
+      description: 'List memory objects with optional filters',
+      inputSchema: fromJsonSchema(MemoryListInputSchema),
+    },
+    async (input: unknown) => {
+      const args = input as {
+        type?: string;
+        status?: string;
+        stale?: boolean;
+        memoryClass?: string;
+        truthRole?: string;
+        lifetime?: string;
+      };
+      const objects = await listMemoryObjects(deps.store, args);
+      const text = objects.map((o) => `${o.id} [${o.type}] ${o.title}`).join('\n');
+      return { content: [{ type: 'text' as const, text: text || 'No memory objects.' }] };
     }
   );
 

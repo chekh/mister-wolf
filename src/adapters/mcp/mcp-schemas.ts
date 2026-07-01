@@ -1,3 +1,23 @@
+export const MemoryGetInputSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'string' },
+  },
+  required: ['id'],
+} as const;
+
+export const MemoryListInputSchema = {
+  type: 'object',
+  properties: {
+    type: { type: 'string' },
+    status: { type: 'string' },
+    stale: { type: 'boolean' },
+    memoryClass: { type: 'string' },
+    truthRole: { type: 'string' },
+    lifetime: { type: 'string' },
+  },
+} as const;
+
 export const MemorySearchInputSchema = {
   type: 'object',
   properties: {
