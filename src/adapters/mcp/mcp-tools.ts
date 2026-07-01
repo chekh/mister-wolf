@@ -1,5 +1,6 @@
 import { fromJsonSchema, type McpServer } from '@modelcontextprotocol/server';
 import {
+  EmptyInputSchema,
   MemorySearchInputSchema,
   MemoryAddInputSchema,
   MemoryGetInputSchema,
@@ -23,9 +24,11 @@ import { createArticle } from '../../app/use-cases/create-article.js';
 import { createDecision } from '../../app/use-cases/create-decision.js';
 import { createBlocker } from '../../app/use-cases/create-blocker.js';
 import { resolveBlocker } from '../../app/use-cases/resolve-blocker.js';
+import { scanProject } from '../../app/use-cases/scan-project.js';
+import { generateAgentBrief } from '../../app/use-cases/generate-agent-brief.js';
 import { createCliContainer } from '../../bootstrap/container.js';
 
-export function registerMemoryTools(server: McpServer, deps: ReturnType<typeof createCliContainer>): void {
+export function registerMemoryTools(server: McpServer, deps: ReturnType<typeof createCliContainer>, baseDir: string): void {
   server.registerTool(
     'memory_search',
     {
@@ -247,6 +250,31 @@ export function registerMemoryTools(server: McpServer, deps: ReturnType<typeof c
       const args = input as { id: string; resolvedBy?: string };
       await resolveBlocker(deps, args.id, args.resolvedBy);
       return { content: [{ type: 'text' as const, text: `Resolved blocker: ${args.id}` }] };
+    }
+  );
+
+  server.registerTool(
+    'memory_scan',
+    {
+      description: 'Scan the project and register documents',
+      inputSchema: fromJsonSchema(EmptyInputSchema),
+    },
+    async () => {
+      const result = await scanProject(deps, baseDir);
+      return { content: [{ type: 'text' as const, text: `Project scan complete: ${result.object.id}` }] };
+    }
+  );
+
+  server.registerTool(
+    'memory_brief',
+    {
+      description: 'Generate the agent brief from the latest scan and memory',
+      inputSchema: fromJsonSchema(EmptyInputSchema),
+    },
+    async () => {
+      const scanResult = await scanProject(deps, baseDir);
+      const brief = await generateAgentBrief(deps, baseDir, scanResult.snapshot);
+      return { content: [{ type: 'text' as const, text: brief.content }] };
     }
   );
 }

@@ -1,3 +1,8 @@
+export const EmptyInputSchema = {
+  type: 'object',
+  properties: {},
+} as const;
+
 export const MemoryGetInputSchema = {
   type: 'object',
   properties: {

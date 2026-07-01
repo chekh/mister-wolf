@@ -165,4 +165,34 @@ describe('buildMcpServer', () => {
     expect(resolved.content).toHaveLength(1);
     expect(resolved.content[0].text).toContain('Resolved');
   });
+
+  it('scans the project', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    const result = await tools.memory_scan.handler({});
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0].text).toContain('Project scan');
+  });
+
+  it('generates an agent brief', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    const result = await tools.memory_brief.handler({});
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0].text).toContain('# Agent Brief');
+  });
 });

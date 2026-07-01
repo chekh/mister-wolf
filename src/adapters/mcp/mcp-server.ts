@@ -6,7 +6,7 @@ export function buildMcpServer(baseDir: string): McpServer {
   const deps = createCliContainer(baseDir);
   const server = new McpServer({ name: 'mr-wolf', version: '0.1.0' });
 
-  registerMemoryTools(server, deps);
+  registerMemoryTools(server, deps, baseDir);
 
   server.registerTool(
     'ping',
