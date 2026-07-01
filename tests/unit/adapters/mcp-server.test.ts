@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { buildMcpServer } from '../../../src/adapters/mcp/mcp-server.js';
+import { createCli } from '../../../src/adapters/cli/cli-entry.js';
 
 describe('buildMcpServer', () => {
   let dir: string;
@@ -194,5 +195,13 @@ describe('buildMcpServer', () => {
     const result = await tools.memory_brief.handler({});
     expect(result.content).toHaveLength(1);
     expect(result.content[0].text).toContain('# Agent Brief');
+  });
+});
+
+describe('memoryMcpCommand', () => {
+  it('is registered in CLI', () => {
+    const cli = createCli();
+    const command = cli.commands.find((c) => c.name() === 'memory')?.commands.find((c) => c.name() === 'mcp');
+    expect(command).toBeDefined();
   });
 });
