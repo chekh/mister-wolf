@@ -18,3 +18,20 @@ export const MemorySearchInputSchema = {
   },
   required: ['query'],
 } as const;
+
+export const MemoryAddInputSchema = {
+  type: 'object',
+  properties: {
+    type: { type: 'string' },
+    title: { type: 'string' },
+    body: { type: 'string' },
+    tags: { type: 'array', items: { type: 'string' } },
+    confidence: { type: 'string', enum: ['low', 'medium', 'high'] },
+    importance: { type: 'number' },
+    memoryClass: { type: 'string' },
+    truthRole: { type: 'string' },
+    lifetime: { type: 'string' },
+    createdBy: { type: 'string' },
+  },
+  required: ['type', 'title', 'createdBy'],
+} as const;

@@ -28,4 +28,18 @@ describe('buildMcpServer', () => {
     expect(result.content).toHaveLength(1);
     expect(result.content[0].type).toBe('text');
   });
+
+  it('adds a memory object', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (server as unknown as { _registeredTools: Record<string, { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }> })._registeredTools;
+    const result = await tools.memory_add.handler({
+      type: 'lesson',
+      title: 'Router reconnect failure',
+      body: 'We found a failure mode with router reconnect.',
+      tags: ['router'],
+      createdBy: 'agent:mcp-test',
+    });
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0].text).toMatch(/Created memory object: mem_/);
+  });
 });
