@@ -125,4 +125,44 @@ describe('buildMcpServer', () => {
     expect(result.content).toHaveLength(1);
     expect(result.content[0].text).toContain('Transitioned');
   });
+
+  it('creates a work thread', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    const result = await tools.memory_create_thread.handler({
+      title: 'Thread MCP',
+      goal: 'Test MCP',
+      createdBy: 'agent:test',
+    });
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0].text).toMatch(/thread_/);
+  });
+
+  it('creates and resolves a blocker', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    const blocker = await tools.memory_create_blocker.handler({
+      title: 'Blocker MCP',
+      impact: 'blocks tests',
+      createdBy: 'agent:test',
+    });
+    const id = blocker.content[0].text.replace('Created blocker: ', '');
+    const resolved = await tools.memory_resolve_blocker.handler({ id });
+    expect(resolved.content).toHaveLength(1);
+    expect(resolved.content[0].text).toContain('Resolved');
+  });
 });
