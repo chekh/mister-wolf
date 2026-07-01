@@ -20,4 +20,12 @@ describe('buildMcpServer', () => {
     const tools = (server as unknown as { _registeredTools: Record<string, unknown> })._registeredTools;
     expect(Object.keys(tools).length).toBeGreaterThan(0);
   });
+
+  it('searches memory objects', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (server as unknown as { _registeredTools: Record<string, { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }> })._registeredTools;
+    const result = await tools.memory_search.handler({ query: 'router' });
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0].type).toBe('text');
+  });
 });
