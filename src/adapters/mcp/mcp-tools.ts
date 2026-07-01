@@ -28,7 +28,11 @@ import { scanProject } from '../../app/use-cases/scan-project.js';
 import { generateAgentBrief } from '../../app/use-cases/generate-agent-brief.js';
 import { createCliContainer } from '../../bootstrap/container.js';
 
-export function registerMemoryTools(server: McpServer, deps: ReturnType<typeof createCliContainer>, baseDir: string): void {
+export function registerMemoryTools(
+  server: McpServer,
+  deps: ReturnType<typeof createCliContainer>,
+  baseDir: string
+): void {
   server.registerTool(
     'memory_search',
     {
