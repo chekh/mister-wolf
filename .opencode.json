@@ -1,0 +1,13 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "mr-wolf": {
+      "type": "local",
+      "command": [
+        "node",
+        "./dist/bootstrap/mcp.js"
+      ],
+      "enabled": true
+    }
+  }
+}
