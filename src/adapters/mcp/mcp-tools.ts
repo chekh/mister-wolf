@@ -4,11 +4,13 @@ import {
   MemoryAddInputSchema,
   MemoryGetInputSchema,
   MemoryListInputSchema,
+  MemoryTransitionInputSchema,
 } from './mcp-schemas.js';
 import { searchMemory } from '../../app/use-cases/search-memory.js';
 import { addMemoryObject } from '../../app/use-cases/add-memory-object.js';
 import { getMemoryObject } from '../../app/use-cases/get-memory-object.js';
 import { listMemoryObjects } from '../../app/use-cases/list-memory-objects.js';
+import { transitionMemoryObject } from '../../app/use-cases/transition-memory-object.js';
 import { createCliContainer } from '../../bootstrap/container.js';
 
 export function registerMemoryTools(server: McpServer, deps: ReturnType<typeof createCliContainer>): void {
@@ -112,6 +114,19 @@ export function registerMemoryTools(server: McpServer, deps: ReturnType<typeof c
       return {
         content: [{ type: 'text' as const, text: `Created memory object: ${result.object.id}` }],
       };
+    }
+  );
+
+  server.registerTool(
+    'memory_transition',
+    {
+      description: 'Transition a memory object to a new lifecycle status',
+      inputSchema: fromJsonSchema(MemoryTransitionInputSchema),
+    },
+    async (input: unknown) => {
+      const args = input as { id: string; status: string };
+      await transitionMemoryObject(deps, args.id, args.status as never, 'agent:mcp');
+      return { content: [{ type: 'text' as const, text: `Transitioned ${args.id} to ${args.status}.` }] };
     }
   );
 }

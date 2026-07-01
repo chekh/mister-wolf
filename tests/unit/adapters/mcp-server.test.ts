@@ -104,4 +104,25 @@ describe('buildMcpServer', () => {
     expect(result.content[0].text).toContain('List lesson one');
     expect(result.content[0].text).not.toContain('List decision one');
   });
+
+  it('transitions a memory object', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    const addResult = await tools.memory_add.handler({
+      type: 'lesson',
+      title: 'Transition test',
+      createdBy: 'agent:mcp-test',
+    });
+    const id = addResult.content[0].text.replace('Created memory object: ', '');
+    const result = await tools.memory_transition.handler({ id, status: 'stale' });
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0].text).toContain('Transitioned');
+  });
 });

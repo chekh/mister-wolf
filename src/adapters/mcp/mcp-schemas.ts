@@ -55,3 +55,12 @@ export const MemoryAddInputSchema = {
   },
   required: ['type', 'title', 'createdBy'],
 } as const;
+
+export const MemoryTransitionInputSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'string' },
+    status: { type: 'string' },
+  },
+  required: ['id', 'status'],
+} as const;
