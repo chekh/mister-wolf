@@ -7,6 +7,7 @@ import { RelationLog } from '../../ports/relation-log.port.js';
 import { Article, ArticleSchema } from '../../domain/schemas/article-schema.js';
 import { governanceDefaults } from '../../domain/governance.js';
 import { recordRelation } from './record-relation.js';
+import { summarizeSession } from './summarize-session.js';
 
 export interface CreateArticleInput {
   title: string;
@@ -84,6 +85,8 @@ export async function createArticle(
       await recordRelation(deps, now, object.id, 'supports', supportId);
     }
   }
+
+  await summarizeSession(deps, { createdBy: input.createdBy }).catch(() => undefined);
 
   return { object };
 }

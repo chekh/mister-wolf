@@ -3,6 +3,7 @@ import { EventLog } from '../../ports/event-log.port.js';
 import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
+import { summarizeSession } from './summarize-session.js';
 
 export async function supersedeMemoryObject(
   deps: { store: MemoryStore; log: EventLog; clock: Clock; idGen: IdGenerator; index?: SearchIndex },
@@ -21,4 +22,5 @@ export async function supersedeMemoryObject(
   if (deps.index) {
     await deps.index.indexObject(updated);
   }
+  await summarizeSession(deps, { createdBy: 'system:wolf' }).catch(() => undefined);
 }
