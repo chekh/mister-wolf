@@ -21,7 +21,7 @@ memory:
     - session-checkpoint
     - rule
 search:
-   default_limit: 20
+  default_limit: 20
 `;
 
 export class FsProjectInitializer implements ProjectInitializer {
