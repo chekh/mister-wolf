@@ -11,6 +11,7 @@ export const MEMORY_TYPES = [
   'article',
   'blocker',
   'session-checkpoint',
+  'rule',
 ] as const;
 
 export type MemoryType = (typeof MEMORY_TYPES)[number];
