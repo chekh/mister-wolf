@@ -19,6 +19,7 @@ import { memoryDecisionCommand } from './commands/memory-decision.js';
 import { memoryBlockerCommand } from './commands/memory-blocker.js';
 
 import { memorySessionCommand, memoryThreadDiffCommand } from './commands/memory-session.js';
+import { memoryMcpCommand } from './commands/memory-mcp.js';
 
 function readPackageVersion(): string {
   const baseDir = dirname(fileURLToPath(import.meta.url));
@@ -47,6 +48,7 @@ export function createCli(): Command {
   memory.addCommand(memoryInfoRequestCommand());
   memory.addCommand(memoryArticleCommand());
   memory.addCommand(memorySessionCommand());
+  memory.addCommand(memoryMcpCommand());
 
   program.addCommand(memory);
   return program;
