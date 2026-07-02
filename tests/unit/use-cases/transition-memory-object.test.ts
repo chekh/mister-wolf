@@ -57,4 +57,20 @@ describe('transitionMemoryObject', () => {
       'Invalid transition'
     );
   });
+
+  it('rejects active to accepted transition', async () => {
+    const store = new MarkdownMemoryStore(dir);
+    const log = new JsonlEventLog(eventsPath(dir));
+    const clock = new SystemClock();
+    const idGen = new HashIdGenerator();
+
+    const added = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'lesson', title: 'Transition test', body: '...', createdBy: 'user:test' }
+    );
+
+    await expect(
+      transitionMemoryObject({ store, log, clock, idGen }, added.object.id, 'accepted')
+    ).rejects.toThrow('Invalid transition from active to accepted');
+  });
 });
