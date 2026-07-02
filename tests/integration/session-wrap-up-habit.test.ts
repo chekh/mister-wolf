@@ -17,7 +17,9 @@ import { eventsPath } from '../../src/adapters/fs/project-paths.js';
 const cliPath = resolve(dirname(fileURLToPath(import.meta.url)), '../../dist/bootstrap/cli.js');
 
 function runCli(args: string, cwd: string): { stdout: string; stderr: string } {
-  const result = spawnSync('node', [cliPath, ...args.split(' ')], {
+  const parsed = args.match(/(?:"[^"]*"|'[^']*'|\S+)/g) ?? [];
+  const argv = parsed.map((arg) => arg.replace(/^["']|["']$/g, ''));
+  const result = spawnSync('node', [cliPath, ...argv], {
     cwd,
     encoding: 'utf-8',
   });

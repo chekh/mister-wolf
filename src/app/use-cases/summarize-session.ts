@@ -40,7 +40,15 @@ export async function summarizeSession(
   }
 
   const events = await deps.log.readAll();
-  const recentEvents = events.slice(-MAX_RECENT_EVENTS);
+  let lastSummaryIndex = -1;
+  for (let i = events.length - 1; i >= 0; i--) {
+    const evt = events[i];
+    if (evt.type === 'memory.added' && evt.payload.type === 'session-summary') {
+      lastSummaryIndex = i;
+      break;
+    }
+  }
+  const recentEvents = events.slice(lastSummaryIndex + 1).slice(-MAX_RECENT_EVENTS);
 
   const title = input.title ?? `Session wrap-up ${now.toISOString().slice(0, 16).replace('T', ' ')}`;
   const tags = ['session-summary', ...(input.tags ?? [])];

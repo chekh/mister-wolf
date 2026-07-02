@@ -39,5 +39,7 @@ export async function resolveBlocker(
   if (deps.relations && resolvedBy) {
     await recordRelation(deps, now, resolvedBy, 'resolves', id);
   }
-  await summarizeSession(deps, { createdBy: 'system:wolf' }).catch(() => undefined);
+  await summarizeSession(deps, { createdBy: 'system:wolf' }).catch((err) => {
+    console.error('Session summary failed:', err);
+  });
 }

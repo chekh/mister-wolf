@@ -34,6 +34,8 @@ export async function transitionMemoryObject(
     await deps.index.indexObject(updated);
   }
   if (TERMINAL_STATUSES.includes(newStatus)) {
-    await summarizeSession(deps, { createdBy: actor }).catch(() => undefined);
+    await summarizeSession(deps, { createdBy: actor }).catch((err) => {
+      console.error('Session summary failed:', err);
+    });
   }
 }

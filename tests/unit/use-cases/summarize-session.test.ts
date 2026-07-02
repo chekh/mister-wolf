@@ -88,4 +88,33 @@ describe('summarizeSession', () => {
     expect(result!.object.tags).toContain('session-summary');
     expect(result!.object.tags).toContain('custom');
   });
+
+  it('only includes events after the previous session-summary', async () => {
+    await initProjectMemory(new FsProjectInitializer(), dir);
+    const store = new MarkdownMemoryStore(dir);
+    const log = new JsonlEventLog(eventsPath(dir));
+    const clock = new SystemClock();
+    const idGen = new HashIdGenerator();
+
+    const first = await summarizeSession({ store, log, clock, idGen }, { createdBy: 'user:demo' });
+    expect(first).not.toBeNull();
+
+    // Cooldown prevents a second summary immediately, so rewind the clock by 6 minutes.
+    const olderClock = {
+      now: () => new Date(Date.now() + 6 * 60 * 1000),
+    };
+
+    await log.append({
+      id: 'evt_after',
+      type: 'memory.added',
+      timestamp: olderClock.now().toISOString(),
+      actor: 'user:demo',
+      payload: { memory_id: 'mem_after', type: 'decision' },
+    });
+
+    const second = await summarizeSession({ store, log, clock: olderClock, idGen }, { createdBy: 'user:demo' });
+    expect(second).not.toBeNull();
+    expect(second!.object.body).toContain('mem_after');
+    expect(second!.object.body).not.toContain(first!.object.id);
+  });
 });

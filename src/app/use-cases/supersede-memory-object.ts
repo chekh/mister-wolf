@@ -22,5 +22,7 @@ export async function supersedeMemoryObject(
   if (deps.index) {
     await deps.index.indexObject(updated);
   }
-  await summarizeSession(deps, { createdBy: 'system:wolf' }).catch(() => undefined);
+  await summarizeSession(deps, { createdBy: 'system:wolf' }).catch((err) => {
+    console.error('Session summary failed:', err);
+  });
 }

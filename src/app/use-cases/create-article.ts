@@ -86,7 +86,9 @@ export async function createArticle(
     }
   }
 
-  await summarizeSession(deps, { createdBy: input.createdBy }).catch(() => undefined);
+  await summarizeSession(deps, { createdBy: input.createdBy }).catch((err) => {
+    console.error('Session summary failed:', err);
+  });
 
   return { object };
 }
