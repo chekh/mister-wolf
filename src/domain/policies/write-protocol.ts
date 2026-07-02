@@ -1,4 +1,5 @@
 import { MemoryObject } from '../schemas/memory-object-schema.js';
+import { validateGovernance } from '../governance.js';
 
 export interface ValidationResult {
   valid: boolean;
@@ -25,6 +26,8 @@ export function validateMemoryObject(obj: MemoryObject): ValidationResult {
   if (!hasMeaningfulContent) {
     warnings.push('Memory object does not appear to contain useful context.');
   }
+
+  warnings.push(...validateGovernance(obj));
 
   return { valid: true, warnings };
 }

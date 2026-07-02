@@ -5,6 +5,7 @@ import { IdGenerator } from '../../ports/id-generator.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
 import { RelationLog } from '../../ports/relation-log.port.js';
 import { Article, ArticleSchema } from '../../domain/schemas/article-schema.js';
+import { governanceDefaults } from '../../domain/governance.js';
 import { recordRelation } from './record-relation.js';
 
 export interface CreateArticleInput {
@@ -34,6 +35,7 @@ export async function createArticle(
   input: CreateArticleInput
 ): Promise<CreateArticleResult> {
   const now = deps.clock.now();
+  const defaults = governanceDefaults(input.createdBy);
   const object: Article = {
     id: deps.idGen.generateMemoryId(now, input.title),
     type: 'article',
@@ -56,6 +58,9 @@ export async function createArticle(
     answers: input.answers || [],
     supports: input.supports || [],
     evidence: input.evidence || [],
+    memory_class: defaults.memory_class,
+    truth_role: defaults.truth_role,
+    lifetime: defaults.lifetime,
   };
 
   ArticleSchema.parse(object);

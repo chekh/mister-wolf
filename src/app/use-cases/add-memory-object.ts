@@ -5,6 +5,7 @@ import { IdGenerator } from '../../ports/id-generator.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import { validateMemoryObject } from '../../domain/policies/write-protocol.js';
+import { governanceDefaults } from '../../domain/governance.js';
 
 export interface AddMemoryObjectInput {
   type: MemoryObject['type'];
@@ -17,6 +18,9 @@ export interface AddMemoryObjectInput {
   importance?: number;
   source?: MemoryObject['source'];
   reviewState?: MemoryObject['review_state'];
+  memoryClass?: MemoryObject['memory_class'];
+  truthRole?: MemoryObject['truth_role'];
+  lifetime?: MemoryObject['lifetime'];
 }
 
 export interface AddMemoryObjectResult {
@@ -29,6 +33,7 @@ export async function addMemoryObject(
   input: AddMemoryObjectInput
 ): Promise<AddMemoryObjectResult> {
   const now = deps.clock.now();
+  const defaults = governanceDefaults(input.createdBy);
   const object: MemoryObject = {
     id: deps.idGen.generateMemoryId(now, input.title),
     type: input.type,
@@ -46,6 +51,9 @@ export async function addMemoryObject(
     related: input.related ?? { files: [], docs: [], decisions: [] },
     tags: input.tags ?? [],
     superseded_by: null,
+    memory_class: input.memoryClass ?? defaults.memory_class,
+    truth_role: input.truthRole ?? defaults.truth_role,
+    lifetime: input.lifetime ?? defaults.lifetime,
   };
 
   const validation = validateMemoryObject(object);

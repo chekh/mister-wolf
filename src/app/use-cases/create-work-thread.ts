@@ -4,6 +4,7 @@ import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
 import { WorkThread, WorkThreadSchema } from '../../domain/schemas/thread-schema.js';
+import { governanceDefaults } from '../../domain/governance.js';
 
 export interface CreateWorkThreadInput {
   title: string;
@@ -22,6 +23,7 @@ export async function createWorkThread(
   input: CreateWorkThreadInput
 ): Promise<CreateWorkThreadResult> {
   const now = deps.clock.now();
+  const defaults = governanceDefaults(input.createdBy);
   const object: WorkThread = {
     id: deps.idGen.generateMemoryId(now, input.title),
     type: 'work-thread',
@@ -42,6 +44,9 @@ export async function createWorkThread(
     goal: input.goal,
     current_state: input.currentState || '',
     next_steps: input.nextSteps || [],
+    memory_class: defaults.memory_class,
+    truth_role: defaults.truth_role,
+    lifetime: defaults.lifetime,
   };
 
   WorkThreadSchema.parse(object);

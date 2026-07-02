@@ -1,8 +1,8 @@
 import type { MemoryStatus } from './memory-types.js';
 
-type MemoryClass = 'working' | 'canonical';
-type TruthRole = 'proposed_knowledge' | 'accepted_knowledge' | 'source_of_truth';
-type Lifetime = 'long_term' | 'short_term' | 'session';
+export type MemoryClass = 'working' | 'canonical';
+export type TruthRole = 'proposed_knowledge' | 'accepted_knowledge' | 'source_of_truth';
+export type Lifetime = 'long_term' | 'short_term' | 'session';
 
 export function defaultTruthRole(createdBy: string): TruthRole {
   return createdBy.startsWith('agent:') ? 'proposed_knowledge' : 'accepted_knowledge';

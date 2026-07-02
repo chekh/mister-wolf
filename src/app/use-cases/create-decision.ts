@@ -5,6 +5,7 @@ import { IdGenerator } from '../../ports/id-generator.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
 import { RelationLog } from '../../ports/relation-log.port.js';
 import { Decision, DecisionSchema } from '../../domain/schemas/decision-schema.js';
+import { governanceDefaults } from '../../domain/governance.js';
 import { recordRelation } from './record-relation.js';
 
 export interface CreateDecisionInput {
@@ -31,6 +32,7 @@ export async function createDecision(
   input: CreateDecisionInput
 ): Promise<CreateDecisionResult> {
   const now = deps.clock.now();
+  const defaults = governanceDefaults(input.createdBy);
   const object: Decision = {
     id: deps.idGen.generateMemoryId(now, input.title),
     type: 'decision',
@@ -49,6 +51,9 @@ export async function createDecision(
     superseded_by: null,
     body: input.body,
     thread: input.thread,
+    memory_class: defaults.memory_class,
+    truth_role: defaults.truth_role,
+    lifetime: defaults.lifetime,
   };
 
   DecisionSchema.parse(object);

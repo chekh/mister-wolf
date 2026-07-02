@@ -9,6 +9,7 @@ import { memoryGetCommand } from './commands/memory-get.js';
 import { memorySearchCommand } from './commands/memory-search.js';
 import { memoryRebuildIndexCommand } from './commands/memory-rebuild-index.js';
 import { memorySupersedeCommand } from './commands/memory-supersede.js';
+import { memoryTransitionCommand } from './commands/memory-transition.js';
 import { memoryScanCommand } from './commands/memory-scan.js';
 import { memoryBriefCommand } from './commands/memory-brief.js';
 import { memoryThreadCommand } from './commands/memory-thread.js';
@@ -39,6 +40,7 @@ export function createCli(): Command {
   memory.addCommand(memorySearchCommand());
   memory.addCommand(memoryRebuildIndexCommand());
   memory.addCommand(memorySupersedeCommand());
+  memory.addCommand(memoryTransitionCommand());
   memory.addCommand(memoryScanCommand());
   memory.addCommand(memoryBriefCommand());
   memory.addCommand(memoryThreadCommand());

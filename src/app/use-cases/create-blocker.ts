@@ -5,6 +5,7 @@ import { IdGenerator } from '../../ports/id-generator.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
 import { RelationLog } from '../../ports/relation-log.port.js';
 import { Blocker, BlockerSchema } from '../../domain/schemas/blocker-schema.js';
+import { governanceDefaults } from '../../domain/governance.js';
 import { recordRelation } from './record-relation.js';
 
 export interface CreateBlockerInput {
@@ -31,6 +32,7 @@ export async function createBlocker(
   input: CreateBlockerInput
 ): Promise<CreateBlockerResult> {
   const now = deps.clock.now();
+  const defaults = governanceDefaults(input.createdBy);
   const object: Blocker = {
     id: deps.idGen.generateMemoryId(now, input.title),
     type: 'blocker',
@@ -51,6 +53,9 @@ export async function createBlocker(
     impact: input.impact,
     workaround: input.workaround,
     thread: input.thread,
+    memory_class: defaults.memory_class,
+    truth_role: defaults.truth_role,
+    lifetime: defaults.lifetime,
   };
 
   BlockerSchema.parse(object);

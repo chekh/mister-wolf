@@ -24,7 +24,8 @@ export function memoryTransitionCommand(): Command {
   return new Command('transition')
     .description('Transition a memory object to a new status')
     .argument('<id>', 'Memory object id')
-    .addOption(new Option('<status>', 'New status').choices([...MEMORY_STATUSES]).makeOptionMandatory(true))
+    .argument('<status>', 'New status')
+    .addOption(new Option('--status', 'Deprecated').hideHelp())
     .option('--actor <actor>', 'Actor performing the transition', 'user:cli')
     .action(async (id: string, status: string, options) => {
       const { store, log, clock, idGen, index } = createCliContainer(process.cwd());

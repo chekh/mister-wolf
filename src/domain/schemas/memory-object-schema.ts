@@ -44,6 +44,9 @@ export const MemoryObjectSchema = z
     tags: z.array(z.string()).default([]),
     superseded_by: z.string().nullable().default(null),
     body: z.string().default(''),
+    memory_class: z.enum(['working', 'canonical']).default('working'),
+    truth_role: z.enum(['proposed_knowledge', 'accepted_knowledge', 'source_of_truth']).default('accepted_knowledge'),
+    lifetime: z.enum(['long_term', 'short_term', 'session']).default('long_term'),
   })
   .passthrough();
 

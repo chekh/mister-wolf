@@ -6,6 +6,7 @@ import { ProjectScanner } from '../../ports/project-scanner.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import { ProjectSnapshot } from '../../domain/schemas/project-scan-schema.js';
+import { governanceDefaults } from '../../domain/governance.js';
 
 export interface ScanProjectResult {
   object: MemoryObject;
@@ -27,6 +28,7 @@ export async function scanProject(
   const snapshot = await deps.scanner.scan(root);
   const now = deps.clock.now();
   const actor = 'agent:mr-wolf';
+  const defaults = governanceDefaults(actor);
 
   const object: MemoryObject = {
     id: 'project-scan-latest',
@@ -45,6 +47,9 @@ export async function scanProject(
     related: { files: [], docs: [], decisions: [] },
     tags: ['scan'],
     superseded_by: null,
+    memory_class: defaults.memory_class,
+    truth_role: defaults.truth_role,
+    lifetime: defaults.lifetime,
   };
 
   await deps.store.save(object);
@@ -76,6 +81,7 @@ async function registerDocuments(
   actor: string
 ): Promise<MemoryObject[]> {
   const results: MemoryObject[] = [];
+  const defaults = governanceDefaults(actor);
   for (const doc of snapshot.docs) {
     const id = `doc_${doc.path.replace(/[^a-zA-Z0-9]/g, '_')}`;
     const existing = await deps.store.get(id);
@@ -96,6 +102,9 @@ async function registerDocuments(
       related: { files: [], docs: [doc.path], decisions: [] },
       tags: ['document'],
       superseded_by: null,
+      memory_class: defaults.memory_class,
+      truth_role: defaults.truth_role,
+      lifetime: defaults.lifetime,
     };
     await deps.store.save(object);
     if (!existing) {
