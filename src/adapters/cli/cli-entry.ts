@@ -17,7 +17,10 @@ import { memoryInfoRequestCommand as infoRequestCommand } from './commands/memor
 import { memoryArticleCommand as articleCommand } from './commands/memory-article.js';
 import { memoryDecisionCommand as decisionCommand } from './commands/memory-decision.js';
 import { memoryBlockerCommand as blockerCommand } from './commands/memory-blocker.js';
-import { memorySessionCommand as sessionCommand, memoryThreadDiffCommand as threadDiffCommand } from './commands/memory-session.js';
+import {
+  memorySessionCommand as sessionCommand,
+  memoryThreadDiffCommand as threadDiffCommand,
+} from './commands/memory-session.js';
 import { memoryMcpCommand as mcpCommand } from './commands/memory-mcp.js';
 import { memoryRuleCommand as ruleCommand } from './commands/memory-rule.js';
 

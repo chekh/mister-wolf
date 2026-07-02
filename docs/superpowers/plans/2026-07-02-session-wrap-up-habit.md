@@ -30,6 +30,7 @@
 ### Task 1: Deduplication Guard
 
 **Files:**
+
 - Create: `src/app/use-cases/should-summarize.ts`
 - Test: `tests/unit/use-cases/should-summarize.test.ts`
 
@@ -120,6 +121,7 @@ git commit -m "feat(session): add shouldSummarize cooldown guard"
 ### Task 2: Summarize Session Use Case
 
 **Files:**
+
 - Create: `src/app/use-cases/summarize-session.ts`
 - Test: `tests/unit/use-cases/summarize-session.test.ts`
 
@@ -256,6 +258,7 @@ git commit -m "feat(session): add summarizeSession use case"
 ### Task 3: Manual Wrap-Up CLI Command
 
 **Files:**
+
 - Create: `src/adapters/cli/commands/memory-session-wrap-up.ts`
 - Modify: `src/adapters/cli/commands/memory-session.ts`
 
@@ -283,10 +286,10 @@ describe('memory session wrap-up CLI', () => {
   });
 
   it('creates a session-summary object', () => {
-    const out = execSync(
-      `node dist/bootstrap/cli.js memory session wrap-up --title "Manual wrap-up" --tags manual`,
-      { cwd: dir, encoding: 'utf-8' }
-    );
+    const out = execSync(`node dist/bootstrap/cli.js memory session wrap-up --title "Manual wrap-up" --tags manual`, {
+      cwd: dir,
+      encoding: 'utf-8',
+    });
     expect(out).toContain('Created session-summary');
   });
 });
@@ -355,6 +358,7 @@ git commit -m "feat(cli): add memory session wrap-up command"
 ### Task 4: Auto-Trigger Hooks
 
 **Files:**
+
 - Modify: `src/app/use-cases/resolve-blocker.ts`
 - Modify: `src/app/use-cases/transition-memory-object.ts`
 - Modify: `src/app/use-cases/supersede-memory-object.ts`
@@ -467,15 +471,15 @@ git commit -m "fix(session): address review findings" || echo "no fixes needed"
 
 ## Spec Coverage Check
 
-| Spec Requirement | Task |
-| --- | --- |
-| Auto-trigger on resolve blocker | Task 4 |
-| Auto-trigger on terminal transitions | Task 4 |
-| Auto-trigger on supersede | Task 4 |
+| Spec Requirement                          | Task   |
+| ----------------------------------------- | ------ |
+| Auto-trigger on resolve blocker           | Task 4 |
+| Auto-trigger on terminal transitions      | Task 4 |
+| Auto-trigger on supersede                 | Task 4 |
 | Auto-trigger on decision/article creation | Task 4 |
-| Manual wrap-up command | Task 3 |
-| 5-minute deduplication | Task 1 |
-| Summary body from recent events | Task 2 |
+| Manual wrap-up command                    | Task 3 |
+| 5-minute deduplication                    | Task 1 |
+| Summary body from recent events           | Task 2 |
 
 ## Placeholder Scan
 

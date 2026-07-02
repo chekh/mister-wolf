@@ -69,8 +69,8 @@ describe('transitionMemoryObject', () => {
       { type: 'lesson', title: 'Transition test', body: '...', createdBy: 'user:test' }
     );
 
-    await expect(
-      transitionMemoryObject({ store, log, clock, idGen }, added.object.id, 'accepted')
-    ).rejects.toThrow('Invalid transition from active to accepted');
+    await expect(transitionMemoryObject({ store, log, clock, idGen }, added.object.id, 'accepted')).rejects.toThrow(
+      'Invalid transition from active to accepted'
+    );
   });
 });
