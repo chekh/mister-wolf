@@ -4,6 +4,7 @@ import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
 import { SessionCheckpoint, SessionCheckpointSchema } from '../../domain/schemas/session-checkpoint-schema.js';
+import { governanceDefaults } from '../../domain/governance.js';
 
 export interface CreateSessionCheckpointInput {
   threadId: string;
@@ -34,6 +35,7 @@ export async function createSessionCheckpoint(
     .map((obj) => obj.id);
 
   const now = deps.clock.now();
+  const defaults = governanceDefaults(input.createdBy);
   const object: SessionCheckpoint = {
     id: deps.idGen.generateMemoryId(now, `checkpoint-${input.threadId}`),
     type: 'session-checkpoint',
@@ -56,6 +58,9 @@ export async function createSessionCheckpoint(
       thread_current_state: (thread as { current_state?: string }).current_state ?? '',
       related_ids: relatedIds,
     },
+    memory_class: defaults.memory_class,
+    truth_role: defaults.truth_role,
+    lifetime: defaults.lifetime,
   };
 
   SessionCheckpointSchema.parse(object);

@@ -3,10 +3,7 @@
   "mcp": {
     "mr-wolf": {
       "type": "local",
-      "command": [
-        "node",
-        "./dist/bootstrap/mcp.js"
-      ],
+      "command": ["node", "./dist/bootstrap/mcp.js"],
       "enabled": true
     }
   }

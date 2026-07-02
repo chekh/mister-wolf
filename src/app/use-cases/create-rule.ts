@@ -3,35 +3,38 @@ import { EventLog } from '../../ports/event-log.port.js';
 import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
-import { WorkThread, WorkThreadSchema } from '../../domain/schemas/thread-schema.js';
-import { governanceDefaults } from '../../domain/governance.js';
+import { Rule, RuleSchema } from '../../domain/schemas/rule-schema.js';
 
-export interface CreateWorkThreadInput {
+export interface CreateRuleInput {
   title: string;
-  goal: string;
-  currentState?: string;
-  nextSteps?: string[];
+  body: string;
+  scope: 'project' | 'global';
+  appliesTo?: string[];
+  trigger?: string;
   createdBy: string;
 }
 
-export interface CreateWorkThreadResult {
-  object: WorkThread;
+export interface CreateRuleResult {
+  object: Rule;
 }
 
-export async function createWorkThread(
+export async function createRule(
   deps: { store: MemoryStore; log: EventLog; clock: Clock; idGen: IdGenerator; index?: SearchIndex },
-  input: CreateWorkThreadInput
-): Promise<CreateWorkThreadResult> {
+  input: CreateRuleInput
+): Promise<CreateRuleResult> {
+  if (input.createdBy.startsWith('agent:')) {
+    throw new Error('Rules can only be created by explicit user request');
+  }
+
   const now = deps.clock.now();
-  const defaults = governanceDefaults(input.createdBy);
-  const object: WorkThread = {
+  const object: Rule = {
     id: deps.idGen.generateMemoryId(now, input.title),
-    type: 'work-thread',
+    type: 'rule',
     title: input.title,
     status: 'active',
-    review_state: input.createdBy.startsWith('agent:') ? 'proposed' : 'accepted',
-    confidence: 'medium',
-    importance: 0.6,
+    review_state: 'accepted',
+    confidence: 'high',
+    importance: 0.9,
     created_at: now.toISOString(),
     updated_at: now.toISOString(),
     created_by: input.createdBy,
@@ -40,16 +43,16 @@ export async function createWorkThread(
     related: { files: [], docs: [], decisions: [] },
     tags: [],
     superseded_by: null,
-    body: '',
-    goal: input.goal,
-    current_state: input.currentState || '',
-    next_steps: input.nextSteps || [],
-    memory_class: defaults.memory_class,
-    truth_role: defaults.truth_role,
-    lifetime: defaults.lifetime,
+    body: input.body,
+    memory_class: 'canonical',
+    truth_role: 'source_of_truth',
+    lifetime: 'long_term',
+    scope: input.scope,
+    applies_to: input.appliesTo ?? [],
+    trigger: input.trigger ?? '',
   };
 
-  WorkThreadSchema.parse(object);
+  RuleSchema.parse(object);
 
   await deps.store.save(object);
   await deps.log.append({

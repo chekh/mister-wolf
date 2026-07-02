@@ -49,14 +49,14 @@ describe('MVP-B workflow', () => {
     writeFileSync(indexPath, 'export const app = () => "hello";\n');
     writeFileSync(join(dir, 'README.md'), `# ${projectName}\n\nA test project for the MVP-B workflow.\n`);
 
-    runCli('memory init', dir);
-    const scanResult = runCli('memory scan', dir);
+    runCli('init', dir);
+    const scanResult = runCli('scan', dir);
     expect(scanResult.stdout).toContain('Project scan saved: project-scan-latest');
 
     const scanPath = join(dir, '.wolf', 'memory', 'objects', 'context', 'project-scan-latest.md');
     expect(existsSync(scanPath)).toBe(true);
 
-    const briefResult = runCli('memory brief', dir);
+    const briefResult = runCli('brief', dir);
     expect(briefResult.stdout).toContain(`# Agent Brief: ${projectName}`);
     expect(briefResult.stderr).toContain('.wolf/memory/briefs/agent-brief-latest.md');
 

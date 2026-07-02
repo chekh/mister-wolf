@@ -19,6 +19,7 @@ memory:
     - article
     - blocker
     - session-checkpoint
+    - rule
 search:
   default_limit: 20
 `;

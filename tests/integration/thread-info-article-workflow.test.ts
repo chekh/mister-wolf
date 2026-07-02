@@ -36,27 +36,27 @@ describe('Thread / Info Request / Article workflow', () => {
   });
 
   it('creates thread, request, article, and brief end-to-end', () => {
-    runCli('memory init', dir);
+    runCli('init', dir);
 
-    const threadOut = runCli('memory thread create --title MemoryHarness --goal Build durable memory', dir);
+    const threadOut = runCli('thread create --title MemoryHarness --goal Build durable memory', dir);
     const threadId = threadOut.stdout.match(/Created work thread: (\S+)/)?.[1];
     expect(threadId).toBeDefined();
 
     const requestOut = runCli(
-      `memory info-request create --title WhereToStoreRelations --thread ${threadId} --question RelationsStorage --detour-reason DerailsSession --expected-answer Recommendation`,
+      `info-request create --title WhereToStoreRelations --thread ${threadId} --question RelationsStorage --detour-reason DerailsSession --expected-answer Recommendation`,
       dir
     );
     const requestId = requestOut.stdout.match(/Created info request: (\S+)/)?.[1];
     expect(requestId).toBeDefined();
 
     const articleOut = runCli(
-      `memory article add --title RelationsStorageRecommendation --thread ${threadId} --summary UseRelationsJsonl --body Answer:relations.jsonl --answers ${requestId}`,
+      `article add --title RelationsStorageRecommendation --thread ${threadId} --summary UseRelationsJsonl --body Answer:relations.jsonl --answers ${requestId}`,
       dir
     );
     const articleId = articleOut.stdout.match(/Created article: (\S+)/)?.[1];
     expect(articleId).toBeDefined();
 
-    const briefOut = runCli(`memory thread brief ${threadId}`, dir);
+    const briefOut = runCli(`thread brief ${threadId}`, dir);
     expect(briefOut.stdout).toContain('MemoryHarness');
     expect(briefOut.stdout).toContain('WhereToStoreRelations');
     expect(briefOut.stdout).toContain('RelationsStorageRecommendation');

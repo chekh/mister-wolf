@@ -39,7 +39,7 @@
 Используй `document` для существующих артефактов, которые важны для агентов:
 
 ```bash
-node dist/bootstrap/cli.js memory add --type document --title "Architecture concept v3" --body "Core concept: local-first semantic memory layer. Source: docs/concept-v3.md" --tags architecture,concept
+node dist/bootstrap/cli.js add --type document --title "Architecture concept v3" --body "Core concept: local-first semantic memory layer. Source: docs/concept-v3.md" --tags architecture,concept
 ```
 
 Поля объекта:
@@ -71,13 +71,13 @@ node dist/bootstrap/cli.js memory add --type document --title "Architecture conc
 ### Перед началом работы
 
 ```bash
-node dist/bootstrap/cli.js memory search "<тема задачи>"
+node dist/bootstrap/cli.js search "<тема задачи>"
 ```
 
 Если результаты похожи на устаревшие — перестроить индекс:
 
 ```bash
-node dist/bootstrap/cli.js memory rebuild-index
+node dist/bootstrap/cli.js rebuild-index
 ```
 
 ### Во время работы
@@ -90,7 +90,7 @@ node dist/bootstrap/cli.js memory rebuild-index
 - обнаружении незавершённого вопроса (`open-question`).
 
 ```bash
-node dist/bootstrap/cli.js memory add --type lesson --title "..." --body "..."
+node dist/bootstrap/cli.js add --type lesson --title "..." --body "..."
 ```
 
 ### В конце сессии
@@ -98,13 +98,13 @@ node dist/bootstrap/cli.js memory add --type lesson --title "..." --body "..."
 Добавить `session-summary`:
 
 ```bash
-node dist/bootstrap/cli.js memory add --type session-summary --title "Результаты сессии: ..." --body "..."
+node dist/bootstrap/cli.js add --type session-summary --title "Результаты сессии: ..." --body "..."
 ```
 
 Если работа касалась структуры проекта или важных решений — обновить `agent brief`:
 
 ```bash
-node dist/bootstrap/cli.js memory brief
+node dist/bootstrap/cli.js brief
 ```
 
 ---
@@ -129,22 +129,22 @@ For long-running work that spans sessions:
 
 1. Create a work thread:
    ```bash
-   node dist/bootstrap/cli.js memory thread create --title "..." --goal "..."
+   node dist/bootstrap/cli.js thread create --title "..." --goal "..."
    ```
 
 2. When a side question would derail the main session, create an info request:
    ```bash
-   node dist/bootstrap/cli.js memory info-request create --title "..." --thread <thread-id> --question "..." --detour-reason "..." --expected-answer "..."
+   node dist/bootstrap/cli.js info-request create --title "..." --thread <thread-id> --question "..." --detour-reason "..." --expected-answer "..."
    ```
 
 3. In another session, answer the request with an article:
    ```bash
-   node dist/bootstrap/cli.js memory article add --title "..." --thread <thread-id> --summary "..." --body "..." --answers <info-request-id>
+   node dist/bootstrap/cli.js article add --title "..." --thread <thread-id> --summary "..." --body "..." --answers <info-request-id>
    ```
 
 4. At session start, read the thread brief:
    ```bash
-   node dist/bootstrap/cli.js memory thread brief <thread-id>
+   node dist/bootstrap/cli.js thread brief <thread-id>
    ```
 
 This keeps the main session clean while preserving reusable project knowledge.
@@ -164,27 +164,45 @@ This keeps the main session clean while preserving reusable project knowledge.
 
 ```bash
 # Поиск
-node dist/bootstrap/cli.js memory search "..."
+node dist/bootstrap/cli.js search "..."
 
 # Добавление
-node dist/bootstrap/cli.js memory add --type lesson --title "..." --body "..."
+node dist/bootstrap/cli.js add --type lesson --title "..." --body "..."
 
 # Скан проекта
-node dist/bootstrap/cli.js memory scan
+node dist/bootstrap/cli.js scan
 
 # Генерация / обновление брифа
-node dist/bootstrap/cli.js memory brief
+node dist/bootstrap/cli.js brief
 
 # Замещение устаревшего объекта
-node dist/bootstrap/cli.js memory supersede <old-id> <new-id>
+node dist/bootstrap/cli.js supersede <old-id> <new-id>
 
 # Перестроить индекс
-node dist/bootstrap/cli.js memory rebuild-index
+node dist/bootstrap/cli.js rebuild-index
 ```
 
 ---
 
-## 9. Источники
+## 9. Rules
+
+### Rules
+
+Rules are behavioral guardrails. They require explicit user request:
+
+```bash
+wolf rule add --title "Never run migrations without rollback plan" \
+  --body "Always have a rollback plan reviewed by the team." \
+  --scope project \
+  --applies-to "src/migrations/*" \
+  --trigger "when creating migrations"
+```
+
+Agents cannot create rules proactively.
+
+---
+
+## 10. Источники
 
 - Архитектура и концепция: `docs/concept-v3.md`
 - Схемы объектов памяти: `src/domain/schemas/memory-object-schema.ts`

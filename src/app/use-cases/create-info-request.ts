@@ -5,6 +5,7 @@ import { IdGenerator } from '../../ports/id-generator.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
 import { RelationLog } from '../../ports/relation-log.port.js';
 import { InfoRequest, InfoRequestSchema } from '../../domain/schemas/info-request-schema.js';
+import { governanceDefaults } from '../../domain/governance.js';
 import { recordRelation } from './record-relation.js';
 
 export interface CreateInfoRequestInput {
@@ -37,6 +38,7 @@ export async function createInfoRequest(
   if (input.expectedAnswer.length === 0) throw new Error('expected_answer must contain at least one item');
 
   const now = deps.clock.now();
+  const defaults = governanceDefaults(input.createdBy);
   const object: InfoRequest = {
     id: deps.idGen.generateMemoryId(now, input.title),
     type: 'info-request',
@@ -60,6 +62,9 @@ export async function createInfoRequest(
     needed_for: input.neededFor || [],
     expected_answer: input.expectedAnswer,
     preliminary_answer: input.preliminaryAnswer || '',
+    memory_class: defaults.memory_class,
+    truth_role: defaults.truth_role,
+    lifetime: defaults.lifetime,
   };
 
   InfoRequestSchema.parse(object);

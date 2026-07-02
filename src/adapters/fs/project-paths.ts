@@ -23,6 +23,7 @@ export function objectDirForType(baseDir: string, type: MemoryType): string {
     article: 'articles',
     blocker: 'blockers',
     'session-checkpoint': 'checkpoints',
+    rule: 'rules',
   };
   if (!(type in mapping)) {
     throw new Error(`Unknown memory type: ${type}`);
