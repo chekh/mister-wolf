@@ -201,7 +201,7 @@ describe('buildMcpServer', () => {
 describe('memoryMcpCommand', () => {
   it('is registered in CLI', () => {
     const cli = createCli();
-    const command = cli.commands.find((c) => c.name() === 'memory')?.commands.find((c) => c.name() === 'mcp');
+    const command = cli.commands.find((c) => c.name() === 'mcp');
     expect(command).toBeDefined();
   });
 });
