@@ -32,7 +32,7 @@ describe('buildMcpServer', () => {
         >;
       }
     )._registeredTools;
-    const result = await tools.memory_search.handler({ query: 'router' });
+    const result = await tools.search.handler({ query: 'router' });
     expect(result.content).toHaveLength(1);
     expect(result.content[0].type).toBe('text');
   });
@@ -47,7 +47,7 @@ describe('buildMcpServer', () => {
         >;
       }
     )._registeredTools;
-    const result = await tools.memory_add.handler({
+    const result = await tools.add.handler({
       type: 'lesson',
       title: 'Router reconnect failure',
       body: 'We found a failure mode with router reconnect.',
@@ -68,14 +68,14 @@ describe('buildMcpServer', () => {
         >;
       }
     )._registeredTools;
-    const addResult = await tools.memory_add.handler({
+    const addResult = await tools.add.handler({
       type: 'lesson',
       title: 'Get by id test',
       body: 'We can fetch an object by id.',
       createdBy: 'agent:mcp-test',
     });
     const id = addResult.content[0].text.replace('Created memory object: ', '');
-    const result = await tools.memory_get.handler({ id });
+    const result = await tools.get.handler({ id });
     expect(result.content).toHaveLength(1);
     expect(result.content[0].text).toContain('Get by id test');
   });
@@ -90,17 +90,17 @@ describe('buildMcpServer', () => {
         >;
       }
     )._registeredTools;
-    await tools.memory_add.handler({
+    await tools.add.handler({
       type: 'lesson',
       title: 'List lesson one',
       createdBy: 'agent:mcp-test',
     });
-    await tools.memory_add.handler({
+    await tools.add.handler({
       type: 'decision',
       title: 'List decision one',
       createdBy: 'agent:mcp-test',
     });
-    const result = await tools.memory_list.handler({ type: 'lesson' });
+    const result = await tools.list.handler({ type: 'lesson' });
     expect(result.content).toHaveLength(1);
     expect(result.content[0].text).toContain('List lesson one');
     expect(result.content[0].text).not.toContain('List decision one');
@@ -116,13 +116,13 @@ describe('buildMcpServer', () => {
         >;
       }
     )._registeredTools;
-    const addResult = await tools.memory_add.handler({
+    const addResult = await tools.add.handler({
       type: 'lesson',
       title: 'Transition test',
       createdBy: 'agent:mcp-test',
     });
     const id = addResult.content[0].text.replace('Created memory object: ', '');
-    const result = await tools.memory_transition.handler({ id, status: 'stale' });
+    const result = await tools.transition.handler({ id, status: 'stale' });
     expect(result.content).toHaveLength(1);
     expect(result.content[0].text).toContain('Transitioned');
   });
@@ -137,7 +137,7 @@ describe('buildMcpServer', () => {
         >;
       }
     )._registeredTools;
-    const result = await tools.memory_create_thread.handler({
+    const result = await tools.create_thread.handler({
       title: 'Thread MCP',
       goal: 'Test MCP',
       createdBy: 'agent:test',
@@ -156,13 +156,13 @@ describe('buildMcpServer', () => {
         >;
       }
     )._registeredTools;
-    const blocker = await tools.memory_create_blocker.handler({
+    const blocker = await tools.create_blocker.handler({
       title: 'Blocker MCP',
       impact: 'blocks tests',
       createdBy: 'agent:test',
     });
     const id = blocker.content[0].text.replace('Created blocker: ', '');
-    const resolved = await tools.memory_resolve_blocker.handler({ id });
+    const resolved = await tools.resolve_blocker.handler({ id });
     expect(resolved.content).toHaveLength(1);
     expect(resolved.content[0].text).toContain('Resolved');
   });
@@ -177,7 +177,7 @@ describe('buildMcpServer', () => {
         >;
       }
     )._registeredTools;
-    const result = await tools.memory_scan.handler({});
+    const result = await tools.scan.handler({});
     expect(result.content).toHaveLength(1);
     expect(result.content[0].text).toContain('Project scan');
   });
@@ -192,9 +192,48 @@ describe('buildMcpServer', () => {
         >;
       }
     )._registeredTools;
-    const result = await tools.memory_brief.handler({});
+    const result = await tools.brief.handler({});
     expect(result.content).toHaveLength(1);
     expect(result.content[0].text).toContain('# Agent Brief');
+  });
+  it('creates a rule', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    const result = await tools.create_rule.handler({
+      title: 'Rule MCP',
+      body: 'Test rule body',
+      scope: 'project',
+      createdBy: 'user:test',
+    });
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0].text).toMatch(/rule_/);
+  });
+
+  it('rejects agent-created rules', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    await expect(
+      tools.create_rule.handler({
+        title: 'Bad rule',
+        body: 'Test rule body',
+        scope: 'project',
+        createdBy: 'agent:test',
+      })
+    ).rejects.toThrow('Rules can only be created by explicit user request');
   });
 });
 

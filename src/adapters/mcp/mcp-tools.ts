@@ -26,6 +26,7 @@ import { createBlocker } from '../../app/use-cases/create-blocker.js';
 import { resolveBlocker } from '../../app/use-cases/resolve-blocker.js';
 import { scanProject } from '../../app/use-cases/scan-project.js';
 import { generateAgentBrief } from '../../app/use-cases/generate-agent-brief.js';
+import { createRule } from '../../app/use-cases/create-rule.js';
 import { createCliContainer } from '../../bootstrap/container.js';
 
 export function registerMemoryTools(
@@ -34,7 +35,7 @@ export function registerMemoryTools(
   baseDir: string
 ): void {
   server.registerTool(
-    'memory_search',
+    'search',
     {
       description: 'Search project memory objects by query and optional filters',
       inputSchema: fromJsonSchema(MemorySearchInputSchema),
@@ -63,7 +64,7 @@ export function registerMemoryTools(
   );
 
   server.registerTool(
-    'memory_get',
+    'get',
     {
       description: 'Get a memory object by id',
       inputSchema: fromJsonSchema(MemoryGetInputSchema),
@@ -79,7 +80,7 @@ export function registerMemoryTools(
   );
 
   server.registerTool(
-    'memory_list',
+    'list',
     {
       description: 'List memory objects with optional filters',
       inputSchema: fromJsonSchema(MemoryListInputSchema),
@@ -100,7 +101,7 @@ export function registerMemoryTools(
   );
 
   server.registerTool(
-    'memory_add',
+    'add',
     {
       description: 'Add a generic memory object',
       inputSchema: fromJsonSchema(MemoryAddInputSchema),
@@ -131,7 +132,7 @@ export function registerMemoryTools(
   );
 
   server.registerTool(
-    'memory_transition',
+    'transition',
     {
       description: 'Transition a memory object to a new lifecycle status',
       inputSchema: fromJsonSchema(MemoryTransitionInputSchema),
@@ -144,7 +145,7 @@ export function registerMemoryTools(
   );
 
   server.registerTool(
-    'memory_create_thread',
+    'create_thread',
     {
       description: 'Create a work thread',
       inputSchema: fromJsonSchema(MemoryCreateThreadInputSchema),
@@ -163,7 +164,7 @@ export function registerMemoryTools(
   );
 
   server.registerTool(
-    'memory_create_info_request',
+    'create_info_request',
     {
       description: 'Create an information request',
       inputSchema: fromJsonSchema(MemoryCreateInfoRequestInputSchema),
@@ -185,7 +186,7 @@ export function registerMemoryTools(
   );
 
   server.registerTool(
-    'memory_create_article',
+    'create_article',
     {
       description: 'Create an article',
       inputSchema: fromJsonSchema(MemoryCreateArticleInputSchema),
@@ -207,7 +208,7 @@ export function registerMemoryTools(
   );
 
   server.registerTool(
-    'memory_create_decision',
+    'create_decision',
     {
       description: 'Create a decision',
       inputSchema: fromJsonSchema(MemoryCreateDecisionInputSchema),
@@ -226,7 +227,7 @@ export function registerMemoryTools(
   );
 
   server.registerTool(
-    'memory_create_blocker',
+    'create_blocker',
     {
       description: 'Create a blocker',
       inputSchema: fromJsonSchema(MemoryCreateBlockerInputSchema),
@@ -245,7 +246,7 @@ export function registerMemoryTools(
   );
 
   server.registerTool(
-    'memory_resolve_blocker',
+    'resolve_blocker',
     {
       description: 'Resolve a blocker',
       inputSchema: fromJsonSchema(MemoryResolveBlockerInputSchema),
@@ -258,7 +259,7 @@ export function registerMemoryTools(
   );
 
   server.registerTool(
-    'memory_scan',
+    'scan',
     {
       description: 'Scan the project and register documents',
       inputSchema: fromJsonSchema(EmptyInputSchema),
@@ -270,7 +271,7 @@ export function registerMemoryTools(
   );
 
   server.registerTool(
-    'memory_brief',
+    'brief',
     {
       description: 'Generate the agent brief from the latest scan and memory',
       inputSchema: fromJsonSchema(EmptyInputSchema),
@@ -279,6 +280,37 @@ export function registerMemoryTools(
       const scanResult = await scanProject(deps, baseDir);
       const brief = await generateAgentBrief(deps, baseDir, scanResult.snapshot);
       return { content: [{ type: 'text' as const, text: brief.content }] };
+    }
+  );
+
+  server.registerTool(
+    'create_rule',
+    {
+      description: 'Create a rule (user request only)',
+      inputSchema: fromJsonSchema({
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          body: { type: 'string' },
+          scope: { type: 'string', enum: ['project', 'global'] },
+          appliesTo: { type: 'array', items: { type: 'string' } },
+          trigger: { type: 'string' },
+          createdBy: { type: 'string' },
+        },
+        required: ['title', 'body', 'scope', 'createdBy'],
+      }),
+    },
+    async (input: unknown) => {
+      const args = input as {
+        title: string;
+        body: string;
+        scope: 'project' | 'global';
+        appliesTo?: string[];
+        trigger?: string;
+        createdBy: string;
+      };
+      const result = await createRule(deps, args);
+      return { content: [{ type: 'text' as const, text: `Created rule: ${result.object.id}` }] };
     }
   );
 }
