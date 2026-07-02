@@ -28,7 +28,7 @@ Mr. Wolf — это локальная память проекта для раб
 **Пример:**
 
 ```bash
-node dist/bootstrap/cli.js memory thread create \
+node dist/bootstrap/cli.js thread create \
   --title "Переход на schema-driven memory" \
   --goal "Сделать Mr. Wolf конфигурируемым движком памяти" \
   --current-state "Завершена Phase 1" \
@@ -62,7 +62,7 @@ node dist/bootstrap/cli.js memory thread create \
 **Пример:**
 
 ```bash
-node dist/bootstrap/cli.js memory info-request create \
+node dist/bootstrap/cli.js info-request create \
   --title "Где хранить relations?" \
   --thread <thread-id> \
   --question "Должны ли связи между артефактами храниться в relations.jsonl или в SQLite?" \
@@ -92,7 +92,7 @@ node dist/bootstrap/cli.js memory info-request create \
 **Пример:**
 
 ```bash
-node dist/bootstrap/cli.js memory article add \
+node dist/bootstrap/cli.js article add \
   --title "Хранение relations в Mr. Wolf" \
   --thread <thread-id> \
   --summary "Используем relations.jsonl как canonical source, SQLite индексирует связи." \
@@ -123,7 +123,7 @@ node dist/bootstrap/cli.js memory article add \
 **Пример:**
 
 ```bash
-node dist/bootstrap/cli.js memory decision add \
+node dist/bootstrap/cli.js decision add \
   --title "Хранить связи в relations.jsonl" \
   --thread <thread-id> \
   --body "Источник правды для связей — relations.jsonl. SQLite-индекс перестраивается при необходимости."
@@ -149,7 +149,7 @@ node dist/bootstrap/cli.js memory decision add \
 **Пример:**
 
 ```bash
-node dist/bootstrap/cli.js memory blocker add \
+node dist/bootstrap/cli.js blocker add \
   --title "Нет доступа к production API" \
   --thread <thread-id> \
   --impact "Невозможно проверить интеграцию с платёжным шлюзом" \
@@ -167,7 +167,7 @@ node dist/bootstrap/cli.js memory blocker add \
 Чтобы отметить препятствие решённым:
 
 ```bash
-node dist/bootstrap/cli.js memory blocker resolve <blocker-id>
+node dist/bootstrap/cli.js blocker resolve <blocker-id>
 ```
 
 ### 2.6. Thread Brief (Бриф треда)
@@ -190,7 +190,7 @@ node dist/bootstrap/cli.js memory blocker resolve <blocker-id>
 - Перед тем как продолжить работу после перерыва.
 
 ```bash
-node dist/bootstrap/cli.js memory thread brief <thread-id>
+node dist/bootstrap/cli.js thread brief <thread-id>
 ```
 
 ---
@@ -219,12 +219,12 @@ work-thread
 
 ```bash
 # Создать тред
-node dist/bootstrap/cli.js memory thread create \
+node dist/bootstrap/cli.js thread create \
   --title "Название задачи" \
   --goal "Чего хотим достичь"
 
 # В процессе работы возникает отложенный вопрос
-node dist/bootstrap/cli.js memory info-request create \
+node dist/bootstrap/cli.js info-request create \
   --title "Вопрос" \
   --thread <thread-id> \
   --question "..." \
@@ -237,10 +237,10 @@ node dist/bootstrap/cli.js memory info-request create \
 
 ```bash
 # Посмотреть открытые запросы
-node dist/bootstrap/cli.js memory info-request list --thread <thread-id>
+node dist/bootstrap/cli.js info-request list --thread <thread-id>
 
 # Написать статью-ответ
-node dist/bootstrap/cli.js memory article add \
+node dist/bootstrap/cli.js article add \
   --title "Ответ на вопрос" \
   --thread <thread-id> \
   --summary "..." \
@@ -252,7 +252,7 @@ node dist/bootstrap/cli.js memory article add \
 
 ```bash
 # Получить контекст
-node dist/bootstrap/cli.js memory thread brief <thread-id>
+node dist/bootstrap/cli.js thread brief <thread-id>
 ```
 
 ---
@@ -311,7 +311,7 @@ Mr. Wolf хранит явные связи между артефактами в
 Пример:
 
 ```bash
-node dist/bootstrap/cli.js memory article add \
+node dist/bootstrap/cli.js article add \
   --title "Хранение relations" \
   --thread <thread-id> \
   --summary "..." \
@@ -326,13 +326,13 @@ node dist/bootstrap/cli.js memory article add \
 Создать чекпоинт:
 
 ```bash
-node dist/bootstrap/cli.js memory session checkpoint --thread <thread-id>
+node dist/bootstrap/cli.js session checkpoint --thread <thread-id>
 ```
 
 Посмотреть, что изменилось с момента чекпоинта:
 
 ```bash
-node dist/bootstrap/cli.js memory thread diff <thread-id> --since <checkpoint-id>
+node dist/bootstrap/cli.js thread diff <thread-id> --since <checkpoint-id>
 ```
 
 Вывод показывает:
@@ -380,28 +380,28 @@ node dist/bootstrap/cli.js memory thread diff <thread-id> --since <checkpoint-id
 
 ```bash
 # Треды
-node dist/bootstrap/cli.js memory thread create --title "..." --goal "..."
-node dist/bootstrap/cli.js memory thread list
-node dist/bootstrap/cli.js memory thread brief <thread-id>
-node dist/bootstrap/cli.js memory thread diff <thread-id> --since <checkpoint-id>
+node dist/bootstrap/cli.js thread create --title "..." --goal "..."
+node dist/bootstrap/cli.js thread list
+node dist/bootstrap/cli.js thread brief <thread-id>
+node dist/bootstrap/cli.js thread diff <thread-id> --since <checkpoint-id>
 
 # Info requests
-node dist/bootstrap/cli.js memory info-request create --title "..." --thread <id> --question "..." --detour-reason "..." --expected-answer "..."
-node dist/bootstrap/cli.js memory info-request list --thread <id>
+node dist/bootstrap/cli.js info-request create --title "..." --thread <id> --question "..." --detour-reason "..." --expected-answer "..."
+node dist/bootstrap/cli.js info-request list --thread <id>
 
 # Статьи
-node dist/bootstrap/cli.js memory article add --title "..." --thread <id> --summary "..." --body "..." --answers <ireq-id>
-node dist/bootstrap/cli.js memory article list --thread <id>
+node dist/bootstrap/cli.js article add --title "..." --thread <id> --summary "..." --body "..." --answers <ireq-id>
+node dist/bootstrap/cli.js article list --thread <id>
 
 # Решения
-node dist/bootstrap/cli.js memory decision add --title "..." --body "..." --thread <id> --based-on <artifact-id>
-node dist/bootstrap/cli.js memory decision list --thread <id>
+node dist/bootstrap/cli.js decision add --title "..." --body "..." --thread <id> --based-on <artifact-id>
+node dist/bootstrap/cli.js decision list --thread <id>
 
 # Препятствия
-node dist/bootstrap/cli.js memory blocker add --title "..." --impact "..." --workaround "..." --thread <id>
-node dist/bootstrap/cli.js memory blocker list --thread <id>
-node dist/bootstrap/cli.js memory blocker resolve <blocker-id> --by <artifact-id>
+node dist/bootstrap/cli.js blocker add --title "..." --impact "..." --workaround "..." --thread <id>
+node dist/bootstrap/cli.js blocker list --thread <id>
+node dist/bootstrap/cli.js blocker resolve <blocker-id> --by <artifact-id>
 
 # Session checkpoints
-node dist/bootstrap/cli.js memory session checkpoint --thread <thread-id>
+node dist/bootstrap/cli.js session checkpoint --thread <thread-id>
 ```
