@@ -59,6 +59,8 @@ Mr. Wolf
 - [decision] Flat CLI/MCP namespace — Phase 6 replaced `wolf memory ...` with direct `wolf ...` commands and flattened MCP tool names.
 - [decision] Rule type requires explicit user request — agents cannot create rules proactively.
 - [decision] Session summaries auto-trigger on lifecycle events and via manual `wolf session wrap-up`.
+- [decision] Use zod 4 for MCP JSON schema generation — `@modelcontextprotocol/server` alpha.2 requires zod >=4.2.0 to expose tool input schemas via `tools/list`.
+- [observation] MCP server fixed — now uses `serveStdio`, zod 4 schemas, and robust line-delimited JSON stdio test.
 - [rule] After completing any implementation phase, update AGENTS.md, README.md, MEMORY.md, and any affected docs to keep project memory accurate.
 
 ## Open Questions
