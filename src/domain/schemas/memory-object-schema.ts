@@ -40,7 +40,7 @@ export const MemoryObjectSchema = z
         docs: z.array(z.string()).default([]),
         decisions: z.array(z.string()).default([]),
       })
-      .default({}),
+      .default({ files: [], docs: [], decisions: [] }),
     tags: z.array(z.string()).default([]),
     superseded_by: z.string().nullable().default(null),
     body: z.string().default(''),

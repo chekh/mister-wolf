@@ -32,15 +32,29 @@ describe('MCP stdio server', () => {
     expect(response.result).toBeDefined();
   });
 
-  function sendAndReceive(proc: typeof child, message: unknown): Promise<any> {
+  function sendAndReceive(proc: typeof child, message: unknown): Promise<unknown> {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('timeout')), 5000);
+      let buffer = '';
       const handler = (data: Buffer) => {
-        clearTimeout(timeout);
-        proc.stdout.off('data', handler);
-        const lines = data.toString().trim().split('\n');
-        const response = JSON.parse(lines[lines.length - 1]);
-        resolve(response);
+        buffer += data.toString();
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (parsed.jsonrpc === '2.0') {
+              clearTimeout(timeout);
+              proc.stdout.off('data', handler);
+              resolve(parsed);
+              return;
+            }
+          } catch {
+            // Ignore non-JSON lines such as logs.
+          }
+        }
       };
       proc.stdout.on('data', handler);
       proc.stdin.write(JSON.stringify(message) + '\n');

@@ -5,7 +5,7 @@ export const MemoryEventSchema = z.object({
   type: z.enum(['memory.added', 'memory.updated', 'memory.superseded', 'memory.resolved', 'memory.transitioned']),
   timestamp: z.string().datetime(),
   actor: z.string().min(1),
-  payload: z.record(z.unknown()).default({}),
+  payload: z.record(z.string(), z.unknown()).default({}),
 });
 
 export type MemoryEvent = z.infer<typeof MemoryEventSchema>;

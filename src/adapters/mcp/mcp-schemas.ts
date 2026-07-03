@@ -1,143 +1,108 @@
-export const EmptyInputSchema = {
-  type: 'object',
-  properties: {},
-} as const;
+import { z } from 'zod';
 
-export const MemoryGetInputSchema = {
-  type: 'object',
-  properties: {
-    id: { type: 'string' },
-  },
-  required: ['id'],
-} as const;
+export const EmptyInputSchema = z.object({});
 
-export const MemoryListInputSchema = {
-  type: 'object',
-  properties: {
-    type: { type: 'string' },
-    status: { type: 'string' },
-    stale: { type: 'boolean' },
-    memoryClass: { type: 'string' },
-    truthRole: { type: 'string' },
-    lifetime: { type: 'string' },
-  },
-} as const;
+export const MemoryGetInputSchema = z.object({
+  id: z.string(),
+});
 
-export const MemorySearchInputSchema = {
-  type: 'object',
-  properties: {
-    query: { type: 'string' },
-    type: { type: 'string' },
-    status: { type: 'string' },
-    confidence: { type: 'string', enum: ['low', 'medium', 'high'] },
-    memoryClass: { type: 'string' },
-    truthRole: { type: 'string' },
-    lifetime: { type: 'string' },
-    tags: { type: 'array', items: { type: 'string' } },
-    minImportance: { type: 'number' },
-    maxImportance: { type: 'number' },
-    createdAfter: { type: 'string' },
-    createdBefore: { type: 'string' },
-    limit: { type: 'number' },
-    includeSuperseded: { type: 'boolean' },
-  },
-  required: ['query'],
-} as const;
+export const MemoryListInputSchema = z.object({
+  type: z.string().optional(),
+  status: z.string().optional(),
+  stale: z.boolean().optional(),
+  memoryClass: z.string().optional(),
+  truthRole: z.string().optional(),
+  lifetime: z.string().optional(),
+});
 
-export const MemoryAddInputSchema = {
-  type: 'object',
-  properties: {
-    type: { type: 'string' },
-    title: { type: 'string' },
-    body: { type: 'string' },
-    tags: { type: 'array', items: { type: 'string' } },
-    confidence: { type: 'string', enum: ['low', 'medium', 'high'] },
-    importance: { type: 'number' },
-    createdBy: { type: 'string' },
-  },
-  required: ['type', 'title', 'createdBy'],
-} as const;
+export const MemorySearchInputSchema = z.object({
+  query: z.string(),
+  type: z.string().optional(),
+  status: z.string().optional(),
+  confidence: z.enum(['low', 'medium', 'high']).optional(),
+  memoryClass: z.string().optional(),
+  truthRole: z.string().optional(),
+  lifetime: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  minImportance: z.number().optional(),
+  maxImportance: z.number().optional(),
+  createdAfter: z.string().optional(),
+  createdBefore: z.string().optional(),
+  limit: z.number().optional(),
+  includeSuperseded: z.boolean().optional(),
+});
 
-export const MemoryTransitionInputSchema = {
-  type: 'object',
-  properties: {
-    id: { type: 'string' },
-    status: { type: 'string' },
-  },
-  required: ['id', 'status'],
-} as const;
+export const MemoryAddInputSchema = z.object({
+  type: z.string(),
+  title: z.string(),
+  body: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  confidence: z.enum(['low', 'medium', 'high']).optional(),
+  importance: z.number().optional(),
+  createdBy: z.string(),
+});
 
-export const MemoryCreateThreadInputSchema = {
-  type: 'object',
-  properties: {
-    title: { type: 'string' },
-    goal: { type: 'string' },
-    currentState: { type: 'string' },
-    nextSteps: { type: 'array', items: { type: 'string' } },
-    createdBy: { type: 'string' },
-  },
-  required: ['title', 'goal', 'createdBy'],
-} as const;
+export const MemoryTransitionInputSchema = z.object({
+  id: z.string(),
+  status: z.string(),
+});
 
-export const MemoryCreateInfoRequestInputSchema = {
-  type: 'object',
-  properties: {
-    title: { type: 'string' },
-    thread: { type: 'string' },
-    question: { type: 'string' },
-    detourReason: { type: 'string' },
-    neededFor: { type: 'array', items: { type: 'string' } },
-    expectedAnswer: { type: 'array', items: { type: 'string' } },
-    preliminaryAnswer: { type: 'string' },
-    createdBy: { type: 'string' },
-  },
-  required: ['title', 'thread', 'question', 'detourReason', 'expectedAnswer', 'createdBy'],
-} as const;
+export const MemoryCreateThreadInputSchema = z.object({
+  title: z.string(),
+  goal: z.string(),
+  currentState: z.string().optional(),
+  nextSteps: z.array(z.string()).optional(),
+  createdBy: z.string(),
+});
 
-export const MemoryCreateArticleInputSchema = {
-  type: 'object',
-  properties: {
-    title: { type: 'string' },
-    thread: { type: 'string' },
-    summary: { type: 'string' },
-    body: { type: 'string' },
-    answers: { type: 'array', items: { type: 'string' } },
-    supports: { type: 'array', items: { type: 'string' } },
-    evidence: { type: 'array', items: { type: 'string' } },
-    createdBy: { type: 'string' },
-  },
-  required: ['title', 'thread', 'summary', 'body', 'createdBy'],
-} as const;
+export const MemoryCreateInfoRequestInputSchema = z.object({
+  title: z.string(),
+  thread: z.string(),
+  question: z.string(),
+  detourReason: z.string(),
+  neededFor: z.array(z.string()).optional(),
+  expectedAnswer: z.array(z.string()),
+  preliminaryAnswer: z.string().optional(),
+  createdBy: z.string(),
+});
 
-export const MemoryCreateDecisionInputSchema = {
-  type: 'object',
-  properties: {
-    title: { type: 'string' },
-    body: { type: 'string' },
-    thread: { type: 'string' },
-    basedOn: { type: 'array', items: { type: 'string' } },
-    createdBy: { type: 'string' },
-  },
-  required: ['title', 'body', 'createdBy'],
-} as const;
+export const MemoryCreateArticleInputSchema = z.object({
+  title: z.string(),
+  thread: z.string(),
+  summary: z.string(),
+  body: z.string(),
+  answers: z.array(z.string()).optional(),
+  supports: z.array(z.string()).optional(),
+  evidence: z.array(z.string()).optional(),
+  createdBy: z.string(),
+});
 
-export const MemoryCreateBlockerInputSchema = {
-  type: 'object',
-  properties: {
-    title: { type: 'string' },
-    impact: { type: 'string' },
-    workaround: { type: 'string' },
-    thread: { type: 'string' },
-    createdBy: { type: 'string' },
-  },
-  required: ['title', 'impact', 'createdBy'],
-} as const;
+export const MemoryCreateDecisionInputSchema = z.object({
+  title: z.string(),
+  body: z.string(),
+  thread: z.string().optional(),
+  basedOn: z.array(z.string()).optional(),
+  createdBy: z.string(),
+});
 
-export const MemoryResolveBlockerInputSchema = {
-  type: 'object',
-  properties: {
-    id: { type: 'string' },
-    resolvedBy: { type: 'string' },
-  },
-  required: ['id'],
-} as const;
+export const MemoryCreateBlockerInputSchema = z.object({
+  title: z.string(),
+  impact: z.string(),
+  workaround: z.string().optional(),
+  thread: z.string().optional(),
+  createdBy: z.string(),
+});
+
+export const MemoryResolveBlockerInputSchema = z.object({
+  id: z.string(),
+  resolvedBy: z.string().optional(),
+});
+
+export const MemoryCreateRuleInputSchema = z.object({
+  title: z.string(),
+  body: z.string(),
+  scope: z.enum(['project', 'global']),
+  appliesTo: z.array(z.string()).optional(),
+  trigger: z.string().optional(),
+  createdBy: z.string(),
+});

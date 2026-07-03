@@ -1,4 +1,4 @@
-import { fromJsonSchema, type McpServer } from '@modelcontextprotocol/server';
+import { McpServer } from '@modelcontextprotocol/server';
 import {
   EmptyInputSchema,
   MemorySearchInputSchema,
@@ -12,6 +12,7 @@ import {
   MemoryCreateDecisionInputSchema,
   MemoryCreateBlockerInputSchema,
   MemoryResolveBlockerInputSchema,
+  MemoryCreateRuleInputSchema,
 } from './mcp-schemas.js';
 import { searchMemory } from '../../app/use-cases/search-memory.js';
 import { addMemoryObject } from '../../app/use-cases/add-memory-object.js';
@@ -38,7 +39,7 @@ export function registerMemoryTools(
     'search',
     {
       description: 'Search project memory objects by query and optional filters',
-      inputSchema: fromJsonSchema(MemorySearchInputSchema),
+      inputSchema: MemorySearchInputSchema,
     },
     async (input: unknown) => {
       const args = input as {
@@ -67,7 +68,7 @@ export function registerMemoryTools(
     'get',
     {
       description: 'Get a memory object by id',
-      inputSchema: fromJsonSchema(MemoryGetInputSchema),
+      inputSchema: MemoryGetInputSchema,
     },
     async (input: unknown) => {
       const args = input as { id: string };
@@ -83,7 +84,7 @@ export function registerMemoryTools(
     'list',
     {
       description: 'List memory objects with optional filters',
-      inputSchema: fromJsonSchema(MemoryListInputSchema),
+      inputSchema: MemoryListInputSchema,
     },
     async (input: unknown) => {
       const args = input as {
@@ -104,7 +105,7 @@ export function registerMemoryTools(
     'add',
     {
       description: 'Add a generic memory object',
-      inputSchema: fromJsonSchema(MemoryAddInputSchema),
+      inputSchema: MemoryAddInputSchema,
     },
     async (input: unknown) => {
       const args = input as {
@@ -135,7 +136,7 @@ export function registerMemoryTools(
     'transition',
     {
       description: 'Transition a memory object to a new lifecycle status',
-      inputSchema: fromJsonSchema(MemoryTransitionInputSchema),
+      inputSchema: MemoryTransitionInputSchema,
     },
     async (input: unknown) => {
       const args = input as { id: string; status: string };
@@ -148,7 +149,7 @@ export function registerMemoryTools(
     'create_thread',
     {
       description: 'Create a work thread',
-      inputSchema: fromJsonSchema(MemoryCreateThreadInputSchema),
+      inputSchema: MemoryCreateThreadInputSchema,
     },
     async (input: unknown) => {
       const args = input as {
@@ -167,7 +168,7 @@ export function registerMemoryTools(
     'create_info_request',
     {
       description: 'Create an information request',
-      inputSchema: fromJsonSchema(MemoryCreateInfoRequestInputSchema),
+      inputSchema: MemoryCreateInfoRequestInputSchema,
     },
     async (input: unknown) => {
       const args = input as {
@@ -189,7 +190,7 @@ export function registerMemoryTools(
     'create_article',
     {
       description: 'Create an article',
-      inputSchema: fromJsonSchema(MemoryCreateArticleInputSchema),
+      inputSchema: MemoryCreateArticleInputSchema,
     },
     async (input: unknown) => {
       const args = input as {
@@ -211,7 +212,7 @@ export function registerMemoryTools(
     'create_decision',
     {
       description: 'Create a decision',
-      inputSchema: fromJsonSchema(MemoryCreateDecisionInputSchema),
+      inputSchema: MemoryCreateDecisionInputSchema,
     },
     async (input: unknown) => {
       const args = input as {
@@ -230,7 +231,7 @@ export function registerMemoryTools(
     'create_blocker',
     {
       description: 'Create a blocker',
-      inputSchema: fromJsonSchema(MemoryCreateBlockerInputSchema),
+      inputSchema: MemoryCreateBlockerInputSchema,
     },
     async (input: unknown) => {
       const args = input as {
@@ -249,7 +250,7 @@ export function registerMemoryTools(
     'resolve_blocker',
     {
       description: 'Resolve a blocker',
-      inputSchema: fromJsonSchema(MemoryResolveBlockerInputSchema),
+      inputSchema: MemoryResolveBlockerInputSchema,
     },
     async (input: unknown) => {
       const args = input as { id: string; resolvedBy?: string };
@@ -262,7 +263,7 @@ export function registerMemoryTools(
     'scan',
     {
       description: 'Scan the project and register documents',
-      inputSchema: fromJsonSchema(EmptyInputSchema),
+      inputSchema: EmptyInputSchema,
     },
     async () => {
       const result = await scanProject(deps, baseDir);
@@ -274,7 +275,7 @@ export function registerMemoryTools(
     'brief',
     {
       description: 'Generate the agent brief from the latest scan and memory',
-      inputSchema: fromJsonSchema(EmptyInputSchema),
+      inputSchema: EmptyInputSchema,
     },
     async () => {
       const scanResult = await scanProject(deps, baseDir);
@@ -287,18 +288,7 @@ export function registerMemoryTools(
     'create_rule',
     {
       description: 'Create a rule (user request only)',
-      inputSchema: fromJsonSchema({
-        type: 'object',
-        properties: {
-          title: { type: 'string' },
-          body: { type: 'string' },
-          scope: { type: 'string', enum: ['project', 'global'] },
-          appliesTo: { type: 'array', items: { type: 'string' } },
-          trigger: { type: 'string' },
-          createdBy: { type: 'string' },
-        },
-        required: ['title', 'body', 'scope', 'createdBy'],
-      }),
+      inputSchema: MemoryCreateRuleInputSchema,
     },
     async (input: unknown) => {
       const args = input as {

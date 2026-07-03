@@ -1,10 +1,9 @@
 import { buildMcpServer } from '../adapters/mcp/mcp-server.js';
-import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
+import { serveStdio } from '@modelcontextprotocol/server/stdio';
 
 async function main() {
   const server = buildMcpServer(process.cwd());
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+  await serveStdio(async () => server);
 }
 
 main().catch((error) => {
