@@ -3,9 +3,9 @@
 ## Project Snapshot
 - Root: .
 - Project name: mr-wolf
-- Branch: feat/phase-4
-- Commit: 0750ee9
-- Generated: 2026-06-30
+- Branch: main
+- Commit: c93d524
+- Generated: 2026-07-03
 
 ## What This Project Is
 Mr. Wolf
@@ -42,9 +42,12 @@ Mr. Wolf
 - Phase 2: Decisions and Blockers — `decision`, `blocker`, `blocker resolve`, brief integration.
 - Phase 3: Incremental Indexing + Document Registration — `search` sees new objects immediately; `scan` registers project documents as `document` artifacts by reference.
 - Phase 4: Relations and Session Checkpoints — `relations.jsonl`, explicit artifact links, `session-checkpoint` type, `thread diff`.
+- Phase 5: Search and Retrieval Improvements — ranking, filters, tag search, stale detection.
+- Phase 6: Governance + Flat CLI/MCP Namespace — `rule` type, user-only rule creation, flattened `wolf *` commands and MCP tool names.
+- Phase 7: Session Wrap-Up Habit — `session-summary` type, auto-triggered on lifecycle events, manual `wolf session wrap-up` command.
 
 ## Next phase
-- Phase 5: Search and Retrieval Improvements — ranking, filters, tag search, stale detection.
+- Phase 8: Decide from roadmap-v2 or wolf solve/call concept research.
 
 ## Active Memory
 - [decision] Use decision and blocker types for Phase 2 — Completed.
@@ -53,10 +56,15 @@ Mr. Wolf
 - [lesson] Session 2026-06-30: documentation cleanup after pivot; outdated concept docs archived.
 - [decision] Incremental indexing — `add`, create-*, `scan`, `supersede`, and `resolve` update the FTS5 index automatically.
 - [decision] Canonical relations in `relations.jsonl` — frontmatter mirrors are for readability only.
+- [decision] Flat CLI/MCP namespace — Phase 6 replaced `wolf memory ...` with direct `wolf ...` commands and flattened MCP tool names.
+- [decision] Rule type requires explicit user request — agents cannot create rules proactively.
+- [decision] Session summaries auto-trigger on lifecycle events and via manual `wolf session wrap-up`.
+- [rule] After completing any implementation phase, update AGENTS.md, README.md, MEMORY.md, and any affected docs to keep project memory accurate.
 
 ## Open Questions
 - Should relation predicates be user-extensible or fixed to the core set?
 - Should session checkpoints capture full artifact snapshots or only ids?
+- Should the next phase be schema-driven taxonomy (roadmap-v2) or wolf solve/call concept research?
 
 ## Blockers
 - None.
@@ -68,6 +76,7 @@ Mr. Wolf
 - Active memory objects: derived from `.wolf/memory/objects/**/*.md`
 
 ## Recommended First Steps
-1. Review `docs/superpowers/plans/roadmap.md` for the canonical plan.
-2. Pick Phase 5 work: ranking, filters, tag search, stale detection.
+1. Review `docs/superpowers/plans/roadmap-v2.md` for the canonical plan.
+2. Pick Phase 8 work: schema-driven taxonomy or wolf solve/call concept research.
 3. Run `npm run check` before and after changes.
+4. After completing any phase, update AGENTS.md, README.md, MEMORY.md, and affected docs.

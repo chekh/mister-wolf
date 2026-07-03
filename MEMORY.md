@@ -5,6 +5,10 @@
 
 ---
 
+После завершения каждого этапа работы агент обязан обновить проектную документацию: `AGENTS.md`, `README.md`, `MEMORY.md` и любые затронутые документы в `docs/`. Это правило имеет приоритет над спешкой и не может быть пропущено.
+
+---
+
 ## 1. Обязанность агента
 
 Каждый агент, работающий с проектом, обязан:
@@ -95,16 +99,23 @@ node dist/bootstrap/cli.js add --type lesson --title "..." --body "..."
 
 ### В конце сессии
 
-Добавить `session-summary`:
+Создать `session-summary` автоматически или вручную:
 
 ```bash
-node dist/bootstrap/cli.js add --type session-summary --title "Результаты сессии: ..." --body "..."
+wolf session wrap-up --title "Результаты сессии: ..." --tags tag1,tag2
 ```
+
+Сессионные сводки также автоматически создаются после ключевых событий жизненного цикла:
+- разрешение блокера (`wolf blocker resolve <id>`);
+- терминальный transition (`archived`, `completed`, `accepted`, `resolved`, `obsolete`);
+- замещение объекта (`wolf supersede <old-id> <new-id>`);
+- создание решения (`wolf decision add ...`);
+- создание статьи (`wolf article add ...`).
 
 Если работа касалась структуры проекта или важных решений — обновить `agent brief`:
 
 ```bash
-node dist/bootstrap/cli.js brief
+wolf brief
 ```
 
 ---
@@ -164,22 +175,25 @@ This keeps the main session clean while preserving reusable project knowledge.
 
 ```bash
 # Поиск
-node dist/bootstrap/cli.js search "..."
+wolf search "..."
 
 # Добавление
-node dist/bootstrap/cli.js add --type lesson --title "..." --body "..."
+wolf add --type lesson --title "..." --body "..."
 
 # Скан проекта
-node dist/bootstrap/cli.js scan
+wolf scan
 
 # Генерация / обновление брифа
-node dist/bootstrap/cli.js brief
+wolf brief
 
 # Замещение устаревшего объекта
-node dist/bootstrap/cli.js supersede <old-id> <new-id>
+wolf supersede <old-id> <new-id>
 
 # Перестроить индекс
-node dist/bootstrap/cli.js rebuild-index
+wolf rebuild-index
+
+# Ручная сводка сессии
+wolf session wrap-up --title "..." --tags tag1,tag2
 ```
 
 ---

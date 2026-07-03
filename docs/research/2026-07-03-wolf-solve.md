@@ -725,7 +725,7 @@ Example:
 id: repair_deprecated_get_20260703
 type: memory-repair-plan
 status: proposed
-problem: "Agent keeps using deprecated top-level get."
+problem: 'Agent keeps using deprecated top-level get.'
 detected_issue_types:
   - stale-instruction
   - conflicting-memory

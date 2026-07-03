@@ -12,3 +12,4 @@ coverage/
 docs/discussions/
 .codegraph/
 opencode.json
+.external_experts_review/

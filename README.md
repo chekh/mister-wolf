@@ -12,9 +12,9 @@
 
 ## Status
 
-Phases 0–5 are implemented: Core Memory, Work Threads / Info Requests / Articles, Decisions / Blockers, Incremental Indexing / Document Registration, Relations / Session Checkpoints, and Search / Retrieval Improvements.
+Phases 0–7 are implemented: Core Memory, Work Threads / Info Requests / Articles, Decisions / Blockers, Incremental Indexing / Document Registration, Relations / Session Checkpoints, Search / Retrieval Improvements, Governance + Flat Namespace, and Session Wrap-Up Habit.
 
-Next: **Phase 6 — Governance**.
+Next: **Phase 8 — Schema-driven taxonomy or wolf solve/call concept research**.
 
 ## Quick Start
 
@@ -73,15 +73,20 @@ node dist/bootstrap/cli.js search "lesson"
 - `wolf search <query> --type <type> --status <status> --tag <tag> --confidence <level> --min-importance <n> --max-importance <n> --created-after <iso> --created-before <iso> --limit <n>` — full-text search with filters and ranking.
 - `wolf list --stale` — list memory objects not updated in the last 30 days.
 
-### Rules
+### Phase 6: governance and flat namespace
 
 - `wolf rule add --title "..." --body "..." --scope project|global` — add a rule.
 - `wolf rule list` — list rules.
 
+### Phase 7: session wrap-up habit
+
+- `wolf session wrap-up --title "..." --tags tag1,tag2` — manually create a session summary of recent events.
+- Session summaries are auto-created after resolving a blocker, terminal transitions, superseding an object, creating a decision, or creating an article.
+
 ## Documentation
 
 - [Base concept](docs/superpowers/specs/2026-06-30-project-memory-harness-base-concept.md) — architecture and concept
-- [Roadmap](docs/superpowers/plans/roadmap.md) — current phases and backlog
+- [Roadmap](docs/superpowers/plans/roadmap-v2.md) — current phases and backlog
 - [User guide](docs/user-guide.md) — Phase 4 commands and workflow (Russian)
 - [Docs index](docs/README.md) — specs, plans, and archived materials
 
