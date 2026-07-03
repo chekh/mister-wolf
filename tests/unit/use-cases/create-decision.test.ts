@@ -53,8 +53,11 @@ describe('createDecision', () => {
     expect(loaded?.type).toBe('decision');
 
     const events = await log.readAll();
-    expect(events).toHaveLength(1);
+    expect(events).toHaveLength(2);
     expect(events[0].type).toBe('memory.added');
+    expect(events[0].payload.memory_id).toBe(result.object.id);
+    expect(events[1].type).toBe('memory.added');
+    expect(events[1].payload.type).toBe('session-summary');
   });
 
   it('sets review_state to proposed when created by an agent', async () => {

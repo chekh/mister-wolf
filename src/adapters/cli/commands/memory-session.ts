@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { createSessionCheckpoint } from '../../../app/use-cases/create-session-checkpoint.js';
 import { diffThread } from '../../../app/use-cases/diff-thread.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
+import { memorySessionWrapUpCommand } from './memory-session-wrap-up.js';
 
 export function memorySessionCommand(): Command {
   const session = new Command('session').description('Manage sessions and checkpoints');
@@ -19,6 +20,8 @@ export function memorySessionCommand(): Command {
       );
       console.log(`Created session checkpoint: ${result.object.id}`);
     });
+
+  session.addCommand(memorySessionWrapUpCommand());
 
   return session;
 }
