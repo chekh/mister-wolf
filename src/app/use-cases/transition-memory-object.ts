@@ -5,6 +5,9 @@ import { IdGenerator } from '../../ports/id-generator.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
 import { MemoryStatus } from '../../domain/memory-types.js';
 import { canTransition } from '../../domain/governance.js';
+import { summarizeSession } from './summarize-session.js';
+
+const TERMINAL_STATUSES = ['archived', 'completed', 'accepted', 'resolved', 'obsolete'];
 
 export async function transitionMemoryObject(
   deps: { store: MemoryStore; log: EventLog; clock: Clock; idGen: IdGenerator; index?: SearchIndex },
@@ -29,5 +32,10 @@ export async function transitionMemoryObject(
   });
   if (deps.index) {
     await deps.index.indexObject(updated);
+  }
+  if (TERMINAL_STATUSES.includes(newStatus)) {
+    await summarizeSession(deps, { createdBy: actor }).catch((err) => {
+      console.error('Session summary failed:', err);
+    });
   }
 }

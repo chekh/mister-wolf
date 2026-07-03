@@ -5,6 +5,7 @@ import { IdGenerator } from '../../ports/id-generator.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
 import { RelationLog } from '../../ports/relation-log.port.js';
 import { recordRelation } from './record-relation.js';
+import { summarizeSession } from './summarize-session.js';
 
 export async function resolveBlocker(
   deps: {
@@ -38,4 +39,7 @@ export async function resolveBlocker(
   if (deps.relations && resolvedBy) {
     await recordRelation(deps, now, resolvedBy, 'resolves', id);
   }
+  await summarizeSession(deps, { createdBy: 'system:wolf' }).catch((err) => {
+    console.error('Session summary failed:', err);
+  });
 }

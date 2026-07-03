@@ -7,6 +7,7 @@ import { RelationLog } from '../../ports/relation-log.port.js';
 import { Decision, DecisionSchema } from '../../domain/schemas/decision-schema.js';
 import { governanceDefaults } from '../../domain/governance.js';
 import { recordRelation } from './record-relation.js';
+import { summarizeSession } from './summarize-session.js';
 
 export interface CreateDecisionInput {
   title: string;
@@ -77,6 +78,10 @@ export async function createDecision(
       await recordRelation(deps, now, object.id, 'based_on', basisId);
     }
   }
+
+  await summarizeSession(deps, { createdBy: input.createdBy }).catch((err) => {
+    console.error('Session summary failed:', err);
+  });
 
   return { object };
 }
