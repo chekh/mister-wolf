@@ -1,9 +1,12 @@
 # Сводный отчет внешней экспертизы: Mr. Wolf (глубинный фактчек)
 
 **Дата агрегации:** 2026-07-03  
-**Источники:** `.external_experts_review/` — отзывы от DeepSeek, Gemini, Kimi, OpenAI, Qwen, Zai.  
-**Статистика по источникам:** 3 файла пусты (DeepSeek, Gemini, Kimi), 3 содержат полноценный анализ (OpenAI, Qwen, Zai).  
-**Проверенная кодовая база:** `main`, commit `ff86ff1` (последний на момент проверки).  
+**Источники:**
+
+- `.external_experts_review/` — отзывы от DeepSeek, Gemini, Kimi, OpenAI, Qwen, Zai (3 пусты, 3 полноценны).
+- `docs/research/2026-07-03-wolf-solve.md` — внутренний концепт `wolf solve / wolf call`.
+
+**Проверенная кодовая база:** `main`, commit `ff86ff1`.  
 **Результат `npm run test:run`:** 45 файлов, 123 теста — pass.  
 **Результат `npm run check`:** FAIL на этапе `tsc --noEmit` (`src/adapters/mcp/mcp-tools.ts`).
 
@@ -148,7 +151,50 @@ CLI `memory-search.ts` может возвращать больше, но MCP-и
 
 ---
 
-## 5. Пересмотренные приоритеты
+## 5. Анализ внутреннего концепта `wolf solve / wolf call`
+
+Файл `docs/research/2026-07-03-wolf-solve.md` содержит детальный концепт, который полностью совпадает с рекомендациями OpenAI, но развит глубже и конкретнее.
+
+### 5.1. Совпадение с экспертными рекомендациями
+
+| Идея экспертов                               | Концепт `wolf-solve.md`                                                     | Оценка                         |
+| -------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------ |
+| `wolf solve` как solve-pack generator        | Разделы 5.1, 7, 11.1–11.5                                                   | ✅ Полное совпадение           |
+| `wolf call` как compact corrective injection | Разделы 5.2, 11.6–11.9                                                      | ✅ Полное совпадение           |
+| Mr. Wolf не думает вместо агента             | Раздел 3: «Mr. Wolf does not think instead of the agent»                    | ✅ Полное совпадение           |
+| `recall` как общий контекст                  | Раздел 6                                                                    | ✅ Добавлена четвертая команда |
+| `search --explain`                           | Раздел 4.7 нашего отчета; в концепте — через `call-injection` provenance    | ⚠️ Частично перекрывается      |
+| Capture presets                              | `wolf capture` от OpenAI не дублируется; концепт фокусируется на solve/call | ❌ Не перекрывает              |
+
+### 5.2. Что добавляет концепт сверх экспертных рекомендаций
+
+1. **Сценарный (scenario-driven) подход.** `wolf solve` не одна магическая функция, а registry сценариев: `stale-instruction`, `missing-rule`, `conflicting-memory`, `noisy-recall`, `broken-handoff`. Это решает проблему «непрозрачной магии».
+2. **Четкое разграничение artifact types:**
+   - `info-request kind=memory-repair` — для сохранения solve-запроса;
+   - `call-injection` — operational patch для активной сессии;
+   - `repair-plan` — reviewable plan, не auto-applied.
+3. **Safety model по умолчанию.** `wolf solve` read-only, рискованные действия требуют review.
+4. **«Listen to Wolf» convention.** Правило для агентов: когда пользователь говорит «слушай Wolf», агент должен вызвать `wolf call`.
+5. **MVP scope и acceptance criteria.** Конкретный сценарий с deprecated `get`, тесты, структура модулей.
+
+### 5.3. Риски концепта
+
+1. **Новый тип `call-injection`.** Концепт предлагает добавить `call-injection` как first-class тип. Это увеличит таксономию (уже 14 типов). Альтернатива: хранить call-injection как lightweight `rule` subtype или как поле `article`.
+2. **Новый тип `repair-plan`.** Аналогично — риск превратить Mr. Wolf в task/issue tracker.
+3. **Scenario registry.** Требует решения: где хранить сценарии (`.mrwolf/solve-scenarios/`, package defaults, project overrides).
+4. **«Listen to Wolf» rule.** Требует интеграции с `AGENTS.md` и инструкциями агентов.
+
+### 5.4. Рекомендация по интеграции
+
+Концепт `wolf-solve.md` должен стать **основой для Phase 8**. Но перед реализацией нужно:
+
+1. Починить `npm run check`.
+2. Решить, будут ли `call-injection` и `repair-plan` отдельными типами или производными от `rule`/`article`/`info-request`.
+3. Согласовать с roadmap-v2: Phase 8 «Schema-driven taxonomy or wolf solve/call concept research» — фактически выбор уже сделан в пользу solve/call.
+
+---
+
+## 6. Пересмотренные приоритеты
 
 ### P0 — Исправить `npm run check` (критический блокер)
 
@@ -230,21 +276,22 @@ CLI `memory-search.ts` может возвращать больше, но MCP-и
 
 ---
 
-## 6. Глубокий анализ экспертных рекомендаций
+## 7. Глубокий анализ экспертных рекомендаций и их связь с концептом solve/call
 
 ### 6.1. OpenAI: «Phase 6 — Governance, но я бы назвал Phase 6: Agent UX Stabilization»
 
 **Оценка:** частично устарело. Phase 6 Governance и Phase 7 Session Wrap-Up уже реализованы. Идея «Agent UX Stabilization» должна стать **Phase 8**, а не заменой Phase 6.  
 **Суть верна:** следующий этап должен быть про UX, а не про метаданные.
 
-### 6.2. OpenAI: три magic-команды recall / solve / call
+### 7.2. OpenAI: три magic-команды recall / solve / call
 
-**Оценка:** высокоприоритетная и корректная рекомендация.  
-**Дополнение:** нужно связать их с существующей логикой:
+**Оценка:** высокоприоритетная и корректная рекомендация, детально развита в `docs/research/2026-07-03-wolf-solve.md`.  
+**Дополнение:**
 
-- `recall` может переиспользовать `generate-agent-brief.ts` + фильтры по confidence/importance.
-- `solve` может использовать `search-memory.ts` + ранжирование по `rule`/`decision`.
-- `call` — новый artifact type (`call-injection`?) или формат вывода `article`.
+- `recall` может переиспользовать `generate-agent-brief.ts` + фильтры по confidence/importance. Концепт solve/call добавляет к этому `doctor` для health-check.
+- `solve` может использовать `search-memory.ts` + ранжирование по `rule`/`decision`. Концепт предлагает scenario registry вместо opaque magic.
+- `call` — концепт предлагает отдельный тип `call-injection` (100–300 tokens, operational patch). Альтернатива — производный от `rule`.
+- **Важное уточнение:** концепт solve/call не добавляет LLM внутрь Mr. Wolf и не делает автоматических мутаций. Это соответствует границе, озвученной всеми экспертами.
 
 ### 6.3. Qwen: гибридный поиск и граф связей
 
@@ -265,14 +312,21 @@ CLI `memory-search.ts` может возвращать больше, но MCP-и
 **Оценка:** верно и критично для adoption.  
 **Дополнение:** `package.json:6-8` уже определяет `bin.wolf = "./dist/bootstrap/cli.js"`, так что `npm install -g mr-wolf` будет работать после публикации. Нужно только опубликовать и добавить инструкцию.
 
-### 6.6. Zai: «0 звезд, 0 форков, 0 issues»
+### 7.6. Zai: «0 звезд, 0 форков, 0 issues»
 
 **Оценка:** метрика вероятно верна, но не техническая проблема.  
 **Дополнение:** это симптом неясного позиционирования и высокого порога входа. Решается P0–P4.
 
+### 7.7. Связь экспертных рекомендаций с концептом `wolf solve / call`
+
+- OpenAI предложил `recall/solve/call` как high-level UX. `docs/research/2026-07-03-wolf-solve.md` детализирует эту идею до MVP с acceptance criteria.
+- Концепт решает проблему «когнитивной перегрузки 14 типов», предлагая scenario-driven интерфейс: пользователь думает «agent keeps using deprecated command», а не «надо создать rule + article + relation + call-injection».
+- Концепт не противоречит Qwen и Zai: он не требует LLM внутри Mr. Wolf, не добавляет векторов, не требует бинарников.
+- Концепт усиливает позиционирование Mr. Wolf как «memory quality system» — это и есть отличительная фишка, которую эксперты просили сформулировать четче.
+
 ---
 
-## 7. Рекомендуемый план PR
+## 8. Рекомендуемый план PR
 
 ### PR 1: `fix: repair MCP TypeScript compilation and rule-type validation`
 
@@ -297,9 +351,12 @@ CLI `memory-search.ts` может возвращать больше, но MCP-и
 **Scope:**
 
 - `wolf recall` — контекст-пак для агента.
-- `wolf solve "problem"` — Solve Pack generator.
+- `wolf solve "problem"` — Solve Pack generator на базе `docs/research/2026-07-03-wolf-solve.md`.
 - `wolf call --for topic` — compact corrective injection.
-- Тесты + документация.
+- Scenario registry: `stale-instruction`, `missing-rule`.
+- `call-injection` artifact type (решить: отдельный тип или производный от `rule`).
+- `wolf solve --save` → `info-request kind=memory-repair`.
+- Тесты + документация + обновление `AGENTS.md` с convention «слушай Wolf».
 
 ### PR 4: `feat: MCP first-class interface and onboarding`
 
@@ -331,9 +388,9 @@ CLI `memory-search.ts` может возвращать больше, но MCP-и
 
 1. Починить сборку.
 2. Выровнять документацию.
-3. Добавить `recall` / `solve` / `call`.
+3. Реализовать `recall` / `solve` / `call` по концепту `docs/research/2026-07-03-wolf-solve.md`.
 
-Только после этого имеет смысл возвращаться к гибридному поиску, графу связей и расширенной governance.
+Только после этого имеет смысл возвращаться к гибридному поиску, графу связей и расширенной governance. Концепт solve/call может стать центральной product-фишкой, отличающей Mr. Wolf от обычных memory tools.
 
 ---
 
@@ -342,6 +399,7 @@ CLI `memory-search.ts` может возвращать больше, но MCP-и
 - `.external_experts_review/openai.md` — продуктовый анализ, UX, magic-команды.
 - `.external_experts_review/qwen.md` — архитектура, Write Protocol, retrieval, governance.
 - `.external_experts_review/zai.md` — adoption, порог входа, сообщество, MCP.
+- `docs/research/2026-07-03-wolf-solve.md` — внутренний концепт `wolf solve / wolf call`, scenario registry, safety model, MVP acceptance criteria.
 - `README.md:15-17` — актуальные фазы 0–7.
 - `AGENTS.md:39-50` — актуальные фазы 0–7, сгенерирован 2026-07-03.
 - `docs/superpowers/plans/roadmap.md` — застрял на Phase 6.
