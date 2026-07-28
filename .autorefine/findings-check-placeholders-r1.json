@@ -1,0 +1,56 @@
+[
+  {
+    "severity": "info",
+    "location": "Task 1, Step 2",
+    "issue": "Шаг описывает 'Run test to verify it fails' без команды и ожидаемого вывода",
+    "suggestion": "Добавить команду вида `npx vitest src/utils/csv-formatter.test.ts --reporter=verbose` и ожидаемый FAIL"
+  },
+  {
+    "severity": "info",
+    "location": "Task 1, Step 4",
+    "issue": "Шаг 'Run test' не содержит ни команды, ни ожидаемого результата",
+    "suggestion": "Добавить точную команду запуска тестов и ожидаемый PASS"
+  },
+  {
+    "severity": "info",
+    "location": "Task 1, Step 5",
+    "issue": "Шаг 'Commit' без команды git-add/git-commit",
+    "suggestion": "Добавить `git add src/utils/csv-formatter.ts src/utils/csv-formatter.test.ts && git commit -m \"feat: add CSV formatter utility\"`"
+  },
+  {
+    "severity": "critical",
+    "location": "Task 2, Step 1",
+    "issue": "Placeholder 'Add appropriate button with click handler' — нет кода, только описание ЧТО, без КАК",
+    "suggestion": "Добавить конкретный JSX/TSX-код кнопки с onClick-обработчиком и стилями"
+  },
+  {
+    "severity": "critical",
+    "location": "Task 2, Step 2",
+    "issue": "Placeholder 'Add appropriate error handling for the export' — прямое нарушение правила 'Add appropriate error handling'",
+    "suggestion": "Указать конкретные try/catch блоки, типы ошибок (FileWriteError, DataValidationError) и UX (toast/alert)"
+  },
+  {
+    "severity": "info",
+    "location": "Task 2, Step 3",
+    "issue": "Шаг 'Commit' без команды",
+    "suggestion": "Добавить команду git-commit с сообщением"
+  },
+  {
+    "severity": "warning",
+    "location": "Task 3, Step 1",
+    "issue": "Импортируется `formatCsv`, но в Task 1 экспортируется `formatCSV` — несоответствие имён",
+    "suggestion": "Привести к единому casing: либо `formatCsv` везде, либо `formatCSV` везде"
+  },
+  {
+    "severity": "info",
+    "location": "Task 3, Step 2",
+    "issue": "Шаг 'Commit' без команды",
+    "suggestion": "Добавить команду git-commit с сообщением"
+  },
+  {
+    "severity": "warning",
+    "location": "Task 3, Step 1",
+    "issue": "Используется `reportData` и `downloadFile`, которые не определены ни в одной задаче",
+    "suggestion": "Определить `downloadFile` (утилита или нативный API) и показать источник `reportData`"
+  }
+]

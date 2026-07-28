@@ -1,0 +1,72 @@
+[
+  {
+    "priority": "critical",
+    "target": "Task 1, Step 1 / Task 3, Step 1",
+    "action": "Привести именование formatCSV к единому стилю: заменить `formatCsv` на `formatCSV` в Task 3 импорте, либо переименовать `export function formatCSV` в `formatCsv` в Task 1",
+    "rationale": "Несоответствие имён (formatCSV vs formatCsv) приведёт к runtime Error — экспорт не будет найден. Подтверждено обоими проверщиками",
+    "source": "check-placeholders + check-types"
+  },
+  {
+    "priority": "critical",
+    "target": "Task 3, Step 1",
+    "action": "Определить функцию `downloadFile(csv, filename)` — создать шаг с реализацией через Blob + URL.createObjectURL + a.click()",
+    "rationale": "downloadFile используется, но не определена и не импортирована ни в одной задаче — план невыполним. Подтверждено обоими проверщиками",
+    "source": "check-placeholders + check-types"
+  },
+  {
+    "priority": "critical",
+    "target": "Task 2, Step 1",
+    "action": "Заменить placeholder 'Add appropriate button with click handler' на конкретный JSX/TSX-код кнопки с onClick-обработчиком, вызывающим экспорт",
+    "rationale": "Placeholder без реализации — план нельзя выполнить как есть",
+    "source": "check-placeholders"
+  },
+  {
+    "priority": "critical",
+    "target": "Task 2, Step 2",
+    "action": "Заменить placeholder 'Add appropriate error handling' на конкретные try/catch с типами ошибок (FileWriteError, DataValidationError) и UX-обратной связью (toast/alert)",
+    "rationale": "Placeholder 'Add appropriate error handling' — прямое нарушение правила конкретности, без реализации план невыполним",
+    "source": "check-placeholders"
+  },
+  {
+    "priority": "warning",
+    "target": "Task 3, Step 1",
+    "action": "Явно указать тип `reportData` или добавить шаг трансформации перед вызовом `formatCSV()`, которая ожидает `string[][]`",
+    "rationale": "Если reportData не string[][], будет несоответствие типов во время компиляции/выполнения",
+    "source": "check-types"
+  },
+  {
+    "priority": "info",
+    "target": "Task 1, Step 2",
+    "action": "Добавить команду запуска теста (напр. `npx vitest src/utils/csv-formatter.test.ts --reporter=verbose`) и указать ожидаемый FAIL",
+    "rationale": "Шаг 'Run test to verify it fails' не содержит команды и ожидаемого вывода",
+    "source": "check-placeholders"
+  },
+  {
+    "priority": "info",
+    "target": "Task 1, Step 4",
+    "action": "Добавить точную команду запуска тестов (напр. `npx vitest src/utils/csv-formatter.test.ts --reporter=verbose`) и указать ожидаемый PASS",
+    "rationale": "Шаг 'Run test' не содержит ни команды, ни ожидаемого результата",
+    "source": "check-placeholders"
+  },
+  {
+    "priority": "info",
+    "target": "Task 1, Step 5",
+    "action": "Добавить команду `git add src/utils/csv-formatter.ts src/utils/csv-formatter.test.ts && git commit -m \"feat: add CSV formatter utility\"`",
+    "rationale": "Шаг 'Commit' без команд git-add/git-commit",
+    "source": "check-placeholders"
+  },
+  {
+    "priority": "info",
+    "target": "Task 2, Step 3",
+    "action": "Добавить команду git-commit с соответствующим сообщением",
+    "rationale": "Шаг 'Commit' без команды",
+    "source": "check-placeholders"
+  },
+  {
+    "priority": "info",
+    "target": "Task 3, Step 2",
+    "action": "Добавить команду git-commit с соответствующим сообщением",
+    "rationale": "Шаг 'Commit' без команды",
+    "source": "check-placeholders"
+  }
+]

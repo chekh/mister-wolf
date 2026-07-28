@@ -1,0 +1,20 @@
+[
+  {
+    "severity": "critical",
+    "location": "Task 1 vs Task 3",
+    "issue": "Task 1 экспортирует formatCSV (прописное CSV), но Task 3 импортирует formatCsv (camelCase). Имя не совпадает — runtime Error (undefined export).",
+    "suggestion": "Привести к единому именованию: formatCSV везде (Task 3: { formatCSV }), либо formatCsv везде (Task 1: export function formatCsv)."
+  },
+  {
+    "severity": "critical",
+    "location": "Task 3",
+    "issue": "Используется функция downloadFile(csv, 'report.csv'), которая не определена и не импортирована ни в одной задаче плана.",
+    "suggestion": "Добавить задачу/шаг для реализации или импорта downloadFile (например, создание триггера скачивания через Blob + URL.createObjectURL)."
+  },
+  {
+    "severity": "warning",
+    "location": "Task 3",
+    "issue": "В formatCsv(reportData) передаётся reportData без указания типа, но formatCSV из Task 1 ожидает string[][]. Если reportData — не string[][], будет несоответствие типов.",
+    "suggestion": "Явно указать тип reportData либо добавить шаг трансформации данных перед вызовом formatCSV."
+  }
+]
