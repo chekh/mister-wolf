@@ -276,11 +276,13 @@ Optional: suggestion.
 ```
 ## Action <N>
 - priority: <critical | warning | info>
+- status: <accepted | rejected>          # ← added
 - target: <where in the plan to apply>
 - action: <what to do, imperative>
 - rationale: <why this change>
 - source: <checker name that originated this>
 - type: <insert_section | modify_text | rename | delete_section | restructure>
+- rejected_reason: <why rejected>         # ← added, only for rejected
 ```
 
 ### 4.3 Change (applier output)
@@ -345,7 +347,17 @@ Optional: suggestion.
 │  → git add <plan.md> && git commit             │
 └──────────────────────┬─────────────────────────┘
                        ▼
-┌─ Step 5: Convergence check (machine) ─────────┐
+┌─ Step 5: Historian — changelog (machine) ──────┐
+│  Читает: 02-all-findings.md, 03-actions.md,    │
+│           04-applied.md                         │
+│  Сливает с предыдущим changelog.md              │
+│  Фиксирует: сколько принято/отклонено,          │
+│  какие отклонены и почему, общий diff плана     │
+│  → Append to .autorefine/changelog.md           │
+│  → Write 05-changelog-round.md                  │
+└──────────────────────┬─────────────────────────┘
+                       ▼
+┌─ Step 6: Convergence check (machine) ─────────┐
 │  Проверить:                                    │
 │  - criticals + warnings == 0 → converged       │
 │  - git diff план пустой → stalemate            │
@@ -356,11 +368,38 @@ Optional: suggestion.
 └─────────────────────────────────────────────────┘
 ```
 
-### 5.1 Rollup between rounds
+### 5.1 Historian changelog format
 
-When a new round begins, **03-actions.md** from the previous round is included in the context for all checkers. This prevents:
+Each round appends to `.autorefine/changelog.md`:
+
+```yaml
+---
+round: 2
+previous_round: 1
+---
+
+## Round 2
+- checker_findings: 7 total
+  - critical: 2, warning: 3, info: 2
+- resolver_actions: 4 accepted, 3 rejected
+  - rejected:
+      - rename X → "внутреннее имя, не влияет на интерфейс"
+      - restructure Y → "выйдет за scope фичи"
+      - add Z → "дубликат Action 1"
+- applier_changes: 4 applied, 0 skipped, 0 failed
+- plan_diff: +23/-8 lines
+- convergence: false
+- critical_remaining: 1
+```
+
+Leftover findings (rejected) carry over to the next round checkers as context — they should not re-report them.
+
+### 5.2 Rollup between rounds
+
+When a new round begins, **03-actions.md** from the previous round is included in the context for all checkers. Rejected actions are included separately as `rejected_list` so they are not re-reported. This prevents:
 
 - Re-reporting already-fixed issues
+- Re-rejecting already-rejected actions (resolver sees the rejection history)
 - Spinning: checker finds X → applier fixes X → next round checker finds X again
 - Wasted tokens on known-resolved problems
 
