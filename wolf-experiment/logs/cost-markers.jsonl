@@ -1,0 +1,53 @@
+{"task": "T1", "type": "flat", "iter": 1, "start_ms": 1786967048177, "end_ms": 1786967115944}
+{"task": "T1", "type": "flat", "iter": 2, "start_ms": 1786967116018, "end_ms": 1786967173526}
+{"task": "T1", "type": "flat", "iter": 3, "start_ms": 1786967173599, "end_ms": 1786967235731}
+{"task": "T1", "type": "orch", "iter": 1, "start_ms": 1786967264426, "end_ms": 1786967726838}
+{"task": "T1", "type": "orch", "iter": 2, "start_ms": 1786967726911, "end_ms": 1786968398193}
+{"task": "T1", "type": "orch", "iter": 3, "start_ms": 1786968398258, "end_ms": 1786968924904}
+{"task": "T2", "type": "flat", "iter": 1, "start_ms": 1786968958260, "end_ms": 1786969063402}
+{"task": "T2", "type": "flat", "iter": 2, "start_ms": 1786969063468, "end_ms": 1786969144613}
+{"task": "T2", "type": "flat", "iter": 3, "start_ms": 1786969144651, "end_ms": 1786969232050}
+{"task": "T2", "type": "orch", "iter": 1, "start_ms": 1786969242666, "end_ms": 1786970157026}
+{"task": "T2", "type": "orch", "iter": 2, "killed": true, "start_ms": 1786970158026, "end_ms": 1786970700059}
+{"task": "T2", "type": "orch", "iter": "2b", "start_ms": 1786971104668, "end_ms": 1786971609186}
+{"task": "T2", "type": "orch", "iter": 3, "start_ms": 1786971622260, "end_ms": 1786972731344}
+{"task": "T3", "type": "flat", "iter": 1, "start_ms": 1786972743257, "end_ms": 1786972847914}
+{"task": "T3", "type": "flat", "iter": 2, "start_ms": 1786972847945, "end_ms": 1786972960822}
+{"task": "T3", "type": "flat", "iter": 3, "start_ms": 1786972960850, "end_ms": 1786973071052}
+{"task": "T3", "type": "orch", "iter": 1, "start_ms": 1786973084286, "end_ms": 1786973414222}
+{"task": "T3", "type": "orch", "iter": 2, "killed": true, "start_ms": 1786972848914, "end_ms": 1786973623792}
+{"task": "T3", "type": "orch", "iter": "2b", "start_ms": 1786973625069, "end_ms": 1786973981310}
+{"task": "T3", "type": "orch", "iter": 3, "start_ms": 1786973994616, "end_ms": 1786974494111}
+{"task": "L", "type": "flat", "iter": 1, "start_ms": 1786977323543, "end_ms": 1786977559806}
+{"task": "L", "type": "flat", "iter": 2, "start_ms": 1786977658684, "end_ms": 1786977952051}
+{"task": "L", "type": "flat", "iter": 3, "start_ms": 1786977952303, "end_ms": 1786978223923}
+{"task": "L", "type": "orch", "iter": 1, "start_ms": 1786978239264, "end_ms": 1786978815948}
+{"task": "L", "type": "orch", "iter": 2, "killed": true, "start_ms": 1786978843821, "end_ms": 1786979133889}
+{"task": "L", "type": "orch", "iter": "2r", "start_ms": 1786979163539, "end_ms": 1786979455927}
+{"task": "L", "type": "orch", "iter": 3, "killed": true, "hang": true, "start_ms": 1786979456927, "end_ms": 1786982214435}
+{"task": "L", "type": "orch", "iter": "3b", "start_ms": 1786982214671, "end_ms": 1786982234573}
+{"task": "L", "type": "orch", "iter": "3b", "start_ms": 1786982289085, "end_ms": 1786982719827, "retry": true}
+{"task": "F", "type": "flat", "iter": 1, "start_ms": 1786983534536, "end_ms": 1786984176501, "killed": 0}
+{"task": "F", "type": "flat", "iter": 2, "start_ms": 1786984429922, "end_ms": 1786985081024, "killed": 0}
+{"task": "F", "type": "flat", "iter": 3, "start_ms": 1786985179564, "end_ms": 1786985810271, "killed": 0}
+{"task": "F", "type": "orch", "iter": 1, "start_ms": 1786985828525, "end_ms": 1786986929986, "killed": 0}
+{"task": "F", "type": "orch", "iter": 2, "start_ms": 1786986942987, "end_ms": 1786987854273, "killed": 0}
+{"task": "F", "type": "orch", "iter": 3, "start_ms": 1786987855803, "end_ms": 1786988717507, "killed": 0}
+{"task": "R1", "type": "flat", "iter": 1, "start_ms": 1786991311949, "end_ms": 1786992403209, "killed": 0}
+{"task": "R1", "type": "flat", "iter": 2, "start_ms": 1786992416051, "end_ms": 1786992917327, "killed": 0, "aborted": true}
+{"task": "R1", "type": "flat", "iter": 3, "start_ms": 1786992917509, "end_ms": 1786993550381, "killed": 0, "aborted": true}
+{"task": "R1", "type": "flat", "iter": 2, "start_ms": 1786993616759, "end_ms": 1786994247906, "killed": 0, "aborted": true}
+{"task": "R1", "type": "flat", "iter": 2, "start_ms": 1786994352641, "end_ms": 1786994853948, "killed": 0, "aborted": true}
+{"task": "R1", "type": "flat", "iter": 2, "start_ms": 1786995476896, "end_ms": 1786996848349, "killed": 0}
+{"task": "R1", "type": "flat", "iter": 3, "start_ms": 1786996923357, "end_ms": 1786997955381, "killed": 0}
+{"task": "R1", "type": "orch", "iter": 1, "start_ms": 1786997972274, "end_ms": 1786999925932, "killed": 0}
+{"task": "R1", "type": "orch", "iter": 2, "start_ms": 1787000001836, "end_ms": 1787001944815, "killed": 0}
+{"task": "R1", "type": "orch", "iter": 3, "start_ms": 1787002005033, "end_ms": 1787003989589, "killed": 0}
+{"task": "R1", "type": "judge", "iter": 1, "start_ms": 1787004020084, "end_ms": 1787004701276, "killed": 0}
+{"task":"RS1","type":"flat","iter":1,"start_ms":1787005308885,"end_ms":1787005740437,"killed":0}
+{"task":"RS1","type":"flat","iter":2,"start_ms":1787005752837,"end_ms":1787006143972,"killed":0}
+{"task":"RS1","type":"flat","iter":3,"start_ms":1787006144070,"end_ms":1787006525131,"killed":0}
+{"task":"RS1","type":"orch","iter":1,"start_ms":1787006541482,"end_ms":1787007254195,"killed":0}
+{"task":"RS1","type":"orch","iter":2,"start_ms":1787007271167,"end_ms":1787008315016,"killed":0}
+{"task": "RS1", "type": "orch", "iter": 3, "start_ms": 1787011599181, "end_ms": 1787012655427, "killed": 0, "note": "маркер выставлен постфактум по mtime артефактов (дозорная обёртка прервана пользователем); длительность оценочна"}
+{"task":"RS1","type":"judge","iter":1,"start_ms":1787012702746,"end_ms":1787013112683,"killed":0}

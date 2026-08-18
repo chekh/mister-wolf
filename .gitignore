@@ -13,3 +13,11 @@ docs/discussions/
 .codegraph/
 opencode.json
 .external_experts_review/
+
+# wolf-experiment sandbox artifacts
+__pycache__/
+*.pyc
+*.nbi
+*.nbc
+.pytest_cache/
+!wolf-experiment/opencode.json

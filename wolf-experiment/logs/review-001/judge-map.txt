@@ -1,0 +1,7 @@
+spec-01.md <- B (review-task/flat-1/spec-v3.md)
+spec-02.md <- D (review-task/flat-3/spec-v3.md)
+spec-03.md <- E (review-task/orch-1/spec-v3.md)
+spec-04.md <- C (review-task/flat-2/spec-v3.md)
+spec-05.md <- G (review-task/orch-3/spec-v3.md)
+spec-06.md <- A (review-task-base/spec-v0.md)
+spec-07.md <- F (review-task/orch-2/spec-v3.md)
