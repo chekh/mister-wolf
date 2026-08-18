@@ -209,7 +209,7 @@ Implemented CSV parser using PapaParse.
 - Git-история стабильна
 
 **Обязательные подкаталоги:**
-- `documents/` — спеки, планы, ревью
+- `documents/` — спеки, планы, архитектурные документы (не council-opinion)
 - `tasks/` — task briefs и reports
 
 **Опциональные (создаются при первом объекте):**
@@ -262,12 +262,14 @@ Wolf использует граф как механизм селекции ко
 **Пример relations.jsonl:**
 
 ```jsonl
-{"source": "2026-07-03-TASK-001-parser", "predicate": "based_on", "target": "2026-07-01-csv-export-spec", "created_at": "2026-07-03T10:00:00Z"}
-{"source": "2026-07-05-TASK-001-parser-report", "predicate": "answers", "target": "2026-07-03-TASK-001-parser", "created_at": "2026-07-05T11:30:00Z"}
-{"source": "2026-07-15-csv-export-spec", "predicate": "supersedes", "target": "2026-07-01-csv-export-spec", "created_at": "2026-07-15T14:00:00Z"}
+{"source": "TASK-001", "predicate": "based_on", "target": "csv-export-spec", "created_at": "2026-07-03T10:00:00Z"}
+{"source": "REPORT-001", "predicate": "answers", "target": "TASK-001", "created_at": "2026-07-05T11:30:00Z"}
+{"source": "csv-export-spec-v2", "predicate": "supersedes", "target": "csv-export-spec", "created_at": "2026-07-15T14:00:00Z"}
 ```
 
 Формат: одна строка = одна связь. JSON с полями `source`, `predicate`, `target`, `created_at`. Append-only.
+
+**Важно:** `source` и `target` — это `id` из frontmatter объектов, не имена файлов.
 
 ### 1.6. Пробелы памяти (честно)
 
@@ -315,10 +317,6 @@ Wolf использует граф как механизм селекции ко
         └── 2026-06-10-tech-stack.md
 ```
 
-**Scope:**
-- `threads/<id>/` — физический каталог треда, объекты изолированы
-- `shared/` — каталог общих объектов (`thread: null` в frontmatter)
-
 **Удаление треда:**
 ```bash
 wolf thread delete csv-export  # rm -rf threads/csv-export/ + обновление индексов
@@ -350,6 +348,27 @@ create → active → completed → archived
    - Загружает активные `task-brief` без `report`
    - Восстанавливает контекст ~5k токенов, не перечитывая все документы
 
+**Пример session-checkpoint:**
+
+```yaml
+# threads/csv-export/sessions/2026-08-19-checkpoint.md
+---
+id: CHECKPOINT-2026-08-19-14-30
+type: session-checkpoint
+thread: csv-export
+created_at: 2026-08-19T14:30:00Z
+related:
+  - 2026-07-01-csv-export-spec
+  - 2026-07-02-csv-export-plan
+open_tasks: [TASK-003, TASK-004]
+open_escalations: []
+context_refs:
+  - approved-libraries
+  - coding-standards
+  - csv-library
+---
+```
+
 **Результат:** Два треда могут работать параллельно, контекст не смешивается.
 
 #### Поиск внутри треда
@@ -376,34 +395,6 @@ wolf search "parser"                       # все треды, группиро
 
 ---
 
-
-**Пример session-checkpoint:**
-
-```yaml
-# threads/csv-export/sessions/2026-08-19-checkpoint.md
----
-id: CHECKPOINT-2026-08-19-14-30
-type: session-checkpoint
-thread: csv-export
-created_at: 2026-08-19T14:30:00Z
-related:
-  - 2026-07-01-csv-export-spec
-  - 2026-07-02-csv-export-plan
-open_tasks: [TASK-003, TASK-004]
-open_escalations: []
-context_refs:
-  - approved-libraries
-  - coding-standards
-  - csv-library
----
-
-# Checkpoint
-
-## Context Restored
-- 2 active tasks pending
-- 0 open escalations
-- Spec and plan locked
-```
 
 ## 2. Агенты и оркестрация
 
@@ -567,7 +558,7 @@ skills/
 - Скилл не является памятью — это процедурное знание, а не данные.
 - Дисциплина enforcement (§2.6) применяется к скиллам так же, как к агентам: permission.task, depth, квоты.
 
-**Отличие от объектов памяти:** объект — «что решено/произошло» (данные); скилл — «как делать» (процедура). Скиллы живут в `skills/`, объекты памяти — в `.wolf/memory/objects/`.
+**Отличие от объектов памяти:** объект — «что решено/произошло» (данные); скилл — «как делать» (процедура). Скиллы живут в `skills/`, объекты памяти — в `.wolf/memory/threads/<id>/` и `.wolf/memory/shared/`.
 
 ---
 
@@ -860,6 +851,14 @@ Core pack типов через `.wolf/config.yaml` (типы из кода — 
 
 ```yaml
 # .wolf/config.yaml
+memory_types:
+  # ... (см. ниже)
+
+artifact_sources:
+  # где искать исходные документы для регистрации как document
+  - "docs/**/*.md"
+  - "src/**/*.ts"
+
 memory_types:
   # Core types (Phases 0-7)
   work-thread:
