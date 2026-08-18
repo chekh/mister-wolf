@@ -8,6 +8,25 @@
 
 ---
 
+## TL;DR
+
+Mr. Wolf — local-first memory substrate для AI coding agents.
+
+**Ключевые решения v2:**
+- Память — ядро: всё есть память (markdown + frontmatter + relations + FTS5)
+- Flat by default: иерархия не окупается на специфицируемых задачах (+157…+1141% токенов)
+- Council Mode и изолированное ревью — единственные окупающиеся формы оркестрации (+31% дефектов)
+- 3 уровня агентов: wolf (thin, 11–18k) → executor → worker (однозадачный)
+- Треды — логическая группировка через поле `thread`, не каталоги
+- Enforcement — permission-glob платформы (M2–M4), не capability tokens
+- Frontmatter — канон, Registry отклонён
+
+**Доказано:** +31% дефектов в ревью, −29% full-токенов, докат ≈0.7× стоимости.
+
+**Не делает:** редактирование кода, IDE-интеграция, веб-интерфейс, распределённая работа.
+
+
+
 ## 0. Позиционирование
 
 Mr. Wolf — **local-first субстрат проектной памяти с выборочной оркестрацией и эффективным редактированием памяти**.
@@ -62,6 +81,62 @@ Mr. Wolf — не агент и не оркестратор, а memory substrate
 | `decision-request` | Запрос решения от executor к wolf | executor | wolf | `answered_by → decision` |
 
 Дисциплина наследуется: агентские объекты — `review_state: proposed`; решения по итогам совета становятся `decision` только после синтеза/утверждения. Эти типы — кандидаты в **core pack** Phase 8 (schema-driven taxonomy): поля описываются конфигом, а не кодом.
+
+
+**Примеры шаблонов:**
+
+```yaml
+# task-brief/TASK-001.md
+---
+id: TASK-001
+type: task-brief
+thread: csv-export
+status: active
+executor: executor-lead
+priority: high
+timeout: 30m
+related:
+  - csv-export-spec
+---
+
+# Task: Implement CSV parser
+
+## Acceptance Criteria
+- Parse CSV with headers
+- Handle quoted fields
+- Return array of objects
+
+## Constraints
+- Use approved library from rule/approved-libraries
+- Max 500 lines
+```
+
+```yaml
+# report/REPORT-001.md
+---
+id: REPORT-001
+type: report
+thread: csv-export
+status: completed
+answers: TASK-001
+---
+
+# Report: CSV parser implemented
+
+## Summary
+Implemented CSV parser using PapaParse.
+
+## Changes
+- src/utils/csv-parser.ts (new, 120 lines)
+- tests/csv-parser.test.ts (new, 45 lines)
+
+## Validation
+- All tests pass
+- Coverage: 92%
+
+## Issues
+- None
+```
 
 ### 1.3. Память как субстрат оркестрации
 
@@ -359,6 +434,53 @@ skills/
 
 ---
 
+
+### 2.11. Формат агентов: markdown + frontmatter
+
+Агенты — markdown-файлы в `agents/` с YAML frontmatter. Интеграция с opencode через механику M1–M12.
+
+**Пример: agents/wolf.md**
+
+```yaml
+---
+model: kimi-for-coding/k3-256k
+spawn_policy: dispatch_only
+permission:
+  task:
+    allow:
+      - "agents/executor.md"
+      - "agents/council-*.md"
+    deny:
+      - "agents/worker.md"
+---
+
+# Mr. Wolf — Coordinator
+
+You are Mr. Wolf, the project coordinator...
+
+## Your Role
+- Coordinate work through memory objects
+- Do NOT write code directly
+- Read reports, not implementations
+
+## Decision Authority
+- **autonomous**: approved lists (§2.7)
+- **advisory**: council for conflicts (§2.4)
+- **human_required**: scope changes, breaking changes
+```
+
+**Поля frontmatter:**
+
+| Поле | Назначение | Механика |
+|---|---|---|
+| `model` | Фиксированная модель | §2.9 матрица |
+| `spawn_policy` | Кто может спавнить | `dispatch_only` / `controlled` / `none` |
+| `permission.task.allow` | Какие агенты доступны | M3 glob |
+| `permission.task.deny` | Какие запрещены | M3 glob |
+
+**Worker** (`spawn_policy: none`, `permission.task: deny` все) — однозадачный, не спавнит.
+**Council member** (`tools: read-only`, `permission.task: deny` все) — только читает и пишет `council-opinion`.
+
 ## 3. Эффективная работа с файлами памяти
 
 > Наследник слоя WolfFS ранней концепции. Scope: только `.wolf/memory/**`. Размещение: часть `mr-wolf` (`src/`), не отдельный пакет.
@@ -588,6 +710,28 @@ project/
     ├── domain/                      # Use-case'ы (порт depends на domain)
     ├── ports/                       # Интерфейсы
     └── adapters/                    # CLI, MCP, memory store
+```
+
+
+**Конфигурация советов:**
+
+```text
+.wolf/councils/
+├── architecture.yaml    # quorum: 3, consensus: 0.75, members: [architect, security, ux]
+├── security.yaml        # quorum: 2, consensus: 1.0, members: [security, architect]
+└── performance.yaml     # quorum: 3, consensus: 0.67, members: [performance, ux, cost]
+```
+
+```yaml
+# architecture.yaml
+name: architecture-council
+quorum: 3                    # минимум голосов для решения
+consensus_threshold: 0.75    # доля победителя
+members:
+  - council-architect        # model: glm-5.3
+  - council-security         # model: glm-5.3
+  - council-ux               # model: glm-5-turbo
+vote_contract: "VOTE: A|B|C|ABSTAIN|TIMEOUT"
 ```
 
 **Границы:**
