@@ -158,37 +158,81 @@ Implemented CSV parser using PapaParse.
 
 ### 1.4. Структура хранения
 
-**Физическое разделение по тредам, плоская структура внутри треда.**
+**Физическое разделение по тредам, подкаталоги по типам внутри треда.**
 
 ```text
 .wolf/
-  config.yaml              # таксономия, artifact_sources [Phase 8]
+  config.yaml                # таксономия, artifact_sources [Phase 8]
   memory/
-    threads/               # Треды (физические каталоги)
-      csv-export/          # Тред = каталог
-        WORK-THREAD.md     # {id: csv-export, status: active}
-        csv-export-spec.md # {type: document, thread: csv-export}
-        TASK-001.md        # {type: task-brief, thread: csv-export}
+    threads/                 # Треды (физические каталоги)
+      csv-export/            # Тред = каталог
+        WORK-THREAD.md       # {id: csv-export, status: active}
+        documents/           # Спеки, планы, ревью
+          2026-07-01-spec.md
+          2026-07-02-plan.md
+          2026-07-15-spec.md         # обновлённая версия
+        tasks/               # Task briefs и reports (пары)
+          2026-07-03-TASK-001-parser.brief.md
+          2026-07-05-TASK-001-parser.report.md
+        decisions/           # ADR
+          2026-07-04-ADR-001-library.md
+        councils/            # Советы
+          2026-07-08-QUESTION-001.md
+          2026-07-08-OPINION-001-architect.md
+          2026-07-08-SYNTHESIS-001.md
+        sessions/            # Checkpoints и summaries
+          2026-07-09-checkpoint.md
       auth-refactor/
         ...
-    shared/                # Shared объекты
-      coding-standards.md  # {type: rule, thread: null}
-      tech-stack.md        # {type: decision, thread: null}
-    relations.jsonl        # канон для связей
-    events.jsonl           # audit trail
-    briefs/                # производные снимки
-  cache/index.sqlite       # производный FTS5-индекс
+    shared/                  # Shared объекты
+      rules/
+        2026-06-01-coding-standards.md
+      decisions/
+        2026-06-10-tech-stack.md
+    relations.jsonl          # канон для связей
+    events.jsonl             # audit trail
+    briefs/                  # производные снимки
+  cache/index.sqlite         # производный FTS5-индекс
 ```
 
 **Почему физическая группировка:**
 - **Удаление треда** — `rm -rf threads/<id>/` + обновление индексов. Атомарно.
 - **Визуальная навигация** — без grep видно что принадлежит треду.
 - **Изоляция** — параллельная работа без конфликтов.
-- **Права доступа** — можно ограничить на уровне ОС.
 
-**Почему плоская структура внутри треда:**
-- Тип определяется полем `type` в frontmatter, не путём.
-- Избыточная вложенность не нужна.
+**Почему подкаталоги по типам:**
+- Человек ищет файлы по типу ("где спеки?")
+- 100+ файлов в плоском каталоге нечитабельны
+- Агентам всё равно (они через FTS5)
+- Git-история стабильна
+
+**Обязательные подкаталоги:**
+- `documents/` — спеки, планы, ревью
+- `tasks/` — task briefs и reports
+
+**Опциональные (создаются при первом объекте):**
+- `decisions/`, `councils/`, `escalations/`, `lessons/`, `blockers/`, `sessions/`
+
+#### Правила именования файлов
+
+**Формат:** `YYYY-MM-DD-<slug>.md`
+
+- Дата создания объекта (ISO 8601), сортируется лексикографически
+- Slug: kebab-case, описательный
+- Разделитель: `-`
+
+**Версионирование:**
+- Новая версия = новый файл с новой датой
+- Старый файл помечается `superseded` в frontmatter
+- Связь через `supersedes` в relations.jsonl
+- Не использовать `-v1`, `-v2` в имени
+
+**Парные объекты (brief/report):**
+- ID задачи в имени для парности
+- Дата у каждого объекта своя (дата создания)
+
+**Объекты одного совета:**
+- Все имеют одну дату (дату создания вопроса)
 
 **Scope:**
 - `threads/<id>/` — объекты треда, изолированы
@@ -237,16 +281,26 @@ Wolf использует граф как механизм селекции ко
 ```text
 .wolf/memory/
 ├── threads/
-│   ├── csv-export/              # Тред = каталог
-│   │   ├── WORK-THREAD.md       # {id: csv-export, status: active}
-│   │   ├── csv-export-spec.md   # {type: document}
-│   │   ├── TASK-001.md          # {type: task-brief}
-│   │   └── REPORT-001.md        # {type: report}
+│   ├── csv-export/
+│   │   ├── WORK-THREAD.md
+│   │   ├── documents/
+│   │   │   ├── 2026-07-01-spec.md
+│   │   │   ├── 2026-07-02-plan.md
+│   │   │   └── 2026-07-15-spec.md      # superseded
+│   │   ├── tasks/
+│   │   │   ├── 2026-07-03-TASK-001-parser.brief.md
+│   │   │   └── 2026-07-05-TASK-001-parser.report.md
+│   │   ├── decisions/
+│   │   │   └── 2026-07-04-ADR-001-library.md
+│   │   └── sessions/
+│   │       └── 2026-07-09-checkpoint.md
 │   └── auth-refactor/
 │       └── ...
 └── shared/
-    ├── coding-standards.md      # {type: rule, thread: null}
-    └── tech-stack.md            # {type: decision, thread: null}
+    ├── rules/
+    │   └── 2026-06-01-coding-standards.md
+    └── decisions/
+        └── 2026-06-10-tech-stack.md
 ```
 
 **Scope:**
@@ -910,6 +964,8 @@ memory_types:
 | 6 | Режимы | 6 vs 3 | **3: Discovery / Execution / Review** | Monitoring/Quick Lookup — поведение, не состояния |
 | 7 | Реестр vs frontmatter | registry.json как канон vs frontmatter объектов | **Frontmatter — канон; индексы — проекции** | Источник истины один и лежит рядом с данными |
 | 8 | Структура тредов | Логическая (поле `thread`) vs физическая (каталоги) | **Физическая** | Удаление/архивация атомарно, визуальная навигация, изоляция |
+| 9 | Структура внутри треда | Плоская vs подкаталоги по типам | **Подкаталоги по типам** | 100+ файлов в плоском каталоге нечитабельны; агентам всё равно |
+| 10 | Именование файлов | Slug без даты vs дата в имени | **Дата в имени** | Хронологическая сортировка, версионирование через дату, поиск по времени |
 
 ---
 
@@ -955,8 +1011,16 @@ project/
 │   ├── memory/
 │   │   ├── threads/                 # Треды (физические каталоги)
 │   │   │   ├── csv-export/          # Тред = каталог
+│   │   │   │   ├── WORK-THREAD.md
+│   │   │   │   ├── documents/       # Спеки, планы
+│   │   │   │   ├── tasks/           # Briefs + reports
+│   │   │   │   ├── decisions/       # ADR
+│   │   │   │   ├── councils/        # Советы
+│   │   │   │   └── sessions/        # Checkpoints
 │   │   │   └── auth-refactor/
 │   │   ├── shared/                  # Shared объекты
+│   │   │   ├── rules/
+│   │   │   └── decisions/
 │   │   ├── relations.jsonl          # Граф связей (канон)
 │   │   ├── events.jsonl             # Audit trail
 │   │   └── briefs/                  # Производные снимки
@@ -993,7 +1057,7 @@ vote_contract: "VOTE: A|B|C|ABSTAIN|TIMEOUT"
 
 **Границы:**
 - `agents/` и `skills/` — знания агентов, **не** память проекта.
-- `.wolf/memory/objects/` — единственное место хранения памяти.
+- `.wolf/memory/threads/` и `.wolf/memory/shared/` — единственное место хранения памяти.
 - Код проекта (`src/`, `tests/`) — вне `.wolf/`, регистрируется по ссылке как `document` (§1.3).
 - Код mr-wolf (`src/`) — не память и не агент, а инфраструктура.
 
