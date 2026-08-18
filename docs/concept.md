@@ -212,6 +212,18 @@ wolf (координатор, k3-256k)         — брифы, решения, �
 
 **Канал эскалации в автономном прогоне**: wolf пишет escalation-объект, **останавливается**; человек докатывает решение вторым запуском — файловый протокол гарантирует продолжение с места остановки (M11).
 
+
+**Approved Lists** — источники для автономных решений. Хранятся как объекты `rule` (Phase 6 governance, создание — только пользователем):
+
+```text
+.wolf/memory/objects/rule/
+├── approved-libraries.md    # CSV: PapaParse; HTTP: axios; Testing: vitest
+├── approved-patterns.md     # Архитектурные паттерны проекта
+└── coding-standards.md      # Стиль, типизация, именование
+```
+
+Wolf проверяет: выбор в approved list → `autonomous`; выбор не в списке → `advisory` или `human_required`. Списки живут в памяти — wolf читает их как любой другой `rule`-объект.
+
 ### 2.8. Живучесть
 
 - **Файловый протокол — фундамент [доказано]**: артефакты переживают смерть процесса. Экономика доката: kill на ~50% + resume ≈ **0.7× стоимости** чистового прогона (160k против 226k, LONG-001).
@@ -464,7 +476,107 @@ Core pack типов через `.wolf/config.yaml` (типы из кода — 
 
 ---
 
-## 9. Что НЕ входит в scope
+
+## 9. Структура проекта
+
+Полная структура Mr. Wolf — memory substrate, встроенный в проект:
+
+```text
+project/
+├── agents/                          # Агенты opencode (markdown + frontmatter)
+│   ├── wolf.md                      # Координатор (k3-256k, dispatch_only)
+│   ├── executor.md                  # Менеджер задачи (glm-5.x, controlled)
+│   ├── worker.md                    # Однозадачный (glm-5-turbo, none)
+│   ├── reviewer.md                  # Ревьюер (glm-5.x, read-only)
+│   └── council-*.md                 # Члены совета (glm-5.x, read-only)
+│
+├── skills/                          # Процедурные инструкции (§2.10)
+│   ├── wolf-brainstorm.md
+│   ├── wolf-plan.md
+│   ├── wolf-sdd.md
+│   ├── wolf-execute.md
+│   ├── wolf-review.md
+│   └── wolf-handoff.md
+│
+├── .wolf/                           # Memory substrate
+│   ├── config.yaml                  # Таксономия типов (Phase 8)
+│   ├── memory/
+│   │   ├── objects/<тип>/           # Markdown + frontmatter (канон)
+│   │   ├── relations.jsonl          # Граф связей (канон)
+│   │   ├── events.jsonl             # Audit trail
+│   │   └── briefs/                  # Производные снимки
+│   └── cache/
+│       └── index.sqlite             # FTS5-индекс (проекция)
+│
+└── src/                             # Исходный код mr-wolf (hexagonal)
+    ├── domain/                      # Use-case'ы (порт depends на domain)
+    ├── ports/                       # Интерфейсы
+    └── adapters/                    # CLI, MCP, memory store
+```
+
+**Границы:**
+- `agents/` и `skills/` — знания агентов, **не** память проекта.
+- `.wolf/memory/objects/` — единственное место хранения памяти.
+- Код проекта (`src/`, `tests/`) — вне `.wolf/`, регистрируется по ссылке как `document` (§1.3).
+- Код mr-wolf (`src/`) — не память и не агент, а инфраструктура.
+
+---
+
+## 10. Примеры workflow
+
+### 10.1. FLAT: специфицируемая задача
+
+```text
+Пользователь: "Добавь CSV export"
+
+Wolf [DISCOVERY]:
+  → классифицирует: специфицируемая → FLAT
+
+Wolf [EXECUTION]:
+  → wolf-brainstorm: тред → спека → валидация → gate check
+  → wolf-plan: спека → план
+  → wolf-execute: один агент сильной модели, один проход
+
+Wolf [REVIEW]:
+  → показывает результат пользователю
+```
+
+Токены: ~50k (один агент). Налог оркестрации: +157…+1141% — **не окупается** (COST/LONG/RESEARCH).
+
+### 10.2. COUNCIL: изолированное ревью документа
+
+```text
+Пользователь: "Проведи ревью спеки auth"
+
+Wolf [EXECUTION, COUNCIL]:
+  → wolf-review: раунды по перспективам
+    Раунд 1: security reviewer (чистая сессия, read-only)
+      → issues + SUMMARY: 2 critical / 5 major
+    Автор применяет замечания
+    Раунд 2: completeness reviewer (чистая сессия)
+    Раунд 3: consistency reviewer (чистая сессия)
+  → VERDICT: APPROVED | CHANGES
+```
+
+Качество: +31% дефектов, major ×2.2, full-токены −29% (REVIEW-001). Единственная эмпирически окупаемая форма иерархии.
+
+### 10.3. COUNCIL: совет по архитектурному решению
+
+```text
+Executor → Wolf: "Decision Request: Redis или Memcached?"
+
+Wolf [EXECUTION, COUNCIL]:
+  → council-question (объект памяти)
+  → спавнит council-architect, council-security, council-performance
+  → каждый пишет council-opinion (VOTE: A|B|ABSTAIN)
+  → wolf считает по объектам (не по самоотчётам)
+  → synthesis: Redis 2/3, confidence 0.75
+  → escalation? нет → решение
+```
+
+Совет — **read-only**: каждый член даёт одно мнение. Wolf считает голоса и синтезирует. Консенсус не достигнут → escalation к человеку.
+
+## 11. Что НЕ входит в scope
 
 1. **Редактирование кода проекта** — зона платформы (opencode edit-тулы, Aider, SWE-agent).
 2. **IDE-интеграция** — не плагин для VSCode/Cursor; Wolf — memory substrate, доступный через CLI/MCP.
@@ -476,7 +588,7 @@ Core pack типов через `.wolf/config.yaml` (типы из кода — 
 8. **6 режимов работы** — сокращено до 3 (§2.3). Monitoring/Quick Lookup — поведение, не состояния.
 9. **Параллелизм как преимущество** — доказано, что не окупается на специфицируемых задачах.
 
-## 10. Приложения
+## 12. Приложения
 
 **A. Механика opencode (M1–M12, v1.18.18)** — полный реестр: `wolf-experiment/HANDOFF.md` §5, детали в `REPORT.md` §4. Ключевое: task denied by default (M2), permission.task glob (M3), depth в рантайме (M4), плагины before-хук до permission (M6/M7), MCP мимо стены (M8), токены в SQLite (M12).
 
