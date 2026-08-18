@@ -13,7 +13,6 @@ docs/discussions/
 .codegraph/
 opencode.json
 .external_experts_review/
-
 # wolf-experiment sandbox artifacts
 __pycache__/
 *.pyc
@@ -21,3 +20,5 @@ __pycache__/
 *.nbc
 .pytest_cache/
 !wolf-experiment/opencode.json
+
+.autorefine/
