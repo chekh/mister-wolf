@@ -17,7 +17,7 @@ Mr. Wolf — local-first memory substrate для AI coding agents.
 - Flat by default: иерархия не окупается на специфицируемых задачах (+157…+1141% токенов)
 - Council Mode и изолированное ревью — единственные окупающиеся формы оркестрации (+31% дефектов)
 - 3 уровня агентов: wolf (thin, 11–18k) → executor → worker (однозадачный)
-- Треды — логическая группировка через поле `thread`, не каталоги
+- Треды — физические каталоги `threads/<id>/` с подкаталогами по типам
 - Enforcement — permission-glob платформы (M2–M4), не capability tokens
 - Frontmatter — канон, Registry отклонён
 
@@ -29,7 +29,7 @@ Mr. Wolf — local-first memory substrate для AI coding agents.
 
 ## 0. Позиционирование
 
-**Терминологическое замечание:** В этом документе "Mr. Wolf" используется в двух смыслах:
+**Терминологическое замечание:** В этом документе "Mr. Wolf" используется в двух смыслах (полные определения — см. §12 Глоссарий):
 
 1. **Mr. Wolf Memory Substrate** — пассивное ядро памяти: `.wolf/memory/`, relations, FTS5, governance. Не агент, не оркестратор. Хранит данные, не принимает решений.
 
@@ -65,7 +65,7 @@ Mr. Wolf Memory Substrate — пассивный слой хранения да�
 
 **Как это реализовано сегодня:**
 
-- **Единый объект памяти [реализовано].** Каждый артефакт — markdown-файл с YAML-frontmatter в `.wolf/memory/objects/<тип>/`. Frontmatter — канон: `id`, `type`, `title`, `status`, `review_state`, `confidence`, `importance`, `created_at`, `created_by`, `source`, `related`, `superseded_by`. Список типов — `MEMORY_TYPES` в `src/domain/memory-types.ts` (13 типов, hardcoded).
+- **Единый объект памяти [реализовано].** Каждый артефакт — markdown-файл с YAML-frontmatter в `.wolf/memory/threads/<id>/<тип>/` или `.wolf/memory/shared/<тип>/`. Frontmatter — канон: `id`, `type`, `title`, `status`, `review_state`, `confidence`, `importance`, `created_at`, `created_by`, `source`, `related`, `superseded_by`. Список типов — `MEMORY_TYPES` в `src/domain/memory-types.ts` (13 типов, hardcoded).
 - **Файлы — source of truth [реализовано].** SQLite с FTS5 (`.wolf/cache/index.sqlite`) — производный, перестраиваемый индекс. События — append-only `events.jsonl` (audit trail). Связи — `relations.jsonl` (канон; зеркала в frontmatter генерируются из него).
 - **Жизненный цикл вместо удаления [реализовано].** Статусы: `draft → active → superseded/archived`, плюс доменные (`open → answered/resolved`, `proposed → accepted/rejected`). Объекты не удаляются: `wolf supersede` связывает старый с новым. Сканер помечает пропавшие документы как `stale`.
 - **Governance [реализовано, Phase 6].** `memory_class`, `truth_role`, `lifetime` по умолчанию от `createdBy`. Тип `rule` создаётся только пользователем. Переходы статусов валидируются `ALLOWED_TRANSITIONS`.
@@ -94,7 +94,7 @@ Mr. Wolf Memory Substrate — пассивный слой хранения да�
 **Примеры шаблонов:**
 
 ```yaml
-# task-brief/TASK-001.md
+# threads/csv-export/tasks/2026-07-03-TASK-001-parser.brief.md
 ---
 id: TASK-001
 type: task-brief
@@ -103,6 +103,7 @@ status: active
 executor: executor-lead
 priority: high
 timeout: 30m
+created_at: 2026-07-03T10:00:00Z
 related:
   - csv-export-spec
 ---
@@ -120,12 +121,13 @@ related:
 ```
 
 ```yaml
-# report/REPORT-001.md
+# threads/csv-export/tasks/2026-07-05-TASK-001-parser.report.md
 ---
 id: REPORT-001
 type: report
 thread: csv-export
 status: completed
+created_at: 2026-07-05T11:30:00Z
 answers: TASK-001
 ---
 
@@ -257,6 +259,16 @@ escalation ──resolved_by──▶ decision
 
 Wolf использует граф как механизм селекции контекста: стартовая точка (нить) → обход на 1–2 ребра → в контекст попадают только связанные объекты нужного типа и статуса. Superseded-цепочки дают историю решений без шума.
 
+**Пример relations.jsonl:**
+
+```jsonl
+{"source": "2026-07-03-TASK-001-parser", "predicate": "based_on", "target": "2026-07-01-csv-export-spec", "created_at": "2026-07-03T10:00:00Z"}
+{"source": "2026-07-05-TASK-001-parser-report", "predicate": "answers", "target": "2026-07-03-TASK-001-parser", "created_at": "2026-07-05T11:30:00Z"}
+{"source": "2026-07-15-csv-export-spec", "predicate": "supersedes", "target": "2026-07-01-csv-export-spec", "created_at": "2026-07-15T14:00:00Z"}
+```
+
+Формат: одна строка = одна связь. JSON с полями `source`, `predicate`, `target`, `created_at`. Append-only.
+
 ### 1.6. Пробелы памяти (честно)
 
 1. **Schema-driven taxonomy [Phase 8, roadmap-v2]** — типы hardcoded; оркестрационные типы должны войти через core pack + `.wolf/config.yaml`.
@@ -268,13 +280,13 @@ Wolf использует граф как механизм селекции ко
 
 ### 1.7. Треды (workstreams)
 
-**Тред** — логическая группировка памяти по задаче. Не каталог, а **поле `thread` в frontmatter** + связи через `relations.jsonl`.
+**Тред** — **физический каталог** в `.wolf/memory/threads/<id>/` с подкаталогами по типам объектов. Логическая связь дополнительно отражается полем `thread` в frontmatter (для FTS5-поиска и relations).
 
-**Почему логическая группировка:**
-- Один объект может быть shared (доступен всем тредам)
-- Перемещение между тредами = изменение поля, не копирование файла
-- FTS5 поиск по полю `thread` мгновенный
-- Нет дублирования документов между тредами
+**Почему физическая группировка:**
+- Удаление треда = `rm -rf threads/<id>/` (атомарно)
+- Визуальная навигация без grep
+- Изоляция при параллельной работе
+- Поле `thread` в frontmatter дублирует каталог для поиска
 
 #### Структура
 
@@ -368,21 +380,21 @@ wolf search "parser"                       # все треды, группиро
 **Пример session-checkpoint:**
 
 ```yaml
-# session-checkpoint/CHECKPOINT-2026-08-19-14-30.md
+# threads/csv-export/sessions/2026-08-19-checkpoint.md
 ---
 id: CHECKPOINT-2026-08-19-14-30
 type: session-checkpoint
 thread: csv-export
 created_at: 2026-08-19T14:30:00Z
 related:
-  - csv-export-spec
-  - csv-export-plan
+  - 2026-07-01-csv-export-spec
+  - 2026-07-02-csv-export-plan
 open_tasks: [TASK-003, TASK-004]
 open_escalations: []
 context_refs:
-  - approved-libraries    # rule
-  - coding-standards      # rule
-  - csv-library           # decision
+  - approved-libraries
+  - coding-standards
+  - csv-library
 ---
 
 # Checkpoint
@@ -492,10 +504,10 @@ wolf (координатор, k3-256k)         — брифы, решения, �
 **Approved Lists** — источники для автономных решений. Хранятся как объекты `rule` (Phase 6 governance, создание — только пользователем):
 
 ```text
-.wolf/memory/objects/rule/
-├── approved-libraries.md    # CSV: PapaParse; HTTP: axios; Testing: vitest
-├── approved-patterns.md     # Архитектурные паттерны проекта
-└── coding-standards.md      # Стиль, типизация, именование
+.wolf/memory/shared/rules/
+├── 2026-06-01-coding-standards.md      # Стиль, типизация, именование
+├── 2026-06-02-approved-libraries.md    # CSV: PapaParse; HTTP: axios
+└── 2026-06-15-approved-patterns.md     # Архитектурные паттерны
 ```
 
 Wolf проверяет: выбор в approved list → `autonomous`; выбор не в списке → `advisory` или `human_required`. Списки живут в памяти — wolf читает их как любой другой `rule`-объект.
@@ -553,7 +565,7 @@ skills/
 - Скилл читается агентом при входе в режим/маршрут.
 - Шаги скилла используют Wolf API (memory, thread, gate).
 - Скилл не является памятью — это процедурное знание, а не данные.
-- Дисциплина enforcement (§2.6) применяется к скиллам так же: permission.task, depth, квоты.
+- Дисциплина enforcement (§2.6) применяется к скиллам так же, как к агентам: permission.task, depth, квоты.
 
 **Отличие от объектов памяти:** объект — «что решено/произошло» (данные); скилл — «как делать» (процедура). Скиллы живут в `skills/`, объекты памяти — в `.wolf/memory/objects/`.
 
@@ -1075,10 +1087,15 @@ Wolf [DISCOVERY]:
   → wolf thread create csv-export
 
 Wolf [EXECUTION]:
-  → wolf-brainstorm: исследование → спека {thread: csv-export} → валидация
+  → wolf-brainstorm: исследование → спека {thread: csv-export}
+     # threads/csv-export/documents/2026-08-19-csv-export-spec.md
   → wolf-plan: спека → план {thread: csv-export}
+     # threads/csv-export/documents/2026-08-19-csv-export-plan.md
   → wolf-execute: один агент сильной модели
-    → task-brief {thread: csv-export} → report {thread: csv-export}
+    → task-brief {thread: csv-export}
+     # threads/csv-export/tasks/2026-08-19-TASK-001.brief.md
+    → report {thread: csv-export}
+     # threads/csv-export/tasks/2026-08-20-TASK-001.report.md
 
 Wolf [REVIEW]:
   → показывает результат пользователю
