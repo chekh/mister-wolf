@@ -158,22 +158,45 @@ Implemented CSV parser using PapaParse.
 
 ### 1.4. Структура хранения
 
-**Граница проста: память = `.wolf/memory/`, код и документы проекта — вне её.**
+**Физическое разделение по тредам, плоская структура внутри треда.**
 
 ```text
 .wolf/
-  config.yaml            # таксономия, artifact_sources [Phase 8]
+  config.yaml              # таксономия, artifact_sources [Phase 8]
   memory/
-    objects/<тип>/       # канон: markdown + frontmatter
-    relations.jsonl      # канон для связей
-    events.jsonl         # audit trail
-    briefs/              # производные снимки
-  cache/index.sqlite     # производный FTS5-индекс
+    threads/               # Треды (физические каталоги)
+      csv-export/          # Тред = каталог
+        WORK-THREAD.md     # {id: csv-export, status: active}
+        csv-export-spec.md # {type: document, thread: csv-export}
+        TASK-001.md        # {type: task-brief, thread: csv-export}
+      auth-refactor/
+        ...
+    shared/                # Shared объекты
+      coding-standards.md  # {type: rule, thread: null}
+      tech-stack.md        # {type: decision, thread: null}
+    relations.jsonl        # канон для связей
+    events.jsonl           # audit trail
+    briefs/                # производные снимки
+  cache/index.sqlite       # производный FTS5-индекс
 ```
 
-- **Threads vs shared.** Ранняя концепция требовала физического разделения `threads/<id>/` и `shared/`. В harness'е нить — **логическая группировка** (поле `thread` + relations), не каталог. Физическая раскладка — по типу. Разделение «нитевое/общее» выражается классом памяти и lifetime, а не путём.
-- **Код остаётся кодом.** Документы проекта регистрируются **по ссылке** (`document` с `source.path`, content hash, `stale` при пропаже) **[реализовано]**. Копирование тел документов в память — анти-паттерн.
-- **Каталоги эксперимента (`coordinator/`, `executor/`, `councils/`) упраздняются**: их содержимое — типы памяти, их протокол — use-case'ы harness'а.
+**Почему физическая группировка:**
+- **Удаление треда** — `rm -rf threads/<id>/` + обновление индексов. Атомарно.
+- **Визуальная навигация** — без grep видно что принадлежит треду.
+- **Изоляция** — параллельная работа без конфликтов.
+- **Права доступа** — можно ограничить на уровне ОС.
+
+**Почему плоская структура внутри треда:**
+- Тип определяется полем `type` в frontmatter, не путём.
+- Избыточная вложенность не нужна.
+
+**Scope:**
+- `threads/<id>/` — объекты треда, изолированы
+- `shared/` — объекты, видимые всем тредам (`thread: null` в frontmatter)
+
+**Код остаётся кодом.** Документы проекта регистрируются **по ссылке** (`document` с `source.path`, content hash, `stale` при пропаже) **[реализовано]**. Копирование тел документов в память — анти-паттерн.
+
+**Каталоги эксперимента (`coordinator/`, `executor/`, `councils/`) упраздняются**: их содержимое — типы памяти, их протокол — use-case'ы harness'а.
 
 ### 1.5. Связи и навигация
 
@@ -212,22 +235,33 @@ Wolf использует граф как механизм селекции ко
 #### Структура
 
 ```text
-.wolf/memory/objects/
-├── work-thread/
-│   ├── csv-export.md         # {id: csv-export, status: active}
-│   └── auth-refactor.md      # {id: auth-refactor, status: active}
-├── document/
-│   ├── csv-export-spec.md    # {thread: csv-export} — thread-scoped
-│   └── coding-standards.md   # {thread: null} — shared
-├── decision/
-│   ├── csv-library.md        # {thread: csv-export}
-│   └── tech-stack.md         # {thread: null} — shared
-└── ...
+.wolf/memory/
+├── threads/
+│   ├── csv-export/              # Тред = каталог
+│   │   ├── WORK-THREAD.md       # {id: csv-export, status: active}
+│   │   ├── csv-export-spec.md   # {type: document}
+│   │   ├── TASK-001.md          # {type: task-brief}
+│   │   └── REPORT-001.md        # {type: report}
+│   └── auth-refactor/
+│       └── ...
+└── shared/
+    ├── coding-standards.md      # {type: rule, thread: null}
+    └── tech-stack.md            # {type: decision, thread: null}
 ```
 
 **Scope:**
-- `thread: <id>` — принадлежит треду, изолирован
-- `thread: null` или отсутствует — shared, виден всем
+- `threads/<id>/` — физический каталог треда, объекты изолированы
+- `shared/` — каталог общих объектов (`thread: null` в frontmatter)
+
+**Удаление треда:**
+```bash
+wolf thread delete csv-export  # rm -rf threads/csv-export/ + обновление индексов
+```
+
+**Архивация треда:**
+```bash
+wolf thread archive csv-export  # mv threads/csv-export/ → archive/csv-export/
+```
 
 #### Жизненный цикл
 
@@ -637,6 +671,43 @@ interface EditResult {
 
 
 - **Почему не Registry.** Обсуждалась альтернатива: вынести метаданные в отдельный `registry.json`. Отказ: frontmatter + zod-валидация + post-edit проверка (P0) решают проблемы синхронизации, а «источник истины рядом с данными» проще для отладки и git-friendly. Registry — избыточный слой рассинхронизации.
+
+
+**MCP-тулы (current, built):**
+
+```typescript
+// Memory operations
+wolf_add(type: string, fields: object): string
+wolf_list(filters?: {type?, thread?, status?}): Object[]
+wolf_get(objectId: string): Object
+wolf_search(query: string, options?: {thread?, type?}): SearchResult[]
+wolf_supersede(oldId: string, newId: string): void
+wolf_rebuild_index(): void
+wolf_scan(): StaleObject[]
+
+// Thread operations
+wolf_thread_create(threadId: string, metadata?: object): void
+wolf_thread_list(filters?: {status?}): Thread[]
+wolf_thread_get(threadId: string): Thread
+wolf_recap(threadId?: string): Recap
+
+// Session operations
+wolf_session_wrap_up(threadId: string): SessionSummary
+wolf_brief(threadId?: string): Brief
+```
+
+**MCP-тулы (planned, Phase 11):**
+
+```typescript
+// Editing operations
+wolf_edit(objectId: string, patch: SearchReplaceBlock[]): EditResult
+wolf_patch(objectId: string, patchContent: string): EditResult
+wolf_refs(refValue: string): Reference[]
+
+// Graph operations
+wolf_thread_graph(threadId: string, depth?: number): Graph
+```
+
 ### 3.6. Границы: чего слой НЕ делает
 
 1. Не редактирует код проекта (scope жёстко `.wolf/memory/**`).
@@ -724,10 +795,53 @@ Core pack типов через `.wolf/config.yaml` (типы из кода — 
 ```yaml
 # .wolf/config.yaml
 memory_types:
+  # Core types (Phases 0-7)
+  work-thread:
+    required_fields: [title]
+    lifecycle: [draft, active, completed, archived]
+    relations: [related_to]
+
+  decision:
+    required_fields: [rationale]
+    lifecycle: [proposed, accepted, rejected, superseded]
+    relations: [based_on, supersedes]
+
+  document:
+    required_fields: [source_path]
+    lifecycle: [active, stale, superseded]
+    relations: [related_to]
+
+  rule:
+    required_fields: [content]
+    lifecycle: [active, superseded]
+    truth_role: user_only  # создание только пользователем
+    relations: [supersedes]
+
+  session-checkpoint:
+    required_fields: [open_tasks]
+    lifecycle: [active]
+    relations: [related_to]
+
+  session-summary:
+    required_fields: [summary]
+    lifecycle: [active]
+    relations: [related_to]
+
+  # Orchestration types (Phase 8)
   task-brief:
     required_fields: [executor, priority, timeout, related]
     lifecycle: [draft, active, completed, superseded]
     relations: [based_on, related_to, answered_by]
+
+  report:
+    required_fields: [summary]
+    lifecycle: [draft, completed]
+    relations: [answers, supports]
+
+  council-question:
+    required_fields: [question, quorum, consensus_threshold]
+    lifecycle: [open, answered]
+    relations: [related_to, answered_by]
 
   council-opinion:
     required_fields: [vote]
@@ -736,11 +850,53 @@ memory_types:
     enum:
       vote: [A, B, C, ABSTAIN, TIMEOUT]
 
+  synthesis:
+    required_fields: [recommendation, confidence]
+    lifecycle: [draft, accepted]
+    relations: [based_on, supports]
+
   escalation:
     required_fields: [question]
     lifecycle: [open, resolved, dismissed]
     relations: [resolved_by]
+
+  decision-request:
+    required_fields: [question]
+    lifecycle: [open, answered]
+    relations: [answered_by]
 ```
+
+
+
+### Сводная таблица CLI команд
+
+| Команда | Назначение | Статус |
+|---|---|---|
+| **Управление тредами** | | |
+| `wolf thread create <id>` | Создать тред | built |
+| `wolf thread list [--status active]` | Список тредов | built |
+| `wolf thread complete <id>` | Завершить тред | built |
+| `wolf thread archive <id>` | Архивировать тред | built |
+| `wolf thread delete <id>` | Удалить тред | built |
+| **Сессии и handoff** | | |
+| `wolf recap` | Восстановить контекст | built |
+| `wolf session wrap-up` | Создать handoff | built |
+| `wolf brief` | Производный снимок памяти | built |
+| **Поиск** | | |
+| `wolf search <query> [--thread <id>]` | FTS5 поиск | built |
+| `wolf get <object-id>` | Получить объект | built |
+| `wolf list [--type <type>] [--thread <id>]` | Список объектов | built |
+| **Жизненный цикл** | | |
+| `wolf supersede <old> <new>` | Заменить объект | built |
+| `wolf scan` | Найти stale объекты | built |
+| **Редактирование памяти (Phase 11)** | | |
+| `wolf edit <object-id>` | Редактировать объект | designed |
+| `wolf patch <object-id>` | Применить SEARCH/REPLACE | designed |
+| `wolf refs <value>` | Поиск по ссылкам | designed |
+| **Ревью (Phase 10)** | | |
+| `wolf review <doc>` | Изолированное ревью | planned |
+| **Граф связей** | | |
+| `wolf thread graph <id>` | Показать цепочку | planned |
 
 ## 7. Решённые противоречия
 
@@ -753,6 +909,7 @@ memory_types:
 | 5 | Platform Adapter Layer | Переносимость vs нативность | **opencode-нативность; адаптеры вне scope** | Механика M1–M12 проверена на opencode; вторая платформа — спекуляция |
 | 6 | Режимы | 6 vs 3 | **3: Discovery / Execution / Review** | Monitoring/Quick Lookup — поведение, не состояния |
 | 7 | Реестр vs frontmatter | registry.json как канон vs frontmatter объектов | **Frontmatter — канон; индексы — проекции** | Источник истины один и лежит рядом с данными |
+| 8 | Структура тредов | Логическая (поле `thread`) vs физическая (каталоги) | **Физическая** | Удаление/архивация атомарно, визуальная навигация, изоляция |
 
 ---
 
@@ -796,7 +953,10 @@ project/
 ├── .wolf/                           # Memory substrate
 │   ├── config.yaml                  # Таксономия типов (Phase 8)
 │   ├── memory/
-│   │   ├── objects/<тип>/           # Markdown + frontmatter (канон)
+│   │   ├── threads/                 # Треды (физические каталоги)
+│   │   │   ├── csv-export/          # Тред = каталог
+│   │   │   └── auth-refactor/
+│   │   ├── shared/                  # Shared объекты
 │   │   ├── relations.jsonl          # Граф связей (канон)
 │   │   ├── events.jsonl             # Audit trail
 │   │   └── briefs/                  # Производные снимки
@@ -926,6 +1086,37 @@ Wolf [EXECUTION, COUNCIL]:
 **Результат:** Два треда параллельно, контекст не смешивается, handoff через session-summary + session-checkpoint (§1.7). Каждый тред изолирован, shared решения видны всем.
 
 
+
+### 10.5. Recovery после прерывания
+
+```text
+День 1, 15:00:
+  wolf thread csv-export
+  → работа над TASK-003
+  → process killed (OOM, user ctrl+c, etc.)
+  → session-summary НЕ вызван явно
+  → events.jsonl содержит последнюю запись:
+    {ts: "15:45:00", op: "create", object: "TASK-003"}
+
+День 2, 10:00:
+  wolf recap
+  → читает последний session-summary (если есть)
+  → находит TASK-003 (active task-brief без report)
+  → читает связанные объекты через relations
+  → восстанавливает контекст ~5k токенов
+
+Wolf [EXECUTION]:
+  → продолжает с TASK-003, не с нуля
+  → executor стартует с brief TASK-003
+
+Токены: 0.7× от чистового прогона (LONG-001)
+Механика:
+  - events.jsonl — audit trail (что произошло)
+  - relations.jsonl — граф связей (что связано)
+  - task-brief без report — недоделанная работа
+  - Файловый протокол переживает смерть процесса
+```
+
 ## 11. Что НЕ входит в scope
 
 1. **Редактирование кода проекта** — зона платформы (opencode edit-тулы, Aider, SWE-agent).
@@ -938,7 +1129,78 @@ Wolf [EXECUTION, COUNCIL]:
 8. **6 режимов работы** — сокращено до 3 (§2.3). Monitoring/Quick Lookup — поведение, не состояния.
 9. **Параллелизм как преимущество** — доказано, что не окупается на специфицируемых задачах.
 
-## 12. Приложения
+
+---
+
+## 12. Глоссарий
+
+### Базовые понятия
+
+**Mr. Wolf Memory Substrate** — пассивное ядро хранения данных:
+- `.wolf/memory/` с объектами, relations, FTS5
+- Не принимает решений, не выполняет задач
+- Предоставляет API для чтения/записи
+
+**Mr. Wolf Coordinator Agent** — активный агент-координатор:
+- Реализован как `agents/wolf.md`
+- Модель: k3-256k
+- Принимает решения, управляет агентами
+- Использует substrate как хранилище
+
+**Агент (Agent)** — активный участник с моделью LLM:
+- Принимает решения на основе контекста
+- Выполняет задачи (пишет код, создаёт документы)
+- Может спавнить других агентов (или не может)
+- Описан в `agents/*.md`
+
+**Оркестратор (Orchestrator)** — координирует работу агентов:
+- Распределяет задачи
+- Контролирует прогресс
+- Синтезирует результаты
+- В Mr. Wolf эту роль играет Coordinator Agent
+
+### Структурные понятия
+
+**Тред (Thread)** — физический каталог в `threads/<id>/`:
+- Группирует объекты по задаче/фиче
+- Может быть удалён/архивирован атомарно
+- Изолирует параллельную работу
+
+**Shared** — каталог `shared/`:
+- Объекты, видимые всем тредам
+- Правила, стандарты, архитектурные решения
+
+**Объект памяти** — markdown-файл с frontmatter:
+- Хранится в `.wolf/memory/threads/<id>/` или `shared/`
+- Тип определяется полем `type` в frontmatter
+- Связи через `relations.jsonl`
+
+**Скилл (Skill)** — markdown-файл в `skills/`:
+- Процедурные инструкции для агентов
+- Не является памятью
+- Описывает "как делать"
+
+### Оркестрационные понятия
+
+**Task Brief** — задание от Coordinator для Executor:
+- Объект памяти типа `task-brief`
+- Содержит контекст, критерии, ограничения
+
+**Report** — отчёт Executor для Coordinator:
+- Объект памяти типа `report`
+- Связан с task-brief через `answers`
+
+**Council** — мини-совет агентов:
+- Read-only члены совета
+- Каждый пишет `council-opinion`
+- Coordinator считает голоса и синтезирует
+
+**Decision Authority** — уровни автономии Coordinator:
+- `autonomous` — решает сам
+- `advisory` — совет, решает по синтезу
+- `human_required` — спрашивает пользователя
+
+## 13. Приложения
 
 **A. Механика opencode (M1–M12, v1.18.18)** — полный реестр: `wolf-experiment/HANDOFF.md` §5, детали в `REPORT.md` §4. Ключевое: task denied by default (M2), permission.task glob (M3), depth в рантайме (M4), плагины before-хук до permission (M6/M7), MCP мимо стены (M8), токены в SQLite (M12).
 
