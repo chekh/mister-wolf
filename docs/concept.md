@@ -115,6 +115,82 @@ Wolf использует граф как механизм селекции ко
 4. **Оркестрационные use-case'ы** — создание `task-brief`/`council-*`/`synthesis`/`escalation`, подсчёт VOTE по объектам, проверка кворума — новые use-case'ы поверх существующего write protocol и governance.
 5. **Открытые вопросы активной памяти** — расширяемость предикатов relations; snapshot vs ids в checkpoint'ах.
 
+
+### 1.7. Треды (workstreams)
+
+**Тред** — логическая группировка памяти по задаче. Не каталог, а **поле `thread` в frontmatter** + связи через `relations.jsonl`.
+
+**Почему логическая группировка:**
+- Один объект может быть shared (доступен всем тредам)
+- Перемещение между тредами = изменение поля, не копирование файла
+- FTS5 поиск по полю `thread` мгновенный
+- Нет дублирования документов между тредами
+
+#### Структура
+
+```text
+.wolf/memory/objects/
+├── work-thread/
+│   ├── csv-export.md         # {id: csv-export, status: active}
+│   └── auth-refactor.md      # {id: auth-refactor, status: active}
+├── document/
+│   ├── csv-export-spec.md    # {thread: csv-export} — thread-scoped
+│   └── coding-standards.md   # {thread: null} — shared
+├── decision/
+│   ├── csv-library.md        # {thread: csv-export}
+│   └── tech-stack.md         # {thread: null} — shared
+└── ...
+```
+
+**Scope:**
+- `thread: <id>` — принадлежит треду, изолирован
+- `thread: null` или отсутствует — shared, виден всем
+
+#### Жизненный цикл
+
+```
+create → active → completed → archived
+```
+
+**Активные треды видны в `wolf thread list --status active`.** Завершённый тред не удаляется — история сохраняется.
+
+#### Handoff между сессиями
+
+**Ключевой механизм для параллельной работы:**
+
+1. **Конец сессии**: `wolf session wrap-up`
+   - Создаёт `session-summary` с `thread: csv-export`
+   - Создаёт `session-checkpoint` с `thread: csv-export`
+
+2. **Начало новой сессии**: `wolf recap`
+   - Читает последний `session-summary` для активного треда
+   - Загружает активные `task-brief` без `report`
+   - Восстанавливает контекст ~5k токенов, не перечитывая все документы
+
+**Результат:** Два треда могут работать параллельно, контекст не смешивается.
+
+#### Поиск внутри треда
+
+```bash
+wolf search "parser" --thread csv-export   # только в треде
+wolf search "parser"                       # все треды, группировка по тредам
+```
+
+#### Связь с оркестрацией
+
+- Council Mode: `council-question`, `council-opinion`, `synthesis` создаются с `thread: <id>`
+- Decision Authority: `decision` и `escalation` с `thread: <id>`
+- Executor: `task-brief` и `report` с `thread: <id>`
+
+Все объекты совета/решений видны в контексте треда.
+
+#### Пробелы
+
+1. **Миграция между тредами** — изменить `thread` и пересоздать relations
+2. **Cross-thread dependencies** — связи через `related_to` с явным указанием
+3. **Thread merging** — если два треда оказались одной задачей
+
+
 ---
 
 ## 2. Агенты и оркестрация
@@ -531,14 +607,17 @@ project/
 
 Wolf [DISCOVERY]:
   → классифицирует: специфицируемая → FLAT
+  → wolf thread create csv-export
 
 Wolf [EXECUTION]:
-  → wolf-brainstorm: тред → спека → валидация → gate check
-  → wolf-plan: спека → план
-  → wolf-execute: один агент сильной модели, один проход
+  → wolf-brainstorm: исследование → спека {thread: csv-export} → валидация
+  → wolf-plan: спека → план {thread: csv-export}
+  → wolf-execute: один агент сильной модели
+    → task-brief {thread: csv-export} → report {thread: csv-export}
 
 Wolf [REVIEW]:
   → показывает результат пользователю
+  → wolf session wrap-up → session-summary {thread: csv-export}
 ```
 
 Токены: ~50k (один агент). Налог оркестрации: +157…+1141% — **не окупается** (COST/LONG/RESEARCH).
@@ -575,6 +654,36 @@ Wolf [EXECUTION, COUNCIL]:
 ```
 
 Совет — **read-only**: каждый член даёт одно мнение. Wolf считает голоса и синтезирует. Консенсус не достигнут → escalation к человеку.
+
+### 10.4. Параллельная работа над тредами
+
+```text
+День 1:
+  wolf thread create csv-export
+  → работа над csv-export
+  → wolf session wrap-up  # checkpoint для csv-export
+
+  wolf thread create auth-refactor
+  → работа над auth-refactor
+  → wolf session wrap-up  # checkpoint для auth-refactor
+
+День 2:
+  wolf recap              # восстанавливает csv-export (~5k токенов)
+  → работа
+  → wolf session wrap-up
+
+  wolf recap              # восстанавливает auth-refactor (~5k токенов)
+  → работа
+  → wolf session wrap-up
+
+День 3:
+  wolf recap              # csv-export
+  → финальные задачи
+  → wolf thread complete csv-export
+```
+
+**Результат:** Два треда параллельно, контекст не смешивается, handoff через session-summary + session-checkpoint (§1.7). Каждый тред изолирован, shared решения видны всем.
+
 
 ## 11. Что НЕ входит в scope
 
