@@ -268,6 +268,35 @@ wolf search "parser"                       # все треды, группиро
 
 ---
 
+
+**Пример session-checkpoint:**
+
+```yaml
+# session-checkpoint/CHECKPOINT-2026-08-19-14-30.md
+---
+id: CHECKPOINT-2026-08-19-14-30
+type: session-checkpoint
+thread: csv-export
+created_at: 2026-08-19T14:30:00Z
+related:
+  - csv-export-spec
+  - csv-export-plan
+open_tasks: [TASK-003, TASK-004]
+open_escalations: []
+context_refs:
+  - approved-libraries    # rule
+  - coding-standards      # rule
+  - csv-library           # decision
+---
+
+# Checkpoint
+
+## Context Restored
+- 2 active tasks pending
+- 0 open escalations
+- Spec and plan locked
+```
+
 ## 2. Агенты и оркестрация
 
 > Статусный протокол раздела: **[доказано]** — измерено в wolf-experiment; **[гипотеза]** — не проверено; **[опровергнуто]** — измерено и отвергнуто.
@@ -428,12 +457,47 @@ skills/
 - Скилл читается агентом при входе в режим/маршрут.
 - Шаги скилла используют Wolf API (memory, thread, gate).
 - Скилл не является памятью — это процедурное знание, а не данные.
-- Дисциплина enforcement (§2.6) применяется к скиллам так же:permission.task, depth, квоты.
+- Дисциплина enforcement (§2.6) применяется к скиллам так же: permission.task, depth, квоты.
 
 **Отличие от объектов памяти:** объект — «что решено/произошло» (данные); скилл — «как делать» (процедура). Скиллы живут в `skills/`, объекты памяти — в `.wolf/memory/objects/`.
 
 ---
 
+
+
+**Полный пример скилла:**
+
+```markdown
+# skills/wolf-brainstorm.md
+
+## Trigger
+Discovery mode → специфицируемая задача → EXECUTION/FLAT
+
+## Steps
+1. `wolf thread create <id> --title "..."` — создаёт work-thread
+2. `wolf search "<keywords>"` — исследование (shared rules + related threads)
+3. `wolf create document --subtype spec --thread <id>` — создать спеку
+4. 5-этапная валидация:
+   - Stage 1: структура (hard, grep)
+   - Stage 2: completeness (hard, no TBD/TODO)
+   - Stage 3: consistency (soft, council если advisory)
+   - Stage 4: measurability (soft)
+   - Stage 5: readiness (human approval)
+5. `wolf gate check create_plan --thread <id>`
+
+## Hard Validators
+- Обязательные секции: Goal, Requirements, Acceptance Criteria
+- REQ-\d{3}: .+ (минимум 1)
+- AC-\d{3}: .+ (ссылка на REQ)
+- Нет паттернов: TBD, TODO, "implement later"
+
+## Objects Created
+- document (subtype: spec, thread: <id>)
+- decision (если были выборы, thread: <id>)
+
+## Handoff
+На выходе: спека валидна → можно перейти к wolf-plan
+```
 
 ### 2.11. Формат агентов: markdown + frontmatter
 
@@ -644,6 +708,31 @@ Core pack типов через `.wolf/config.yaml` (типы из кода — 
 Долгий процесс (2–3 часа), 10+ решений средней важности, метрики: число вопросов к пользователю, время ожидания, handoff'ы, качество решений. Запуск после Phases 8–9 (нужны escalation-объекты и tool policy).
 
 ---
+
+
+
+**Пример `.wolf/config.yaml` (Phase 8):**
+
+```yaml
+# .wolf/config.yaml
+memory_types:
+  task-brief:
+    required_fields: [executor, priority, timeout, related]
+    lifecycle: [draft, active, completed, superseded]
+    relations: [based_on, related_to, answered_by]
+
+  council-opinion:
+    required_fields: [vote]
+    lifecycle: [proposed, accepted]
+    relations: [answers]
+    enum:
+      vote: [A, B, C, ABSTAIN, TIMEOUT]
+
+  escalation:
+    required_fields: [question]
+    lifecycle: [open, resolved, dismissed]
+    relations: [resolved_by]
+```
 
 ## 7. Решённые противоречия
 
