@@ -89,6 +89,7 @@ node dist/bootstrap/cli.js search "lesson"
 - [Roadmap](docs/superpowers/plans/roadmap-v2.md) — current phases and backlog
 - [User guide](docs/user-guide.md) — Phase 4 commands and workflow (Russian)
 - [Docs index](docs/README.md) — specs, plans, and archived materials
+- [wolf-experiment](wolf-experiment/HANDOFF.md) — archived multi-agent orchestration experiment (Wolf → Executor → Workers, Council Mode): empirical boundaries of hierarchy vs flat agents; see HANDOFF.md (Russian)
 
 ## Development
 
