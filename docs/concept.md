@@ -25,6 +25,20 @@ Mr. Wolf — local-first memory substrate для AI coding agents.
 
 **Не делает:** редактирование кода, IDE-интеграция, веб-интерфейс, распределённая работа.
 
+---
+
+## 0.1. Первые 10 минут
+
+```bash
+wolf init        # создаёт .wolf/, config.yaml с дефолтами, шаблоны agents/ и skills/ [built: init; target: шаблоны]
+wolf add ...     # первый объект памяти [built]
+wolf brief       # снимок активной памяти [built]
+```
+
+Целевой first-run: init создаёт `.wolf/` + дефолтный `councils/default.yaml` + шаблоны агентов/скиллов из пакета — пользователь не копирует 16 файлов руками. Первый полезный вывод — `wolf brief` после первых объектов: трассируемая память проекта за 2 команды.
+
+**Минимальный словарь пользователя** (остальное — для wolf'а и power users): `init`, `add`, `search`, `get`, `brief`, `thread create/list/brief`, `session wrap-up`, `supersede`. Типы, naming-правила, предикаты relations, конфиги советов и модели работают за дефолтами.
+
 
 
 ## 0. Позиционирование
@@ -80,7 +94,7 @@ Mr. Wolf Memory Substrate — пассивный слой хранения да�
 
 | Тип | Назначение | Кто создаёт | Кто читает | Связи |
 |---|---|---|---|---|
-| `task-brief` | Задание wolf → executor/worker: контекст, критерии приёмки, ограничения | wolf | executor/worker | `based_on → work-thread`, `related_to → decision/rule` |
+| `task-brief` | Задание wolf → executor/worker: контекст, критерии приёмки, ограничения | wolf | executor/worker | `based_on → work-thread`, `based_on → decision/rule` |
 | `report` | Отчёт исполнителя: summary, изменения, валидация, проблемы | executor/worker | wolf, пользователь | `answers → task-brief`, `supports → decision` |
 | `council-question` | Вопрос совету: варианты, критерии, состав, кворум | wolf | члены совета | `related_to → task-brief/decision` |
 | `council-opinion` | Мнение члена совета; VOTE-контракт сохраняется | council-member | wolf (считает по объектам, не по самоотчётам) | `answers → council-question` |
@@ -91,7 +105,7 @@ Mr. Wolf Memory Substrate — пассивный слой хранения да�
 Дисциплина наследуется: агентские объекты — `review_state: proposed`; решения по итогам совета становятся `decision` только после синтеза/утверждения. Эти типы — кандидаты в **core pack** Phase 8 (schema-driven taxonomy): поля описываются конфигом, а не кодом.
 
 
-**Примеры шаблонов:**
+**Примеры шаблонов** (id в примерах — display-формат для читабельности; реальный `id` — `mem_<date>_<slug>_<hash>`, §1.5):
 
 ```yaml
 # threads/csv-export/tasks/2026-07-03-TASK-001-parser.brief.md
@@ -128,7 +142,7 @@ type: report
 thread: csv-export
 status: completed
 created_at: 2026-07-05T11:30:00Z
-answers: TASK-001
+# связь answers → TASK-001 создаётся в relations.jsonl по глобальному id, не в frontmatter
 ---
 
 # Report: CSV parser implemented
@@ -210,12 +224,24 @@ Implemented CSV parser using PapaParse.
 - Агентам всё равно (они через FTS5)
 - Git-история стабильна
 
-**Обязательные подкаталоги:**
-- `documents/` — спеки, планы, архитектурные документы (не council-opinion)
-- `tasks/` — task briefs и reports
+**Маппинг тип → подкаталог** (канон для Phase 7.5):
 
-**Опциональные (создаются при первом объекте):**
-- `decisions/`, `councils/`, `escalations/`, `lessons/`, `blockers/`, `sessions/`
+| Тип | Подкаталог в треде | В `shared/` |
+|---|---|---|
+| work-thread | `WORK-THREAD.md` (корень треда) | — |
+| document-native | `documents/` | `documents/` |
+| task-brief, report | `tasks/` | — |
+| decision | `decisions/` | `decisions/` |
+| council-question, council-opinion, synthesis | `councils/` | — |
+| escalation, decision-request | `escalations/` | — |
+| lesson, observation | `lessons/` | `lessons/` |
+| blocker | `blockers/` | `blockers/` |
+| session-checkpoint, session-summary | `sessions/` | — |
+| rule | — (только shared) | `rules/` |
+| document-ref | — (внешние файлы) | `documents/` |
+| article, info-request, open-question, context | `notes/` | `notes/` |
+
+Подкаталоги создаются при первом объекте.
 
 #### Правила именования файлов
 
@@ -283,6 +309,8 @@ Wolf использует граф как механизм селекции ко
 
 ### 1.7. Треды (workstreams)
 
+**Статус раздела: [target].** Сегодня тред — объект `work-thread` + поле `thread` в frontmatter связанных объектов; layout — плоский `objects/<тип>/`. Целевая модель ниже; миграция — Phase 7.5. Команды `recap`, `search --thread`, `thread list --status` — **[planned/designed]**, сейчас: `wolf brief`, `thread list` без фильтров.
+
 **Тред** — **физический каталог** в `.wolf/memory/threads/<id>/` с подкаталогами по типам объектов. Логическая связь дополнительно отражается полем `thread` в frontmatter (для FTS5-поиска и relations).
 
 **Почему физическая группировка:**
@@ -334,20 +362,20 @@ Wolf использует граф как механизм селекции ко
 create → active → completed → archived
 ```
 
-**Активные треды видны в `wolf thread list --status active`.** Завершённый тред не удаляется — история сохраняется.
+**Активные треды видны в `wolf thread list`** (фильтр `--status` — [designed]). Завершённый тред не удаляется — история сохраняется.
 
 #### Handoff между сессиями
 
 **Ключевой механизм для параллельной работы:**
 
-1. **Конец сессии**: `wolf session wrap-up`
-   - Создаёт `session-summary` с `thread: csv-export`
-   - Создаёт `session-checkpoint` с `thread: csv-export`
+1. **Конец сессии**: `wolf session wrap-up` [built]
+   - Создаёт `session-summary` (сегодня — глобальный, без `--thread`; per-thread — [designed])
+   - `session-checkpoint` создаётся отдельной командой `wolf session checkpoint`
 
-2. **Начало новой сессии**: `wolf recap`
+2. **Начало новой сессии**: `wolf recap` **[planned]** (сейчас — `wolf brief` + `thread brief`)
    - Читает последний `session-summary` для активного треда
    - Загружает активные `task-brief` без `report`
-   - Восстанавливает контекст ~5k токенов, не перечитывая все документы
+   - Восстанавливает контекст ~5k токенов, не перечитывая все документы [hypothesis — не измерено]
 
 **Пример session-checkpoint:**
 
@@ -375,8 +403,8 @@ context_refs:
 #### Поиск внутри треда
 
 ```bash
-wolf search "parser" --thread csv-export   # только в треде
-wolf search "parser"                       # все треды, группировка по тредам
+wolf search "parser" --thread csv-export   # только в треде [designed — флага пока нет]
+wolf search "parser"                       # все объекты [built]
 ```
 
 #### Связь с оркестрацией
@@ -801,6 +829,7 @@ wolf_thread_graph(threadId: string, depth?: number): Graph
 | Возможность | Статус | Источник |
 |---|---|---|
 | Memory harness (объекты, event log, relations, governance, session wrap-up) | **built** | Phases 0–7 |
+| Физический layout тредов (`threads/<id>/`, `shared/`, даты в именах) | **target** | Phase 7.5; сейчас — плоский `objects/<тип>/` |
 | FTS5-поиск + инкрементальная индексация | **built** | Phases 3, 5 |
 | Council Mode (VOTE, кворум, синтез, эскалация) | **proven** | 11 советов, 8 сценариев, пересчёт 10/10 |
 | Изолированное ревью по перспективам | **proven** | REVIEW-001: +31% issues, major ×2.2, full −29% |
@@ -820,11 +849,13 @@ wolf_thread_graph(threadId: string, depth?: number): Graph
 ## 6. Roadmap
 
 **Phase 7.5 — Миграция layout `[objects/ → threads/]`.**
-- `wolf migrate --dry-run` → отчёт о маппинге существующих объектов
+- **Scope ограничен чисто механическим переносом** по текущим 13 типам (маппинг §1.4). Деление `document` → `document-ref/native` — **вторая миграция данных в Phase 8**, не здесь (разрыв цикла 7.5↔8).
+- `wolf migrate --dry-run` → отчёт о маппинге (формат отчёта — в спеке фазы)
 - Объекты без `thread` → `shared/`; с `thread` → `threads/<id>/<тип>/`
-- Переходный период: store читает оба layout одновременно, пишет только в новый
+- Переходный период: store читает оба layout одновременно, пишет только в новый; коллизия id → приоритет нового layout + warning
 - `relations.jsonl`/`events.jsonl` не мигрируются (id объектов не меняются)
-- Критерий завершения: `objects/` пуст, один прогон тестов
+- Идемпотентность: повторный запуск — докат (пропуск уже мигрированных)
+- Критерий завершения: `objects/` пуст, `wolf scan` чист, существующий набор тестов зелёный
 
 **Phase 8 — Schema-driven taxonomy + оркестрационные типы.**
 Core pack типов через `.wolf/config.yaml` (типы из кода — в конфиг); оркестрационные типы §1.2 (`task-brief`, `report`, `council-question`, `council-opinion`, `synthesis`, `escalation`, `decision-request`) входят через этот механизм. Use-case'ы совета: подсчёт VOTE по объектам, проверка кворума, синтез.
@@ -932,6 +963,8 @@ memory_types:
 
 ### Сводная таблица CLI команд
 
+Ключевые команды (полный список: `wolf --help`). Также built: `init`, `add`, `transition`, `create decision/blocker/rule/article/info-request`, `thread diff`, `session checkpoint`.
+
 | Команда | Назначение | Статус |
 |---|---|---|
 | **Управление тредами** | | |
@@ -993,11 +1026,15 @@ memory_types:
 8. **Checkpoint: snapshot vs ids** — полные снапшоты артефактов или только идентификаторы.
 9. **Пересмотр моделей** — процедура задокументирована, триггеры и критерии смены не формализованы.
 10. **Переносимость M1–M12** — при апгрейде opencode перепроверять smoke'ами.
+11. **Gates-подсистема** — скилл §2.10 использует `wolf gate check`, но подсистема не спроектирована: реализовать или вычистить из скиллов?
+12. **UX эскалации** — как человек видит очередь эскалаций и отвечает (команды `escalation list/answer` не существуют)?
 
 ---
 
 
 ## 9. Структура проекта
+
+**Статус: [target].** Каталоги `agents/`, `skills/`, `threads/`, `shared/` — целевые; в репозитории mr-wolf их нет. Поставляются шаблонами при `wolf init` (§0.1).
 
 Полная структура Mr. Wolf — memory substrate, встроенный в проект:
 
@@ -1070,12 +1107,14 @@ vote_contract: "VOTE: A|B|C|ABSTAIN|TIMEOUT"
 **Границы:**
 - `agents/` и `skills/` — знания агентов, **не** память проекта.
 - `.wolf/memory/threads/` и `.wolf/memory/shared/` — единственное место хранения памяти.
-- Код проекта (`src/`, `tests/`) — вне `.wolf/`, регистрируется по ссылке как `document` (§1.3).
+- Код проекта (`src/`, `tests/`) — вне `.wolf/`, регистрируется по ссылке как `document-ref` (§1.4).
 - Код mr-wolf (`src/`) — не память и не агент, а инфраструктура.
 
 ---
 
 ## 10. Примеры workflow
+
+> **Статус:** примеры используют целевой layout `threads/<id>/` [target] и команды с пометками [built/planned/designed] — сверяться с таблицей §6.
 
 ### 10.1. FLAT: специфицируемая задача
 
@@ -1084,7 +1123,7 @@ vote_contract: "VOTE: A|B|C|ABSTAIN|TIMEOUT"
 
 Wolf [DISCOVERY]:
   → классифицирует: специфицируемая → FLAT
-  → wolf thread create csv-export
+  → wolf thread create --title "CSV Export" --goal "..."   # id генерируется [built]
 
 Wolf [EXECUTION]:
   → wolf-brainstorm: исследование → спека {thread: csv-export}
@@ -1099,7 +1138,7 @@ Wolf [EXECUTION]:
 
 Wolf [REVIEW]:
   → показывает результат пользователю
-  → wolf session wrap-up → session-summary {thread: csv-export}
+  → wolf session wrap-up [built] → session-summary (глобальный; per-thread — [designed])
 ```
 
 Токены: ~50k (один агент). Налог оркестрации: +157…+1141% — **не окупается** (COST/LONG/RESEARCH).
@@ -1141,27 +1180,21 @@ Wolf [EXECUTION, COUNCIL]:
 
 ```text
 День 1:
-  wolf thread create csv-export
+  wolf thread create --title "CSV Export" --goal "..."     # [built]
   → работа над csv-export
-  → wolf session wrap-up  # checkpoint для csv-export
+  → wolf session wrap-up                                   # [built, глобальный]
 
-  wolf thread create auth-refactor
+  wolf thread create --title "Auth Refactor" --goal "..."  # [built]
   → работа над auth-refactor
-  → wolf session wrap-up  # checkpoint для auth-refactor
-
-День 2:
-  wolf recap              # восстанавливает csv-export (~5k токенов)
-  → работа
   → wolf session wrap-up
 
-  wolf recap              # восстанавливает auth-refactor (~5k токенов)
+День 2:
+  wolf recap              # [planned; сейчас — wolf brief + thread brief]
   → работа
   → wolf session wrap-up
 
 День 3:
-  wolf recap              # csv-export
-  → финальные задачи
-  → wolf thread complete csv-export
+  wolf thread complete <id>   # [designed]
 ```
 
 **Результат:** Два треда параллельно, контекст не смешивается, handoff через session-summary + session-checkpoint (§1.7). Каждый тред изолирован, shared решения видны всем.
@@ -1172,7 +1205,7 @@ Wolf [EXECUTION, COUNCIL]:
 
 ```text
 День 1, 15:00:
-  wolf thread csv-export
+  wolf thread brief csv-export   # [built]
   → работа над TASK-003
   → process killed (OOM, user ctrl+c, etc.)
   → session-summary НЕ вызван явно
@@ -1221,6 +1254,7 @@ Wolf [EXECUTION]:
 | 2026-08-18 | Flat-first вместо иерархии; 3 режима вместо 6; capability tokens изъяты | COST/LONG/REVIEW-001, M1–M12 |
 | 2026-08-19 | Треды: логическая → физическая группировка + подкаталоги + даты в именах | Навигация человека, атомарность |
 | 2026-08-19 | Ревью трёх экспертов: статус `[target]` введён; layout перемаркирован; CLI/MCP-таблицы сверены с кодом; id-модель, tombstone-удаление, document-ref/native | Сверка с реализацией |
+| 2026-08-19 | Ревью 4 экспертов (UX, консистентность, реализуемость, SRE): `[target]` покрытие доведено (§1.7/§9/§10/§12); маппинг тип→подкаталог; разрыв цикла 7.5↔8; блок надёжности записи в Phase 8 (lockfile, JSONL-валидация, карантин); §0.1 «Первые 10 минут»; примеры §10 сверены с CLI | Ревью по мини-планам |
 
 ---
 
@@ -1234,7 +1268,7 @@ Wolf [EXECUTION]:
 - Предоставляет API для чтения/записи
 
 **Mr. Wolf Coordinator Agent** — активный агент-координатор:
-- Реализован как `agents/wolf.md`
+- Целевая реализация: `agents/wolf.md` **[target]** (сегодня файла нет; образец — `wolf-experiment/.opencode/agents/wolf-coordinator.md`)
 - Модель: k3-256k
 - Принимает решения, управляет агентами
 - Использует substrate как хранилище
@@ -1253,9 +1287,9 @@ Wolf [EXECUTION]:
 
 ### Структурные понятия
 
-**Тред (Thread)** — физический каталог в `threads/<id>/`:
+**Тред (Thread)** — **[target]** физический каталог в `threads/<id>/` (сегодня — объект `work-thread` + поле `thread` в frontmatter):
 - Группирует объекты по задаче/фиче
-- Может быть удалён/архивирован атомарно
+- Архивируется/удаляется через tombstone-события (§1.7)
 - Изолирует параллельную работу
 
 **Shared** — каталог `shared/`:
@@ -1263,7 +1297,7 @@ Wolf [EXECUTION]:
 - Правила, стандарты, архитектурные решения
 
 **Объект памяти** — markdown-файл с frontmatter:
-- Хранится в `.wolf/memory/threads/<id>/` или `shared/`
+- Сегодня: `.wolf/memory/objects/<тип>/<id>.md`; целевой layout: `threads/<id>/<тип>/` или `shared/` [target]
 - Тип определяется полем `type` в frontmatter
 - Связи через `relations.jsonl`
 
@@ -1300,4 +1334,4 @@ Wolf [EXECUTION]:
 
 **C. Активы песочницы для переноса** — 12 агентов с permission-границами, spawn-logger.ts, verify-скрипты, файловые контракты, SQL токен-учёта, протокол слепого судьи: `wolf-experiment/HANDOFF.md` §7.
 
-**D. Источники концепции v2** — `docs/concept.md` (v1.0); ранняя 9-слойная концепция и экспертные сессии: память `mem_20260818_9_v2_75348f`, `mem_20260818_wolffs_218d25`, `mem_20260818_flat_first_selective_orchestration_7ff0e7`; тред `mem_20260818_mr_wolf_v2_18b2ed`.
+**D. Источники концепции v2** — `docs/archive/concept-v1.md` (v1.0); ранняя 9-слойная концепция и экспертные сессии: память `mem_20260818_9_v2_75348f`, `mem_20260818_wolffs_218d25`, `mem_20260818_flat_first_selective_orchestration_7ff0e7`; тред `mem_20260818_mr_wolf_v2_18b2ed`.
