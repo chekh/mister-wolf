@@ -4,7 +4,7 @@
 **Дата:** 2026-08-18
 **Статус:** Концепция. Не спецификация API.
 
-**Протокол чтения.** Каждое утверждение маркировано: **[built]** — реализовано в mr-wolf (Phases 0–7); **[proven]** — измерено в wolf-experiment (8 серий, ~70 автономных прогонов, 42 находки, opencode v1.18.18); **[hypothesis]** — правдоподобно, не проверено; **[designed]** — спроектировано, не реализовано; **[deprecated]** — изъято. Источники цифр: `wolf-experiment/REPORT.md` (канон), `HANDOFF.md`.
+**Протокол чтения.** Каждое утверждение маркировано: **[built]** — реализовано в mr-wolf (Phases 0–7); **[proven]** — измерено в wolf-experiment (8 серий, ~70 автономных прогонов, 42 находки, opencode v1.18.18); **[hypothesis]** — правдоподобно, не проверено; **[designed]** — спроектировано, не реализовано; **[target]** — принятое целевое решение, не реализовано (отличается от hypothesis: решение принято, вопрос закрыт); **[deprecated]** — изъято. Источники цифр: `wolf-experiment/REPORT.md` (канон), `HANDOFF.md`.
 
 ---
 
@@ -17,7 +17,7 @@ Mr. Wolf — local-first memory substrate для AI coding agents.
 - Flat by default: иерархия не окупается на специфицируемых задачах (+157…+1141% токенов)
 - Council Mode и изолированное ревью — единственные окупающиеся формы оркестрации (+31% дефектов)
 - 3 уровня агентов: wolf (thin, 11–18k) → executor → worker (однозадачный)
-- Треды — физические каталоги `threads/<id>/` с подкаталогами по типам
+- Треды — физические каталоги `threads/<id>/` с подкаталогами по типам **[target]** (сейчас — плоский `objects/<тип>/`, миграция: Phase 7.5)
 - Enforcement — permission-glob платформы (M2–M4), не capability tokens
 - Frontmatter — канон, Registry отклонён
 
@@ -65,9 +65,9 @@ Mr. Wolf Memory Substrate — пассивный слой хранения да�
 
 **Как это реализовано сегодня:**
 
-- **Единый объект памяти [реализовано].** Каждый артефакт — markdown-файл с YAML-frontmatter в `.wolf/memory/threads/<id>/<тип>/` или `.wolf/memory/shared/<тип>/`. Frontmatter — канон: `id`, `type`, `title`, `status`, `review_state`, `confidence`, `importance`, `created_at`, `created_by`, `source`, `related`, `superseded_by`. Список типов — `MEMORY_TYPES` в `src/domain/memory-types.ts` (13 типов, hardcoded).
+- **Единый объект памяти [реализовано].** Каждый артефакт — markdown-файл с YAML-frontmatter. Сегодня — плоский layout `.wolf/memory/objects/<тип>/<id>.md`; целевой layout `threads/<id>/<тип>/` + `shared/` — **[target]** (§1.4, миграция Phase 7.5). Frontmatter — канон: `id`, `type`, `title`, `status`, `review_state`, `confidence`, `importance`, `created_at`, `created_by`, `source`, `related`, `superseded_by`. Список типов — `MEMORY_TYPES` в `src/domain/memory-types.ts` (13 типов, hardcoded).
 - **Файлы — source of truth [реализовано].** SQLite с FTS5 (`.wolf/cache/index.sqlite`) — производный, перестраиваемый индекс. События — append-only `events.jsonl` (audit trail). Связи — `relations.jsonl` (канон; зеркала в frontmatter генерируются из него).
-- **Жизненный цикл вместо удаления [реализовано].** Статусы: `draft → active → superseded/archived`, плюс доменные (`open → answered/resolved`, `proposed → accepted/rejected`). Объекты не удаляются: `wolf supersede` связывает старый с новым. Сканер помечает пропавшие документы как `stale`.
+- **Жизненный цикл вместо удаления [реализовано].** Статусы (из `MemoryStatus`): `active`, `open`, `proposed`, `accepted`, `completed`, `superseded`, `archived` и др.; переходы валидируются `ALLOWED_TRANSITIONS` (например, `open → resolved/rejected`, `proposed → accepted/rejected`). Объекты не удаляются: `wolf supersede` связывает старый с новым. Сканер помечает пропавшие документы как `stale`.
 - **Governance [реализовано, Phase 6].** `memory_class`, `truth_role`, `lifetime` по умолчанию от `createdBy`. Тип `rule` создаётся только пользователем. Переходы статусов валидируются `ALLOWED_TRANSITIONS`.
 - **Сессионная непрерывность [реализовано, Phases 4, 7].** `session-checkpoint` фиксирует состояние нити; `session-summary` автоматически создаётся после lifecycle-событий или вручную (`wolf session wrap-up`). `wolf brief` генерирует производный снимок активной памяти — стартовый контекст новой сессии.
 - **Инкрементальная видимость [реализовано, Phase 3].** Любая запись мгновенно обновляет FTS5-индекс.
@@ -159,6 +159,8 @@ Implemented CSV parser using PapaParse.
 - **Handoff между сессиями [реализовано].** `session-summary` (авто + wrap-up) — последняя запись уходящей сессии; `wolf recap` — первое чтение приходящей. Handoff = пара объектов памяти, а не ручной пересказ.
 
 ### 1.4. Структура хранения
+
+**Статус: [target].** Текущая реализация — плоский `objects/<тип>/`. Целевой layout ниже; миграция — Phase 7.5 (§6).
 
 **Физическое разделение по тредам, подкаталоги по типам внутри треда.**
 
@@ -262,14 +264,13 @@ Wolf использует граф как механизм селекции ко
 **Пример relations.jsonl:**
 
 ```jsonl
-{"source": "TASK-001", "predicate": "based_on", "target": "csv-export-spec", "created_at": "2026-07-03T10:00:00Z"}
-{"source": "REPORT-001", "predicate": "answers", "target": "TASK-001", "created_at": "2026-07-05T11:30:00Z"}
-{"source": "csv-export-spec-v2", "predicate": "supersedes", "target": "csv-export-spec", "created_at": "2026-07-15T14:00:00Z"}
+{"id": "rel_001", "subject": "mem_20260703_task001_a1b2c3", "predicate": "based_on", "object": "mem_20260701_csv_export_spec_d4e5f6", "source": "agent", "confidence": "high", "created_at": "2026-07-03T10:00:00Z"}
+{"id": "rel_002", "subject": "mem_20260705_report001_b2c3d4", "predicate": "answers", "object": "mem_20260703_task001_a1b2c3", "source": "agent", "confidence": "high", "created_at": "2026-07-05T11:30:00Z"}
 ```
 
-Формат: одна строка = одна связь. JSON с полями `source`, `predicate`, `target`, `created_at`. Append-only.
+Формат [реализовано]: одна строка = одна связь; поля `subject`, `predicate`, `object`, `source` (enum: manual/agent/system), `confidence`. Append-only.
 
-**Важно:** `source` и `target` — это `id` из frontmatter объектов, не имена файлов.
+**Идентичность:** `subject`/`object` — глобально-уникальные `id` из frontmatter (формат `mem_<date>_<slug>_<hash>`). Человекочитаемые номера (`TASK-001`) — display-поле, per-thread, в relations не используются (иначе коллизии между тредами). В примерах §1.2/§10 короткие id — display-формат для читабельности.
 
 ### 1.6. Пробелы памяти (честно)
 
@@ -317,15 +318,15 @@ Wolf использует граф как механизм селекции ко
         └── 2026-06-10-tech-stack.md
 ```
 
-**Удаление треда:**
-```bash
-wolf thread delete csv-export  # rm -rf threads/csv-export/ + обновление индексов
-```
+**Удаление треда [designed]:**
+`wolf thread delete` — НЕ `rm -rf`: журналы append-only и должны остаться целыми. Семантика:
+1. Tombstone-событие в `events.jsonl` (`thread_deleted`)
+2. Связи треда в `relations.jsonl` помечаются `orphaned` (не удаляются)
+3. Файлы перемещаются в `.wolf/memory/.trash/<id>/` (восстановимо) или удаляются после grace period
+4. FTS5-индекс перестраивается инкрементально
 
-**Архивация треда:**
-```bash
-wolf thread archive csv-export  # mv threads/csv-export/ → archive/csv-export/
-```
+**Архивация треда [designed]:**
+`wolf thread archive` — статус `work-thread` → `archived`, файлы на месте, тред исключается из `list --status active`.
 
 #### Жизненный цикл
 
@@ -449,7 +450,7 @@ wolf (координатор, k3-256k)         — брифы, решения, �
 
 **[доказано]**: 11 советов, 8 сценариев; пересчёт голосов по файлам совпал с синтезами wolf'а 10/10.
 
-- **Составы** — роли-перспективы: architect, security (сильная модель), performance, ux, cost (быстрые). Член совета read-only: ровно один объект мнения, без task, без bash.
+- **Составы** — роли-перспективы: architect, security (сильная модель), performance, ux, cost (быстрые). Член совета read-only **относительно кода и bash** (`permission: {task: deny, bash: deny, ...}`); запись ограничена ровно одним объектом `council-opinion` через Wolf API.
 - **VOTE-контракт**: `VOTE: A|B|C|ABSTAIN|TIMEOUT` — машиносчитаемо. Отсутствующее мнение = TIMEOUT. Wolf считает **строго по объектам, не по самоотчётам** (находка 9).
 - **Кворум и консенсус**: quorum — минимум валидных голосов; consensus_threshold — доля победителя (1.0 — единогласие, для security-советов). В конфиге совета.
 - **Эскалация**: консенсус не достигнут ИЛИ вопрос human_required → wolf не решает; пишет `escalation`, останавливается; решение человека — вторым запуском, `final-decision`.
@@ -575,14 +576,14 @@ Discovery mode → специфицируемая задача → EXECUTION/FLA
 ## Steps
 1. `wolf thread create <id> --title "..."` — создаёт work-thread
 2. `wolf search "<keywords>"` — исследование (shared rules + related threads)
-3. `wolf create document --subtype spec --thread <id>` — создать спеку
+3. `wolf create document --subtype spec --thread <id>` **[designed]** — команда не существует; сегодня `document` создаётся сканером
 4. 5-этапная валидация:
    - Stage 1: структура (hard, grep)
    - Stage 2: completeness (hard, no TBD/TODO)
    - Stage 3: consistency (soft, council если advisory)
    - Stage 4: measurability (soft)
    - Stage 5: readiness (human approval)
-5. `wolf gate check create_plan --thread <id>`
+5. `wolf gate check create_plan --thread <id>` **[designed]** — gates-подсистема не спроектирована; требуется решение: реализовать или вычистить из скилла
 
 ## Hard Validators
 - Обязательные секции: Goal, Requirements, Acceptance Criteria
@@ -606,15 +607,16 @@ Discovery mode → специфицируемая задача → EXECUTION/FLA
 
 ```yaml
 ---
+description: "Wolf-координатор: брифы, советы, решения; кода не касается"
 model: kimi-for-coding/k3-256k
-spawn_policy: dispatch_only
 permission:
   task:
-    allow:
-      - "agents/executor.md"
-      - "agents/council-*.md"
-    deny:
-      - "agents/worker.md"
+    "*": deny
+    "executor-*": allow
+    "council-*": allow
+  bash: deny
+  webfetch: deny
+  websearch: deny
 ---
 
 # Mr. Wolf — Coordinator
@@ -636,13 +638,15 @@ You are Mr. Wolf, the project coordinator...
 
 | Поле | Назначение | Механика |
 |---|---|---|
+| `description` | Описание агента | opencode frontmatter |
 | `model` | Фиксированная модель | §2.9 матрица |
-| `spawn_policy` | Кто может спавнить | `dispatch_only` / `controlled` / `none` |
-| `permission.task.allow` | Какие агенты доступны | M3 glob |
-| `permission.task.deny` | Какие запрещены | M3 glob |
+| `permission.task` | Мапа glob-правил спавна | M3: `"*": deny` + `"executor-*": allow` (по **именам** агентов, не путям) |
+| `permission.bash` и др. | Отключение тулов | M1: массив `tools:` невалиден — только `permission` |
 
-**Worker** (`spawn_policy: none`, `permission.task: deny` все) — однозадачный, не спавнит.
-**Council member** (`tools: read-only`, `permission.task: deny` все) — только читает и пишет `council-opinion`.
+Реальные образцы: `wolf-experiment/.opencode/agents/` (27 агентов с проверенными границами).
+
+**Worker** (`permission.task: {"*": deny}`) — однозадачный, не спавнит.
+**Council member** (`permission: {task: deny, bash: deny, webfetch: deny, websearch: deny}`) — read-only относительно кода; пишет `council-opinion` через Wolf API (MCP).
 
 ## 3. Эффективная работа с файлами памяти
 
@@ -730,28 +734,15 @@ interface EditResult {
 - **Почему не Registry.** Обсуждалась альтернатива: вынести метаданные в отдельный `registry.json`. Отказ: frontmatter + zod-валидация + post-edit проверка (P0) решают проблемы синхронизации, а «источник истины рядом с данными» проще для отладки и git-friendly. Registry — избыточный слой рассинхронизации.
 
 
-**MCP-тулы (current, built):**
+**MCP-тулы [built]** (реальный реестр, имена flattened без префикса — Phase 6):
 
 ```typescript
-// Memory operations
-wolf_add(type: string, fields: object): string
-wolf_list(filters?: {type?, thread?, status?}): Object[]
-wolf_get(objectId: string): Object
-wolf_search(query: string, options?: {thread?, type?}): SearchResult[]
-wolf_supersede(oldId: string, newId: string): void
-wolf_rebuild_index(): void
-wolf_scan(): StaleObject[]
-
-// Thread operations
-wolf_thread_create(threadId: string, metadata?: object): void
-wolf_thread_list(filters?: {status?}): Thread[]
-wolf_thread_get(threadId: string): Thread
-wolf_recap(threadId?: string): Recap
-
-// Session operations
-wolf_session_wrap_up(threadId: string): SessionSummary
-wolf_brief(threadId?: string): Brief
+add, get, list, search, transition, scan, brief,
+create_thread, create_decision, create_blocker, resolve_blocker,
+create_rule, create_info_request, create_article
 ```
+
+CLI-only (не в MCP): `supersede`, `rebuild-index`, `session wrap-up` (глобальный, без `--thread`).
 
 **MCP-тулы (planned, Phase 11):**
 
@@ -828,6 +819,13 @@ wolf_thread_graph(threadId: string, depth?: number): Graph
 
 ## 6. Roadmap
 
+**Phase 7.5 — Миграция layout `[objects/ → threads/]`.**
+- `wolf migrate --dry-run` → отчёт о маппинге существующих объектов
+- Объекты без `thread` → `shared/`; с `thread` → `threads/<id>/<тип>/`
+- Переходный период: store читает оба layout одновременно, пишет только в новый
+- `relations.jsonl`/`events.jsonl` не мигрируются (id объектов не меняются)
+- Критерий завершения: `objects/` пуст, один прогон тестов
+
 **Phase 8 — Schema-driven taxonomy + оркестрационные типы.**
 Core pack типов через `.wolf/config.yaml` (типы из кода — в конфиг); оркестрационные типы §1.2 (`task-brief`, `report`, `council-question`, `council-opinion`, `synthesis`, `escalation`, `decision-request`) входят через этот механизм. Use-case'ы совета: подсчёт VOTE по объектам, проверка кворума, синтез.
 
@@ -851,9 +849,6 @@ Core pack типов через `.wolf/config.yaml` (типы из кода — 
 
 ```yaml
 # .wolf/config.yaml
-memory_types:
-  # ... (см. ниже)
-
 artifact_sources:
   # где искать исходные документы для регистрации как document
   - "docs/**/*.md"
@@ -862,74 +857,76 @@ artifact_sources:
 memory_types:
   # Core types (Phases 0-7)
   work-thread:
-    required_fields: [title]
-    lifecycle: [draft, active, completed, archived]
+    lifecycle: [active, paused, completed, archived]   # requires ALLOWED_TRANSITIONS: active→completed (gap)
     relations: [related_to]
 
   decision:
-    required_fields: [rationale]
-    lifecycle: [proposed, accepted, rejected, superseded]
+    lifecycle: [active, superseded, rejected, obsolete]  # synced with decision-schema.ts
     relations: [based_on, supersedes]
 
-  document:
+  document-ref:      # внешние файлы проекта, по ссылке
     required_fields: [source_path]
     lifecycle: [active, stale, superseded]
     relations: [related_to]
 
+  document-native:   # спеки/планы треда, тело в памяти
+    lifecycle: [active, superseded, archived]
+    relations: [related_to, supersedes]
+
   rule:
-    required_fields: [content]
-    lifecycle: [active, superseded]
-    truth_role: user_only  # создание только пользователем
+    lifecycle: [active, superseded, obsolete]
+    truth_role: user_only
     relations: [supersedes]
 
   session-checkpoint:
-    required_fields: [open_tasks]
+    required_fields: [thread]
     lifecycle: [active]
     relations: [related_to]
 
   session-summary:
-    required_fields: [summary]
     lifecycle: [active]
     relations: [related_to]
 
   # Orchestration types (Phase 8)
   task-brief:
-    required_fields: [executor, priority, timeout, related]
-    lifecycle: [draft, active, completed, superseded]
+    required_fields: [executor, priority, related]
+    lifecycle: [active, completed, superseded]
     relations: [based_on, related_to, answered_by]
 
   report:
     required_fields: [summary]
-    lifecycle: [draft, completed]
+    lifecycle: [active, completed]
     relations: [answers, supports]
 
   council-question:
-    required_fields: [question, quorum, consensus_threshold]
-    lifecycle: [open, answered]
+    required_fields: [question]
+    lifecycle: [open, answered, archived]
     relations: [related_to, answered_by]
 
   council-opinion:
     required_fields: [vote]
     lifecycle: [proposed, accepted]
     relations: [answers]
-    enum:
-      vote: [A, B, C, ABSTAIN, TIMEOUT]
+    # vote — свободная строка; контракт VOTE: A|B|C|ABSTAIN|TIMEOUT — промптный, не enum
+    # (вариантов решения может быть больше трёх)
 
   synthesis:
     required_fields: [recommendation, confidence]
-    lifecycle: [draft, accepted]
+    lifecycle: [proposed, accepted]
     relations: [based_on, supports]
 
   escalation:
     required_fields: [question]
-    lifecycle: [open, resolved, dismissed]
+    lifecycle: [open, resolved, archived]
     relations: [resolved_by]
 
   decision-request:
     required_fields: [question]
-    lifecycle: [open, answered]
+    lifecycle: [open, answered, archived]
     relations: [answered_by]
 ```
+
+**Правило синхронизации:** lifecycles в config.yaml **генерируются из доменного кода** (`MemoryStatus` + `ALLOWED_TRANSITIONS`), не пишутся вручную — иначе рассинхрон вечный. Генератор — часть Phase 8. Текущие пробелы домена: нет перехода `active → completed` (нужен для тредов/task-brief); статусов `draft`/`dismissed` не существует — из конфига убраны.
 
 
 
@@ -938,19 +935,20 @@ memory_types:
 | Команда | Назначение | Статус |
 |---|---|---|
 | **Управление тредами** | | |
-| `wolf thread create <id>` | Создать тред | built |
-| `wolf thread list [--status active]` | Список тредов | built |
-| `wolf thread complete <id>` | Завершить тред | built |
-| `wolf thread archive <id>` | Архивировать тред | built |
-| `wolf thread delete <id>` | Удалить тред | built |
+| `wolf thread create --title <t> --goal <g>` | Создать тред (id генерируется) | built |
+| `wolf thread list` | Список тредов (без фильтров) | built |
+| `wolf thread brief <id>` | Бриф нити | built |
+| `wolf thread complete <id>` | Завершить тред | designed |
+| `wolf thread archive <id>` | Архивировать тред | designed |
+| `wolf thread delete <id>` | Удалить тред (tombstone, §1.7) | designed |
 | **Сессии и handoff** | | |
-| `wolf recap` | Восстановить контекст | built |
+| `wolf recap` | Восстановить контекст | **planned** (roadmap-v2; сейчас — `wolf brief`) |
 | `wolf session wrap-up` | Создать handoff | built |
 | `wolf brief` | Производный снимок памяти | built |
 | **Поиск** | | |
-| `wolf search <query> [--thread <id>]` | FTS5 поиск | built |
+| `wolf search <query> [--type/--status/--tag]` | FTS5 поиск (без `--thread`) | built |
 | `wolf get <object-id>` | Получить объект | built |
-| `wolf list [--type <type>] [--thread <id>]` | Список объектов | built |
+| `wolf list` | Список объектов | built |
 | **Жизненный цикл** | | |
 | `wolf supersede <old> <new>` | Заменить объект | built |
 | `wolf scan` | Найти stale объекты | built |
@@ -976,7 +974,10 @@ memory_types:
 | 7 | Реестр vs frontmatter | registry.json как канон vs frontmatter объектов | **Frontmatter — канон; индексы — проекции** | Источник истины один и лежит рядом с данными |
 | 8 | Структура тредов | Логическая (поле `thread`) vs физическая (каталоги) | **Физическая** | Удаление/архивация атомарно, визуальная навигация, изоляция |
 | 9 | Структура внутри треда | Плоская vs подкаталоги по типам | **Подкаталоги по типам** | 100+ файлов в плоском каталоге нечитабельны; агентам всё равно |
-| 10 | Именование файлов | Slug без даты vs дата в имени | **Дата в имени** | Хронологическая сортировка, версионирование через дату, поиск по времени |
+| 10 | Именование файлов | Slug без даты vs дата в имени | **Дата в имени [target]** | Хронологическая сортировка, версионирование через дату, поиск по времени |
+| 11 | Идентичность объектов | Короткие id (TASK-001) vs глобальные (`mem_..._<hash>`) | **Глобальный id + display-поле** | Коллизии в глобальном relations.jsonl; короткие номера — только для человека |
+| 12 | Удаление треда | `rm -rf` vs tombstone | **Tombstone-событие + orphaned-связи** | Append-only журналы не должны ломаться; файлы в `.trash/` с grace period |
+| 13 | Документы | Один тип `document` | **Два: `document-ref` / `document-native`** | By-reference (проектные) vs by-value (спеки треда) — разные lifecycles и правила stale |
 
 ---
 
@@ -1209,6 +1210,17 @@ Wolf [EXECUTION]:
 8. **6 режимов работы** — сокращено до 3 (§2.3). Monitoring/Quick Lookup — поведение, не состояния.
 9. **Параллелизм как преимущество** — доказано, что не окупается на специфицируемых задачах.
 
+
+---
+
+## Changelog концепции
+
+| Дата | Изменение | Основание |
+|---|---|---|
+| 2026-08-18 | v2.0: синтез v1.0 + 9-слойная + wolf-experiment + экспертные сессии | Эмпирика эксперимента |
+| 2026-08-18 | Flat-first вместо иерархии; 3 режима вместо 6; capability tokens изъяты | COST/LONG/REVIEW-001, M1–M12 |
+| 2026-08-19 | Треды: логическая → физическая группировка + подкаталоги + даты в именах | Навигация человека, атомарность |
+| 2026-08-19 | Ревью трёх экспертов: статус `[target]` введён; layout перемаркирован; CLI/MCP-таблицы сверены с кодом; id-модель, tombstone-удаление, document-ref/native | Сверка с реализацией |
 
 ---
 
