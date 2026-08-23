@@ -6,7 +6,11 @@ import { MEMORY_TYPES } from '../../../domain/memory-types.js';
 export function memoryAddCommand(): Command {
   return new Command('add')
     .description('Add a memory object')
-    .addOption(new Option('--type <type>', 'Memory type').choices([...MEMORY_TYPES]).makeOptionMandatory(true))
+    .addOption(
+      new Option('--type <type>', 'Memory type')
+        .choices([...MEMORY_TYPES].filter((t) => t !== 'document'))
+        .makeOptionMandatory(true)
+    )
     .requiredOption('--title <title>', 'Title')
     .option('--body <body>', 'Body text')
     .option('--tags <tags>', 'Comma-separated tags')

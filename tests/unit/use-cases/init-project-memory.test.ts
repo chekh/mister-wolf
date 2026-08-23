@@ -25,5 +25,14 @@ describe('initProjectMemory', () => {
     expect(existsSync(join(dir, '.wolf', 'memory', 'briefs'))).toBe(true);
     expect(existsSync(join(dir, '.wolf', 'memory', 'objects'))).toBe(true);
     expect(existsSync(join(dir, '.wolf', 'config.yaml'))).toBe(true);
+
+    const yamlText = await import('fs').then((m) => m.readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8'));
+    const { default: yaml } = await import('js-yaml');
+    const cfg = yaml.load(yamlText) as {
+      memory_types?: { core?: Record<string, unknown> };
+      artifact_sources?: string[];
+    };
+    expect(cfg.memory_types?.core?.['task-brief']).toBeDefined();
+    expect(cfg.artifact_sources).toEqual([]);
   });
 });

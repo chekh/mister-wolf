@@ -17,8 +17,10 @@ describe('scanProject', () => {
   beforeEach(() => {
     projectDir = mkdtempSync(join(tmpdir(), 'wolf-scan-'));
     mkdirSync(join(projectDir, 'src'), { recursive: true });
+    mkdirSync(join(projectDir, 'docs'), { recursive: true });
     writeFileSync(join(projectDir, 'package.json'), JSON.stringify({ name: 'demo-project', version: '1.0.0' }));
     writeFileSync(join(projectDir, 'src', 'index.ts'), 'console.log("hello");');
+    writeFileSync(join(projectDir, 'docs', 'guide.md'), '# Guide\n\nContent.');
   });
 
   afterEach(() => {
@@ -45,11 +47,18 @@ describe('scanProject', () => {
     expect(loaded?.type).toBe('context');
 
     const events = await log.readAll();
-    expect(events).toHaveLength(1);
+    expect(events).toHaveLength(2);
     expect(events[0].type).toBe('memory.added');
     expect(events[0].payload).toMatchObject({
       memory_id: 'project-scan-latest',
       type: 'context',
     });
+    expect(events[1].payload).toMatchObject({ type: 'document-ref' });
+
+    expect(result.documents).toHaveLength(1);
+    expect(result.documents[0].type).toBe('document-ref');
+    expect(result.documents[0].source.path).toBe('docs/guide.md');
+    const loadedDoc = await store.get(result.documents[0].id);
+    expect(loadedDoc?.type).toBe('document-ref');
   });
 });
