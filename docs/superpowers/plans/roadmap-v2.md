@@ -194,6 +194,8 @@ Schema-driven подход:
 
 ### Phase 8 — Schema-Driven Taxonomy
 
+> **Superseded:** реализация Phase 8 выполнена по `docs/superpowers/specs/2026-08-23-phase-8-schema-taxonomy.md` (concept v2 §6); этот раздел устарел и оставлен для истории.
+
 **Goal:** Сделать типы памяти конфигурируемыми через `.wolf/config.yaml` с immutable core pack и project-specific extensions.
 
 **Scope:**

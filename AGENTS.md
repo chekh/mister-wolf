@@ -35,6 +35,8 @@ Mr. Wolf
 - `app/use-cases` import `domain` and `ports`.
 - `adapters` implement `ports`.
 - CLI and MCP are thin inbound adapters.
+- `CORE_TAXONOMY` (`src/domain/memory-types.ts`) is the canon for all 22 memory types: existence, lifecycle, fields, governance, layout. `.wolf/config.yaml` mirrors the core block (via `wolf taxonomy sync`) and adds project-specific types; code always wins.
+- Storage layout v2: objects live in `threads/<thread-id>/<subdir>/` or `shared/<subdir>/`; work threads are `threads/<id>/WORK-THREAD.md`. The store dual-reads the legacy `objects/<type>/` root; writes go only to v2.
 
 ## Completed phases
 - Phase 0: Core Memory — markdown object store, JSONL event log, `init`/`add`/`list`/`get`/`supersede`.
@@ -45,9 +47,10 @@ Mr. Wolf
 - Phase 5: Search and Retrieval Improvements — ranking, filters, tag search, stale detection.
 - Phase 6: Governance + Flat CLI/MCP Namespace — `rule` type, user-only rule creation, flattened `wolf *` commands and MCP tool names.
 - Phase 7: Session Wrap-Up Habit — `session-summary` type, auto-triggered on lifecycle events, manual `wolf session wrap-up` command.
+- Phase 8: Schema-Driven Taxonomy + Orchestration Types + Write Reliability — taxonomy via `CORE_TAXONOMY` + `.wolf/config.yaml` (`wolf taxonomy sync/show`), 7 orchestration types (`task-brief`, `report`, `council-question`, `council-opinion`, `synthesis`, `escalation`, `decision-request`) created via `wolf add --type X --set k=v`, document split (`document-ref`/`document-native`), layout v2 migrated (`wolf migrate`), write reliability (memory lock, tolerant JSONL, quarantine via `wolf validate --fix`, SQLITE_BUSY retry).
 
 ## Next phase
-- Phase 8: Decide from roadmap-v2 or wolf solve/call concept research.
+- Phase 9: Decide from roadmap-v2 or wolf solve/call concept research.
 
 ## Active Memory
 - [decision] Use decision and blocker types for Phase 2 — Completed.
@@ -66,7 +69,7 @@ Mr. Wolf
 ## Open Questions
 - Should relation predicates be user-extensible or fixed to the core set?
 - Should session checkpoints capture full artifact snapshots or only ids?
-- Should the next phase be schema-driven taxonomy (roadmap-v2) or wolf solve/call concept research?
+- Wolf solve/call concept research (schema-driven taxonomy shipped in Phase 8)?
 
 ## Blockers
 - None.
@@ -75,7 +78,7 @@ Mr. Wolf
 - Project scan: project-scan-latest
 - README.md
 - package.json
-- Active memory objects: derived from `.wolf/memory/objects/**/*.md`
+- Active memory objects: derived from `.wolf/memory/` (layout v2: `threads/**`, `shared/**`)
 
 ## Recommended First Steps
 1. Review `docs/superpowers/plans/roadmap-v2.md` for the canonical plan.

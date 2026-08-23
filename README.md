@@ -12,9 +12,9 @@
 
 ## Status
 
-Phases 0–7 are implemented: Core Memory, Work Threads / Info Requests / Articles, Decisions / Blockers, Incremental Indexing / Document Registration, Relations / Session Checkpoints, Search / Retrieval Improvements, Governance + Flat Namespace, and Session Wrap-Up Habit.
+Phases 0–8 are implemented: Core Memory, Work Threads / Info Requests / Articles, Decisions / Blockers, Incremental Indexing / Document Registration, Relations / Session Checkpoints, Search / Retrieval Improvements, Governance + Flat Namespace, Session Wrap-Up Habit, and Schema-Driven Taxonomy + Orchestration Types + Write Reliability.
 
-Next: **Phase 8 — Schema-driven taxonomy or wolf solve/call concept research**.
+Next: **Phase 9 — Decide from roadmap-v2 or wolf solve/call concept research**.
 
 ## Quick Start
 
@@ -82,6 +82,20 @@ node dist/bootstrap/cli.js search "lesson"
 
 - `wolf session wrap-up --title "..." --tags tag1,tag2` — manually create a session summary of recent events.
 - Session summaries are auto-created after resolving a blocker, terminal transitions, superseding an object, creating a decision, or creating an article.
+
+### Phase 8: schema-driven taxonomy, orchestration types, reliability
+
+- `wolf taxonomy sync` — regenerate `memory_types.core` in `.wolf/config.yaml` from the code canon (`CORE_TAXONOMY`). `artifact_sources` and `memory_types.project` are preserved.
+- `wolf taxonomy show` — print the effective taxonomy (core + project types).
+- `wolf add --type task-brief --set executor=executor-lead,priority=high` — create any of the 7 orchestration types (`task-brief`, `report`, `council-question`, `council-opinion`, `synthesis`, `escalation`, `decision-request`) via generic creation with extra fields validated by the type declaration.
+- `wolf migrate` — one-time migration of legacy `objects/<type>/` into layout v2 (`threads/<tid>/<subdir>/` + `shared/<subdir>/`) with document split (`document-ref`/`document-native`). Dry-run by default; `--apply` performs it. Idempotent.
+- `wolf validate [--fix]` — health check: taxonomy drift, layout leftovers, broken objects, events/relations JSONL, index freshness, stale locks. Exit 1 on errors. `--fix` quarantines broken object files into `.wolf/memory/quarantine/`.
+- `wolf council tally --question-id <id> --quorum N --threshold X` — count council votes from `council-opinion` objects linked by `answers` relations.
+- `wolf council synthesize --question-id <id> --recommendation "..."` — create a `synthesis` object linked `based_on` every opinion.
+
+**Storage layout v2:** objects live in `.wolf/memory/threads/<thread-id>/<subdir>/` (or `shared/<subdir>/` when not tied to a thread); work threads are stored as `threads/<id>/WORK-THREAD.md`. The store reads both v2 and the legacy `objects/` root, but writes only to v2.
+
+**No config.yaml? No problem:** without `.wolf/config.yaml` everything works on the built-in defaults — all 22 core types from `CORE_TAXONOMY`. The config file is a generated mirror plus a place for project-specific types.
 
 ## Documentation
 
