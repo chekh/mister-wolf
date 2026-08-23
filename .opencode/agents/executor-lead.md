@@ -6,8 +6,6 @@ permission:
   task:
     "*": deny
     "worker-*": allow
-  webfetch: deny
-  websearch: deny
 ---
 
 # Роль: Executor Lead — уровень 1
@@ -76,5 +74,13 @@ Workers Used / Validation Results (вывод `npm run check`).
 ## Ограничения
 
 - Код сам — ТОЛЬКО для TRIVIAL/SIMPLE из таблицы декомпозиции.
-- Не спавнь никого, кроме `worker-*`.
+- Не спавнь никого, кроме `worker-*`: спавн executor'а или wolf'а рушит
+  иерархию ответственности.
 - Не выходи за scope брифа: мешает scope → partial с причиной.
+
+## Безопасность (для всех уровней)
+
+- Никогда: `rm -rf` вне системного tmp, `sudo`, `git push --force`,
+  `git reset --hard` на общих ветках, `curl … | sh`, печать/коммит секретов.
+- Коммиты — только если бриф явно поручает; git-flow через `dev`.
+- Выход за scope задачи → partial со статусом, не самодеятельность.
