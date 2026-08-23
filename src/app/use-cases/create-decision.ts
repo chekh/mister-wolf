@@ -75,10 +75,10 @@ export async function createDecision(
     }
     if (deps.relations) {
       if (object.thread) {
-        await recordRelation(deps, now, object.id, 'updates', object.thread);
+        await recordRelation({ ...deps, lock: undefined }, now, object.id, 'updates', object.thread);
       }
       for (const basisId of input.basedOn ?? []) {
-        await recordRelation(deps, now, object.id, 'based_on', basisId);
+        await recordRelation({ ...deps, lock: undefined }, now, object.id, 'based_on', basisId);
       }
     }
 

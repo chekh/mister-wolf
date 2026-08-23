@@ -40,7 +40,7 @@ export async function resolveBlocker(
       await deps.index.indexObject(updated);
     }
     if (deps.relations && resolvedBy) {
-      await recordRelation(deps, now, resolvedBy, 'resolves', id);
+      await recordRelation({ ...deps, lock: undefined }, now, resolvedBy, 'resolves', id);
     }
     await summarizeSession({ ...deps, lock: undefined }, { createdBy: 'system:wolf' }).catch((err) => {
       console.error('Session summary failed:', err);

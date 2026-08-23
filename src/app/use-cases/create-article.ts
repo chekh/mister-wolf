@@ -82,10 +82,10 @@ export async function createArticle(
     }
     if (deps.relations) {
       for (const answerId of object.answers) {
-        await recordRelation(deps, now, object.id, 'answers', answerId);
+        await recordRelation({ ...deps, lock: undefined }, now, object.id, 'answers', answerId);
       }
       for (const supportId of object.supports) {
-        await recordRelation(deps, now, object.id, 'supports', supportId);
+        await recordRelation({ ...deps, lock: undefined }, now, object.id, 'supports', supportId);
       }
     }
 

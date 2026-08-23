@@ -84,7 +84,7 @@ export async function createInfoRequest(
       await deps.index.indexObject(object);
     }
     if (deps.relations) {
-      await recordRelation(deps, now, object.id, 'related_to', object.thread);
+      await recordRelation({ ...deps, lock: undefined }, now, object.id, 'related_to', object.thread);
     }
 
     return { object };

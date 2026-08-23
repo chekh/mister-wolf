@@ -75,7 +75,7 @@ export async function createBlocker(
       await deps.index.indexObject(object);
     }
     if (deps.relations && object.thread) {
-      await recordRelation(deps, now, object.id, 'blocks', object.thread);
+      await recordRelation({ ...deps, lock: undefined }, now, object.id, 'blocks', object.thread);
     }
 
     return { object };
