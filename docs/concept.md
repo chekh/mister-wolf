@@ -17,7 +17,7 @@ Mr. Wolf — local-first memory substrate для AI coding agents.
 - Flat by default: иерархия не окупается на специфицируемых задачах (+157…+1141% токенов)
 - Council Mode и изолированное ревью — единственные окупающиеся формы оркестрации (+31% дефектов)
 - 3 уровня агентов: wolf (thin, 11–18k) → executor → worker (однозадачный)
-- Треды — физические каталоги `threads/<id>/` с подкаталогами по типам **[target]** (сейчас — плоский `objects/<тип>/`, миграция: Phase 7.5)
+- Треды — физические каталоги `threads/<id>/` с подкаталогами по типам **[target]** (сейчас — плоский `objects/<тип>/`, миграция — внутри Phase 8)
 - Enforcement — permission-glob платформы (M2–M4), не capability tokens
 - Frontmatter — канон, Registry отклонён
 
@@ -79,7 +79,7 @@ Mr. Wolf Memory Substrate — пассивный слой хранения да�
 
 **Как это реализовано сегодня:**
 
-- **Единый объект памяти [реализовано].** Каждый артефакт — markdown-файл с YAML-frontmatter. Сегодня — плоский layout `.wolf/memory/objects/<тип>/<id>.md`; целевой layout `threads/<id>/<тип>/` + `shared/` — **[target]** (§1.4, миграция Phase 7.5). Frontmatter — канон: `id`, `type`, `title`, `status`, `review_state`, `confidence`, `importance`, `created_at`, `created_by`, `source`, `related`, `superseded_by`. Список типов — `MEMORY_TYPES` в `src/domain/memory-types.ts` (13 типов, hardcoded).
+- **Единый объект памяти [реализовано].** Каждый артефакт — markdown-файл с YAML-frontmatter. Сегодня — плоский layout `.wolf/memory/objects/<тип>/<id>.md`; целевой layout `threads/<id>/<тип>/` + `shared/` — **[target]** (§1.4, миграция — внутри Phase 8). Frontmatter — канон: `id`, `type`, `title`, `status`, `review_state`, `confidence`, `importance`, `created_at`, `created_by`, `source`, `related`, `superseded_by`. Список типов — `MEMORY_TYPES` в `src/domain/memory-types.ts` (13 типов, hardcoded).
 - **Файлы — source of truth [реализовано].** SQLite с FTS5 (`.wolf/cache/index.sqlite`) — производный, перестраиваемый индекс. События — append-only `events.jsonl` (audit trail). Связи — `relations.jsonl` (канон; зеркала в frontmatter генерируются из него).
 - **Жизненный цикл вместо удаления [реализовано].** Статусы (из `MemoryStatus`): `active`, `open`, `proposed`, `accepted`, `completed`, `superseded`, `archived` и др.; переходы валидируются `ALLOWED_TRANSITIONS` (например, `open → resolved/rejected`, `proposed → accepted/rejected`). Объекты не удаляются: `wolf supersede` связывает старый с новым. Сканер помечает пропавшие документы как `stale`.
 - **Governance [реализовано, Phase 6].** `memory_class`, `truth_role`, `lifetime` по умолчанию от `createdBy`. Тип `rule` создаётся только пользователем. Переходы статусов валидируются `ALLOWED_TRANSITIONS`.
@@ -174,7 +174,7 @@ Implemented CSV parser using PapaParse.
 
 ### 1.4. Структура хранения
 
-**Статус: [target].** Текущая реализация — плоский `objects/<тип>/`. Целевой layout ниже; миграция — Phase 7.5 (§6).
+**Статус: [target].** Текущая реализация — плоский `objects/<тип>/`. Целевой layout ниже; миграция — внутри Phase 8 (§6).
 
 **Физическое разделение по тредам, подкаталоги по типам внутри треда.**
 
@@ -224,7 +224,7 @@ Implemented CSV parser using PapaParse.
 - Агентам всё равно (они через FTS5)
 - Git-история стабильна
 
-**Маппинг тип → подкаталог** (канон для Phase 7.5):
+**Маппинг тип → подкаталог** (канон для миграции в Phase 8):
 
 | Тип | Подкаталог в треде | В `shared/` |
 |---|---|---|
@@ -309,7 +309,7 @@ Wolf использует граф как механизм селекции ко
 
 ### 1.7. Треды (workstreams)
 
-**Статус раздела: [target].** Сегодня тред — объект `work-thread` + поле `thread` в frontmatter связанных объектов; layout — плоский `objects/<тип>/`. Целевая модель ниже; миграция — Phase 7.5. Команды `recap`, `search --thread`, `thread list --status` — **[planned/designed]**, сейчас: `wolf brief`, `thread list` без фильтров.
+**Статус раздела: [target].** Сегодня тред — объект `work-thread` + поле `thread` в frontmatter связанных объектов; layout — плоский `objects/<тип>/`. Целевая модель ниже; миграция — внутри Phase 8. Команды `recap`, `search --thread`, `thread list --status` — **[planned/designed]**, сейчас: `wolf brief`, `thread list` без фильтров.
 
 **Тред** — **физический каталог** в `.wolf/memory/threads/<id>/` с подкаталогами по типам объектов. Логическая связь дополнительно отражается полем `thread` в frontmatter (для FTS5-поиска и relations).
 
@@ -549,6 +549,8 @@ Wolf проверяет: выбор в approved list → `autonomous`; выбо�
 | executor / советники architect, security / ревьюеры перспектив / слепой судья | `zai-coding-plan/glm-5.3` (или `glm-5.2`) | декомпозиция, глубокая критика |
 | воркеры | `zai-coding-plan/glm-5-turbo` | однозадачная механика; учитывать compliant-поведение (находка 42) |
 | резерв воркерного тира | `minimax-coding-plan/MiniMax-M3` | при деградации/лимитах основного провайдера |
+
+**Fallback:** резерв описан только для воркерного тира. Для wolf/executor при недоступности провайдера — ручная процедура: сменить `model` в frontmatter агента на резерв из той же матрицы (runbook, не автоматика).
 
 **Принцип обновления**: алиасы (low/medium/high) **отложены** — фиксированные модели в frontmatter агентов. Пересмотр матрицы — событийный, при выходе новых моделей. Если churn станет частым — вернуться к алиасам отдельным решением.
 
@@ -829,7 +831,7 @@ wolf_thread_graph(threadId: string, depth?: number): Graph
 | Возможность | Статус | Источник |
 |---|---|---|
 | Memory harness (объекты, event log, relations, governance, session wrap-up) | **built** | Phases 0–7 |
-| Физический layout тредов (`threads/<id>/`, `shared/`, даты в именах) | **target** | Phase 7.5; сейчас — плоский `objects/<тип>/` |
+| Физический layout тредов (`threads/<id>/`, `shared/`, даты в именах) | **target** | Phase 8 (одна миграция с финальной таксономией); сейчас — плоский `objects/<тип>/` |
 | FTS5-поиск + инкрементальная индексация | **built** | Phases 3, 5 |
 | Council Mode (VOTE, кворум, синтез, эскалация) | **proven** | 11 советов, 8 сценариев, пересчёт 10/10 |
 | Изолированное ревью по перспективам | **proven** | REVIEW-001: +31% issues, major ×2.2, full −29% |
@@ -848,17 +850,27 @@ wolf_thread_graph(threadId: string, depth?: number): Graph
 
 ## 6. Roadmap
 
-**Phase 7.5 — Миграция layout `[objects/ → threads/]`.**
-- **Scope ограничен чисто механическим переносом** по текущим 13 типам (маппинг §1.4). Деление `document` → `document-ref/native` — **вторая миграция данных в Phase 8**, не здесь (разрыв цикла 7.5↔8).
-- `wolf migrate --dry-run` → отчёт о маппинге (формат отчёта — в спеке фазы)
-- Объекты без `thread` → `shared/`; с `thread` → `threads/<id>/<тип>/`
-- Переходный период: store читает оба layout одновременно, пишет только в новый; коллизия id → приоритет нового layout + warning
-- `relations.jsonl`/`events.jsonl` не мигрируются (id объектов не меняются)
-- Идемпотентность: повторный запуск — докат (пропуск уже мигрированных)
-- Критерий завершения: `objects/` пуст, `wolf scan` чист, существующий набор тестов зелёный
+**Phase 8 — Schema-driven taxonomy + оркестрационные типы + надёжность записи + одна миграция layout.**
 
-**Phase 8 — Schema-driven taxonomy + оркестрационные типы.**
-Core pack типов через `.wolf/config.yaml` (типы из кода — в конфиг); оркестрационные типы §1.2 (`task-brief`, `report`, `council-question`, `council-opinion`, `synthesis`, `escalation`, `decision-request`) входят через этот механизм. Use-case'ы совета: подсчёт VOTE по объектам, проверка кворума, синтез.
+*Таксономия.* Core pack типов через `.wolf/config.yaml` (типы из кода — в конфиг); оркестрационные типы §1.2 (`task-brief`, `report`, `council-question`, `council-opinion`, `synthesis`, `escalation`, `decision-request`) входят через этот механизм. Lifecycles генерируются из доменного кода (`MemoryStatus` + `ALLOWED_TRANSITIONS`); механизм генератора — первый шаг фазы. Без config.yaml система работает на дефолтах из кода (обратная совместимость Phases 0–7).
+
+*Миграция layout — одна, с финальной таксономией.* Отдельной фазы 7.5 больше нет: перенос `objects/` → `threads/<id>/<тип>/` + `shared/` выполняется один раз, когда таксономия финальна (включая деление `document` → `document-ref/native` по критерию наличия `source.path`). Маппинг тип→подкаталог — §1.4.
+- `wolf migrate --dry-run` → отчёт о маппинге
+- Объекты без `thread` → `shared/`; с `thread` → `threads/<id>/<тип>/`
+- Переходный период: store читает оба layout, пишет только в новый; коллизия id → приоритет нового + warning
+- `relations.jsonl`/`events.jsonl` не мигрируются (id объектов не меняются)
+- Идемпотентность: повторный запуск — докат
+
+*Надёжность записи (обязательна до мультиагентной записи Phase 9).*
+- **Lockfile** (`.wolf/memory/.lock`, flock) вокруг транзакции «файл + JSONL-append + переиндексация» — закрывает противоречие «мультиагентная запись (§2) vs single-writer (§3.6)»
+- **Валидация JSONL при чтении** — битая строка не роняет систему; skip-and-report
+- **Карантин битых объектов** — невалидный frontmatter не роняет `list`/`search`
+- `wolf validate` — проверка консистентности хранилища
+- Retry с backoff на `SQLITE_BUSY`
+
+*Use-case'ы совета:* подсчёт VOTE по объектам, проверка кворума, синтез.
+
+*DoD фазы:* config.yaml каноничен и валидируется; оркестрационные типы создаются через API; миграция выполнена (DoD выше); тесты надёжности записи зелёные.
 
 **Phase 9 — Flat-first роутер + Council Mode.**
 Классификатор задач (специфицируемая / ревью / неспецифицируемая), md-агенты с permission-glob (по образцу wolf-experiment), spawn-logger с квотами в рабочий workspace. Tool policy: рабочая трасса тулов каждой роли.
@@ -1255,6 +1267,7 @@ Wolf [EXECUTION]:
 | 2026-08-19 | Треды: логическая → физическая группировка + подкаталоги + даты в именах | Навигация человека, атомарность |
 | 2026-08-19 | Ревью трёх экспертов: статус `[target]` введён; layout перемаркирован; CLI/MCP-таблицы сверены с кодом; id-модель, tombstone-удаление, document-ref/native | Сверка с реализацией |
 | 2026-08-19 | Ревью 4 экспертов (UX, консистентность, реализуемость, SRE): `[target]` покрытие доведено (§1.7/§9/§10/§12); маппинг тип→подкаталог; разрыв цикла 7.5↔8; блок надёжности записи в Phase 8 (lockfile, JSONL-валидация, карантин); §0.1 «Первые 10 минут»; примеры §10 сверены с CLI | Ревью по мини-планам |
+| 2026-08-23 | Phase 7.5 упразднена как отдельная фаза: одна миграция layout внутри Phase 8 с финальной таксономией (минус dual-read переходный период, минус вторая миграция document-split); fallback-процедура для wolf/executor; DoD для Phase 8 | Решение Начальника: две миграции данных — лишняя работа |
 
 ---
 
