@@ -87,7 +87,7 @@ async function registerDocuments(
     const existing = await deps.store.get(id);
     const object: MemoryObject = {
       id,
-      type: 'document',
+      type: 'document-ref',
       title: doc.title,
       body: `Registered project document: ${doc.path}`,
       status: 'active',

@@ -3,7 +3,7 @@ import { EventLog } from '../../ports/event-log.port.js';
 import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
-import { MemoryStatus } from '../../domain/memory-types.js';
+import { MemoryStatus, getDeclaration } from '../../domain/memory-types.js';
 import { canTransition } from '../../domain/governance.js';
 import { summarizeSession } from './summarize-session.js';
 
@@ -17,6 +17,14 @@ export async function transitionMemoryObject(
 ): Promise<void> {
   const existing = await deps.store.get(id);
   if (!existing) throw new Error(`Memory object not found: ${id}`);
+
+  const decl = getDeclaration(existing.type);
+  if (!decl.lifecycle.includes(newStatus)) {
+    throw new Error(
+      `Status "${newStatus}" is not in lifecycle of type "${existing.type}" (allowed: ${decl.lifecycle.join(', ')})`
+    );
+  }
+
   if (!canTransition(existing.status, newStatus)) {
     throw new Error(`Invalid transition from ${existing.status} to ${newStatus}`);
   }

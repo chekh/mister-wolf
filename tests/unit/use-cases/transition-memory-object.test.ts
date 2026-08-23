@@ -73,4 +73,36 @@ describe('transitionMemoryObject', () => {
       'Invalid transition from active to accepted'
     );
   });
+
+  it('rejects globally allowed transition outside type lifecycle (task-brief active -> open)', async () => {
+    const store = new MarkdownMemoryStore(dir);
+    const log = new JsonlEventLog(eventsPath(dir));
+    const clock = new SystemClock();
+    const idGen = new HashIdGenerator();
+
+    const added = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'task-brief', title: 'Batch task', body: '...', createdBy: 'user:test' }
+    );
+
+    await expect(transitionMemoryObject({ store, log, clock, idGen }, added.object.id, 'open')).rejects.toThrow(
+      /lifecycle/
+    );
+  });
+
+  it('allows transition within type lifecycle (task-brief active -> completed)', async () => {
+    const store = new MarkdownMemoryStore(dir);
+    const log = new JsonlEventLog(eventsPath(dir));
+    const clock = new SystemClock();
+    const idGen = new HashIdGenerator();
+
+    const added = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'task-brief', title: 'Batch task', body: '...', createdBy: 'user:test' }
+    );
+
+    await transitionMemoryObject({ store, log, clock, idGen }, added.object.id, 'completed');
+    const updated = await store.get(added.object.id);
+    expect(updated?.status).toBe('completed');
+  });
 });
