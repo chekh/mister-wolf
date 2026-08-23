@@ -1,14 +1,16 @@
 import { join } from 'path';
-import { MemoryType } from '../../domain/memory-types.js';
+import { getDeclaration, type MemoryType } from '../../domain/memory-types.js';
 
 export function memoryDir(baseDir: string): string {
   return join(baseDir, '.wolf', 'memory');
 }
 
+/** @deprecated layout v1, используется только migration */
 export function objectsDir(baseDir: string): string {
   return join(memoryDir(baseDir), 'objects');
 }
 
+/** @deprecated layout v1, используется только migration */
 export function objectDirForType(baseDir: string, type: MemoryType): string {
   const mapping: Record<MemoryType, string> = {
     decision: 'decisions',
@@ -41,6 +43,7 @@ export function objectDirForType(baseDir: string, type: MemoryType): string {
   return join(objectsDir(baseDir), mapping[type]);
 }
 
+/** @deprecated layout v1, используется только migration */
 export function objectPath(baseDir: string, type: MemoryType, id: string): string {
   return join(objectDirForType(baseDir, type), `${id}.md`);
 }
@@ -67,4 +70,29 @@ export function relationsPath(baseDir: string): string {
 
 export function configPath(baseDir: string): string {
   return join(baseDir, '.wolf', 'config.yaml');
+}
+
+export function threadsDir(baseDir: string): string {
+  return join(memoryDir(baseDir), 'threads');
+}
+
+export function sharedDir(baseDir: string): string {
+  return join(memoryDir(baseDir), 'shared');
+}
+
+export function quarantineDir(baseDir: string): string {
+  return join(memoryDir(baseDir), 'quarantine');
+}
+
+/** Целевой путь объекта в layout v2. */
+export function targetPathFor(baseDir: string, obj: { type: MemoryType; id: string; thread?: string }): string {
+  const decl = getDeclaration(obj.type);
+  if (decl.layout === 'work-thread-file') {
+    return join(threadsDir(baseDir), obj.id, 'WORK-THREAD.md');
+  }
+  const fileName = `${obj.id}.md`;
+  if (obj.thread && decl.subdirThread) return join(threadsDir(baseDir), obj.thread, decl.subdirThread, fileName);
+  const sharedSub = decl.subdirShared ?? decl.subdirThread;
+  if (!sharedSub) throw new Error(`Type ${obj.type} has no storage directory for this scope`);
+  return join(sharedDir(baseDir), sharedSub, fileName);
 }

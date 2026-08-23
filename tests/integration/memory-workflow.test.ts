@@ -27,7 +27,8 @@ describe('Memory workflow', () => {
 
   it('initializes, adds a lesson, rebuilds index, and searches', async () => {
     await initProjectMemory(new FsProjectInitializer(), dir);
-    expect(existsSync(join(dir, '.wolf', 'memory', 'objects'))).toBe(true);
+    expect(existsSync(join(dir, '.wolf', 'memory', 'shared'))).toBe(true);
+    expect(existsSync(join(dir, '.wolf', 'memory', 'threads'))).toBe(true);
 
     const store = new MarkdownMemoryStore(dir);
     const log = new JsonlEventLog(eventsPath(dir));
@@ -45,7 +46,7 @@ describe('Memory workflow', () => {
       }
     );
 
-    expect(existsSync(join(dir, '.wolf', 'memory', 'objects', 'lessons', `${object.id}.md`))).toBe(true);
+    expect(existsSync(join(dir, '.wolf', 'memory', 'shared', 'lessons', `${object.id}.md`))).toBe(true);
 
     const index = new SQLiteSearchIndex(indexPath(dir));
     await rebuildMemoryIndex({ store, index });

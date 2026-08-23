@@ -1,4 +1,5 @@
 import * as fs from 'fs/promises';
+import * as fsSync from 'fs';
 import yaml from 'js-yaml';
 import { z } from 'zod';
 import type { FieldSpec, MemoryType, MemoryTypeDeclaration } from '../../domain/memory-types.js';
@@ -39,6 +40,35 @@ export async function loadWolfConfig(baseDir: string): Promise<WolfConfig | null
   let raw: string;
   try {
     raw = await fs.readFile(configPath(baseDir), 'utf-8');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw err;
+  }
+  let parsed: unknown;
+  try {
+    parsed = yaml.load(raw);
+  } catch (err) {
+    throw new ConfigLoadError(`Invalid YAML in ${configPath(baseDir)}: ${err instanceof Error ? err.message : err}`);
+  }
+  const cfg = ConfigFileSchema.parse(parsed);
+  const mt = cfg.memory_types ?? {};
+  return {
+    artifact_sources: cfg.artifact_sources,
+    projectTypes: Object.entries(mt.project ?? {}).map(([name, d]) => ({
+      name: name as MemoryType,
+      lifecycle: d.lifecycle as MemoryTypeDeclaration['lifecycle'],
+      subdirThread: d.subdir_thread,
+      subdirShared: d.subdir_shared,
+      fields: d.fields,
+    })),
+    rawCoreBlock: mt.core ?? null,
+  };
+}
+
+export function loadWolfConfigSync(baseDir: string): WolfConfig | null {
+  let raw: string;
+  try {
+    raw = fsSync.readFileSync(configPath(baseDir), 'utf-8');
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
     throw err;
