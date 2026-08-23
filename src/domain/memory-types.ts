@@ -95,6 +95,9 @@ export const CORE_TAXONOMY: readonly MemoryTypeDeclaration[] = [
     lifecycle: ['active', 'superseded', 'rejected', 'obsolete'],
     subdirThread: 'decisions',
     subdirShared: 'decisions',
+    fields: {
+      thread: { kind: 'string', optional: true },
+    },
   },
   { name: 'lesson', lifecycle: FULL, subdirThread: 'lessons', subdirShared: 'lessons' },
   { name: 'observation', lifecycle: FULL, subdirThread: 'lessons', subdirShared: 'lessons' },
@@ -146,6 +149,7 @@ export const CORE_TAXONOMY: readonly MemoryTypeDeclaration[] = [
     subdirThread: 'blockers',
     subdirShared: 'blockers',
     fields: {
+      thread: { kind: 'string', optional: true },
       impact: { kind: 'string', required: true, min: 1 },
       workaround: { kind: 'string', optional: true },
     },

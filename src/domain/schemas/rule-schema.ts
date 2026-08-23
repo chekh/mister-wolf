@@ -1,12 +1,7 @@
 import { z } from 'zod';
-import { MemoryObjectSchema } from './memory-object-schema.js';
+import { buildTypeSchema } from '../type-schema-builder.js';
+import { getDeclaration } from '../memory-types.js';
 
-export const RuleSchema = MemoryObjectSchema.extend({
-  type: z.literal('rule'),
-  status: z.enum(['active', 'superseded', 'obsolete']),
-  scope: z.enum(['project', 'global']),
-  applies_to: z.array(z.string()).default([]),
-  trigger: z.string().default(''),
-});
-
+const decl = getDeclaration('rule');
+export const RuleSchema = buildTypeSchema(decl);
 export type Rule = z.infer<typeof RuleSchema>;
