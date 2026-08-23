@@ -25,6 +25,8 @@ import { memoryMcpCommand as mcpCommand } from './commands/memory-mcp.js';
 import { memoryRuleCommand as ruleCommand } from './commands/memory-rule.js';
 import { memoryTaxonomyCommand as taxonomyCommand } from './commands/memory-taxonomy.js';
 import { memoryMigrateCommand as migrateCommand } from './commands/memory-migrate.js';
+import { memoryCouncilCommand as councilCommand } from './commands/memory-council.js';
+import { memoryValidateCommand as validateCommand } from './commands/memory-validate.js';
 
 function readPackageVersion(): string {
   const baseDir = dirname(fileURLToPath(import.meta.url));
@@ -57,6 +59,8 @@ export function createCli(): Command {
   program.addCommand(ruleCommand());
   program.addCommand(taxonomyCommand());
   program.addCommand(migrateCommand());
+  program.addCommand(councilCommand());
+  program.addCommand(validateCommand());
 
   return program;
 }

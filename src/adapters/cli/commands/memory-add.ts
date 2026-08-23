@@ -16,9 +16,20 @@ export function memoryAddCommand(): Command {
     .option('--tags <tags>', 'Comma-separated tags')
     .option('--confidence <confidence>', 'Confidence level (low|medium|high)')
     .option('--importance <n>', 'Importance from 0 to 1', parseFloat)
+    .option('--set <k=v,k=v>', 'Extra fields for typed objects')
     .option('--created-by <actor>', 'Creator actor', 'user:cli')
     .action(async (options) => {
       const { store, log, clock, idGen, index } = createCliContainer(process.cwd());
+      const extra = options.set
+        ? Object.fromEntries(
+            String(options.set)
+              .split(',')
+              .map((pair: string) => {
+                const i = pair.indexOf('=');
+                return [pair.slice(0, i), pair.slice(i + 1)];
+              })
+          )
+        : undefined;
       const result = await addMemoryObject(
         { store, log, clock, idGen, index },
         {
@@ -29,6 +40,7 @@ export function memoryAddCommand(): Command {
           tags: options.tags ? options.tags.split(',').map((t: string) => t.trim()) : [],
           confidence: options.confidence,
           importance: options.importance,
+          extra,
         }
       );
       console.log(`Created memory object: ${result.object.id}`);

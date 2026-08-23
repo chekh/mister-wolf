@@ -6,8 +6,9 @@ import { HashIdGenerator } from '../adapters/fs/hash-id-generator.js';
 import { FsProjectInitializer } from '../adapters/fs/fs-project-initializer.js';
 import { FsFileSystem } from '../adapters/fs/fs-file-system.js';
 import { HeuristicProjectScanner } from '../adapters/fs/heuristic-project-scanner.js';
-import { eventsPath, indexPath, relationsPath } from '../adapters/fs/project-paths.js';
+import { eventsPath, indexPath, relationsPath, memoryDir } from '../adapters/fs/project-paths.js';
 import { JsonlRelationLog } from '../adapters/fs/jsonl-relation-log.js';
+import { FsMemoryLock } from '../adapters/fs/memory-lock.js';
 
 export function createCliContainer(baseDir: string) {
   const fs = new FsFileSystem();
@@ -21,5 +22,6 @@ export function createCliContainer(baseDir: string) {
     initializer: new FsProjectInitializer(),
     fs,
     scanner: new HeuristicProjectScanner(fs),
+    lock: new FsMemoryLock(memoryDir(baseDir)),
   };
 }

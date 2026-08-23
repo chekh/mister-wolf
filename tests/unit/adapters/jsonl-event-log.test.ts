@@ -41,17 +41,19 @@ describe('JsonlEventLog', () => {
     expect(events).toEqual([]);
   });
 
-  it('throws when a line is not valid JSON', async () => {
+  it('skips lines that are not valid JSON', async () => {
     const path = join(dir, 'bad.jsonl');
     writeFileSync(path, '{not json}\n', 'utf-8');
     const badLog = new JsonlEventLog(path);
-    await expect(badLog.readAll()).rejects.toThrow('Invalid JSON at line 1');
+    const events = await badLog.readAll();
+    expect(events).toEqual([]);
   });
 
-  it('throws when a line fails schema validation', async () => {
+  it('skips lines that fail schema validation', async () => {
     const path = join(dir, 'invalid.jsonl');
     writeFileSync(path, JSON.stringify({ id: 'evt_x', type: 'unknown' }) + '\n', 'utf-8');
     const badLog = new JsonlEventLog(path);
-    await expect(badLog.readAll()).rejects.toThrow('Event schema validation failed at line 1');
+    const events = await badLog.readAll();
+    expect(events).toEqual([]);
   });
 });

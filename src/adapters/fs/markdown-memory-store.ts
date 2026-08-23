@@ -1,16 +1,17 @@
 import * as fs from 'fs/promises';
-import { dirname, join } from 'path';
+import { dirname, join, relative } from 'path';
 import yaml from 'js-yaml';
 import { z } from 'zod';
 import { MemoryStore, ListFilters } from '../../ports/memory-store.port.js';
 import { MemoryObject, MemoryObjectSchema } from '../../domain/schemas/memory-object-schema.js';
 import { type MemoryType, CORE_TAXONOMY, getDeclaration } from '../../domain/memory-types.js';
 import { buildTypeSchema } from '../../domain/type-schema-builder.js';
-import { objectsDir, threadsDir, sharedDir, targetPathFor } from './project-paths.js';
+import { objectsDir, threadsDir, sharedDir, targetPathFor, memoryDir, quarantineDir } from './project-paths.js';
 import { loadWolfConfigSync } from './config-file.js';
 import { mergeTaxonomy, type WolfConfig } from '../../domain/taxonomy.js';
 
 const STALE_DAYS = 30;
+const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n\n?([\s\S]*)$/;
 
 let typeSchemaCache: Map<MemoryType, z.ZodTypeAny> | null = null;
 let configLoadWarned = false;
@@ -81,7 +82,6 @@ export class MarkdownMemoryStore implements MemoryStore {
     for (const root of roots) {
       const files = await this.walkMarkdownFiles(root);
       for (const path of files) {
-        // матч по parsed.id, не по имени файла: work-thread живёт в WORK-THREAD.md
         const parsed = await this.parseFileSafe(path);
         if (parsed && parsed.id === id) return parsed;
       }
@@ -132,6 +132,62 @@ export class MarkdownMemoryStore implements MemoryStore {
     return updated;
   }
 
+  async scanProblems(): Promise<{ path: string; error: string }[]> {
+    const problems: { path: string; error: string }[] = [];
+    for (const root of this.roots()) {
+      let files: string[];
+      try {
+        files = await this.walkMarkdownFiles(root);
+      } catch (err) {
+        if (isEnoent(err)) continue;
+        throw err;
+      }
+      for (const filePath of files) {
+        const msgs: string[] = [];
+        let content: string | undefined;
+        try {
+          content = await fs.readFile(filePath, 'utf-8');
+        } catch (err) {
+          if (isEnoent(err)) continue;
+          msgs.push(formatError(err));
+        }
+        if (content === undefined) continue;
+        try {
+          const match = content.match(FRONTMATTER_RE);
+          if (!match) throw new Error('Missing or invalid frontmatter delimiter');
+          const frontmatter = yaml.load(match[1]) as Record<string, unknown>;
+          const body = match[2] || '';
+          const base = MemoryObjectSchema.parse({ ...frontmatter, body });
+          const schemas = getTypeSchemas(this.baseDir);
+          const typeSchema = schemas.get(base.type as MemoryType);
+          if (typeSchema) {
+            const result = typeSchema.safeParse(base);
+            if (!result.success) throw new Error(result.error.issues.map((i) => i.message).join(', '));
+          }
+        } catch (err) {
+          msgs.push(formatError(err));
+        }
+        for (const msg of msgs) {
+          problems.push({ path: filePath, error: msg });
+        }
+      }
+    }
+    return problems;
+  }
+
+  async quarantineFiles(problems: { path: string; error: string }[]): Promise<void> {
+    const qBase = quarantineDir(this.baseDir);
+    const memBase = memoryDir(this.baseDir);
+    for (const { path: filePath, error } of problems) {
+      const rel = relative(memBase, filePath);
+      const dest = join(qBase, rel);
+      const metaDest = `${dest}.meta.json`;
+      await fs.mkdir(dirname(dest), { recursive: true });
+      await fs.rename(filePath, dest);
+      await fs.writeFile(metaDest, JSON.stringify({ error, quarantined_at: new Date().toISOString() }));
+    }
+  }
+
   private async parseFileSafe(path: string): Promise<MemoryObject | null> {
     let content: string;
     try {
@@ -143,7 +199,7 @@ export class MarkdownMemoryStore implements MemoryStore {
       return null;
     }
     try {
-      const match = content.match(/^---\n([\s\S]*?)\n---\n\n?([\s\S]*)$/);
+      const match = content.match(FRONTMATTER_RE);
       if (!match) {
         throw new Error('Missing or invalid frontmatter delimiter');
       }
