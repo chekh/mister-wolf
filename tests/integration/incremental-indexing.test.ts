@@ -44,7 +44,7 @@ describe('Incremental indexing', () => {
       }
     );
 
-    expect(existsSync(join(dir, '.wolf', 'memory', 'objects', 'lessons', `${object.id}.md`))).toBe(true);
+    expect(existsSync(join(dir, '.wolf', 'memory', 'shared', 'lessons', `${object.id}.md`))).toBe(true);
 
     const results = await searchMemory({ index }, { query: 'searchable right after add' });
     expect(results).toHaveLength(1);

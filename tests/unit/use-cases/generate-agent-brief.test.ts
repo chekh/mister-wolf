@@ -6,6 +6,7 @@ import { generateAgentBrief } from '../../../src/app/use-cases/generate-agent-br
 import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
 import { FsFileSystem } from '../../../src/adapters/fs/fs-file-system.js';
 import { addMemoryObject } from '../../../src/app/use-cases/add-memory-object.js';
+import { createBlocker } from '../../../src/app/use-cases/create-blocker.js';
 import { SystemClock } from '../../../src/adapters/fs/system-clock.js';
 import { HashIdGenerator } from '../../../src/adapters/fs/hash-id-generator.js';
 import { JsonlEventLog } from '../../../src/adapters/fs/jsonl-event-log.js';
@@ -66,12 +67,11 @@ describe('generateAgentBrief', () => {
       }
     );
 
-    await addMemoryObject(
+    await createBlocker(
       { store, log, clock, idGen },
       {
-        type: 'blocker',
         title: 'Missing OAuth provider',
-        body: 'No OAuth provider selected yet.',
+        impact: 'No OAuth provider selected yet.',
         createdBy: 'user:test',
       }
     );

@@ -53,7 +53,7 @@ describe('MVP-B workflow', () => {
     const scanResult = runCli('scan', dir);
     expect(scanResult.stdout).toContain('Project scan saved: project-scan-latest');
 
-    const scanPath = join(dir, '.wolf', 'memory', 'objects', 'context', 'project-scan-latest.md');
+    const scanPath = join(dir, '.wolf', 'memory', 'shared', 'notes', 'project-scan-latest.md');
     expect(existsSync(scanPath)).toBe(true);
 
     const briefResult = runCli('brief', dir);
