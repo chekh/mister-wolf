@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import yaml from 'js-yaml';
@@ -8,7 +8,15 @@ import { MarkdownMemoryStore } from '../../src/adapters/fs/markdown-memory-store
 import { SQLiteSearchIndex } from '../../src/adapters/sqlite/sqlite-search-index.js';
 import { rebuildMemoryIndex } from '../../src/app/use-cases/rebuild-memory-index.js';
 import { searchMemory } from '../../src/app/use-cases/search-memory.js';
-import { objectsDir, indexPath, eventsPath, relationsPath } from '../../src/adapters/fs/project-paths.js';
+import {
+  objectsDir,
+  indexPath,
+  eventsPath,
+  relationsPath,
+  sharedDir,
+  memoryDir,
+  quarantineDir,
+} from '../../src/adapters/fs/project-paths.js';
 import { addMemoryObject } from '../../src/app/use-cases/add-memory-object.js';
 import { createWorkThread } from '../../src/app/use-cases/create-work-thread.js';
 import { recordRelation } from '../../src/app/use-cases/record-relation.js';
@@ -18,6 +26,7 @@ import { JsonlEventLog } from '../../src/adapters/fs/jsonl-event-log.js';
 import { JsonlRelationLog } from '../../src/adapters/fs/jsonl-relation-log.js';
 import { SystemClock } from '../../src/adapters/fs/system-clock.js';
 import { HashIdGenerator } from '../../src/adapters/fs/hash-id-generator.js';
+import { runValidate } from '../../src/adapters/cli/commands/memory-validate.js';
 
 function legacyMd(id: string, overrides: Record<string, any>): string {
   const base = {
@@ -212,4 +221,82 @@ describe('phase8 workflow', () => {
     const basedOn = await rels.list({ subject: synth.id, predicate: 'based_on' });
     expect(basedOn).toHaveLength(2);
   });
+
+  it('validate reports problems and --fix quarantines them', async () => {
+    // Ensure a valid object exists
+    const store = new MarkdownMemoryStore(dir);
+    const log = new JsonlEventLog(eventsPath(dir));
+    const clock = new SystemClock();
+    const idGen = new HashIdGenerator();
+    await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'decision', title: 'Good decision', body: 'yes', createdBy: 'user:test' }
+    );
+
+    // Create a broken .md in shared/rules/
+    const rulesDir = join(sharedDir(dir), 'rules');
+    mkdirSync(rulesDir, { recursive: true });
+    const brokenPath = join(rulesDir, 'broken_rule.md');
+    writeFileSync(brokenPath, 'this is not valid frontmatter\n', 'utf-8');
+
+    // Add a bad line to relations.jsonl
+    const relsPath = relationsPath(dir);
+    const goodRel = JSON.stringify({
+      id: idGen.generateEventId(clock.now()),
+      subject: 'fake_subject',
+      predicate: 'answers',
+      object: 'fake_object',
+      created_at: clock.now().toISOString(),
+      source: 'agent',
+      confidence: 'high',
+    });
+    writeFileSync(relsPath, `${goodRel}\n{broken json line}\n`, 'utf-8');
+
+    // First validate: should find problems
+    const result1 = await runValidate(dir);
+    expect(result1.ok).toBe(false);
+    expect(result1.errors).toBeGreaterThan(0);
+    // The broken object should be reported
+    expect(result1.displayLines.some((l) => l.includes('broken'))).toBe(true);
+
+    // The broken file should still be there (no --fix)
+    expect(existsSync(brokenPath)).toBe(true);
+
+    // Now validate with --fix
+    const result2 = await runValidate(dir, { fix: true });
+    // Broken object should be quarantined
+    expect(existsSync(brokenPath)).toBe(false);
+    const qDir = quarantineDir(dir);
+    // Check quarantine has a file
+    expect(existsSync(qDir)).toBe(true);
+    // meta.json should exist
+    const metaFiles = findFiles(qDir, '.meta.json');
+    expect(metaFiles.length).toBeGreaterThan(0);
+
+    // Re-validate: objects should have 0 broken now
+    const result3 = await runValidate(dir);
+    // Objects broken count should be 0 now
+    const objLine = result3.displayLines.find((l) => l.startsWith('objects:'))!;
+    expect(objLine).toContain('broken 0');
+    // But relations bad line still exists (quarantine only fixes objects)
+    const relLine = result3.displayLines.find((l) => l.startsWith('relations:'))!;
+    expect(relLine).toContain('bad 1');
+  });
 });
+
+function findFiles(dir: string, suffix: string): string[] {
+  const results: string[] = [];
+  function walk(d: string) {
+    for (const entry of readdirSync(d, { withFileTypes: true })) {
+      const full = join(d, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith(suffix)) results.push(full);
+    }
+  }
+  try {
+    walk(dir);
+  } catch {
+    /* */
+  }
+  return results;
+}

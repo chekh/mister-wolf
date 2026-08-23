@@ -3,6 +3,7 @@ import { EventLog } from '../../ports/event-log.port.js';
 import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
+import type { MemoryLock } from '../../ports/memory-lock.port.js';
 import { shouldSummarize } from './should-summarize.js';
 import { addMemoryObject, AddMemoryObjectResult } from './add-memory-object.js';
 import { MemoryEvent } from '../../domain/schemas/memory-event-schema.js';
@@ -29,7 +30,7 @@ function renderSummaryBody(events: MemoryEvent[]): string {
 }
 
 export async function summarizeSession(
-  deps: { store: MemoryStore; log: EventLog; clock: Clock; idGen: IdGenerator; index?: SearchIndex },
+  deps: { store: MemoryStore; log: EventLog; clock: Clock; idGen: IdGenerator; index?: SearchIndex; lock?: MemoryLock },
   input: SummarizeSessionInput
 ): Promise<SummarizeSessionResult | null> {
   const now = deps.clock.now();
@@ -55,7 +56,7 @@ export async function summarizeSession(
   const body = renderSummaryBody(recentEvents);
 
   const result = await addMemoryObject(
-    { store: deps.store, log: deps.log, clock: deps.clock, idGen: deps.idGen, index: deps.index },
+    { store: deps.store, log: deps.log, clock: deps.clock, idGen: deps.idGen, index: deps.index, lock: deps.lock },
     {
       type: 'session-summary',
       title,
