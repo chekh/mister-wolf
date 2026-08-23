@@ -1,11 +1,9 @@
+import { buildTypeSchema } from '../type-schema-builder.js';
+import { getDeclaration } from '../memory-types.js';
 import { z } from 'zod';
-import { MemoryObjectSchema } from './memory-object-schema.js';
 
-export const DecisionSchema = MemoryObjectSchema.extend({
-  type: z.literal('decision'),
-  status: z.enum(['active', 'superseded', 'rejected', 'obsolete']),
+const decl = getDeclaration('decision');
+export const DecisionSchema = buildTypeSchema(decl, {
   thread: z.string().optional(),
-  body: z.string().default(''),
 });
-
 export type Decision = z.infer<typeof DecisionSchema>;

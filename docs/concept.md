@@ -13,6 +13,7 @@
 Mr. Wolf — local-first memory substrate для AI coding agents.
 
 **Ключевые решения v2:**
+
 - Память — ядро: всё есть память (markdown + frontmatter + relations + FTS5)
 - Flat by default: иерархия не окупается на специфицируемых задачах (+157…+1141% токенов)
 - Council Mode и изолированное ревью — единственные окупающиеся формы оркестрации (+31% дефектов)
@@ -38,8 +39,6 @@ wolf brief       # снимок активной памяти [built]
 Целевой first-run: init создаёт `.wolf/` + дефолтный `councils/default.yaml` + шаблоны агентов/скиллов из пакета — пользователь не копирует 16 файлов руками. Первый полезный вывод — `wolf brief` после первых объектов: трассируемая память проекта за 2 команды.
 
 **Минимальный словарь пользователя** (остальное — для wolf'а и power users): `init`, `add`, `search`, `get`, `brief`, `thread create/list/brief`, `session wrap-up`, `supersede`. Типы, naming-правила, предикаты relations, конфиги советов и модели работают за дефолтами.
-
-
 
 ## 0. Позиционирование
 
@@ -92,18 +91,17 @@ Mr. Wolf Memory Substrate — пассивный слой хранения да�
 
 **Новые оркестрационные типы [предлагается].** Файловый протокол эксперимента (каталоги `coordinator/`, `executor/`, `councils/`) становится типами памяти — с даром получаемыми жизненным циклом, relations, FTS5-поиском и governance:
 
-| Тип | Назначение | Кто создаёт | Кто читает | Связи |
-|---|---|---|---|---|
-| `task-brief` | Задание wolf → executor/worker: контекст, критерии приёмки, ограничения | wolf | executor/worker | `based_on → work-thread`, `based_on → decision/rule` |
-| `report` | Отчёт исполнителя: summary, изменения, валидация, проблемы | executor/worker | wolf, пользователь | `answers → task-brief`, `supports → decision` |
-| `council-question` | Вопрос совету: варианты, критерии, состав, кворум | wolf | члены совета | `related_to → task-brief/decision` |
-| `council-opinion` | Мнение члена совета; VOTE-контракт сохраняется | council-member | wolf (считает по объектам, не по самоотчётам) | `answers → council-question` |
-| `synthesis` | Синтез совета: рекомендация, разногласия, кворум, confidence | wolf | пользователь | `based_on → council-opinion[]`, `supports → decision` |
-| `escalation` | Эскалация к человеку: вопрос, контекст, почему wolf не решает сам | wolf | пользователь | `resolved_by → decision` |
-| `decision-request` | Запрос решения от executor к wolf | executor | wolf | `answered_by → decision` |
+| Тип                | Назначение                                                              | Кто создаёт     | Кто читает                                    | Связи                                                 |
+| ------------------ | ----------------------------------------------------------------------- | --------------- | --------------------------------------------- | ----------------------------------------------------- |
+| `task-brief`       | Задание wolf → executor/worker: контекст, критерии приёмки, ограничения | wolf            | executor/worker                               | `based_on → work-thread`, `based_on → decision/rule`  |
+| `report`           | Отчёт исполнителя: summary, изменения, валидация, проблемы              | executor/worker | wolf, пользователь                            | `answers → task-brief`, `supports → decision`         |
+| `council-question` | Вопрос совету: варианты, критерии, состав, кворум                       | wolf            | члены совета                                  | `related_to → task-brief/decision`                    |
+| `council-opinion`  | Мнение члена совета; VOTE-контракт сохраняется                          | council-member  | wolf (считает по объектам, не по самоотчётам) | `answers → council-question`                          |
+| `synthesis`        | Синтез совета: рекомендация, разногласия, кворум, confidence            | wolf            | пользователь                                  | `based_on → council-opinion[]`, `supports → decision` |
+| `escalation`       | Эскалация к человеку: вопрос, контекст, почему wolf не решает сам       | wolf            | пользователь                                  | `resolved_by → decision`                              |
+| `decision-request` | Запрос решения от executor к wolf                                       | executor        | wolf                                          | `answered_by → decision`                              |
 
 Дисциплина наследуется: агентские объекты — `review_state: proposed`; решения по итогам совета становятся `decision` только после синтеза/утверждения. Эти типы — кандидаты в **core pack** Phase 8 (schema-driven taxonomy): поля описываются конфигом, а не кодом.
-
 
 **Примеры шаблонов** (id в примерах — display-формат для читабельности; реальный `id` — `mem_<date>_<slug>_<hash>`, §1.5):
 
@@ -121,7 +119,6 @@ created_at: 2026-07-03T10:00:00Z
 related:
   - csv-export-spec
 ---
-
 # Task: Implement CSV parser
 
 ## Acceptance Criteria
@@ -214,11 +211,13 @@ Implemented CSV parser using PapaParse.
 ```
 
 **Почему физическая группировка:**
+
 - **Удаление треда** — `rm -rf threads/<id>/` + обновление индексов. Атомарно.
 - **Визуальная навигация** — без grep видно что принадлежит треду.
 - **Изоляция** — параллельная работа без конфликтов.
 
 **Почему подкаталоги по типам:**
+
 - Человек ищет файлы по типу ("где спеки?")
 - 100+ файлов в плоском каталоге нечитабельны
 - Агентам всё равно (они через FTS5)
@@ -226,20 +225,20 @@ Implemented CSV parser using PapaParse.
 
 **Маппинг тип → подкаталог** (канон для миграции в Phase 8):
 
-| Тип | Подкаталог в треде | В `shared/` |
-|---|---|---|
-| work-thread | `WORK-THREAD.md` (корень треда) | — |
-| document-native | `documents/` | `documents/` |
-| task-brief, report | `tasks/` | — |
-| decision | `decisions/` | `decisions/` |
-| council-question, council-opinion, synthesis | `councils/` | — |
-| escalation, decision-request | `escalations/` | — |
-| lesson, observation | `lessons/` | `lessons/` |
-| blocker | `blockers/` | `blockers/` |
-| session-checkpoint, session-summary | `sessions/` | — |
-| rule | — (только shared) | `rules/` |
-| document-ref | — (внешние файлы) | `documents/` |
-| article, info-request, open-question, context | `notes/` | `notes/` |
+| Тип                                           | Подкаталог в треде              | В `shared/`  |
+| --------------------------------------------- | ------------------------------- | ------------ |
+| work-thread                                   | `WORK-THREAD.md` (корень треда) | —            |
+| document-native                               | `documents/`                    | `documents/` |
+| task-brief, report                            | `tasks/`                        | —            |
+| decision                                      | `decisions/`                    | `decisions/` |
+| council-question, council-opinion, synthesis  | `councils/`                     | —            |
+| escalation, decision-request                  | `escalations/`                  | —            |
+| lesson, observation                           | `lessons/`                      | `lessons/`   |
+| blocker                                       | `blockers/`                     | `blockers/`  |
+| session-checkpoint, session-summary           | `sessions/`                     | —            |
+| rule                                          | — (только shared)               | `rules/`     |
+| document-ref                                  | — (внешние файлы)               | `documents/` |
+| article, info-request, open-question, context | `notes/`                        | `notes/`     |
 
 Подкаталоги создаются при первом объекте.
 
@@ -252,19 +251,23 @@ Implemented CSV parser using PapaParse.
 - Разделитель: `-`
 
 **Версионирование:**
+
 - Новая версия = новый файл с новой датой
 - Старый файл помечается `superseded` в frontmatter
 - Связь через `supersedes` в relations.jsonl
 - Не использовать `-v1`, `-v2` в имени
 
 **Парные объекты (brief/report):**
+
 - ID задачи в имени для парности
 - Дата у каждого объекта своя (дата создания)
 
 **Объекты одного совета:**
+
 - Все имеют одну дату (дату создания вопроса)
 
 **Scope:**
+
 - `threads/<id>/` — объекты треда, изолированы
 - `shared/` — объекты, видимые всем тредам (`thread: null` в frontmatter)
 
@@ -306,7 +309,6 @@ Wolf использует граф как механизм селекции ко
 4. **Оркестрационные use-case'ы** — создание `task-brief`/`council-*`/`synthesis`/`escalation`, подсчёт VOTE по объектам, проверка кворума — новые use-case'ы поверх существующего write protocol и governance.
 5. **Открытые вопросы активной памяти** — расширяемость предикатов relations; snapshot vs ids в checkpoint'ах.
 
-
 ### 1.7. Треды (workstreams)
 
 **Статус раздела: [target].** Сегодня тред — объект `work-thread` + поле `thread` в frontmatter связанных объектов; layout — плоский `objects/<тип>/`. Целевая модель ниже; миграция — внутри Phase 8. Команды `recap`, `search --thread`, `thread list --status` — **[planned/designed]**, сейчас: `wolf brief`, `thread list` без фильтров.
@@ -314,6 +316,7 @@ Wolf использует граф как механизм селекции ко
 **Тред** — **физический каталог** в `.wolf/memory/threads/<id>/` с подкаталогами по типам объектов. Логическая связь дополнительно отражается полем `thread` в frontmatter (для FTS5-поиска и relations).
 
 **Почему физическая группировка:**
+
 - Удаление треда = `rm -rf threads/<id>/` (атомарно)
 - Визуальная навигация без grep
 - Изоляция при параллельной работе
@@ -348,6 +351,7 @@ Wolf использует граф как механизм селекции ко
 
 **Удаление треда [designed]:**
 `wolf thread delete` — НЕ `rm -rf`: журналы append-only и должны остаться целыми. Семантика:
+
 1. Tombstone-событие в `events.jsonl` (`thread_deleted`)
 2. Связи треда в `relations.jsonl` помечаются `orphaned` (не удаляются)
 3. Файлы перемещаются в `.wolf/memory/.trash/<id>/` (восстановимо) или удаляются после grace period
@@ -421,9 +425,7 @@ wolf search "parser"                       # все объекты [built]
 2. **Cross-thread dependencies** — связи через `related_to` с явным указанием
 3. **Thread merging** — если два треда оказались одной задачей
 
-
 ---
-
 
 ## 2. Агенты и оркестрация
 
@@ -433,22 +435,22 @@ wolf search "parser"                       # все объекты [built]
 
 Эксперимент опроверг посылку «иерархия окупается на сложных задачах». Скорректированные налоги оркестрации против flat-агента той же сильной модели:
 
-| Класс задачи | Эксперимент | Налог ORCH | Качество | Вердикт |
-|---|---|---|---|---|
-| Малые код-задачи | COST-001 | +274…+1141% new, время ×4–9 | паритет | FLAT |
-| Реализация / миграция | LONG-001/002 | +157…+347% new, время ×1.5–2 | паритет | FLAT |
-| Исследование + веб-синтез | RESEARCH-001 | +258% new, время ×1.35; источников вдвое меньше | паритет | FLAT |
-| Итеративное ревью зрелого документа | REVIEW-001 | new +46%, **full −29%**, время ×1.7 | **дефектов +31%, major ×2.2** | ORCH |
+| Класс задачи                        | Эксперимент  | Налог ORCH                                      | Качество                      | Вердикт |
+| ----------------------------------- | ------------ | ----------------------------------------------- | ----------------------------- | ------- |
+| Малые код-задачи                    | COST-001     | +274…+1141% new, время ×4–9                     | паритет                       | FLAT    |
+| Реализация / миграция               | LONG-001/002 | +157…+347% new, время ×1.5–2                    | паритет                       | FLAT    |
+| Исследование + веб-синтез           | RESEARCH-001 | +258% new, время ×1.35; источников вдвое меньше | паритет                       | FLAT    |
+| Итеративное ревью зрелого документа | REVIEW-001   | new +46%, **full −29%**, время ×1.7             | **дефектов +31%, major ×2.2** | ORCH    |
 
 **[доказано]** Специфицируемая задача — однопроходная для сильной модели 2026 года (находка 28). Иерархия на таких задачах — процессный налог, не экономия.
 
 Решение о схеме принимает **роутер задач** — классификатор в wolf, работающий до спавна кого-либо:
 
-| Сигнал в запросе | Маршрут | Основание |
-|---|---|---|
-| Задача специфицируема (спека, критерии приёмки, Definition of Done): реализация, миграция, исследование | **FLAT** — один агент сильной модели | COST/LONG/RESEARCH: паритет при налоге +157…+1141% |
-| Зрелый критичный документ требует ревью; решение с конфликтом перспектив | **COUNCIL / изолированное ревью** | REVIEW-001 + 11 советов |
-| Задача неспецифицируема: отладка legacy без спеки, противоречивые требования, «сделай как лучше» | **HIERARCHY** | **[гипотеза]** — capacity-предел flat не воспроизведён (находка 22). До проверки — не заявлять как факт |
+| Сигнал в запросе                                                                                        | Маршрут                              | Основание                                                                                               |
+| ------------------------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Задача специфицируема (спека, критерии приёмки, Definition of Done): реализация, миграция, исследование | **FLAT** — один агент сильной модели | COST/LONG/RESEARCH: паритет при налоге +157…+1141%                                                      |
+| Зрелый критичный документ требует ревью; решение с конфликтом перспектив                                | **COUNCIL / изолированное ревью**    | REVIEW-001 + 11 советов                                                                                 |
+| Задача неспецифицируема: отладка legacy без спеки, противоречивые требования, «сделай как лучше»        | **HIERARCHY**                        | **[гипотеза]** — capacity-предел flat не воспроизведён (находка 22). До проверки — не заявлять как факт |
 
 При сомнении — FLAT: дешевле, и эскалация к оркестрации возможна в середине работы, обратная — нет.
 
@@ -520,7 +522,6 @@ wolf (координатор, k3-256k)         — брифы, решения, �
 
 **Канал эскалации в автономном прогоне**: wolf пишет escalation-объект, **останавливается**; человек докатывает решение вторым запуском — файловый протокол гарантирует продолжение с места остановки (M11).
 
-
 **Approved Lists** — источники для автономных решений. Хранятся как объекты `rule` (Phase 6 governance, создание — только пользователем):
 
 ```text
@@ -543,19 +544,18 @@ Wolf проверяет: выбор в approved list → `autonomous`; выбо�
 
 Принцип «сложность уровня ↔ модель» **[доказано практикой]**. Матрица на 2026-08:
 
-| Роль | Модель | Почему |
-|---|---|---|
-| wolf (координатор) | `kimi-for-coding/k3-256k` | синтез, подсчёт голосов, брифы; thin-нагрузка |
-| executor / советники architect, security / ревьюеры перспектив / слепой судья | `zai-coding-plan/glm-5.3` (или `glm-5.2`) | декомпозиция, глубокая критика |
-| воркеры | `zai-coding-plan/glm-5-turbo` | однозадачная механика; учитывать compliant-поведение (находка 42) |
-| резерв воркерного тира | `minimax-coding-plan/MiniMax-M3` | при деградации/лимитах основного провайдера |
+| Роль                                                                          | Модель                                    | Почему                                                            |
+| ----------------------------------------------------------------------------- | ----------------------------------------- | ----------------------------------------------------------------- |
+| wolf (координатор)                                                            | `kimi-for-coding/k3-256k`                 | синтез, подсчёт голосов, брифы; thin-нагрузка                     |
+| executor / советники architect, security / ревьюеры перспектив / слепой судья | `zai-coding-plan/glm-5.3` (или `glm-5.2`) | декомпозиция, глубокая критика                                    |
+| воркеры                                                                       | `zai-coding-plan/glm-5-turbo`             | однозадачная механика; учитывать compliant-поведение (находка 42) |
+| резерв воркерного тира                                                        | `minimax-coding-plan/MiniMax-M3`          | при деградации/лимитах основного провайдера                       |
 
 **Fallback:** резерв описан только для воркерного тира. Для wolf/executor при недоступности провайдера — ручная процедура: сменить `model` в frontmatter агента на резерв из той же матрицы (runbook, не автоматика).
 
 **Принцип обновления**: алиасы (low/medium/high) **отложены** — фиксированные модели в frontmatter агентов. Пересмотр матрицы — событийный, при выходе новых моделей. Если churn станет частым — вернуться к алиасам отдельным решением.
 
 ---
-
 
 ### 2.10. Скиллы: процедурные инструкции
 
@@ -576,14 +576,15 @@ skills/
 
 **Как связаны скиллы и агенты:**
 
-| Агент | Скиллы | Модель |
-|---|---|---|
-| wolf | brainstorm, plan, review, handoff | k3-256k |
-| executor | sdd, execute | glm-5.x |
-| worker | (нет скилла — одна задача в промпте) | glm-5-turbo |
-| council-member | (нет скилла — read-only, одно мнение) | glm-5.x |
+| Агент          | Скиллы                                | Модель      |
+| -------------- | ------------------------------------- | ----------- |
+| wolf           | brainstorm, plan, review, handoff     | k3-256k     |
+| executor       | sdd, execute                          | glm-5.x     |
+| worker         | (нет скилла — одна задача в промпте)  | glm-5-turbo |
+| council-member | (нет скилла — read-only, одно мнение) | glm-5.x     |
 
 **Принципы:**
+
 - Скилл читается агентом при входе в режим/маршрут.
 - Шаги скилла используют Wolf API (memory, thread, gate).
 - Скилл не является памятью — это процедурное знание, а не данные.
@@ -593,17 +594,17 @@ skills/
 
 ---
 
-
-
 **Полный пример скилла:**
 
 ```markdown
 # skills/wolf-brainstorm.md
 
 ## Trigger
+
 Discovery mode → специфицируемая задача → EXECUTION/FLAT
 
 ## Steps
+
 1. `wolf thread create <id> --title "..."` — создаёт work-thread
 2. `wolf search "<keywords>"` — исследование (shared rules + related threads)
 3. `wolf create document --subtype spec --thread <id>` **[designed]** — команда не существует; сегодня `document` создаётся сканером
@@ -616,16 +617,19 @@ Discovery mode → специфицируемая задача → EXECUTION/FLA
 5. `wolf gate check create_plan --thread <id>` **[designed]** — gates-подсистема не спроектирована; требуется решение: реализовать или вычистить из скилла
 
 ## Hard Validators
+
 - Обязательные секции: Goal, Requirements, Acceptance Criteria
 - REQ-\d{3}: .+ (минимум 1)
 - AC-\d{3}: .+ (ссылка на REQ)
 - Нет паттернов: TBD, TODO, "implement later"
 
 ## Objects Created
+
 - document (subtype: spec, thread: <id>)
 - decision (если были выборы, thread: <id>)
 
 ## Handoff
+
 На выходе: спека валидна → можно перейти к wolf-plan
 ```
 
@@ -666,12 +670,12 @@ You are Mr. Wolf, the project coordinator...
 
 **Поля frontmatter:**
 
-| Поле | Назначение | Механика |
-|---|---|---|
-| `description` | Описание агента | opencode frontmatter |
-| `model` | Фиксированная модель | §2.9 матрица |
-| `permission.task` | Мапа glob-правил спавна | M3: `"*": deny` + `"executor-*": allow` (по **именам** агентов, не путям) |
-| `permission.bash` и др. | Отключение тулов | M1: массив `tools:` невалиден — только `permission` |
+| Поле                    | Назначение              | Механика                                                                  |
+| ----------------------- | ----------------------- | ------------------------------------------------------------------------- |
+| `description`           | Описание агента         | opencode frontmatter                                                      |
+| `model`                 | Фиксированная модель    | §2.9 матрица                                                              |
+| `permission.task`       | Мапа glob-правил спавна | M3: `"*": deny` + `"executor-*": allow` (по **именам** агентов, не путям) |
+| `permission.bash` и др. | Отключение тулов        | M1: массив `tools:` невалиден — только `permission`                       |
 
 Реальные образцы: `wolf-experiment/.opencode/agents/` (27 агентов с проверенными границами).
 
@@ -710,7 +714,7 @@ You are Mr. Wolf, the project coordinator...
 **[P0] Надёжная запись.**
 
 - **Атомарная запись**: `write(tmp) → fsync → renameSync(tmp → target)` — читатель никогда не видит половину файла. Локализовано в `MarkdownMemoryStore`.
-- **Валидация после правки**: «сериализовать → распарсить → schema.parse» *до* rename. Невалидный результат = правка отклонена, файл не тронут.
+- **Валидация после правки**: «сериализовать → распарсить → schema.parse» _до_ rename. Невалидный результат = правка отклонена, файл не тронут.
 - **Журнал правок (edit log)**: `.wolf/memory/edit-log.jsonl` — `{ ts, object_id, op, patch_summary, before_hash, after_hash, actor }`. Минимальный откат и аудит.
 - **Shadow Git — отложено осознанно** [deferred]: supersede-семантика (старые версии не удаляются) + event log + edit log покрывают откат и аудит; git-репозиторий внутри `.wolf/` — второй VCS рядом с git проекта, источник путаницы. Поднимаем при реальном кейсе «нужен blame по памяти».
 
@@ -742,10 +746,10 @@ interface EditResult {
   objectId: string;
   before: { hash: string; body: string };
   after: { hash: string; body: string };
-  diff: string;                // unified diff, генерирует слой
+  diff: string; // unified diff, генерирует слой
   applied: 'exact' | 'fuzzy';
   fuzzyScore?: number;
-  frontmatterValid: true;      // иначе — ошибка, правки нет
+  frontmatterValid: true; // иначе — ошибка, правки нет
   warnings: string[];
 }
 ```
@@ -760,16 +764,25 @@ interface EditResult {
 - **Правило проекта**: агенты НЕ правят файлы `.wolf/memory/**` напрямую платформенными edit-тулами — только через API слоя.
 - **Это правило, а не механика** — механически запретить обход нельзя (честное ограничение ранней концепции). Enforcement — через `rule`-объекты (Phase 6 governance) и промпты. Цена обхода мала: валидатор при чтении упадёт на битом объекте и укажет файл — нарушение детектируется, не молчит.
 
-
 - **Почему не Registry.** Обсуждалась альтернатива: вынести метаданные в отдельный `registry.json`. Отказ: frontmatter + zod-валидация + post-edit проверка (P0) решают проблемы синхронизации, а «источник истины рядом с данными» проще для отладки и git-friendly. Registry — избыточный слой рассинхронизации.
-
 
 **MCP-тулы [built]** (реальный реестр, имена flattened без префикса — Phase 6):
 
 ```typescript
-add, get, list, search, transition, scan, brief,
-create_thread, create_decision, create_blocker, resolve_blocker,
-create_rule, create_info_request, create_article
+(add,
+  get,
+  list,
+  search,
+  transition,
+  scan,
+  brief,
+  create_thread,
+  create_decision,
+  create_blocker,
+  resolve_blocker,
+  create_rule,
+  create_info_request,
+  create_article);
 ```
 
 CLI-only (не в MCP): `supersede`, `rebuild-index`, `session wrap-up` (глобальный, без `--thread`).
@@ -795,12 +808,12 @@ wolf_thread_graph(threadId: string, depth?: number): Graph
 
 ### 3.7. Сводка фаз
 
-| Фаза | Содержимое | Новые зависимости |
-|---|---|---|
-| P0 | Атомарная запись, post-edit валидация, edit log | — |
-| P1 | SEARCH/REPLACE + fuzzy, `editSection`/`insertIntoSection`, EditResult, `wolf edit/patch` + MCP | `diff-match-patch`, `unified`, `remark-parse`, `unist-util-visit` |
-| P2 | Reference-индекс + `wolf refs`, остальные структурные операции | — |
-| P2+ (опц.) | Shadow Git — только при подтверждённом кейсе | `isomorphic-git` |
+| Фаза       | Содержимое                                                                                     | Новые зависимости                                                 |
+| ---------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| P0         | Атомарная запись, post-edit валидация, edit log                                                | —                                                                 |
+| P1         | SEARCH/REPLACE + fuzzy, `editSection`/`insertIntoSection`, EditResult, `wolf edit/patch` + MCP | `diff-match-patch`, `unified`, `remark-parse`, `unist-util-visit` |
+| P2         | Reference-индекс + `wolf refs`, остальные структурные операции                                 | —                                                                 |
+| P2+ (опц.) | Shadow Git — только при подтверждённом кейсе                                                   | `isomorphic-git`                                                  |
 
 ---
 
@@ -828,23 +841,23 @@ wolf_thread_graph(threadId: string, depth?: number): Graph
 
 ## 5. Матрица зрелости
 
-| Возможность | Статус | Источник |
-|---|---|---|
-| Memory harness (объекты, event log, relations, governance, session wrap-up) | **built** | Phases 0–7 |
-| Физический layout тредов (`threads/<id>/`, `shared/`, даты в именах) | **target** | Phase 8 (одна миграция с финальной таксономией); сейчас — плоский `objects/<тип>/` |
-| FTS5-поиск + инкрементальная индексация | **built** | Phases 3, 5 |
-| Council Mode (VOTE, кворум, синтез, эскалация) | **proven** | 11 советов, 8 сценариев, пересчёт 10/10 |
-| Изолированное ревью по перспективам | **proven** | REVIEW-001: +31% issues, major ×2.2, full −29% |
-| Файловый протокол + докат | **proven** | Докат 160k vs 226k (LONG-001) |
-| Permission-дисциплина (glob, depth, квоты) | **proven** | M1–M4, M6, M7 |
-| Thin wolf (11–18k) | **proven** | LONG-001/002 (но пик переезжает на executor'а) |
-| Автономность / Decision Authority (полный цикл) | **hypothesis** | SPLIT-001 частично; AUTONOMY-001 не проведён |
-| Hierarchy для неспецифицируемых задач | **hypothesis** | Находка 22: capacity-предел не построен |
-| Редактирование памяти (SEARCH/REPLACE, AST, атомарность) | **designed** | §3; не реализовано |
-| Наблюдаемость / watchdog | **designed** | В песочнице — внешний протокол bg+poll+kill |
-| AUTONOMY-001 | **planned** | §6 |
-| Shadow Git | **deferred** | Supersede + event log покрывают откат |
-| WolfFS-пакет, Model Router, Platform Adapters, Capability Tokens, 6 режимов | **deprecated** | §7 |
+| Возможность                                                                 | Статус         | Источник                                                                           |
+| --------------------------------------------------------------------------- | -------------- | ---------------------------------------------------------------------------------- |
+| Memory harness (объекты, event log, relations, governance, session wrap-up) | **built**      | Phases 0–7                                                                         |
+| Физический layout тредов (`threads/<id>/`, `shared/`, даты в именах)        | **target**     | Phase 8 (одна миграция с финальной таксономией); сейчас — плоский `objects/<тип>/` |
+| FTS5-поиск + инкрементальная индексация                                     | **built**      | Phases 3, 5                                                                        |
+| Council Mode (VOTE, кворум, синтез, эскалация)                              | **proven**     | 11 советов, 8 сценариев, пересчёт 10/10                                            |
+| Изолированное ревью по перспективам                                         | **proven**     | REVIEW-001: +31% issues, major ×2.2, full −29%                                     |
+| Файловый протокол + докат                                                   | **proven**     | Докат 160k vs 226k (LONG-001)                                                      |
+| Permission-дисциплина (glob, depth, квоты)                                  | **proven**     | M1–M4, M6, M7                                                                      |
+| Thin wolf (11–18k)                                                          | **proven**     | LONG-001/002 (но пик переезжает на executor'а)                                     |
+| Автономность / Decision Authority (полный цикл)                             | **hypothesis** | SPLIT-001 частично; AUTONOMY-001 не проведён                                       |
+| Hierarchy для неспецифицируемых задач                                       | **hypothesis** | Находка 22: capacity-предел не построен                                            |
+| Редактирование памяти (SEARCH/REPLACE, AST, атомарность)                    | **designed**   | §3; не реализовано                                                                 |
+| Наблюдаемость / watchdog                                                    | **designed**   | В песочнице — внешний протокол bg+poll+kill                                        |
+| AUTONOMY-001                                                                | **planned**    | §6                                                                                 |
+| Shadow Git                                                                  | **deferred**   | Supersede + event log покрывают откат                                              |
+| WolfFS-пакет, Model Router, Platform Adapters, Capability Tokens, 6 режимов | **deprecated** | §7                                                                                 |
 
 ---
 
@@ -852,25 +865,27 @@ wolf_thread_graph(threadId: string, depth?: number): Graph
 
 **Phase 8 — Schema-driven taxonomy + оркестрационные типы + надёжность записи + одна миграция layout.**
 
-*Таксономия.* Core pack типов через `.wolf/config.yaml` (типы из кода — в конфиг); оркестрационные типы §1.2 (`task-brief`, `report`, `council-question`, `council-opinion`, `synthesis`, `escalation`, `decision-request`) входят через этот механизм. Lifecycles генерируются из доменного кода (`MemoryStatus` + `ALLOWED_TRANSITIONS`); механизм генератора — первый шаг фазы. Без config.yaml система работает на дефолтах из кода (обратная совместимость Phases 0–7).
+_Таксономия._ Core pack типов через `.wolf/config.yaml` (типы из кода — в конфиг); оркестрационные типы §1.2 (`task-brief`, `report`, `council-question`, `council-opinion`, `synthesis`, `escalation`, `decision-request`) входят через этот механизм. Lifecycles генерируются из доменного кода (`MemoryStatus` + `ALLOWED_TRANSITIONS`); механизм генератора — первый шаг фазы. Без config.yaml система работает на дефолтах из кода (обратная совместимость Phases 0–7).
 
-*Миграция layout — одна, с финальной таксономией.* Отдельной фазы 7.5 больше нет: перенос `objects/` → `threads/<id>/<тип>/` + `shared/` выполняется один раз, когда таксономия финальна (включая деление `document` → `document-ref/native` по критерию наличия `source.path`). Маппинг тип→подкаталог — §1.4.
+_Миграция layout — одна, с финальной таксономией._ Отдельной фазы 7.5 больше нет: перенос `objects/` → `threads/<id>/<тип>/` + `shared/` выполняется один раз, когда таксономия финальна (включая деление `document` → `document-ref/native` по критерию наличия `source.path`). Маппинг тип→подкаталог — §1.4.
+
 - `wolf migrate --dry-run` → отчёт о маппинге
 - Объекты без `thread` → `shared/`; с `thread` → `threads/<id>/<тип>/`
 - Переходный период: store читает оба layout, пишет только в новый; коллизия id → приоритет нового + warning
 - `relations.jsonl`/`events.jsonl` не мигрируются (id объектов не меняются)
 - Идемпотентность: повторный запуск — докат
 
-*Надёжность записи (обязательна до мультиагентной записи Phase 9).*
+_Надёжность записи (обязательна до мультиагентной записи Phase 9)._
+
 - **Lockfile** (`.wolf/memory/.lock`, flock) вокруг транзакции «файл + JSONL-append + переиндексация» — закрывает противоречие «мультиагентная запись (§2) vs single-writer (§3.6)»
 - **Валидация JSONL при чтении** — битая строка не роняет систему; skip-and-report
 - **Карантин битых объектов** — невалидный frontmatter не роняет `list`/`search`
 - `wolf validate` — проверка консистентности хранилища
 - Retry с backoff на `SQLITE_BUSY`
 
-*Use-case'ы совета:* подсчёт VOTE по объектам, проверка кворума, синтез.
+_Use-case'ы совета:_ подсчёт VOTE по объектам, проверка кворума, синтез.
 
-*DoD фазы:* config.yaml каноничен и валидируется; оркестрационные типы создаются через API; миграция выполнена (DoD выше); тесты надёжности записи зелёные.
+_DoD фазы:_ config.yaml каноничен и валидируется; оркестрационные типы создаются через API; миграция выполнена (DoD выше); тесты надёжности записи зелёные.
 
 **Phase 9 — Flat-first роутер + Council Mode.**
 Классификатор задач (специфицируемая / ревью / неспецифицируемая), md-агенты с permission-glob (по образцу wolf-experiment), spawn-logger с квотами в рабочий workspace. Tool policy: рабочая трасса тулов каждой роли.
@@ -886,33 +901,31 @@ wolf_thread_graph(threadId: string, depth?: number): Graph
 
 ---
 
-
-
 **Пример `.wolf/config.yaml` (Phase 8):**
 
 ```yaml
 # .wolf/config.yaml
 artifact_sources:
   # где искать исходные документы для регистрации как document
-  - "docs/**/*.md"
-  - "src/**/*.ts"
+  - 'docs/**/*.md'
+  - 'src/**/*.ts'
 
 memory_types:
   # Core types (Phases 0-7)
   work-thread:
-    lifecycle: [active, paused, completed, archived]   # requires ALLOWED_TRANSITIONS: active→completed (gap)
+    lifecycle: [active, paused, completed, archived] # requires ALLOWED_TRANSITIONS: active→completed (gap)
     relations: [related_to]
 
   decision:
-    lifecycle: [active, superseded, rejected, obsolete]  # synced with decision-schema.ts
+    lifecycle: [active, superseded, rejected, obsolete] # synced with decision-schema.ts
     relations: [based_on, supersedes]
 
-  document-ref:      # внешние файлы проекта, по ссылке
+  document-ref: # внешние файлы проекта, по ссылке
     required_fields: [source_path]
     lifecycle: [active, stale, superseded]
     relations: [related_to]
 
-  document-native:   # спеки/планы треда, тело в памяти
+  document-native: # спеки/планы треда, тело в памяти
     lifecycle: [active, superseded, archived]
     relations: [related_to, supersedes]
 
@@ -971,58 +984,56 @@ memory_types:
 
 **Правило синхронизации:** lifecycles в config.yaml **генерируются из доменного кода** (`MemoryStatus` + `ALLOWED_TRANSITIONS`), не пишутся вручную — иначе рассинхрон вечный. Генератор — часть Phase 8. Текущие пробелы домена: нет перехода `active → completed` (нужен для тредов/task-brief); статусов `draft`/`dismissed` не существует — из конфига убраны.
 
-
-
 ### Сводная таблица CLI команд
 
 Ключевые команды (полный список: `wolf --help`). Также built: `init`, `add`, `transition`, `create decision/blocker/rule/article/info-request`, `thread diff`, `session checkpoint`.
 
-| Команда | Назначение | Статус |
-|---|---|---|
-| **Управление тредами** | | |
-| `wolf thread create --title <t> --goal <g>` | Создать тред (id генерируется) | built |
-| `wolf thread list` | Список тредов (без фильтров) | built |
-| `wolf thread brief <id>` | Бриф нити | built |
-| `wolf thread complete <id>` | Завершить тред | designed |
-| `wolf thread archive <id>` | Архивировать тред | designed |
-| `wolf thread delete <id>` | Удалить тред (tombstone, §1.7) | designed |
-| **Сессии и handoff** | | |
-| `wolf recap` | Восстановить контекст | **planned** (roadmap-v2; сейчас — `wolf brief`) |
-| `wolf session wrap-up` | Создать handoff | built |
-| `wolf brief` | Производный снимок памяти | built |
-| **Поиск** | | |
-| `wolf search <query> [--type/--status/--tag]` | FTS5 поиск (без `--thread`) | built |
-| `wolf get <object-id>` | Получить объект | built |
-| `wolf list` | Список объектов | built |
-| **Жизненный цикл** | | |
-| `wolf supersede <old> <new>` | Заменить объект | built |
-| `wolf scan` | Найти stale объекты | built |
-| **Редактирование памяти (Phase 11)** | | |
-| `wolf edit <object-id>` | Редактировать объект | designed |
-| `wolf patch <object-id>` | Применить SEARCH/REPLACE | designed |
-| `wolf refs <value>` | Поиск по ссылкам | designed |
-| **Ревью (Phase 10)** | | |
-| `wolf review <doc>` | Изолированное ревью | planned |
-| **Граф связей** | | |
-| `wolf thread graph <id>` | Показать цепочку | planned |
+| Команда                                       | Назначение                     | Статус                                          |
+| --------------------------------------------- | ------------------------------ | ----------------------------------------------- |
+| **Управление тредами**                        |                                |                                                 |
+| `wolf thread create --title <t> --goal <g>`   | Создать тред (id генерируется) | built                                           |
+| `wolf thread list`                            | Список тредов (без фильтров)   | built                                           |
+| `wolf thread brief <id>`                      | Бриф нити                      | built                                           |
+| `wolf thread complete <id>`                   | Завершить тред                 | designed                                        |
+| `wolf thread archive <id>`                    | Архивировать тред              | designed                                        |
+| `wolf thread delete <id>`                     | Удалить тред (tombstone, §1.7) | designed                                        |
+| **Сессии и handoff**                          |                                |                                                 |
+| `wolf recap`                                  | Восстановить контекст          | **planned** (roadmap-v2; сейчас — `wolf brief`) |
+| `wolf session wrap-up`                        | Создать handoff                | built                                           |
+| `wolf brief`                                  | Производный снимок памяти      | built                                           |
+| **Поиск**                                     |                                |                                                 |
+| `wolf search <query> [--type/--status/--tag]` | FTS5 поиск (без `--thread`)    | built                                           |
+| `wolf get <object-id>`                        | Получить объект                | built                                           |
+| `wolf list`                                   | Список объектов                | built                                           |
+| **Жизненный цикл**                            |                                |                                                 |
+| `wolf supersede <old> <new>`                  | Заменить объект                | built                                           |
+| `wolf scan`                                   | Найти stale объекты            | built                                           |
+| **Редактирование памяти (Phase 11)**          |                                |                                                 |
+| `wolf edit <object-id>`                       | Редактировать объект           | designed                                        |
+| `wolf patch <object-id>`                      | Применить SEARCH/REPLACE       | designed                                        |
+| `wolf refs <value>`                           | Поиск по ссылкам               | designed                                        |
+| **Ревью (Phase 10)**                          |                                |                                                 |
+| `wolf review <doc>`                           | Изолированное ревью            | planned                                         |
+| **Граф связей**                               |                                |                                                 |
+| `wolf thread graph <id>`                      | Показать цепочку               | planned                                         |
 
 ## 7. Решённые противоречия
 
-| # | Тема | Варианты | Решение v2 | Обоснование |
-|---|---|---|---|---|
-| 1 | Память | Ранняя: threads/state.json vs harness: markdown+frontmatter+relations+FTS5 | **Harness — канон** | Построен и работает; «всё есть память» расширяется оркестрационными типами |
-| 2 | Enforcement | Capability tokens через API (обходимо) vs permission-glob платформы | **Платформенный слой; токены отменены** | M2/M3/M4 режут в рантайме системно; M8 — документированное ограничение |
-| 3 | WolfFS | Отдельный пакет с AST/Shadow Git vs «убрать совсем» | **Функции — фазами внутри mr-wolf; scope — только память; Shadow Git отложен** | FTS5 уже совпал с референсами; supersede + event log покрывают откат |
-| 4 | Model router | Алиасы vs фиксированные модели | **Фиксированные в frontmatter + процедура пересмотра** | Алиасы — слой без окупаемости; churn обрабатывается правкой frontmatter |
-| 5 | Platform Adapter Layer | Переносимость vs нативность | **opencode-нативность; адаптеры вне scope** | Механика M1–M12 проверена на opencode; вторая платформа — спекуляция |
-| 6 | Режимы | 6 vs 3 | **3: Discovery / Execution / Review** | Monitoring/Quick Lookup — поведение, не состояния |
-| 7 | Реестр vs frontmatter | registry.json как канон vs frontmatter объектов | **Frontmatter — канон; индексы — проекции** | Источник истины один и лежит рядом с данными |
-| 8 | Структура тредов | Логическая (поле `thread`) vs физическая (каталоги) | **Физическая** | Удаление/архивация атомарно, визуальная навигация, изоляция |
-| 9 | Структура внутри треда | Плоская vs подкаталоги по типам | **Подкаталоги по типам** | 100+ файлов в плоском каталоге нечитабельны; агентам всё равно |
-| 10 | Именование файлов | Slug без даты vs дата в имени | **Дата в имени [target]** | Хронологическая сортировка, версионирование через дату, поиск по времени |
-| 11 | Идентичность объектов | Короткие id (TASK-001) vs глобальные (`mem_..._<hash>`) | **Глобальный id + display-поле** | Коллизии в глобальном relations.jsonl; короткие номера — только для человека |
-| 12 | Удаление треда | `rm -rf` vs tombstone | **Tombstone-событие + orphaned-связи** | Append-only журналы не должны ломаться; файлы в `.trash/` с grace period |
-| 13 | Документы | Один тип `document` | **Два: `document-ref` / `document-native`** | By-reference (проектные) vs by-value (спеки треда) — разные lifecycles и правила stale |
+| #   | Тема                   | Варианты                                                                   | Решение v2                                                                     | Обоснование                                                                            |
+| --- | ---------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| 1   | Память                 | Ранняя: threads/state.json vs harness: markdown+frontmatter+relations+FTS5 | **Harness — канон**                                                            | Построен и работает; «всё есть память» расширяется оркестрационными типами             |
+| 2   | Enforcement            | Capability tokens через API (обходимо) vs permission-glob платформы        | **Платформенный слой; токены отменены**                                        | M2/M3/M4 режут в рантайме системно; M8 — документированное ограничение                 |
+| 3   | WolfFS                 | Отдельный пакет с AST/Shadow Git vs «убрать совсем»                        | **Функции — фазами внутри mr-wolf; scope — только память; Shadow Git отложен** | FTS5 уже совпал с референсами; supersede + event log покрывают откат                   |
+| 4   | Model router           | Алиасы vs фиксированные модели                                             | **Фиксированные в frontmatter + процедура пересмотра**                         | Алиасы — слой без окупаемости; churn обрабатывается правкой frontmatter                |
+| 5   | Platform Adapter Layer | Переносимость vs нативность                                                | **opencode-нативность; адаптеры вне scope**                                    | Механика M1–M12 проверена на opencode; вторая платформа — спекуляция                   |
+| 6   | Режимы                 | 6 vs 3                                                                     | **3: Discovery / Execution / Review**                                          | Monitoring/Quick Lookup — поведение, не состояния                                      |
+| 7   | Реестр vs frontmatter  | registry.json как канон vs frontmatter объектов                            | **Frontmatter — канон; индексы — проекции**                                    | Источник истины один и лежит рядом с данными                                           |
+| 8   | Структура тредов       | Логическая (поле `thread`) vs физическая (каталоги)                        | **Физическая**                                                                 | Удаление/архивация атомарно, визуальная навигация, изоляция                            |
+| 9   | Структура внутри треда | Плоская vs подкаталоги по типам                                            | **Подкаталоги по типам**                                                       | 100+ файлов в плоском каталоге нечитабельны; агентам всё равно                         |
+| 10  | Именование файлов      | Slug без даты vs дата в имени                                              | **Дата в имени [target]**                                                      | Хронологическая сортировка, версионирование через дату, поиск по времени               |
+| 11  | Идентичность объектов  | Короткие id (TASK-001) vs глобальные (`mem_..._<hash>`)                    | **Глобальный id + display-поле**                                               | Коллизии в глобальном relations.jsonl; короткие номера — только для человека           |
+| 12  | Удаление треда         | `rm -rf` vs tombstone                                                      | **Tombstone-событие + orphaned-связи**                                         | Append-only журналы не должны ломаться; файлы в `.trash/` с grace period               |
+| 13  | Документы              | Один тип `document`                                                        | **Два: `document-ref` / `document-native`**                                    | By-reference (проектные) vs by-value (спеки треда) — разные lifecycles и правила stale |
 
 ---
 
@@ -1042,7 +1053,6 @@ memory_types:
 12. **UX эскалации** — как человек видит очередь эскалаций и отвечает (команды `escalation list/answer` не существуют)?
 
 ---
-
 
 ## 9. Структура проекта
 
@@ -1094,7 +1104,6 @@ project/
     └── adapters/                    # CLI, MCP, memory store
 ```
 
-
 **Конфигурация советов:**
 
 ```text
@@ -1107,16 +1116,17 @@ project/
 ```yaml
 # architecture.yaml
 name: architecture-council
-quorum: 3                    # минимум голосов для решения
-consensus_threshold: 0.75    # доля победителя
+quorum: 3 # минимум голосов для решения
+consensus_threshold: 0.75 # доля победителя
 members:
-  - council-architect        # model: glm-5.3
-  - council-security         # model: glm-5.3
-  - council-ux               # model: glm-5-turbo
-vote_contract: "VOTE: A|B|C|ABSTAIN|TIMEOUT"
+  - council-architect # model: glm-5.3
+  - council-security # model: glm-5.3
+  - council-ux # model: glm-5-turbo
+vote_contract: 'VOTE: A|B|C|ABSTAIN|TIMEOUT'
 ```
 
 **Границы:**
+
 - `agents/` и `skills/` — знания агентов, **не** память проекта.
 - `.wolf/memory/threads/` и `.wolf/memory/shared/` — единственное место хранения памяти.
 - Код проекта (`src/`, `tests/`) — вне `.wolf/`, регистрируется по ссылке как `document-ref` (§1.4).
@@ -1211,8 +1221,6 @@ Wolf [EXECUTION, COUNCIL]:
 
 **Результат:** Два треда параллельно, контекст не смешивается, handoff через session-summary + session-checkpoint (§1.7). Каждый тред изолирован, shared решения видны всем.
 
-
-
 ### 10.5. Recovery после прерывания
 
 ```text
@@ -1255,19 +1263,18 @@ Wolf [EXECUTION]:
 8. **6 режимов работы** — сокращено до 3 (§2.3). Monitoring/Quick Lookup — поведение, не состояния.
 9. **Параллелизм как преимущество** — доказано, что не окупается на специфицируемых задачах.
 
-
 ---
 
 ## Changelog концепции
 
-| Дата | Изменение | Основание |
-|---|---|---|
-| 2026-08-18 | v2.0: синтез v1.0 + 9-слойная + wolf-experiment + экспертные сессии | Эмпирика эксперимента |
-| 2026-08-18 | Flat-first вместо иерархии; 3 режима вместо 6; capability tokens изъяты | COST/LONG/REVIEW-001, M1–M12 |
-| 2026-08-19 | Треды: логическая → физическая группировка + подкаталоги + даты в именах | Навигация человека, атомарность |
-| 2026-08-19 | Ревью трёх экспертов: статус `[target]` введён; layout перемаркирован; CLI/MCP-таблицы сверены с кодом; id-модель, tombstone-удаление, document-ref/native | Сверка с реализацией |
-| 2026-08-19 | Ревью 4 экспертов (UX, консистентность, реализуемость, SRE): `[target]` покрытие доведено (§1.7/§9/§10/§12); маппинг тип→подкаталог; разрыв цикла 7.5↔8; блок надёжности записи в Phase 8 (lockfile, JSONL-валидация, карантин); §0.1 «Первые 10 минут»; примеры §10 сверены с CLI | Ревью по мини-планам |
-| 2026-08-23 | Phase 7.5 упразднена как отдельная фаза: одна миграция layout внутри Phase 8 с финальной таксономией (минус dual-read переходный период, минус вторая миграция document-split); fallback-процедура для wolf/executor; DoD для Phase 8 | Решение Начальника: две миграции данных — лишняя работа |
+| Дата       | Изменение                                                                                                                                                                                                                                                                          | Основание                                               |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| 2026-08-18 | v2.0: синтез v1.0 + 9-слойная + wolf-experiment + экспертные сессии                                                                                                                                                                                                                | Эмпирика эксперимента                                   |
+| 2026-08-18 | Flat-first вместо иерархии; 3 режима вместо 6; capability tokens изъяты                                                                                                                                                                                                            | COST/LONG/REVIEW-001, M1–M12                            |
+| 2026-08-19 | Треды: логическая → физическая группировка + подкаталоги + даты в именах                                                                                                                                                                                                           | Навигация человека, атомарность                         |
+| 2026-08-19 | Ревью трёх экспертов: статус `[target]` введён; layout перемаркирован; CLI/MCP-таблицы сверены с кодом; id-модель, tombstone-удаление, document-ref/native                                                                                                                         | Сверка с реализацией                                    |
+| 2026-08-19 | Ревью 4 экспертов (UX, консистентность, реализуемость, SRE): `[target]` покрытие доведено (§1.7/§9/§10/§12); маппинг тип→подкаталог; разрыв цикла 7.5↔8; блок надёжности записи в Phase 8 (lockfile, JSONL-валидация, карантин); §0.1 «Первые 10 минут»; примеры §10 сверены с CLI | Ревью по мини-планам                                    |
+| 2026-08-23 | Phase 7.5 упразднена как отдельная фаза: одна миграция layout внутри Phase 8 с финальной таксономией (минус dual-read переходный период, минус вторая миграция document-split); fallback-процедура для wolf/executor; DoD для Phase 8                                              | Решение Начальника: две миграции данных — лишняя работа |
 
 ---
 
@@ -1276,23 +1283,27 @@ Wolf [EXECUTION]:
 ### Базовые понятия
 
 **Mr. Wolf Memory Substrate** — пассивное ядро хранения данных:
+
 - `.wolf/memory/` с объектами, relations, FTS5
 - Не принимает решений, не выполняет задач
 - Предоставляет API для чтения/записи
 
 **Mr. Wolf Coordinator Agent** — активный агент-координатор:
+
 - Целевая реализация: `agents/wolf.md` **[target]** (сегодня файла нет; образец — `wolf-experiment/.opencode/agents/wolf-coordinator.md`)
 - Модель: k3-256k
 - Принимает решения, управляет агентами
 - Использует substrate как хранилище
 
 **Агент (Agent)** — активный участник с моделью LLM:
+
 - Принимает решения на основе контекста
 - Выполняет задачи (пишет код, создаёт документы)
 - Может спавнить других агентов (или не может)
 - Описан в `agents/*.md`
 
 **Оркестратор (Orchestrator)** — координирует работу агентов:
+
 - Распределяет задачи
 - Контролирует прогресс
 - Синтезирует результаты
@@ -1301,20 +1312,24 @@ Wolf [EXECUTION]:
 ### Структурные понятия
 
 **Тред (Thread)** — **[target]** физический каталог в `threads/<id>/` (сегодня — объект `work-thread` + поле `thread` в frontmatter):
+
 - Группирует объекты по задаче/фиче
 - Архивируется/удаляется через tombstone-события (§1.7)
 - Изолирует параллельную работу
 
 **Shared** — каталог `shared/`:
+
 - Объекты, видимые всем тредам
 - Правила, стандарты, архитектурные решения
 
 **Объект памяти** — markdown-файл с frontmatter:
+
 - Сегодня: `.wolf/memory/objects/<тип>/<id>.md`; целевой layout: `threads/<id>/<тип>/` или `shared/` [target]
 - Тип определяется полем `type` в frontmatter
 - Связи через `relations.jsonl`
 
 **Скилл (Skill)** — markdown-файл в `skills/`:
+
 - Процедурные инструкции для агентов
 - Не является памятью
 - Описывает "как делать"
@@ -1322,19 +1337,23 @@ Wolf [EXECUTION]:
 ### Оркестрационные понятия
 
 **Task Brief** — задание от Coordinator для Executor:
+
 - Объект памяти типа `task-brief`
 - Содержит контекст, критерии, ограничения
 
 **Report** — отчёт Executor для Coordinator:
+
 - Объект памяти типа `report`
 - Связан с task-brief через `answers`
 
 **Council** — мини-совет агентов:
+
 - Read-only члены совета
 - Каждый пишет `council-opinion`
 - Coordinator считает голоса и синтезирует
 
 **Decision Authority** — уровни автономии Coordinator:
+
 - `autonomous` — решает сам
 - `advisory` — совет, решает по синтезу
 - `human_required` — спрашивает пользователя

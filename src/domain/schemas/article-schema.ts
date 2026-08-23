@@ -1,14 +1,13 @@
+import { buildTypeSchema } from '../type-schema-builder.js';
+import { getDeclaration } from '../memory-types.js';
 import { z } from 'zod';
-import { MemoryObjectSchema } from './memory-object-schema.js';
 
-export const ArticleSchema = MemoryObjectSchema.extend({
-  type: z.literal('article'),
-  status: z.enum(['proposed', 'accepted', 'stale', 'superseded', 'archived']),
+const decl = getDeclaration('article');
+export const ArticleSchema = buildTypeSchema(decl, {
   thread: z.string().min(1),
   summary: z.string().min(1),
   answers: z.array(z.string()).default([]),
   supports: z.array(z.string()).default([]),
   evidence: z.array(z.string()).default([]),
 });
-
 export type Article = z.infer<typeof ArticleSchema>;

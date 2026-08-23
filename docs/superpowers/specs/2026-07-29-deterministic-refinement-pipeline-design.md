@@ -33,12 +33,12 @@ The pipeline is:
 
 A single LLM session asked to "review and fix this plan" suffers from:
 
-| Failure mode | Manifestation |
-|---|---|
-| **Confirmation bias** | The model finds problems in the same areas it would naturally produce, missing blind spots |
-| **Context pollution** | Finding issues and fixing them in one session produces a muddled trace — what was found vs what was changed? |
-| **No convergence guarantee** | A single agent can oscillate, re-introduce removed issues, or invent new ones each pass |
-| **No separation of concerns** | "Check coverage" and "check architecture" require different expertise, but one agent does both |
+| Failure mode                  | Manifestation                                                                                                |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **Confirmation bias**         | The model finds problems in the same areas it would naturally produce, missing blind spots                   |
+| **Context pollution**         | Finding issues and fixing them in one session produces a muddled trace — what was found vs what was changed? |
+| **No convergence guarantee**  | A single agent can oscillate, re-introduce removed issues, or invent new ones each pass                      |
+| **No separation of concerns** | "Check coverage" and "check architecture" require different expertise, but one agent does both               |
 
 ### The Solution
 
@@ -89,12 +89,12 @@ Empirical: a single agent given "find and fix problems in this plan" **finds few
 
 Industrial precedent:
 
-| Domain | Analog |
-|---|---|
-| **Linting** | `eslint --no-eslintrc --rule X` per check → aggregate results → `eslint --fix` |
-| **Code review** | Google's critiquers: readability, security, correctness — separate reviewers, separate concerns |
-| **Formal verification** | Each property checked by a different prover → counterexample triage → fix |
-| **Testing** | Unit + integration + e2e; separate suites, separate reports, separate owners |
+| Domain                  | Analog                                                                                          |
+| ----------------------- | ----------------------------------------------------------------------------------------------- |
+| **Linting**             | `eslint --no-eslintrc --rule X` per check → aggregate results → `eslint --fix`                  |
+| **Code review**         | Google's critiquers: readability, security, correctness — separate reviewers, separate concerns |
+| **Formal verification** | Each property checked by a different prover → counterexample triage → fix                       |
+| **Testing**             | Unit + integration + e2e; separate suites, separate reports, separate owners                    |
 
 ### Why Not Just More Rounds of the Same Agent?
 
@@ -166,13 +166,13 @@ docs/superpowers/
 
 **All artifacts are `.md` with YAML frontmatter.** Not JSON. Rationale:
 
-| Concern | YAML frontmatter in .md | JSON | Pure .md |
-|---|---|---|---|
-| Human-readable diff | ✅ Clean, staged | ❌ One-liner | ✅ Clean |
-| Machine-parseable | ✅ `---\nk:v\n---` via yaml lib | ✅ Native | ❌ grep/awk fragile |
-| Self-documenting | ✅ Body can explain context | ❌ | ✅ Body explains |
-| Agent-friendly output | ✅ LLMs write markdown natively | ❌ Forced JSON escapes | ✅ Native |
-| Token cost to produce | ✅ Low (natural) | ❌ Higher (instruction overhead) | Low |
+| Concern               | YAML frontmatter in .md         | JSON                             | Pure .md            |
+| --------------------- | ------------------------------- | -------------------------------- | ------------------- |
+| Human-readable diff   | ✅ Clean, staged                | ❌ One-liner                     | ✅ Clean            |
+| Machine-parseable     | ✅ `---\nk:v\n---` via yaml lib | ✅ Native                        | ❌ grep/awk fragile |
+| Self-documenting      | ✅ Body can explain context     | ❌                               | ✅ Body explains    |
+| Agent-friendly output | ✅ LLMs write markdown natively | ❌ Forced JSON escapes           | ✅ Native           |
+| Token cost to produce | ✅ Low (natural)                | ❌ Higher (instruction overhead) | Low                 |
 
 ### 3.3 Agent Roles
 
@@ -181,20 +181,22 @@ docs/superpowers/
 **Role:** Read the plan (and optionally the spec), find problems in ONE dimension. Return findings.
 
 **Constraints:**
+
 - `mode: primary`, `edit: deny`, `bash: deny` (read-only)
 - One dimension per checker — never "check everything"
 - Output is `.md` with YAML frontmatter + findings as subsections
 
 **Input context (injected into prompt):**
+
 ```yaml
 ---
 round_number: 1
 total_rounds: 3
-checker_dimension: coverage  # what this checker looks for
+checker_dimension: coverage # what this checker looks for
 plan_path: docs/.../plan.md
-spec_path: docs/.../spec.md        # optional, if coverage needs requirements
-previous_findings: []              # what was found in previous rounds (for comparison)
-previous_actions: []               # what was already fixed
+spec_path: docs/.../spec.md # optional, if coverage needs requirements
+previous_findings: [] # what was found in previous rounds (for comparison)
+previous_actions: [] # what was already fixed
 ---
 ```
 
@@ -209,11 +211,13 @@ previous_actions: []               # what was already fixed
 **Role:** Read the merged `02-all-findings.md`, deduplicate, resolve conflicts, prioritize, produce a flat action list.
 
 **Constraints:**
+
 - `edit: deny`, `bash: deny` (read-only; never modifies the plan)
 - Receives merged findings from ALL checkers — full picture
 - Does NOT re-analyze the plan itself; works only with findings
 
 **Input context:**
+
 ```yaml
 ---
 round_number: 1
@@ -235,11 +239,13 @@ findings_by_role:
 **Role:** Read the action list and apply changes to the plan file. Only agent with `edit: allow`.
 
 **Constraints:**
+
 - `edit: allow`, `bash: allow` (must write to disk, git commit)
 - Does exactly what actions say — no creative additions
 - Actions critical and warning are mandatory; info is optional
 
 **Input context:**
+
 ```yaml
 ---
 actions_count: 4
@@ -423,14 +429,15 @@ If a round produces no applied changes (the applier's diff against the plan is e
 
 Choice: **Python** or **TypeScript**.
 
-| | Python | TypeScript |
-|---|---|---|
-| YAML parsing | `pyyaml` (stdlib-adjacent) | `js-yaml` |
-| Async | `asyncio` + `httpx` | native `async/await` |
-| opencode SDK | HTTP client | `@opencode-ai/sdk` |
-| Fits project | New dep | Same stack |
+|              | Python                     | TypeScript           |
+| ------------ | -------------------------- | -------------------- |
+| YAML parsing | `pyyaml` (stdlib-adjacent) | `js-yaml`            |
+| Async        | `asyncio` + `httpx`        | native `async/await` |
+| opencode SDK | HTTP client                | `@opencode-ai/sdk`   |
+| Fits project | New dep                    | Same stack           |
 
 Decision: **Python** for the orchestrator. Rationale:
+
 - Pipeline is infrastructure, not product code — separate from the TS project
 - `pyyaml` + `httpx` + `asyncio` is zero-install on any modern system
 - Easier to evolve independently
@@ -482,14 +489,14 @@ The orchestrator reuses one opencode server for the entire run (no cold boot per
 
 ## 7. Error Handling
 
-| Scenario | Behavior |
-|---|---|
-| Checker timeout | Mark as failed, continue with remaining checkers |
-| Resolver returns invalid YAML | Retry once; if still invalid, abort pipeline |
-| Applier fails to edit | Log error, mark action as failed, continue |
-| OpenCode server down | Wait 5s, retry once; if still down, abort |
-| Git conflict | Stop, human resolution required |
-| Disk full | Abort immediately |
+| Scenario                      | Behavior                                         |
+| ----------------------------- | ------------------------------------------------ |
+| Checker timeout               | Mark as failed, continue with remaining checkers |
+| Resolver returns invalid YAML | Retry once; if still invalid, abort pipeline     |
+| Applier fails to edit         | Log error, mark action as failed, continue       |
+| OpenCode server down          | Wait 5s, retry once; if still down, abort        |
+| Git conflict                  | Stop, human resolution required                  |
+| Disk full                     | Abort immediately                                |
 
 The pipeline never blocks on a single checker failure — it degrades gracefully. But resolver and applier failures are fatal: without them, no refinement happens.
 
@@ -498,11 +505,13 @@ The pipeline never blocks on a single checker failure — it degrades gracefully
 ## 8. Integration with Superpowers Workflow
 
 **Existing flow:**
+
 ```
 brainstorming skill → writing-plans skill → executing-plans skill
 ```
 
 **Proposed flow:**
+
 ```
 brainstorming skill → writing-plans skill → [autorefine] → executing-plans skill
 ```
@@ -520,31 +529,31 @@ The master-plan template (`docs/master-plan-template.md`) gains a reference to t
 
 ## 9. Design Decisions Record
 
-| Decision | Rationale |
-|---|---|
-| YAML frontmatter in .md, not JSON | Human-readable, diffable, agent-friendly output, single format |
-| `.autorefine/` hidden directory | Pipeline artifacts are not project docs; don't clutter `docs/` |
-| Three roles (checker → resolver → applier) | Minimal separation of concerns; industry precedent in QA/CI |
-| Merge step is machine-only | Dedup by (location, issue) requires no LLM — cheaper, deterministic |
-| Checkers run in parallel | Independent dimensions, no shared state, reduces wall-clock time |
-| Git commit per round | Idempotent resume, inspectable history, rollback |
-| Previous round actions included in next round | Prevents re-finding fixed issues, reduces token waste |
-| Stalemate detection by git diff | If applier did nothing, further rounds are statistically useless |
-| opencode serve + HTTP API | Avoids subprocess overhead, cold boot, ANSI-parsing hell |
-| Python for orchestrator | Standalone tool, zero-dependency on TS project, `pyyaml` built-in |
+| Decision                                      | Rationale                                                           |
+| --------------------------------------------- | ------------------------------------------------------------------- |
+| YAML frontmatter in .md, not JSON             | Human-readable, diffable, agent-friendly output, single format      |
+| `.autorefine/` hidden directory               | Pipeline artifacts are not project docs; don't clutter `docs/`      |
+| Three roles (checker → resolver → applier)    | Minimal separation of concerns; industry precedent in QA/CI         |
+| Merge step is machine-only                    | Dedup by (location, issue) requires no LLM — cheaper, deterministic |
+| Checkers run in parallel                      | Independent dimensions, no shared state, reduces wall-clock time    |
+| Git commit per round                          | Idempotent resume, inspectable history, rollback                    |
+| Previous round actions included in next round | Prevents re-finding fixed issues, reduces token waste               |
+| Stalemate detection by git diff               | If applier did nothing, further rounds are statistically useless    |
+| opencode serve + HTTP API                     | Avoids subprocess overhead, cold boot, ANSI-parsing hell            |
+| Python for orchestrator                       | Standalone tool, zero-dependency on TS project, `pyyaml` built-in   |
 
 ---
 
 ## 10. Future Considerations
 
-| Feature | When |
-|---|---|
-| Web dashboard (event stream) | After stable CLI — AgentLoom's Web UI is a reference |
-| Spec refinement in addition to plan | Round 2+: propagate plan changes back to spec |
-| Checker quality scoring | Track each checker's precision/recall across runs |
-| Cached checker results | If plan unchanged and same checker config, skip re-run |
-| Parallel resolver + applier across features | Multi-plan refinement for large features |
-| Integration with Mr. Wolf | Findings as observations, actions as decisions, history as sessions |
+| Feature                                     | When                                                                |
+| ------------------------------------------- | ------------------------------------------------------------------- |
+| Web dashboard (event stream)                | After stable CLI — AgentLoom's Web UI is a reference                |
+| Spec refinement in addition to plan         | Round 2+: propagate plan changes back to spec                       |
+| Checker quality scoring                     | Track each checker's precision/recall across runs                   |
+| Cached checker results                      | If plan unchanged and same checker config, skip re-run              |
+| Parallel resolver + applier across features | Multi-plan refinement for large features                            |
+| Integration with Mr. Wolf                   | Findings as observations, actions as decisions, history as sessions |
 
 ---
 
