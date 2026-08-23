@@ -69,6 +69,8 @@ describe('MarkdownMemoryStore', () => {
 
   it('filters stale objects', async () => {
     const fresh = makeObject('mem_fresh');
+    // ponytail: dynamic date — hardcoded one rotted past the 30-day stale window
+    fresh.updated_at = new Date().toISOString();
     const stale = makeObject('mem_stale');
     stale.updated_at = '2026-01-01T00:00:00Z';
     await store.save(fresh);
