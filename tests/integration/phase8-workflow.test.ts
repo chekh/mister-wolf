@@ -8,7 +8,16 @@ import { MarkdownMemoryStore } from '../../src/adapters/fs/markdown-memory-store
 import { SQLiteSearchIndex } from '../../src/adapters/sqlite/sqlite-search-index.js';
 import { rebuildMemoryIndex } from '../../src/app/use-cases/rebuild-memory-index.js';
 import { searchMemory } from '../../src/app/use-cases/search-memory.js';
-import { objectsDir, indexPath } from '../../src/adapters/fs/project-paths.js';
+import { objectsDir, indexPath, eventsPath, relationsPath } from '../../src/adapters/fs/project-paths.js';
+import { addMemoryObject } from '../../src/app/use-cases/add-memory-object.js';
+import { createWorkThread } from '../../src/app/use-cases/create-work-thread.js';
+import { recordRelation } from '../../src/app/use-cases/record-relation.js';
+import { tallyCouncilVotes } from '../../src/app/use-cases/tally-council-votes.js';
+import { createSynthesis } from '../../src/app/use-cases/create-synthesis.js';
+import { JsonlEventLog } from '../../src/adapters/fs/jsonl-event-log.js';
+import { JsonlRelationLog } from '../../src/adapters/fs/jsonl-relation-log.js';
+import { SystemClock } from '../../src/adapters/fs/system-clock.js';
+import { HashIdGenerator } from '../../src/adapters/fs/hash-id-generator.js';
 
 function legacyMd(id: string, overrides: Record<string, any>): string {
   const base = {
@@ -108,5 +117,99 @@ describe('phase8 workflow', () => {
     const { applyLayoutMigration: al } = await import('../../src/adapters/fs/layout-migration.js');
     const second = await al(dir);
     expect(second.total).toBe(0);
+  });
+
+  it('orchestration flow: thread -> task-brief(extra) -> report -> answers relation', async () => {
+    const store = new MarkdownMemoryStore(dir);
+    const log = new JsonlEventLog(eventsPath(dir));
+    const clock = new SystemClock();
+    const idGen = new HashIdGenerator();
+    const rels = new JsonlRelationLog(relationsPath(dir));
+
+    const thread = await createWorkThread(
+      { store, log, clock, idGen },
+      { title: 'Orch thread', goal: 'test orchestration', createdBy: 'user:test' }
+    );
+
+    const brief = await addMemoryObject(
+      { store, log, clock, idGen },
+      {
+        type: 'task-brief',
+        title: 'Do thing',
+        createdBy: 'user:test',
+        extra: { executor: 'agent:X', priority: 'high' },
+      }
+    );
+    expect(brief.object.executor).toBe('agent:X');
+    expect(brief.object.priority).toBe('high');
+
+    const report = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'report', title: 'Done thing', body: 'All good', createdBy: 'agent:X' }
+    );
+
+    await recordRelation({ relations: rels, idGen }, clock.now(), brief.object.id, 'answers', thread.object.id);
+
+    const storedBrief = await store.get(brief.object.id);
+    expect(storedBrief?.type).toBe('task-brief');
+    expect((storedBrief as any).executor).toBe('agent:X');
+
+    const storedReport = await store.get(report.object.id);
+    expect(storedReport?.type).toBe('report');
+
+    const answerRels = await rels.list({ subject: brief.object.id, predicate: 'answers' });
+    expect(answerRels).toHaveLength(1);
+    expect(answerRels[0].object).toBe(thread.object.id);
+  });
+
+  it('council flow: question -> 2 opinions -> tally -> synthesis', async () => {
+    const store = new MarkdownMemoryStore(dir);
+    const log = new JsonlEventLog(eventsPath(dir));
+    const clock = new SystemClock();
+    const idGen = new HashIdGenerator();
+    const rels = new JsonlRelationLog(relationsPath(dir));
+
+    const q = await addMemoryObject(
+      { store, log, clock, idGen },
+      {
+        type: 'council-question',
+        title: 'Should we?',
+        body: 'Decide now',
+        createdBy: 'user:test',
+        status: 'open',
+        extra: { question: 'Should we proceed?' },
+      }
+    );
+
+    const op1 = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'council-opinion', title: 'Op A', createdBy: 'agent:A', status: 'proposed', extra: { vote: 'yes' } }
+    );
+    const op2 = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'council-opinion', title: 'Op B', createdBy: 'agent:B', status: 'proposed', extra: { vote: 'yes' } }
+    );
+
+    const now = clock.now();
+    await recordRelation({ relations: rels, idGen }, now, op1.object.id, 'answers', q.object.id);
+    await recordRelation({ relations: rels, idGen }, now, op2.object.id, 'answers', q.object.id);
+
+    const tally = await tallyCouncilVotes(
+      { store, relations: rels },
+      { questionId: q.object.id, quorum: 2, consensusThreshold: 0.5 }
+    );
+    expect(tally.quorumMet).toBe(true);
+    expect(tally.winner).toBe('yes');
+
+    const { object: synth, relatedOpinions } = await createSynthesis(
+      { store, log, clock, idGen, relations: rels },
+      { questionId: q.object.id, recommendation: 'Proceed with plan', createdBy: 'user:test' }
+    );
+    expect(synth.type).toBe('synthesis');
+    expect(synth.status).toBe('proposed');
+    expect(relatedOpinions).toHaveLength(2);
+
+    const basedOn = await rels.list({ subject: synth.id, predicate: 'based_on' });
+    expect(basedOn).toHaveLength(2);
   });
 });
