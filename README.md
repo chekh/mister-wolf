@@ -97,6 +97,34 @@ node dist/bootstrap/cli.js search "lesson"
 
 **No config.yaml? No problem:** without `.wolf/config.yaml` everything works on the built-in defaults — all 22 core types from `CORE_TAXONOMY`. The config file is a generated mirror plus a place for project-specific types.
 
+## Testing
+
+### Unit & integration tests
+
+```bash
+npm run check          # format + lint + vitest + build (~60s)
+npm run test:run       # vitest only
+```
+
+### End-to-end (black-box CLI)
+
+```bash
+npm run e2e            # build + vitest on tests/e2e/**/*.e2e.ts (several minutes)
+```
+
+The E2E suite exercises the compiled CLI via `spawnSync` — no source imports. Six scenarios:
+
+1. **Lifecycle** — init → thread → task-brief → report → relation → transition → auto session-summary
+2. **Council** — question → opinions → tally winner → synthesis
+3. **Reliability** — broken object file (validate + quarantine); broken relations.jsonl line
+4. **Generic add** — all 21 non-deprecated types create with correct initial lifecycle status
+5. **Migration** — 5 legacy objects migrate from `objects/` to layout v2, idempotent, searchable
+6. **MCP stdio** — JSON-RPC `tools/list` returns registered tools
+
+**Known UX gap:** relations cannot be created via CLI (`wolf relation add` is not yet implemented). The E2E suite works around this by writing a temporary `.mjs` script that imports `recordRelation` from `dist/` and runs it in a separate process.
+
+E2E is excluded from `npm run check` because it requires a full build and spawns subprocesses, making it significantly slower (~minutes vs ~60s).
+
 ## Documentation
 
 - [Base concept](docs/superpowers/specs/2026-06-30-project-memory-harness-base-concept.md) — architecture and concept
