@@ -80,4 +80,29 @@ describe('addMemoryObject', () => {
       )
     ).rejects.toThrow(/executor/i);
   });
+
+  it('defaults status to the declaration lifecycle head for types without active', async () => {
+    const cases = [
+      ['council-opinion', 'proposed', { vote: 'A' }],
+      ['synthesis', 'proposed', { recommendation: 'Ship it' }],
+      ['escalation', 'open', { question: 'What broke?' }],
+      ['decision-request', 'open', { question: 'Which option?' }],
+      ['council-question', 'open', { question: 'Your take?' }],
+    ] as const;
+    for (const [type, expected, extra] of cases) {
+      const { object } = await addMemoryObject(
+        { store, log, clock, idGen },
+        { type, title: `t-${type}`, createdBy: 'user:test', extra: { ...extra } }
+      );
+      expect(object.status).toBe(expected);
+    }
+  });
+
+  it('explicit status still wins over the lifecycle default', async () => {
+    const { object } = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'council-opinion', title: 't-vote', createdBy: 'user:test', status: 'accepted', extra: { vote: 'A' } }
+    );
+    expect(object.status).toBe('accepted');
+  });
 });

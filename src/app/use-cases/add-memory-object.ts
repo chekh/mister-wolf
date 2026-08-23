@@ -45,7 +45,7 @@ export async function addMemoryObject(
       type: input.type,
       title: input.title,
       body: input.body || '',
-      status: 'active',
+      status: input.status ?? getDeclaration(input.type).lifecycle[0],
       review_state: input.reviewState ?? (input.createdBy.startsWith('agent:') ? 'proposed' : 'accepted'),
       confidence: input.confidence ?? 'medium',
       importance: input.importance ?? 0.5,
@@ -63,7 +63,6 @@ export async function addMemoryObject(
     };
 
     Object.assign(object, input.extra ?? {});
-    if (input.status) object.status = input.status;
     const decl = getDeclaration(object.type);
     const baseKeys = new Set(Object.keys(MemoryObjectSchema.shape));
     for (const key of Object.keys(input.extra ?? {})) {
