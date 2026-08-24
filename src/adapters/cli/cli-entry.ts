@@ -23,6 +23,7 @@ import {
 } from './commands/memory-session.js';
 import { memoryMcpCommand as mcpCommand } from './commands/memory-mcp.js';
 import { memoryRuleCommand as ruleCommand } from './commands/memory-rule.js';
+import { memoryRelationCommand as relationCommand } from './commands/memory-relation.js';
 import { memoryTaxonomyCommand as taxonomyCommand } from './commands/memory-taxonomy.js';
 import { memoryMigrateCommand as migrateCommand } from './commands/memory-migrate.js';
 import { memoryCouncilCommand as councilCommand } from './commands/memory-council.js';
@@ -57,6 +58,7 @@ export function createCli(): Command {
   program.addCommand(sessionCommand());
   program.addCommand(mcpCommand());
   program.addCommand(ruleCommand());
+  program.addCommand(relationCommand());
   program.addCommand(taxonomyCommand());
   program.addCommand(migrateCommand());
   program.addCommand(councilCommand());
