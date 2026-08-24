@@ -1,6 +1,6 @@
 ---
 description: "Worker: однозадачный исполнитель, получает ровно одну подзадачу от Executor'а"
-model: zai-coding-plan/glm-5-turbo
+model: zai-coding-plan/glm-5.2
 permission:
   task: deny
   bash: allow

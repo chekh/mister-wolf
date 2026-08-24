@@ -1,6 +1,6 @@
 ---
 description: "Worker-reviewer: ревьюит код воркеров против требований брифа"
-model: zai-coding-plan/glm-5-turbo
+model: zai-coding-plan/glm-5.3
 permission:
   task: deny
 ---
