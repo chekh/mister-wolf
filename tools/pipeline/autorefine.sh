@@ -32,6 +32,11 @@ APPLIER="refine-applier"
 
 # ── Функции ────────────────────────────────────────────────────
 
+fail() {
+  echo "autorefine: $1" >&2
+  exit 1
+}
+
 # Очистка вывода opencode run от ANSI-кодов и заголовков
 clean_output() {
   sed $'s/\x1b\\[[0-9;]*m//g' | grep -v '^>' | sed '/^[[:space:]]*$/d' | sed '/^```/d'
@@ -55,6 +60,12 @@ run_agent() {
   opencode run $ATTACH --agent "$agent" --auto "$@" 2>/dev/null
 }
 
+# ── Валидация входов (до любых побочных эффектов) ──────────────
+
+[ -r "$PLAN" ] || fail "план не найден или нечитаем: $PLAN"
+[[ "$MAX_ROUNDS" =~ ^[1-9][0-9]*$ ]] || fail "MAX_ROUNDS должен быть целым >= 1, получено: '$MAX_ROUNDS'"
+command -v jq >/dev/null 2>&1 || fail "jq не найден в PATH — установи jq для разбора находок"
+
 # ── Инициализация состояния ────────────────────────────────────
 
 mkdir -p "$STATE"
@@ -63,15 +74,19 @@ ROUND=0
 # Resume: если есть сохранённое состояние для того же плана
 if [ -f "$STATE/round" ] && [ -f "$STATE/plan" ]; then
   SAVED_PLAN=$(cat "$STATE/plan")
-  if [ "$SAVED_PLAN" = "$PLAN" ]; then
-    ROUND=$(cat "$STATE/round")
+  SAVED_ROUND=$(cat "$STATE/round")
+  if [ "$SAVED_PLAN" = "$PLAN" ] && [[ "$SAVED_ROUND" =~ ^[0-9]+$ ]]; then
+    ROUND=$SAVED_ROUND
     echo "↻ Resume: раунд $ROUND завершён, продолжаю с $((ROUND + 1))"
   else
+    echo "↻ Состояние битое или для другого плана — сбрасываю"
     rm -rf "$STATE"
     mkdir -p "$STATE"
   fi
 fi
 echo "$PLAN" > "$STATE/plan"
+
+command -v opencode >/dev/null 2>&1 || fail "opencode не найден в PATH — нужен для запуска проверщиков"
 
 # ── Заголовок ──────────────────────────────────────────────────
 
@@ -147,8 +162,8 @@ while [ "$ROUND" -lt "$MAX_ROUNDS" ]; do
   run_agent "$APPLIER" \
     "Примени действия из @$STATE/actions-r${ROUND}.json к плану @$PLAN. Critical и warning — обязательно. Info — если тривиально. НЕ меняй структуру плана, только содержимое. После изменений выполни: git add -A && git commit -m \"refine r${ROUND}: ${CRITICALS}c ${WARNINGS}w\""
 
-  # 5. Чекпойнт для идемпотентности
-  git add -A 2>/dev/null
+  # 5. Чекпойнт для идемпотентности (вне git-репо молча пропускается)
+  git add -A 2>/dev/null || true
   git commit -m "autorefine: round $ROUND done" --quiet 2>/dev/null || true
 
   # 6. Дифф-проверка — если исполнитель ничего не поменял

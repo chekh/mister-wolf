@@ -10,12 +10,12 @@ export function memorySolveCommand(): Command {
     .option('--save', 'Save a memory repair request')
     .option('--thread <id>', 'Thread the repair request')
     .action(async (problem: string, options: { save?: boolean; thread?: string }) => {
-      const { store, index, clock, log, idGen } = createCliContainer(process.cwd());
+      const { store, index, clock, log, idGen, relations, lock } = createCliContainer(process.cwd());
       const { markdown, objectIds } = await buildSolvePack({ store, index, clock }, { problem });
       console.log(markdown);
       if (options.save) {
         const { object } = await createMemoryRepairRequest(
-          { store, log, clock, idGen, index },
+          { store, log, clock, idGen, index, relations, lock },
           { problem, relevantIds: objectIds, createdBy: 'user:cli', thread: options.thread }
         );
         console.log(`Saved repair request: ${object.id}`);

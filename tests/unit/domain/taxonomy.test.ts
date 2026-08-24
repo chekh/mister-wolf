@@ -2,10 +2,35 @@ import { describe, it, expect } from 'vitest';
 import { CORE_TAXONOMY, MEMORY_TYPES, getDeclaration, subdirectoryFor } from '../../../src/domain/memory-types.js';
 import type { MemoryType } from '../../../src/domain/memory-types.js';
 import { ALLOWED_TRANSITIONS } from '../../../src/domain/governance.js';
+import { targetPathFor } from '../../../src/adapters/fs/project-paths.js';
 
 describe('CORE_TAXONOMY', () => {
   it('covers every MEMORY_TYPES entry exactly once', () => {
     expect(CORE_TAXONOMY.map((d) => d.name).sort()).toEqual([...MEMORY_TYPES].sort());
+  });
+  it('MEMORY_TYPES is derived from CORE_TAXONOMY declarations', () => {
+    expect([...MEMORY_TYPES]).toEqual(CORE_TAXONOMY.map((d) => d.name));
+  });
+  it('every taxonomy declaration is placeable without adapter mapping', () => {
+    for (const d of CORE_TAXONOMY) {
+      if (d.layout === 'work-thread-file') {
+        expect(targetPathFor('/base', { type: d.name, id: 'mem_x' })).toBe(
+          '/base/.wolf/memory/threads/mem_x/WORK-THREAD.md'
+        );
+        continue;
+      }
+      expect(d.subdirShared ?? d.subdirThread, `${d.name} has a storage dir`).toBeTruthy();
+      if (d.subdirShared) {
+        expect(targetPathFor('/base', { type: d.name, id: 'mem_x' })).toBe(
+          `/base/.wolf/memory/shared/${d.subdirShared}/mem_x.md`
+        );
+      }
+      if (d.subdirThread) {
+        expect(targetPathFor('/base', { type: d.name, id: 'mem_x', thread: 'mem_t' })).toBe(
+          `/base/.wolf/memory/threads/mem_t/${d.subdirThread}/mem_x.md`
+        );
+      }
+    }
   });
   it('every lifecycle status exists in MemoryStatus canon', () => {
     for (const d of CORE_TAXONOMY) {
