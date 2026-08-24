@@ -28,6 +28,8 @@ import { memoryTaxonomyCommand as taxonomyCommand } from './commands/memory-taxo
 import { memoryMigrateCommand as migrateCommand } from './commands/memory-migrate.js';
 import { memoryCouncilCommand as councilCommand } from './commands/memory-council.js';
 import { memoryValidateCommand as validateCommand } from './commands/memory-validate.js';
+import { memorySolveCommand as solveCommand } from './commands/memory-solve.js';
+import { memoryCallCommand as callCommand } from './commands/memory-call.js';
 
 function readPackageVersion(): string {
   const baseDir = dirname(fileURLToPath(import.meta.url));
@@ -63,6 +65,8 @@ export function createCli(): Command {
   program.addCommand(migrateCommand());
   program.addCommand(councilCommand());
   program.addCommand(validateCommand());
+  program.addCommand(solveCommand());
+  program.addCommand(callCommand());
 
   return program;
 }
