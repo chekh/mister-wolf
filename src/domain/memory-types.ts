@@ -23,6 +23,7 @@ export const MEMORY_TYPES = [
   'synthesis',
   'escalation',
   'decision-request',
+  'call-injection',
 ] as const;
 
 export type MemoryType = (typeof MEMORY_TYPES)[number];
@@ -122,7 +123,7 @@ export const CORE_TAXONOMY: readonly MemoryTypeDeclaration[] = [
     subdirThread: 'notes',
     subdirShared: 'notes',
     fields: {
-      thread: { kind: 'string', required: true, min: 1 },
+      thread: { kind: 'string', optional: true },
       question: { kind: 'string', required: true, min: 1 },
       detour_reason: { kind: 'string', required: true, min: 1 },
       needed_for: { kind: 'string[]', default: [] },
@@ -230,6 +231,16 @@ export const CORE_TAXONOMY: readonly MemoryTypeDeclaration[] = [
     subdirThread: 'escalations',
     subdirShared: null,
     fields: { question: { kind: 'string', required: true, min: 1 } },
+  },
+  {
+    name: 'call-injection',
+    lifecycle: ['active', 'superseded', 'archived'],
+    subdirThread: null,
+    subdirShared: 'calls',
+    fields: {
+      trigger_keywords: { kind: 'string[]', default: [] },
+      related_objects: { kind: 'string[]', default: [] },
+    },
   },
 ];
 
