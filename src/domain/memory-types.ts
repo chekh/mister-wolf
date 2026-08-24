@@ -1,33 +1,3 @@
-export const MEMORY_TYPES = [
-  'document',
-  'decision',
-  'lesson',
-  'observation',
-  'session-summary',
-  'open-question',
-  'context',
-  'work-thread',
-  'info-request',
-  'article',
-  'blocker',
-  'session-checkpoint',
-  'rule',
-  // --- Phase 8: document split (contradiction #13) ---
-  'document-ref',
-  'document-native',
-  // --- Phase 8: orchestration pack (concept §1.2) ---
-  'task-brief',
-  'report',
-  'council-question',
-  'council-opinion',
-  'synthesis',
-  'escalation',
-  'decision-request',
-  'call-injection',
-] as const;
-
-export type MemoryType = (typeof MEMORY_TYPES)[number];
-
 export type MemoryStatus =
   | 'active'
   | 'open'
@@ -53,7 +23,7 @@ export type FieldSpec =
   | { kind: 'string'; optional: true }
   | { kind: 'string'; default: string }
   | { kind: 'string[]'; required: true; minItems?: number }
-  | { kind: 'string[]'; default?: string[] }
+  | { kind: 'string[]'; default?: readonly string[] }
   | { kind: 'enum'; values: readonly string[] };
 
 export interface MemoryTypeDeclaration {
@@ -89,7 +59,9 @@ const FULL: readonly MemoryStatus[] = [
   'accepted',
 ];
 
-export const CORE_TAXONOMY: readonly MemoryTypeDeclaration[] = [
+// Единственный источник истины: типы (MemoryType, MEMORY_TYPES) выводятся
+// отсюда — новый core-тип добавляется ТОЛЬКО в этот массив.
+const CORE_TAXONOMY_DECLS = [
   { name: 'document', lifecycle: FULL, subdirThread: 'documents', subdirShared: 'documents', deprecated: true },
   {
     name: 'decision',
@@ -242,7 +214,14 @@ export const CORE_TAXONOMY: readonly MemoryTypeDeclaration[] = [
       related_objects: { kind: 'string[]', default: [] },
     },
   },
-];
+] as const;
+
+export type MemoryType = (typeof CORE_TAXONOMY_DECLS)[number]['name'];
+
+export const MEMORY_TYPES = CORE_TAXONOMY_DECLS.map((d) => d.name);
+
+/** Типизированное представление канона (compile-time проверка полей деклараций). */
+export const CORE_TAXONOMY: readonly MemoryTypeDeclaration[] = CORE_TAXONOMY_DECLS;
 
 export function getDeclaration(type: MemoryType): MemoryTypeDeclaration {
   const decl = CORE_TAXONOMY.find((d) => d.name === type);

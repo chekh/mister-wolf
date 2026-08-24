@@ -10,45 +10,6 @@ export function objectsDir(baseDir: string): string {
   return join(memoryDir(baseDir), 'objects');
 }
 
-/** @deprecated layout v1, используется только migration */
-export function objectDirForType(baseDir: string, type: MemoryType): string {
-  const mapping: Record<MemoryType, string> = {
-    decision: 'decisions',
-    lesson: 'lessons',
-    observation: 'observations',
-    'session-summary': 'sessions',
-    document: 'documents',
-    'open-question': 'questions',
-    context: 'context',
-    'work-thread': 'threads',
-    'info-request': 'info-requests',
-    article: 'articles',
-    blocker: 'blockers',
-    'session-checkpoint': 'checkpoints',
-    rule: 'rules',
-    // --- Phase 8 types (legacy objects/ layout; full layout v2 lands in Task 4) ---
-    'document-ref': 'documents',
-    'document-native': 'documents',
-    'task-brief': 'tasks',
-    report: 'tasks',
-    'council-question': 'councils',
-    'council-opinion': 'councils',
-    synthesis: 'councils',
-    escalation: 'escalations',
-    'decision-request': 'escalations',
-    'call-injection': 'calls',
-  };
-  if (!(type in mapping)) {
-    throw new Error(`Unknown memory type: ${type}`);
-  }
-  return join(objectsDir(baseDir), mapping[type]);
-}
-
-/** @deprecated layout v1, используется только migration */
-export function objectPath(baseDir: string, type: MemoryType, id: string): string {
-  return join(objectDirForType(baseDir, type), `${id}.md`);
-}
-
 export function eventsPath(baseDir: string): string {
   return join(memoryDir(baseDir), 'events.jsonl');
 }

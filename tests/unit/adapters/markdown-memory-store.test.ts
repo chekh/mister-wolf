@@ -5,7 +5,6 @@ import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
 import { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
-import { objectPath } from '../../../src/adapters/fs/project-paths.js';
 import yaml from 'js-yaml';
 
 function makeObject(id: string, type = 'lesson'): MemoryObject {
