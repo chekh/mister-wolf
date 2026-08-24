@@ -93,6 +93,40 @@ node dist/bootstrap/cli.js search "lesson"
 - `wolf council tally --question-id <id> --quorum N --threshold X` — count council votes from `council-opinion` objects linked by `answers` relations.
 - `wolf council synthesize --question-id <id> --recommendation "..."` — create a `synthesis` object linked `based_on` every opinion.
 
+### Phase 9: solve/call — memory repair loop
+
+Two-session cycle for fixing broken agent behavior caused by stale or missing memory:
+
+1. **Active session:** observe the symptom (e.g. agent keeps using a deprecated command).
+2. **Clean session:** `wolf solve "<problem>"` — builds a Solve Pack (scenario classification, relevant memory, analysis instructions).
+3. **Analyze:** follow the pack's instructions, propose corrections.
+4. **Persist:** `wolf solve "<problem>" --save [--thread <id>]` — creates an `info-request` tagged `solve/memory-repair` for durable tracking.
+5. **Inject:** create a `call-injection` via `wolf add --type call-injection --set trigger_keywords=get,deprecated`, then `wolf call --for "deprecated get"` returns compact injection blocks for the active session.
+
+```bash
+# diagnose
+wolf solve "agent keeps using deprecated get command"
+
+# diagnose + save repair request
+wolf solve "agent keeps using deprecated get command" --save
+
+# get context-sensitive injections
+wolf call --for "deprecated get"
+
+# compact output to 800 chars
+wolf call --for "deprecated get" --compact=800
+
+# get all injections with thread context
+wolf call --thread mem_t1
+
+# link a call-injection to specific objects
+wolf relation add --from <injection-id> --to <rule-id> --predicate based_on
+```
+
+**Safety model:** `wolf solve` is read-only by default. `--save` only creates an `info-request` — no memory mutations. Call injections are inert text blocks; they require `wolf add` to create.
+
+> Note: real memory IDs have the format `mem_<date>_<slug>_<hash>`; examples in this section are illustrative. Documents are registered as `document-ref` type; the `document` type is deprecated.
+
 **Storage layout v2:** objects live in `.wolf/memory/threads/<thread-id>/<subdir>/` (or `shared/<subdir>/` when not tied to a thread); work threads are stored as `threads/<id>/WORK-THREAD.md`. The store reads both v2 and the legacy `objects/` root, but writes only to v2.
 
 **No config.yaml? No problem:** without `.wolf/config.yaml` everything works on the built-in defaults — all 22 core types from `CORE_TAXONOMY`. The config file is a generated mirror plus a place for project-specific types.

@@ -115,11 +115,32 @@ wolf session wrap-up --title "Результаты сессии: ..." --tags tag
 ```
 
 Сессионные сводки также автоматически создаются после ключевых событий жизненного цикла:
+
 - разрешение блокера (`wolf blocker resolve <id>`);
 - терминальный transition (`archived`, `completed`, `accepted`, `resolved`, `obsolete`);
 - замещение объекта (`wolf supersede <old-id> <new-id>`);
 - создание решения (`wolf decision add ...`);
 - создание статьи (`wolf article add ...`).
+
+### Repair-цикл (solve/call)
+
+Когда агент повторяет ошибку из-за устаревшей памяти:
+
+```bash
+# диагностика (read-only)
+wolf solve "агент использует устаревшую команду get"
+
+# диагностика + сохранение repair-запроса
+wolf solve "агент использует устаревшую команду get" --save
+
+# получить call-injection по теме
+wolf call --for "deprecated get"
+
+# компактный вывод с бюджетом
+wolf call --for "deprecated get" --compact=800
+```
+
+Call-injection создаются через `wolf add --type call-injection --set trigger_keywords=get,deprecated`.
 
 Если работа касалась структуры проекта или важных решений — обновить `agent brief`:
 
@@ -148,16 +169,19 @@ wolf brief
 For long-running work that spans sessions:
 
 1. Create a work thread:
+
    ```bash
    node dist/bootstrap/cli.js thread create --title "..." --goal "..."
    ```
 
 2. When a side question would derail the main session, create an info request:
+
    ```bash
    node dist/bootstrap/cli.js info-request create --title "..." --thread <thread-id> --question "..." --detour-reason "..." --expected-answer "..."
    ```
 
 3. In another session, answer the request with an article:
+
    ```bash
    node dist/bootstrap/cli.js article add --title "..." --thread <thread-id> --summary "..." --body "..." --answers <info-request-id>
    ```
