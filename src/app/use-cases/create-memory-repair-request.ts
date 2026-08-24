@@ -22,7 +22,15 @@ const RepairSchema = buildTypeSchema(getDeclaration('info-request'), {
 });
 
 export async function createMemoryRepairRequest(
-  deps: { store: MemoryStore; log?: EventLog; clock: Clock; idGen: IdGenerator; index?: SearchIndex; relations?: RelationLog; lock?: MemoryLock },
+  deps: {
+    store: MemoryStore;
+    log?: EventLog;
+    clock: Clock;
+    idGen: IdGenerator;
+    index?: SearchIndex;
+    relations?: RelationLog;
+    lock?: MemoryLock;
+  },
   input: { problem: string; relevantIds: string[]; createdBy: string; thread?: string }
 ): Promise<{ object: MemoryObject }> {
   const run = async (): Promise<MemoryObject> => {

@@ -68,8 +68,12 @@ describe('createMemoryRepairRequest', () => {
       { problem: 'p', relevantIds: ['rule_old', 'rule_new'], createdBy: 'user:test' }
     );
     const edges = appends as { subject: string; predicate: string; object: string }[];
-    expect(edges.filter((e) => e.subject === object.id && e.predicate === 'related_to' && e.object === 'rule_old')).toHaveLength(1);
-    expect(edges.filter((e) => e.subject === object.id && e.predicate === 'related_to' && e.object === 'rule_new')).toHaveLength(1);
+    expect(
+      edges.filter((e) => e.subject === object.id && e.predicate === 'related_to' && e.object === 'rule_old')
+    ).toHaveLength(1);
+    expect(
+      edges.filter((e) => e.subject === object.id && e.predicate === 'related_to' && e.object === 'rule_new')
+    ).toHaveLength(1);
     // inverse edges recorded too
     expect(edges.filter((e) => e.subject === 'rule_old' && e.object === object.id)).toHaveLength(1);
     expect(edges.filter((e) => e.subject === 'rule_new' && e.object === object.id)).toHaveLength(1);
@@ -77,7 +81,12 @@ describe('createMemoryRepairRequest', () => {
 
   it('executes the write under the provided lock', async () => {
     let wraps = 0;
-    const lock = { withLock: async <T>(fn: () => Promise<T>): Promise<T> => { wraps++; return fn(); } };
+    const lock = {
+      withLock: async <T>(fn: () => Promise<T>): Promise<T> => {
+        wraps++;
+        return fn();
+      },
+    };
     await createMemoryRepairRequest(
       { store, log, clock, idGen, lock },
       { problem: 'p', relevantIds: [], createdBy: 'user:test' }
