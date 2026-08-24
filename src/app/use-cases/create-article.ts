@@ -3,6 +3,7 @@ import { EventLog } from '../../ports/event-log.port.js';
 import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
+import { MemoryLock } from '../../ports/memory-lock.port.js';
 import { RelationLog } from '../../ports/relation-log.port.js';
 import { Article, ArticleSchema } from '../../domain/schemas/article-schema.js';
 import { governanceDefaults } from '../../domain/governance.js';
@@ -32,63 +33,67 @@ export async function createArticle(
     idGen: IdGenerator;
     index?: SearchIndex;
     relations?: RelationLog;
+    lock?: MemoryLock;
   },
   input: CreateArticleInput
 ): Promise<CreateArticleResult> {
-  const now = deps.clock.now();
-  const defaults = governanceDefaults(input.createdBy);
-  const object: Article = {
-    id: deps.idGen.generateMemoryId(now, input.title),
-    type: 'article',
-    title: input.title,
-    status: 'proposed',
-    review_state: input.createdBy.startsWith('agent:') ? 'proposed' : 'accepted',
-    confidence: 'medium',
-    importance: 0.6,
-    created_at: now.toISOString(),
-    updated_at: now.toISOString(),
-    created_by: input.createdBy,
-    schema_version: 1,
-    source: { kind: 'manual' },
-    related: { files: [], docs: [], decisions: [] },
-    tags: [],
-    superseded_by: null,
-    body: input.body,
-    thread: input.thread,
-    summary: input.summary,
-    answers: input.answers || [],
-    supports: input.supports || [],
-    evidence: input.evidence || [],
-    memory_class: defaults.memory_class,
-    truth_role: defaults.truth_role,
-    lifetime: defaults.lifetime,
+  const run = async (): Promise<CreateArticleResult> => {
+    const now = deps.clock.now();
+    const defaults = governanceDefaults(input.createdBy);
+    const object: Article = {
+      id: deps.idGen.generateMemoryId(now, input.title),
+      type: 'article',
+      title: input.title,
+      status: 'proposed',
+      review_state: input.createdBy.startsWith('agent:') ? 'proposed' : 'accepted',
+      confidence: 'medium',
+      importance: 0.6,
+      created_at: now.toISOString(),
+      updated_at: now.toISOString(),
+      created_by: input.createdBy,
+      schema_version: 1,
+      source: { kind: 'manual' },
+      related: { files: [], docs: [], decisions: [] },
+      tags: [],
+      superseded_by: null,
+      body: input.body,
+      thread: input.thread,
+      summary: input.summary,
+      answers: input.answers || [],
+      supports: input.supports || [],
+      evidence: input.evidence || [],
+      memory_class: defaults.memory_class,
+      truth_role: defaults.truth_role,
+      lifetime: defaults.lifetime,
+    };
+
+    ArticleSchema.parse(object);
+
+    await deps.store.save(object);
+    await deps.log.append({
+      id: deps.idGen.generateEventId(now),
+      type: 'memory.added',
+      timestamp: now.toISOString(),
+      actor: input.createdBy,
+      payload: { memory_id: object.id, type: object.type },
+    });
+    if (deps.index) {
+      await deps.index.indexObject(object);
+    }
+    if (deps.relations) {
+      for (const answerId of object.answers) {
+        await recordRelation({ ...deps, lock: undefined }, now, object.id, 'answers', answerId);
+      }
+      for (const supportId of object.supports) {
+        await recordRelation({ ...deps, lock: undefined }, now, object.id, 'supports', supportId);
+      }
+    }
+
+    await summarizeSession({ ...deps, lock: undefined }, { createdBy: input.createdBy }).catch((err) => {
+      console.error('Session summary failed:', err);
+    });
+
+    return { object };
   };
-
-  ArticleSchema.parse(object);
-
-  await deps.store.save(object);
-  await deps.log.append({
-    id: deps.idGen.generateEventId(now),
-    type: 'memory.added',
-    timestamp: now.toISOString(),
-    actor: input.createdBy,
-    payload: { memory_id: object.id, type: object.type },
-  });
-  if (deps.index) {
-    await deps.index.indexObject(object);
-  }
-  if (deps.relations) {
-    for (const answerId of object.answers) {
-      await recordRelation(deps, now, object.id, 'answers', answerId);
-    }
-    for (const supportId of object.supports) {
-      await recordRelation(deps, now, object.id, 'supports', supportId);
-    }
-  }
-
-  await summarizeSession(deps, { createdBy: input.createdBy }).catch((err) => {
-    console.error('Session summary failed:', err);
-  });
-
-  return { object };
+  return deps.lock ? deps.lock.withLock(run) : run();
 }

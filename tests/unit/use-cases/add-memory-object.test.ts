@@ -11,9 +11,17 @@ import { eventsPath } from '../../../src/adapters/fs/project-paths.js';
 
 describe('addMemoryObject', () => {
   let dir: string;
+  let store: MarkdownMemoryStore;
+  let log: JsonlEventLog;
+  let clock: SystemClock;
+  let idGen: HashIdGenerator;
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'wolf-add-'));
+    store = new MarkdownMemoryStore(dir);
+    log = new JsonlEventLog(eventsPath(dir));
+    clock = new SystemClock();
+    idGen = new HashIdGenerator();
   });
 
   afterEach(() => {
@@ -21,11 +29,6 @@ describe('addMemoryObject', () => {
   });
 
   it('saves a lesson and appends an event', async () => {
-    const store = new MarkdownMemoryStore(dir);
-    const log = new JsonlEventLog(eventsPath(dir));
-    const clock = new SystemClock();
-    const idGen = new HashIdGenerator();
-
     const result = await addMemoryObject(
       { store, log, clock, idGen },
       {
@@ -44,5 +47,62 @@ describe('addMemoryObject', () => {
     const events = await log.readAll();
     expect(events).toHaveLength(1);
     expect(events[0].type).toBe('memory.added');
+  });
+
+  it('creates typed object with extra fields validated by declaration', async () => {
+    const { object } = await addMemoryObject(
+      { store, log, clock, idGen },
+      {
+        type: 'task-brief',
+        title: 'Batch task',
+        createdBy: 'user:test',
+        extra: { executor: 'executor-lead', priority: 'high' },
+      }
+    );
+    expect(object.executor).toBe('executor-lead');
+    expect(object.priority).toBe('high');
+  });
+
+  it('rejects unknown extra field', async () => {
+    await expect(
+      addMemoryObject(
+        { store, log, clock, idGen },
+        { type: 'task-brief', title: 'Bad', createdBy: 'user:test', extra: { nonsense: 'x' } }
+      )
+    ).rejects.toThrow(/nonsense/);
+  });
+
+  it('rejects missing declared field at creation', async () => {
+    await expect(
+      addMemoryObject(
+        { store, log, clock, idGen },
+        { type: 'task-brief', title: 'No executor', createdBy: 'user:test' }
+      )
+    ).rejects.toThrow(/executor/i);
+  });
+
+  it('defaults status to the declaration lifecycle head for types without active', async () => {
+    const cases = [
+      ['council-opinion', 'proposed', { vote: 'A' }],
+      ['synthesis', 'proposed', { recommendation: 'Ship it' }],
+      ['escalation', 'open', { question: 'What broke?' }],
+      ['decision-request', 'open', { question: 'Which option?' }],
+      ['council-question', 'open', { question: 'Your take?' }],
+    ] as const;
+    for (const [type, expected, extra] of cases) {
+      const { object } = await addMemoryObject(
+        { store, log, clock, idGen },
+        { type, title: `t-${type}`, createdBy: 'user:test', extra: { ...extra } }
+      );
+      expect(object.status).toBe(expected);
+    }
+  });
+
+  it('explicit status still wins over the lifecycle default', async () => {
+    const { object } = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'council-opinion', title: 't-vote', createdBy: 'user:test', status: 'accepted', extra: { vote: 'A' } }
+    );
+    expect(object.status).toBe('accepted');
   });
 });

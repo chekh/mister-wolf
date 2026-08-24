@@ -1,13 +1,13 @@
+import { buildTypeSchema } from '../type-schema-builder.js';
+import { getDeclaration } from '../memory-types.js';
 import { z } from 'zod';
-import { MemoryObjectSchema } from './memory-object-schema.js';
 
-export const SessionCheckpointSchema = MemoryObjectSchema.extend({
-  type: z.literal('session-checkpoint'),
+const decl = getDeclaration('session-checkpoint');
+export const SessionCheckpointSchema = buildTypeSchema(decl, {
   thread: z.string().min(1),
   captured_state: z.object({
     thread_current_state: z.string().default(''),
     related_ids: z.array(z.string()).default([]),
   }),
 });
-
 export type SessionCheckpoint = z.infer<typeof SessionCheckpointSchema>;

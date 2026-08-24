@@ -47,3 +47,12 @@ describe('governance', () => {
     expect(canTransition('archived', 'active')).toBe(false);
   });
 });
+
+describe('phase 8 transitions', () => {
+  it('allows active -> completed (task-brief, report, work-thread)', () => {
+    expect(canTransition('active', 'completed')).toBe(true);
+  });
+  it('allows open -> answered (council-question, decision-request)', () => {
+    expect(canTransition('open', 'answered')).toBe(true);
+  });
+});

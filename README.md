@@ -12,9 +12,9 @@
 
 ## Status
 
-Phases 0–7 are implemented: Core Memory, Work Threads / Info Requests / Articles, Decisions / Blockers, Incremental Indexing / Document Registration, Relations / Session Checkpoints, Search / Retrieval Improvements, Governance + Flat Namespace, and Session Wrap-Up Habit.
+Phases 0–8 are implemented: Core Memory, Work Threads / Info Requests / Articles, Decisions / Blockers, Incremental Indexing / Document Registration, Relations / Session Checkpoints, Search / Retrieval Improvements, Governance + Flat Namespace, Session Wrap-Up Habit, and Schema-Driven Taxonomy + Orchestration Types + Write Reliability.
 
-Next: **Phase 8 — Schema-driven taxonomy or wolf solve/call concept research**.
+Next: **Phase 9 — Decide from roadmap-v2 or wolf solve/call concept research**.
 
 ## Quick Start
 
@@ -82,6 +82,82 @@ node dist/bootstrap/cli.js search "lesson"
 
 - `wolf session wrap-up --title "..." --tags tag1,tag2` — manually create a session summary of recent events.
 - Session summaries are auto-created after resolving a blocker, terminal transitions, superseding an object, creating a decision, or creating an article.
+
+### Phase 8: schema-driven taxonomy, orchestration types, reliability
+
+- `wolf taxonomy sync` — regenerate `memory_types.core` in `.wolf/config.yaml` from the code canon (`CORE_TAXONOMY`). `artifact_sources` and `memory_types.project` are preserved.
+- `wolf taxonomy show` — print the effective taxonomy (core + project types).
+- `wolf add --type task-brief --set executor=executor-lead,priority=high` — create any of the 7 orchestration types (`task-brief`, `report`, `council-question`, `council-opinion`, `synthesis`, `escalation`, `decision-request`) via generic creation with extra fields validated by the type declaration.
+- `wolf migrate` — one-time migration of legacy `objects/<type>/` into layout v2 (`threads/<tid>/<subdir>/` + `shared/<subdir>/`) with document split (`document-ref`/`document-native`). Dry-run by default; `--apply` performs it. Idempotent.
+- `wolf validate [--fix]` — health check: taxonomy drift, layout leftovers, broken objects, events/relations JSONL, index freshness, stale locks. Exit 1 on errors. `--fix` quarantines broken object files into `.wolf/memory/quarantine/`.
+- `wolf council tally --question-id <id> --quorum N --threshold X` — count council votes from `council-opinion` objects linked by `answers` relations.
+- `wolf council synthesize --question-id <id> --recommendation "..."` — create a `synthesis` object linked `based_on` every opinion.
+
+### Phase 9: solve/call — memory repair loop
+
+Two-session cycle for fixing broken agent behavior caused by stale or missing memory:
+
+1. **Active session:** observe the symptom (e.g. agent keeps using a deprecated command).
+2. **Clean session:** `wolf solve "<problem>"` — builds a Solve Pack (scenario classification, relevant memory, analysis instructions).
+3. **Analyze:** follow the pack's instructions, propose corrections.
+4. **Persist:** `wolf solve "<problem>" --save [--thread <id>]` — creates an `info-request` tagged `solve/memory-repair` for durable tracking.
+5. **Inject:** create a `call-injection` via `wolf add --type call-injection --set trigger_keywords=get,deprecated`, then `wolf call --for "deprecated get"` returns compact injection blocks for the active session.
+
+```bash
+# diagnose
+wolf solve "agent keeps using deprecated get command"
+
+# diagnose + save repair request
+wolf solve "agent keeps using deprecated get command" --save
+
+# get context-sensitive injections
+wolf call --for "deprecated get"
+
+# compact output to 800 chars
+wolf call --for "deprecated get" --compact=800
+
+# get all injections with thread context
+wolf call --thread mem_t1
+
+# link a call-injection to specific objects
+wolf relation add --from <injection-id> --to <rule-id> --predicate based_on
+```
+
+**Safety model:** `wolf solve` is read-only by default. `--save` only creates an `info-request` — no memory mutations. Call injections are inert text blocks; they require `wolf add` to create.
+
+> Note: real memory IDs have the format `mem_<date>_<slug>_<hash>`; examples in this section are illustrative. Documents are registered as `document-ref` type; the `document` type is deprecated.
+
+**Storage layout v2:** objects live in `.wolf/memory/threads/<thread-id>/<subdir>/` (or `shared/<subdir>/` when not tied to a thread); work threads are stored as `threads/<id>/WORK-THREAD.md`. The store reads both v2 and the legacy `objects/` root, but writes only to v2.
+
+**No config.yaml? No problem:** without `.wolf/config.yaml` everything works on the built-in defaults — all 22 core types from `CORE_TAXONOMY`. The config file is a generated mirror plus a place for project-specific types.
+
+## Testing
+
+### Unit & integration tests
+
+```bash
+npm run check          # format + lint + vitest + build (~60s)
+npm run test:run       # vitest only
+```
+
+### End-to-end (black-box CLI)
+
+```bash
+npm run e2e            # build + vitest on tests/e2e/**/*.e2e.ts (several minutes)
+```
+
+The E2E suite exercises the compiled CLI via `spawnSync` — no source imports. Six scenarios:
+
+1. **Lifecycle** — init → thread → task-brief → report → relation → transition → auto session-summary
+2. **Council** — question → opinions → tally winner → synthesis
+3. **Reliability** — broken object file (validate + quarantine); broken relations.jsonl line
+4. **Generic add** — all 21 non-deprecated types create with correct initial lifecycle status
+5. **Migration** — 5 legacy objects migrate from `objects/` to layout v2, idempotent, searchable
+6. **MCP stdio** — JSON-RPC `tools/list` returns registered tools
+
+**Known UX gap:** relations cannot be created via CLI (`wolf relation add` is not yet implemented). The E2E suite works around this by writing a temporary `.mjs` script that imports `recordRelation` from `dist/` and runs it in a separate process.
+
+E2E is excluded from `npm run check` because it requires a full build and spawns subprocesses, making it significantly slower (~minutes vs ~60s).
 
 ## Documentation
 

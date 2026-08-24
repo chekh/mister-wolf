@@ -18,12 +18,20 @@ describe('initProjectMemory', () => {
 
   it('creates .wolf directories and config', async () => {
     await initProjectMemory(new FsProjectInitializer(), dir);
-    expect(existsSync(join(dir, '.wolf', 'memory', 'objects', 'context'))).toBe(true);
-    expect(existsSync(join(dir, '.wolf', 'memory', 'objects', 'threads'))).toBe(true);
-    expect(existsSync(join(dir, '.wolf', 'memory', 'objects', 'info-requests'))).toBe(true);
-    expect(existsSync(join(dir, '.wolf', 'memory', 'objects', 'articles'))).toBe(true);
+    expect(existsSync(join(dir, '.wolf', 'memory', 'objects'))).toBe(false);
+    expect(existsSync(join(dir, '.wolf', 'memory', 'threads'))).toBe(true);
+    expect(existsSync(join(dir, '.wolf', 'memory', 'shared'))).toBe(true);
     expect(existsSync(join(dir, '.wolf', 'memory', 'briefs'))).toBe(true);
-    expect(existsSync(join(dir, '.wolf', 'memory', 'objects'))).toBe(true);
+    expect(existsSync(join(dir, '.wolf', 'cache'))).toBe(true);
     expect(existsSync(join(dir, '.wolf', 'config.yaml'))).toBe(true);
+
+    const yamlText = await import('fs').then((m) => m.readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8'));
+    const { default: yaml } = await import('js-yaml');
+    const cfg = yaml.load(yamlText) as {
+      memory_types?: { core?: Record<string, unknown> };
+      artifact_sources?: string[];
+    };
+    expect(cfg.memory_types?.core?.['task-brief']).toBeDefined();
+    expect(cfg.artifact_sources).toEqual([]);
   });
 });

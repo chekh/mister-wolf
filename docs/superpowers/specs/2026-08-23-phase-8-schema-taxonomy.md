@@ -14,29 +14,29 @@
 
 Все утверждения концепции проверены по коду. Расхождения зафиксированы и закрыты решениями ниже.
 
-| # | Факт | Источник |
-|---|---|---|
-| V1 | `MemoryStatus` — 14 статусов: `active, open, resolved, stale, conflicting, superseded, archived, paused, completed, answered, rejected, obsolete, proposed, accepted` | `src/domain/memory-types.ts:19-33` |
-| V2 | **Все lifecycles оркестрационных типов из concept §6 состоят только из существующих статусов.** Новые значения `MemoryStatus` не нужны: task-brief `[active,completed,superseded]` ✓, report `[active,completed]` ✓, council-question `[open,answered,archived]` ✓, council-opinion `[proposed,accepted]` ✓, synthesis `[proposed,accepted]` ✓, escalation `[open,resolved,archived]` ✓, decision-request `[open,answered,archived]` ✓ | сверка множеств с V1 |
-| V3 | **Пробелы `ALLOWED_TRANSITIONS`:** нет `active → completed` (нужен task-brief/report/work-thread) и `open → answered` (нужен council-question/decision-request). `open → resolved` есть (escalation ок), `proposed → accepted` есть (council-opinion/synthesis ок) | `src/domain/governance.ts:35-50` |
-| V4 | `MEMORY_TYPES` — 13 типов, hardcoded; используются в 4 местах: `memory-object-schema.ts:7`, `fs-project-initializer.ts:31`, `memory-add.ts:9`, сам `memory-types.ts` | grep `MEMORY_TYPES` |
-| V5 | Per-type zod-схемы есть только у 7 типов: decision `[active,superseded,rejected,obsolete]`, blocker `[active,resolved,obsolete]`, work-thread `[active,paused,completed,archived]`, info-request `[open,answered,rejected,obsolete,archived]`, article `[proposed,accepted,stale,superseded,archived]`, rule `[active,superseded,obsolete]`, session-checkpoint (базовый статус-enum, без override). Остальные 6 типов валидируются базовой схемой (все 14 статусов) | `src/domain/schemas/*-schema.ts` |
-| V6 | Store: плоский `objects/<тип>/<id>.md`; `parseFile` **кидает** исключение на любом битом файле → один плохой файл роняет `list`/`get` для всех | `markdown-memory-store.ts:91-110` |
-| V7 | JSONL: `parseEventLine`/`parseRelationLine` кидают на битой строке → роняют `readAll`; запись — голый `appendFile` без блокировок | `jsonl-event-log.ts:28-44`, `jsonl-relation-log.ts:35-51` |
-| V8 | SQLite: better-sqlite3 без `busy_timeout`, без retry; одновременный доступ CLI + MCP-сервера даст `SQLITE_BUSY` | `sqlite-search-index.ts:11-15` |
-| V9 | Запись — прямой `fs.writeFile` (не атомарный); транзакция «файл + JSONL-append + индекс» нигде не защищена | `markdown-memory-store.ts:18`, `add-memory-object.ts:60-70` |
-| V10 | Id объектов и тредов — `mem_<date>_<slug>_<hash>`; поле `thread` в frontmatter хранит **полный** id треда | `hash-id-generator.ts`, `create-work-thread.ts:28`, CLI `--thread <thread-id>` |
-| V11 | Единственный производитель типа `document` — сканер (`scan-project.ts:90`); документ всегда by-reference (`source.path`) | `scan-project.ts:90-103` |
+| #   | Факт                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Источник                                                                       |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| V1  | `MemoryStatus` — 14 статусов: `active, open, resolved, stale, conflicting, superseded, archived, paused, completed, answered, rejected, obsolete, proposed, accepted`                                                                                                                                                                                                                                                                                                | `src/domain/memory-types.ts:19-33`                                             |
+| V2  | **Все lifecycles оркестрационных типов из concept §6 состоят только из существующих статусов.** Новые значения `MemoryStatus` не нужны: task-brief `[active,completed,superseded]` ✓, report `[active,completed]` ✓, council-question `[open,answered,archived]` ✓, council-opinion `[proposed,accepted]` ✓, synthesis `[proposed,accepted]` ✓, escalation `[open,resolved,archived]` ✓, decision-request `[open,answered,archived]` ✓                               | сверка множеств с V1                                                           |
+| V3  | **Пробелы `ALLOWED_TRANSITIONS`:** нет `active → completed` (нужен task-brief/report/work-thread) и `open → answered` (нужен council-question/decision-request). `open → resolved` есть (escalation ок), `proposed → accepted` есть (council-opinion/synthesis ок)                                                                                                                                                                                                   | `src/domain/governance.ts:35-50`                                               |
+| V4  | `MEMORY_TYPES` — 13 типов, hardcoded; используются в 4 местах: `memory-object-schema.ts:7`, `fs-project-initializer.ts:31`, `memory-add.ts:9`, сам `memory-types.ts`                                                                                                                                                                                                                                                                                                 | grep `MEMORY_TYPES`                                                            |
+| V5  | Per-type zod-схемы есть только у 7 типов: decision `[active,superseded,rejected,obsolete]`, blocker `[active,resolved,obsolete]`, work-thread `[active,paused,completed,archived]`, info-request `[open,answered,rejected,obsolete,archived]`, article `[proposed,accepted,stale,superseded,archived]`, rule `[active,superseded,obsolete]`, session-checkpoint (базовый статус-enum, без override). Остальные 6 типов валидируются базовой схемой (все 14 статусов) | `src/domain/schemas/*-schema.ts`                                               |
+| V6  | Store: плоский `objects/<тип>/<id>.md`; `parseFile` **кидает** исключение на любом битом файле → один плохой файл роняет `list`/`get` для всех                                                                                                                                                                                                                                                                                                                       | `markdown-memory-store.ts:91-110`                                              |
+| V7  | JSONL: `parseEventLine`/`parseRelationLine` кидают на битой строке → роняют `readAll`; запись — голый `appendFile` без блокировок                                                                                                                                                                                                                                                                                                                                    | `jsonl-event-log.ts:28-44`, `jsonl-relation-log.ts:35-51`                      |
+| V8  | SQLite: better-sqlite3 без `busy_timeout`, без retry; одновременный доступ CLI + MCP-сервера даст `SQLITE_BUSY`                                                                                                                                                                                                                                                                                                                                                      | `sqlite-search-index.ts:11-15`                                                 |
+| V9  | Запись — прямой `fs.writeFile` (не атомарный); транзакция «файл + JSONL-append + индекс» нигде не защищена                                                                                                                                                                                                                                                                                                                                                           | `markdown-memory-store.ts:18`, `add-memory-object.ts:60-70`                    |
+| V10 | Id объектов и тредов — `mem_<date>_<slug>_<hash>`; поле `thread` в frontmatter хранит **полный** id треда                                                                                                                                                                                                                                                                                                                                                            | `hash-id-generator.ts`, `create-work-thread.ts:28`, CLI `--thread <thread-id>` |
+| V11 | Единственный производитель типа `document` — сканер (`scan-project.ts:90`); документ всегда by-reference (`source.path`)                                                                                                                                                                                                                                                                                                                                             | `scan-project.ts:90-103`                                                       |
 
 ### Отклонения от concept.md (осознанные, документируются в README)
 
-| # | Концепция говорит | Спека решает | Почему |
-|---|---|---|---|
-| D-dev1 | Каталоги тредов `threads/csv-export/` (человекочитаемый slug) | `threads/mem_<date>_<slug>_<hash>/` — полный id треда | Поле `thread` уже хранит полный mem-id (V10); короткие slug требуют нового пространства имён и обработки коллизий. Upgrade-path: поле-алиас в будущей фазе |
-| D-dev2 | Имена файлов `YYYY-MM-DD-<slug>.md` | Файл остаётся `<id>.md` — id уже содержит ISO-дату и slug, лексикографическая сортировка сохраняется | Переименование ломает резолв по имени (V6) и не добавляет свойств |
-| D-dev3 | `report.required_fields: [summary]`, `task-brief: [... related]` | `report` — без обязательных полей (summary — секция тела, промптная дисциплина); `related` изъят (уже базовое поле) | Поля дублируют существующую базовую схему |
-| D-dev4 | Narrowed lifecycles для schema-less типов (например, session-checkpoint `[active]`) | Генератор пишет код-канон: полные 14 статусов для типов без per-type enum (lesson, observation, open-question, context, session-checkpoint, session-summary, document) | Canon-first: конфиг — зеркало кода, не пожеланий. Сужение — отдельное микро-решение после Phase 8 |
-| D-dev5 | Конфиги советов `.wolf/councils/*.yaml` | Out of scope Phase 8; quorum/threshold — параметры use-case'ов | Советам нужен роутер/агенты (Phase 9–10); конфиг-файлы вводим вместе с ними |
+| #      | Концепция говорит                                                                   | Спека решает                                                                                                                                                           | Почему                                                                                                                                                     |
+| ------ | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D-dev1 | Каталоги тредов `threads/csv-export/` (человекочитаемый slug)                       | `threads/mem_<date>_<slug>_<hash>/` — полный id треда                                                                                                                  | Поле `thread` уже хранит полный mem-id (V10); короткие slug требуют нового пространства имён и обработки коллизий. Upgrade-path: поле-алиас в будущей фазе |
+| D-dev2 | Имена файлов `YYYY-MM-DD-<slug>.md`                                                 | Файл остаётся `<id>.md` — id уже содержит ISO-дату и slug, лексикографическая сортировка сохраняется                                                                   | Переименование ломает резолв по имени (V6) и не добавляет свойств                                                                                          |
+| D-dev3 | `report.required_fields: [summary]`, `task-brief: [... related]`                    | `report` — без обязательных полей (summary — секция тела, промптная дисциплина); `related` изъят (уже базовое поле)                                                    | Поля дублируют существующую базовую схему                                                                                                                  |
+| D-dev4 | Narrowed lifecycles для schema-less типов (например, session-checkpoint `[active]`) | Генератор пишет код-канон: полные 14 статусов для типов без per-type enum (lesson, observation, open-question, context, session-checkpoint, session-summary, document) | Canon-first: конфиг — зеркало кода, не пожеланий. Сужение — отдельное микро-решение после Phase 8                                                          |
+| D-dev5 | Конфиги советов `.wolf/councils/*.yaml`                                             | Out of scope Phase 8; quorum/threshold — параметры use-case'ов                                                                                                         | Советам нужен роутер/агенты (Phase 9–10); конфиг-файлы вводим вместе с ними                                                                                |
 
 Примечание: `docs/superpowers/plans/roadmap-v2.md` §Phase 8 устарел (там `debug/code-snippet/design`, `wolf type add/remove`). Канон — concept.md v2 §6 (changelog 2026-08-23). Задача T8 обновляет roadmap-v2 пометкой.
 
@@ -49,6 +49,7 @@
 **Команда:** `wolf taxonomy sync`.
 
 **Канон:** код. Источник генерации — тройка:
+
 1. порядок статусов — `MemoryStatus` (`src/domain/memory-types.ts`);
 2. допустимые переходы — глобальный `ALLOWED_TRANSITIONS` (`src/domain/governance.ts`);
 3. lifecycle типа — массив статусов из декларации типа в `CORE_TAXONOMY` (T1).
@@ -63,13 +64,14 @@
 
 **Разделение ролей:**
 
-| Слой | Канон для чего | Кто валидирует |
-|---|---|---|
-| `CORE_TAXONOMY` + `MemoryStatus` + `ALLOWED_TRANSITIONS` (код) | Все 22 core-типа: существование, lifecycle, поля, governance, layout | Компилятор + zod-схемы, производные от деклараций |
-| `config.yaml` → `memory_types.project` | Project-типы (новые, пользовательские): lifecycle, подкаталоги, доп. поля | Динамический zod через `buildTypeSchema` при загрузке |
-| `config.yaml` → `memory_types.core` | Ничего (зеркало для человека + drift-детект) | `wolf validate` сравнивает с регенерированным |
+| Слой                                                           | Канон для чего                                                            | Кто валидирует                                        |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `CORE_TAXONOMY` + `MemoryStatus` + `ALLOWED_TRANSITIONS` (код) | Все 22 core-типа: существование, lifecycle, поля, governance, layout      | Компилятор + zod-схемы, производные от деклараций     |
+| `config.yaml` → `memory_types.project`                         | Project-типы (новые, пользовательские): lifecycle, подкаталоги, доп. поля | Динамический zod через `buildTypeSchema` при загрузке |
+| `config.yaml` → `memory_types.core`                            | Ничего (зеркало для человека + drift-детект)                              | `wolf validate` сравнивает с регенерированным         |
 
 Правила:
+
 - Project-тип **не может** перекрыть имя core-типа или статус из `MemoryStatus` → жёсткая ошибка при загрузке с внятным сообщением.
 - Типы полей в project-декларации ограничены дискретным алфавитом `FieldSpec` (`string` / `string[]` / `enum`); неизвестный kind — ошибка загрузки, не молчаливый skip.
 - Существующие 7 per-type схем переписываются как проекции деклараций (`buildTypeSchema`); экспортируемые имена (`DecisionSchema`, `BlockerSchema`, ...) и выводимые типы сохраняются — публичный API не меняется, существующие тесты остаются зелёными как guard эквивалентности.
@@ -93,14 +95,14 @@
 
 ### D5 — Надёжность записи (Q5)
 
-| Механизм | Решение |
-|---|---|
-| **Lockfile scope** | Порт `MemoryLock` (`withLock(fn)`), реализация — `.wolf/memory/.lock` через эксклюзивное создание файла (`wx`) с `{pid, ts}` внутри. Охват — вся транзакция «save файла + JSONL-append + индекс»: оборачивается **тело каждого write-use-case** (опциональная зависимость `lock` в deps — обратная совместимость вызовов и тестов). Stale-порог 30с (кража зависшего лока), ожидание до 5с, затем `LockHeldError`. Известный потолок: гонка при одновременной краже stale-лока двумя процессами — приемлема (local-first, комментарий в коде) |
-| **Карантин** | Пассивный при чтении: невалидный frontmatter → объект пропускается, проблема собирается (`onProblem` колбэк + `store.scanProblems()`), `list`/`search` не падают (чинит V6). Активная изоляция — только `wolf validate --fix`: перенос в `.wolf/memory/quarantine/<относительный путь>/` + sidecar `meta.json` с ошибкой и датой. Чтение никогда не пишет — никакого сюрпризного мутейта |
-| **JSONL при чтении** | `scanJsonlFile(path)` возвращает `{items, problems:[{line,error}]}`; `readAll` пропускает битые строки (warn в stderr, чинит V7), `wolf validate` показывает полный список с номерами строк |
-| **`wolf validate`** | Секции: taxonomy drift / layout leftovers / объекты (битый frontmatter) / events.jsonl / relations.jsonl (+dangling endpoints) / свежесть индекса (ids store vs sqlite) / stale locks. Exit 0 — чисто; exit 1 — есть ошибки. Формат вывода — шаг 7.7 |
-| **SQLITE_BUSY** | `db.pragma('busy_timeout = 5000')` в конструкторе (SQLite сам ждёт) + синхронный retry-обёртка `runWithRetry` (5 попыток, экспоненциально 50→800ms, только на `SQLITE_BUSY`) вокруг `indexObject/removeObject/rebuild` (чинит V8) |
-| **Бонус: атомарная запись** | `writeFileAtomic` (tmp → rename) в `store.save` — закрывает «читатель видит половину файла» (V9), 6 строк, бесплатно в рамках фазы |
+| Механизм                    | Решение                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Lockfile scope**          | Порт `MemoryLock` (`withLock(fn)`), реализация — `.wolf/memory/.lock` через эксклюзивное создание файла (`wx`) с `{pid, ts}` внутри. Охват — вся транзакция «save файла + JSONL-append + индекс»: оборачивается **тело каждого write-use-case** (опциональная зависимость `lock` в deps — обратная совместимость вызовов и тестов). Stale-порог 30с (кража зависшего лока), ожидание до 5с, затем `LockHeldError`. Известный потолок: гонка при одновременной краже stale-лока двумя процессами — приемлема (local-first, комментарий в коде) |
+| **Карантин**                | Пассивный при чтении: невалидный frontmatter → объект пропускается, проблема собирается (`onProblem` колбэк + `store.scanProblems()`), `list`/`search` не падают (чинит V6). Активная изоляция — только `wolf validate --fix`: перенос в `.wolf/memory/quarantine/<относительный путь>/` + sidecar `meta.json` с ошибкой и датой. Чтение никогда не пишет — никакого сюрпризного мутейта                                                                                                                                                      |
+| **JSONL при чтении**        | `scanJsonlFile(path)` возвращает `{items, problems:[{line,error}]}`; `readAll` пропускает битые строки (warn в stderr, чинит V7), `wolf validate` показывает полный список с номерами строк                                                                                                                                                                                                                                                                                                                                                   |
+| **`wolf validate`**         | Секции: taxonomy drift / layout leftovers / объекты (битый frontmatter) / events.jsonl / relations.jsonl (+dangling endpoints) / свежесть индекса (ids store vs sqlite) / stale locks. Exit 0 — чисто; exit 1 — есть ошибки. Формат вывода — шаг 7.7                                                                                                                                                                                                                                                                                          |
+| **SQLITE_BUSY**             | `db.pragma('busy_timeout = 5000')` в конструкторе (SQLite сам ждёт) + синхронный retry-обёртка `runWithRetry` (5 попыток, экспоненциально 50→800ms, только на `SQLITE_BUSY`) вокруг `indexObject/removeObject/rebuild` (чинит V8)                                                                                                                                                                                                                                                                                                             |
+| **Бонус: атомарная запись** | `writeFileAtomic` (tmp → rename) в `store.save` — закрывает «читатель видит половину файла» (V9), 6 строк, бесплатно в рамках фазы                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 ### D6 — Явно вне scope Phase 8
 
@@ -111,6 +113,7 @@
 ## 2. Структура файлов
 
 **Create:**
+
 - `src/domain/type-schema-builder.ts` — `buildTypeSchema`, `FieldSpec` → zod
 - `src/domain/taxonomy.ts` — `Taxonomy`, `mergeTaxonomy`, `generateCoreConfigBlock`
 - `src/adapters/fs/config-file.ts` — чтение/валидация `.wolf/config.yaml`, `loadProjectTypes`
@@ -128,6 +131,7 @@
 - `src/adapters/cli/commands/memory-taxonomy.ts`, `memory-migrate.ts`, `memory-validate.ts`, `memory-council.ts`
 
 **Modify:**
+
 - `src/domain/governance.ts` (+2 перехода)
 - `src/domain/memory-types.ts` (+9 типов, `CORE_TAXONOMY`, `MemoryTypeDeclaration`, `FieldSpec`)
 - `src/domain/schemas/{decision,blocker,thread,info-request,article,rule}-schema.ts` → проекции деклараций; `session-checkpoint-schema.ts` → проекция + `captured_state`
@@ -158,6 +162,7 @@ git checkout dev && git pull && git checkout -b feat/phase-8-schema-taxonomy
 ```bash
 npm run check
 ```
+
 Expected: format:check ok, tsc ok, vitest pass (45 файлов), build ok. Если красное — починить до старта, не тащить в фазу.
 
 ---
@@ -165,6 +170,7 @@ Expected: format:check ok, tsc ok, vitest pass (45 файлов), build ok. Ес
 ### Task 1: Домен — переходы + декларация таксономии
 
 **Files:**
+
 - Modify: `src/domain/governance.ts:36,38`
 - Modify: `src/domain/memory-types.ts`
 - Test: `tests/unit/domain/governance.test.ts`, `tests/unit/domain/taxonomy.test.ts` (new)
@@ -187,6 +193,7 @@ describe('phase 8 transitions', () => {
 ```bash
 npx vitest run tests/unit/domain/governance.test.ts
 ```
+
 Expected: FAIL — `expected false to be true`.
 
 - [ ] **Step 1.3: Правка `ALLOWED_TRANSITIONS`** в `src/domain/governance.ts`:
@@ -418,6 +425,7 @@ describe('CORE_TAXONOMY', () => {
 ```bash
 npx vitest run tests/unit/domain/
 ```
+
 Expected: PASS. Commit: `feat(domain): core taxonomy declarations + orchestration types`.
 
 ---
@@ -425,6 +433,7 @@ Expected: PASS. Commit: `feat(domain): core taxonomy declarations + orchestratio
 ### Task 2: Схемы как проекции деклараций
 
 **Files:**
+
 - Create: `src/domain/type-schema-builder.ts`
 - Modify: все 7 файлов `src/domain/schemas/*-schema.ts`
 - Test: `tests/unit/domain/type-schema-builder.test.ts` (new); существующие schema-тесты — guard
@@ -459,7 +468,11 @@ export function buildTypeSchema(decl: MemoryTypeDeclaration) {
     status: z.enum(decl.lifecycle as unknown as [MemoryStatus, ...MemoryStatus[]]),
   }).superRefine((obj, ctx) => {
     if (decl.requireSourcePath && !obj.source?.path) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['source', 'path'], message: `${decl.name} requires source.path` });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['source', 'path'],
+        message: `${decl.name} requires source.path`,
+      });
     }
   });
   for (const [name, spec] of Object.entries(decl.fields ?? {})) {
@@ -503,6 +516,7 @@ export type SessionCheckpoint = z.infer<typeof SessionCheckpointSchema>;
 ```bash
 npx vitest run tests/unit/domain/
 ```
+
 Expected: PASS все.
 
 - [ ] **Step 2.4: Юнит-тест билдера** `tests/unit/domain/type-schema-builder.test.ts`:
@@ -513,9 +527,17 @@ import { buildTypeSchema } from '../../../src/domain/type-schema-builder.js';
 import { getDeclaration } from '../../../src/domain/memory-types.js';
 
 const minimalBase = {
-  id: 'mem_x', title: 't', review_state: 'accepted', confidence: 'medium',
-  importance: 0.5, created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
-  created_by: 'user:test', source: { kind: 'manual' }, tags: [], superseded_by: null,
+  id: 'mem_x',
+  title: 't',
+  review_state: 'accepted',
+  confidence: 'medium',
+  importance: 0.5,
+  created_at: '2026-01-01T00:00:00.000Z',
+  updated_at: '2026-01-01T00:00:00.000Z',
+  created_by: 'user:test',
+  source: { kind: 'manual' },
+  tags: [],
+  superseded_by: null,
 };
 
 describe('buildTypeSchema', () => {
@@ -529,12 +551,20 @@ describe('buildTypeSchema', () => {
   });
   it('accepts valid task-brief with executor+priority', () => {
     const s = buildTypeSchema(getDeclaration('task-brief'));
-    const obj = s.parse({ ...minimalBase, type: 'task-brief', status: 'active', executor: 'executor-lead', priority: 'high' });
+    const obj = s.parse({
+      ...minimalBase,
+      type: 'task-brief',
+      status: 'active',
+      executor: 'executor-lead',
+      priority: 'high',
+    });
     expect(obj.executor).toBe('executor-lead');
   });
   it('document-ref requires source.path', () => {
     const s = buildTypeSchema(getDeclaration('document-ref'));
-    expect(() => s.parse({ ...minimalBase, type: 'document-ref', status: 'active', source: { kind: 'scan' } })).toThrow(/source\.path/);
+    expect(() => s.parse({ ...minimalBase, type: 'document-ref', status: 'active', source: { kind: 'scan' } })).toThrow(
+      /source\.path/
+    );
   });
 });
 ```
@@ -546,6 +576,7 @@ describe('buildTypeSchema', () => {
 ### Task 3: Реестр таксономии, config.yaml, `wolf taxonomy sync`
 
 **Files:**
+
 - Create: `src/domain/taxonomy.ts`, `src/adapters/fs/config-file.ts`, `src/adapters/cli/commands/memory-taxonomy.ts`
 - Modify: `src/adapters/cli/cli-entry.ts`, `src/bootstrap/container.ts`, `src/adapters/cli/commands/memory-init.ts`, `src/app/use-cases/transition-memory-object.ts`, `src/app/use-cases/scan-project.ts:90`, `src/adapters/cli/commands/memory-add.ts:9`
 - Test: `tests/unit/domain/taxonomy.test.ts` (дополнить)
@@ -682,11 +713,26 @@ describe('mergeTaxonomy (no config.yaml)', () => {
   });
   it('rejects project type shadowing a core type', () => {
     expect(() =>
-      mergeTaxonomy({ artifact_sources: [], rawCoreBlock: null, projectTypes: [{ name: 'decision', lifecycle: ['active'], subdirThread: 'x', subdirShared: null }] })
+      mergeTaxonomy({
+        artifact_sources: [],
+        rawCoreBlock: null,
+        projectTypes: [{ name: 'decision', lifecycle: ['active'], subdirThread: 'x', subdirShared: null }],
+      })
     ).toThrow(/cannot be overridden/);
   });
   it('accepts a legit project type', () => {
-    const { types } = mergeTaxonomy({ artifact_sources: [], rawCoreBlock: null, projectTypes: [{ name: 'postmortem' as MemoryType, lifecycle: ['open', 'resolved'], subdirThread: 'postmortems', subdirShared: null }] });
+    const { types } = mergeTaxonomy({
+      artifact_sources: [],
+      rawCoreBlock: null,
+      projectTypes: [
+        {
+          name: 'postmortem' as MemoryType,
+          lifecycle: ['open', 'resolved'],
+          subdirThread: 'postmortems',
+          subdirShared: null,
+        },
+      ],
+    });
     expect(types.get('postmortem' as MemoryType)?.subdirThread).toBe('postmortems');
   });
 });
@@ -743,7 +789,12 @@ export function memoryTaxonomyCommand(): Command {
             ? Object.fromEntries(
                 existing.projectTypes.map((p) => [
                   p.name,
-                  { lifecycle: p.lifecycle, subdir_thread: p.subdirThread, subdir_shared: p.subdirShared, fields: p.fields ?? {} },
+                  {
+                    lifecycle: p.lifecycle,
+                    subdir_thread: p.subdirThread,
+                    subdir_shared: p.subdirShared,
+                    fields: p.fields ?? {},
+                  },
                 ])
               )
             : {},
@@ -760,7 +811,9 @@ export function memoryTaxonomyCommand(): Command {
       const cfg = await loadWolfConfig(process.cwd());
       const { types } = await import('../../../domain/taxonomy.js').then((m) => m.mergeTaxonomy(cfg));
       for (const [name, d] of types) {
-        console.log(`${name}${d.deprecated ? ' (deprecated)' : ''}: lifecycle=[${d.lifecycle.join(',')}] dirs=${d.subdirThread ?? '-'}/${d.subdirShared ?? '-'}`);
+        console.log(
+          `${name}${d.deprecated ? ' (deprecated)' : ''}: lifecycle=[${d.lifecycle.join(',')}] dirs=${d.subdirThread ?? '-'}/${d.subdirShared ?? '-'}`
+        );
       }
     });
 
@@ -776,11 +829,14 @@ export function memoryTaxonomyCommand(): Command {
 ```typescript
 const decl = getDeclaration(existing.type);
 if (!decl.lifecycle.includes(target)) {
-  throw new Error(`Status "${target}" is not in lifecycle of type "${existing.type}" (allowed: ${decl.lifecycle.join(', ')})`);
+  throw new Error(
+    `Status "${target}" is not in lifecycle of type "${existing.type}" (allowed: ${decl.lifecycle.join(', ')})`
+  );
 }
 ```
 
 Тест в `tests/unit/use-cases/transition-memory-object.test.ts`: transition task-brief в `open` → ошибка про lifecycle; в `completed` → ok.
+
 - [ ] **Step 3.7: Сканер пишет document-ref.** `scan-project.ts:90`: `type: 'document'` → `type: 'document-ref'`; обновить `tests/unit/use-cases/scan-project.test.ts`.
 - [ ] **Step 3.8: CLI choices без deprecated.** `memory-add.ts:9`: `.choices([...MEMORY_TYPES].filter((t) => t !== 'document'))`.
 - [ ] **Step 3.9: Полный прогон + коммит.**
@@ -788,6 +844,7 @@ if (!decl.lifecycle.includes(target)) {
 ```bash
 npm run check
 ```
+
 Expected: PASS. Commit: `feat(taxonomy): config.yaml loader, taxonomy sync command, lifecycle-aware transitions`.
 
 ---
@@ -795,6 +852,7 @@ Expected: PASS. Commit: `feat(taxonomy): config.yaml loader, taxonomy sync comma
 ### Task 4: Layout v2 в store — dual-read, write-new
 
 **Files:**
+
 - Modify: `src/adapters/fs/project-paths.ts`, `src/adapters/fs/markdown-memory-store.ts`, `src/bootstrap/container.ts`, `src/adapters/fs/fs-project-initializer.ts`
 - Test: `tests/unit/adapters/markdown-memory-store.test.ts`, `tests/unit/adapters/project-paths.test.ts`
 
@@ -812,10 +870,7 @@ export function quarantineDir(baseDir: string): string {
 }
 
 /** Целевой путь объекта в layout v2. */
-export function targetPathFor(
-  baseDir: string,
-  obj: { type: MemoryType; id: string; thread?: string }
-): string {
+export function targetPathFor(baseDir: string, obj: { type: MemoryType; id: string; thread?: string }): string {
   const decl = getDeclaration(obj.type);
   if (decl.layout === 'work-thread-file') {
     return join(threadsDir(baseDir), obj.id, 'WORK-THREAD.md');
@@ -863,7 +918,10 @@ it('skips unparsable file without failing list and reports via onProblem', async
 
 ```typescript
 export class MarkdownMemoryStore implements MemoryStore {
-  constructor(private baseDir: string, private onProblem?: (message: string) => void) {}
+  constructor(
+    private baseDir: string,
+    private onProblem?: (message: string) => void
+  ) {}
 
   private roots(): string[] {
     return [legacyObjectsRoot(this.baseDir), threadsDir(this.baseDir), sharedDir(this.baseDir)];
@@ -881,7 +939,9 @@ export class MarkdownMemoryStore implements MemoryStore {
     await writeFileAtomic(path, `---\n${yaml.dump(frontmatter)}---\n\n${body}`);
   }
 
-  async get(id) { /* walk всех roots, первый не-legacy матч, иначе legacy */ }
+  async get(id) {
+    /* walk всех roots, первый не-legacy матч, иначе legacy */
+  }
 
   async list(filters?) {
     // walk всех roots -> parseFile c try/catch:
@@ -911,7 +971,7 @@ Per-type валидация при чтении: контейнер переда
 - [ ] **Step 4.4: Контейнер.** `createCliContainer`:
 
 ```typescript
-const cfg = await /* нет — контейнер синхронный */ ;
+const cfg = await; /* нет — контейнер синхронный */
 ```
 
 Контейнер синхронный (`createCliContainer` возвращает объект без Promise). Решение: ленивая таксономия — `getTaxonomy()` memoized async-хелпер рядом с контейнером; store получает `schemas: { parse: (type, data) => MemoryObject }`, который резолвит схему из `mergeTaxonomy` (кэш модуля). Для тестов — конструктор с явной таксономией. Проще: так как core покрывает всё и project-типы редки, store валидирует через `buildTypeSchemaCached(type)` где кэш строится из `CORE_TAXONOMY` + загруженные project-типы при первом обращении (sync-чтение файла через `readFileSync` в адаптере — допустимо на границе). Зафиксировать выбор: **sync-чтение config.yaml в адаптере `config-file.ts` добавлением `loadWolfConfigSync`** (readFileSync + тот же zod) — контейнер остаётся синхронным, асинхронщина не протекает в домен.
@@ -924,6 +984,7 @@ const cfg = await /* нет — контейнер синхронный */ ;
 ### Task 5: `wolf migrate` — одна миграция layout
 
 **Files:**
+
 - Create: `src/adapters/fs/layout-migration.ts`, `src/adapters/cli/commands/memory-migrate.ts`
 - Modify: `src/adapters/cli/cli-entry.ts`
 - Test: `tests/unit/adapters/layout-migration.test.ts`, `tests/integration/phase8-workflow.test.ts` (начать файл)
@@ -951,10 +1012,10 @@ import { writeFileAtomic } from './markdown-memory-store.js';
 
 export interface MigrationEntry {
   id: string;
-  type: string;            // целевой тип (после сплита)
+  type: string; // целевой тип (после сплита)
   originalType: string;
-  from: string;            // относительный исходный путь
-  to: string;              // относительный целевой путь
+  from: string; // относительный исходный путь
+  to: string; // относительный целевой путь
   action: 'move' | 'convert-document' | 'conflict';
 }
 
@@ -965,7 +1026,9 @@ export interface MigrationReport {
   total: number;
 }
 
-export async function planLayoutMigration(baseDir: string): Promise<MigrationReport> { /* walk objectsDir, parse каждой, расчёт targetPathFor; конфликт = целевой файл уже занят ДРУГИМ id */ }
+export async function planLayoutMigration(baseDir: string): Promise<MigrationReport> {
+  /* walk objectsDir, parse каждой, расчёт targetPathFor; конфликт = целевой файл уже занят ДРУГИМ id */
+}
 
 export async function applyLayoutMigration(baseDir: string): Promise<MigrationReport> {
   const report = await planLayoutMigration(baseDir);
@@ -1043,6 +1106,7 @@ it('is idempotent: second run reports nothing to migrate', async () => {
 ```bash
 npx vitest run tests/unit/adapters/layout-migration.test.ts tests/integration/phase8-workflow.test.ts
 ```
+
 - [ ] `wolf migrate --dry-run` на копии реального проекта: отчёт читаем, конфликтов 0
 - [ ] `wolf migrate --apply`: exit 0; повторный запуск: `total: 0`, exit 0
 - [ ] После миграции: `wolf list`, `wolf search "<слово>"`, `wolf brief`, `wolf thread brief <id>` работают
@@ -1055,6 +1119,7 @@ Commit: `feat(migrate): one-shot layout v2 migration with dry-run report and doc
 ### Task 6: Оркестрационные типы через API + совет (tally/synthesis)
 
 **Files:**
+
 - Modify: `src/app/use-cases/add-memory-object.ts`, `src/adapters/cli/commands/memory-add.ts`, `src/adapters/mcp/mcp-schemas.ts` (если там enum типов)
 - Create: `src/app/use-cases/tally-council-votes.ts`, `src/app/use-cases/create-synthesis.ts`, `src/adapters/cli/commands/memory-council.ts`
 - Modify: `src/adapters/cli/cli-entry.ts`
@@ -1072,7 +1137,9 @@ it('counts votes from opinion objects and enforces quorum', async () => {
   expect(r.quorumMet).toBe(true);
   expect(r.winner).toBe('A');
 });
-it('missing opinion counts as TIMEOUT and can fail quorum', async () => { /* 1 мнение, quorum 2 */ });
+it('missing opinion counts as TIMEOUT and can fail quorum', async () => {
+  /* 1 мнение, quorum 2 */
+});
 ```
 
 - [ ] **Step 6.4: Реализация tally.** `tally-council-votes.ts`:
@@ -1104,7 +1171,9 @@ export async function tallyCouncilVotes(
   const [top, n] = Object.entries(tallies).sort((a, b) => b[1] - a[1])[0] ?? [null, 0];
   return {
     questionId: input.questionId,
-    votes, tallies, quorumMet,
+    votes,
+    tallies,
+    quorumMet,
     winner: quorumMet && top && n / votes.length >= input.consensusThreshold ? top : null,
   };
 }
@@ -1117,6 +1186,7 @@ function extractVote(op: MemoryObject): string {
 ```
 
 VOTE-контракт — свободная строка (решение concept §6: вариантов может быть больше трёх), TIMEOUT — отсутствие.
+
 - [ ] **Step 6.5: createSynthesis.** Создаёт `synthesis` (status `proposed`, поля `recommendation` обязательно) через `addMemoryObject`, затем `recordRelation` `based_on` → каждый opinion. Тест: объект создан, relations записаны.
 - [ ] **Step 6.6: CLI.** `memory-council.ts`:
 
@@ -1126,6 +1196,7 @@ wolf council synthesize <question-id> --recommendation "..." [--created-by user:
 ```
 
 tally печатает таблицу голосов и вердикт; synthesize печатает id синтеза. Регистрация в cli-entry.
+
 - [ ] **Step 6.7: Integration.** В `phase8-workflow.test.ts`: thread → task-brief (extra) → report → relation answers; council-question → 2 opinion → tally → synthesis. Всё через use-cases.
 - [ ] **Step 6.8: Run + commit** `feat(orchestration): generic typed creation, council tally and synthesis use-cases`.
 
@@ -1134,6 +1205,7 @@ tally печатает таблицу голосов и вердикт; synthesi
 ### Task 7: Надёжность записи + `wolf validate`
 
 **Files:**
+
 - Create: `src/ports/memory-lock.port.ts`, `src/adapters/fs/memory-lock.ts`, `src/adapters/fs/jsonl-scan.ts`, `src/adapters/sqlite/busy-retry.ts`, `src/adapters/cli/commands/memory-validate.ts`
 - Modify: все write-use-cases (`add-memory-object`, `create-work-thread`, `create-decision`, `create-blocker`, `create-rule`, `create-article`, `create-info-request`, `resolve-blocker`, `supersede-memory-object`, `transition-memory-object`, `summarize-session`, `create-session-checkpoint`, `record-relation`, `scan-project`), оба JSONL-адаптера, `sqlite-search-index.ts`, `bootstrap/container.ts`, `cli-entry.ts`
 - Test: `tests/unit/adapters/{memory-lock,jsonl-scan,busy-retry}.test.ts`
@@ -1157,7 +1229,10 @@ const RETRY_MS = 100;
 const MAX_WAIT_MS = 5_000;
 
 export class LockHeldError extends Error {
-  constructor(readonly lockPath: string, readonly holderPid?: number) {
+  constructor(
+    readonly lockPath: string,
+    readonly holderPid?: number
+  ) {
     super(`Memory lock held${holderPid ? ` by pid ${holderPid}` : ''}: ${lockPath}`);
   }
 }
@@ -1221,6 +1296,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 ```
 
 Тест: параллельные `withLock` — второй ждёт; удержание >MAX_WAIT → LockHeldError; stale-файл (ts старый) крадётся.
+
 - [ ] **Step 7.2: Обернуть write-use-cases.** Каждый из 14 use-cases: в deps добавить `lock?: MemoryLock`, тело вынести в локальную `run`, вернуть:
 
 ```typescript
@@ -1229,11 +1305,19 @@ return deps.lock ? deps.lock.withLock(run) : run();
 ```
 
 Контейнер: `lock: new FsMemoryLock(memoryDir(baseDir))` (импорт `memoryDir`). Существующие юнит-тесты use-cases не передают lock — ветка `deps.lock ? ...` сохраняет совместимость.
+
 - [ ] **Step 7.3: Толерантный JSONL.** Create `src/adapters/fs/jsonl-scan.ts`:
 
 ```typescript
-export interface JsonlProblem { line: number; error: string; content: string }
-export interface JsonlScan<T> { items: T[]; problems: JsonlProblem[] }
+export interface JsonlProblem {
+  line: number;
+  error: string;
+  content: string;
+}
+export interface JsonlScan<T> {
+  items: T[];
+  problems: JsonlProblem[];
+}
 
 export async function scanJsonlFile<T>(path: string, parseItem: (raw: unknown) => T): Promise<JsonlScan<T>> {
   let content: string;
@@ -1250,7 +1334,11 @@ export async function scanJsonlFile<T>(path: string, parseItem: (raw: unknown) =
     try {
       items.push(parseItem(JSON.parse(line)));
     } catch (err) {
-      problems.push({ line: i + 1, error: err instanceof Error ? err.message : String(err), content: line.slice(0, 200) });
+      problems.push({
+        line: i + 1,
+        error: err instanceof Error ? err.message : String(err),
+        content: line.slice(0, 200),
+      });
     }
   });
   return { items, problems };
@@ -1258,6 +1346,7 @@ export async function scanJsonlFile<T>(path: string, parseItem: (raw: unknown) =
 ```
 
 `JsonlEventLog.readAll`/`JsonlRelationLog.list` переключить на `scanJsonlFile`; проблемы — `console.error('[mr-wolf] skipping bad line N in <file>: msg')` (stderr), результат без битых строк (чинит V7). Публичные сигнатуры портов не меняются.
+
 - [ ] **Step 7.4: SQLITE_BUSY.** `busy-retry.ts`:
 
 ```typescript
@@ -1281,14 +1370,20 @@ export function runWithBusyRetry<T>(fn: () => T, attempts = 5): T {
 ```
 
 `SQLiteSearchIndex`: в конструкторе после открытия — `this.db.pragma('busy_timeout = 5000');`; тела `indexObject/removeObject/rebuild` обернуть `runWithBusyRetry(() => {...})`.
+
 - [ ] **Step 7.5: Карантин --fix.** В `memory-validate.ts` (ниже): `--fix` для каждой object-problem переносит файл в `quarantine/<относительный путь от memory/>` + пишет sidecar `<file>.meta.json` `{"error": "...", "quarantined_at": "..."}`. Чтение никогда не перемещает (D5).
 - [ ] **Step 7.6: `wolf validate`.** `memory-validate.ts`:
 
 ```typescript
-interface ValidateSection { name: string; errors: string[]; warnings: string[] }
+interface ValidateSection {
+  name: string;
+  errors: string[];
+  warnings: string[];
+}
 ```
 
 Секции (каждая — функция, возвращающая секцию):
+
 1. `taxonomy`: `generateCoreConfigBlock()` vs `cfg.rawCoreBlock` deep-compare → error `core block drifted from code canon; run: wolf taxonomy sync`; project-типы прогоняются через `mergeTaxonomy` (ловит shadow/статусы).
 2. `layout`: счётчик файлов в `objectsDir` → warning если >0 («run: wolf migrate»).
 3. `objects`: полный walk через store с собранными проблемами → каждая проблема error; `--fix` карантинирует.
@@ -1297,6 +1392,7 @@ interface ValidateSection { name: string; errors: string[]; warnings: string[] }
 6. `locks`: наличие `.wolf/memory/.lock` со старым `ts` (>STALE) → warning.
 
 Вывод — формат из Step 7.7; exit 1 если есть errors.
+
 - [ ] **Step 7.7: Формат вывода (зафиксирован):**
 
 ```text
@@ -1327,6 +1423,7 @@ objects:    scanned 42, broken 1
 ### Task 8: Документация + финальная верификация
 
 **Files:**
+
 - Modify: `AGENTS.md`, `README.md`, `MEMORY.md`, `docs/superpowers/plans/roadmap-v2.md`
 
 - [ ] **Step 8.1:** `AGENTS.md`: Completed phases += Phase 8 (кратко: taxonomy via config, orchestration types, layout v2 migrated, write reliability); Next phase += Phase 9; Architecture notes — упомянуть `CORE_TAXONOMY` как канон и layout `threads/ + shared/`.
@@ -1338,6 +1435,7 @@ objects:    scanned 42, broken 1
 ```bash
 npm run check
 ```
+
 Expected: PASS целиком.
 
 - [ ] **Step 8.6:** Smoke на копии реального проекта (не на рабочем!): `cp -r <proj> /tmp/wolf-smoke` → в копии `wolf migrate --dry-run` → `--apply` → `wolf validate` → `wolf brief`. Коммит `docs: phase 8 documentation`.

@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import { SearchIndex, SearchOptions, SearchResult } from '../../ports/search-index.port.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import { SQLITE_SCHEMA } from './sqlite-schema.js';
+import { runWithBusyRetry } from './busy-retry.js';
 
 export class SQLiteSearchIndex implements SearchIndex {
   private db: Database.Database;
@@ -11,27 +12,31 @@ export class SQLiteSearchIndex implements SearchIndex {
   constructor(dbPath: string) {
     mkdirSync(dirname(dbPath), { recursive: true });
     this.db = new Database(dbPath);
+    this.db.pragma('busy_timeout = 5000');
     this.db.exec(SQLITE_SCHEMA);
   }
 
   async indexObject(object: MemoryObject): Promise<void> {
-    this.removeFromIndex(object.id);
-    this.insertIntoIndex(object);
+    runWithBusyRetry(() => {
+      this.removeFromIndex(object.id);
+      this.insertIntoIndex(object);
+    });
   }
 
   async removeObject(id: string): Promise<void> {
-    this.removeFromIndex(id);
+    runWithBusyRetry(() => this.removeFromIndex(id));
   }
 
   async rebuild(objects: MemoryObject[]): Promise<void> {
-    const rebuild = this.db.transaction(() => {
-      this.db.exec('DELETE FROM memory_search; DELETE FROM memory_meta;');
-      for (const obj of objects) {
-        this.insertIntoIndex(obj);
-      }
+    runWithBusyRetry(() => {
+      const rebuild = this.db.transaction(() => {
+        this.db.exec('DELETE FROM memory_search; DELETE FROM memory_meta;');
+        for (const obj of objects) {
+          this.insertIntoIndex(obj);
+        }
+      });
+      rebuild();
     });
-
-    rebuild();
   }
 
   async search(query: string, options: SearchOptions = {}): Promise<SearchResult[]> {

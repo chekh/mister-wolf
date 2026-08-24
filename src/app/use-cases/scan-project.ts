@@ -4,6 +4,7 @@ import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
 import { ProjectScanner } from '../../ports/project-scanner.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
+import { MemoryLock } from '../../ports/memory-lock.port.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import { ProjectSnapshot } from '../../domain/schemas/project-scan-schema.js';
 import { governanceDefaults } from '../../domain/governance.js';
@@ -22,51 +23,55 @@ export async function scanProject(
     idGen: IdGenerator;
     scanner: ProjectScanner;
     index?: SearchIndex;
+    lock?: MemoryLock;
   },
   root: string
 ): Promise<ScanProjectResult> {
-  const snapshot = await deps.scanner.scan(root);
-  const now = deps.clock.now();
-  const actor = 'agent:mr-wolf';
-  const defaults = governanceDefaults(actor);
+  const run = async (): Promise<ScanProjectResult> => {
+    const snapshot = await deps.scanner.scan(root);
+    const now = deps.clock.now();
+    const actor = 'agent:mr-wolf';
+    const defaults = governanceDefaults(actor);
 
-  const object: MemoryObject = {
-    id: 'project-scan-latest',
-    type: 'context',
-    title: `Project scan for ${snapshot.projectName}`,
-    body: renderScanBody(snapshot),
-    status: 'active',
-    review_state: 'accepted',
-    confidence: 'high',
-    importance: 0.7,
-    created_at: now.toISOString(),
-    updated_at: now.toISOString(),
-    created_by: actor,
-    schema_version: 1,
-    source: { kind: 'scan', path: snapshot.root },
-    related: { files: [], docs: [], decisions: [] },
-    tags: ['scan'],
-    superseded_by: null,
-    memory_class: defaults.memory_class,
-    truth_role: defaults.truth_role,
-    lifetime: defaults.lifetime,
+    const object: MemoryObject = {
+      id: 'project-scan-latest',
+      type: 'context',
+      title: `Project scan for ${snapshot.projectName}`,
+      body: renderScanBody(snapshot),
+      status: 'active',
+      review_state: 'accepted',
+      confidence: 'high',
+      importance: 0.7,
+      created_at: now.toISOString(),
+      updated_at: now.toISOString(),
+      created_by: actor,
+      schema_version: 1,
+      source: { kind: 'scan', path: snapshot.root },
+      related: { files: [], docs: [], decisions: [] },
+      tags: ['scan'],
+      superseded_by: null,
+      memory_class: defaults.memory_class,
+      truth_role: defaults.truth_role,
+      lifetime: defaults.lifetime,
+    };
+
+    await deps.store.save(object);
+    await deps.log.append({
+      id: deps.idGen.generateEventId(now),
+      type: 'memory.added',
+      timestamp: now.toISOString(),
+      actor,
+      payload: { memory_id: object.id, type: object.type },
+    });
+    if (deps.index) {
+      await deps.index.indexObject(object);
+    }
+
+    const documents = await registerDocuments(deps, snapshot, now, actor);
+
+    return { object, snapshot, documents };
   };
-
-  await deps.store.save(object);
-  await deps.log.append({
-    id: deps.idGen.generateEventId(now),
-    type: 'memory.added',
-    timestamp: now.toISOString(),
-    actor,
-    payload: { memory_id: object.id, type: object.type },
-  });
-  if (deps.index) {
-    await deps.index.indexObject(object);
-  }
-
-  const documents = await registerDocuments(deps, snapshot, now, actor);
-
-  return { object, snapshot, documents };
+  return deps.lock ? deps.lock.withLock(run) : run();
 }
 
 async function registerDocuments(
@@ -87,7 +92,7 @@ async function registerDocuments(
     const existing = await deps.store.get(id);
     const object: MemoryObject = {
       id,
-      type: 'document',
+      type: 'document-ref',
       title: doc.title,
       body: `Registered project document: ${doc.path}`,
       status: 'active',
@@ -131,43 +136,5 @@ export function renderScanBody(snapshot: ProjectSnapshot): string {
 
   const fileRows = snapshot.files.map((file) => `| ${file.path} | ${file.extension ?? ''} | ${file.size} |`).join('\n');
 
-  return `# Project Scan: ${snapshot.projectName}
-
-## Repository
-
-- Root: ${snapshot.root}
-- Project name: ${snapshot.projectName}
-${optionalLine('Branch', snapshot.branch)}${optionalLine('Commit', snapshot.commit)}
-## Summary
-
-### Languages
-
-${list(snapshot.summary.languages)}
-
-### Entry points
-
-${list(snapshot.summary.entryPoints)}
-
-### Config files
-
-${list(snapshot.summary.configFiles)}
-
-### Dependencies
-
-${list(snapshot.summary.dependencies)}
-
-### Top-level directories
-
-${list(snapshot.summary.topLevelDirectories)}
-
-### File count
-
-- ${snapshot.summary.fileCount}
-
-## Files
-
-| Path | Extension | Size |
-|---|---|---|
-${fileRows}
-`;
+  return `# Project Scan: ${snapshot.projectName}\n\n## Repository\n\n- Root: ${snapshot.root}\n- Project name: ${snapshot.projectName}\n${optionalLine('Branch', snapshot.branch)}${optionalLine('Commit', snapshot.commit)}## Summary\n\n### Languages\n\n${list(snapshot.summary.languages)}\n\n### Entry points\n\n${list(snapshot.summary.entryPoints)}\n\n### Config files\n\n${list(snapshot.summary.configFiles)}\n\n### Dependencies\n\n${list(snapshot.summary.dependencies)}\n\n### Top-level directories\n\n${list(snapshot.summary.topLevelDirectories)}\n\n### File count\n\n- ${snapshot.summary.fileCount}\n\n## Files\n\n| Path | Extension | Size |\n|---|---|---|\n${fileRows}\n`;
 }

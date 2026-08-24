@@ -32,6 +32,15 @@
 | `document`        | Существующий документ, зарегистрированный по ссылке. | Ссылка на `docs/concept-v3.md`                                     |
 | `context`         | Скан проекта, снимок состояния.                      | `project-scan-latest`                                              |
 
+> Начиная с Phase 8 канон типов — `CORE_TAXONOMY` в `src/domain/memory-types.ts` (22 типа, включая 7 оркестрационных и сплит `document-ref`/`document-native`). Полный список и lifecycles — `wolf taxonomy show`.
+
+### 2.1. Решение Phase 8: layout v2 и канон таксономии
+
+- **Канон — код (D2):** существование, lifecycle, поля и layout каждого типа определяются декларацией в `CORE_TAXONOMY`; `.wolf/config.yaml` — генерируемое зеркало core-блока (`wolf taxonomy sync`) плюс точка расширения project-типов. Ручные правки core-блока перетираются sync'ом и ловятся `wolf validate`.
+- **Каталоги тредов — полный id (D-dev1):** объекты треда живут в `threads/<mem_<date>_<slug>_<hash>>/<subdir>/`, а не в человекочитаемых slug-каталогах: поле `thread` уже хранит полный mem-id, отдельное пространство имён slug'ов не вводилось. Upgrade-path — поле-алиас в будущей фазе.
+- **Имена файлов — `<id>.md` (D-dev2):** переименование в `YYYY-MM-DD-<slug>.md` отклонено: id уже содержит ISO-дату и slug, лексикографическая сортировка сохраняется, резолв по имени не ломается.
+- **Миграция одноразовая:** `objects/<type>/` → layout v2 через `wolf migrate` (dry-run по умолчанию, идемпотентна); store постоянно dual-read'ит legacy-корень, пишет только v2.
+
 ---
 
 ## 3. Связь документов проекта с памятью
@@ -106,11 +115,32 @@ wolf session wrap-up --title "Результаты сессии: ..." --tags tag
 ```
 
 Сессионные сводки также автоматически создаются после ключевых событий жизненного цикла:
+
 - разрешение блокера (`wolf blocker resolve <id>`);
 - терминальный transition (`archived`, `completed`, `accepted`, `resolved`, `obsolete`);
 - замещение объекта (`wolf supersede <old-id> <new-id>`);
 - создание решения (`wolf decision add ...`);
 - создание статьи (`wolf article add ...`).
+
+### Repair-цикл (solve/call)
+
+Когда агент повторяет ошибку из-за устаревшей памяти:
+
+```bash
+# диагностика (read-only)
+wolf solve "агент использует устаревшую команду get"
+
+# диагностика + сохранение repair-запроса
+wolf solve "агент использует устаревшую команду get" --save
+
+# получить call-injection по теме
+wolf call --for "deprecated get"
+
+# компактный вывод с бюджетом
+wolf call --for "deprecated get" --compact=800
+```
+
+Call-injection создаются через `wolf add --type call-injection --set trigger_keywords=get,deprecated`.
 
 Если работа касалась структуры проекта или важных решений — обновить `agent brief`:
 
@@ -139,16 +169,19 @@ wolf brief
 For long-running work that spans sessions:
 
 1. Create a work thread:
+
    ```bash
    node dist/bootstrap/cli.js thread create --title "..." --goal "..."
    ```
 
 2. When a side question would derail the main session, create an info request:
+
    ```bash
    node dist/bootstrap/cli.js info-request create --title "..." --thread <thread-id> --question "..." --detour-reason "..." --expected-answer "..."
    ```
 
 3. In another session, answer the request with an article:
+
    ```bash
    node dist/bootstrap/cli.js article add --title "..." --thread <thread-id> --summary "..." --body "..." --answers <info-request-id>
    ```

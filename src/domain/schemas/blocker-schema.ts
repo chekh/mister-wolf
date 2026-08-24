@@ -1,13 +1,11 @@
+import { buildTypeSchema } from '../type-schema-builder.js';
+import { getDeclaration } from '../memory-types.js';
 import { z } from 'zod';
-import { MemoryObjectSchema } from './memory-object-schema.js';
 
-export const BlockerSchema = MemoryObjectSchema.extend({
-  type: z.literal('blocker'),
-  status: z.enum(['active', 'resolved', 'obsolete']),
+const decl = getDeclaration('blocker');
+export const BlockerSchema = buildTypeSchema(decl, {
   thread: z.string().optional(),
   impact: z.string().min(1),
   workaround: z.string().optional(),
-  body: z.string().default(''),
 });
-
 export type Blocker = z.infer<typeof BlockerSchema>;

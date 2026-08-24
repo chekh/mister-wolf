@@ -33,8 +33,8 @@ export function validateGovernance(obj: {
 }
 
 export const ALLOWED_TRANSITIONS: Record<MemoryStatus, MemoryStatus[]> = {
-  active: ['stale', 'superseded', 'archived', 'conflicting'],
-  open: ['resolved', 'rejected', 'archived'],
+  active: ['stale', 'superseded', 'archived', 'conflicting', 'completed'],
+  open: ['resolved', 'rejected', 'archived', 'answered'],
   resolved: ['archived'],
   stale: ['active', 'archived'],
   conflicting: ['active', 'archived'],

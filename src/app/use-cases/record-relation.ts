@@ -1,5 +1,6 @@
 import { RelationLog } from '../../ports/relation-log.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
+import { MemoryLock } from '../../ports/memory-lock.port.js';
 import { RelationPredicate } from '../../domain/schemas/relation-schema.js';
 
 const INVERSE: Record<RelationPredicate, RelationPredicate> = {
@@ -22,7 +23,7 @@ const INVERSE: Record<RelationPredicate, RelationPredicate> = {
 };
 
 export async function recordRelation(
-  deps: { relations?: RelationLog; idGen: IdGenerator },
+  deps: { relations?: RelationLog; idGen: IdGenerator; lock?: MemoryLock },
   now: Date,
   subject: string,
   predicate: RelationPredicate,
@@ -30,24 +31,27 @@ export async function recordRelation(
   source: 'manual' | 'agent' | 'system' = 'agent'
 ): Promise<void> {
   if (!deps.relations) return;
-  const forward = {
-    id: deps.idGen.generateEventId(now),
-    subject,
-    predicate,
-    object,
-    created_at: now.toISOString(),
-    source,
-    confidence: 'high' as const,
+  const run = async (): Promise<void> => {
+    const forward = {
+      id: deps.idGen.generateEventId(now),
+      subject,
+      predicate,
+      object,
+      created_at: now.toISOString(),
+      source,
+      confidence: 'high' as const,
+    };
+    const backward = {
+      id: deps.idGen.generateEventId(now),
+      subject: object,
+      predicate: INVERSE[predicate],
+      object: subject,
+      created_at: now.toISOString(),
+      source,
+      confidence: 'high' as const,
+    };
+    await deps.relations!.append(forward);
+    await deps.relations!.append(backward);
   };
-  const backward = {
-    id: deps.idGen.generateEventId(now),
-    subject: object,
-    predicate: INVERSE[predicate],
-    object: subject,
-    created_at: now.toISOString(),
-    source,
-    confidence: 'high' as const,
-  };
-  await deps.relations.append(forward);
-  await deps.relations.append(backward);
+  return deps.lock ? deps.lock.withLock(run) : run();
 }
