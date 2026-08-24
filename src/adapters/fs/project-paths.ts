@@ -36,6 +36,7 @@ export function objectDirForType(baseDir: string, type: MemoryType): string {
     synthesis: 'councils',
     escalation: 'escalations',
     'decision-request': 'escalations',
+    'call-injection': 'calls',
   };
   if (!(type in mapping)) {
     throw new Error(`Unknown memory type: ${type}`);

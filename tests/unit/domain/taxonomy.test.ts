@@ -92,3 +92,22 @@ describe('renderConfigYaml', () => {
     expect(yaml).toContain('task-brief');
   });
 });
+
+describe('call-injection type (phase 9)', () => {
+  it('extends MEMORY_TYPES to 23 with call-injection last', () => {
+    expect(MEMORY_TYPES).toHaveLength(23);
+    expect(MEMORY_TYPES[MEMORY_TYPES.length - 1]).toBe('call-injection');
+  });
+
+  it('declares call-injection with operational lifecycle and shared calls dir', () => {
+    const decl = getDeclaration('call-injection');
+    expect(decl.lifecycle).toEqual(['active', 'superseded', 'archived']);
+    expect(decl.subdirShared).toBe('calls');
+    expect(decl.subdirThread).toBeNull();
+  });
+
+  it('relaxes info-request.thread to optional for project-level requests', () => {
+    const thread = getDeclaration('info-request').fields?.thread;
+    expect(thread).toEqual({ kind: 'string', optional: true });
+  });
+});
