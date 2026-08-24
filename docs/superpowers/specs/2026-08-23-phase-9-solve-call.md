@@ -173,7 +173,7 @@ Solve/call НЕ создают task-brief/report: это артефакты ис
 - [ ] **Step 2.1: Failing-тест.** В taxonomy.test.ts: `expect(getDeclaration('call-injection').subdirShared).toBe('calls')`; `expect(MEMORY_TYPES).toHaveLength(23)`; эквивалентность-тест (covers every entry) обновляется автоматически, но явный кейс на новый тип добавляется.
 - [ ] **Step 2.2: Run → FAIL** (типа нет).
 - [ ] **Step 2.3: Реализация.** MEMORY_TYPES += 'call-injection' (в конец); декларация из D1; `info-request.thread` → `{ kind: 'string', optional: true }` (D-dev3). Per-type схема строится автоматически билдером — отдельных файлов схем не нужно.
-- [ ] **Step 2.4: GREEN + полный check** (guard-тесты схем зелёные — call-injection не имеет hand-written схемы). Затем `npm run build && wolf taxonomy sync` и коммит обновлённого `.wolf/config.yaml` (зеркало таксономии не расходится с каноном). Коммит: `feat(domain): call-injection type, info-request.thread optional`.
+- [ ] **Step 2.4: GREEN + полный check** (guard-тесты схем зелёные — call-injection не имеет hand-written схемы). Затем `npm run build && wolf taxonomy sync` локально/в песочнице для проверки генератора — коммит `.wolf/config.yaml` невозможен (`.wolf/` в .gitignore, зеркало таксономии не расходится с каноном по построению). Коммит: `feat(domain): call-injection type, info-request.thread optional`.
 
 ---
 
