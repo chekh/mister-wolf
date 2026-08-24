@@ -34,8 +34,8 @@ node dist/bootstrap/cli.js search "lesson"
 - `wolf add` — add a memory object. Supports `--tags`, `--confidence`, `--importance`. Search sees it immediately.
 - `wolf list` — list memory objects, optionally filtered by type, status, or stale objects.
 - `wolf get <id>` — retrieve a single memory object by ID.
-- `wolf search <query>` — full-text search over memory objects.
-- `wolf supersede <old-id> <new-id>` — mark an older memory object as superseded.
+- `wolf search <query>` — full-text search over memory objects. Finds objects in any live status of their lifecycle (`active`, `open`, `proposed`, ...); `superseded`/`archived` stay hidden unless requested.
+- `wolf supersede <old-id> <new-id>` — mark an older memory object as superseded. Both ids are validated (format and existence), and `old ≠ new` is enforced.
 - `wolf rebuild-index` — rebuild the SQLite FTS5 index from markdown source files.
 
 ### Phase 1: threads, info requests, articles
@@ -55,6 +55,7 @@ node dist/bootstrap/cli.js search "lesson"
 - `wolf blocker add` — add a blocker.
 - `wolf blocker list` — list blockers.
 - `wolf blocker resolve <id>` — resolve a blocker.
+- `wolf transition <id> resolved` — generic lifecycle transition; for active blockers it accepts `resolved`/`obsolete`, consistent with `wolf blocker resolve`.
 
 ### Phase 3: scan and document registration
 
@@ -87,7 +88,7 @@ node dist/bootstrap/cli.js search "lesson"
 
 - `wolf taxonomy sync` — regenerate `memory_types.core` in `.wolf/config.yaml` from the code canon (`CORE_TAXONOMY`). `artifact_sources` and `memory_types.project` are preserved.
 - `wolf taxonomy show` — print the effective taxonomy (core + project types).
-- `wolf add --type task-brief --set executor=executor-lead,priority=high` — create any of the 7 orchestration types (`task-brief`, `report`, `council-question`, `council-opinion`, `synthesis`, `escalation`, `decision-request`) via generic creation with extra fields validated by the type declaration.
+- `wolf add --type task-brief --set executor=executor-lead,priority=high` — create any of the 7 orchestration types (`task-brief`, `report`, `council-question`, `council-opinion`, `synthesis`, `escalation`, `decision-request`) via generic creation with extra fields validated by the type declaration. `--set k=v` is repeatable (`--set a=1 --set b=2`); repeating a non-array key is an error; for `string[]` taxonomy fields pass a bracketed list (`--set 'trigger_keywords=[git,merge]'`, JSON quotes optional) or repeat the key to accumulate values.
 - `wolf migrate` — one-time migration of legacy `objects/<type>/` into layout v2 (`threads/<tid>/<subdir>/` + `shared/<subdir>/`) with document split (`document-ref`/`document-native`). Dry-run by default; `--apply` performs it. Idempotent.
 - `wolf validate [--fix]` — health check: taxonomy drift, layout leftovers, broken objects, events/relations JSONL, index freshness, stale locks. Exit 1 on errors. `--fix` quarantines broken object files into `.wolf/memory/quarantine/`.
 - `wolf council tally --question-id <id> --quorum N --threshold X` — count council votes from `council-opinion` objects linked by `answers` relations.
@@ -101,7 +102,7 @@ Two-session cycle for fixing broken agent behavior caused by stale or missing me
 2. **Clean session:** `wolf solve "<problem>"` — builds a Solve Pack (scenario classification, relevant memory, analysis instructions).
 3. **Analyze:** follow the pack's instructions, propose corrections.
 4. **Persist:** `wolf solve "<problem>" --save [--thread <id>]` — creates an `info-request` tagged `solve/memory-repair` for durable tracking.
-5. **Inject:** create a `call-injection` via `wolf add --type call-injection --set trigger_keywords=get,deprecated`, then `wolf call --for "deprecated get"` returns compact injection blocks for the active session.
+5. **Inject:** create a `call-injection` via `wolf add --type call-injection --set 'trigger_keywords=[get,deprecated]'`, then `wolf call --for "deprecated get"` returns compact injection blocks for the active session.
 
 ```bash
 # diagnose

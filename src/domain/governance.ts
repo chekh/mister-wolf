@@ -33,7 +33,9 @@ export function validateGovernance(obj: {
 }
 
 export const ALLOWED_TRANSITIONS: Record<MemoryStatus, MemoryStatus[]> = {
-  active: ['stale', 'superseded', 'archived', 'conflicting', 'completed'],
+  // resolved/obsolete из active нужны блокерам и типам с этими статусами в
+  // lifecycle; эффективные переходы = ALLOWED_TRANSITIONS ∩ lifecycle типа.
+  active: ['stale', 'superseded', 'archived', 'conflicting', 'completed', 'resolved', 'obsolete'],
   open: ['resolved', 'rejected', 'archived', 'answered'],
   resolved: ['archived'],
   stale: ['active', 'archived'],

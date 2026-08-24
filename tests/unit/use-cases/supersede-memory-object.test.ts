@@ -56,4 +56,39 @@ describe('supersedeMemoryObject', () => {
     const events = await log.readAll();
     expect(events.some((e) => e.type === 'memory.superseded')).toBe(true);
   });
+
+  it('rejects nonexistent replacement id without writing superseded_by', async () => {
+    const oldObj = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'lesson', title: 'Old', createdBy: 'user:test' }
+    );
+
+    await expect(
+      supersedeMemoryObject({ store, log, clock, idGen }, oldObj.object.id, 'mem_20260824_ghost_abc123')
+    ).rejects.toThrow(/mem_20260824_ghost_abc123/);
+
+    const loaded = await store.get(oldObj.object.id);
+    expect(loaded?.status).toBe('active');
+    expect(loaded?.superseded_by).toBeNull();
+  });
+
+  it('rejects malformed ids', async () => {
+    await expect(supersedeMemoryObject({ store, log, clock, idGen }, 'garbage-id', 'also_bad')).rejects.toThrow(
+      /malformed/i
+    );
+  });
+
+  it('rejects superseding an object with itself', async () => {
+    const obj = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'lesson', title: 'Self', createdBy: 'user:test' }
+    );
+
+    await expect(supersedeMemoryObject({ store, log, clock, idGen }, obj.object.id, obj.object.id)).rejects.toThrow(
+      /same/i
+    );
+
+    const loaded = await store.get(obj.object.id);
+    expect(loaded?.status).toBe('active');
+  });
 });

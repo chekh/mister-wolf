@@ -123,4 +123,20 @@ describe('transitionMemoryObject', () => {
     const updated = await store.get(id);
     expect(updated?.status).toBe('completed');
   });
+
+  it('allows blocker active -> resolved via generic transition', async () => {
+    const store = new MarkdownMemoryStore(dir);
+    const log = new JsonlEventLog(eventsPath(dir));
+    const clock = new SystemClock();
+    const idGen = new HashIdGenerator();
+
+    const added = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'blocker', title: 'Broken build', createdBy: 'user:test', extra: { impact: 'blocks CI' } }
+    );
+
+    await transitionMemoryObject({ store, log, clock, idGen }, added.object.id, 'resolved');
+    const updated = await store.get(added.object.id);
+    expect(updated?.status).toBe('resolved');
+  });
 });

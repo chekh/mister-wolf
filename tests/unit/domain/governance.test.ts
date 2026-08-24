@@ -56,3 +56,15 @@ describe('phase 8 transitions', () => {
     expect(canTransition('open', 'answered')).toBe(true);
   });
 });
+
+describe('blocker transitions', () => {
+  it('allows active -> resolved (blocker)', () => {
+    expect(canTransition('active', 'resolved')).toBe(true);
+  });
+  it('allows active -> obsolete (blocker)', () => {
+    expect(canTransition('active', 'obsolete')).toBe(true);
+  });
+  it('still disallows active -> answered (not a lifecycle status of active-lifecycle types)', () => {
+    expect(canTransition('active', 'answered')).toBe(false);
+  });
+});

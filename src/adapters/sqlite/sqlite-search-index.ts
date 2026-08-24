@@ -55,7 +55,9 @@ export class SQLiteSearchIndex implements SearchIndex {
     const params: (string | number)[] = [ftsQuery];
 
     if (!options.includeSuperseded) {
-      sql += ` AND s.status = 'active'`;
+      // «Мёртвые» статусы не ищем; остальные живые (active/open/proposed/...)
+      // находятся независимо от lifecycle конкретного типа.
+      sql += ` AND s.status NOT IN ('superseded', 'archived')`;
     }
     if (options.type) {
       sql += ` AND s.type = ?`;

@@ -75,6 +75,17 @@ describe('SQLiteSearchIndex', () => {
     expect(results.map((r) => r.object.id)).toEqual(['mem_1']);
   });
 
+  it('finds objects in live non-active statuses and still excludes dead ones', async () => {
+    await index.rebuild([
+      makeObject({ id: 'mem_1', type: 'council-question', title: 'Question', body: 'council term', status: 'open' }),
+      makeObject({ id: 'mem_2', type: 'synthesis', title: 'Synthesis', body: 'council term', status: 'proposed' }),
+      makeObject({ id: 'mem_3', title: 'Archived', body: 'council term', status: 'archived' }),
+      makeObject({ id: 'mem_4', title: 'Superseded', body: 'council term', status: 'superseded' }),
+    ]);
+    const results = await index.search('council');
+    expect(results.map((r) => r.object.id).sort()).toEqual(['mem_1', 'mem_2']);
+  });
+
   it('includes superseded objects when requested', async () => {
     await index.rebuild([
       makeObject({ id: 'mem_1', title: 'Active', body: 'target content', status: 'active' }),

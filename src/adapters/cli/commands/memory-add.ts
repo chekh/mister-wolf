@@ -2,6 +2,11 @@ import { Command, Option } from 'commander';
 import { addMemoryObject } from '../../../app/use-cases/add-memory-object.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { MEMORY_TYPES } from '../../../domain/memory-types.js';
+import { parseSetPairs } from '../../../domain/parse-set-pairs.js';
+
+function collectSet(value: string, previous: string[]): string[] {
+  return [...previous, value];
+}
 
 export function memoryAddCommand(): Command {
   return new Command('add')
@@ -16,20 +21,11 @@ export function memoryAddCommand(): Command {
     .option('--tags <tags>', 'Comma-separated tags')
     .option('--confidence <confidence>', 'Confidence level (low|medium|high)')
     .option('--importance <n>', 'Importance from 0 to 1', parseFloat)
-    .option('--set <k=v,k=v>', 'Extra fields for typed objects')
+    .option('--set <k=v>', 'Extra field key=value (repeatable; "[a,b]" value is a string array)', collectSet, [])
     .option('--created-by <actor>', 'Creator actor', 'user:cli')
     .action(async (options) => {
       const { store, log, clock, idGen, index } = createCliContainer(process.cwd());
-      const extra = options.set
-        ? Object.fromEntries(
-            String(options.set)
-              .split(',')
-              .map((pair: string) => {
-                const i = pair.indexOf('=');
-                return [pair.slice(0, i), pair.slice(i + 1)];
-              })
-          )
-        : undefined;
+      const extra = parseSetPairs(options.set as string[], options.type);
       const result = await addMemoryObject(
         { store, log, clock, idGen, index },
         {
