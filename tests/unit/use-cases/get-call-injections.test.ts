@@ -208,4 +208,35 @@ describe('getCallInjections', () => {
       expect(b).not.toContain('decision_noise');
     }
   });
+
+  it('index fallback includes injections whose body matches the topic without keyword overlap', async () => {
+    await seed(
+      makeObj({
+        id: 'inj_kw',
+        type: 'call-injection',
+        status: 'active',
+        trigger_keywords: ['gitflow'],
+        title: 'Keyword match',
+        body: 'x'.repeat(200),
+      }),
+      makeObj({
+        id: 'inj_fts',
+        type: 'call-injection',
+        status: 'active',
+        trigger_keywords: ['unrelated'],
+        title: 'Only FTS match',
+        body: 'merge dev through release branches',
+      })
+    );
+    const index = {
+      search: async () => [{ object: await store.get('inj_fts'), score: 5 }],
+      rebuild: async () => {},
+      indexObject: async () => {},
+      removeObject: async () => {},
+    };
+
+    const result = await getCallInjections({ store, index, clock }, { topic: 'release branches' });
+    const ids = result.blocks.map((b) => b.match(/\[(\w+)\]/)?.[1]);
+    expect(ids).toContain('inj_fts');
+  });
 });

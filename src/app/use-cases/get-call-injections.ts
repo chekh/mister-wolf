@@ -27,12 +27,21 @@ export async function getCallInjections(
   // 2. topic matching
   let matched: Record<string, unknown>[];
   if (input.topic) {
+    // one index query per call: injections whose body/title match the topic
+    // even when trigger_keywords don't overlap (FTS fallback)
+    const ftsIds = new Set<string>();
+    if (deps.index && topicTokens.length > 0) {
+      try {
+        const results = await deps.index.search(input.topic, { type: 'call-injection', limit: 10 });
+        for (const r of results) ftsIds.add(r.object.id);
+      } catch {
+        // ponytail: broken index degrades to keyword-only matching, never crashes wolf call
+      }
+    }
     matched = injections.filter((obj) => {
       const kw: string[] = (obj.trigger_keywords as string[]) ?? [];
-      const intersection = kw.filter((k) => topicTokens.includes(k));
-      if (intersection.length > 0) return true;
-      // fallback: index search
-      return false; // index fallback not used in tests
+      if (kw.some((k) => topicTokens.includes(k))) return true;
+      return ftsIds.has(obj.id as string);
     });
     // 3. fallback to rules if no matches
     if (matched.length === 0) {
