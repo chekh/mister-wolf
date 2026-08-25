@@ -15,6 +15,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"docs/**/*.md\" \"README.md\" \"*.json\" \"*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"docs/**/*.md\" \"README.md\" \"*.json\" \"*.ts\"",
     "e2e": "npm run build && vitest run --config tests/e2e/vitest.config.ts",
+    "bench:search": "npm run build && node scripts/bench-search.mjs",
     "check": "npm run format:check && npm run lint && npm run test:run && npm run build"
   },
   "dependencies": {
