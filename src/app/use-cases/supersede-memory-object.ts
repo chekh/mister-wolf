@@ -6,7 +6,9 @@ import { SearchIndex } from '../../ports/search-index.port.js';
 import { MemoryLock } from '../../ports/memory-lock.port.js';
 import { summarizeSession } from './summarize-session.js';
 
-const MEMORY_ID_RE = /^mem_\d{8}_[a-z0-9_]+_[0-9a-f]{6}$/;
+// ponytail: slug optional — legacy ids from cyrillic titles have empty slug
+// (mem_YYYYMMDD__<hash>); hash is still mandatory, so 'mem_20260824__' stays invalid
+const MEMORY_ID_RE = /^mem_\d{8}[a-z0-9_]*_[0-9a-f]{6}$/;
 
 export async function supersedeMemoryObject(
   deps: { store: MemoryStore; log: EventLog; clock: Clock; idGen: IdGenerator; index?: SearchIndex; lock?: MemoryLock },

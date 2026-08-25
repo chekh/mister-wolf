@@ -78,6 +78,39 @@ describe('supersedeMemoryObject', () => {
     );
   });
 
+  it('rejects empty-slug id without hash', async () => {
+    await expect(
+      supersedeMemoryObject({ store, log, clock, idGen }, 'mem_20260824__', 'mem_20260825_x_abc123')
+    ).rejects.toThrow(/malformed/i);
+  });
+
+  it('accepts legacy ids with empty slug and valid hash', async () => {
+    const legacy = {
+      id: 'mem_20260825__16322d',
+      type: 'lesson',
+      title: 'Легаси-объект с кириллическим заголовком',
+      status: 'active',
+      review_state: 'accepted',
+      confidence: 'medium',
+      importance: 0.5,
+      created_at: '2026-08-25T12:00:00.000Z',
+      updated_at: '2026-08-25T12:00:00.000Z',
+      created_by: 'user:test',
+      source: { kind: 'manual' },
+    } as const;
+    await store.save(legacy);
+    const newObj = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'lesson', title: 'Replacement', createdBy: 'user:test' }
+    );
+
+    await supersedeMemoryObject({ store, log, clock, idGen }, 'mem_20260825__16322d', newObj.object.id);
+
+    const loaded = await store.get('mem_20260825__16322d');
+    expect(loaded?.status).toBe('superseded');
+    expect(loaded?.superseded_by).toBe(newObj.object.id);
+  });
+
   it('rejects superseding an object with itself', async () => {
     const obj = await addMemoryObject(
       { store, log, clock, idGen },
