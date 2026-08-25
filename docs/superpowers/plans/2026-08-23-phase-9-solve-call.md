@@ -88,11 +88,11 @@
 
 ### Task 5: документация и конвенция
 
-**Files:** Modify `README.md`, `AGENTS.md`, `MEMORY.md`.
+**Files:** Modify `README.md`, `AGENTS.md`, `MEMORY.md`. <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 
 - [ ] **Step 5.1:** README: секция Phase 9 — двухсессионный цикл solve/call (§13 концепции), примеры команд, safety model (read-only по умолчанию, safe vs risky actions).
 - [ ] **Step 5.2:** AGENTS.md: Architecture Notes += solve/call; конвенция «When the user says "listen to Wolf"/«слушай Wolf», run `wolf call` and treat returned injections as active guidance».
-- [ ] **Step 5.3:** MEMORY.md: обновить секции фаз (Phase 9 завершена) и команд (solve/call/relation add).
+- [ ] **Step 5.3:** MEMORY.md: обновить секции фаз (Phase 9 завершена) и команд (solve/call/relation add). <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 - [ ] **Step 5.4:** Полный `npm run check`. Коммит: `docs: phase 9 solve/call documentation`.
 
 ---

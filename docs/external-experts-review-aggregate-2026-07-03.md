@@ -18,10 +18,10 @@
 
 **Главные находки второго уровня:**
 
-1. `AGENTS.md` и `README.md` актуальны и согласованы; устаревшими являются `docs/superpowers/plans/roadmap.md`, `MEMORY.md` (раздел 3.3) и `docs/user-guide.md`.
+1. `AGENTS.md` и `README.md` актуальны и согласованы; устаревшими являются `docs/superpowers/plans/roadmap.md`, `MEMORY.md` (раздел 3.3) и `docs/user-guide.md`. <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 2. OpenAI ошибочно утверждает, что в `src/` остались каталоги `agent`, `workflow`, `model`, `policy`, `tool`, `kernel`, `state`. Их там нет.
 3. OpenAI ошибочно называет `AGENTS.md` отстающим документом. На самом деле он самый свежий (сгенерирован 2026-07-03).
-4. `wolf scan` **уже регистрирует** документы как `document` (`src/app/use-cases/scan-project.ts:67-124`). `MEMORY.md` врет об обратном.
+4. `wolf scan` **уже регистрирует** документы как `document` (`src/app/use-cases/scan-project.ts:67-124`). `MEMORY.md` врет об обратном. <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 5. `npm run check` падает с 15 ошибками TypeScript в `src/adapters/mcp/mcp-tools.ts`. MCP-интеграция работает в runtime (тесты проходят), но не компилируется строго.
 6. Два roadmap-файла (`roadmap.md` и `roadmap-v2.md`) дезориентируют: `roadmap-v2.md` предлагает Phase 6–14, но Phase 6, 7 и 12 уже реализованы в коде.
 
@@ -33,7 +33,7 @@
 
 - исходный код в `src/`;
 - `package.json`, `tsconfig.json`;
-- `README.md`, `AGENTS.md`, `MEMORY.md`, `docs/user-guide.md`, `docs/superpowers/plans/roadmap.md`, `docs/superpowers/plans/roadmap-v2.md`;
+- `README.md`, `AGENTS.md`, `MEMORY.md`, `docs/user-guide.md`, `docs/superpowers/plans/roadmap.md`, `docs/superpowers/plans/roadmap-v2.md`; <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 - история git (`git log --oneline --all`);
 - запуск `npm run test:run` и `npm run check`;
 - glob-поиск по структуре проекта.
@@ -52,24 +52,24 @@
 ### 3.1. Состояние фаз
 
 | Утверждение                                                               | Источник      | Статус             | Пояснение                                                                                                                                                    |
-| ------------------------------------------------------------------------- | ------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ------------------------------------------------------------------------- | ------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
 | «README говорит, что Phase 5 завершена и следующая Phase 6 — Governance»  | OpenAI        | ⚠️ Частично верно  | `README.md:15-17` говорит, что завершены фазы 0–7, следующая — Phase 8. OpenAI смотрел старую версию или `roadmap.md`.                                       |
 | «AGENTS.md говорит, что completed phases — 0–4, а next phase — Phase 5»   | OpenAI        | ❌ Не подтверждено | `AGENTS.md:39-50` явно перечисляет завершенные фазы 0–7 и Phase 8 как следующую.                                                                             |
-| «MEMORY.md говорит, что scan еще не регистрирует documents автоматически» | OpenAI        | ⚠️ Устарело        | `MEMORY.md:66-69` действительно так говорит, но `src/app/use-cases/scan-project.ts:67-124` доказывает обратное. Это документационный долг, а не технический. |
+| «MEMORY.md говорит, что scan еще не регистрирует documents автоматически» | OpenAI        | ⚠️ Устарело        | `MEMORY.md:66-69` действительно так говорит, но `src/app/use-cases/scan-project.ts:67-124` доказывает обратное. Это документационный долг, а не технический. | <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md --> |
 | «roadmap-v2 superseds roadmap.md»                                         | roadmap-v2.md | ✅ Подтверждено    | `docs/superpowers/plans/roadmap-v2.md:5-6` явно это заявляет.                                                                                                |
 | «Phase 6 Governance, Phase 7 MCP, Phase 12 Session Wrap-Up запланированы» | roadmap-v2.md | ⚠️ Устарело        | Все три фазы уже реализованы в `main` (см. `README.md`, `AGENTS.md`, `git log`).                                                                             |
 
-**Вывод:** проблема не в том, что документация «разъехалась», а в том, что **часть документов не удалена/обновлена после завершения фаз**. `README.md` и `AGENTS.md` — источники правды о текущем состоянии; `roadmap.md` и `MEMORY.md` — отстают.
+**Вывод:** проблема не в том, что документация «разъехалась», а в том, что **часть документов не удалена/обновлена после завершения фаз**. `README.md` и `AGENTS.md` — источники правды о текущем состоянии; `roadmap.md` и `MEMORY.md` — отстают. <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 
 ### 3.2. Архитектура и старые модули
 
 | Утверждение                                                                                 | Источник | Статус             | Пояснение                                                                                                                                                          |
-| ------------------------------------------------------------------------------------------- | -------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ------------------------------------------------------------------------------------------- | -------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
 | «В src tree есть старые каталоги вроде agent, workflow, model, policy, tool, kernel, state» | OpenAI   | ❌ Не подтверждено | `glob src/**/{agent,workflow,model,policy,tool,kernel,state}/**` возвращает 0 файлов. Структура `src/` чистая: `domain/`, `app/use-cases/`, `ports/`, `adapters/`. |
 | «Hexagonal Architecture — эталонное разделение»                                             | Qwen     | ✅ Подтверждено    | `src/domain/` не импортирует ничего; `app/use-cases/` импортирует `domain` и `ports`; `adapters/` импортируют `ports`. См. `AGENTS.md:32-37`.                      |
 | «Таксономия из 14 типов»                                                                    | Qwen/Zai | ✅ Подтверждено    | `src/domain/memory-types.ts:1-15` перечисляет 14 типов. Это много.                                                                                                 |
 | «SQLite FTS5 используется для поиска»                                                       | Qwen/Zai | ✅ Подтверждено    | `src/adapters/sqlite/sqlite-search-index.ts`, `src/adapters/sqlite/sqlite-schema.ts`.                                                                              |
-| «Markdown + JSONL + SQLite»                                                                 | Qwen     | ✅ Подтверждено    | `MEMORY.md:7-8`, `src/adapters/fs/markdown-memory-store.ts`, `src/adapters/fs/jsonl-event-log.ts`.                                                                 |
+| «Markdown + JSONL + SQLite»                                                                 | Qwen     | ✅ Подтверждено    | `MEMORY.md:7-8`, `src/adapters/fs/markdown-memory-store.ts`, `src/adapters/fs/jsonl-event-log.ts`.                                                                 | <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md --> |
 
 ### 3.3. MCP и интерфейсы
 
@@ -106,14 +106,14 @@
 
 Это создает путаницу даже для автора проекта.
 
-### 4.3. `MEMORY.md` не отражает Phase 6-7 🔴
+### 4.3. `MEMORY.md` не отражает Phase 6-7 🔴 <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 
 Конкретные расхождения:
 
-- `MEMORY.md:66-69` говорит, что `scan` не регистрирует `document`. Реальность: `scan-project.ts:67-124` регистрирует.
-- `MEMORY.md:78-84`, `97-98`, `126-127`, `143-149`, `152-153`, `170-171`, `177-196` используют старый синтаксис `node dist/bootstrap/cli.js ...`, тогда как весь CLI перешел на `wolf ...`.
-- В `MEMORY.md` нет раздела про `rule` (Phase 6), хотя есть раздел 9 «Rules».
-- В `MEMORY.md` нет упоминания `session wrap-up` авто-триггеров, кроме одной строки 108-113.
+- `MEMORY.md:66-69` говорит, что `scan` не регистрирует `document`. Реальность: `scan-project.ts:67-124` регистрирует. <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
+- `MEMORY.md:78-84`, `97-98`, `126-127`, `143-149`, `152-153`, `170-171`, `177-196` используют старый синтаксис `node dist/bootstrap/cli.js ...`, тогда как весь CLI перешел на `wolf ...`. <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
+- В `MEMORY.md` нет раздела про `rule` (Phase 6), хотя есть раздел 9 «Rules». <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
+- В `MEMORY.md` нет упоминания `session wrap-up` авто-триггеров, кроме одной строки 108-113. <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 
 ### 4.4. `docs/user-guide.md` застыл на Phase 2 🔴
 
@@ -211,7 +211,7 @@ CLI `memory-search.ts` может возвращать больше, но MCP-и
 **Конкретные действия:**
 
 1. Удалить или переименовать `docs/superpowers/plans/roadmap.md` (устарел). Сделать `roadmap-v2.md` canonical или объединить с `README.md`/`AGENTS.md`.
-2. Обновить `MEMORY.md`:
+2. Обновить `MEMORY.md`: <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
    - удалить/исправить раздел 3.3 о `scan`;
    - заменить все `node dist/bootstrap/cli.js` на `wolf`;
    - добавить раздел про `rule`, `session wrap-up`, governance-атрибуты.
@@ -337,13 +337,13 @@ CLI `memory-search.ts` может возвращать больше, но MCP-и
 - Убедиться, что `npm run check` проходит.
 - Добавить тест, который запускает `tsc --noEmit` (или использовать `npm run check` в CI).
 
-### PR 2: `docs: consolidate roadmap, MEMORY.md, user-guide`
+### PR 2: `docs: consolidate roadmap, MEMORY.md, user-guide` <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 
 **Scope:**
 
 - Удалить `docs/superpowers/plans/roadmap.md` или сделать редирект на `roadmap-v2.md`.
 - Обновить `roadmap-v2.md`: отметить Phase 6, 7, 12 как completed; переименовать оставшиеся фазы.
-- Обновить `MEMORY.md`: scan, flat namespace, rule, session wrap-up.
+- Обновить `MEMORY.md`: scan, flat namespace, rule, session wrap-up. <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 - Обновить `docs/user-guide.md` до Phase 7.
 
 ### PR 3: `feat: agent UX layer — recall, solve, call`
@@ -404,7 +404,7 @@ CLI `memory-search.ts` может возвращать больше, но MCP-и
 - `AGENTS.md:39-50` — актуальные фазы 0–7, сгенерирован 2026-07-03.
 - `docs/superpowers/plans/roadmap.md` — застрял на Phase 6.
 - `docs/superpowers/plans/roadmap-v2.md` — proposal с частично устаревшими фазами.
-- `MEMORY.md:66-69` — устаревшее утверждение о `scan`.
+- `MEMORY.md:66-69` — устаревшее утверждение о `scan`. <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 - `src/app/use-cases/scan-project.ts:67-124` — регистрация `document` при сканировании.
 - `src/adapters/cli/cli-entry.ts:37-55` — 18 top-level команд.
 - `src/domain/memory-types.ts:1-15` — 14 типов памяти.

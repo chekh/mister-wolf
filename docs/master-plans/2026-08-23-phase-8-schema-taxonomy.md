@@ -107,4 +107,4 @@ opencode run --agent executor --model opencode/big-pickle --auto \
 - Ветка: `feat/phase-8-schema-taxonomy` от `dev` (git-flow), merge обратно в `dev`
 - Между стадиями — git commit (идемпотентность, откат)
 - Производительность: перед серией вызовов агентов — `opencode serve --port 4096 &`, далее `--attach http://localhost:4096`
-- После стадии 4 — обновить AGENTS.md, README.md, MEMORY.md (rule: update project docs after every implementation phase)
+- После стадии 4 — обновить AGENTS.md, README.md, MEMORY.md (rule: update project docs after every implementation phase) <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->

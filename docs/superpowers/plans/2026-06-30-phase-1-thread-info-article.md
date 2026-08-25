@@ -1294,7 +1294,7 @@ git commit -m "feat(cli): add thread, info-request, article commands"
 **Files:**
 
 - Modify: `AGENTS.md`
-- Modify: `MEMORY.md`
+- Modify: `MEMORY.md` <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 
 - [ ] **Step 1: Run full check**
 
@@ -1322,14 +1322,14 @@ node dist/bootstrap/cli.js memory article add --title "..." --thread <thread-id>
 node dist/bootstrap/cli.js memory thread brief <thread-id>
 ```
 
-- [ ] **Step 3: Update MEMORY.md**
+- [ ] **Step 3: Update MEMORY.md** <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 
 Add Phase 1 workflow section referencing thread → info-request → article chain.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add AGENTS.md MEMORY.md
+git add AGENTS.md MEMORY.md <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 git commit -m "docs: document Phase 1 thread, info-request, article commands"
 ```
 

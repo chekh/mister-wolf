@@ -4,7 +4,7 @@
 > Status: research / proposal  
 > Sources:
 >
-> - Recallium: README, install guide, SKILL.md, website (`recallium.ai`, `/help`, `/concepts`, `/comparisons`), GitHub repo structure.> - Mr. Wolf: current codebase (`src/` on branch `dev`, commit `a7a3290`), `docs/concept-v3.md`, `docs/user-guide.md`, `docs/superpowers/specs/2026-06-30-project-memory-harness-base-concept.md`, `docs/superpowers/specs/2026-06-30-phase-2-decisions-and-blockers-design.md`, `docs/superpowers/specs/2026-07-01-mcp-server-integration-design.md`, `docs/superpowers/specs/2026-07-02-phase-6-governance-design.md`, `docs/superpowers/specs/2026-07-02-session-wrap-up-habit-design.md`, `MEMORY.md`.
+> - Recallium: README, install guide, SKILL.md, website (`recallium.ai`, `/help`, `/concepts`, `/comparisons`), GitHub repo structure.> - Mr. Wolf: current codebase (`src/` on branch `dev`, commit `a7a3290`), `docs/concept-v3.md`, `docs/user-guide.md`, `docs/superpowers/specs/2026-06-30-project-memory-harness-base-concept.md`, `docs/superpowers/specs/2026-06-30-phase-2-decisions-and-blockers-design.md`, `docs/superpowers/specs/2026-07-01-mcp-server-integration-design.md`, `docs/superpowers/specs/2026-07-02-phase-6-governance-design.md`, `docs/superpowers/specs/2026-07-02-session-wrap-up-habit-design.md`, `MEMORY.md`. <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 
 ## 1. Предмет сравнения
 
@@ -131,9 +131,9 @@ Wolf сейчас не имеет dedicated rule type. Есть `decision`, `les
 
 Recallium SKILL.md даёт агенту чёткую карту: trigger → memory type. Это снижает friction при сохранении, не превращаясь в автоматический спам.
 
-Wolf уже имеет `MEMORY.md` с правилами, но не в формате skill и без явной trigger → type таблицы.
+Wolf уже имеет `MEMORY.md` с правилами, но не в формате skill и без явной trigger → type таблицы. <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 
-Предлагается создать `.wolf/SKILL.md` (или раздел в `MEMORY.md`) с такой таблицей:
+Предлагается создать `.wolf/SKILL.md` (или раздел в `MEMORY.md`) с такой таблицей: <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 
 | Trigger                            | Memory type    | Required fields                                              |
 | ---------------------------------- | -------------- | ------------------------------------------------------------ |
