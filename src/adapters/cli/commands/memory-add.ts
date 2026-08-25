@@ -22,10 +22,15 @@ export function memoryAddCommand(): Command {
     .option('--confidence <confidence>', 'Confidence level (low|medium|high)')
     .option('--importance <n>', 'Importance from 0 to 1', parseFloat)
     .option('--set <k=v>', 'Extra field key=value (repeatable; "[a,b]" value is a string array)', collectSet, [])
+    .option('--scope <scope>', 'Scope field for types that declare one (rule: project|global)')
     .option('--created-by <actor>', 'Creator actor', 'user:cli')
     .action(async (options) => {
       const { store, log, clock, idGen, index } = createCliContainer(process.cwd());
       const extra = parseSetPairs(options.set as string[], options.type);
+      if (options.scope !== undefined) {
+        if ('scope' in extra) throw new Error('Duplicate scope: use either --scope or --set scope=..., not both');
+        extra.scope = options.scope;
+      }
       const result = await addMemoryObject(
         { store, log, clock, idGen, index },
         {

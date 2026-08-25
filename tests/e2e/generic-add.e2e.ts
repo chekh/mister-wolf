@@ -7,7 +7,7 @@ const TYPES: { type: string; set: string; expectedStatus: string }[] = [
   { type: 'lesson', set: '', expectedStatus: 'active' },
   { type: 'observation', set: '', expectedStatus: 'active' },
   { type: 'session-summary', set: '', expectedStatus: 'active' },
-  { type: 'open-question', set: '', expectedStatus: 'active' },
+  { type: 'open-question', set: '', expectedStatus: 'open' },
   { type: 'context', set: '', expectedStatus: 'active' },
   { type: 'work-thread', set: 'goal=G', expectedStatus: 'active' },
   // info-request skipped — expected_answer is string[], CLI --set can't create arrays

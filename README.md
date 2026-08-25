@@ -31,7 +31,7 @@ node dist/bootstrap/cli.js search "lesson"
 ### Core memory
 
 - `wolf init` — initialize Mr. Wolf memory in the project.
-- `wolf add` — add a memory object. Supports `--tags`, `--confidence`, `--importance`. Search sees it immediately.
+- `wolf add` — add a memory object. Supports `--tags`, `--confidence`, `--importance`, and `--scope` (for types that declare a scope field, e.g. `rule`: `project|global`; the value is validated by the type schema). Search sees it immediately.
 - `wolf list` — list memory objects, optionally filtered by type, status, or stale objects.
 - `wolf get <id>` — retrieve a single memory object by ID.
 - `wolf search <query>` — full-text search over memory objects. Finds objects in any live status of their lifecycle (`active`, `open`, `proposed`, ...); `superseded`/`archived` stay hidden unless requested.
@@ -93,6 +93,7 @@ node dist/bootstrap/cli.js search "lesson"
 - `wolf validate [--fix]` — health check: taxonomy drift, layout leftovers, broken objects, events/relations JSONL, index freshness, stale locks. Exit 1 on errors. `--fix` quarantines broken object files into `.wolf/memory/quarantine/`.
 - `wolf council tally --question-id <id> --quorum N --threshold X` — count council votes from `council-opinion` objects linked by `answers` relations.
 - `wolf council synthesize --question-id <id> --recommendation "..."` — create a `synthesis` object linked `based_on` every opinion.
+- Default creation status: question types start `open` — `open-question` via its declaration's `defaultStatus`, and types whose lifecycle head is already `open` (`info-request`, `council-question`, `escalation`, `decision-request`); all other types keep their lifecycle head (`active`/`proposed`).
 
 ### Phase 9: solve/call — memory repair loop
 

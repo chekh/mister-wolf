@@ -8,7 +8,7 @@ import { MemoryStatus, getDeclaration } from '../../domain/memory-types.js';
 import { canTransition } from '../../domain/governance.js';
 import { summarizeSession } from './summarize-session.js';
 
-const TERMINAL_STATUSES = ['archived', 'completed', 'accepted', 'resolved', 'obsolete'];
+const TERMINAL_STATUSES = ['archived', 'completed', 'accepted', 'resolved', 'obsolete', 'answered'];
 
 export async function transitionMemoryObject(
   deps: { store: MemoryStore; log: EventLog; clock: Clock; idGen: IdGenerator; index?: SearchIndex; lock?: MemoryLock },

@@ -16,12 +16,13 @@ export async function generateAgentBrief(
   root: string,
   snapshot: ProjectSnapshot
 ): Promise<GenerateAgentBriefResult> {
-  const memoryObjects = await deps.store.list({ status: 'active' });
+  const memoryObjects = await deps.store.list();
 
   const acceptedMemory = memoryObjects
     .filter(
       (obj) =>
         obj.review_state === 'accepted' &&
+        obj.status === 'active' &&
         obj.type !== 'context' &&
         obj.type !== 'open-question' &&
         obj.type !== 'blocker'
@@ -29,12 +30,13 @@ export async function generateAgentBrief(
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
     .slice(0, 10);
 
+  // Вопросы живут в 'open' (defaultStatus) или 'active' (созданные до введения defaultStatus)
   const openQuestions = memoryObjects
-    .filter((obj) => obj.type === 'open-question')
+    .filter((obj) => obj.type === 'open-question' && (obj.status === 'open' || obj.status === 'active'))
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
   const blockers = memoryObjects
-    .filter((obj) => obj.type === 'blocker')
+    .filter((obj) => obj.type === 'blocker' && obj.status === 'active')
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
   const description = await buildProjectDescription(deps.fs, root, snapshot);

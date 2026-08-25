@@ -139,4 +139,93 @@ describe('transitionMemoryObject', () => {
     const updated = await store.get(added.object.id);
     expect(updated?.status).toBe('resolved');
   });
+
+  it('auto-creates session-summary when transitioning to answered', async () => {
+    const store = new MarkdownMemoryStore(dir);
+    const log = new JsonlEventLog(eventsPath(dir));
+    const clock = new SystemClock();
+    const idGen = new HashIdGenerator();
+
+    const added = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'open-question', title: 'Which approach?', createdBy: 'user:test' }
+    );
+
+    await transitionMemoryObject({ store, log, clock, idGen }, added.object.id, 'answered');
+
+    const summaries = (await store.list()).filter((obj) => obj.type === 'session-summary');
+    expect(summaries.length).toBeGreaterThan(0);
+  });
+
+  it('allows open-question active -> answered via generic transition', async () => {
+    const store = new MarkdownMemoryStore(dir);
+    const log = new JsonlEventLog(eventsPath(dir));
+    const clock = new SystemClock();
+    const idGen = new HashIdGenerator();
+
+    const added = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'open-question', title: 'Which approach?', createdBy: 'user:test', status: 'active' }
+    );
+    expect(added.object.status).toBe('active');
+
+    await transitionMemoryObject({ store, log, clock, idGen }, added.object.id, 'answered');
+    const updated = await store.get(added.object.id);
+    expect(updated?.status).toBe('answered');
+  });
+
+  it('allows info-request open -> answered', async () => {
+    const store = new MarkdownMemoryStore(dir);
+    const log = new JsonlEventLog(eventsPath(dir));
+    const clock = new SystemClock();
+    const idGen = new HashIdGenerator();
+
+    const added = await addMemoryObject(
+      { store, log, clock, idGen },
+      {
+        type: 'info-request',
+        title: 'Need API details',
+        createdBy: 'user:test',
+        extra: { question: 'Which API?', detour_reason: 'blocks design', expected_answer: ['REST v2'] },
+      }
+    );
+    expect(added.object.status).toBe('open');
+
+    await transitionMemoryObject({ store, log, clock, idGen }, added.object.id, 'answered');
+    const updated = await store.get(added.object.id);
+    expect(updated?.status).toBe('answered');
+  });
+
+  it('allows council-question open -> answered', async () => {
+    const store = new MarkdownMemoryStore(dir);
+    const log = new JsonlEventLog(eventsPath(dir));
+    const clock = new SystemClock();
+    const idGen = new HashIdGenerator();
+
+    const added = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'council-question', title: 'Council Q', createdBy: 'user:test', extra: { question: 'Ship it?' } }
+    );
+    expect(added.object.status).toBe('open');
+
+    await transitionMemoryObject({ store, log, clock, idGen }, added.object.id, 'answered');
+    const updated = await store.get(added.object.id);
+    expect(updated?.status).toBe('answered');
+  });
+
+  it('rejects decision active -> answered outside type lifecycle', async () => {
+    const store = new MarkdownMemoryStore(dir);
+    const log = new JsonlEventLog(eventsPath(dir));
+    const clock = new SystemClock();
+    const idGen = new HashIdGenerator();
+
+    const added = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'decision', title: 'Use SQLite', createdBy: 'user:test' }
+    );
+
+    await expect(transitionMemoryObject({ store, log, clock, idGen }, added.object.id, 'answered')).rejects.toThrow(
+      /lifecycle/
+    );
+  });
 });

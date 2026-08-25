@@ -30,6 +30,8 @@ export interface MemoryTypeDeclaration {
   name: MemoryType;
   /** Множество статусов типа; эффективные переходы = ALLOWED_TRANSITIONS ∩ lifecycle */
   lifecycle: readonly MemoryStatus[];
+  /** Стартовый статус при создании; по умолчанию — голова lifecycle */
+  defaultStatus?: MemoryStatus;
   /** Подкаталог внутри threads/<tid>/; null — тип не живёт в треде */
   subdirThread: string | null;
   /** Подкаталог внутри shared/; null — тип не живёт в shared */
@@ -75,7 +77,13 @@ const CORE_TAXONOMY_DECLS = [
   { name: 'lesson', lifecycle: FULL, subdirThread: 'lessons', subdirShared: 'lessons' },
   { name: 'observation', lifecycle: FULL, subdirThread: 'lessons', subdirShared: 'lessons' },
   { name: 'session-summary', lifecycle: FULL, subdirThread: 'sessions', subdirShared: null },
-  { name: 'open-question', lifecycle: FULL, subdirThread: 'notes', subdirShared: 'notes' },
+  {
+    name: 'open-question',
+    lifecycle: FULL,
+    defaultStatus: 'open',
+    subdirThread: 'notes',
+    subdirShared: 'notes',
+  },
   { name: 'context', lifecycle: FULL, subdirThread: 'notes', subdirShared: 'notes' },
   {
     name: 'work-thread',

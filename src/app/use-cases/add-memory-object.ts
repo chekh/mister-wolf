@@ -45,7 +45,7 @@ export async function addMemoryObject(
       type: input.type,
       title: input.title,
       body: input.body || '',
-      status: input.status ?? getDeclaration(input.type).lifecycle[0],
+      status: input.status ?? getDeclaration(input.type).defaultStatus ?? getDeclaration(input.type).lifecycle[0],
       review_state: input.reviewState ?? (input.createdBy.startsWith('agent:') ? 'proposed' : 'accepted'),
       confidence: input.confidence ?? 'medium',
       importance: input.importance ?? 0.5,

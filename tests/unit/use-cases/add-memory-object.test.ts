@@ -98,6 +98,22 @@ describe('addMemoryObject', () => {
     }
   });
 
+  it('creates question types in their semantic start status open', async () => {
+    const { object } = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'open-question', title: 'Which approach?', createdBy: 'user:test' }
+    );
+    expect(object.status).toBe('open');
+  });
+
+  it('decision still defaults to active', async () => {
+    const { object } = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'decision', title: 'Use SQLite', createdBy: 'user:test' }
+    );
+    expect(object.status).toBe('active');
+  });
+
   it('explicit status still wins over the lifecycle default', async () => {
     const { object } = await addMemoryObject(
       { store, log, clock, idGen },
