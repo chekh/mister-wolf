@@ -18,3 +18,7 @@ Mr. Wolf — local-first project memory harness for AI coding agents («I solve 
 
 - План работ: `docs/superpowers/plans/roadmap-v2.md`
 - Документация: `README.md`, `docs/README.md`
+
+## CodeGraph
+
+ВАЖНО: codegraph не поддерживает MCP-ресурсы — НЕ вызывай `list_mcp_resources`/`read_mcp_resource` с этим сервером; вся информация доступна через `codegraph_*` тулы.
