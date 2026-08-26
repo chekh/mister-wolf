@@ -1,4 +1,4 @@
-import { appendFile, mkdir } from 'fs/promises';
+import { appendFile, mkdir, readFile } from 'fs/promises';
 import { join } from 'path';
 import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
@@ -56,4 +56,39 @@ export async function startThinking(
   };
   await appendRecord(deps.baseDir, meta.id, meta);
   return meta;
+}
+
+async function readScratch(baseDir: string, sequenceId: string): Promise<{ meta: SequenceMeta; thoughts: Thought[] }> {
+  let raw: string;
+  try {
+    raw = await readFile(scratchPath(baseDir, sequenceId), 'utf-8');
+  } catch {
+    throw new Error(`Thinking sequence not found: ${sequenceId}`);
+  }
+  const lines = raw.split('\n').filter((line) => line.trim() !== '');
+  const meta = JSON.parse(lines[0]) as SequenceMeta;
+  const thoughts: Thought[] = [];
+  for (let i = 1; i < lines.length; i++) thoughts.push(JSON.parse(lines[i]) as Thought);
+  return { meta, thoughts };
+}
+
+export async function addThought(
+  deps: ThinkingDeps,
+  input: { sequenceId: string; type: ThoughtType; text: string }
+): Promise<Thought> {
+  if (!THOUGHT_TYPES.includes(input.type)) {
+    throw new Error(`Invalid thought type "${String(input.type)}". Allowed: ${THOUGHT_TYPES.join(', ')}`);
+  }
+  const { thoughts } = await readScratch(deps.baseDir, input.sequenceId);
+  const now = deps.clock.now();
+  const thought: Thought = {
+    kind: 'thought',
+    tid: deps.idGen.generateMemoryId(now, `${input.type}: ${input.text}`),
+    n: (thoughts[thoughts.length - 1]?.n ?? 0) + 1,
+    type: input.type,
+    text: input.text,
+    created_at: now.toISOString(),
+  };
+  await appendRecord(deps.baseDir, input.sequenceId, thought);
+  return thought;
 }
