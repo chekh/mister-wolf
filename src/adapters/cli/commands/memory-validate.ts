@@ -81,7 +81,6 @@ export async function runValidate(baseDir: string, opts?: { fix?: boolean }): Pr
     await store.quarantineFiles(problems);
     // Битые файлы не парсятся — их id неизвестны, точечно из индекса не убрать.
     // Пересобираем производный индекс из оставшихся объектов store.
-    const { SQLiteSearchIndex } = await import('../../sqlite/sqlite-search-index.js');
     await new SQLiteSearchIndex(indexPath(baseDir)).rebuild(await store.list());
   }
   const totalObjects = (await store.list()).length;
