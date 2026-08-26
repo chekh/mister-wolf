@@ -106,3 +106,8 @@ export const MemoryCreateRuleInputSchema = z.object({
   trigger: z.string().optional(),
   createdBy: z.string(),
 });
+
+export const InsightsInputSchema = z.object({
+  topic: z.string().optional(),
+  type: z.enum(['patterns', 'technical_debt', 'decisions', 'lessons', 'activity']).optional(),
+});

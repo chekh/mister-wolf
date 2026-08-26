@@ -13,6 +13,7 @@ import {
   MemoryCreateBlockerInputSchema,
   MemoryResolveBlockerInputSchema,
   MemoryCreateRuleInputSchema,
+  InsightsInputSchema,
 } from './mcp-schemas.js';
 import { searchMemory } from '../../app/use-cases/search-memory.js';
 import { addMemoryObject } from '../../app/use-cases/add-memory-object.js';
@@ -27,6 +28,7 @@ import { createBlocker } from '../../app/use-cases/create-blocker.js';
 import { resolveBlocker } from '../../app/use-cases/resolve-blocker.js';
 import { scanProject } from '../../app/use-cases/scan-project.js';
 import { generateAgentBrief } from '../../app/use-cases/generate-agent-brief.js';
+import { generateInsights, renderInsights } from '../../app/use-cases/generate-insights.js';
 import { createRule } from '../../app/use-cases/create-rule.js';
 import { createCliContainer } from '../../bootstrap/container.js';
 
@@ -281,6 +283,25 @@ export function registerMemoryTools(
       const scanResult = await scanProject(deps, baseDir);
       const brief = await generateAgentBrief(deps, baseDir, scanResult.snapshot);
       return { content: [{ type: 'text' as const, text: brief.content }] };
+    }
+  );
+
+  server.registerTool(
+    'insights',
+    {
+      description: 'Heuristic pattern analysis over project memory (Level 1, no LLM)',
+      inputSchema: InsightsInputSchema,
+    },
+    async (input: unknown) => {
+      const args = input as {
+        topic?: string;
+        type?: 'patterns' | 'technical_debt' | 'decisions' | 'lessons' | 'activity';
+      };
+      const report = await generateInsights(
+        { store: deps.store, clock: deps.clock },
+        { topic: args.topic, analysisType: args.type }
+      );
+      return { content: [{ type: 'text' as const, text: renderInsights(report) }] };
     }
   );
 

@@ -196,6 +196,34 @@ describe('buildMcpServer', () => {
     expect(result.content).toHaveLength(1);
     expect(result.content[0].text).toContain('# Agent Brief');
   });
+
+  it('analyzes memory via insights tool', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    const result = await tools.insights.handler({});
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0].text).toContain('Insights [patterns]');
+  });
+
+  it('rejects invalid insights type', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    await expect(tools.insights.handler({ type: 'bogus' })).rejects.toThrow(/Allowed:/);
+  });
   it('creates a rule', async () => {
     const server = buildMcpServer(dir);
     const tools = (
