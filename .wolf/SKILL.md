@@ -14,7 +14,7 @@ MCP-тулы: `mr-wolf_*`.
 4. Перед использованием сомнительного тула — **`wolf call --for <имя тула>`**:
    вернёт активные call-injection-предупреждения и рекомендации.
 
-MCP-эквиваленты: `recap`, `search`, `brief`, `call`.
+MCP-эквиваленты: `recap`, `search`, `brief`. (`call` — только CLI.)
 
 ## 2. Trigger → Memory Type
 
