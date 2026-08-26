@@ -22,6 +22,10 @@ export function indexPath(baseDir: string): string {
   return join(cacheDir(baseDir), 'index.sqlite');
 }
 
+export function thinkingDir(baseDir: string): string {
+  return join(baseDir, '.wolf', 'thinking');
+}
+
 export function briefsDir(baseDir: string): string {
   return join(memoryDir(baseDir), 'briefs');
 }

@@ -14,6 +14,10 @@ import {
   MemoryResolveBlockerInputSchema,
   MemoryCreateRuleInputSchema,
   InsightsInputSchema,
+  ThinkingStartInputSchema,
+  ThinkingAddInputSchema,
+  ThinkingConcludeInputSchema,
+  ThinkingAbandonInputSchema,
 } from './mcp-schemas.js';
 import { searchMemory } from '../../app/use-cases/search-memory.js';
 import { addMemoryObject } from '../../app/use-cases/add-memory-object.js';
@@ -31,6 +35,7 @@ import { generateAgentBrief } from '../../app/use-cases/generate-agent-brief.js'
 import { generateInsights, renderInsights } from '../../app/use-cases/generate-insights.js';
 import { generateRecap, renderRecap } from '../../app/use-cases/generate-recap.js';
 import { createRule } from '../../app/use-cases/create-rule.js';
+import { startThinking, addThought, concludeThinking, abandonThinking } from '../../app/use-cases/thinking.js';
 import { createCliContainer } from '../../bootstrap/container.js';
 
 export function registerMemoryTools(
@@ -337,6 +342,80 @@ export function registerMemoryTools(
       };
       const result = await createRule(deps, args);
       return { content: [{ type: 'text' as const, text: `Created rule: ${result.object.id}` }] };
+    }
+  );
+
+  server.registerTool(
+    'start_thinking',
+    {
+      description: 'Start a structured thinking sequence (goal -> thoughts -> conclusion)',
+      inputSchema: ThinkingStartInputSchema,
+    },
+    async (input: unknown) => {
+      const args = input as { goal: string; thread?: string; createdBy: string };
+      const meta = await startThinking(
+        { baseDir, clock: deps.clock, idGen: deps.idGen },
+        { goal: args.goal, thread: args.thread }
+      );
+      return { content: [{ type: 'text' as const, text: `Started thinking sequence: ${meta.id}` }] };
+    }
+  );
+
+  server.registerTool(
+    'add_thought',
+    {
+      description: 'Add a thought to a thinking sequence',
+      inputSchema: ThinkingAddInputSchema,
+    },
+    async (input: unknown) => {
+      const args = input as {
+        sequenceId: string;
+        type: 'hypothesis' | 'reasoning' | 'evidence' | 'concern';
+        text: string;
+      };
+      const thought = await addThought(
+        { baseDir, clock: deps.clock, idGen: deps.idGen },
+        { sequenceId: args.sequenceId, type: args.type, text: args.text }
+      );
+      return { content: [{ type: 'text' as const, text: `Added thought: ${thought.tid}` }] };
+    }
+  );
+
+  server.registerTool(
+    'conclude_thinking',
+    {
+      description: 'Conclude a thinking sequence into a decision with an embedded trace and based_on links',
+      inputSchema: ThinkingConcludeInputSchema,
+    },
+    async (input: unknown) => {
+      const args = input as { sequenceId: string; title: string; body: string; createdBy: string };
+      const result = await concludeThinking(
+        {
+          baseDir,
+          store: deps.store,
+          log: deps.log,
+          clock: deps.clock,
+          idGen: deps.idGen,
+          index: deps.index,
+          relations: deps.relations,
+          lock: deps.lock,
+        },
+        { sequenceId: args.sequenceId, title: args.title, body: args.body, createdBy: args.createdBy }
+      );
+      return { content: [{ type: 'text' as const, text: `Created decision: ${result.object.id}` }] };
+    }
+  );
+
+  server.registerTool(
+    'abandon_thinking',
+    {
+      description: 'Abandon a thinking sequence without creating a decision',
+      inputSchema: ThinkingAbandonInputSchema,
+    },
+    async (input: unknown) => {
+      const args = input as { sequenceId: string };
+      await abandonThinking({ baseDir }, { sequenceId: args.sequenceId });
+      return { content: [{ type: 'text' as const, text: `Abandoned thinking sequence: ${args.sequenceId}` }] };
     }
   );
 }
