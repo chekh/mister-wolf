@@ -136,6 +136,117 @@ describe('SQLiteSearchIndex', () => {
     expect(results).toHaveLength(2);
   });
 
+  it('matches by token prefix', async () => {
+    await index.rebuild([
+      makeObject({ id: 'mem_1', title: 'Reconnection', body: 'how router recovers' }),
+      makeObject({ id: 'mem_2', title: 'Other', body: 'unrelated content' }),
+    ]);
+    const results = await index.search('reconne');
+    expect(results.map((r) => r.object.id)).toEqual(['mem_1']);
+  });
+
+  it('returns empty result for query without valid tokens', async () => {
+    await index.rebuild([makeObject({ id: 'mem_1', title: 'Punct', body: 'text' })]);
+    const results = await index.search('"" * ^ () :');
+    expect(results).toEqual([]);
+  });
+
+  it('ranks title matches above body matches', async () => {
+    await index.rebuild([
+      makeObject({ id: 'mem_1', title: 'Plain', body: 'router content' }),
+      makeObject({ id: 'mem_2', title: 'Router guide', body: 'generic content' }),
+    ]);
+    const results = await index.search('router');
+    expect(results.map((r) => r.object.id)).toEqual(['mem_2', 'mem_1']);
+  });
+
+  it('filters by file_path via related.files', async () => {
+    await index.rebuild([
+      makeObject({
+        id: 'mem_1',
+        title: 'One',
+        body: 'shared',
+        related: { files: ['src/a.ts'], docs: [], decisions: [] },
+      }),
+      makeObject({
+        id: 'mem_2',
+        title: 'Two',
+        body: 'shared',
+        related: { files: ['src/b.ts'], docs: [], decisions: [] },
+      }),
+    ]);
+    const results = await index.search('shared', { file_path: 'src/a.ts' });
+    expect(results.map((r) => r.object.id)).toEqual(['mem_1']);
+  });
+
+  it('filters by file_path via source.path', async () => {
+    await index.rebuild([
+      makeObject({ id: 'mem_1', title: 'One', body: 'shared', source: { kind: 'file', path: 'docs/spec.md' } }),
+      makeObject({ id: 'mem_2', title: 'Two', body: 'shared' }),
+    ]);
+    const results = await index.search('shared', { file_path: 'docs/spec.md' });
+    expect(results.map((r) => r.object.id)).toEqual(['mem_1']);
+  });
+
+  it('matches file_path as suffix of related file path', async () => {
+    await index.rebuild([
+      makeObject({
+        id: 'mem_1',
+        title: 'One',
+        body: 'shared',
+        related: { files: ['src/adapters/x.ts'], docs: [], decisions: [] },
+      }),
+    ]);
+    const results = await index.search('shared', { file_path: 'adapters/x.ts' });
+    expect(results.map((r) => r.object.id)).toEqual(['mem_1']);
+  });
+
+  it('filters out objects with non-matching file_path', async () => {
+    await index.rebuild([
+      makeObject({
+        id: 'mem_1',
+        title: 'One',
+        body: 'shared',
+        related: { files: ['src/a.ts'], docs: [], decisions: [] },
+      }),
+    ]);
+    const results = await index.search('shared', { file_path: 'src/other.ts' });
+    expect(results).toEqual([]);
+  });
+
+  it('applies limit after file_path filter', async () => {
+    await index.rebuild([
+      makeObject({
+        id: 'mem_1',
+        title: 'One',
+        body: 'shared',
+        related: { files: ['src/a.ts'], docs: [], decisions: [] },
+      }),
+      makeObject({
+        id: 'mem_2',
+        title: 'Two',
+        body: 'shared',
+        related: { files: ['src/a.ts'], docs: [], decisions: [] },
+      }),
+      makeObject({
+        id: 'mem_3',
+        title: 'Three',
+        body: 'shared',
+        related: { files: ['src/a.ts'], docs: [], decisions: [] },
+      }),
+      makeObject({
+        id: 'mem_4',
+        title: 'Four',
+        body: 'shared',
+        related: { files: ['src/b.ts'], docs: [], decisions: [] },
+      }),
+    ]);
+    const results = await index.search('shared', { file_path: 'src/a.ts', limit: 2 });
+    expect(results).toHaveLength(2);
+    expect(['mem_1', 'mem_2', 'mem_3']).toContain(results[0].object.id);
+    expect(['mem_1', 'mem_2', 'mem_3']).toContain(results[1].object.id);
+  });
+
   it('rebuild is idempotent', async () => {
     const objects = [
       makeObject({ id: 'mem_1', title: 'First', body: 'unique term alpha' }),

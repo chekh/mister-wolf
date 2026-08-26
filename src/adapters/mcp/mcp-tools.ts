@@ -58,10 +58,12 @@ export function registerMemoryTools(
         maxImportance?: number;
         createdAfter?: string;
         createdBefore?: string;
+        file_path?: string;
         limit?: number;
         includeSuperseded?: boolean;
       };
-      const results = await searchMemory({ index: deps.index }, args);
+      const { file_path, ...rest } = args;
+      const results = await searchMemory({ index: deps.index }, { ...rest, file_path });
       const text = results.map((r) => `${r.object.id} [${r.object.type}] ${r.object.title}`).join('\n');
       return { content: [{ type: 'text' as const, text: text || 'No results.' }] };
     }

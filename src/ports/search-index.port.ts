@@ -15,6 +15,7 @@ export interface SearchOptions {
   maxImportance?: number;
   createdAfter?: string;
   createdBefore?: string;
+  file_path?: string;
   limit?: number;
 }
 

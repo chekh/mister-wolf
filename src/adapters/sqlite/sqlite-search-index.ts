@@ -40,14 +40,20 @@ export class SQLiteSearchIndex implements SearchIndex {
   }
 
   async search(query: string, options: SearchOptions = {}): Promise<SearchResult[]> {
-    const escapedQuery = query.replace(/"/g, '""');
-    const ftsQuery = `"${escapedQuery}"`;
+    const ftsQuery = this.buildFtsQuery(query);
+    if (!ftsQuery) {
+      return [];
+    }
+
+    // Колонки memory_search по порядку: memory_id, type, title, body, tags, status, review_state.
+    // title и tags весят заметно больше body.
+    const bm25Expr = 'bm25(memory_search, 1.0, 1.0, 8.0, 1.0, 4.0, 1.0, 1.0)';
 
     let sql = `
       SELECT s.memory_id, s.type, s.title, s.body, s.status, s.review_state,
              m.confidence, m.importance, m.created_at, m.updated_at, m.created_by,
              m.schema_version, m.source, m.related, m.tags, m.superseded_by,
-             rank
+             ${bm25Expr} AS rank
       FROM memory_search s
       JOIN memory_meta m ON s.memory_id = m.memory_id
       WHERE memory_search MATCH ?
@@ -92,7 +98,7 @@ export class SQLiteSearchIndex implements SearchIndex {
       params.push(options.createdBefore);
     }
 
-    sql += ` ORDER BY rank`;
+    sql += ` ORDER BY ${bm25Expr}`;
 
     const rows = this.db.prepare(sql).all(...params) as any[];
     const results = rows.map((row) => ({
@@ -117,10 +123,31 @@ export class SQLiteSearchIndex implements SearchIndex {
       score: this.computeScore(row.rank, row.importance, row.confidence),
     }));
 
+    const filtered = options.file_path
+      ? results.filter((r) => this.matchesFilePath(r.object, options.file_path as string))
+      : results;
+
     if (options.limit) {
-      return results.slice(0, options.limit);
+      return filtered.slice(0, options.limit);
     }
-    return results;
+    return filtered;
+  }
+
+  private buildFtsQuery(query: string): string {
+    return query
+      .split(/\s+/)
+      .map((token) => token.replace(/["()*:^]/g, ''))
+      .filter((token) => token.length > 0)
+      .map((token) => `"${token}"*`)
+      .join(' ');
+  }
+
+  private matchesFilePath(object: MemoryObject, filePath: string): boolean {
+    if (object.source.path === filePath) {
+      return true;
+    }
+    const files = object.related?.files ?? [];
+    return files.some((f) => f === filePath || f.endsWith(`/${filePath}`));
   }
 
   private computeScore(rawRank: number, importance: number, confidence: string): number {

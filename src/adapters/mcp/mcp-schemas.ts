@@ -28,6 +28,7 @@ export const MemorySearchInputSchema = z.object({
   maxImportance: z.number().optional(),
   createdAfter: z.string().optional(),
   createdBefore: z.string().optional(),
+  file_path: z.string().optional(),
   limit: z.number().optional(),
   includeSuperseded: z.boolean().optional(),
 });
