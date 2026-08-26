@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { rmSync } from 'fs';
-import { ensureBuilt, runCli, tmpProject, writeRelationScript } from './helpers.js';
+import { ensureBuilt, runCli, tmpProject } from './helpers.js';
 
 describe('task lifecycle: init -> thread -> task-brief -> report -> relation -> transition -> auto session-summary', () => {
   let cwd: string;
@@ -31,7 +31,9 @@ describe('task lifecycle: init -> thread -> task-brief -> report -> relation -> 
     expect(report.status).toBe(0);
 
     // relation: brief answers thread
-    writeRelationScript(cwd, [{ subject: briefId, predicate: 'answers', object: threadId }]);
+    const rel = runCli(['relation', 'add', briefId, 'answers', threadId], cwd);
+    expect(rel.status).toBe(0);
+    expect(rel.stdout).toContain('Recorded relation');
 
     const tr = runCli(['transition', briefId, 'completed'], cwd);
     expect(tr.status).toBe(0);

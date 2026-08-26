@@ -1,7 +1,7 @@
 # Mr. Wolf — Roadmap v2
 
 > Date: 2026-07-02  
-> Status: active (rev. 2026-08-26) — реализованы фазы 6–10; Phase 9 semantic-часть deferred (см. Phase 9)  
+> Status: active (rev. 2026-08-26) — реализованы фазы 6–10; Phase 9 semantic-часть deferred (см. Phase 9); superpowers-интеграция: Phases 15–17, 19 сделаны, 18 deferred (см. блок Superpowers Integration)  
 > Supersedes: `docs/superpowers/plans/roadmap.md`
 
 ## 1. Концептуальные изменения
@@ -390,6 +390,72 @@ Schema-driven подход:
 - Cloud hosting.
 - Enterprise dashboard.
 
+### Phase 15 — Session-Start Hook (superpowers D1) — ВЫСОКИЙ ПРИОРИТЕТ
+
+> **Status: готово** (commit `798a187`, 2026-08-26). Усилие: M.
+
+**Goal:** Гарантированный стартовый ритуал: контекст памяти попадает в сессию хуком платформы, а не дисциплиной агента (перенос механизма session-start/superpowers.js).
+
+**Scope (реализовано):**
+
+- `.opencode/plugins/wolf-session-start.js` — инжект `wolf recap` + `wolf call --for` по первому сообщению в первое user-сообщение сессии; once-guard по маркеру; fail-safe (ошибка CLI не ломает сессию).
+- Тест: `tests/unit/wolf-session-start-plugin.test.ts` (реальный spawn CLI).
+
+**Success criteria:** свежая сессия содержит вывод recap без действий агента — покрыто юнит-тестом плагина.
+
+### Phase 16 — trigger_keywords на lesson/rule (superpowers D2) — ВЫСОКИЙ ПРИОРИТЕТ
+
+> **Status: готово** (commit `798a187`, 2026-08-26). Усилие: S.
+
+**Goal:** Доставка знания в нужный момент: «Use when…»-триггеры на обычных объектах памяти, а не только на call-injection.
+
+**Scope (реализовано):**
+
+- Опциональное поле `trigger_keywords` в таксономии `lesson`/`rule`.
+- Keyword-matching активных lesson/rule в `get-call-injections` (`wolf call --for <тема>`).
+
+**Success criteria:** `wolf add --type lesson --set 'trigger_keywords=[merge]'` → `wolf call --for merge` возвращает урок; юнит-тесты матчинга.
+
+### Phase 17 — wolf relation add + конвенция wolf:<type>:<id> — ВЫСОКИЙ ПРИОРИТЕТ
+
+> **Status: готово** (2026-08-26). Усилие: S.
+
+**Goal:** Граф памяти строится агентами штатной командой, а не временными .mjs-скриптами (закрывает «Known UX gap» из README); ссылки между объектами резолвимы.
+
+**Scope (реализовано):**
+
+- CLI `wolf relation add <subject> <predicate> <object> [--source]`: 16 предикатов, автоинверсия пары, канонический `relations.jsonl`.
+- Конвенция текстовых ссылок `wolf:<type>:<id>` + маркеры REQUIRED/BACKGROUND — в `.wolf/SKILL.md` §5.
+- E2E переведён с временных .mjs-скриптов на CLI: сценарий 1 (lifecycle) и council; helper `writeRelationScript` удалён; отдельный `relation-add.e2e.ts`.
+
+**Success criteria:** e2e lifecycle/council/relation-add зелёные через CLI; `npm run check` зелёный.
+
+### Phase 18 — Поведенческие тесты памяти — ВЫСОКИЙ ПРИОРИТЕТ, НЕ РЕАЛИЗОВЫВАТЬ СЕЙЧАС
+
+> **Status: deferred** (усилие L; решение 2026-08-26 — не реализовывать сейчас).
+
+**Goal:** Превентивная проверка «меняет ли запись памяти поведение агента» до коммита (по образцу pressure-тестов superpowers `tests/explicit-skill-requests`: стимул-промпт → запуск агента → проверка вызова скилла).
+
+**Scope (будущее):**
+
+- Harness: сценарий «стимул-промпт + wolf call» против детерминированного mock-агента.
+- Пример сценария: deprecated-команда не выбирается при наличии call-injection.
+- Отдельный npm-script вне `check` (требует запуска агента — дорого для каждого чека).
+
+**Success criteria:** сценарий падает при удалении call-injection и проходит при его наличии.
+
+### Phase 19 — Red Flags-таблица в .wolf/SKILL.md — ВЫСОКИЙ ПРИОРИТЕТ
+
+> **Status: готово** (2026-08-26). Усилие: S.
+
+**Goal:** Дешёвый compliance-механизм против рационализации (по образцу using-superpowers:82–95): задокументированные отговорки с контрдействиями.
+
+**Scope (реализовано):**
+
+- `.wolf/SKILL.md` §6: таблица ≥5 отговорок («найдётся поиском», «запишу потом», «это очевидно», …), у каждой строки — реальность и контрдействие.
+
+**Success criteria:** таблица покрывает ≥5 отговорок, каждая строка имеет контрдействие.
+
 ## 3. Рекомендуемый порядок работы
 
 1. **Phase 6** — завершить governance, добавить `rule`.
@@ -398,9 +464,10 @@ Schema-driven подход:
 4. **Phase 9** — enhanced search: `file_path` + FTS5-улучшения сделаны (2026-08-26), semantic-часть deferred.
 5. **Phase 10** — insights.
 6. **Phase 11** — structured thinking.
-7. **Phase 12** — session wrap-up.
-8. **Phase 13** — document ingest.
-9. **Phase 14** — cross-project (when needed).
+7. **Phases 15–17, 19 (superpowers-интеграция)** — сделаны 2026-08-26; Phase 18 deferred до потребности.
+8. **Phase 12** — session wrap-up.
+9. **Phase 13** — document ingest.
+10. **Phase 14** — cross-project (when needed).
 
 ## 4. Что остаётся без изменений
 

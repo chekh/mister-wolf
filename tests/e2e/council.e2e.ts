@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { rmSync } from 'fs';
-import { ensureBuilt, runCli, tmpProject, writeRelationScript } from './helpers.js';
+import { ensureBuilt, runCli, tmpProject } from './helpers.js';
 
 describe('council flow: question -> opinions -> tally winner -> synthesis', () => {
   let cwd: string;
@@ -32,11 +32,11 @@ describe('council flow: question -> opinions -> tally winner -> synthesis', () =
     const o3Id = o3.stdout.match(/Created memory object: (\S+)/)?.[1]!;
 
     // relations: each opinion answers the question
-    writeRelationScript(cwd, [
-      { subject: o1Id, predicate: 'answers', object: qId },
-      { subject: o2Id, predicate: 'answers', object: qId },
-      { subject: o3Id, predicate: 'answers', object: qId },
-    ]);
+    for (const oid of [o1Id, o2Id, o3Id]) {
+      const rel = runCli(['relation', 'add', oid, 'answers', qId], cwd);
+      expect(rel.status).toBe(0);
+      expect(rel.stdout).toContain('Recorded relation');
+    }
 
     const tally = runCli(['council', 'tally', '--question-id', qId, '--quorum', '3', '--threshold', '0.66'], cwd);
     expect(tally.status).toBe(0);
