@@ -43,10 +43,24 @@ export async function getCallInjections(
       if (kw.some((k) => topicTokens.includes(k))) return true;
       return ftsIds.has(obj.id as string);
     });
-    // 3. fallback to rules if no matches
+    // D2: active lessons/rules with trigger_keywords ∩ topicTokens join the
+    // match (keyword-only, no FTS for these types — deliberate simplification)
+    const kwMatched = (obj: Record<string, unknown>): boolean => {
+      const kw: string[] = (obj.trigger_keywords as string[]) ?? [];
+      return kw.some((k) => topicTokens.includes(k));
+    };
+    const lessons = (await deps.store.list({ type: 'lesson', status: 'active' })) as Record<string, unknown>[];
+    for (const l of lessons) {
+      if (kwMatched(l) && !matched.some((m) => m.id === l.id)) matched.push(l);
+    }
+    const rules = (await deps.store.list({ type: 'rule', status: 'active' })) as Record<string, unknown>[];
+    const keywordRules = rules.filter(kwMatched);
+    for (const r of keywordRules) {
+      if (!matched.some((m) => m.id === r.id)) matched.push(r);
+    }
+    // 3. fallback to rules if no matches (keyword-matched rules excluded)
     if (matched.length === 0) {
-      const rules = (await deps.store.list({ type: 'rule', status: 'active' })) as Record<string, unknown>[];
-      matched = rules.slice(0, 3);
+      matched = rules.filter((r) => !keywordRules.some((k) => k.id === r.id)).slice(0, 3);
     }
   } else {
     matched = injections;

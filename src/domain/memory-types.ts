@@ -74,7 +74,13 @@ const CORE_TAXONOMY_DECLS = [
       thread: { kind: 'string', optional: true },
     },
   },
-  { name: 'lesson', lifecycle: FULL, subdirThread: 'lessons', subdirShared: 'lessons' },
+  {
+    name: 'lesson',
+    lifecycle: FULL,
+    subdirThread: 'lessons',
+    subdirShared: 'lessons',
+    fields: { trigger_keywords: { kind: 'string[]', default: [] } },
+  },
   { name: 'observation', lifecycle: FULL, subdirThread: 'lessons', subdirShared: 'lessons' },
   { name: 'session-summary', lifecycle: FULL, subdirThread: 'sessions', subdirShared: null },
   {
@@ -151,6 +157,7 @@ const CORE_TAXONOMY_DECLS = [
       scope: { kind: 'enum', values: ['project', 'global'] },
       applies_to: { kind: 'string[]', default: [] },
       trigger: { kind: 'string', default: '' },
+      trigger_keywords: { kind: 'string[]', default: [] },
     },
   },
   {
