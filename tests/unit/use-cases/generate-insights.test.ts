@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { generateInsights, ANALYSIS_TYPES } from '../../../src/app/use-cases/generate-insights.js';
+import { generateInsights, renderInsights, ANALYSIS_TYPES } from '../../../src/app/use-cases/generate-insights.js';
 import { MemoryStore } from '../../../src/ports/memory-store.port.js';
 import { Clock } from '../../../src/ports/clock.port.js';
 import { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
@@ -240,5 +240,93 @@ describe('generateInsights — read-only contract', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('renderInsights', () => {
+  const base = {
+    topic: null,
+    analysisType: 'patterns' as const,
+    generatedAt: NOW.toISOString(),
+    scope: { total: 2, matched: 2 },
+    topTags: [{ tag: 'auth', count: 2 }],
+    topFiles: [{ file: 'src/a.ts', count: 2 }],
+    typeDistribution: [
+      { tag: 'decision', count: 1 },
+      { tag: 'lesson', count: 1 },
+    ],
+    stale: [],
+    supersededDecisions: [],
+    conflicts: { statusConflicting: [], candidates: [] },
+    lowConfidenceActive: [],
+    openBlockers: [],
+    decisionsByStatus: {},
+    lessonsTopTags: [],
+    density: [],
+    statusTally: [],
+    truthRoleTally: [{ tag: 'accepted_knowledge', count: 2 }],
+  };
+
+  it('renders each lens with its own section headers plus Scope line and Generated footer', () => {
+    const mk = (over: Partial<typeof base>): string =>
+      renderInsights({ ...base, ...over } as Parameters<typeof renderInsights>[0]);
+
+    const patterns = mk({});
+    expect(patterns).toContain('Insights [patterns] (project-wide), matched 2/2 objects');
+    expect(patterns).toContain('Scope: matched 2/2 objects, truth roles: accepted_knowledge 2');
+    expect(patterns).toContain('## Top tags');
+    expect(patterns).toContain('- auth (2)');
+    expect(patterns).toContain('## Frequent related.files');
+    expect(patterns).toContain('## Type distribution');
+    expect(patterns).toContain(`Generated: ${NOW.toISOString()}`);
+
+    const debt = mk({ analysisType: 'technical_debt' });
+    expect(debt).toContain('## Stale objects');
+    expect(debt).toContain('## Superseded decisions');
+    expect(debt).toContain('## Low-confidence active');
+    expect(debt).toContain('## Open blockers');
+
+    const decisions = mk({
+      analysisType: 'decisions',
+      decisionsByStatus: { active: [obj({ id: 'd1', type: 'decision', updated_at: NOW.toISOString() })] },
+      conflicts: {
+        statusConflicting: [],
+        candidates: [
+          [obj({ id: 'c1', type: 'decision', tags: ['auth'] }), obj({ id: 'c2', type: 'decision', tags: ['auth'] })],
+        ],
+      },
+    });
+    expect(decisions).toContain('## Decisions by status');
+    expect(decisions).toContain('## Potential conflicts');
+    expect(decisions).toContain('potential conflict (shared tag: auth): c1, c2');
+    expect(decisions).toContain('## Recent decisions');
+    expect(decisions).toContain('d1');
+
+    const lessons = mk({ analysisType: 'lessons', lessonsTopTags: [{ tag: 'x', count: 1 }] });
+    expect(lessons).toContain('## Lesson/Observation counts');
+    expect(lessons).toContain('## Stale lessons');
+    expect(lessons).toContain('## Top lesson tags');
+
+    const activity = mk({
+      analysisType: 'activity',
+      density: [{ week: '2026-08-24', decisions: 1, lessons: 0, debug: 0, total: 1 }],
+      statusTally: [{ tag: 'active', count: 2 }],
+    });
+    expect(activity).toContain('## Weekly density');
+    expect(activity).toContain('- 2026-08-24: 1 decisions, 0 lessons, 0 debug, 1 total');
+    expect(activity).toContain('## Status tally');
+  });
+
+  it('renders empty memory gracefully: dash instead of sections, no throw, all five lenses', () => {
+    for (const analysisType of ANALYSIS_TYPES) {
+      const text = renderInsights({ ...base, analysisType });
+      expect(text).toContain('-');
+      expect(text).toContain(`Insights [${analysisType}]`);
+    }
+  });
+
+  it('renders topic label when topic is set', () => {
+    const text = renderInsights({ ...base, topic: 'auth' });
+    expect(text).toContain('Insights [patterns] (topic: auth), matched 2/2 objects');
   });
 });

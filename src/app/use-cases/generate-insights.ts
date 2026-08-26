@@ -191,3 +191,105 @@ export async function generateInsights(
     truthRoleTally,
   };
 }
+
+function section(lines: string[], title: string, items: string[]): void {
+  lines.push('', `## ${title}`);
+  if (items.length === 0) {
+    lines.push('-');
+  } else {
+    for (const item of items) lines.push(item);
+  }
+}
+
+export function renderInsights(report: InsightsReport): string {
+  const lines: string[] = [];
+  const topicLabel = report.topic ? `topic: ${report.topic}` : 'project-wide';
+  lines.push(
+    `Insights [${report.analysisType}] (${topicLabel}), matched ${report.scope.matched}/${report.scope.total} objects`
+  );
+  const roles = report.truthRoleTally.map((t) => `${t.tag} ${t.count}`).join(' / ');
+  lines.push(`Scope: matched ${report.scope.matched}/${report.scope.total} objects, truth roles: ${roles || '-'}`);
+
+  const fmtObj = (obj: MemoryObject): string => `- ${obj.id} [${obj.type}] ${obj.title}`;
+
+  if (report.analysisType === 'patterns') {
+    section(
+      lines,
+      'Top tags',
+      report.topTags.map((t) => `- ${t.tag} (${t.count})`)
+    );
+    section(
+      lines,
+      'Frequent related.files',
+      report.topFiles.map((f) => `- ${f.file} (${f.count})`)
+    );
+    section(
+      lines,
+      'Type distribution',
+      report.typeDistribution.map((t) => `- ${t.tag} (${t.count})`)
+    );
+  }
+
+  if (report.analysisType === 'technical_debt') {
+    section(lines, 'Stale objects', report.stale.map(fmtObj));
+    section(lines, 'Superseded decisions', report.supersededDecisions.map(fmtObj));
+    section(lines, 'Low-confidence active', report.lowConfidenceActive.map(fmtObj));
+    section(lines, 'Open blockers', report.openBlockers.map(fmtObj));
+  }
+
+  if (report.analysisType === 'decisions') {
+    section(
+      lines,
+      'Decisions by status',
+      Object.entries(report.decisionsByStatus).map(([status, objs]) => `- ${status}: ${objs.length}`)
+    );
+    section(lines, 'Potential conflicts', [
+      ...report.conflicts.statusConflicting.map((obj) => `- ${fmtObj(obj)} (status: conflicting)`),
+      ...report.conflicts.candidates.map((group) => {
+        const shared = group[0].tags.find((tag) => group.every((o) => o.tags.includes(tag)));
+        return `- potential conflict (shared tag: ${shared ?? '?'}): ${group.map((o) => o.id).join(', ')}`;
+      }),
+    ]);
+    const recent = [...(report.decisionsByStatus['active'] ?? [])]
+      .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+      .slice(0, 5);
+    section(lines, 'Recent decisions', recent.map(fmtObj));
+  }
+
+  if (report.analysisType === 'lessons') {
+    const counts = report.typeDistribution.filter((t) => t.tag === 'lesson' || t.tag === 'observation');
+    section(
+      lines,
+      'Lesson/Observation counts',
+      counts.map((t) => `- ${t.tag}: ${t.count}`)
+    );
+    section(
+      lines,
+      'Stale lessons',
+      report.stale.filter((obj) => obj.type === 'lesson' || obj.type === 'observation').map(fmtObj)
+    );
+    section(
+      lines,
+      'Top lesson tags',
+      report.lessonsTopTags.map((t) => `- ${t.tag} (${t.count})`)
+    );
+  }
+
+  if (report.analysisType === 'activity') {
+    section(
+      lines,
+      'Weekly density',
+      report.density.map(
+        (b) => `- ${b.week}: ${b.decisions} decisions, ${b.lessons} lessons, ${b.debug} debug, ${b.total} total`
+      )
+    );
+    section(
+      lines,
+      'Status tally',
+      report.statusTally.map((t) => `- ${t.tag} (${t.count})`)
+    );
+  }
+
+  lines.push('', `Generated: ${report.generatedAt}`);
+  return lines.join('\n');
+}
