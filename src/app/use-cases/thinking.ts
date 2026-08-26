@@ -1,8 +1,14 @@
-import { appendFile, mkdir, readFile } from 'fs/promises';
+import { appendFile, mkdir, readFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
 import { thinkingDir } from '../../adapters/fs/project-paths.js';
+import { MemoryStore } from '../../ports/memory-store.port.js';
+import { EventLog } from '../../ports/event-log.port.js';
+import { SearchIndex } from '../../ports/search-index.port.js';
+import { RelationLog } from '../../ports/relation-log.port.js';
+import { MemoryLock } from '../../ports/memory-lock.port.js';
+import { createDecision, CreateDecisionResult } from './create-decision.js';
 
 export const THOUGHT_TYPES = ['hypothesis', 'reasoning', 'evidence', 'concern'] as const;
 
@@ -91,4 +97,47 @@ export async function addThought(
   };
   await appendRecord(deps.baseDir, input.sequenceId, thought);
   return thought;
+}
+
+export async function concludeThinking(
+  deps: {
+    baseDir: string;
+    store: MemoryStore;
+    log: EventLog;
+    clock: Clock;
+    idGen: IdGenerator;
+    index?: SearchIndex;
+    relations?: RelationLog;
+    lock?: MemoryLock;
+  },
+  input: { sequenceId: string; title: string; body: string; createdBy: string }
+): Promise<CreateDecisionResult> {
+  const { meta, thoughts } = await readScratch(deps.baseDir, input.sequenceId);
+  if (thoughts.length === 0) {
+    throw new Error(`Sequence has no thoughts: ${input.sequenceId}`);
+  }
+  const trace = thoughts.map((t) => `${t.n}. [${t.type}] ${t.text}`).join('\n');
+  const body = `${input.body}\n\n## Thinking trace (${meta.id})\n\n${trace}`;
+  const result = await createDecision(
+    {
+      store: deps.store,
+      log: deps.log,
+      clock: deps.clock,
+      idGen: deps.idGen,
+      index: deps.index,
+      relations: deps.relations,
+      lock: deps.lock,
+    },
+    {
+      title: input.title,
+      body,
+      thread: meta.thread ?? undefined,
+      basedOn: thoughts.map((t) => t.tid),
+      createdBy: input.createdBy,
+    }
+  );
+  await unlink(scratchPath(deps.baseDir, input.sequenceId)).catch((err: NodeJS.ErrnoException) => {
+    if (err.code !== 'ENOENT') throw err;
+  });
+  return result;
 }
