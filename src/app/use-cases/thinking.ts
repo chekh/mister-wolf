@@ -64,6 +64,14 @@ export async function startThinking(
   return meta;
 }
 
+function parseLine<T>(line: string, sequenceId: string, lineNumber: number): T {
+  try {
+    return JSON.parse(line) as T;
+  } catch {
+    throw new Error(`Corrupted thinking sequence "${sequenceId}": line ${lineNumber} is not valid JSON`);
+  }
+}
+
 async function readScratch(baseDir: string, sequenceId: string): Promise<{ meta: SequenceMeta; thoughts: Thought[] }> {
   let raw: string;
   try {
@@ -72,9 +80,29 @@ async function readScratch(baseDir: string, sequenceId: string): Promise<{ meta:
     throw new Error(`Thinking sequence not found: ${sequenceId}`);
   }
   const lines = raw.split('\n').filter((line) => line.trim() !== '');
-  const meta = JSON.parse(lines[0]) as SequenceMeta;
+  if (lines.length === 0) {
+    throw new Error(`Corrupted thinking sequence "${sequenceId}": file is empty`);
+  }
+  const meta = parseLine<SequenceMeta>(lines[0], sequenceId, 1);
+  if (meta.kind !== 'sequence') {
+    throw new Error(`Corrupted thinking sequence "${sequenceId}": line 1 must be kind:"sequence"`);
+  }
+  if (meta.id !== sequenceId) {
+    throw new Error(`Corrupted thinking sequence "${sequenceId}": meta id mismatch ("${meta.id}")`);
+  }
   const thoughts: Thought[] = [];
-  for (let i = 1; i < lines.length; i++) thoughts.push(JSON.parse(lines[i]) as Thought);
+  for (let i = 1; i < lines.length; i++) {
+    const thought = parseLine<Thought>(lines[i], sequenceId, i + 1);
+    if (thought.kind !== 'thought') {
+      throw new Error(`Corrupted thinking sequence "${sequenceId}": line ${i + 1} must be kind:"thought"`);
+    }
+    if (!THOUGHT_TYPES.includes(thought.type)) {
+      throw new Error(
+        `Unknown thought type "${String(thought.type)}" in sequence "${sequenceId}". Allowed: ${THOUGHT_TYPES.join(', ')}`
+      );
+    }
+    thoughts.push(thought);
+  }
   return { meta, thoughts };
 }
 
@@ -140,4 +168,15 @@ export async function concludeThinking(
     if (err.code !== 'ENOENT') throw err;
   });
   return result;
+}
+
+export async function abandonThinking(deps: { baseDir: string }, input: { sequenceId: string }): Promise<void> {
+  try {
+    await unlink(scratchPath(deps.baseDir, input.sequenceId));
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new Error(`Thinking sequence not found: ${input.sequenceId}`);
+    }
+    throw err;
+  }
 }

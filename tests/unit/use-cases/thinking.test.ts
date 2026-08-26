@@ -1,8 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, existsSync, readFileSync } from 'fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync, appendFileSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { startThinking, addThought, concludeThinking, THOUGHT_TYPES } from '../../../src/app/use-cases/thinking.js';
+import {
+  startThinking,
+  addThought,
+  concludeThinking,
+  abandonThinking,
+  THOUGHT_TYPES,
+} from '../../../src/app/use-cases/thinking.js';
 import { Clock } from '../../../src/ports/clock.port.js';
 import { HashIdGenerator } from '../../../src/adapters/fs/hash-id-generator.js';
 import { EventLog } from '../../../src/ports/event-log.port.js';
@@ -248,5 +254,80 @@ describe('concludeThinking', () => {
         { sequenceId: meta.id, title: 'T2', body: 'B2', createdBy: 'user:test' }
       )
     ).rejects.toThrow(`Thinking sequence not found: ${meta.id}`);
+  });
+});
+
+describe('abandonThinking', () => {
+  it('removes the scratch file', async () => {
+    const deps = thinkDeps();
+    const meta = await startThinking(deps, { goal: 'g' });
+    await addThought(deps, { sequenceId: meta.id, type: 'evidence', text: 'E1' });
+    await abandonThinking({ baseDir: dir }, { sequenceId: meta.id });
+    expect(existsSync(scratchPath(meta.id))).toBe(false);
+  });
+
+  it('throws when there is nothing to abandon', async () => {
+    await expect(abandonThinking({ baseDir: dir }, { sequenceId: 'mem_nope' })).rejects.toThrow(
+      'Thinking sequence not found: mem_nope'
+    );
+  });
+});
+
+describe('corrupted scratch', () => {
+  it('throws on a non-JSON line', async () => {
+    const deps = thinkDeps();
+    const meta = await startThinking(deps, { goal: 'g' });
+    appendFileSync(scratchPath(meta.id), 'not-json\n');
+    await expect(addThought(deps, { sequenceId: meta.id, type: 'evidence', text: 'x' })).rejects.toThrow(
+      /line 2 is not valid JSON/
+    );
+  });
+
+  it('throws when line 1 is not kind:"sequence"', async () => {
+    const deps = thinkDeps();
+    const meta = await startThinking(deps, { goal: 'g' });
+    writeFileSync(
+      scratchPath(meta.id),
+      JSON.stringify({ kind: 'thought', tid: 't', n: 1, type: 'evidence', text: 'x', created_at: NOW.toISOString() }) +
+        '\n'
+    );
+    await expect(addThought(deps, { sequenceId: meta.id, type: 'evidence', text: 'x' })).rejects.toThrow(
+      'line 1 must be kind:"sequence"'
+    );
+  });
+
+  it('throws when meta id does not match the file name', async () => {
+    const deps = thinkDeps();
+    const meta = await startThinking(deps, { goal: 'g' });
+    writeFileSync(
+      scratchPath(meta.id),
+      JSON.stringify({ kind: 'sequence', id: 'mem_other', goal: 'g', thread: null, created_at: NOW.toISOString() }) +
+        '\n'
+    );
+    await expect(addThought(deps, { sequenceId: meta.id, type: 'evidence', text: 'x' })).rejects.toThrow(
+      'meta id mismatch ("mem_other")'
+    );
+  });
+
+  it('throws on an unknown thought type stored in the file', async () => {
+    const deps = thinkDeps();
+    const meta = await startThinking(deps, { goal: 'g' });
+    appendFileSync(
+      scratchPath(meta.id),
+      JSON.stringify({ kind: 'thought', tid: 'mem_t', n: 1, type: 'guess', text: 'x', created_at: NOW.toISOString() }) +
+        '\n'
+    );
+    await expect(addThought(deps, { sequenceId: meta.id, type: 'evidence', text: 'x' })).rejects.toThrow(
+      'Unknown thought type "guess"'
+    );
+  });
+
+  it('throws on an empty scratch file', async () => {
+    const deps = thinkDeps();
+    const meta = await startThinking(deps, { goal: 'g' });
+    writeFileSync(scratchPath(meta.id), '');
+    await expect(addThought(deps, { sequenceId: meta.id, type: 'evidence', text: 'x' })).rejects.toThrow(
+      'file is empty'
+    );
   });
 });
