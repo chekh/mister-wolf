@@ -29,6 +29,7 @@ import { resolveBlocker } from '../../app/use-cases/resolve-blocker.js';
 import { scanProject } from '../../app/use-cases/scan-project.js';
 import { generateAgentBrief } from '../../app/use-cases/generate-agent-brief.js';
 import { generateInsights, renderInsights } from '../../app/use-cases/generate-insights.js';
+import { generateRecap, renderRecap } from '../../app/use-cases/generate-recap.js';
 import { createRule } from '../../app/use-cases/create-rule.js';
 import { createCliContainer } from '../../bootstrap/container.js';
 
@@ -302,6 +303,19 @@ export function registerMemoryTools(
         { topic: args.topic, analysisType: args.type }
       );
       return { content: [{ type: 'text' as const, text: renderInsights(report) }] };
+    }
+  );
+
+  server.registerTool(
+    'recap',
+    {
+      description:
+        'Summary of active project memory: rules, work threads, blockers, questions, info requests, recent decisions',
+      inputSchema: EmptyInputSchema,
+    },
+    async () => {
+      const report = await generateRecap({ store: deps.store });
+      return { content: [{ type: 'text' as const, text: renderRecap(report) }] };
     }
   );
 

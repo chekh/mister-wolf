@@ -32,6 +32,32 @@ describe('MCP stdio server', () => {
     expect(response.result).toBeDefined();
   });
 
+  it('calls the recap tool after initialize', async () => {
+    const initMessage = {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'test', version: '0.1.0' } },
+    };
+    await sendAndReceive(child, initMessage);
+
+    const response = (await sendAndReceive(child, {
+      jsonrpc: '2.0',
+      id: 2,
+      method: 'tools/call',
+      params: { name: 'recap', arguments: {} },
+    })) as { result?: { content?: { type: string; text: string }[] } };
+
+    expect(response.result).toBeDefined();
+    const text = response.result?.content?.[0]?.text ?? '';
+    expect(text).toContain('## Active rules');
+    expect(text).toContain('## Active work threads');
+    expect(text).toContain('## Open blockers');
+    expect(text).toContain('## Open questions');
+    expect(text).toContain('## Open info requests');
+    expect(text).toContain('## Recent decisions');
+  });
+
   function sendAndReceive(proc: typeof child, message: unknown): Promise<unknown> {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('timeout')), 5000);
