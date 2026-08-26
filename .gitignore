@@ -1,6 +1,7 @@
 node_modules/
 dist/
-.wolf/
+.wolf/*
+!.wolf/SKILL.md
 *.log
 .DS_Store
 .env

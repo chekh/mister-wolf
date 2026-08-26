@@ -31,6 +31,7 @@ import { memoryValidateCommand as validateCommand } from './commands/memory-vali
 import { memorySolveCommand as solveCommand } from './commands/memory-solve.js';
 import { memoryCallCommand as callCommand } from './commands/memory-call.js';
 import { memoryInsightsCommand as insightsCommand } from './commands/memory-insights.js';
+import { memoryRecapCommand as recapCommand } from './commands/memory-recap.js';
 
 function readPackageVersion(): string {
   const baseDir = dirname(fileURLToPath(import.meta.url));
@@ -69,6 +70,7 @@ export function createCli(): Command {
   program.addCommand(solveCommand());
   program.addCommand(callCommand());
   program.addCommand(insightsCommand());
+  program.addCommand(recapCommand());
 
   return program;
 }

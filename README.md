@@ -81,6 +81,8 @@ node dist/bootstrap/cli.js search "lesson"
 
 ### Phase 7: session wrap-up habit
 
+- `wolf recap` — session startup snapshot: active rules, active work threads, open blockers / open questions / open info requests, recent decisions (last 5 by `updated_at`). The MCP tool `recap` returns the same report. Complements `wolf brief`: brief is the full project overview, recap is the quick session entry.
+- `.wolf/SKILL.md` — agent guidance committed with the project: session startup ritual (`recap` + `search`), trigger → memory type table, rule-creation policy (user request only), info-request → article flow.
 - `wolf session wrap-up --title "..." --tags tag1,tag2` — manually create a session summary of recent events.
 - Session summaries are auto-created after resolving a blocker, terminal transitions, superseding an object, creating a decision, or creating an article.
 
