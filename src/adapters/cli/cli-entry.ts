@@ -32,6 +32,7 @@ import { memorySolveCommand as solveCommand } from './commands/memory-solve.js';
 import { memoryCallCommand as callCommand } from './commands/memory-call.js';
 import { memoryInsightsCommand as insightsCommand } from './commands/memory-insights.js';
 import { memoryRecapCommand as recapCommand } from './commands/memory-recap.js';
+import { memoryThinkCommand as thinkCommand } from './commands/memory-think.js';
 
 function readPackageVersion(): string {
   const baseDir = dirname(fileURLToPath(import.meta.url));
@@ -71,6 +72,7 @@ export function createCli(): Command {
   program.addCommand(callCommand());
   program.addCommand(insightsCommand());
   program.addCommand(recapCommand());
+  program.addCommand(thinkCommand());
 
   return program;
 }
