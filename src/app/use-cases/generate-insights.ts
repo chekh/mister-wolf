@@ -14,6 +14,7 @@ export const ANALYSIS_TYPES: readonly AnalysisType[] = [
 
 export const INSIGHTS_STALE_DAYS = 30;
 export const DEBUG_TAGS: readonly string[] = ['debug', 'bug', 'bugfix', 'memory-repair', 'solve'];
+const DECISION_STATUSES = ['active', 'superseded', 'rejected', 'obsolete'] as const;
 
 export interface InsightsInput {
   topic?: string; // undefined => весь проект
@@ -89,6 +90,40 @@ export async function generateInsights(
   const topic = input.topic;
   const matched = topic ? base.filter((obj) => matchesTopic(obj, topic)) : base;
 
+  const now = deps.clock.now().getTime();
+  const staleMs = INSIGHTS_STALE_DAYS * 24 * 60 * 60 * 1000;
+  const stale = matched.filter(
+    (obj) => obj.status === 'stale' || (obj.status === 'active' && now - new Date(obj.updated_at).getTime() > staleMs)
+  );
+
+  const statusConflicting = matched.filter((obj) => obj.status === 'conflicting');
+  const activeDecisions = matched.filter((obj) => obj.type === 'decision' && obj.status === 'active');
+  // ponytail: O(n²) попарная группировка — норм для local-first масштабов; union-find если память вырастет
+  const claimed = new Set<string>();
+  const candidates: MemoryObject[][] = [];
+  for (let i = 0; i < activeDecisions.length; i++) {
+    if (claimed.has(activeDecisions[i].id)) continue;
+    const group = [activeDecisions[i]];
+    for (let j = i + 1; j < activeDecisions.length; j++) {
+      if (activeDecisions[j].tags.some((tag) => activeDecisions[i].tags.includes(tag))) {
+        group.push(activeDecisions[j]);
+        claimed.add(activeDecisions[j].id);
+      }
+    }
+    if (group.length >= 2) candidates.push(group);
+  }
+
+  const lowConfidenceActive = matched.filter((obj) => obj.confidence === 'low' && obj.status === 'active');
+  const openBlockers = matched.filter((obj) => obj.type === 'blocker' && obj.status === 'active'); // прецедент brief
+
+  const decisionsByStatus: Record<string, MemoryObject[]> = {};
+  for (const status of DECISION_STATUSES) decisionsByStatus[status] = [];
+  for (const obj of matched) {
+    if (obj.type === 'decision' && Object.hasOwn(decisionsByStatus, obj.status)) {
+      decisionsByStatus[obj.status].push(obj);
+    }
+  }
+
   return {
     topic: input.topic ?? null,
     analysisType,
@@ -109,12 +144,12 @@ export async function generateInsights(
       matched.map((obj) => obj.type),
       Math.max(matched.length, 1)
     ),
-    stale: [],
-    supersededDecisions: [],
-    conflicts: { statusConflicting: [], candidates: [] },
-    lowConfidenceActive: [],
-    openBlockers: [],
-    decisionsByStatus: {},
+    stale,
+    supersededDecisions: decisionsByStatus['superseded'] ?? [],
+    conflicts: { statusConflicting, candidates },
+    lowConfidenceActive,
+    openBlockers,
+    decisionsByStatus,
     lessonsTopTags: [],
     density: [],
     statusTally: [],

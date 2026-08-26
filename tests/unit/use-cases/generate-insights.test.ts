@@ -117,3 +117,51 @@ describe('generateInsights — scope, topic filter, simple aggregations', () => 
     expect(report.generatedAt).toBe(NOW.toISOString());
   });
 });
+
+describe('generateInsights — debt signals', () => {
+  it('marks active older than 30 days as stale, 29 days not, status stale always, archived/superseded never (D5)', async () => {
+    const store = fakeStore([
+      obj({ id: 'fresh', updated_at: isoDaysAgo(29) }),
+      obj({ id: 'old', updated_at: isoDaysAgo(31) }),
+      obj({ id: 'flagged', status: 'stale', updated_at: NOW.toISOString() }),
+      obj({ id: 'gone', status: 'superseded', updated_at: isoDaysAgo(400) }),
+    ]);
+    const report = await generateInsights({ store, clock: fakeClock() }, {});
+    expect(report.stale.map((o) => o.id)).toEqual(['old', 'flagged']);
+  });
+
+  it('groups active decisions sharing a tag into one candidate; disjoint decisions yield none (D6)', async () => {
+    const store = fakeStore([
+      obj({ id: 'd1', type: 'decision', tags: ['auth'] }),
+      obj({ id: 'd2', type: 'decision', tags: ['auth', 'api'] }),
+      obj({ id: 'd3', type: 'decision', tags: ['ui'] }),
+    ]);
+    const report = await generateInsights({ store, clock: fakeClock() }, {});
+    expect(report.conflicts.candidates).toHaveLength(1);
+    expect(report.conflicts.candidates[0].map((o) => o.id)).toEqual(['d1', 'd2']);
+  });
+
+  it('collects any-type conflicting-status objects into statusConflicting (D6)', async () => {
+    const store = fakeStore([obj({ id: 'l1', type: 'lesson', status: 'conflicting' })]);
+    const report = await generateInsights({ store, clock: fakeClock() }, {});
+    expect(report.conflicts.statusConflicting.map((o) => o.id)).toEqual(['l1']);
+    expect(report.conflicts.candidates).toHaveLength(0);
+  });
+
+  it('fills lowConfidenceActive, openBlockers and decisionsByStatus', async () => {
+    const store = fakeStore([
+      obj({ id: 'lc', confidence: 'low' }),
+      obj({ id: 'bl', type: 'blocker' }),
+      obj({ id: 'da', type: 'decision', status: 'active' }),
+      obj({ id: 'ds', type: 'decision', status: 'superseded', superseded_by: 'da' }),
+      obj({ id: 'dr', type: 'decision', status: 'rejected' }),
+      obj({ id: 'lo', type: 'lesson', status: 'obsolete' }), // не decision — в decisionsByStatus не попадает
+    ]);
+    const report = await generateInsights({ store, clock: fakeClock() }, {});
+    expect(report.lowConfidenceActive.map((o) => o.id)).toEqual(['lc']);
+    expect(report.openBlockers.map((o) => o.id)).toEqual(['bl']);
+    expect(Object.keys(report.decisionsByStatus).sort()).toEqual(['active', 'obsolete', 'rejected', 'superseded']);
+    expect(report.decisionsByStatus['superseded'].map((o) => o.id)).toEqual(['ds']);
+    expect(report.supersededDecisions.map((o) => o.id)).toEqual(['ds']);
+  });
+});
