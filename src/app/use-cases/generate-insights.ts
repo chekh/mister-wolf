@@ -75,6 +75,13 @@ function topCounts(values: string[], limit: number): TagCount[] {
     .slice(0, limit);
 }
 
+function mondayOf(iso: string): string {
+  const d = new Date(iso);
+  const day = (d.getUTCDay() + 6) % 7; // 0 = понедельник
+  const mondayMs = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - day * 86_400_000;
+  return new Date(mondayMs).toISOString().slice(0, 10);
+}
+
 export async function generateInsights(
   deps: { store: MemoryStore; clock: Clock },
   input: InsightsInput = {}
@@ -124,6 +131,34 @@ export async function generateInsights(
     }
   }
 
+  const currentMondayMs = Date.parse(`${mondayOf(deps.clock.now().toISOString())}T00:00:00Z`);
+  const buckets = new Map<string, WeekBucket>();
+  for (let i = 7; i >= 0; i--) {
+    const key = new Date(currentMondayMs - i * 7 * 86_400_000).toISOString().slice(0, 10);
+    buckets.set(key, { week: key, decisions: 0, lessons: 0, debug: 0, total: 0 });
+  }
+  for (const obj of matched) {
+    const bucket = buckets.get(mondayOf(obj.created_at));
+    if (!bucket) continue;
+    if (obj.type === 'decision') bucket.decisions += 1;
+    if (obj.type === 'lesson' || obj.type === 'observation') bucket.lessons += 1;
+    if (obj.tags.some((tag) => DEBUG_TAGS.includes(tag))) bucket.debug += 1;
+    bucket.total += 1;
+  }
+
+  const lessonsTopTags = topCounts(
+    matched.filter((obj) => obj.type === 'lesson' || obj.type === 'observation').flatMap((obj) => obj.tags),
+    5
+  );
+  const statusTally = topCounts(
+    matched.map((obj) => obj.status),
+    Math.max(matched.length, 1)
+  );
+  const truthRoleTally = topCounts(
+    matched.map((obj) => obj.truth_role),
+    Math.max(matched.length, 1)
+  );
+
   return {
     topic: input.topic ?? null,
     analysisType,
@@ -150,9 +185,9 @@ export async function generateInsights(
     lowConfidenceActive,
     openBlockers,
     decisionsByStatus,
-    lessonsTopTags: [],
-    density: [],
-    statusTally: [],
-    truthRoleTally: [],
+    lessonsTopTags,
+    density: [...buckets.values()],
+    statusTally,
+    truthRoleTally,
   };
 }

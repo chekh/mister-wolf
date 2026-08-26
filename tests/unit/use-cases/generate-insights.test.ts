@@ -3,6 +3,10 @@ import { generateInsights, ANALYSIS_TYPES } from '../../../src/app/use-cases/gen
 import { MemoryStore } from '../../../src/ports/memory-store.port.js';
 import { Clock } from '../../../src/ports/clock.port.js';
 import { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
+import { mkdtempSync, rmSync, readdirSync, readFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join, relative } from 'path';
+import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
 
 const NOW = new Date('2026-08-26T12:00:00.000Z');
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -163,5 +167,78 @@ describe('generateInsights — debt signals', () => {
     expect(Object.keys(report.decisionsByStatus).sort()).toEqual(['active', 'obsolete', 'rejected', 'superseded']);
     expect(report.decisionsByStatus['superseded'].map((o) => o.id)).toEqual(['ds']);
     expect(report.supersededDecisions.map((o) => o.id)).toEqual(['ds']);
+  });
+});
+
+describe('generateInsights — density and tallies', () => {
+  it('buckets created_at into ISO weeks (Monday keys), classes counted independently, window is 8 weeks (D7)', async () => {
+    const store = fakeStore([
+      // NOW = среда 2026-08-26; понедельник текущей недели = 2026-08-24
+      obj({ id: 'a', type: 'decision', created_at: '2026-08-25T10:00:00.000Z' }),
+      obj({ id: 'b', type: 'lesson', created_at: '2026-08-24T10:00:00.000Z' }),
+      obj({ id: 'c', type: 'observation', created_at: '2026-07-27T10:00:00.000Z' }), // прошлая неделя
+      obj({ id: 'd', created_at: '2026-06-01T10:00:00.000Z' }), // вне окна 8 недель
+    ]);
+    const report = await generateInsights({ store, clock: fakeClock() }, {});
+    expect(report.density).toHaveLength(8);
+    // индекс 7 — текущая неделя; окно стартует с понедельника 2026-07-06 (индекс 0)
+    expect(report.density[7]).toEqual({ week: '2026-08-24', decisions: 1, lessons: 1, debug: 0, total: 2 });
+    expect(report.density[3]).toEqual({ week: '2026-07-27', decisions: 0, lessons: 1, debug: 0, total: 1 });
+    expect(report.density[6]).toEqual({ week: '2026-08-17', decisions: 0, lessons: 0, debug: 0, total: 0 });
+    expect(report.density.find((b) => b.week === '2026-06-01')).toBeUndefined();
+  });
+
+  it('debug class counts any-type objects carrying DEBUG_TAGS (D-dev1)', async () => {
+    const store = fakeStore([
+      obj({ id: 'l', type: 'lesson', tags: ['debug'], created_at: '2026-08-25T10:00:00.000Z' }),
+      obj({ id: 'd', type: 'decision', tags: ['solve'], created_at: '2026-08-25T11:00:00.000Z' }),
+    ]);
+    const report = await generateInsights({ store, clock: fakeClock() }, {});
+    expect(report.density[7]).toMatchObject({ debug: 2, total: 2 });
+  });
+
+  it('fills lessonsTopTags (top 5), statusTally and truthRoleTally', async () => {
+    const store = fakeStore([
+      obj({ type: 'lesson', tags: ['x', 'y'] }),
+      obj({ type: 'observation', tags: ['x'] }),
+      obj({ type: 'decision', tags: ['x'], truth_role: 'source_of_truth' }),
+    ]);
+    const report = await generateInsights({ store, clock: fakeClock() }, {});
+    expect(report.lessonsTopTags).toEqual([
+      { tag: 'x', count: 2 },
+      { tag: 'y', count: 1 },
+    ]);
+    expect(report.statusTally).toEqual([{ tag: 'active', count: 3 }]);
+    expect(report.truthRoleTally).toEqual([
+      { tag: 'accepted_knowledge', count: 2 },
+      { tag: 'source_of_truth', count: 1 },
+    ]);
+  });
+});
+
+describe('generateInsights — read-only contract', () => {
+  it('does not mutate the memory directory', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wolf-insights-ro-'));
+    try {
+      const store = new MarkdownMemoryStore(dir);
+      await store.save(obj({ id: 'ro-1', type: 'lesson', tags: ['debug'] }));
+      const snapshot = (): Map<string, string> => {
+        const out = new Map<string, string>();
+        const walk = (p: string): void => {
+          for (const entry of readdirSync(p, { withFileTypes: true })) {
+            const full = join(p, entry.name);
+            if (entry.isDirectory()) walk(full);
+            else out.set(relative(dir, full), readFileSync(full, 'utf-8'));
+          }
+        };
+        walk(dir);
+        return out;
+      };
+      const before = snapshot();
+      await generateInsights({ store, clock: fakeClock() }, { topic: 'debug' });
+      expect(snapshot()).toEqual(before);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
