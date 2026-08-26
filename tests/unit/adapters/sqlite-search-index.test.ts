@@ -151,6 +151,29 @@ describe('SQLiteSearchIndex', () => {
     expect(results).toEqual([]);
   });
 
+  it('query with punctuation-only tokens does not throw and searches meaningful tokens', async () => {
+    await index.rebuild([
+      makeObject({ id: 'mem_1', title: 'Wolf', body: 'search behaviour notes' }),
+      makeObject({ id: 'mem_2', title: 'Other', body: 'unrelated content' }),
+    ]);
+    const results = await index.search('wolf - search');
+    expect(results.map((r) => r.object.id)).toEqual(['mem_1']);
+  });
+
+  it('searchAll returns all live objects and excludes superseded/archived', async () => {
+    await index.rebuild([
+      makeObject({ id: 'mem_1', title: 'One', body: 'a', status: 'active' }),
+      makeObject({ id: 'mem_2', title: 'Two', body: 'b', status: 'open' }),
+      makeObject({ id: 'mem_3', title: 'Three', body: 'c', status: 'superseded' }),
+      makeObject({ id: 'mem_4', title: 'Four', body: 'd', status: 'archived' }),
+    ]);
+    const results = await index.searchAll();
+    expect(results.map((r) => r.object.id).sort()).toEqual(['mem_1', 'mem_2']);
+    for (const r of results) {
+      expect(typeof r.score).toBe('number');
+    }
+  });
+
   it('ranks title matches above body matches', async () => {
     await index.rebuild([
       makeObject({ id: 'mem_1', title: 'Plain', body: 'router content' }),

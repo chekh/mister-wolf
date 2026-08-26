@@ -177,10 +177,9 @@ export class MarkdownMemoryStore implements MemoryStore {
           const base = MemoryObjectSchema.parse({ ...frontmatter, body });
           const schemas = getTypeSchemas(this.baseDir);
           const typeSchema = schemas.get(base.type as MemoryType);
-          if (typeSchema) {
-            const result = typeSchema.safeParse(base);
-            if (!result.success) throw new Error(result.error.issues.map((i) => i.message).join(', '));
-          }
+          if (!typeSchema) throw new Error(`Unknown memory type: ${base.type}`);
+          const result = typeSchema.safeParse(base);
+          if (!result.success) throw new Error(result.error.issues.map((i) => i.message).join(', '));
         } catch (err) {
           msgs.push(formatError(err));
         }
@@ -225,14 +224,12 @@ export class MarkdownMemoryStore implements MemoryStore {
       const base = MemoryObjectSchema.parse({ ...frontmatter, body });
       const schemas = getTypeSchemas(this.baseDir, this.onProblem);
       const typeSchema = schemas.get(base.type as MemoryType);
-      if (typeSchema) {
-        const result = typeSchema.safeParse(base);
-        if (!result.success) {
-          throw new Error(`Per-type validation: ${result.error.issues.map((i) => i.message).join(', ')}`);
-        }
-        return result.data as MemoryObject;
+      if (!typeSchema) throw new Error(`Unknown memory type: ${base.type}`);
+      const result = typeSchema.safeParse(base);
+      if (!result.success) {
+        throw new Error(`Per-type validation: ${result.error.issues.map((i) => i.message).join(', ')}`);
       }
-      return base;
+      return result.data as MemoryObject;
     } catch (err) {
       const msg = `Failed to parse ${path}: ${formatError(err)}`;
       this.onProblem?.(msg);

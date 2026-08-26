@@ -28,8 +28,13 @@ export function memoryTransitionCommand(): Command {
     .addOption(new Option('--status', 'Deprecated').hideHelp())
     .option('--actor <actor>', 'Actor performing the transition', 'user:cli')
     .action(async (id: string, status: string, options) => {
-      const { store, log, clock, idGen, index } = createCliContainer(process.cwd());
-      await transitionMemoryObject({ store, log, clock, idGen, index }, id, status as never, options.actor);
+      const { store, log, clock, idGen, index, declarations } = createCliContainer(process.cwd());
+      await transitionMemoryObject(
+        { store, log, clock, idGen, index, declarations },
+        id,
+        status as never,
+        options.actor
+      );
       console.log(`Transitioned ${id} to ${status}.`);
     });
 }
