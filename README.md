@@ -133,6 +133,10 @@ wolf relation add --from <injection-id> --to <rule-id> --predicate based_on
 
 **No config.yaml? No problem:** without `.wolf/config.yaml` everything works on the built-in defaults — all 22 core types from `CORE_TAXONOMY`. The config file is a generated mirror plus a place for project-specific types.
 
+### Insights (Level 1 analytics)
+
+- `wolf insights [--topic <topic>] [--type <type>]` — deterministic heuristic analysis of project memory, no LLM. Five lenses: `patterns` (default), `technical_debt`, `decisions`, `lessons`, `activity`; without arguments — project-wide overview. Deliberate deviations from the roadmap: debug-density is a tag heuristic (`debug`, `bug`, `bugfix`, `memory-repair`, `solve`) because the taxonomy has no `debug` core type; LLM synthesis (Level 2) is out of scope for this phase; both flags are optional.
+
 ## Testing
 
 ### Unit & integration tests
