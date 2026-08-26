@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { CORE_TAXONOMY, MEMORY_TYPES, getDeclaration, subdirectoryFor } from '../../../src/domain/memory-types.js';
-import type { MemoryType } from '../../../src/domain/memory-types.js';
+import type { MemoryType, MemoryTypeDeclaration } from '../../../src/domain/memory-types.js';
 import { ALLOWED_TRANSITIONS } from '../../../src/domain/governance.js';
 import { targetPathFor } from '../../../src/adapters/fs/project-paths.js';
 
@@ -84,6 +84,28 @@ describe('mergeTaxonomy (no config.yaml)', () => {
       ],
     });
     expect(types.get('postmortem' as MemoryType)?.subdirThread).toBe('postmortems');
+  });
+});
+
+describe('getDeclaration with extra declarations', () => {
+  const postmortem: MemoryTypeDeclaration = {
+    name: 'postmortem' as MemoryType,
+    lifecycle: ['open', 'resolved'],
+    subdirThread: 'postmortems',
+    subdirShared: null,
+  };
+
+  it('finds project type in extra', () => {
+    expect(getDeclaration('postmortem' as MemoryType, [postmortem]).subdirThread).toBe('postmortems');
+  });
+
+  it('core wins when extra shadows a core type', () => {
+    const shadow = { ...postmortem, name: 'decision' as MemoryType };
+    expect(getDeclaration('decision', [shadow]).subdirShared).toBe('decisions');
+  });
+
+  it('unknown type without extra still throws', () => {
+    expect(() => getDeclaration('postmortem' as MemoryType)).toThrow(/No taxonomy declaration/);
   });
 });
 

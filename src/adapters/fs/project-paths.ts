@@ -1,5 +1,5 @@
 import { join } from 'path';
-import { getDeclaration, type MemoryType } from '../../domain/memory-types.js';
+import { getDeclaration, type MemoryTypeDeclaration } from '../../domain/memory-types.js';
 
 export function memoryDir(baseDir: string): string {
   return join(baseDir, '.wolf', 'memory');
@@ -46,9 +46,13 @@ export function quarantineDir(baseDir: string): string {
   return join(memoryDir(baseDir), 'quarantine');
 }
 
-/** Целевой путь объекта в layout v2. */
-export function targetPathFor(baseDir: string, obj: { type: MemoryType; id: string; thread?: string }): string {
-  const decl = getDeclaration(obj.type);
+/** Целевой путь объекта в layout v2; extraDeclarations — project-типы из config.yaml. */
+export function targetPathFor(
+  baseDir: string,
+  obj: { type: string; id: string; thread?: string },
+  extraDeclarations?: readonly MemoryTypeDeclaration[]
+): string {
+  const decl = getDeclaration(obj.type, extraDeclarations);
   if (decl.layout === 'work-thread-file') {
     return join(threadsDir(baseDir), obj.id, 'WORK-THREAD.md');
   }

@@ -231,8 +231,9 @@ export const MEMORY_TYPES = CORE_TAXONOMY_DECLS.map((d) => d.name);
 /** Типизированное представление канона (compile-time проверка полей деклараций). */
 export const CORE_TAXONOMY: readonly MemoryTypeDeclaration[] = CORE_TAXONOMY_DECLS;
 
-export function getDeclaration(type: MemoryType): MemoryTypeDeclaration {
-  const decl = CORE_TAXONOMY.find((d) => d.name === type);
+/** Поиск декларации: сначала core-таксономия, потом extra (project-типы из config.yaml). */
+export function getDeclaration(type: string, extra?: readonly MemoryTypeDeclaration[]): MemoryTypeDeclaration {
+  const decl = CORE_TAXONOMY.find((d) => d.name === type) ?? extra?.find((d) => d.name === type);
   if (!decl) throw new Error(`No taxonomy declaration for type: ${type}`);
   return decl;
 }
