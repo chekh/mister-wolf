@@ -4,7 +4,12 @@ import yaml from 'js-yaml';
 import { z } from 'zod';
 import { MemoryStore, ListFilters } from '../../ports/memory-store.port.js';
 import { MemoryObject, MemoryObjectSchema } from '../../domain/schemas/memory-object-schema.js';
-import { type MemoryType, CORE_TAXONOMY, getDeclaration } from '../../domain/memory-types.js';
+import {
+  type MemoryType,
+  type MemoryTypeDeclaration,
+  CORE_TAXONOMY,
+  getDeclaration,
+} from '../../domain/memory-types.js';
 import { buildTypeSchema } from '../../domain/type-schema-builder.js';
 import { objectsDir, threadsDir, sharedDir, targetPathFor, memoryDir, quarantineDir } from './project-paths.js';
 import { loadWolfConfigSync } from './config-file.js';
@@ -70,8 +75,20 @@ export class MarkdownMemoryStore implements MemoryStore {
     }
   }
 
+  /** Project-типы из config.yaml (с валидацией mergeTaxonomy); при ошибке загрузки — []. */
+  private projectDeclarations(): MemoryTypeDeclaration[] {
+    try {
+      const cfg = loadWolfConfigSync(this.baseDir);
+      if (!cfg) return [];
+      mergeTaxonomy(cfg);
+      return cfg.projectTypes;
+    } catch {
+      return [];
+    }
+  }
+
   async save(object: MemoryObject): Promise<void> {
-    const path = targetPathFor(this.baseDir, object);
+    const path = targetPathFor(this.baseDir, object, this.projectDeclarations());
     await fs.mkdir(dirname(path), { recursive: true });
     const { body, ...frontmatter } = object;
     await writeFileAtomic(path, `---\n${yaml.dump(frontmatter)}---\n\n${body}`);
@@ -119,9 +136,9 @@ export class MarkdownMemoryStore implements MemoryStore {
     const existing = await this.get(id);
     if (!existing) throw new Error(`Memory object not found: ${id}`);
     const updated = { ...existing, ...patch, updated_at: new Date().toISOString() };
-    const oldPath = targetPathFor(this.baseDir, existing);
+    const oldPath = targetPathFor(this.baseDir, existing, this.projectDeclarations());
     await this.save(updated);
-    const newPath = targetPathFor(this.baseDir, updated);
+    const newPath = targetPathFor(this.baseDir, updated, this.projectDeclarations());
     if (oldPath !== newPath) {
       try {
         await fs.unlink(oldPath);
@@ -160,10 +177,9 @@ export class MarkdownMemoryStore implements MemoryStore {
           const base = MemoryObjectSchema.parse({ ...frontmatter, body });
           const schemas = getTypeSchemas(this.baseDir);
           const typeSchema = schemas.get(base.type as MemoryType);
-          if (typeSchema) {
-            const result = typeSchema.safeParse(base);
-            if (!result.success) throw new Error(result.error.issues.map((i) => i.message).join(', '));
-          }
+          if (!typeSchema) throw new Error(`Unknown memory type: ${base.type}`);
+          const result = typeSchema.safeParse(base);
+          if (!result.success) throw new Error(result.error.issues.map((i) => i.message).join(', '));
         } catch (err) {
           msgs.push(formatError(err));
         }
@@ -208,14 +224,12 @@ export class MarkdownMemoryStore implements MemoryStore {
       const base = MemoryObjectSchema.parse({ ...frontmatter, body });
       const schemas = getTypeSchemas(this.baseDir, this.onProblem);
       const typeSchema = schemas.get(base.type as MemoryType);
-      if (typeSchema) {
-        const result = typeSchema.safeParse(base);
-        if (!result.success) {
-          throw new Error(`Per-type validation: ${result.error.issues.map((i) => i.message).join(', ')}`);
-        }
-        return result.data as MemoryObject;
+      if (!typeSchema) throw new Error(`Unknown memory type: ${base.type}`);
+      const result = typeSchema.safeParse(base);
+      if (!result.success) {
+        throw new Error(`Per-type validation: ${result.error.issues.map((i) => i.message).join(', ')}`);
       }
-      return base;
+      return result.data as MemoryObject;
     } catch (err) {
       const msg = `Failed to parse ${path}: ${formatError(err)}`;
       this.onProblem?.(msg);

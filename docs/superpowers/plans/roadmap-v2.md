@@ -1,7 +1,7 @@
 # Mr. Wolf — Roadmap v2
 
 > Date: 2026-07-02  
-> Status: proposal  
+> Status: active (rev. 2026-08-26) — реализованы фазы 6–10; Phase 9 semantic-часть deferred (см. Phase 9)  
 > Supersedes: `docs/superpowers/plans/roadmap.md`
 
 ## 1. Концептуальные изменения
@@ -238,6 +238,8 @@ Schema-driven подход:
 
 ### Phase 9 — Enhanced Search
 
+**Status (2026-08-26): частично реализована, semantic-часть deferred.** Решение: semantic/hybrid search откладывается до роста базы объектов; сейчас взяты `file_path`-фильтр и FTS5-улучшения (префиксный поиск `"токен"*`, взвешенное ранжирование bm25) — без эмбеддингов и новых зависимостей. Ниже — исходный замысел semantic-части.
+
 **Goal:** Добавить semantic/hybrid search как optional adapter, сохранив FTS5 default.
 
 **Scope:**
@@ -250,7 +252,7 @@ Schema-driven подход:
   - Local embeddings (ONNX / `nomic-embed-text` / `sentence-transformers` lightweight);
   - Optional pgvector adapter;
   - Optional OpenAI adapter.
-- Add `file_path` filter to search.
+- `file_path` filter to search — **сделано (2026-08-26)**: CLI `--file-path`, MCP `file_path`; матчинг по `related.files` и `source.path`.
 - Vector index — derived, rebuildable from markdown files.
 
 **Out of scope:**
@@ -326,7 +328,7 @@ Schema-driven подход:
 
 - Auto-triggers after lifecycle events:
   - `resolveBlocker`;
-  - `transitionMemoryObject` to terminal/major status;
+  - `transitionMemoryObject` to terminal status (фактическая реализация: `TERMINAL_STATUSES` в `transition-memory-object.ts` = archived, completed, accepted, resolved, obsolete, answered);
   - `supersedeMemoryObject`;
   - `createDecision`;
   - `createArticle`.
@@ -393,7 +395,7 @@ Schema-driven подход:
 1. **Phase 6** — завершить governance, добавить `rule`.
 2. **Phase 7** — MCP server + `.wolf/SKILL.md` + `wolf recap`.
 3. **Phase 8** — schema-driven taxonomy. Это фундамент для последующих фаз.
-4. **Phase 9** — enhanced search.
+4. **Phase 9** — enhanced search: `file_path` + FTS5-улучшения сделаны (2026-08-26), semantic-часть deferred.
 5. **Phase 10** — insights.
 6. **Phase 11** — structured thinking.
 7. **Phase 12** — session wrap-up.
@@ -426,3 +428,7 @@ Schema-driven подход:
 - `wolf insights` works without LLM.
 - Vector search is optional.
 - `npm run check` passes at every phase.
+
+## 7. Будущее: LLM-синтез (опциональный enhancement, не скоуп)
+
+Решение (2026-08-26): если LLM-синтез поверх памяти понадобится — через опциональный адаптер `opencode run` (LLM как внешний процесс), без обязательных зависимостей; эмбеддинги только локальные. Память остаётся local-first: LLM-слой никогда не требуется для записи и поиска.

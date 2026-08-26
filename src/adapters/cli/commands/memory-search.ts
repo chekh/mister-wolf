@@ -15,6 +15,7 @@ export function memorySearchCommand(): Command {
     .option('--created-after <iso>', 'Created on or after date')
     .option('--created-before <iso>', 'Created on or before date')
     .option('--limit <n>', 'Maximum results', parseInt)
+    .option('--file-path <path>', 'Filter by related/source file path')
     .option('--include-superseded', 'Include superseded objects', false)
     .action(async (query, options) => {
       const { index } = createCliContainer(process.cwd());
@@ -30,6 +31,7 @@ export function memorySearchCommand(): Command {
           maxImportance: options.maxImportance,
           createdAfter: options.createdAfter,
           createdBefore: options.createdBefore,
+          file_path: options.filePath,
           limit: options.limit,
           includeSuperseded: options.includeSuperseded,
         }

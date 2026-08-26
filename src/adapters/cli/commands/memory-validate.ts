@@ -79,6 +79,9 @@ export async function runValidate(baseDir: string, opts?: { fix?: boolean }): Pr
   }
   if (opts?.fix && problems.length > 0) {
     await store.quarantineFiles(problems);
+    // Битые файлы не парсятся — их id неизвестны, точечно из индекса не убрать.
+    // Пересобираем производный индекс из оставшихся объектов store.
+    await new SQLiteSearchIndex(indexPath(baseDir)).rebuild(await store.list());
   }
   const totalObjects = (await store.list()).length;
   displayLines.push(`objects:    scanned ${totalObjects}, broken ${problems.length}`);
@@ -120,7 +123,7 @@ export async function runValidate(baseDir: string, opts?: { fix?: boolean }): Pr
   let idxFresh = true;
   try {
     const idx = new SQLiteSearchIndex(indexPath(baseDir));
-    const searchResults = await idx.search('*');
+    const searchResults = await idx.searchAll();
     idxSqlite = searchResults.length;
     idxStore = allIds.size;
     // Simple count comparison; can't get exact ID set from FTS5 easily

@@ -40,14 +40,20 @@ export class SQLiteSearchIndex implements SearchIndex {
   }
 
   async search(query: string, options: SearchOptions = {}): Promise<SearchResult[]> {
-    const escapedQuery = query.replace(/"/g, '""');
-    const ftsQuery = `"${escapedQuery}"`;
+    const ftsQuery = this.buildFtsQuery(query);
+    if (!ftsQuery) {
+      return [];
+    }
+
+    // Колонки memory_search по порядку: memory_id, type, title, body, tags, status, review_state.
+    // title и tags весят заметно больше body.
+    const bm25Expr = 'bm25(memory_search, 1.0, 1.0, 8.0, 1.0, 4.0, 1.0, 1.0)';
 
     let sql = `
       SELECT s.memory_id, s.type, s.title, s.body, s.status, s.review_state,
              m.confidence, m.importance, m.created_at, m.updated_at, m.created_by,
              m.schema_version, m.source, m.related, m.tags, m.superseded_by,
-             rank
+             ${bm25Expr} AS rank
       FROM memory_search s
       JOIN memory_meta m ON s.memory_id = m.memory_id
       WHERE memory_search MATCH ?
@@ -92,10 +98,37 @@ export class SQLiteSearchIndex implements SearchIndex {
       params.push(options.createdBefore);
     }
 
-    sql += ` ORDER BY rank`;
+    sql += ` ORDER BY ${bm25Expr}`;
 
     const rows = this.db.prepare(sql).all(...params) as any[];
-    const results = rows.map((row) => ({
+    const results = rows.map((row) => this.rowToResult(row));
+
+    const filePath = options.file_path;
+    const filtered = filePath ? results.filter((r) => this.matchesFilePath(r.object, filePath)) : results;
+
+    if (options.limit) {
+      return filtered.slice(0, options.limit);
+    }
+    return filtered;
+  }
+
+  /** Все живые объекты индекса без MATCH; для проверки свежести индекса (validate). */
+  async searchAll(): Promise<SearchResult[]> {
+    const rows = this.db
+      .prepare(
+        `SELECT s.memory_id, s.type, s.title, s.body, s.status, s.review_state,
+                m.confidence, m.importance, m.created_at, m.updated_at, m.created_by,
+                m.schema_version, m.source, m.related, m.tags, m.superseded_by
+         FROM memory_search s
+         JOIN memory_meta m ON s.memory_id = m.memory_id
+         WHERE s.status NOT IN ('superseded', 'archived')`
+      )
+      .all() as any[];
+    return rows.map((row) => this.rowToResult(row));
+  }
+
+  private rowToResult(row: any): SearchResult {
+    return {
       object: {
         id: row.memory_id,
         type: row.type,
@@ -114,13 +147,28 @@ export class SQLiteSearchIndex implements SearchIndex {
         tags: JSON.parse(row.tags),
         superseded_by: row.superseded_by,
       } as MemoryObject,
-      score: this.computeScore(row.rank, row.importance, row.confidence),
-    }));
+      score: this.computeScore(row.rank ?? 0, row.importance, row.confidence),
+    };
+  }
 
-    if (options.limit) {
-      return results.slice(0, options.limit);
+  private buildFtsQuery(query: string): string {
+    return (
+      query
+        .split(/\s+/)
+        .map((token) => token.replace(/["()*:^]/g, ''))
+        // ponytail: токены без букв/цифр («-», «—») дают fts5 syntax error — отбрасываем
+        .filter((token) => /[\p{L}\p{N}]/u.test(token))
+        .map((token) => `"${token}"*`)
+        .join(' ')
+    );
+  }
+
+  private matchesFilePath(object: MemoryObject, filePath: string): boolean {
+    if (object.source.path === filePath) {
+      return true;
     }
-    return results;
+    const files = object.related?.files ?? [];
+    return files.some((f) => f === filePath || f.endsWith(`/${filePath}`));
   }
 
   private computeScore(rawRank: number, importance: number, confidence: string): number {

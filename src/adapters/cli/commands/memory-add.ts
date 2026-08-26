@@ -25,14 +25,14 @@ export function memoryAddCommand(): Command {
     .option('--scope <scope>', 'Scope field for types that declare one (rule: project|global)')
     .option('--created-by <actor>', 'Creator actor', 'user:cli')
     .action(async (options) => {
-      const { store, log, clock, idGen, index } = createCliContainer(process.cwd());
+      const { store, log, clock, idGen, index, declarations } = createCliContainer(process.cwd());
       const extra = parseSetPairs(options.set as string[], options.type);
       if (options.scope !== undefined) {
         if ('scope' in extra) throw new Error('Duplicate scope: use either --scope or --set scope=..., not both');
         extra.scope = options.scope;
       }
       const result = await addMemoryObject(
-        { store, log, clock, idGen, index },
+        { store, log, clock, idGen, index, declarations },
         {
           type: options.type,
           title: options.title,

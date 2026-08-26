@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { buildMcpServer } from '../../../src/adapters/mcp/mcp-server.js';
+import { MemorySearchInputSchema } from '../../../src/adapters/mcp/mcp-schemas.js';
 import { createCli } from '../../../src/adapters/cli/cli-entry.js';
 
 describe('buildMcpServer', () => {
@@ -35,6 +36,33 @@ describe('buildMcpServer', () => {
     const result = await tools.search.handler({ query: 'router' });
     expect(result.content).toHaveLength(1);
     expect(result.content[0].type).toBe('text');
+  });
+
+  it('search accepts file_path filter and passes it to search', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    await tools.add.handler({
+      type: 'lesson',
+      title: 'Filepath filter probe',
+      body: 'probe content',
+      createdBy: 'agent:mcp-test',
+    });
+    const all = await tools.search.handler({ query: 'Filepath' });
+    expect(all.content[0].text).toMatch(/mem_/);
+    const filtered = await tools.search.handler({ query: 'Filepath', file_path: 'nope.ts' });
+    expect(filtered.content[0].text).toBe('No results.');
+  });
+
+  it('MemorySearchInputSchema accepts file_path', () => {
+    const parsed = MemorySearchInputSchema.safeParse({ query: 'router', file_path: 'src/a.ts' });
+    expect(parsed.success).toBe(true);
   });
 
   it('adds a memory object', async () => {

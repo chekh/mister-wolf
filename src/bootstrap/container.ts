@@ -9,6 +9,18 @@ import { HeuristicProjectScanner } from '../adapters/fs/heuristic-project-scanne
 import { eventsPath, indexPath, relationsPath, memoryDir } from '../adapters/fs/project-paths.js';
 import { JsonlRelationLog } from '../adapters/fs/jsonl-relation-log.js';
 import { FsMemoryLock } from '../adapters/fs/memory-lock.js';
+import { loadWolfConfigSync } from '../adapters/fs/config-file.js';
+import { mergeTaxonomy } from '../domain/taxonomy.js';
+import { CORE_TAXONOMY, type MemoryTypeDeclaration } from '../domain/memory-types.js';
+
+/** Все декларации (core + project) из config.yaml; при ошибке загрузки — только core. */
+function loadDeclarations(baseDir: string): readonly MemoryTypeDeclaration[] {
+  try {
+    return [...mergeTaxonomy(loadWolfConfigSync(baseDir)).types.values()];
+  } catch {
+    return CORE_TAXONOMY;
+  }
+}
 
 export function createCliContainer(baseDir: string) {
   const fs = new FsFileSystem();
@@ -23,5 +35,6 @@ export function createCliContainer(baseDir: string) {
     fs,
     scanner: new HeuristicProjectScanner(fs),
     lock: new FsMemoryLock(memoryDir(baseDir)),
+    declarations: loadDeclarations(baseDir),
   };
 }

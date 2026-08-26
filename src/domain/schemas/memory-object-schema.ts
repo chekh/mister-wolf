@@ -1,10 +1,12 @@
 import { z } from 'zod';
-import { MEMORY_TYPES } from '../memory-types.js';
 
 export const MemoryObjectSchema = z
   .object({
     id: z.string().min(1),
-    type: z.enum(MEMORY_TYPES),
+    // type не enum: project-типы из config.yaml не входят в core MEMORY_TYPES.
+    // Членство в таксономии проверяется при записи (addMemoryObject → getDeclaration)
+    // и при чтении (markdown-memory-store: schemas.has(type)).
+    type: z.string(),
     title: z.string().min(1),
     status: z.enum([
       'active',

@@ -58,6 +58,7 @@ export function registerMemoryTools(
         maxImportance?: number;
         createdAfter?: string;
         createdBefore?: string;
+        file_path?: string;
         limit?: number;
         includeSuperseded?: boolean;
       };
