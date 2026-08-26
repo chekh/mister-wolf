@@ -139,6 +139,15 @@ wolf relation add --from <injection-id> --to <rule-id> --predicate based_on
 
 - `wolf insights [--topic <topic>] [--type <type>]` — deterministic heuristic analysis of project memory, no LLM. Five lenses: `patterns` (default), `technical_debt`, `decisions`, `lessons`, `activity`; without arguments — project-wide overview. Deliberate deviations from the roadmap: debug-density is a tag heuristic (`debug`, `bug`, `bugfix`, `memory-repair`, `solve`) because the taxonomy has no `debug` core type; LLM synthesis (Level 2) is out of scope for this phase; both flags are optional.
 
+### Structured thinking
+
+- `wolf think start --goal <goal> [--thread <id>] [--created-by <actor>]` — start a thinking sequence; prints the sequence id.
+- `wolf think add --sequence <id> --type <hypothesis|reasoning|evidence|concern> --text <text>` — append a thought; prints the thought id.
+- `wolf think conclude --sequence <id> --title <title> --body <body> [--created-by <actor>]` — finish into a decision: the body gets an embedded "Thinking trace" section, the relation log gets `based_on`/`basis_for` links to every thought, and the scratch file is removed.
+- `wolf think abandon --sequence <id>` — discard the sequence without creating anything.
+- MCP tools: `start_thinking`, `add_thought`, `conclude_thinking`, `abandon_thinking`.
+- Storage model: while thinking, thoughts live in a scratch file `.wolf/thinking/<id>.jsonl` outside the memory store (invisible to search/brief); on conclude the trace is embedded into the decision body and the scratch is deleted. Deliberate deviations from the roadmap: `--text` carries the thought content (the roadmap defined no carrier), `abandon` completes the lifecycle, storage is the hybrid scratch+embed model.
+
 ## Testing
 
 ### Unit & integration tests
