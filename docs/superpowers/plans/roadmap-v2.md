@@ -1,8 +1,8 @@
 # Mr. Wolf — Roadmap v2
 
 > Date: 2026-07-02  
-> Status: active (rev. 2026-08-26) — реализованы фазы 6–10; Phase 9 semantic-часть deferred (см. Phase 9); superpowers-интеграция: Phases 15–17, 19 сделаны, 18 слита с Phase 23 (см. блок Superpowers Integration); добавлен блок Self-Learning Phases 20–26 (дизайн: `docs/superpowers/specs/2026-08-26-self-learning-design.md`; разработка — после утверждения плана)  
-> Supersedes: `docs/superpowers/plans/roadmap.md`
+> Status: active (rev. 2026-08-26) — реализованы фазы 6–12 (Phase 11 — structured thinking, влита в dev 2026-08-26; Phase 9 semantic-часть deferred, см. Phase 9); superpowers-интеграция: Phases 15–17, 19 сделаны, 18 слита с Phase 23 (см. блок Superpowers Integration); добавлен блок Self-Learning Phases 20–26 (дизайн: `docs/superpowers/specs/2026-08-26-self-learning-design.md`; разработка — после утверждения плана)  
+> Supersedes: `docs/superpowers/plans/roadmap.md` (архив: `docs/archive/roadmap-v1.md`)
 
 ## 1. Концептуальные изменения
 
@@ -32,6 +32,8 @@ wolf think start
 wolf insights
 wolf ingest
 ```
+
+> Примечание (2026-08-26): `wolf ingest` — будущая команда Phase 13, ещё не реализована; фактический CLI — `wolf --help` (29 команд).
 
 MCP tools переименовываются аналогично:
 
@@ -104,14 +106,14 @@ memory_type_config:
       preliminary_answer: { type: string }
 ```
 
-Команды управления таксономией:
+Команды управления таксономией (фактическая реализация Phase 8):
 
 ```bash
-wolf type list
-wolf type get <name>
-wolf type add <name> --fields "owner:string,status:enum(open,closed),contract_path:string"
-wolf type remove <name>
+wolf taxonomy show                # эффективная таксономия: core + project
+wolf taxonomy sync                # регенерация memory_types.core в .wolf/config.yaml из кода
 ```
+
+> Примечание: ранние черновики roadmap описывали `wolf type add/remove` — реализация Phase 8 выбрала `wolf taxonomy sync/show` (core pack immutable в коде, project-типы — через `.wolf/config.yaml`).
 
 Правила:
 

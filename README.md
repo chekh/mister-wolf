@@ -8,13 +8,13 @@
 >
 > Not another agent. A memory substrate for agents.
 >
-> See [Project Memory Harness — Base Concept](docs/superpowers/specs/2026-06-30-project-memory-harness-base-concept.md) for the full architecture and concept.
+> See [Concept v2.0](docs/concept.md) for the full architecture and concept.
 
 ## Status
 
-Phases 0–8 are implemented: Core Memory, Work Threads / Info Requests / Articles, Decisions / Blockers, Incremental Indexing / Document Registration, Relations / Session Checkpoints, Search / Retrieval Improvements, Governance + Flat Namespace, Session Wrap-Up Habit, and Schema-Driven Taxonomy + Orchestration Types + Write Reliability.
+Phases 0–12 are implemented (Phase 9 semantic-search part is deferred): Core Memory; Work Threads / Info Requests / Articles; Decisions / Blockers; Scan + Document Registration; Relations / Session Checkpoints; Search & Retrieval Improvements; Governance + Flat Namespace; Schema-Driven Taxonomy + Orchestration Types + Write Reliability; solve/call memory-repair loop; insights (Level 1, no LLM); structured thinking (`wolf think`); Session Wrap-Up Habit. Superpowers integration phases 15–17 and 19 are done too; phase 18 was merged into phase 23. An MCP server ships with the CLI (`wolf mcp`).
 
-Next: **Phase 9 — Decide from roadmap-v2 or wolf solve/call concept research**.
+Next: **Phase 13 — Document Ingest** (see [roadmap-v2](docs/superpowers/plans/roadmap-v2.md); blocked on the embedding strategy decision).
 
 ## Quick Start
 
@@ -66,8 +66,9 @@ node dist/bootstrap/cli.js search "lesson"
 
 - `wolf decision add --based-on <artifact-id>` — link a decision to supporting artifacts.
 - `wolf blocker resolve <id> --by <artifact-id>` — record what resolved a blocker.
+- `wolf relation add <subject-id> <predicate> <object-id>` — create a typed relation between two memory objects. Positional arguments; 16 predicates (`based_on`, `answers`, `blocks`, `supersedes`, ...).
 - `wolf session checkpoint --thread <thread-id>` — create a session checkpoint for a thread.
-- `wolf thread diff <thread-id> --since <checkpoint-id>` — show changes since a checkpoint.
+- `wolf thread diff <thread-id> --since <checkpoint-id>` — show changes since a checkpoint. Also available top-level: `wolf diff <thread-id> --since <checkpoint-id>`.
 
 ### Phase 5: search and retrieval improvements
 
@@ -124,7 +125,7 @@ wolf call --for "deprecated get" --compact=800
 wolf call --thread mem_t1
 
 # link a call-injection to specific objects
-wolf relation add --from <injection-id> --to <rule-id> --predicate based_on
+wolf relation add <injection-id> based_on <rule-id>
 ```
 
 **Safety model:** `wolf solve` is read-only by default. `--save` only creates an `info-request` — no memory mutations. Call injections are inert text blocks; they require `wolf add` to create.
@@ -172,16 +173,17 @@ The E2E suite exercises the compiled CLI via `spawnSync` — no source imports. 
 5. **Migration** — 5 legacy objects migrate from `objects/` to layout v2, idempotent, searchable
 6. **MCP stdio** — JSON-RPC `tools/list` returns registered tools
 
-**Known UX gap:** relations cannot be created via CLI (`wolf relation add` is not yet implemented). The E2E suite works around this by writing a temporary `.mjs` script that imports `recordRelation` from `dist/` and runs it in a separate process.
+**MCP server:** `wolf mcp` starts the stdio MCP server exposing the same capabilities as tools (`search`, `add`, `brief`, `recap`, `insights`, `start_thinking`, ...).
 
 E2E is excluded from `npm run check` because it requires a full build and spawns subprocesses, making it significantly slower (~minutes vs ~60s).
 
 ## Documentation
 
-- [Base concept](docs/superpowers/specs/2026-06-30-project-memory-harness-base-concept.md) — architecture and concept
-- [Roadmap](docs/superpowers/plans/roadmap-v2.md) — current phases and backlog
-- [User guide](docs/user-guide.md) — Phase 4 commands and workflow (Russian)
-- [Docs index](docs/README.md) — specs, plans, and archived materials
+- [Concept v2.0](docs/concept.md) — architecture and concept (Russian)
+- [Roadmap v2](docs/superpowers/plans/roadmap-v2.md) — current phases and backlog
+- [Ideas backlog](docs/ideas-backlog.md) — registry of captured, not-yet-implemented ideas with sources
+- [User guide](docs/user-guide.md) — basic commands and workflow (Russian; covers early phases, see CLI `--help` for the full command list)
+- [Docs index](docs/README.md) — canonical docs, phase specs, research, archive
 - [wolf-experiment](wolf-experiment/HANDOFF.md) — archived multi-agent orchestration experiment (Wolf → Executor → Workers, Council Mode): empirical boundaries of hierarchy vs flat agents; see HANDOFF.md (Russian)
 
 ## Development
