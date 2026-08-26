@@ -1,0 +1,70 @@
+# Ideas Backlog — реестр зафиксированных, но не реализованных идей
+
+> Дата: 2026-08-26. Составлен при ревизии документации: источники — roadmap-v2, спеки/планы фаз, research-документы, внешнее ревью, orchestration-журнал (`.wolf/orchestration/`), память Wolf (`wolf search`).
+>
+> Формат: идея → источник → статус/условие актуальности. Идея попадает в реестр, если она зафиксирована в письменном виде, но не реализована. Реализованное здесь не хранится — статус фаз см. [roadmap-v2](./superpowers/plans/roadmap-v2.md).
+
+## 1. Запланировано (roadmap-v2, Phases 13–26)
+
+| Идея                                                                                                                                            | Источник                                                  | Статус / условие                                         |
+| ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------- |
+| **Phase 13 — Document Ingest**: `wolf ingest <path>` — чанкинг PDF/спок, тип `document` с summary-телом, полнотекст в derived vector index      | roadmap-v2.md (Phase 13)                                  | Запланировано; заблокировано выбором embedding-стратегии |
+| **Phase 14 — Cross-Project & Enterprise**: глобальные правила между проектами, cross-project insights, export/import, RBAC                      | roadmap-v2.md (Phase 14)                                  | Tentative, «when needed»                                 |
+| **Phase 20 — Сигнальный лог**: машиночитаемый per-session журнал метрик (rejected-циклы, тул-ошибки, весовые токены) + чтение в `wolf insights` | roadmap-v2.md (2a); self-learning-design.md §2.1          | Ждёт утверждения плана самообучения                      |
+| **Phase 21 — Паттерн-детекция N≥3**: формальный ключ однотипности (тул+тип ошибки+контекст), insights L2 через адаптер `opencode run`           | roadmap-v2.md (2a)                                        | Зависит от Phase 20                                      |
+| **Phase 22 — ExpeL-цикл**: Analyzer-Worker (кластер→draft-rule, evidence ≥3), holdout-валидация, куратор правил                                 | roadmap-v2.md (2a); self-learning-design.md §4            | Зависит от Phase 20–21                                   |
+| **Phase 23 — STOP-гейт**: pressure-тесты «стимул-промпт + wolf call» против mock-агента; слита с бывш. Phase 18                                 | roadmap-v2.md (2a)                                        | Параллелизуема с 20–22                                   |
+| **Phase 24 — GEPA**: скоринг и Парето-эволюция шаблонов брифов по сигнальному логу                                                              | roadmap-v2.md (2a)                                        | Зависит от 20/22/23                                      |
+| **Phase 25 — AFlow**: эвристический роутинг глубины ревью по типу задачи (гейт человека)                                                        | roadmap-v2.md (2a)                                        | Запланировано                                            |
+| **Phase 26 — A-MEM (условная)**: динамическая связность памяти; триггер переоценки — деградация recall `trigger_keywords`                       | roadmap-v2.md (2a); решение `mem_20260826_resheni…60c8cb` | Отложено осознанно                                       |
+
+## 2. Deferred внутри закрытых фаз
+
+| Идея                                                                                                                                                                              | Источник                                        | Статус / условие                                        |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------- |
+| **Semantic/hybrid-поиск** (`SearchMode: keyword\|semantic\|hybrid`, порты `EmbeddingProvider`/`VectorSearchIndex`, локальные ONNX-эмбеддинги)                                     | roadmap-v2.md (Phase 9)                         | Deferred до роста базы объектов; блокирует и Phase 13   |
+| **Project-оверрайды solve-сценариев** через `.wolf/config.yaml` + thread-level solve-сценарии                                                                                     | specs/phase-9-solve-call.md                     | «После MVP»                                             |
+| **Конфиги советов** `.wolf/councils/*.yaml` (quorum/threshold)                                                                                                                    | specs/phase-8-schema-taxonomy.md (D-dev5)       | «Вводим вместе с роутером агентов»                      |
+| **Governance-хвосты Phase 6**: CLI override-флаги, list-фильтры по governance-атрибутам, review-workflow продвижения truth_role, stale-автоматизация                              | specs/phase-6-governance-design.md              | Фаза закрыта без них; отдельного плана нет              |
+| **Редактирование памяти** (SEARCH/REPLACE, AST, атомарная запись, EditResult) — designed, сейчас прямой fs.writeFile                                                              | concept.md §«editing»                           | Требует решения о запуске                               |
+| **Shadow git внутри `.wolf/`**                                                                                                                                                    | concept.md                                      | Deferred с триггером переоценки «нужен blame по памяти» |
+| **Derived usage-метрики** `recall_count` / `last_recalled_at` на объектах                                                                                                         | specs/mvp-a core-design                         | Deferred с MVP-A                                        |
+| **`wolf memory watch`** — автоматический watch документов (сейчас только явный scan); связан с info-request «Автоматическая регистрация проектных документов» — open с 2026-06-30 | specs/mvp-a core-design; `mem_20260630__c0acde` | Open ~2 месяца: закрыть или превратить в фазу           |
+
+## 3. Предложения из ревью и исследований (не принято)
+
+| Идея                                                                                                                            | Источник                                                 | Статус / условие                                                                   |
+| ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **Core-типы `debug`, `code-snippet`, `design`, `feature`** — рекомендованы recallium-синтезом; из них в коде только `rule`      | research/recallium-synthesis.md; roadmap-v2 §2 (Phase 8) | Частично принято; остальные — решение при следующей ревизии таксономии             |
+| **Предикаты `needs`/`needed_by`, `contradicts`/`contradicted_by`** — в `RELATION_PREDICATES` (16 шт.) отсутствуют               | research/recallium-synthesis.md                          | Не принято; решение при эволюции relation-модели                                   |
+| **`wolf search --explain`** + сужение MCP tool surface (`--advanced`)                                                           | external-experts-review §8 (PR4, архив)                  | Не принято (PR3 solve/call реализован, PR4/5 — нет)                                |
+| **Capture presets**: `wolf capture debug/decision/research/lesson/handoff`                                                      | external-experts-review §8 (PR5, архив)                  | Не принято                                                                         |
+| **Контекст-аналитика как продукт**: персистентная история токен-профилей, proactive budget alerts, compaction по usage patterns | research/agentic-tools-project-cards.md (ContextScout)   | Не принято; частично пересекается с Phase 20                                       |
+| **Declarative DAG-оркестрация + dynamic model router + policy-слой**                                                            | research/agentic-tools-project-cards.md (Oh My OpenCode) | Не принято; вне позиционирования «память, не оркестратор» — требует явного решения |
+| **Интент-классификация promotion (conversation→case), cross-session recovery**                                                  | archive/concept-v2-open-questions.md §3–4                | Исторический open-question WAC-эпохи; актуальность для memory-harness под вопросом |
+
+## 4. Friction-кандидаты из orchestration-журнала
+
+| Идея                                                                                                                                                   | Источник                                                      | Статус / условие                         |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- | ---------------------------------------- |
+| **`wolf search` не видит council-артефакты** (council-question/opinion не индексируются)                                                               | `mem_20260824_search_council_2f2d6b` (observation)            | Зафиксировано 2026-08-24, не закрыто     |
+| **`wolf recall`** — тема-ориентированный recall/brief (UX-сценарии используют как предлагаемую команду; текущие аналоги — `wolf recap` + `wolf brief`) | ux-scenarios/s01:78 и др. (6 файлов)                          | Requirements-предложение из UX-сценариев |
+| **Project-типы не размещаются на FS**: `getDeclaration` ищет только в CORE_TAXONOMY, `targetPathFor` бросает для project-типов                         | orchestration-отчёты (phase-8, insights)                      | «Кандидат в мелкий фикс», 2+ упоминания  |
+| **Реинжект после компакции** (matcher-идея из bash-хука superpowers) — усиление плагина D1                                                             | report-2026-08-26-superpowers-\*.md                           | «На будущее»                             |
+| **`relevantIds` мёртвый параметр** в createMemoryRepairRequest; нет lock — связь repair-request↔объектов через recordRelation                          | orchestration review (phase-9)                                | «В будущий lock-consistency проход»      |
+| **CLI-косметика**: ZodError-стек при неизвестном предикате `relation add`; метка «fresh» при пустом индексе                                            | orchestration-отчёты (2 шт.)                                  | Микро-тикеты                             |
+| **Токен-бенчмарк Wolf**: сценарии (холодный старт, brief, compact-бюджет, solve) × с/без Wolf; первый замер −29% входных токенов                       | `mem_20260825_wolf_d25859`; report-2026-08-26-bench-tokens.md | Активная идея в плане                    |
+
+## 5. Документационные долги (из ревизии 2026-08-26)
+
+| Идея                                                                                                                    | Источник                  | Статус / условие              |
+| ----------------------------------------------------------------------------------------------------------------------- | ------------------------- | ----------------------------- |
+| **Актуализировать user-guide.md** под фактические 29 команд (сейчас покрывает ~15, эпоха Phase 2–5)                     | Инвентаризация 2026-08-26 | Кандидат на отдельную задачу  |
+| **Свести нумерацию фаз concept.md §6 с roadmap-v2** (в концепте 9=роутер/10=review/11=editing — наследие раннего плана) | Инвентаризация 2026-08-26 | При следующей правке концепта |
+
+## Требуют решения человека
+
+1. Утверждение плана Phases 20–26 (блокирует раздел 1, строки Phase 20–25) — тред `mem_20260826_roadmap…4820a6`.
+2. Выбор embedding-стратегии — разблокирует Phase 13 и semantic-поиск.
+3. Судьба предложений вне позиционирования (DAG-оркестрация, контекст-аналитика) — принять/отклонить явно.
+4. Info-request `mem_20260630__c0acde` (авто-регистрация документов) открыт ~2 месяца — закрыть или фазировать.
