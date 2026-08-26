@@ -47,11 +47,8 @@
 
 | Идея                                                                                                                                                   | Источник                                                      | Статус / условие                         |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- | ---------------------------------------- |
-| **`wolf search` не видит council-артефакты** (council-question/opinion не индексируются)                                                               | `mem_20260824_search_council_2f2d6b` (observation)            | Зафиксировано 2026-08-24, не закрыто     |
 | **`wolf recall`** — тема-ориентированный recall/brief (UX-сценарии используют как предлагаемую команду; текущие аналоги — `wolf recap` + `wolf brief`) | ux-scenarios/s01:78 и др. (6 файлов)                          | Requirements-предложение из UX-сценариев |
-| **Project-типы не размещаются на FS**: `getDeclaration` ищет только в CORE_TAXONOMY, `targetPathFor` бросает для project-типов                         | orchestration-отчёты (phase-8, insights)                      | «Кандидат в мелкий фикс», 2+ упоминания  |
 | **Реинжект после компакции** (matcher-идея из bash-хука superpowers) — усиление плагина D1                                                             | report-2026-08-26-superpowers-\*.md                           | «На будущее»                             |
-| **`relevantIds` мёртвый параметр** в createMemoryRepairRequest; нет lock — связь repair-request↔объектов через recordRelation                          | orchestration review (phase-9)                                | «В будущий lock-consistency проход»      |
 | **CLI-косметика**: ZodError-стек при неизвестном предикате `relation add`; метка «fresh» при пустом индексе                                            | orchestration-отчёты (2 шт.)                                  | Микро-тикеты                             |
 | **Токен-бенчмарк Wolf**: сценарии (холодный старт, brief, compact-бюджет, solve) × с/без Wolf; первый замер −29% входных токенов                       | `mem_20260825_wolf_d25859`; report-2026-08-26-bench-tokens.md | Активная идея в плане                    |
 
