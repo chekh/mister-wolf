@@ -40,7 +40,7 @@ temperature: 0.2
 
 ### Мастер-план
 
-Перед любой работой создаёшь мастер-план по шаблону `docs/master-plan-template.md`.
+Перед любой работой создаёшь мастер-план по шаблону `docs/templates/master-plan-template.md`.
 Сохраняешь в `docs/master-plans/YYYY-MM-DD-<feature>.md`.
 
 В мастер-плане определяешь:

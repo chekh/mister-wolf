@@ -8,7 +8,7 @@
 >
 > Not another agent. A memory substrate for agents.
 >
-> See [Concept v2.0](docs/concept.md) for the full architecture and concept.
+> See [Concept v2.0](docs/concept/concept.md) for the full architecture and concept.
 
 ## Status
 
@@ -179,10 +179,10 @@ E2E is excluded from `npm run check` because it requires a full build and spawns
 
 ## Documentation
 
-- [Concept v2.0](docs/concept.md) — architecture and concept (Russian)
+- [Concept v2.0](docs/concept/concept.md) — architecture and concept (Russian)
 - [Roadmap v2](docs/superpowers/plans/roadmap-v2.md) — current phases and backlog
-- [Ideas backlog](docs/ideas-backlog.md) — registry of captured, not-yet-implemented ideas with sources
-- [User guide](docs/user-guide.md) — basic commands and workflow (Russian; covers early phases, see CLI `--help` for the full command list)
+- [Ideas backlog](docs/planning/ideas-backlog.md) — registry of captured, not-yet-implemented ideas with sources
+- [User guide](docs/guide/user-guide.md) — basic commands and workflow (Russian; covers early phases, see CLI `--help` for the full command list)
 - [Docs index](docs/README.md) — canonical docs, phase specs, research, archive
 - [wolf-experiment](wolf-experiment/HANDOFF.md) — archived multi-agent orchestration experiment (Wolf → Executor → Workers, Council Mode): empirical boundaries of hierarchy vs flat agents; see HANDOFF.md (Russian)
 

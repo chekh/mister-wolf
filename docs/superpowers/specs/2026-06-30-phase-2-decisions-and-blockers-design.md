@@ -267,7 +267,7 @@ Use the existing in-memory store and clock fixtures.
 - `src/adapters/cli/cli-entry.ts` — register `memory decision` and `memory blocker` commands.
 - `src/app/use-cases/generate-agent-brief.ts` — include active decisions and blockers.
 - `src/app/use-cases/get-thread-brief.ts` — include thread-linked decisions and blockers.
-- `docs/user-guide.md` — document new commands.
+- `docs/guide/user-guide.md` — document new commands.
 
 ---
 
@@ -285,4 +285,4 @@ Use the existing in-memory store and clock fixtures.
 - Active decisions and blockers appear in `wolf memory brief`.
 - Thread brief shows decisions and blockers linked to that thread.
 - All tests pass.
-- `docs/user-guide.md` is updated.
+- `docs/guide/user-guide.md` is updated.
