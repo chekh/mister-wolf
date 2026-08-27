@@ -1,7 +1,7 @@
 # Mr. Wolf — Roadmap v2
 
 > Date: 2026-07-02  
-> Status: active (rev. 2026-08-26) — реализованы фазы 6–12 (Phase 11 — structured thinking, влита в dev 2026-08-26; Phase 9 semantic-часть deferred, см. Phase 9); superpowers-интеграция: Phases 15–17, 19 сделаны, 18 слита с Phase 23 (см. блок Superpowers Integration); добавлен блок Self-Learning Phases 20–26 (дизайн: `docs/superpowers/specs/2026-08-26-self-learning-design.md`; разработка — после утверждения плана)  
+> Status: active (rev. 2026-08-27) — реализованы фазы 6–12 (Phase 11 — structured thinking, влита в dev 2026-08-26; Phase 9 semantic-часть deferred, см. Phase 9); superpowers-интеграция: Phases 15–17, 19 сделаны, 18 слита с Phase 23 (см. блок Superpowers Integration); добавлен блок Self-Learning Phases 20–26 (дизайн: `docs/superpowers/specs/2026-08-26-self-learning-design.md`; разработка — после утверждения плана; rev. 2026-08-27 — поправки внешнего эксперта, см. блок 2a)  
 > Supersedes: `docs/superpowers/plans/roadmap.md` (архив: `docs/archive/roadmap-v1.md`)
 
 ## 1. Концептуальные изменения
@@ -473,6 +473,13 @@ Schema-driven подход:
 > после утверждения плана пользователем** (тред
 > `mem_20260826_roadmap_samoobucheniya_wolf_plan_do_razr_4820a6`).
 > Фазы 12–14 не входят в контур самообучения и остаются в прежнем виде.
+> Rev. 2026-08-27 (7 инженерных поправок внешнего эксперта, детали и
+> обоснования — в спеке): P20 — эмиссия `session-metrics.json` (OTEL-поля),
+> контур обучения читает только JSON; P21 — локальная эмбеддинг-кластеризация
+> вместо строкового ключа однотипности; P22 — Sandbox Replay Holdout вместо
+> LLM-as-a-judge, `wolf learn digest`/`status`, negative constraints, decay;
+> P24 — GEPA только на детерминированных метриках. Цепочка зависимостей
+> 20→21→22→23→24→25 не изменилась.
 
 ### Phase 20 — Сигнальный лог (фундамент)
 
@@ -482,11 +489,11 @@ Schema-driven подход:
 
 **Состав:**
 
-- Формат записи per-session: rejected-циклы (с причинами), тул-ошибки по типам, весовые токены, длительность, счётчик воркеров.
-- Измеритель (детерминированный, без LLM): извлечение метрик из отчётов/events.jsonl.
+- Эмиссия per-session `session-metrics.json` (OTEL-совместимые поля: `task_id`, `timestamps`, `weighted_tokens`, `verdict`, `rejected_cycles` с причинами, `tool_errors` по типам, длительность, счётчик воркеров) параллельно markdown-отчётам; markdown — только для людей, контур обучения читает JSON (практика полей — Datadog/Elastic LLM observability).
+- Измеритель (детерминированный, без LLM): извлечение метрик из отчётов/events.jsonl в JSON.
 - Чтение лога в `wolf insights` (Level 1): плотности, топ-повторы.
 
-**Критерий готовности:** по любой завершённой сессии метрики читаются программно; `wolf insights` отвечает по логу без LLM.
+**Критерий готовности:** по любой завершённой сессии метрики читаются программно из `session-metrics.json`; `wolf insights` отвечает по логу без LLM.
 
 ### Phase 21 — Паттерн-детекция (N≥3) + insights L2
 
@@ -496,26 +503,29 @@ Schema-driven подход:
 
 **Состав:**
 
-- Ключ однотипности: нормализация тул + тип ошибки + контекст.
+- Кластеризация однотипности: локальные эмбеддинги сигналов, косинусная близость в памяти — без векторных БД (объём лога мал, представления derived/rebuildable); строковый матчинг «тул + тип ошибки» заменён (обоснование выбора против LLM-тегирования при логировании — спека §2.2).
+- LLM-тегирование `error_class_id` — опциональное уточнение границ кластеров через адаптер `opencode run` (local-first записи сохраняется: эмбеддинги считаются при детекции, не при логировании).
 - Порог N≥3 как параметр процесса (класс «параметры», автономно настраиваемый).
-- LLM-синтез кластеров — опциональный адаптер `opencode run` (local-first сохраняется).
 
 **Критерий готовности:** инжектированный в тестовый лог кластер из ≥3 однотипных ошибок детектируется; паттерн несёт ссылки на исходные сигналы.
 
-### Phase 22 — ExpeL-рефлексия: Analyzer-Worker → draft-rule + holdout
+### Phase 22 — ExpeL-рефлексия: Analyzer-Worker → draft-rule + Sandbox Replay Holdout
 
-**Goal:** Из паттерна генерируется draft-правило с evidence, прошедшее holdout-валидацию; цикл генерация→принятие закреплён за куратором правил.
+**Goal:** Из паттерна генерируется draft-правило с evidence, прошедшее Sandbox Replay Holdout; цикл генерация→принятие закреплён за куратором правил.
 
-**Зависимости:** Phase 21 (вход — паттерны); существующие `lesson`/`rule` + `trigger_keywords` (Phase 16), `wolf relation add` (Phase 17), lifecycle/supersede (Phase 6).
+**Зависимости:** Phase 21 (вход — паттерны); существующие `lesson`/`rule` + `trigger_keywords` (Phase 16), `wolf relation add` (Phase 17), lifecycle/supersede (Phase 6), измерение доставки (Phase 20 — для `last_triggered_at`).
 
 **Состав:**
 
-- Роль Analyzer-Worker (LLM через адаптер): кластер → draft-rule с evidence ≥3; создаёт только draft.
-- Holdout-валидация: правило проверяется на сигналах, не участвовавших в генерации; вердикт фиксируется.
-- Роль куратора правил: принятие/отклонение draft-rule, supersede-цепочки; активный `rule` — только через гейт (enforcement Phase 6 сохраняется).
+- Роль Analyzer-Worker (LLM через адаптер): кластер → draft-rule с evidence ≥3; создаёт только draft; до генерации в промпт доставляются negative constraints (`wolf call --for`).
+- Sandbox Replay Holdout (переименован из holdout-валидации): draft-правило проверяется реплеем исторических промптов в изолированном mock-окружении (детерминированный mock-агент, harness общий с Phase 23) — не LLM-as-a-judge; вердикт фиксируется.
+- Negative constraints: отклонённые куратором draft-правила сохраняются как hard constraints для Analyzer-Worker (блокировка повторной генерации похожих кандидатов). Носитель — `lesson` + `trigger_keywords` (Phase 16), доставка `wolf call --for`, связь с отклонённым draft — `wolf relation add` (Phase 17); отдельный json не заводится (обоснование — спека §6).
+- Роль куратора правил: принятие/отклонение draft-rule, supersede-цепочки; активный `rule` — только через гейт (enforcement Phase 6 сохраняется). Вместо алертов — батч-дайджест `wolf learn digest`: пороговая накопительная логика (≥K элементов — draft-кандидаты, holdout-вердикты, decay-очередь — либо D дней); обоснование — HITL-усталость.
+- Decay: поле `last_triggered_at` на `rule`/`lesson` (штамп при срабатывании call-injection); не сработавшие за N дней → `review_required` (значение `review_state`, объект остаётся активным) — в очередь дайджеста; фоновая проверка без демона (прогон в `wolf learn digest`/`status`, может подвешиваться к плагину Phase 15).
+- Observability: `wolf learn status` — health-check контура (почему собран кластер: состав сигналов и порог; почему отклонён draft: причина + ссылка на negative constraint; decay-очередь).
 - Роль измерителя (Phase 20) обслуживает holdout-выборки.
 
-**Критерий готовности:** ≥1 draft-rule сгенерирован из реальных сигналов, holdout-вердикт зафиксирован; путь draft→активация без гейта невозможен (проверяется тестом).
+**Критерий готовности:** ≥1 draft-rule сгенерирован из реальных сигналов, Sandbox Replay Holdout-вердикт зафиксирован; путь draft→активация без гейта невозможен (проверяется тестом); отклонённый кандидат блокирует повторную генерацию похожего (negative constraint доставлен Analyzer-Worker'у — проверяется тестом); не сработавший за N дней rule/lesson виден в `review_required`-очереди `wolf learn digest`.
 
 ### Phase 23 — STOP-гейт: pressure-тесты (слита с Phase 18)
 
@@ -541,9 +551,10 @@ Schema-driven подход:
 **Состав:**
 
 - Скоринг ревизий шаблона по сигнальному логу; Парето-сравнение ревизий.
+- Жёсткое ограничение применимости: только задачи с детерминированной метрикой качества (процент упавших тестов, число rejected-циклов); открытые/субъективные задачи исключены — для них гейт человека без GEPA-скоринга (GEPA, arXiv 2507.19457, требует числовую воспроизводимую метрику).
 - Кандидаты-шаблоны — класс «шаблоны»: draft автономно, применение через гейт.
 
-**Критерий готовности:** ≥2 ревизии одного шаблона брифа оценены и сравнены по Парето; применение — через гейт человека.
+**Критерий готовности:** ≥2 ревизии одного шаблона брифа оценены и сравнены по Парето (на задаче с детерминированной метрикой); применение — через гейт человека.
 
 ### Phase 25 — AFlow: роутинг глубины ревью (эвристики, гейт человека)
 
@@ -581,7 +592,7 @@ Schema-driven подход:
 5. **Phase 10** — insights.
 6. **Phase 11** — structured thinking.
 7. **Phases 15–17, 19 (superpowers-интеграция)** — сделаны 2026-08-26; Phase 18 слита с Phase 23 (STOP-гейт).
-8. **Phases 20–26 (самообучение)** — после утверждения плана пользователем; причинный порядок: 20 (сигнальный лог) → 21 (паттерны + insights L2) → 22 (ExpeL: draft-rule + holdout) → 23 (STOP-гейт; harness можно параллельно) → 24 (GEPA) → 25 (AFlow); Phase 26 (A-MEM) — условная, по триггеру деградации recall. Спека: `docs/superpowers/specs/2026-08-26-self-learning-design.md`.
+8. **Phases 20–26 (самообучение)** — после утверждения плана пользователем; причинный порядок: 20 (сигнальный лог: session-metrics.json) → 21 (паттерны: эмбеддинг-кластеризация + insights L2) → 22 (ExpeL: draft-rule + Sandbox Replay Holdout; куратор: `wolf learn digest`/`status`; negative constraints; decay) → 23 (STOP-гейт; harness можно параллельно) → 24 (GEPA: только детерминированные метрики) → 25 (AFlow); Phase 26 (A-MEM) — условная, по триггеру деградации recall. Спека: `docs/superpowers/specs/2026-08-26-self-learning-design.md`.
 9. **Phase 12** — session wrap-up.
 10. **Phase 13** — document ingest.
 11. **Phase 14** — cross-project (when needed).
