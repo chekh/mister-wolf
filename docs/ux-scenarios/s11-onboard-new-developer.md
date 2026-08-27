@@ -39,7 +39,7 @@
    ## Start here
 
    - README.md
-   - docs/concept.md
+   - docs/concept/concept.md
 
    ## Active Rules
 

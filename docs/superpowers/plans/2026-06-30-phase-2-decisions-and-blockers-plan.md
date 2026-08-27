@@ -26,7 +26,7 @@
 | `src/adapters/cli/cli-entry.ts`                | Register decision and blocker CLI commands   |
 | `src/app/use-cases/generate-agent-brief.ts`    | Include active decisions and blockers        |
 | `src/app/use-cases/get-thread-brief.ts`        | Include thread-linked decisions and blockers |
-| `docs/user-guide.md`                           | Document new commands and statuses           |
+| `docs/guide/user-guide.md`                     | Document new commands and statuses           |
 | `tests/unit/use-cases/create-decision.test.ts` | Tests for `createDecision`                   |
 | `tests/unit/use-cases/create-blocker.test.ts`  | Tests for `createBlocker`                    |
 | `tests/unit/use-cases/resolve-blocker.test.ts` | Tests for `resolveBlocker`                   |
@@ -1061,7 +1061,7 @@ git commit -m "feat(brief): include decisions and blockers in thread brief"
 
 **Files:**
 
-- Modify: `docs/user-guide.md`
+- Modify: `docs/guide/user-guide.md`
 
 - [ ] **Step 1: Add new entity sections**
 
@@ -1143,7 +1143,7 @@ node dist/bootstrap/cli.js memory blocker resolve <id>
 - [ ] **Step 3: Commit**
 
 ```bash
-git add docs/user-guide.md
+git add docs/guide/user-guide.md
 git commit -m "docs: document decision and blocker commands"
 ```
 

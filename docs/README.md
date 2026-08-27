@@ -4,19 +4,19 @@
 
 ## Canonical concept
 
-- [Concept v2.0](./concept.md) — актуальная концепция: memory harness, таксономия объектов, write-протокол, границы scope (RU). Нумерация фаз в §6 концепта унаследована от раннего плана; канонический план фаз — [roadmap-v2](./superpowers/plans/roadmap-v2.md).
+- [Concept v2.0](./concept/concept.md) — актуальная концепция: memory harness, таксономия объектов, write-протокол, границы scope (RU). Нумерация фаз в §6 концепта унаследована от раннего плана; канонический план фаз — [roadmap-v2](./superpowers/plans/roadmap-v2.md).
 
 ## Roadmap & design
 
 - [Roadmap v2](./superpowers/plans/roadmap-v2.md) — фазы 6–26: статус, superpowers-интеграция, self-learning
 - [Self-Learning Design](./superpowers/specs/2026-08-26-self-learning-design.md) — дизайн контура самообучения (Phases 20–26)
 - [Superpowers adoption](./superpowers/superpowers-adoption.md) — перенос механизмов superpowers в Wolf (D1–D5)
-- [Ideas backlog](./ideas-backlog.md) — реестр зафиксированных, но не реализованных идей с источниками
+- [Ideas backlog](./planning/ideas-backlog.md) — реестр зафиксированных, но не реализованных идей с источниками
 
 ## Guides & process
 
-- [User guide](./user-guide.md) — базовые команды и workflow (RU; покрывает ранние фазы, полный список — `wolf --help`)
-- [Master plan template](./master-plan-template.md) — шаблон мастер-плана фичи (5 стадий)
+- [User guide](./guide/user-guide.md) — базовые команды и workflow (RU; покрывает ранние фазы, полный список — `wolf --help`)
+- [Master plan template](./templates/master-plan-template.md) — шаблон мастер-плана фичи (5 стадий)
 - [Master plans](./master-plans/) — заполненные мастер-планы по фазам
 - [UX scenarios](./ux-scenarios/README.md) — 12 сценариев использования как requirements-материал
 
@@ -60,4 +60,4 @@
 
 ---
 
-_Documentation index. Canonical concept: [Concept v2.0](./concept.md). Регистр идей: [ideas-backlog](./ideas-backlog.md)._
+_Documentation index. Canonical concept: [Concept v2.0](./concept/concept.md). Регистр идей: [ideas-backlog](./planning/ideas-backlog.md)._
