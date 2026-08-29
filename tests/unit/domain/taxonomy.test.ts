@@ -142,8 +142,10 @@ describe('renderConfigYaml', () => {
 
 describe('call-injection type (phase 9)', () => {
   it('extends MEMORY_TYPES to 23 with call-injection last', () => {
-    expect(MEMORY_TYPES).toHaveLength(23);
-    expect(MEMORY_TYPES[MEMORY_TYPES.length - 1]).toBe('call-injection');
+    // 24 с playbook (W5 Phase A roadmap v3), call-injection остаётся предпоследним
+    expect(MEMORY_TYPES).toHaveLength(24);
+    expect(MEMORY_TYPES[MEMORY_TYPES.length - 1]).toBe('playbook');
+    expect(MEMORY_TYPES[MEMORY_TYPES.length - 2]).toBe('call-injection');
   });
 
   it('declares call-injection with operational lifecycle and shared calls dir', () => {

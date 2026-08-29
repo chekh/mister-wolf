@@ -229,6 +229,18 @@ const CORE_TAXONOMY_DECLS = [
       related_objects: { kind: 'string[]', default: [] },
     },
   },
+  {
+    name: 'playbook',
+    lifecycle: ['active', 'stale', 'superseded', 'archived'],
+    subdirThread: null,
+    subdirShared: 'playbooks',
+    fields: {
+      trigger_keywords: { kind: 'string[]', default: [] },
+      steps: { kind: 'string[]', required: true, minItems: 1 },
+      owner_skill: { kind: 'string', required: true, min: 1 },
+      version: { kind: 'string', required: true, min: 1 },
+    },
+  },
 ] as const;
 
 export type MemoryType = (typeof CORE_TAXONOMY_DECLS)[number]['name'];
