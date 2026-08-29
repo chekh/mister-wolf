@@ -3,6 +3,7 @@ import { addMemoryObject } from '../../../app/use-cases/add-memory-object.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { MEMORY_TYPES } from '../../../domain/memory-types.js';
 import { parseSetPairs } from '../../../domain/parse-set-pairs.js';
+import { resolveCreatedBy } from '../../../domain/actor.js';
 
 function collectSet(value: string, previous: string[]): string[] {
   return [...previous, value];
@@ -23,7 +24,7 @@ export function memoryAddCommand(): Command {
     .option('--importance <n>', 'Importance from 0 to 1', parseFloat)
     .option('--set <k=v>', 'Extra field key=value (repeatable; "[a,b]" value is a string array)', collectSet, [])
     .option('--scope <scope>', 'Scope field for types that declare one (rule: project|global)')
-    .option('--created-by <actor>', 'Creator actor', 'user:cli')
+    .option('--created-by <actor>', 'Creator actor (default: env WOLF_ACTOR, else user:cli)')
     .action(async (options) => {
       const { store, log, clock, idGen, index, declarations } = createCliContainer(process.cwd());
       const extra = parseSetPairs(options.set as string[], options.type);
@@ -37,7 +38,7 @@ export function memoryAddCommand(): Command {
           type: options.type,
           title: options.title,
           body: options.body,
-          createdBy: options.createdBy,
+          createdBy: resolveCreatedBy(options.createdBy),
           tags: options.tags ? options.tags.split(',').map((t: string) => t.trim()) : [],
           confidence: options.confidence,
           importance: options.importance,
