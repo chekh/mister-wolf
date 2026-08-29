@@ -4,6 +4,7 @@ import { createCliContainer } from '../../../bootstrap/container.js';
 import { MEMORY_TYPES } from '../../../domain/memory-types.js';
 import { parseSetPairs } from '../../../domain/parse-set-pairs.js';
 import { resolveCreatedBy } from '../../../domain/actor.js';
+import { UserFacingError } from '../../../domain/errors.js';
 
 function collectSet(value: string, previous: string[]): string[] {
   return [...previous, value];
@@ -29,7 +30,8 @@ export function memoryAddCommand(): Command {
       const { store, log, clock, idGen, index, declarations } = createCliContainer(process.cwd());
       const extra = parseSetPairs(options.set as string[], options.type);
       if (options.scope !== undefined) {
-        if ('scope' in extra) throw new Error('Duplicate scope: use either --scope or --set scope=..., not both');
+        if ('scope' in extra)
+          throw new UserFacingError('Duplicate scope: use either --scope or --set scope=..., not both');
         extra.scope = options.scope;
       }
       const result = await addMemoryObject(
