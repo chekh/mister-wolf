@@ -33,6 +33,10 @@ import { memoryCallCommand as callCommand } from './commands/memory-call.js';
 import { memoryInsightsCommand as insightsCommand } from './commands/memory-insights.js';
 import { memoryRecapCommand as recapCommand } from './commands/memory-recap.js';
 import { memoryThinkCommand as thinkCommand } from './commands/memory-think.js';
+import { memoryScaffoldCommand as scaffoldCommand } from './commands/memory-scaffold.js';
+import { memoryComplainCommand as complainCommand } from './commands/memory-complain.js';
+import { memoryRunCommand as runCommand } from './commands/memory-run.js';
+import { memoryBootstrapCommand as bootstrapCommand } from './commands/memory-bootstrap.js';
 import { UserFacingError } from '../../domain/errors.js';
 
 function readPackageVersion(): string {
@@ -74,6 +78,10 @@ export function createCli(): Command {
   program.addCommand(insightsCommand());
   program.addCommand(recapCommand());
   program.addCommand(thinkCommand());
+  program.addCommand(scaffoldCommand());
+  program.addCommand(complainCommand());
+  program.addCommand(runCommand());
+  program.addCommand(bootstrapCommand());
 
   return program;
 }
