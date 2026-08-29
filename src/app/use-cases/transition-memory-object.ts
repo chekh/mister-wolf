@@ -7,6 +7,7 @@ import { MemoryLock } from '../../ports/memory-lock.port.js';
 import { MemoryStatus, getDeclaration, type MemoryTypeDeclaration } from '../../domain/memory-types.js';
 import { canTransition } from '../../domain/governance.js';
 import { summarizeSession } from './summarize-session.js';
+import { UserFacingError } from '../../domain/errors.js';
 
 const TERMINAL_STATUSES = ['archived', 'completed', 'accepted', 'resolved', 'obsolete', 'answered'];
 
@@ -26,17 +27,17 @@ export async function transitionMemoryObject(
 ): Promise<void> {
   const run = async (): Promise<void> => {
     const existing = await deps.store.get(id);
-    if (!existing) throw new Error(`Memory object not found: ${id}`);
+    if (!existing) throw new UserFacingError(`Memory object not found: ${id}`);
 
     const decl = getDeclaration(existing.type, deps.declarations);
     if (!decl.lifecycle.includes(newStatus)) {
-      throw new Error(
+      throw new UserFacingError(
         `Status "${newStatus}" is not in lifecycle of type "${existing.type}" (allowed: ${decl.lifecycle.join(', ')})`
       );
     }
 
     if (!canTransition(existing.status, newStatus)) {
-      throw new Error(`Invalid transition from ${existing.status} to ${newStatus}`);
+      throw new UserFacingError(`Invalid transition from ${existing.status} to ${newStatus}`);
     }
 
     const now = deps.clock.now();

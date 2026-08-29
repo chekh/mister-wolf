@@ -9,6 +9,7 @@ import { validateMemoryObject } from '../../domain/policies/write-protocol.js';
 import { governanceDefaults } from '../../domain/governance.js';
 import { getDeclaration, type MemoryTypeDeclaration } from '../../domain/memory-types.js';
 import { buildTypeSchema } from '../../domain/type-schema-builder.js';
+import { UserFacingError } from '../../domain/errors.js';
 
 export interface AddMemoryObjectInput {
   type: MemoryObject['type'];
@@ -78,12 +79,12 @@ export async function addMemoryObject(
     const baseKeys = new Set(Object.keys(MemoryObjectSchema.shape));
     for (const key of Object.keys(input.extra ?? {})) {
       if (!baseKeys.has(key) && !(key in (decl.fields ?? {}))) {
-        throw new Error(`Unknown field "${key}" for type "${object.type}"`);
+        throw new UserFacingError(`Unknown field "${key}" for type "${object.type}"`);
       }
     }
     const typeCheck = buildTypeSchema(decl).safeParse(object);
     if (!typeCheck.success) {
-      throw new Error(
+      throw new UserFacingError(
         `Type validation failed: ${typeCheck.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`
       );
     }
