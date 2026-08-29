@@ -1,6 +1,6 @@
 ---
 description: "Worker-researcher: исследует кодовую базу и веб, возвращает findings"
-model: opencode/x-preview-f-free
+model: zai-coding-plan/glm-5.3
 temperature: 0.2
 permission:
   task: deny

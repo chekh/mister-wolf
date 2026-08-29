@@ -239,4 +239,96 @@ describe('getCallInjections', () => {
     const ids = result.blocks.map((b) => b.match(/\[(\w+)\]/)?.[1]);
     expect(ids).toContain('inj_fts');
   });
+
+  it('finds lesson with trigger_keywords matching topic (D2)', async () => {
+    await seed(
+      makeObj({
+        id: 'lesson_1',
+        type: 'lesson',
+        status: 'active',
+        title: 'Merge lesson',
+        trigger_keywords: ['merge'],
+        body: '',
+      })
+    );
+
+    const result = await getCallInjections({ store, clock }, { topic: 'merge' });
+    expect(result.blocks.join('\n')).toContain('lesson_1');
+  });
+
+  it('finds rule with trigger_keywords matching topic (D2)', async () => {
+    await seed(
+      makeObj({
+        id: 'rule_kw',
+        type: 'rule',
+        status: 'active',
+        title: 'Merge rule',
+        scope: 'project',
+        trigger_keywords: ['merge'],
+        body: '',
+      })
+    );
+
+    const result = await getCallInjections({ store, clock }, { topic: 'merge' });
+    expect(result.blocks.join('\n')).toContain('rule_kw');
+  });
+
+  it('does not surface lesson/rule without keyword overlap (D2)', async () => {
+    await seed(
+      makeObj({
+        id: 'lesson_1',
+        type: 'lesson',
+        status: 'active',
+        title: 'Merge lesson',
+        trigger_keywords: ['merge'],
+        body: '',
+      }),
+      makeObj({
+        id: 'inj_A',
+        type: 'call-injection',
+        status: 'active',
+        title: 'Git injection',
+        trigger_keywords: ['git'],
+        body: '',
+      }),
+      makeObj({
+        id: 'rule_kw',
+        type: 'rule',
+        status: 'active',
+        title: 'Merge rule',
+        scope: 'project',
+        trigger_keywords: ['merge'],
+        body: '',
+      })
+    );
+
+    // injection совпадает по 'git' → fallback выключен; lesson/rule с 'merge' не совпали
+    const result = await getCallInjections({ store, clock }, { topic: 'git' });
+    const all = result.blocks.join('\n');
+    expect(all).toContain('inj_A');
+    expect(all).not.toContain('lesson_1');
+    expect(all).not.toContain('rule_kw');
+  });
+
+  it('keyword-matched rule is not duplicated by the rules fallback (D2)', async () => {
+    await seed(
+      makeObj({
+        id: 'rule_kw',
+        type: 'rule',
+        status: 'active',
+        title: 'Merge rule',
+        scope: 'project',
+        trigger_keywords: ['merge'],
+        body: '',
+      }),
+      makeObj({ id: 'rule_2', type: 'rule', status: 'active', title: 'Rule 2', scope: 'global', body: '' }),
+      makeObj({ id: 'rule_3', type: 'rule', status: 'active', title: 'Rule 3', scope: 'global', body: '' })
+    );
+
+    const result = await getCallInjections({ store, clock }, { topic: 'merge' });
+    const occurrences = result.blocks.filter((b) => b.includes('rule_kw')).length;
+    expect(occurrences).toBe(1);
+    // fallback не сработал (есть совпадение) — остальные правила не подтянуты
+    expect(result.blocks.join('\n')).not.toContain('rule_2');
+  });
 });

@@ -1,6 +1,6 @@
 ---
 description: "Executor: принимает Task Brief от Mr.Wolf'а, декомпозирует, исполняет сам или через воркеров, возвращает Report"
-model: opencode/x-preview-f-free
+model: zai-coding-plan/glm-5.3
 temperature: 0.2
 permission:
   task:

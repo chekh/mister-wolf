@@ -1,7 +1,7 @@
 ---
 description: "Mr.Wolf — координатор: декомпозирует задачу пользователя, диспетчерит executor'ов, принимает работу по критериям. Кода не касается."
 mode: primary
-model: opencode/x-preview-f-free
+model: zai-coding-plan/glm-5.3
 temperature: 0.3
 permission:
   task:

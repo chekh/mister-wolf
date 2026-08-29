@@ -39,7 +39,7 @@
    ## Start here
 
    - README.md
-   - docs/superpowers/specs/2026-06-30-project-memory-harness-base-concept.md
+   - docs/concept/concept.md
 
    ## Active Rules
 

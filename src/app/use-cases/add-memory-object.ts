@@ -7,7 +7,7 @@ import { MemoryLock } from '../../ports/memory-lock.port.js';
 import { MemoryObject, MemoryObjectSchema } from '../../domain/schemas/memory-object-schema.js';
 import { validateMemoryObject } from '../../domain/policies/write-protocol.js';
 import { governanceDefaults } from '../../domain/governance.js';
-import { getDeclaration } from '../../domain/memory-types.js';
+import { getDeclaration, type MemoryTypeDeclaration } from '../../domain/memory-types.js';
 import { buildTypeSchema } from '../../domain/type-schema-builder.js';
 
 export interface AddMemoryObjectInput {
@@ -34,7 +34,15 @@ export interface AddMemoryObjectResult {
 }
 
 export async function addMemoryObject(
-  deps: { store: MemoryStore; log: EventLog; clock: Clock; idGen: IdGenerator; index?: SearchIndex; lock?: MemoryLock },
+  deps: {
+    store: MemoryStore;
+    log: EventLog;
+    clock: Clock;
+    idGen: IdGenerator;
+    index?: SearchIndex;
+    lock?: MemoryLock;
+    declarations?: readonly MemoryTypeDeclaration[];
+  },
   input: AddMemoryObjectInput
 ): Promise<AddMemoryObjectResult> {
   const run = async (): Promise<AddMemoryObjectResult> => {
@@ -45,7 +53,10 @@ export async function addMemoryObject(
       type: input.type,
       title: input.title,
       body: input.body || '',
-      status: input.status ?? getDeclaration(input.type).defaultStatus ?? getDeclaration(input.type).lifecycle[0],
+      status:
+        input.status ??
+        getDeclaration(input.type, deps.declarations).defaultStatus ??
+        getDeclaration(input.type, deps.declarations).lifecycle[0],
       review_state: input.reviewState ?? (input.createdBy.startsWith('agent:') ? 'proposed' : 'accepted'),
       confidence: input.confidence ?? 'medium',
       importance: input.importance ?? 0.5,
@@ -63,7 +74,7 @@ export async function addMemoryObject(
     };
 
     Object.assign(object, input.extra ?? {});
-    const decl = getDeclaration(object.type);
+    const decl = getDeclaration(object.type, deps.declarations);
     const baseKeys = new Set(Object.keys(MemoryObjectSchema.shape));
     for (const key of Object.keys(input.extra ?? {})) {
       if (!baseKeys.has(key) && !(key in (decl.fields ?? {}))) {

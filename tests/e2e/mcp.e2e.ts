@@ -73,6 +73,7 @@ describe('MCP stdio: tools/list exposes phase 8 tools', () => {
     expect(names).toContain('brief');
     expect(names).toContain('scan');
     expect(names).toContain('create_rule');
+    expect(names).toContain('recap');
     expect(names).toContain('ping');
     // at least 14 tools registered
     expect(names.length).toBeGreaterThanOrEqual(14);

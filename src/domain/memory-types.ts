@@ -74,7 +74,13 @@ const CORE_TAXONOMY_DECLS = [
       thread: { kind: 'string', optional: true },
     },
   },
-  { name: 'lesson', lifecycle: FULL, subdirThread: 'lessons', subdirShared: 'lessons' },
+  {
+    name: 'lesson',
+    lifecycle: FULL,
+    subdirThread: 'lessons',
+    subdirShared: 'lessons',
+    fields: { trigger_keywords: { kind: 'string[]', default: [] } },
+  },
   { name: 'observation', lifecycle: FULL, subdirThread: 'lessons', subdirShared: 'lessons' },
   { name: 'session-summary', lifecycle: FULL, subdirThread: 'sessions', subdirShared: null },
   {
@@ -151,6 +157,7 @@ const CORE_TAXONOMY_DECLS = [
       scope: { kind: 'enum', values: ['project', 'global'] },
       applies_to: { kind: 'string[]', default: [] },
       trigger: { kind: 'string', default: '' },
+      trigger_keywords: { kind: 'string[]', default: [] },
     },
   },
   {
@@ -231,8 +238,9 @@ export const MEMORY_TYPES = CORE_TAXONOMY_DECLS.map((d) => d.name);
 /** Типизированное представление канона (compile-time проверка полей деклараций). */
 export const CORE_TAXONOMY: readonly MemoryTypeDeclaration[] = CORE_TAXONOMY_DECLS;
 
-export function getDeclaration(type: MemoryType): MemoryTypeDeclaration {
-  const decl = CORE_TAXONOMY.find((d) => d.name === type);
+/** Поиск декларации: сначала core-таксономия, потом extra (project-типы из config.yaml). */
+export function getDeclaration(type: string, extra?: readonly MemoryTypeDeclaration[]): MemoryTypeDeclaration {
+  const decl = CORE_TAXONOMY.find((d) => d.name === type) ?? extra?.find((d) => d.name === type);
   if (!decl) throw new Error(`No taxonomy declaration for type: ${type}`);
   return decl;
 }

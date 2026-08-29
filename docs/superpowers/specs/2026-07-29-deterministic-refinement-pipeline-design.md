@@ -523,7 +523,7 @@ The pipeline sits **between** plan creation and plan execution. It does not repl
 - `autorefine` reads the plan from `docs/superpowers/plans/` and writes artifacts to `.autorefine/`
 - `executing-plans` reads the refined plan from `docs/superpowers/plans/` (changed by applier) and can optionally read `.autorefine/final/summary.md` for context
 
-The master-plan template (`docs/master-plan-template.md`) gains a reference to the pipeline orchestrator.
+The master-plan template (`docs/templates/master-plan-template.md`) gains a reference to the pipeline orchestrator.
 
 ---
 

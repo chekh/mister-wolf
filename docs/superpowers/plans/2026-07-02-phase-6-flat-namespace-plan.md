@@ -39,7 +39,7 @@
 | `tests/unit/use-cases/transition-memory-object.test.ts` | Add disallowed transition test.                          |
 | `tests/integration/governance-workflow.test.ts`         | Existing; update if needed.                              |
 | `tests/integration/mcp-stdio.test.ts`                   | Update expected tool names.                              |
-| `MEMORY.md` / `docs/user-guide.md` / `README.md`        | Update command examples.                                 | <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md --> |
+| `MEMORY.md` / `docs/guide/user-guide.md` / `README.md`  | Update command examples.                                 | <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md --> |
 
 ---
 
@@ -787,7 +787,7 @@ git commit -m "refactor(mcp): flatten tool namespace and add create_rule"
 
 - Modify: `README.md`
 - Modify: `MEMORY.md` <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
-- Modify: `docs/user-guide.md`
+- Modify: `docs/guide/user-guide.md`
 
 - [ ] **Step 1: Replace `wolf memory ` with `wolf ` in command examples**
 
@@ -795,7 +795,7 @@ Use a careful replace (verify each file):
 
 ```bash
 # Do not run blindly; review first
-rg 'wolf memory ' README.md MEMORY.md docs/user-guide.md <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
+rg 'wolf memory ' README.md MEMORY.md docs/guide/user-guide.md <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 ```
 
 Then edit examples. Keep prose references readable.
@@ -834,7 +834,7 @@ Agents cannot create rules proactively.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add README.md MEMORY.md docs/user-guide.md <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
+git add README.md MEMORY.md docs/guide/user-guide.md <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
 git commit -m "docs: update commands for flat namespace and rule type"
 ````
 

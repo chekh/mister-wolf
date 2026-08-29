@@ -28,6 +28,7 @@ export const MemorySearchInputSchema = z.object({
   maxImportance: z.number().optional(),
   createdAfter: z.string().optional(),
   createdBefore: z.string().optional(),
+  file_path: z.string().optional(),
   limit: z.number().optional(),
   includeSuperseded: z.boolean().optional(),
 });
@@ -105,4 +106,32 @@ export const MemoryCreateRuleInputSchema = z.object({
   appliesTo: z.array(z.string()).optional(),
   trigger: z.string().optional(),
   createdBy: z.string(),
+});
+
+export const InsightsInputSchema = z.object({
+  topic: z.string().optional(),
+  type: z.enum(['patterns', 'technical_debt', 'decisions', 'lessons', 'activity']).optional(),
+});
+
+export const ThinkingStartInputSchema = z.object({
+  goal: z.string(),
+  thread: z.string().optional(),
+  createdBy: z.string(),
+});
+
+export const ThinkingAddInputSchema = z.object({
+  sequenceId: z.string(),
+  type: z.enum(['hypothesis', 'reasoning', 'evidence', 'concern']),
+  text: z.string(),
+});
+
+export const ThinkingConcludeInputSchema = z.object({
+  sequenceId: z.string(),
+  title: z.string(),
+  body: z.string(),
+  createdBy: z.string(),
+});
+
+export const ThinkingAbandonInputSchema = z.object({
+  sequenceId: z.string(),
 });

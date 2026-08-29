@@ -3,6 +3,8 @@ import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { buildMcpServer } from '../../../src/adapters/mcp/mcp-server.js';
+import { MemorySearchInputSchema, ThinkingAddInputSchema } from '../../../src/adapters/mcp/mcp-schemas.js';
+import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
 import { createCli } from '../../../src/adapters/cli/cli-entry.js';
 
 describe('buildMcpServer', () => {
@@ -35,6 +37,33 @@ describe('buildMcpServer', () => {
     const result = await tools.search.handler({ query: 'router' });
     expect(result.content).toHaveLength(1);
     expect(result.content[0].type).toBe('text');
+  });
+
+  it('search accepts file_path filter and passes it to search', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    await tools.add.handler({
+      type: 'lesson',
+      title: 'Filepath filter probe',
+      body: 'probe content',
+      createdBy: 'agent:mcp-test',
+    });
+    const all = await tools.search.handler({ query: 'Filepath' });
+    expect(all.content[0].text).toMatch(/mem_/);
+    const filtered = await tools.search.handler({ query: 'Filepath', file_path: 'nope.ts' });
+    expect(filtered.content[0].text).toBe('No results.');
+  });
+
+  it('MemorySearchInputSchema accepts file_path', () => {
+    const parsed = MemorySearchInputSchema.safeParse({ query: 'router', file_path: 'src/a.ts' });
+    expect(parsed.success).toBe(true);
   });
 
   it('adds a memory object', async () => {
@@ -195,6 +224,98 @@ describe('buildMcpServer', () => {
     const result = await tools.brief.handler({});
     expect(result.content).toHaveLength(1);
     expect(result.content[0].text).toContain('# Agent Brief');
+  });
+
+  it('runs a full thinking cycle: start -> add -> conclude creates decision with trace', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+
+    const started = await tools.start_thinking.handler({ goal: 'Decide auth', createdBy: 'agent:test' });
+    const seqId = started.content[0].text.replace('Started thinking sequence: ', '');
+    expect(seqId).toMatch(/^mem_/);
+
+    const added = await tools.add_thought.handler({ sequenceId: seqId, type: 'hypothesis', text: 'JWT suffices' });
+    expect(added.content[0].text).toContain('Added thought: mem_');
+
+    const concluded = await tools.conclude_thinking.handler({
+      sequenceId: seqId,
+      title: 'Use JWT',
+      body: 'Chosen.',
+      createdBy: 'agent:test',
+    });
+    const decisionId = concluded.content[0].text.replace('Created decision: ', '');
+    expect(decisionId).toMatch(/^mem_/);
+
+    const store = new MarkdownMemoryStore(dir);
+    const decision = await store.get(decisionId);
+    expect(decision?.body).toContain('## Thinking trace');
+    expect(decision?.body).toContain('1. [hypothesis] JWT suffices');
+  });
+
+  it('abandons a thinking sequence', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    const started = await tools.start_thinking.handler({ goal: 'Spike', createdBy: 'agent:test' });
+    const seqId = started.content[0].text.replace('Started thinking sequence: ', '');
+    const abandoned = await tools.abandon_thinking.handler({ sequenceId: seqId });
+    expect(abandoned.content[0].text).toBe(`Abandoned thinking sequence: ${seqId}`);
+  });
+
+  it('rejects an invalid thought type', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    await expect(tools.add_thought.handler({ sequenceId: 'mem_x', type: 'guess', text: 'x' })).rejects.toThrow();
+    // ошибка схемы по букве спеки (§4 Task 3): zod-enum отклоняет невалидный тип независимо от гварда use-case
+    expect(() => ThinkingAddInputSchema.parse({ sequenceId: 'mem_x', type: 'guess', text: 'x' })).toThrow();
+  });
+
+  it('analyzes memory via insights tool', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    const result = await tools.insights.handler({});
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0].text).toContain('Insights [patterns]');
+  });
+
+  it('rejects invalid insights type', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    await expect(tools.insights.handler({ type: 'bogus' })).rejects.toThrow(/Allowed:/);
   });
   it('creates a rule', async () => {
     const server = buildMcpServer(dir);
