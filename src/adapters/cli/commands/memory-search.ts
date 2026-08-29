@@ -16,7 +16,8 @@ export function memorySearchCommand(): Command {
     .option('--created-before <iso>', 'Created on or before date')
     .option('--limit <n>', 'Maximum results', parseInt)
     .option('--file-path <path>', 'Filter by related/source file path')
-    .option('--include-superseded', 'Include superseded objects', false)
+    .option('--hide-superseded', 'Hide superseded objects (shown and marked [superseded] by default)', false)
+    .option('--include-superseded', 'Deprecated no-op: superseded objects are shown by default', false)
     .action(async (query, options) => {
       const { index } = createCliContainer(process.cwd());
       const results = await searchMemory(
@@ -33,11 +34,12 @@ export function memorySearchCommand(): Command {
           createdBefore: options.createdBefore,
           file_path: options.filePath,
           limit: options.limit,
-          includeSuperseded: options.includeSuperseded,
+          includeSuperseded: !options.hideSuperseded,
         }
       );
       for (const result of results) {
-        console.log(`${result.object.id} [${result.object.type}] ${result.object.title}`);
+        const mark = result.object.status === 'superseded' ? ' [superseded]' : '';
+        console.log(`${result.object.id} [${result.object.type}] ${result.object.title}${mark}`);
       }
     });
 }
