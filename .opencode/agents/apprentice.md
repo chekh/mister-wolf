@@ -1,6 +1,6 @@
 ---
 description: "Apprentice: тестовый агент рамочной модели — личность в рамке, методика в памяти Wolf (PoC самообучения)"
-mode: subagent
+mode: all
 model: zai-coding-plan/glm-5.3
 temperature: 0.2
 permission:
