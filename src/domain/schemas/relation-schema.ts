@@ -17,6 +17,10 @@ export const RELATION_PREDICATES = [
   'resolved_by',
   'related_to',
   'produced_by',
+  'owner_skill',
+  'skill_of',
+  'complain',
+  'complained_by',
 ] as const;
 
 export const RelationSchema = z.object({
