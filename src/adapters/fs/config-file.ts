@@ -25,6 +25,7 @@ const ProjectTypeDeclSchema = z.object({
 });
 
 const ConfigFileSchema = z.object({
+  schema_version: z.number().int().optional().catch(undefined),
   artifact_sources: z.array(z.string()).catch([]),
   memory_types: z
     .object({
@@ -87,11 +88,12 @@ export async function loadWolfConfig(baseDir: string): Promise<WolfConfig | null
   const mt = cfg.memory_types ?? {};
   return {
     artifact_sources: cfg.artifact_sources,
+    schemaVersion: cfg.schema_version,
     projectTypes: Object.entries(mt.project ?? {}).map(([name, d]) => ({
       name: name as MemoryType,
       lifecycle: d.lifecycle as MemoryTypeDeclaration['lifecycle'],
-      subdirThread: d.subdir_thread,
-      subdirShared: d.subdir_shared,
+      subdir_thread: d.subdir_thread,
+      subdir_shared: d.subdir_shared,
       fields: d.fields,
     })),
     rawCoreBlock: mt.core ?? null,
@@ -122,11 +124,12 @@ export function loadWolfConfigSync(baseDir: string): WolfConfig | null {
   const mt = cfg.memory_types ?? {};
   return {
     artifact_sources: cfg.artifact_sources,
+    schemaVersion: cfg.schema_version,
     projectTypes: Object.entries(mt.project ?? {}).map(([name, d]) => ({
       name: name as MemoryType,
       lifecycle: d.lifecycle as MemoryTypeDeclaration['lifecycle'],
-      subdirThread: d.subdir_thread,
-      subdirShared: d.subdir_shared,
+      subdir_thread: d.subdir_thread,
+      subdir_shared: d.subdir_shared,
       fields: d.fields,
     })),
     rawCoreBlock: mt.core ?? null,
@@ -143,6 +146,7 @@ export function loadWolfConfigSync(baseDir: string): WolfConfig | null {
 export function renderConfigYaml(existing: WolfConfig | null): string {
   const doc = {
     '# comment': 'memory_types.core генерируется `wolf taxonomy sync`; ручные правки будут перезаписаны',
+    schema_version: existing?.schemaVersion,
     artifact_sources: existing?.artifact_sources ?? [],
     // сохраняем при regenerate (иначе taxonomy sync стёр бы настройки контура Ф20/Ф21)
     error_class_taxonomy: existing?.errorClassTaxonomy ?? [],
