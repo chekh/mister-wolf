@@ -185,12 +185,13 @@ export function appendComplaintSignal(
   });
 }
 
-/** Writer (в): delivery_event — факт доставки методики/инструмента (scaffold / tool expose). */
+/** Writer (в): delivery_event — факт доставки методики/инструмента (scaffold / tool expose;
+ * Ф22 — активация draft: доставка через wolf call / trigger_keywords). */
 export function appendDeliverySignal(
   baseDir: string,
   input: {
     name: string;
-    mechanism: 'skill' | 'frame' | 'plugin' | 'search';
+    mechanism: 'skill' | 'frame' | 'plugin' | 'search' | 'call';
     target?: string;
     actor: string;
     detail?: Record<string, unknown>;

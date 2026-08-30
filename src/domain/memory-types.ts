@@ -65,6 +65,29 @@ const FULL: readonly MemoryStatus[] = [
   'accepted',
 ];
 
+// Ф22 (D2.1): поля draft-объектов propose→validate→activate; спека §2.3, §5, §6.
+// Одинаковый набор для lesson и rule — носитель зависит от характера паттерна.
+// polarity ('positive'|'negative'), risk_level (low|medium|high) и
+// holdout_verdict (pass|fail|needs_human_review) — свободные строки:
+// нормализация значений в коде propose/validate, enum не заводим.
+const DRAFT_FIELDS: Record<string, FieldSpec> = {
+  pattern_key: { kind: 'string', optional: true },
+  pattern_count: { kind: 'int', default: 0 },
+  evidence: { kind: 'string[]', default: [] },
+  mechanical: { kind: 'boolean', optional: true },
+  polarity: { kind: 'string', optional: true },
+  constraint_tool: { kind: 'string', optional: true },
+  constraint_class: { kind: 'string', optional: true },
+  predicted_effect: { kind: 'string', optional: true },
+  regression_risks: { kind: 'string[]', default: [] },
+  blast_radius: { kind: 'string', optional: true },
+  risk_level: { kind: 'string', optional: true },
+  holdout_verdict: { kind: 'string', optional: true },
+  holdout_prevented: { kind: 'int', default: 0 },
+  holdout_checked: { kind: 'int', default: 0 },
+  holdout_ts: { kind: 'string', optional: true },
+};
+
 // Единственный источник истины: типы (MemoryType, MEMORY_TYPES) выводятся
 // отсюда — новый core-тип добавляется ТОЛЬКО в этот массив.
 const CORE_TAXONOMY_DECLS = [
@@ -83,7 +106,7 @@ const CORE_TAXONOMY_DECLS = [
     lifecycle: FULL,
     subdirThread: 'lessons',
     subdirShared: 'lessons',
-    fields: { trigger_keywords: { kind: 'string[]', default: [] } },
+    fields: { trigger_keywords: { kind: 'string[]', default: [] }, ...DRAFT_FIELDS },
   },
   {
     name: 'observation',
@@ -176,6 +199,7 @@ const CORE_TAXONOMY_DECLS = [
       applies_to: { kind: 'string[]', default: [] },
       trigger: { kind: 'string', default: '' },
       trigger_keywords: { kind: 'string[]', default: [] },
+      ...DRAFT_FIELDS,
     },
   },
   {
