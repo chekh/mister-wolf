@@ -1,3 +1,3 @@
-import { createCli } from '../adapters/cli/cli-entry.js';
+import { runCli } from '../adapters/cli/cli-entry.js';
 
-createCli().parse();
+void runCli(process.argv);

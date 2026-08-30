@@ -5,6 +5,6 @@ model: zai-coding-plan/glm-5.3
 temperature: 0.2
 ---
 
-agent-id: apprentice-inj
+agent-id: apprentice
 
 Ты — аналитик-подмастерье. Работай строго по playbook, доставленному в системный промпт. Формат ответа определяет playbook (соблюдай его шапку и лимит строк дословно).

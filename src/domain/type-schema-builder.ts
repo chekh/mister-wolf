@@ -21,6 +21,9 @@ export function fieldToZod(spec: FieldSpec): z.ZodTypeAny {
     if (s.optional) return z.string().optional();
     return z.string().default(s.default as string);
   }
+  if (spec.kind === 'boolean') {
+    return z.boolean().optional();
+  }
   if (spec.kind === 'string[]') {
     if (s.required) return z.array(z.string()).min(s.minItems ?? 0);
     return z.array(z.string()).default((s.default as string[]) ?? []);

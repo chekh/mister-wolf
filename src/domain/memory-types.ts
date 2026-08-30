@@ -24,6 +24,7 @@ export type FieldSpec =
   | { kind: 'string'; default: string }
   | { kind: 'string[]'; required: true; minItems?: number }
   | { kind: 'string[]'; default?: readonly string[] }
+  | { kind: 'boolean'; optional: true }
   | { kind: 'enum'; values: readonly string[] };
 
 export interface MemoryTypeDeclaration {
@@ -81,7 +82,19 @@ const CORE_TAXONOMY_DECLS = [
     subdirShared: 'lessons',
     fields: { trigger_keywords: { kind: 'string[]', default: [] } },
   },
-  { name: 'observation', lifecycle: FULL, subdirThread: 'lessons', subdirShared: 'lessons' },
+  {
+    name: 'observation',
+    lifecycle: FULL,
+    subdirThread: 'lessons',
+    subdirShared: 'lessons',
+    // Поля жалобы (wolf complain, B3): обоснование выбора типа — в memory-complain.ts.
+    fields: {
+      about: { kind: 'string', optional: true },
+      complaint: { kind: 'string', optional: true },
+      semantic: { kind: 'string', optional: true },
+      trigger: { kind: 'boolean', optional: true },
+    },
+  },
   { name: 'session-summary', lifecycle: FULL, subdirThread: 'sessions', subdirShared: null },
   {
     name: 'open-question',
@@ -150,7 +163,9 @@ const CORE_TAXONOMY_DECLS = [
   },
   {
     name: 'rule',
-    lifecycle: ['active', 'superseded', 'obsolete'],
+    // proposed/accepted/rejected/archived — bootstrap-черновики (§7.4):
+    // proposed → accepted (Стюард) → active; effective = ALLOWED_TRANSITIONS ∩ lifecycle
+    lifecycle: ['active', 'superseded', 'obsolete', 'proposed', 'accepted', 'rejected', 'archived'],
     subdirThread: null,
     subdirShared: 'rules',
     fields: {
@@ -227,6 +242,18 @@ const CORE_TAXONOMY_DECLS = [
     fields: {
       trigger_keywords: { kind: 'string[]', default: [] },
       related_objects: { kind: 'string[]', default: [] },
+    },
+  },
+  {
+    name: 'playbook',
+    lifecycle: ['active', 'stale', 'superseded', 'archived'],
+    subdirThread: null,
+    subdirShared: 'playbooks',
+    fields: {
+      trigger_keywords: { kind: 'string[]', default: [] },
+      steps: { kind: 'string[]', required: true, minItems: 1 },
+      owner_skill: { kind: 'string', required: true, min: 1 },
+      version: { kind: 'string', required: true, min: 1 },
     },
   },
 ] as const;

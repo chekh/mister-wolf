@@ -1,4 +1,5 @@
 import { getDeclaration, MemoryType } from './memory-types.js';
+import { UserFacingError } from './errors.js';
 
 /** Разбор значений CLI-флага --set в extra-поля типизированного объекта.
  *
@@ -13,12 +14,12 @@ export function parseSetPairs(inputs: readonly string[], type: MemoryType): Reco
   for (const input of inputs) {
     for (const pair of splitTopLevel(input)) {
       const i = pair.indexOf('=');
-      if (i <= 0) throw new Error(`Invalid --set pair "${pair}" (expected key=value)`);
+      if (i <= 0) throw new UserFacingError(`Invalid --set pair "${pair}" (expected key=value)`);
       const key = pair.slice(0, i).trim();
       const value = parseValue(pair.slice(i + 1));
       if (key in result) {
         if (!isArrayField(key)) {
-          throw new Error(`Duplicate --set key "${key}" (repeat is allowed only for array fields)`);
+          throw new UserFacingError(`Duplicate --set key "${key}" (repeat is allowed only for array fields)`);
         }
         const prev = Array.isArray(result[key]) ? (result[key] as unknown[]) : [result[key]];
         result[key] = [...prev, ...(Array.isArray(value) ? value : [value])];

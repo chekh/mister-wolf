@@ -20,6 +20,10 @@ const INVERSE: Record<RelationPredicate, RelationPredicate> = {
   resolved_by: 'resolves',
   related_to: 'related_to',
   produced_by: 'produced_by',
+  owner_skill: 'skill_of',
+  skill_of: 'owner_skill',
+  complain: 'complained_by',
+  complained_by: 'complain',
 };
 
 export async function recordRelation(

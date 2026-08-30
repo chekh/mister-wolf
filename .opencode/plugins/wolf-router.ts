@@ -1,14 +1,18 @@
 /**
- * PoC #4 (часть B): доставка playbook из памяти Wolf в системный промпт.
+ * Слой доставки №1 playbook-контекста (спека самообучения §13 «Память как
+ * источник истины: слои, playbook, рамочная доставка»,
+ * docs/superpowers/specs/2026-08-26-self-learning-design.md).
  *
- * Хук experimental.chat.system.transform добавляет свежий playbook на КАЖДОЕ
- * сообщение (не раз за сессию) — детерминированная доставка вместо
- * вероятностного wolf search агентом.
+ * Детерминированная доставка вместо вероятностного wolf search агентом:
+ * маркер `agent-id: <id>` В ТЕЛЕ рамки агента (frontmatter в system-промпт
+ * не попадает — известная грабля) → wolf search --type playbook → get +
+ * гвард owner_skill === agentId | `skill:${agentId}` (legacy) → максимальная
+ * version → инжект в system-промпт на каждое сообщение.
  *
- * ponytail: редакция — provider hook убран: в opencode 1.18.25 он регистрирует
- * только статические описания моделей (api.npm), диспатча на лету нет.
- * Роутинг моделей (часть A PoC) решается адаптером запуска: модель из памяти
- * Wolf передаётся в opencode run --model (см. .wolf/run-with-routing.sh).
+ * Fallback — слой доставки №2: если плагин ничего не нашёл, рамка сама зовёт
+ * `wolf search`. Реестр доставок = сами playbook-объекты через owner_skill,
+ * отдельного конфига нет. Всё в try/catch: плагин не имеет права уронить
+ * сессию (лог: .wolf/router.log — agent-id, hit/miss, injected).
  */
 
 import path from 'path';
@@ -20,8 +24,11 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.join(__dirname, '..', '..');
 const CLI = path.join(PROJECT_ROOT, 'dist', 'bootstrap', 'cli.js');
-const PLAYBOOK_ID = 'mem_20260828_apprentice_playbook_v4_lean_format_otvet_b00feb';
 const LOG = path.join(PROJECT_ROOT, '.wolf', 'router.log');
+const INJECT_HEADER = '# Актуальный playbook (источник: память Wolf, доставлен плагином; обязательный формат ответа)';
+// [ \t] вместо \s: \s съедает переводы строк и вытаскивает id с чужой строки.
+const AGENT_ID_RE = /^agent-id:[ \t]*([\w-]+)[ \t]*$/m;
+const CACHE_TTL_MS = 2500;
 
 const run = promisify(execFile);
 
@@ -32,28 +39,50 @@ function logRoute(line) {
   } catch { /* fail-safe */ }
 }
 
-// ponytail: 2s cache — свежесть между сообщениями, без CLI-спавна на каждый чих.
-let playbookCache = { value: null, at: 0 };
-async function getPlaybook() {
-  if (Date.now() - playbookCache.at < 2000) return playbookCache.value;
+// ponytail: per-agent кэш 2.5с — свежесть между сообщениями, без CLI-спавна на каждый чих.
+const cache = new Map();
+
+async function resolvePlaybook(agentId) {
+  const hit = cache.get(agentId);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
+  let body = null;
   try {
-    const { stdout } = await run('node', [CLI, 'get', PLAYBOOK_ID], { cwd: PROJECT_ROOT, timeout: 5000 });
-    playbookCache = { value: JSON.parse(stdout).body ?? null, at: Date.now() };
-  } catch {
-    playbookCache = { value: null, at: Date.now() };
-  }
-  return playbookCache.value;
+    const { stdout } = await run(
+      'node', [CLI, 'search', agentId, '--type', 'playbook', '--hide-superseded'],
+      { cwd: PROJECT_ROOT, timeout: 5000 }
+    );
+    const ids = [...stdout.matchAll(/^([\w-]+) \[playbook\]/gm)].map((m) => m[1]);
+    let best = null;
+    let bestVersion = -1;
+    for (const id of ids) {
+      const { stdout: json } = await run('node', [CLI, 'get', id], { cwd: PROJECT_ROOT, timeout: 5000 });
+      const obj = JSON.parse(json);
+      const owner = obj.owner_skill ?? obj.extra?.owner_skill;
+      if (owner !== agentId && owner !== `skill:${agentId}`) continue; // гвард владельца
+      const version = Number(String(obj.version ?? '').match(/\d+/)?.[0] ?? 0);
+      if (version > bestVersion) { bestVersion = version; best = obj; }
+    }
+    body = best?.body ?? null;
+  } catch { /* fail-safe: без playbook — рамка работает через wolf search */ }
+  cache.set(agentId, { value: body, at: Date.now() });
+  return body;
 }
 
 export const WolfPlaybookPlugin = async () => ({
   'experimental.chat.system.transform': async (_input, output) => {
     try {
-      logRoute(`transform fired, system parts=${output.system.length}, match=${output.system.join('\n').includes('apprentice-inj')}`);
-      if (!output.system.join('\n').includes('apprentice-inj')) return; // только инжект-рамке
-      const playbook = await getPlaybook();
-      if (!playbook) return;
-      output.system.push(`\n\n# Актуальный playbook (источник: память Wolf, доставлен плагином; обязательный формат ответа)\n\n${playbook}`);
-      logRoute('playbook injected into system prompt');
+      const joined = output.system.join('\n');
+      const m = joined.match(AGENT_ID_RE);
+      if (!m) return; // рамка без маркера — не наша забота
+      if (joined.includes(INJECT_HEADER)) return; // идемпотентность: не вставляем дважды
+      const agentId = m[1];
+      const body = await resolvePlaybook(agentId);
+      if (!body) {
+        logRoute(`agent-id=${agentId} playbook=miss injected=no`);
+        return; // fail-safe: fallback на wolf search самой рамкой
+      }
+      output.system.push(`\n\n${INJECT_HEADER}\n\n${body}`);
+      logRoute(`agent-id=${agentId} playbook=hit injected=yes`);
     } catch { /* fail-safe: не роняем сессию */ }
   },
 });
