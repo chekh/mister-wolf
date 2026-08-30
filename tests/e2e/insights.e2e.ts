@@ -69,4 +69,20 @@ describe('insights golden scenarios', () => {
     expect(insights.stdout).toContain('matched 0/0 objects');
     expect(insights.stdout).toContain('-');
   });
+
+  it('insights renders signal log top keys after repeated complaints (Ф20, D1.5)', () => {
+    const dir = tmpProject();
+    dirs.push(dir);
+    runCli(['init'], dir);
+
+    for (let i = 1; i <= 3; i++) {
+      const r = runCli(['complain', '--about', 'skill:ins', '--text', `жалоба ${i}`], dir);
+      expect(r.status).toBe(0);
+    }
+
+    const insights = runCli(['insights'], dir);
+    expect(insights.status).toBe(0);
+    expect(insights.stdout).toContain('Signal log');
+    expect(insights.stdout).toContain('complaint:skill:ins');
+  });
 });

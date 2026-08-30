@@ -330,3 +330,37 @@ describe('renderInsights', () => {
     expect(text).toContain('Insights [patterns] (topic: auth), matched 2/2 objects');
   });
 });
+
+describe('generateInsights — signal log passthrough (Ф20, D1.5)', () => {
+  const signalLog = {
+    totalEvents: 7,
+    topKeys: [
+      { key: 'complaint:skill:ins', count: 3 },
+      { key: 'tool:read_fs:not_found', count: 2 },
+    ],
+  };
+
+  it('passes input.signalLog into report as-is and renders Signal log section with events and keys', async () => {
+    const store = fakeStore([obj()]);
+    const report = await generateInsights({ store, clock: fakeClock() }, { signalLog });
+    expect(report.signalLog).toEqual(signalLog);
+    const text = renderInsights(report);
+    expect(text).toContain('## Signal log');
+    expect(text).toContain('events: 7');
+    expect(text).toContain('- complaint:skill:ins (3)');
+    expect(text).toContain('- tool:read_fs:not_found (2)');
+  });
+
+  it('without signalLog there is no Signal log section (regression of existing output)', async () => {
+    const store = fakeStore([obj()]);
+    const report = await generateInsights({ store, clock: fakeClock() }, {});
+    expect(report.signalLog).toBeUndefined();
+    expect(renderInsights(report)).not.toContain('Signal log');
+  });
+
+  it('non-patterns lenses do not render the section even when signalLog is present', async () => {
+    const store = fakeStore([obj()]);
+    const report = await generateInsights({ store, clock: fakeClock() }, { analysisType: 'activity', signalLog });
+    expect(renderInsights(report)).not.toContain('Signal log');
+  });
+});

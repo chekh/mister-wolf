@@ -16,9 +16,21 @@ export const INSIGHTS_STALE_DAYS = 30;
 export const DEBUG_TAGS: readonly string[] = ['debug', 'bug', 'bugfix', 'memory-repair', 'solve'];
 const DECISION_STATUSES = ['active', 'superseded', 'rejected', 'obsolete'] as const;
 
+export interface SignalKeyCount {
+  key: string;
+  count: number;
+}
+
+/** Сводка сигнального лога Ф20; готовит вызывающий слой (CLI), use-case только passthrough+render. */
+export interface SignalLogSummary {
+  totalEvents: number;
+  topKeys: SignalKeyCount[];
+}
+
 export interface InsightsInput {
   topic?: string; // undefined => весь проект
   analysisType?: AnalysisType; // default 'patterns'
+  signalLog?: SignalLogSummary; // Ф20: densities/top-повторы без LLM (§8 п.1)
 }
 
 export interface TagCount {
@@ -55,6 +67,7 @@ export interface InsightsReport {
   density: WeekBucket[]; // 8 недель, D7
   statusTally: TagCount[];
   truthRoleTally: TagCount[];
+  signalLog?: SignalLogSummary; // passthrough из input
 }
 
 function matchesTopic(obj: MemoryObject, topic: string): boolean {
@@ -189,6 +202,7 @@ export async function generateInsights(
     density: [...buckets.values()],
     statusTally,
     truthRoleTally,
+    signalLog: input.signalLog,
   };
 }
 
@@ -228,6 +242,12 @@ export function renderInsights(report: InsightsReport): string {
       'Type distribution',
       report.typeDistribution.map((t) => `- ${t.tag} (${t.count})`)
     );
+    if (report.signalLog) {
+      section(lines, 'Signal log (Ф20)', [
+        `events: ${report.signalLog.totalEvents}`,
+        ...report.signalLog.topKeys.map((k) => `- ${k.key} (${k.count})`),
+      ]);
+    }
   }
 
   if (report.analysisType === 'technical_debt') {
