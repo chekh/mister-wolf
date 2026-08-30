@@ -31,8 +31,8 @@ export class FsMemoryLock implements MemoryLock {
   }
 }
 
-function lockPathFor(dir: string): string {
-  return join(dir, '.lock');
+function lockPathFor(dir: string, lockFileName: string): string {
+  return join(dir, lockFileName);
 }
 
 function parseLockFile(content: string): { pid: number; ts: number } {
@@ -77,12 +77,17 @@ function stealIfStale(path: string, staleMs: number): { stolen: boolean; holderP
   }
 }
 
-export async function withMemoryLock<T>(dir: string, fn: () => Promise<T>, opts?: LockOpts): Promise<T> {
+export async function withMemoryLock<T>(
+  dir: string,
+  fn: () => Promise<T>,
+  opts?: LockOpts,
+  lockFileName: string = '.lock'
+): Promise<T> {
   mkdirSync(dir, { recursive: true });
   const maxWaitMs = opts?.maxWaitMs ?? LOCK_TIMING.MAX_WAIT_MS;
   const staleMs = opts?.staleMs ?? LOCK_TIMING.STALE_MS;
   const retryMs = LOCK_TIMING.RETRY_MS;
-  const path = lockPathFor(dir);
+  const path = lockPathFor(dir, lockFileName);
 
   const deadline = Date.now() + maxWaitMs;
 

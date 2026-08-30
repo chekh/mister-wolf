@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { rmSync } from 'fs';
+import { join } from 'path';
 import { ensureBuilt, runCli, tmpProject } from './helpers.js';
 
 describe('insights golden scenarios', () => {
@@ -62,6 +63,9 @@ describe('insights golden scenarios', () => {
     const dir = tmpProject();
     dirs.push(dir);
     runCli(['init'], dir);
+    // init делает лёгкий scan (project-scan-latest) — вычищаем память, чтобы
+    // проверить деградацию именно на ПУСТОЙ памяти (спека дистрибуции §3: init со scan)
+    rmSync(join(dir, '.wolf', 'memory'), { recursive: true, force: true });
 
     const insights = runCli(['insights'], dir);
     expect(insights.status).toBe(0);

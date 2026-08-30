@@ -1,0 +1,49 @@
+name: Publish
+
+# Тег-триггер не срабатывает из форков: push тега требует write-доступа к репо.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write # npm trusted publishing (OIDC) + provenance; долгоживущих токенов нет
+
+jobs:
+  publish:
+    name: npm publish (trusted publishing)
+    runs-on: ubuntu-latest
+    # GitHub Environment с protection (required reviewers) — дополнительный контур;
+    # настроить в репо-настройках один раз: Environment "npm" + linked publishing в npm.
+    environment: npm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sanity — tag matches package.json version
+        run: test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}"
+
+      - name: Checks
+        run: npm run check
+
+      - name: 'E2E (publishable artifact — правило проекта: E2E после каждого плана)'
+        run: npm run e2e
+
+      - name: Pack dry-run (tarball audit log in CI output)
+        run: npm pack --dry-run
+
+      - name: Use npm with trusted publishing support
+        run: npm install -g npm@^11
+
+      - name: Publish (OIDC + provenance)
+        run: npm publish --provenance
