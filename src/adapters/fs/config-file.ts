@@ -33,9 +33,15 @@ const ConfigFileSchema = z.object({
     })
     .optional()
     .catch({}),
-  // Ф20/Ф21: классы ошибок + порог паттерна (спека §2.1, §2.2)
+  // Ф20/Ф21: классы ошибок + порог паттерна (спека §2.1, §2.2); Ф26: decay TTL-override
   error_class_taxonomy: z.array(z.object({ id: z.string().min(1), match: z.array(z.string()).min(1) })).catch([]),
-  learning: z.object({ pattern_threshold: z.number().int().min(1).optional().catch(undefined) }).catch({}),
+  learning: z
+    .object({
+      pattern_threshold: z.number().int().min(1).optional().catch(undefined),
+      // Ф26: TTL по типам в СЕССИЯХ (ключ — тип, значение — сессий без срабатывания)
+      decay_ttl: z.record(z.string(), z.number().int().min(1)).optional().catch(undefined),
+    })
+    .catch({}),
 });
 
 export class ConfigLoadError extends Error {}
@@ -67,7 +73,7 @@ export async function loadWolfConfig(baseDir: string): Promise<WolfConfig | null
     })),
     rawCoreBlock: mt.core ?? null,
     errorClassTaxonomy: cfg.error_class_taxonomy,
-    learning: { patternThreshold: cfg.learning?.pattern_threshold },
+    learning: { patternThreshold: cfg.learning?.pattern_threshold, decayTtl: cfg.learning?.decay_ttl },
   };
 }
 
@@ -98,7 +104,7 @@ export function loadWolfConfigSync(baseDir: string): WolfConfig | null {
     })),
     rawCoreBlock: mt.core ?? null,
     errorClassTaxonomy: cfg.error_class_taxonomy,
-    learning: { patternThreshold: cfg.learning?.pattern_threshold },
+    learning: { patternThreshold: cfg.learning?.pattern_threshold, decayTtl: cfg.learning?.decay_ttl },
   };
 }
 

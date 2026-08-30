@@ -17,6 +17,9 @@ import { UserFacingError } from '../../domain/errors.js';
 import { transitionMemoryObject } from './transition-memory-object.js';
 import { recordRelation } from './record-relation.js';
 import { appendDeliverySignal } from '../../adapters/fs/session-metrics-log.js';
+import { buildScenarioFromDraft, runStopGate } from '../../domain/gates/stop-gate.js';
+import { getCallInjections } from './get-call-injections.js';
+import { tokenize } from '../../domain/solve/scenarios.js';
 
 export async function activateDraft(
   deps: {
@@ -55,6 +58,29 @@ export async function activateDraft(
       throw new UserFacingError('активация заблокирована: holdout fail');
     }
     throw new UserFacingError('текстовый draft: требуется человеческое ревью (--human-approved)');
+  }
+
+  // STOP-гейт Ф23 (спека §3 правило границы (б)): барьер автономной активации —
+  // delivery-механизм обязан доносить знание до агента. Только автономный путь
+  // (pass без --human-approved) и только механические draft'ы; текстовые идут
+  // через needs_human_review/--human-approved выше.
+  if (input.humanApproved !== true && verdict === 'pass') {
+    const scenario = buildScenarioFromDraft(rec);
+    if (scenario !== null) {
+      // гипотетическая доставка: текущие call-инжекции по теме сценария +
+      // draft как hypothetical-блок, ЕСЛИ trigger_keywords реально матчат тему
+      // (как это сделает get-call-injections после активации — kw-матчинг D2)
+      const inj = await getCallInjections(deps, { topic: scenario.topic });
+      const kw: string[] = Array.isArray(rec.trigger_keywords) ? (rec.trigger_keywords as string[]) : [];
+      const topicTokens = tokenize(scenario.topic);
+      const blocks = topicTokens.some((t) => kw.includes(t))
+        ? [...inj.blocks, `- [${input.draftId}] ${String(rec.title ?? '')} (hypothetical)\n${String(rec.body ?? '')}`]
+        : inj.blocks;
+      const gate = runStopGate(() => blocks, [scenario]);
+      if (!gate.passed) {
+        throw new UserFacingError(`STOP-гейт красный: ${gate.results[0]?.reason ?? 'fail'}`);
+      }
+    }
   }
 
   // governance-переходы proposed→accepted→active (события lifecycle пишутся)

@@ -18,8 +18,17 @@
 - [User guide](./guide/user-guide.md) — базовые команды и workflow (RU; полный список — `wolf --help`).
 - [Протокол обработки жалоб](./guide/complaint-protocol.md) — `wolf complain` → Стюард → новая версия playbook → вердикт.
 - [Протокол Стюарда: bootstrap](./guide/steward-bootstrap.md) — свёртка черновиков стартовой памяти после `wolf bootstrap`.
+- [Протокол обучения Стюарда](./guide/steward-learn.md) — полный цикл самообучения Ф20–26 (кто/что/когда).
 - [Master plan template](./templates/master-plan-template.md) — шаблон мастер-плана фичи (5 стадий).
 - [UX scenarios](./ux-scenarios/README.md) — 12 сценариев использования как requirements-материал.
+
+### Контур самообучения: как включить
+
+1. `wolf init` в проекте — команды контура уже в CLI, отдельных установок нет.
+2. Работайте как обычно: `wolf run/complain/call` пишут сигналы в `.wolf/metrics/session-metrics.jsonl` (Ф20).
+3. `wolf learn digest` — накопленные паттерны (N≥3) и draft'ы; `wolf learn propose/validate/activate` — цикл правил (Ф21–22).
+4. `npm run pressure-test` — STOP-гейт: доставка знаний + read-only зоны (Ф23); `wolf learn decay` — чистка по пробегу (Ф26).
+5. Тонко: `wolf learn evolve` (шаблоны, Ф24) и `wolf learn route` (глубина ревью, Ф25) — рекомендации, применение через человека. Детали: [steward-learn.md](./guide/steward-learn.md).
 
 ## Аудит и планирование
 

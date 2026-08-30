@@ -15,7 +15,7 @@ export type MemoryStatus =
   | 'accepted'
   | 'candidate'
   | 'deprecated';
-export type ReviewState = 'accepted' | 'proposed' | 'rejected';
+export type ReviewState = 'accepted' | 'proposed' | 'rejected' | 'review_required';
 export type Confidence = 'low' | 'medium' | 'high';
 export type SourceKind = 'manual' | 'session' | 'file' | 'scan';
 
@@ -88,6 +88,16 @@ const DRAFT_FIELDS: Record<string, FieldSpec> = {
   holdout_ts: { kind: 'string', optional: true },
 };
 
+// Ф26: decay по пробегу (TTL в СЕССИЯХ без срабатывания; спека §6, §16):
+// last_triggered_at — штамп последнего срабатывания доставки (derived-кэш из
+// сигнального лога), sessions_since_last_trigger — пробег с последнего
+// срабатывания, decay_reason — причина review_required ('ttl'|'rule_utilization').
+const DECAY_FIELDS: Record<string, FieldSpec> = {
+  last_triggered_at: { kind: 'string', optional: true },
+  sessions_since_last_trigger: { kind: 'int', default: 0 },
+  decay_reason: { kind: 'string', optional: true },
+};
+
 // Единственный источник истины: типы (MemoryType, MEMORY_TYPES) выводятся
 // отсюда — новый core-тип добавляется ТОЛЬКО в этот массив.
 const CORE_TAXONOMY_DECLS = [
@@ -99,6 +109,7 @@ const CORE_TAXONOMY_DECLS = [
     subdirShared: 'decisions',
     fields: {
       thread: { kind: 'string', optional: true },
+      ...DECAY_FIELDS,
     },
   },
   {
@@ -106,7 +117,7 @@ const CORE_TAXONOMY_DECLS = [
     lifecycle: FULL,
     subdirThread: 'lessons',
     subdirShared: 'lessons',
-    fields: { trigger_keywords: { kind: 'string[]', default: [] }, ...DRAFT_FIELDS },
+    fields: { trigger_keywords: { kind: 'string[]', default: [] }, ...DRAFT_FIELDS, ...DECAY_FIELDS },
   },
   {
     name: 'observation',
@@ -121,7 +132,8 @@ const CORE_TAXONOMY_DECLS = [
       trigger: { kind: 'boolean', optional: true },
     },
   },
-  { name: 'session-summary', lifecycle: FULL, subdirThread: 'sessions', subdirShared: null },
+  // Ф26: DECAY_FIELDS — TTL-пробег, спека §6/§16
+  { name: 'session-summary', lifecycle: FULL, subdirThread: 'sessions', subdirShared: null, fields: DECAY_FIELDS },
   {
     name: 'open-question',
     lifecycle: FULL,
@@ -200,6 +212,7 @@ const CORE_TAXONOMY_DECLS = [
       trigger: { kind: 'string', default: '' },
       trigger_keywords: { kind: 'string[]', default: [] },
       ...DRAFT_FIELDS,
+      ...DECAY_FIELDS,
     },
   },
   {
@@ -281,6 +294,7 @@ const CORE_TAXONOMY_DECLS = [
       steps: { kind: 'string[]', required: true, minItems: 1 },
       owner_skill: { kind: 'string', required: true, min: 1 },
       version: { kind: 'string', required: true, min: 1 },
+      ...DECAY_FIELDS,
     },
   },
   {

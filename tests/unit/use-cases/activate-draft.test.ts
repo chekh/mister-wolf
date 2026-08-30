@@ -15,6 +15,7 @@ import { SystemClock } from '../../../src/adapters/fs/system-clock.js';
 import { HashIdGenerator } from '../../../src/adapters/fs/hash-id-generator.js';
 import { eventsPath, relationsPath } from '../../../src/adapters/fs/project-paths.js';
 import { UserFacingError } from '../../../src/domain/errors.js';
+import type { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
 
 function toolError(tool: string, cls: string, ts: string): SignalEvent {
   return {
@@ -167,5 +168,47 @@ describe('activateDraft (Ф22 D2.2, гейт §2.5)', () => {
     await expect(activateDraft(deps, { draftId: plain.object.id, actor: 'user:owner' })).rejects.toThrow(
       `не draft propose: ${plain.object.id}`
     );
+  });
+
+  it('(е) Ф23 STOP-гейт: механический draft с корректными trigger_keywords — гейт зелёный', async () => {
+    const { deps, draftId, after } = await proposeDeps('bash:timeout');
+    await validateDraft(
+      { store: deps.store, clock: deps.clock },
+      { draftId, signals: [toolError('bash', 'timeout', after)] }
+    );
+    await activateDraft(deps, { draftId, actor: 'user:owner' });
+    expect((await deps.store.get(draftId))?.status).toBe('active');
+  });
+
+  it('(ж) Ф23 STOP-гейт: пустые trigger_keywords → активация заблокирована', async () => {
+    const { deps, draftId, after } = await proposeDeps('bash:timeout');
+    await deps.store.update(draftId, { trigger_keywords: [] } as Partial<MemoryObject>);
+    await validateDraft(
+      { store: deps.store, clock: deps.clock },
+      { draftId, signals: [toolError('bash', 'timeout', after)] }
+    );
+    await expect(activateDraft(deps, { draftId, actor: 'user:owner' })).rejects.toThrow('STOP-гейт красный');
+    expect((await deps.store.get(draftId))?.status).toBe('proposed');
+  });
+
+  it('(з) Ф23 STOP-гейт: чужие trigger_keywords → активация заблокирована', async () => {
+    const { deps, draftId, after } = await proposeDeps('bash:timeout');
+    await deps.store.update(draftId, { trigger_keywords: ['чужое'] } as Partial<MemoryObject>);
+    await validateDraft(
+      { store: deps.store, clock: deps.clock },
+      { draftId, signals: [toolError('bash', 'timeout', after)] }
+    );
+    await expect(activateDraft(deps, { draftId, actor: 'user:owner' })).rejects.toThrow('STOP-гейт красный');
+  });
+
+  it('(и) Ф23 STOP-гейт: --human-approved обходит гейт (человек — компенсатор)', async () => {
+    const { deps, draftId, after } = await proposeDeps('bash:timeout');
+    await deps.store.update(draftId, { trigger_keywords: [] } as Partial<MemoryObject>);
+    await validateDraft(
+      { store: deps.store, clock: deps.clock },
+      { draftId, signals: [toolError('bash', 'timeout', after)] }
+    );
+    await activateDraft(deps, { draftId, actor: 'user:owner', humanApproved: true });
+    expect((await deps.store.get(draftId))?.status).toBe('active');
   });
 });
