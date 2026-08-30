@@ -92,8 +92,8 @@ export async function loadWolfConfig(baseDir: string): Promise<WolfConfig | null
     projectTypes: Object.entries(mt.project ?? {}).map(([name, d]) => ({
       name: name as MemoryType,
       lifecycle: d.lifecycle as MemoryTypeDeclaration['lifecycle'],
-      subdir_thread: d.subdir_thread,
-      subdir_shared: d.subdir_shared,
+      subdirThread: d.subdir_thread,
+      subdirShared: d.subdir_shared,
       fields: d.fields,
     })),
     rawCoreBlock: mt.core ?? null,
@@ -128,8 +128,8 @@ export function loadWolfConfigSync(baseDir: string): WolfConfig | null {
     projectTypes: Object.entries(mt.project ?? {}).map(([name, d]) => ({
       name: name as MemoryType,
       lifecycle: d.lifecycle as MemoryTypeDeclaration['lifecycle'],
-      subdir_thread: d.subdir_thread,
-      subdir_shared: d.subdir_shared,
+      subdirThread: d.subdir_thread,
+      subdirShared: d.subdir_shared,
       fields: d.fields,
     })),
     rawCoreBlock: mt.core ?? null,
