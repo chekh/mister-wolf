@@ -36,3 +36,35 @@ describe('config round-trip: ключи контура Ф20/Ф21 не теряю
     expect(rendered).not.toContain('grpc');
   });
 });
+
+// E1.2: override порогов панели effectiveness читается из config.yaml;
+// битый блок отбрасывается схемой (.catch(undefined)) → дефолты.
+describe('config learning.effectiveness_thresholds (E1.2)', () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'wolf-config-eff-'));
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  function writeConfig(yaml: string): void {
+    mkdirSync(join(dir, '.wolf'), { recursive: true });
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), yaml);
+  }
+
+  it('snake_case-поля маппятся в camelCase, незаданные отсутствуют', () => {
+    writeConfig('learning:\n  effectiveness_thresholds:\n    noise_ok: 25\n    silent_ok: 40\n');
+    const loaded = loadWolfConfigSync(dir);
+    expect(loaded?.learning?.effectivenessThresholds).toEqual({ noiseOk: 25, silentOk: 40 });
+  });
+
+  it('битые значения (строка вместо числа) → весь блок undefined → дефолты', () => {
+    writeConfig('learning:\n  effectiveness_thresholds:\n    noise_ok: "20"\n');
+    const loaded = loadWolfConfigSync(dir);
+    expect(loaded?.learning?.effectivenessThresholds).toBeUndefined();
+  });
+
+  it('без блока — undefined (дефолты панели)', () => {
+    writeConfig('learning:\n  pattern_threshold: 5\n');
+    expect(loadWolfConfigSync(dir)?.learning?.effectivenessThresholds).toBeUndefined();
+  });
+});

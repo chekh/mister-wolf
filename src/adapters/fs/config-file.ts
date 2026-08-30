@@ -40,11 +40,34 @@ const ConfigFileSchema = z.object({
       pattern_threshold: z.number().int().min(1).optional().catch(undefined),
       // Ф26: TTL по типам в СЕССИЯХ (ключ — тип, значение — сессий без срабатывания)
       decay_ttl: z.record(z.string(), z.number().int().min(1)).optional().catch(undefined),
+      // E1.2: пороги effectiveness-панели (проценты); битый блок → дефолты
+      effectiveness_thresholds: z
+        .object({
+          noise_ok: z.number().optional(),
+          noise_warn: z.number().optional(),
+          silent_ok: z.number().optional(),
+        })
+        .optional()
+        .catch(undefined),
     })
     .catch({}),
 });
 
 export class ConfigLoadError extends Error {}
+
+/** E1.2: пороги effectiveness → camelCase, undefined-поля отбрасываются. */
+function mapEffectivenessThresholds(t?: {
+  noise_ok?: number;
+  noise_warn?: number;
+  silent_ok?: number;
+}): { noiseOk?: number; noiseWarn?: number; silentOk?: number } | undefined {
+  if (t === undefined) return undefined;
+  const out: { noiseOk?: number; noiseWarn?: number; silentOk?: number } = {};
+  if (t.noise_ok !== undefined) out.noiseOk = t.noise_ok;
+  if (t.noise_warn !== undefined) out.noiseWarn = t.noise_warn;
+  if (t.silent_ok !== undefined) out.silentOk = t.silent_ok;
+  return Object.keys(out).length > 0 ? out : undefined;
+}
 
 export async function loadWolfConfig(baseDir: string): Promise<WolfConfig | null> {
   let raw: string;
@@ -73,7 +96,11 @@ export async function loadWolfConfig(baseDir: string): Promise<WolfConfig | null
     })),
     rawCoreBlock: mt.core ?? null,
     errorClassTaxonomy: cfg.error_class_taxonomy,
-    learning: { patternThreshold: cfg.learning?.pattern_threshold, decayTtl: cfg.learning?.decay_ttl },
+    learning: {
+      patternThreshold: cfg.learning?.pattern_threshold,
+      decayTtl: cfg.learning?.decay_ttl,
+      effectivenessThresholds: mapEffectivenessThresholds(cfg.learning?.effectiveness_thresholds),
+    },
   };
 }
 
@@ -104,7 +131,11 @@ export function loadWolfConfigSync(baseDir: string): WolfConfig | null {
     })),
     rawCoreBlock: mt.core ?? null,
     errorClassTaxonomy: cfg.error_class_taxonomy,
-    learning: { patternThreshold: cfg.learning?.pattern_threshold, decayTtl: cfg.learning?.decay_ttl },
+    learning: {
+      patternThreshold: cfg.learning?.pattern_threshold,
+      decayTtl: cfg.learning?.decay_ttl,
+      effectivenessThresholds: mapEffectivenessThresholds(cfg.learning?.effectiveness_thresholds),
+    },
   };
 }
 
