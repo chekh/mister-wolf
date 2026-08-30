@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { Command } from 'commander';
+import { ensureCurrentSchema } from '../../adapters/fs/schema-guard.js';
 import { memoryInitCommand as initCommand } from './commands/memory-init.js';
 import { memoryAddCommand as addCommand } from './commands/memory-add.js';
 import { memoryListCommand as listCommand } from './commands/memory-list.js';
@@ -95,6 +96,15 @@ export function createCli(): Command {
 /** Единая точка запуска: UserFacingError → одна строка Error:, иначе стек (W4). */
 export async function runCli(argv: string[]): Promise<void> {
   try {
+    // спека §6: `init --recreate` — единственный путь восстановления при битом .wolf/config.yaml;
+    // guard на битом yaml бросает с хинтом на эту команду, поэтому она сама его обходит.
+    // Матч строгий: argv = [node, cli.js, <command>, ...], команда — ровно argv[2] === 'init'
+    // (не подстрока — иначе `wolf add --title "... init ..."` ложно обходил бы guard);
+    // `--recreate` проверяется точным токеном массива.
+    const isRecoveryInit = argv[2] === 'init' && argv.includes('--recreate');
+    if (!isRecoveryInit) {
+      await ensureCurrentSchema(process.cwd());
+    }
     await createCli().parseAsync(argv);
   } catch (err: unknown) {
     if (err instanceof UserFacingError) {

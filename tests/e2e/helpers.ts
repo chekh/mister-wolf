@@ -1,5 +1,5 @@
 import { spawnSync, execSync } from 'child_process';
-import { mkdtempSync } from 'fs';
+import { mkdtempSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -21,5 +21,8 @@ export function runCli(args: string[], cwd: string): { stdout: string; stderr: s
 }
 
 export function tmpProject(): string {
-  return mkdtempSync(join(tmpdir(), 'wolf-e2e-'));
+  const dir = mkdtempSync(join(tmpdir(), 'wolf-e2e-'));
+  // маркер корня проекта: init вне проекта честно отказывает (спека §6 дистрибуции)
+  writeFileSync(join(dir, 'package.json'), '{ "name": "wolf-e2e" }');
+  return dir;
 }
