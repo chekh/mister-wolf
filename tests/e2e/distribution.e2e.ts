@@ -130,4 +130,30 @@ describe('global install from tarball into isolated HOME (спека §3, §7)',
     // реестр изолирован: запись в tmp-HOME, не в реальный ~/.config/wolf
     expect(existsSync(join(home, '.config', 'wolf', 'projects.yaml'))).toBe(true);
   });
+
+  it(
+    'REAL npx -y <tarball> init: MCP config NOT written, .wolf/ created, warning shown (спека §3, regression 1.0.1)',
+    { timeout: 240_000 },
+    () => {
+      // Дефект 1.0.0: isNpxRun ждал npm_command='npx', реальный npx ставит 'exec'
+      // → init писал MCP-конфиг вопреки спеке. Здесь env НЕ мокаем — npx ставит
+      // npm_command сам; изоляция через tmp-HOME (реестр + npx-кеш не мусорят в дев-машину).
+      const project = tmpProject();
+      writeFileSync(join(project, 'opencode.json'), '{}');
+      const res = spawnSync('npx', ['-y', `file:${tarball}`, 'init'], {
+        cwd: project,
+        env: isolatedEnv(),
+        encoding: 'utf-8',
+        timeout: 240_000,
+      });
+      expect(res.status, `npx stderr: ${res.stderr}`).toBe(0);
+      // MCP-конфиг не записан — ядро спеки §3
+      expect(JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8')).mcp).toBeUndefined();
+      // память создана
+      expect(existsSync(join(project, '.wolf'))).toBe(true);
+      // честное предупреждение о try-out
+      expect(res.stdout).toContain('npx try-out');
+      expect(res.stdout).toContain('npm install -g mister-wolf');
+    }
+  );
 });
