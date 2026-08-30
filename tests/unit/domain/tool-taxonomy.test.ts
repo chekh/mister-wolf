@@ -104,6 +104,7 @@ describe('tool type (Фаза C): схема объекта', () => {
     const schema = buildTypeSchema(getDeclaration('tool'));
     expect(schema.safeParse(base({ usage_count: 2 })).success).toBe(true);
     expect(schema.safeParse(base({ usage_count: 2.5 })).success).toBe(false);
+    expect(schema.safeParse(base({ usage_count: -1 })).success).toBe(false);
   });
 
   it('статус вне lifecycle tool отклоняется', () => {

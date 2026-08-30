@@ -25,7 +25,12 @@ export function fieldToZod(spec: FieldSpec): z.ZodTypeAny {
     return z.boolean().optional();
   }
   if (spec.kind === 'int') {
-    return z.number().int().default((s.default as number | undefined) ?? 0);
+    // int-поля таксономии — счётчики, отрицательные значения бессмысленны
+    return z
+      .number()
+      .int()
+      .min(0)
+      .default((s.default as number | undefined) ?? 0);
   }
   if (spec.kind === 'string[]') {
     if (s.required) return z.array(z.string()).min(s.minItems ?? 0);
