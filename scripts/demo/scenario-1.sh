@@ -57,9 +57,12 @@ check "журнал событий ведётся (появился при пе�
 
 step "1.4 wolf brief — первый полезный вывод"
 BRIEF=$(node "$WOLF" brief 2>/dev/null)
-check "brief содержит снимок проекта"   "echo \"$BRIEF\" | grep -q 'Project Snapshot'"
-check "brief видит зарегистрированные документы" "echo \"$BRIEF\" | grep -q 'document-ref'"
-check "brief НЕ показывает черновики (пост-аудит §2.5)" "! echo \"$BRIEF\" | grep -q 'Proposed\|proposed.*rule'"
+H1=$(echo "$BRIEF" | grep -c 'Project Snapshot' | tr -d ' ')
+H2=$(echo "$BRIEF" | grep -c 'document-ref' | tr -d ' ')
+H3=$(echo "$BRIEF" | grep -ci 'proposed' | tr -d ' ')
+check "brief содержит снимок проекта"   "[ \"$H1\" -ge 1 ]"
+check "brief видит зарегистрированные документы" "[ \"$H2\" -ge 1 ]"
+check "brief НЕ показывает черновики (пост-аудит §2.5)" "[ \"$H3\" -eq 0 ]"
 
 echo
 echo "════════════════════════════════════"
