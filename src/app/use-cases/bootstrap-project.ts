@@ -86,7 +86,9 @@ export async function bootstrapProject(
 
   // дедуп work-thread: повторный bootstrap переиспользует существующий
   const BOOTSTRAP_THREAD_TITLE = 'Bootstrap: наполнение стартовой памяти';
-  const existingThread = (await deps.store.list({ type: 'work-thread' })).find((t) => t.title === BOOTSTRAP_THREAD_TITLE);
+  const existingThread = (await deps.store.list({ type: 'work-thread' })).find(
+    (t) => t.title === BOOTSTRAP_THREAD_TITLE
+  );
   let threadId: string;
   if (existingThread) {
     threadId = existingThread.id;
