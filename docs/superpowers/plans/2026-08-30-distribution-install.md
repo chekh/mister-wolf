@@ -67,7 +67,8 @@
 | `tests/unit/use-cases/init-project.test.ts`              | Оркестрация init (кейсы §3)                                                                                        |
 | `tests/unit/use-cases/doctor.test.ts`                    | runDoctor                                                                                                          |
 | `tests/unit/use-cases/bootstrap-dedup.test.ts`           | Дедуп bootstrap при повторе                                                                                        |
-| `tests/e2e/schema-guard.e2e.ts`                          | Guard в точках входа на легаси-проекте                                                                             |
+| `tests/e2e/init-cli.e2e.ts`                              | E2E CLI init: written/unchanged, unknown --platform, no-platform skip                                              |
+| `tests/e2e/schema-guard.e2e.ts`                          | Guard в точках входа на легаси-проекте + recovery-цикл `init --recreate`                                           |
 | `tests/e2e/distribution.e2e.ts`                          | Tarball-assert + установка в tmp-HOME + init + npx-кейс                                                            |
 
 ### Modify
@@ -232,7 +233,7 @@ Expected: build без ошибок (импорты `serveStdio`, `McpServer`, `
 - [ ] **Step 6: Verify tarball composition**
 
 Run: `npm pack --dry-run 2>&1 | tail -25`
-Expected: `Tarball Contents` — только `dist/**`, `README.md`, `LICENSE`, `package.json`. Никаких `wolf-experiment/`, `.external-research/`, `src/`, `tests/`. (Автоматический assert — Task 17.)
+Expected: `Tarball Contents` — только `dist/**`, `README.md`, `LICENSE`, `package.json`. Никаких `wolf-experiment/`, `.external-research/`, `src/`, `tests/`. (Автоматический assert — Task 18.)
 
 - [ ] **Step 7: Run test to verify it passes**
 
@@ -472,6 +473,13 @@ describe('OpencodeAdapter.writeConfig', () => {
     expect(readFileSync(join(dir, 'opencode.json'), 'utf-8')).toBe(raw);
   });
 
+  it('broken JSONC → UserFacingError (parity with ClaudeAdapter), file untouched', async () => {
+    const raw = '{ nope';
+    writeFileSync(join(dir, 'opencode.jsonc'), raw);
+    await expect(new OpencodeAdapter().writeConfig(dir, cmd)).rejects.toThrow(/not valid JSONC/);
+    expect(readFileSync(join(dir, 'opencode.jsonc'), 'utf-8')).toBe(raw);
+  });
+
   it('no write permission → fails without partial write (atomicity)', async () => {
     writeFileSync(join(dir, 'opencode.json'), '{}');
     chmodSync(dir, 0o555); // каталог read-only: tmp-файл для atomic rename не создать
@@ -552,7 +560,14 @@ export class OpencodeAdapter implements PlatformAdapter {
     } catch {
       return null;
     }
-    return asConfig(parseJsonc(raw), file);
+    let parsed: unknown;
+    try {
+      parsed = parseJsonc(raw);
+    } catch (err) {
+      // паритет с ClaudeAdapter: ошибки парсинга — UserFacingError, не сырой SyntaxError
+      throw new UserFacingError(`${file} is not valid JSONC: ${err instanceof Error ? err.message : err}`);
+    }
+    return asConfig(parsed, file);
   }
 
   async writeConfig(projectRoot: string, cmd: McpCommand): Promise<'written' | 'replaced' | 'unchanged'> {
@@ -601,7 +616,7 @@ function asConfig(value: unknown, file: string): PlatformConfig {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/adapters/platforms/opencode-adapter.test.ts`
-Expected: PASS (13 tests)
+Expected: PASS (15 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -886,7 +901,7 @@ describe('wolfUserConfigDir (XDG, спека §3 уровень 0)', () => {
 
 ```ts
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync } from 'fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import yaml from 'js-yaml';
@@ -1518,10 +1533,11 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { initProject, looksLikeProjectRoot } from '../../../src/app/use-cases/init-project.js';
+import { initProject, looksLikeProjectRoot, recreateConfig } from '../../../src/app/use-cases/init-project.js';
 import { ProjectInitializer } from '../../../src/ports/project-initializer.port.js';
 import { PlatformAdapter, PlatformConfig, McpCommand } from '../../../src/ports/platform-adapter.port.js';
 import { CURRENT_SCHEMA_VERSION } from '../../../src/adapters/fs/schema-version.js';
+import { scanProject } from '../../../src/app/use-cases/scan-project.js';
 import type { ProjectSnapshot } from '../../../src/domain/schemas/project-scan-schema.js';
 
 /* ---------- fakes ---------- */
@@ -1700,6 +1716,34 @@ describe('initProject', () => {
     expect(oc.removeCalls).toBe(0);
   });
 });
+
+describe('recreateConfig (спека §6: повреждённый .wolf → восстановление без вопросов)', () => {
+  it('corrupted yaml → backup + valid default config written', async () => {
+    mkdirSync(join(dir, '.wolf'), { recursive: true });
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), '{broken');
+    await recreateConfig(dir);
+    const raw = readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8');
+    expect(raw).toContain('memory_types'); // валидный дефолт-рендер
+    // бэкап оригинала сохранён
+    const stamps = readdirSync(join(dir, '.wolf', 'backup'));
+    expect(stamps).toHaveLength(1);
+    expect(readFileSync(join(dir, '.wolf', 'backup', stamps[0], 'config.yaml'), 'utf-8')).toBe('{broken');
+  });
+
+  it('valid yaml config → no-op (file untouched, no backup)', async () => {
+    mkdirSync(join(dir, '.wolf'), { recursive: true });
+    const body = 'artifact_sources: [docs]\n';
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), body);
+    await recreateConfig(dir);
+    expect(readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8')).toBe(body);
+    expect(existsSync(join(dir, '.wolf', 'backup'))).toBe(false);
+  });
+
+  it('missing config → no-op (init will create the skeleton)', async () => {
+    await recreateConfig(dir);
+    expect(existsSync(join(dir, '.wolf'))).toBe(false);
+  });
+});
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -1727,6 +1771,7 @@ export function isNpxRun(env: NodeJS.ProcessEnv = process.env): boolean {
 import { existsSync } from 'fs';
 import * as fs from 'fs/promises';
 import { join } from 'path';
+import yaml from 'js-yaml';
 import { ProjectInitializer } from '../../ports/project-initializer.port.js';
 import { PlatformAdapter, McpCommand } from '../../ports/platform-adapter.port.js';
 import { scanProject } from './scan-project.js';
@@ -1833,7 +1878,8 @@ export async function initProject(
 
 /**
  * §6: повреждённый .wolf → неинтерактивное восстановление:
- * бэкап конфига в .wolf/backup/<ts>/ + дефолтный рендер. Валидный конфиг не трогаем.
+ * битый yaml → бэкап в .wolf/backup/<ts>/ + дефолтный рендер.
+ * Валидный yaml-объект и отсутствующий конфиг → no-op.
  */
 export async function recreateConfig(baseDir: string): Promise<void> {
   const cfgPath = configPath(baseDir);
@@ -1843,6 +1889,15 @@ export async function recreateConfig(baseDir: string): Promise<void> {
   } catch {
     return; // конфига нет — init создаст скелет
   }
+  // валидный конфиг не трогаем: --recreate лечит только повреждённый yaml
+  let parsed: unknown;
+  try {
+    parsed = yaml.load(raw);
+  } catch {
+    parsed = undefined; // битый yaml — восстанавливаем ниже
+  }
+  if (parsed !== null && typeof parsed === 'object') return;
+
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const backupDir = join(baseDir, '.wolf', 'backup', stamp);
   await fs.mkdir(backupDir, { recursive: true });
@@ -1854,7 +1909,7 @@ export async function recreateConfig(baseDir: string): Promise<void> {
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npx vitest run tests/unit/domain/npx.test.ts tests/unit/use-cases/init-project.test.ts`
-Expected: PASS (3 + 8 tests). Если tsc ругается на литерал `emptySnapshot` — сверь тип `ProjectSnapshot` в `src/domain/schemas/project-scan-schema.ts` и при нуллабельных `branch/commit` оставь `as unknown as ProjectSnapshot` (уже в тесте).
+Expected: PASS (3 + 11 tests). Если tsc ругается на литерал `emptySnapshot` — сверь тип `ProjectSnapshot` в `src/domain/schemas/project-scan-schema.ts` и при нуллабельных `branch/commit` оставь `as unknown as ProjectSnapshot` (уже в тесте).
 
 - [ ] **Step 5: Commit**
 
@@ -1870,8 +1925,92 @@ git commit -m "feat: use-case initProject — ensure-скелет, маркер 
 **Files:**
 
 - Modify: `src/adapters/cli/commands/memory-init.ts`
+- Test: `tests/e2e/init-cli.e2e.ts`
 
-- [ ] **Step 1: Rewrite the command**
+- [ ] **Step 1: Write the failing e2e test**
+
+Создай `tests/e2e/init-cli.e2e.ts` (изолированный XDG — реестр не трогаем; `REPO` вычисляется до любых `cd`):
+
+```ts
+import { describe, it, expect } from 'vitest';
+import { spawnSync } from 'child_process';
+import { mkdtempSync, writeFileSync, readFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { ensureBuilt } from './helpers.js';
+
+ensureBuilt();
+
+const REPO = join(dirname(fileURLToPath(import.meta.url)), '../..');
+const cli = join(REPO, 'dist', 'bootstrap', 'cli.js');
+
+/** Изолированное окружение: tmp XDG, чтобы e2e не трогал реальный ~/.config/wolf. */
+function env(xdg: string): NodeJS.ProcessEnv {
+  return { ...process.env, XDG_CONFIG_HOME: xdg };
+}
+
+function newProject(markers: 'opencode' | 'none'): { project: string; xdg: string } {
+  const project = mkdtempSync(join(tmpdir(), 'wolf-init-cli-'));
+  writeFileSync(join(project, 'package.json'), '{ "name": "init-cli-e2e" }');
+  if (markers === 'opencode') writeFileSync(join(project, 'opencode.json'), '{}');
+  const xdg = mkdtempSync(join(tmpdir(), 'wolf-init-cli-xdg-'));
+  return { project, xdg };
+}
+
+describe('wolf init CLI (спека §3 уровень 1)', () => {
+  it('writes canonical opencode config, registers project in XDG registry, re-init is a no-op', () => {
+    const { project, xdg } = newProject('opencode');
+
+    const first = spawnSync('node', [cli, 'init'], { cwd: project, env: env(xdg), encoding: 'utf-8', timeout: 60_000 });
+    expect(first.status).toBe(0);
+    expect(first.stdout).toContain('platform opencode: written');
+    expect(first.stdout).toContain('Restart your agent platform');
+    const cfg = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));
+    expect(cfg.mcp.wolf).toEqual({ type: 'local', command: ['wolf', 'mcp'], enabled: true });
+    expect(readFileSync(join(xdg, 'wolf', 'projects.yaml'), 'utf-8')).toContain(project);
+
+    const before = readFileSync(join(project, 'opencode.json'), 'utf-8');
+    const second = spawnSync('node', [cli, 'init'], {
+      cwd: project,
+      env: env(xdg),
+      encoding: 'utf-8',
+      timeout: 60_000,
+    });
+    expect(second.status).toBe(0);
+    expect(second.stdout).toContain('platform opencode: unchanged');
+    expect(readFileSync(join(project, 'opencode.json'), 'utf-8')).toBe(before);
+  });
+
+  it('unknown --platform → UserFacingError, exit 1, no configs written', () => {
+    const { project, xdg } = newProject('opencode');
+    const res = spawnSync('node', [cli, 'init', '--platform', 'vscode'], {
+      cwd: project,
+      env: env(xdg),
+      encoding: 'utf-8',
+      timeout: 60_000,
+    });
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain('Unknown platform');
+    expect(JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8')).mcp).toBeUndefined();
+  });
+
+  it('no platform markers → skip with hint, exit 0 (память создана)', () => {
+    const { project, xdg } = newProject('none');
+    const res = spawnSync('node', [cli, 'init'], { cwd: project, env: env(xdg), encoding: 'utf-8', timeout: 60_000 });
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain('platform configs: skipped');
+    expect(res.stdout).toContain('--platform');
+  });
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run --config tests/e2e/vitest.config.ts tests/e2e/init-cli.e2e.ts`
+Expected: FAIL — все три кейса: текущая init-заглушка не пишет MCP-конфиг (`mcp` undefined), не валидирует `--platform` (exit 0), не печатает `platform configs: skipped`.
+
+- [ ] **Step 3: Rewrite the command**
 
 Замени `src/adapters/cli/commands/memory-init.ts` целиком:
 
@@ -1956,32 +2095,20 @@ export function memoryInitCommand(): Command {
 }
 ```
 
-- [ ] **Step 2: Build and smoke-run**
+- [ ] **Step 4: Run test to verify it passes**
 
-Run: `npm run build`
-Expected: компиляция без ошибок.
+Run: `npm run build && npx vitest run --config tests/e2e/vitest.config.ts tests/e2e/init-cli.e2e.ts`
+Expected: PASS (3 tests)
 
-Run (изолированный tmp-проект, реальный XDG не трогаем):
-
-```bash
-TMP=$(mktemp -d) && cd "$TMP" && echo '{}' > package.json && echo '{}' > opencode.json && \
-XDG_CONFIG_HOME="$TMP/xdg" node "$(git rev-parse --show-toplevel)/dist/bootstrap/cli.js" init && \
-cat "$TMP/opencode.json" && echo && cat "$TMP/xdg/wolf/projects.yaml" && \
-XDG_CONFIG_HOME="$TMP/xdg" node "$(git rev-parse --show-toplevel)/dist/bootstrap/cli.js" init && \
-cd "$(git rev-parse --show-toplevel)" && rm -rf "$TMP"
-```
-
-Expected: первый init — `- platform opencode: written` + `Restart your agent platform...`; `opencode.json` содержит `"mcp": { "wolf": { "type": "local", "command": ["wolf", "mcp"], "enabled": true } }`; `projects.yaml` содержит путь tmp-проекта; второй init — `- platform opencode: unchanged`, exit 0, содержимое `opencode.json` байт-в-байт то же.
-
-- [ ] **Step 3: Run full unit suite**
+- [ ] **Step 5: Run full unit suite**
 
 Run: `npx vitest run`
 Expected: PASS — весь юнит-набор зелёный (изменение команды не ломает существующие тесты).
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/adapters/cli/commands/memory-init.ts
+git add src/adapters/cli/commands/memory-init.ts tests/e2e/init-cli.e2e.ts
 git commit -m "feat: wolf init — --platform (replace-семантика), --recreate, per-platform вывод, exit-семантика, npx-предупреждение"
 ```
 
@@ -2073,6 +2200,16 @@ describe('ensureCurrentSchema (спека §3 уровень 2)', () => {
     expect(backupStamps()).toEqual([]);
   });
 
+  it('corrupted config.yaml → honest error with --recreate hint, no writes (спека §6)', async () => {
+    mkdirSync(join(dir, '.wolf'), { recursive: true });
+    const body = '{broken';
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), body);
+    await expect(ensureCurrentSchema(dir)).rejects.toThrow(UserFacingError);
+    await expect(ensureCurrentSchema(dir)).rejects.toThrow(/wolf init --recreate/);
+    expect(readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8')).toBe(body);
+    expect(backupStamps()).toEqual([]);
+  });
+
   it('concurrent migration: second caller under the same lock sees the finished state', async () => {
     initLegacyProject();
     const [a, b] = await Promise.all([ensureCurrentSchema(dir), ensureCurrentSchema(dir)]);
@@ -2113,6 +2250,8 @@ import { UserFacingError } from '../../domain/errors.js';
 /**
  * Ленивая миграция схемы (спека §3, уровень 2): guard в точках входа (cli/mcp).
  * - проекта нет → 'ok' (команды сами дадут диагностику);
+ * - битый config.yaml → UserFacingError с хинтом `wolf init --recreate`
+ *   (сама recovery-команда обходит guard в cli-entry — иначе циркулярность);
  * - схема новее бинаря → честный отказ «обнови wolf», без записи;
  * - легаси → миграция под эксклюзивным .wolf/migrate.lock, с бэкапом носителя схемы
  *   (fs-layout + config.yaml; SQLite — лишь кэш, не бэкапится), маркер пишется атомарно.
@@ -2155,7 +2294,7 @@ async function migrateLegacy(baseDir: string): Promise<'migrated'> {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/adapters/schema-guard.test.ts`
-Expected: PASS (6 tests)
+Expected: PASS (7 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -2224,25 +2363,58 @@ describe('schema guard at entry points (спека §3 уровень 2)', () =>
       'artifact_sources: []\nschema_version: 99\n'
     );
   });
+
+  it('recovery is reachable, not circular: corrupted yaml kills any command with --recreate hint, but init --recreate heals (спека §6)', () => {
+    const project = tmpProject();
+    writeFileSync(join(project, 'package.json'), '{}');
+    mkdirSync(join(project, '.wolf'), { recursive: true });
+    writeFileSync(join(project, '.wolf', 'config.yaml'), '{broken');
+
+    // любой команде guard отказывает честно, с хинтом восстановления
+    const dead = spawnSync('node', [cli, '--version'], { cwd: project, encoding: 'utf-8', timeout: 30_000 });
+    expect(dead.status).toBe(1);
+    expect(dead.stderr).toContain('wolf init --recreate');
+
+    // recovery-команда обходит guard и чинит конфиг
+    const heal = spawnSync('node', [cli, 'init', '--recreate'], {
+      cwd: project,
+      env: { ...process.env, XDG_CONFIG_HOME: join(project, 'xdg') },
+      encoding: 'utf-8',
+      timeout: 30_000,
+    });
+    expect(heal.status).toBe(0);
+    const raw = readFileSync(join(project, '.wolf', 'config.yaml'), 'utf-8');
+    expect(raw).toContain('memory_types'); // валидный дефолт-рендер
+    expect(existsSync(join(project, '.wolf', 'backup'))).toBe(true); // битый оригинал в бэкапе
+
+    // после восстановления guard снова пропускает команды
+    const alive = spawnSync('node', [cli, '--version'], { cwd: project, encoding: 'utf-8', timeout: 30_000 });
+    expect(alive.status).toBe(0);
+  });
 });
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npm run build && npx vitest run --config tests/e2e/vitest.config.ts tests/e2e/schema-guard.e2e.ts`
-Expected: FAIL — легаси-конфиг остаётся без `schema_version` (guard ещё не подключён; `--version` выходит 0 без миграции).
+Expected: FAIL — все три кейса: без guard легаси-конфиг остаётся без `schema_version` (`--version` выходит 0 без миграции), схема-99 не блокируется, битый конфиг не даёт `--recreate`-хинта.
 
 - [ ] **Step 3: Wire the guard into both entry points**
 
 В `src/adapters/cli/cli-entry.ts`:
 
 1. Импорт в шапке: `import { ensureCurrentSchema } from '../../adapters/fs/schema-guard.js';`
-2. В `runCli` перед `parseAsync`:
+2. В `runCli` перед `parseAsync` (guard пропускает recovery-команду — иначе битый config.yaml блокировал бы единственный путь восстановления, циркулярность):
 
 ```ts
 export async function runCli(argv: string[]): Promise<void> {
   try {
-    await ensureCurrentSchema(process.cwd());
+    // спека §6: `init --recreate` — единственный путь восстановления при битом .wolf/config.yaml;
+    // guard на битом yaml бросает с хинтом на эту команду, поэтому она сама его обходит
+    const isRecoveryInit = argv.includes('init') && argv.includes('--recreate');
+    if (!isRecoveryInit) {
+      await ensureCurrentSchema(process.cwd());
+    }
     await createCli().parseAsync(argv);
   } catch (err: unknown) {
     if (err instanceof UserFacingError) {
@@ -2278,7 +2450,7 @@ main().catch((error) => {
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npm run build && npx vitest run --config tests/e2e/vitest.config.ts tests/e2e/schema-guard.e2e.ts`
-Expected: PASS (2 tests)
+Expected: PASS (3 tests)
 
 Run: `npx vitest run` и `npm run e2e`
 Expected: PASS. Если существующий e2e/integration-тест упал из-за guard — проверь, в каком `cwd` он спавнит CLI: guard корректен для любых tmp-проектов; repoRoot-спавны на легаси `.wolf` самого репо — это и есть проверяемое поведение (репо-проект мигрирует как легаси-догфудер, это ожидаемо и безопасно: бэкап создаётся).
@@ -2365,6 +2537,13 @@ describe('runDoctor (спека §3: версия бинаря vs схема, в
     expect(report.entries[0].status).toBe('outdated-project');
   });
 
+  it('no schema/config at all (readSchema → null) → not-initialized, same semantics as guard (init, не миграция)', async () => {
+    const deps = { ...makeDeps([{ path: '/a', schema_version: 1 }], ['/a']), readSchema: async () => null };
+    const report = await runDoctor(deps);
+    expect(report.entries[0].status).toBe('not-initialized');
+    expect(report.entries[0].schemaVersion).toBeNull();
+  });
+
   it('missing path → pruned from registry', async () => {
     const deps = makeDeps([{ path: '/gone', schema_version: CURRENT_SCHEMA_VERSION }], []);
     const report = await runDoctor(deps);
@@ -2406,10 +2585,10 @@ Expected: FAIL — `Cannot find module .../doctor.js`
 
 ```ts
 import { ProjectsRegistry } from '../../adapters/fs/projects-registry.js';
-import { readSchemaVersion, CURRENT_SCHEMA_VERSION, LEGACY_SCHEMA_VERSION } from '../../adapters/fs/schema-version.js';
+import { readSchemaVersion, CURRENT_SCHEMA_VERSION } from '../../adapters/fs/schema-version.js';
 import { PlatformAdapter } from '../../ports/platform-adapter.port.js';
 
-export type DoctorStatus = 'ok' | 'outdated-binary' | 'outdated-project' | 'missing';
+export type DoctorStatus = 'ok' | 'outdated-binary' | 'outdated-project' | 'not-initialized' | 'missing';
 
 export interface DoctorEntry {
   path: string;
@@ -2446,9 +2625,18 @@ export async function runDoctor(deps: DoctorDeps): Promise<DoctorReport> {
       entries.push({ path: proj.path, status: 'missing', schemaVersion: null, issues: [] });
       continue;
     }
-    const v = (await deps.readSchema(proj.path)) ?? LEGACY_SCHEMA_VERSION;
-    const status: DoctorStatus =
-      v > CURRENT_SCHEMA_VERSION ? 'outdated-binary' : v < CURRENT_SCHEMA_VERSION ? 'outdated-project' : 'ok';
+    const v = await deps.readSchema(proj.path);
+    // семантика как в guard (schema-guard.ts): null = проект НЕ инициализирован —
+    // ленивой миграции не будет, нужна команда init; легаси-версия (1) = миграция
+    let status: DoctorStatus;
+    let schemaVersion: number | null;
+    if (v === null) {
+      status = 'not-initialized';
+      schemaVersion = null;
+    } else {
+      schemaVersion = v;
+      status = v > CURRENT_SCHEMA_VERSION ? 'outdated-binary' : v < CURRENT_SCHEMA_VERSION ? 'outdated-project' : 'ok';
+    }
     const issues: string[] = [];
     if (status === 'ok') {
       for (const adapter of deps.adapters) {
@@ -2460,7 +2648,7 @@ export async function runDoctor(deps: DoctorDeps): Promise<DoctorReport> {
         }
       }
     }
-    entries.push({ path: proj.path, status, schemaVersion: v, issues });
+    entries.push({ path: proj.path, status, schemaVersion, issues });
   }
   return { binarySchemaVersion: CURRENT_SCHEMA_VERSION, entries, pruned };
 }
@@ -2502,6 +2690,7 @@ export function memoryDoctorCommand(): Command {
         let hint = '';
         if (e.status === 'outdated-binary') hint = ' — update wolf: npm install -g mister-wolf';
         if (e.status === 'outdated-project') hint = ' — run any wolf command inside the project (lazy migration)';
+        if (e.status === 'not-initialized') hint = ' — not initialized: run wolf init inside the project';
         if (e.status === 'missing') hint = ' — pruned (path no longer exists)';
         console.log(`- ${e.path}: ${e.status} (schema ${schema})${hint}`);
         for (const issue of e.issues) {
@@ -2524,15 +2713,15 @@ export function memoryDoctorCommand(): Command {
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npx vitest run tests/unit/use-cases/doctor.test.ts && npm run build`
-Expected: PASS (7 tests), сборка чистая.
+Expected: PASS (8 tests), сборка чистая.
 
-Run (smoke, изолированный XDG):
+Run (smoke, изолированный XDG; `REPO` вычисляется ДО `cd`, иначе `git rev-parse` упадёт вне репо):
 
 ```bash
-TMP=$(mktemp -d) && cd "$TMP" && echo '{}' > package.json && \
-XDG_CONFIG_HOME="$TMP/xdg" node "$(git rev-parse --show-toplevel)/dist/bootstrap/cli.js" init >/dev/null && \
-XDG_CONFIG_HOME="$TMP/xdg" node "$(git rev-parse --show-toplevel)/dist/bootstrap/cli.js" doctor && \
-cd "$(git rev-parse --show-toplevel)" && rm -rf "$TMP"
+REPO=$(git rev-parse --show-toplevel) && TMP=$(mktemp -d) && cd "$TMP" && echo '{}' > package.json && \
+XDG_CONFIG_HOME="$TMP/xdg" node "$REPO/dist/bootstrap/cli.js" init >/dev/null && \
+XDG_CONFIG_HOME="$TMP/xdg" node "$REPO/dist/bootstrap/cli.js" doctor && \
+cd "$REPO" && rm -rf "$TMP"
 ```
 
 Expected: `- <tmp-path>: ok (schema v2)`, exit 0.
@@ -2566,15 +2755,18 @@ import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-st
 import { JsonlEventLog } from '../../../src/adapters/fs/jsonl-event-log.js';
 import { HashIdGenerator } from '../../../src/adapters/fs/hash-id-generator.js';
 import { FsFileSystem } from '../../../src/adapters/fs/fs-file-system.js';
+import { FsProjectInitializer } from '../../../src/adapters/fs/fs-project-initializer.js';
 import { HeuristicProjectScanner } from '../../../src/adapters/fs/heuristic-project-scanner.js';
 import { eventsPath } from '../../../src/adapters/fs/project-paths.js';
 import { bootstrapProject } from '../../../src/app/use-cases/bootstrap-project.js';
 
 let dir: string;
 
-beforeEach(() => {
+beforeEach(async () => {
   dir = mkdtempSync(join(tmpdir(), 'wolf-dedup-'));
   writeFileSync(join(dir, 'package.json'), '{ "name": "dedup-test", "scripts": { "test": "vitest" } }');
+  // bootstrapProject читает .wolf/config.yaml и бросает "not initialized" без скелета
+  await new FsProjectInitializer().initialize(dir);
 });
 afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
@@ -2582,10 +2774,13 @@ afterEach(() => {
 
 function deps() {
   const fs = new FsFileSystem();
+  let tick = 0;
   return {
     store: new MarkdownMemoryStore(dir),
     log: new JsonlEventLog(eventsPath(dir)),
-    clock: { now: () => new Date('2026-08-30T00:00:00Z') },
+    // тикающие часы: id объектов зависят от времени; замороженный Date делал бы
+    // повторы детерминированными по id и FAIL-шаг невоспроизводимым
+    clock: { now: () => new Date(Date.parse('2026-08-30T00:00:00Z') + tick++ * 1000) },
     idGen: new HashIdGenerator(),
     scanner: new HeuristicProjectScanner(fs),
     fs,
@@ -2623,11 +2818,9 @@ Expected: FAIL — после второго прогона правил и work
 
 В `src/app/use-cases/bootstrap-project.ts`:
 
-1. В функции `bootstrapProject` замени блок создания черновиков и work-thread (строки с `const drafts = ...` по `const { object: thread } = ...` и `return {...}`) на:
+1. В функции `bootstrapProject` замени код от строки `const drafts = draftRulesFromSnapshot(snapshot, testCommand);` до конца функции (включая финальный `return { ... };`) на блок ниже. Строки `const { snapshot, documents } = await scanProject(...)` и `const testCommand = await readTestCommand(...)` стоят выше по файлу и остаются как есть — не дублируй их:
 
 ```ts
-const { snapshot, documents } = await scanProject(deps, input.baseDir);
-const testCommand = await readTestCommand(deps.fs, input.baseDir);
 const drafts = draftRulesFromSnapshot(snapshot, testCommand);
 
 // дедуп при повторе (спека §8): черновик с тем же title уже есть → пропускаем
@@ -2757,6 +2950,12 @@ Claude Code при первом старте попросит approve project-sc
 - **ОС/рантайм:** macOS и Linux (glibc) на Node 22/24. Alpine/musl не поддержан в v1;
   Windows — best-effort, не заявлена. Нативная зависимость better-sqlite3 ставится из пребилдов —
   это поведение зависимости, у mister-wolf нет своих install-скриптов.
+- **Если установка падает на better-sqlite3 — две разные ситуации:**
+  `prebuild-install ... no prebuilt binary found (musl)` — для вашей платформы пребилды не
+  выпускаются (Alpine/musl) — **не поддерживается в v1**, используйте glibc-дистрибутив;
+  `gyp ERR!` / `node-gyp` / сборка из исходников упала — пребилда под ваш Node нет или не
+  скачалась, поставь node-gyp prerequisites (python3, make, C++ toolchain) и повтори
+  `npm rebuild better-sqlite3` — это лечится, в отличие от musl.
 - **Dev-путь (из клонированного репо):** `npm install && npm run build`, затем
   `alias wolf="node dist/bootstrap/cli.js"`. При одновременно установленном глобальном
   `mister-wolf` помни о PATH-shadowing: какой `wolf` запустится — определяется порядком каталогов
@@ -2965,7 +3164,7 @@ git commit -m "ci: publish.yml — trusted publishing (OIDC, id-token:write) + p
 ```ts
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { execSync, spawnSync } from 'child_process';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import yaml from 'js-yaml';
@@ -3075,12 +3274,14 @@ describe('global install from tarball into isolated HOME (спека §3, §7)',
   it('npx try-out: init never writes MCP configs and warns honestly (спека §3)', () => {
     // Реальный npx-запуск дорог/хрупок в e2e — критерий npx детерминирован env
     // (npm_command='npx' ставит сам npx-шим), поэтому воспроизводим его напрямую.
+    // XDG-изоляция обязательна: init пишет реестр в wolfUserConfigDir — без неё e2e
+    // мусорил бы в реальный ~/.config/wolf дев-машины.
     const project = tmpProject();
     writeFileSync(join(project, 'package.json'), '{ "name": "npx-e2e" }');
     writeFileSync(join(project, 'opencode.json'), '{}');
     const res = spawnSync('node', [join(repoRoot, 'dist', 'bootstrap', 'cli.js'), 'init'], {
       cwd: project,
-      env: { ...process.env, npm_command: 'npx' },
+      env: { ...process.env, npm_command: 'npx', XDG_CONFIG_HOME: join(home, '.config') },
       encoding: 'utf-8',
       timeout: 60_000,
     });
@@ -3088,6 +3289,8 @@ describe('global install from tarball into isolated HOME (спека §3, §7)',
     expect(JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8')).mcp).toBeUndefined();
     expect(res.stdout).toContain('npx try-out');
     expect(res.stdout).toContain('npm install -g mister-wolf');
+    // реестр изолирован: запись в tmp-HOME, не в реальный ~/.config/wolf
+    expect(existsSync(join(home, '.config', 'wolf', 'projects.yaml'))).toBe(true);
   });
 });
 ```
