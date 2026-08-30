@@ -9,7 +9,7 @@
     "url": "git+https://github.com/chekh/mister-wolf.git"
   },
   "bin": {
-    "wolf": "./dist/bootstrap/cli.js"
+    "wolf": "dist/bootstrap/cli.js"
   },
   "engines": {
     "node": ">=22"
