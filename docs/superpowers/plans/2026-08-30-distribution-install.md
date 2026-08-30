@@ -90,9 +90,12 @@
 
 ## Task Ordering
 
-Порядок: пакетные основы → адаптеры (unit) → XDG-реестр → фиксы скелета/лока → маркер схемы → init (use-case + CLI) → миграции/guard → точки входа → doctor → дедуп bootstrap → README/SECURITY → CI/publish → финальный E2E.
+Порядок: пакетные основы → адаптеры (unit) → XDG-реестр → фиксы скелета/лока → маркер схемы → guard → init (use-case + CLI) → точки входа → doctor → дедуп bootstrap → README/SECURITY → CI/publish → финальный E2E.
 
-Отклонение от порядка спеки: маркер `schema_version` (Task 8) идёт **до** init (Task 9), потому что init пишет маркер и регистрирует проект с версией схемы — так каждая функция определяется до первого использования и ни одна задача не правит файлы предыдущей.
+Отклонения от порядка спеки — каждое гарантирует, что функция/модуль определяется до первого использования и ни одна задача не правит файлы предыдущей:
+
+1. Маркер `schema_version` (Task 8) идёт **до** init (Task 9): init пишет маркер и регистрирует проект с версией схемы.
+2. Guard `ensureCurrentSchema` (Task 10) идёт **до** CLI init (Task 11): init импортирует guard для ветки `--recreate` (восстановление = recreate + честная проверка схемы), поэтому guard-модуль обязан существовать к сборке init.
 
 ---
 
@@ -1925,7 +1928,198 @@ git commit -m "feat: use-case initProject — ensure-скелет, маркер 
 
 ---
 
-### Task 10: CLI-команда init — --platform, --recreate, вывод, exit-семантика
+### Task 10: schema-guard — ленивая миграция с локом, бэкапом и отказом на схеме из будущего
+
+**Files:**
+
+- Create: `src/adapters/fs/schema-guard.ts`
+- Test: `tests/unit/adapters/schema-guard.test.ts`
+
+- [ ] **Step 1: Write the failing test**
+
+Создай `tests/unit/adapters/schema-guard.test.ts`:
+
+```ts
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { ensureCurrentSchema } from '../../../src/adapters/fs/schema-guard.js';
+import { CURRENT_SCHEMA_VERSION } from '../../../src/adapters/fs/schema-version.js';
+import { UserFacingError } from '../../../src/domain/errors.js';
+
+let dir: string;
+
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), 'wolf-guard-'));
+});
+afterEach(() => {
+  rmSync(dir, { recursive: true, force: true });
+});
+
+/** Легаси-проект догфудера: .wolf/config.yaml без маркера + layout v1 (objects/). */
+function initLegacyProject(): void {
+  mkdirSync(join(dir, '.wolf', 'memory', 'objects', 'decision'), { recursive: true });
+  writeFileSync(join(dir, '.wolf', 'config.yaml'), 'artifact_sources: []\n');
+  writeFileSync(
+    join(dir, '.wolf', 'memory', 'objects', 'decision', 'mem_legacy.md'),
+    '---\nid: mem_legacy\ntype: decision\ntitle: Legacy decision\nstatus: active\nreview_state: accepted\nconfidence: medium\nimportance: 0.5\ncreated_at: 2026-06-29T14:00:00Z\nupdated_at: 2026-06-29T14:00:00Z\ncreated_by: user:test\nschema_version: 1\nsource:\n  kind: manual\nrelated:\n  files: []\n  docs: []\n  decisions: []\ntags: []\nsuperseded_by: null\n---\n\nBody text.\n'
+  );
+}
+
+function backupStamps(): string[] {
+  const backupRoot = join(dir, '.wolf', 'backup');
+  return existsSync(backupRoot) ? readdirSync(backupRoot) : [];
+}
+
+describe('ensureCurrentSchema (спека §3 уровень 2)', () => {
+  it('uninitialized project (no .wolf) → ok, no side effects', async () => {
+    expect(await ensureCurrentSchema(dir)).toBe('ok');
+    expect(existsSync(join(dir, '.wolf'))).toBe(false);
+  });
+
+  it('current project → ok, config untouched', async () => {
+    mkdirSync(join(dir, '.wolf'), { recursive: true });
+    const body = `artifact_sources: [docs]\nschema_version: ${CURRENT_SCHEMA_VERSION}\n`;
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), body);
+    expect(await ensureCurrentSchema(dir)).toBe('ok');
+    expect(readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8')).toBe(body);
+  });
+
+  it('legacy project → migrated: layout v2 applied, marker set, backup created', async () => {
+    initLegacyProject();
+    const result = await ensureCurrentSchema(dir);
+    expect(result).toBe('migrated');
+    // маркер проставлен
+    expect(readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8')).toContain(
+      `schema_version: ${CURRENT_SCHEMA_VERSION}`
+    );
+    // layout-миграция выполнена: объект переехал из objects/
+    expect(existsSync(join(dir, '.wolf', 'memory', 'objects', 'decision', 'mem_legacy.md'))).toBe(false);
+    expect(existsSync(join(dir, '.wolf', 'memory', 'shared', 'decisions', 'mem_legacy.md'))).toBe(true);
+    // бэкап носителя схемы: config.yaml + легаси-objects (SQLite-кэш не бэкапим — спека §3)
+    const stamps = backupStamps();
+    expect(stamps).toHaveLength(1);
+    expect(existsSync(join(dir, '.wolf', 'backup', stamps[0], 'config.yaml'))).toBe(true);
+    expect(existsSync(join(dir, '.wolf', 'backup', stamps[0], 'objects', 'decision', 'mem_legacy.md'))).toBe(true);
+  });
+
+  it('schema from the future → honest error, no writes (спека §3/§6)', async () => {
+    mkdirSync(join(dir, '.wolf'), { recursive: true });
+    const body = 'artifact_sources: []\nschema_version: 99\n';
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), body);
+    await expect(ensureCurrentSchema(dir)).rejects.toThrow(UserFacingError);
+    await expect(ensureCurrentSchema(dir)).rejects.toThrow(/npm install -g mister-wolf/);
+    expect(readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8')).toBe(body);
+    expect(backupStamps()).toEqual([]);
+  });
+
+  it('corrupted config.yaml → honest error with --recreate hint, no writes (спека §6)', async () => {
+    mkdirSync(join(dir, '.wolf'), { recursive: true });
+    const body = '{broken';
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), body);
+    await expect(ensureCurrentSchema(dir)).rejects.toThrow(UserFacingError);
+    await expect(ensureCurrentSchema(dir)).rejects.toThrow(/wolf init --recreate/);
+    expect(readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8')).toBe(body);
+    expect(backupStamps()).toEqual([]);
+  });
+
+  it('concurrent migration: second caller under the same lock sees the finished state', async () => {
+    initLegacyProject();
+    const [a, b] = await Promise.all([ensureCurrentSchema(dir), ensureCurrentSchema(dir)]);
+    expect([a, b]).toContain('migrated');
+    expect(readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8')).toContain(
+      `schema_version: ${CURRENT_SCHEMA_VERSION}`
+    );
+    // ровно один бэкап: двойная миграция не прошла
+    expect(backupStamps()).toHaveLength(1);
+  });
+
+  it('lock file is removed after migration (.wolf/migrate.lock)', async () => {
+    initLegacyProject();
+    await ensureCurrentSchema(dir);
+    expect(existsSync(join(dir, '.wolf', 'migrate.lock'))).toBe(false);
+  });
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run tests/unit/adapters/schema-guard.test.ts`
+Expected: FAIL — `Cannot find module .../schema-guard.js`
+
+- [ ] **Step 3: Implement schema-guard**
+
+Создай `src/adapters/fs/schema-guard.ts`:
+
+```ts
+import * as fs from 'fs/promises';
+import { join } from 'path';
+import { withMemoryLock } from './memory-lock.js';
+import { readSchemaVersion, writeSchemaVersionIfAbsent, CURRENT_SCHEMA_VERSION } from './schema-version.js';
+import { applyLayoutMigration } from './layout-migration.js';
+import { objectsDir } from './project-paths.js';
+import { UserFacingError } from '../../domain/errors.js';
+
+/**
+ * Ленивая миграция схемы (спека §3, уровень 2): guard в точках входа (cli/mcp).
+ * - проекта нет → 'ok' (команды сами дадут диагностику);
+ * - битый config.yaml → UserFacingError с хинтом `wolf init --recreate`
+ *   (сама recovery-команда обходит guard в cli-entry — иначе циркулярность);
+ * - схема новее бинаря → честный отказ «обнови wolf», без записи;
+ * - легаси → миграция под эксклюзивным .wolf/migrate.lock, с бэкапом носителя схемы
+ *   (fs-layout + config.yaml; SQLite — лишь кэш, не бэкапится), маркер пишется атомарно.
+ */
+export async function ensureCurrentSchema(baseDir: string): Promise<'ok' | 'migrated'> {
+  const version = await readSchemaVersion(baseDir);
+  if (version === null) return 'ok';
+  if (version > CURRENT_SCHEMA_VERSION) {
+    throw new UserFacingError(
+      `Project schema v${version} is newer than this wolf (supports v${CURRENT_SCHEMA_VERSION}). Update wolf: npm install -g mister-wolf`
+    );
+  }
+  if (version === CURRENT_SCHEMA_VERSION) return 'ok';
+  return withMemoryLock(join(baseDir, '.wolf'), () => migrateLegacy(baseDir), undefined, 'migrate.lock');
+}
+
+async function migrateLegacy(baseDir: string): Promise<'migrated'> {
+  // повторная проверка под локом: параллельный процесс мог уже мигрировать
+  const again = await readSchemaVersion(baseDir);
+  if (again === CURRENT_SCHEMA_VERSION) return 'migrated';
+  if (again !== null && again > CURRENT_SCHEMA_VERSION) {
+    throw new UserFacingError(
+      `Project schema v${again} is newer than this wolf (supports v${CURRENT_SCHEMA_VERSION}). Update wolf: npm install -g mister-wolf`
+    );
+  }
+
+  // бэкап носителя схемы до изменения: config.yaml + легаси objects/ (спека §3)
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const backupDir = join(baseDir, '.wolf', 'backup', stamp);
+  await fs.mkdir(backupDir, { recursive: true });
+  await fs.copyFile(join(baseDir, '.wolf', 'config.yaml'), join(backupDir, 'config.yaml')).catch(() => undefined);
+  await fs.cp(objectsDir(baseDir), join(backupDir, 'objects'), { recursive: true }).catch(() => undefined);
+
+  await applyLayoutMigration(baseDir); // идемпотентен: пустой objects/ → no-op
+  await writeSchemaVersionIfAbsent(baseDir); // проставит CURRENT атомарно
+  return 'migrated';
+}
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx vitest run tests/unit/adapters/schema-guard.test.ts`
+Expected: PASS (7 tests)
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/adapters/fs/schema-guard.ts tests/unit/adapters/schema-guard.test.ts
+git commit -m "feat: ensureCurrentSchema — ленивая миграция под migrate.lock с бэкапом, отказ на схеме из будущего"
+```
+
+---
+
+### Task 11: CLI-команда init — --platform, --recreate, вывод, exit-семантика
 
 **Files:**
 
@@ -2164,197 +2358,6 @@ Expected: PASS — весь юнит-набор зелёный (изменени
 ```bash
 git add src/adapters/cli/commands/memory-init.ts tests/e2e/init-cli.e2e.ts
 git commit -m "feat: wolf init — --platform (replace-семантика), --recreate, per-platform вывод, exit-семантика, npx-предупреждение"
-```
-
----
-
-### Task 11: schema-guard — ленивая миграция с локом, бэкапом и отказом на схеме из будущего
-
-**Files:**
-
-- Create: `src/adapters/fs/schema-guard.ts`
-- Test: `tests/unit/adapters/schema-guard.test.ts`
-
-- [ ] **Step 1: Write the failing test**
-
-Создай `tests/unit/adapters/schema-guard.test.ts`:
-
-```ts
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
-import { ensureCurrentSchema } from '../../../src/adapters/fs/schema-guard.js';
-import { CURRENT_SCHEMA_VERSION } from '../../../src/adapters/fs/schema-version.js';
-import { UserFacingError } from '../../../src/domain/errors.js';
-
-let dir: string;
-
-beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'wolf-guard-'));
-});
-afterEach(() => {
-  rmSync(dir, { recursive: true, force: true });
-});
-
-/** Легаси-проект догфудера: .wolf/config.yaml без маркера + layout v1 (objects/). */
-function initLegacyProject(): void {
-  mkdirSync(join(dir, '.wolf', 'memory', 'objects', 'decision'), { recursive: true });
-  writeFileSync(join(dir, '.wolf', 'config.yaml'), 'artifact_sources: []\n');
-  writeFileSync(
-    join(dir, '.wolf', 'memory', 'objects', 'decision', 'mem_legacy.md'),
-    '---\nid: mem_legacy\ntype: decision\ntitle: Legacy decision\nstatus: active\nreview_state: accepted\nconfidence: medium\nimportance: 0.5\ncreated_at: 2026-06-29T14:00:00Z\nupdated_at: 2026-06-29T14:00:00Z\ncreated_by: user:test\nschema_version: 1\nsource:\n  kind: manual\nrelated:\n  files: []\n  docs: []\n  decisions: []\ntags: []\nsuperseded_by: null\n---\n\nBody text.\n'
-  );
-}
-
-function backupStamps(): string[] {
-  const backupRoot = join(dir, '.wolf', 'backup');
-  return existsSync(backupRoot) ? readdirSync(backupRoot) : [];
-}
-
-describe('ensureCurrentSchema (спека §3 уровень 2)', () => {
-  it('uninitialized project (no .wolf) → ok, no side effects', async () => {
-    expect(await ensureCurrentSchema(dir)).toBe('ok');
-    expect(existsSync(join(dir, '.wolf'))).toBe(false);
-  });
-
-  it('current project → ok, config untouched', async () => {
-    mkdirSync(join(dir, '.wolf'), { recursive: true });
-    const body = `artifact_sources: [docs]\nschema_version: ${CURRENT_SCHEMA_VERSION}\n`;
-    writeFileSync(join(dir, '.wolf', 'config.yaml'), body);
-    expect(await ensureCurrentSchema(dir)).toBe('ok');
-    expect(readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8')).toBe(body);
-  });
-
-  it('legacy project → migrated: layout v2 applied, marker set, backup created', async () => {
-    initLegacyProject();
-    const result = await ensureCurrentSchema(dir);
-    expect(result).toBe('migrated');
-    // маркер проставлен
-    expect(readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8')).toContain(
-      `schema_version: ${CURRENT_SCHEMA_VERSION}`
-    );
-    // layout-миграция выполнена: объект переехал из objects/
-    expect(existsSync(join(dir, '.wolf', 'memory', 'objects', 'decision', 'mem_legacy.md'))).toBe(false);
-    expect(existsSync(join(dir, '.wolf', 'memory', 'shared', 'decisions', 'mem_legacy.md'))).toBe(true);
-    // бэкап носителя схемы: config.yaml + легаси-objects (SQLite-кэш не бэкапим — спека §3)
-    const stamps = backupStamps();
-    expect(stamps).toHaveLength(1);
-    expect(existsSync(join(dir, '.wolf', 'backup', stamps[0], 'config.yaml'))).toBe(true);
-    expect(existsSync(join(dir, '.wolf', 'backup', stamps[0], 'objects', 'decision', 'mem_legacy.md'))).toBe(true);
-  });
-
-  it('schema from the future → honest error, no writes (спека §3/§6)', async () => {
-    mkdirSync(join(dir, '.wolf'), { recursive: true });
-    const body = 'artifact_sources: []\nschema_version: 99\n';
-    writeFileSync(join(dir, '.wolf', 'config.yaml'), body);
-    await expect(ensureCurrentSchema(dir)).rejects.toThrow(UserFacingError);
-    await expect(ensureCurrentSchema(dir)).rejects.toThrow(/npm install -g mister-wolf/);
-    expect(readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8')).toBe(body);
-    expect(backupStamps()).toEqual([]);
-  });
-
-  it('corrupted config.yaml → honest error with --recreate hint, no writes (спека §6)', async () => {
-    mkdirSync(join(dir, '.wolf'), { recursive: true });
-    const body = '{broken';
-    writeFileSync(join(dir, '.wolf', 'config.yaml'), body);
-    await expect(ensureCurrentSchema(dir)).rejects.toThrow(UserFacingError);
-    await expect(ensureCurrentSchema(dir)).rejects.toThrow(/wolf init --recreate/);
-    expect(readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8')).toBe(body);
-    expect(backupStamps()).toEqual([]);
-  });
-
-  it('concurrent migration: second caller under the same lock sees the finished state', async () => {
-    initLegacyProject();
-    const [a, b] = await Promise.all([ensureCurrentSchema(dir), ensureCurrentSchema(dir)]);
-    expect([a, b]).toContain('migrated');
-    expect(readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8')).toContain(
-      `schema_version: ${CURRENT_SCHEMA_VERSION}`
-    );
-    // ровно один бэкап: двойная миграция не прошла
-    expect(backupStamps()).toHaveLength(1);
-  });
-
-  it('lock file is removed after migration (.wolf/migrate.lock)', async () => {
-    initLegacyProject();
-    await ensureCurrentSchema(dir);
-    expect(existsSync(join(dir, '.wolf', 'migrate.lock'))).toBe(false);
-  });
-});
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `npx vitest run tests/unit/adapters/schema-guard.test.ts`
-Expected: FAIL — `Cannot find module .../schema-guard.js`
-
-- [ ] **Step 3: Implement schema-guard**
-
-Создай `src/adapters/fs/schema-guard.ts`:
-
-```ts
-import * as fs from 'fs/promises';
-import { join } from 'path';
-import { withMemoryLock } from './memory-lock.js';
-import { readSchemaVersion, writeSchemaVersionIfAbsent, CURRENT_SCHEMA_VERSION } from './schema-version.js';
-import { applyLayoutMigration } from './layout-migration.js';
-import { objectsDir } from './project-paths.js';
-import { UserFacingError } from '../../domain/errors.js';
-
-/**
- * Ленивая миграция схемы (спека §3, уровень 2): guard в точках входа (cli/mcp).
- * - проекта нет → 'ok' (команды сами дадут диагностику);
- * - битый config.yaml → UserFacingError с хинтом `wolf init --recreate`
- *   (сама recovery-команда обходит guard в cli-entry — иначе циркулярность);
- * - схема новее бинаря → честный отказ «обнови wolf», без записи;
- * - легаси → миграция под эксклюзивным .wolf/migrate.lock, с бэкапом носителя схемы
- *   (fs-layout + config.yaml; SQLite — лишь кэш, не бэкапится), маркер пишется атомарно.
- */
-export async function ensureCurrentSchema(baseDir: string): Promise<'ok' | 'migrated'> {
-  const version = await readSchemaVersion(baseDir);
-  if (version === null) return 'ok';
-  if (version > CURRENT_SCHEMA_VERSION) {
-    throw new UserFacingError(
-      `Project schema v${version} is newer than this wolf (supports v${CURRENT_SCHEMA_VERSION}). Update wolf: npm install -g mister-wolf`
-    );
-  }
-  if (version === CURRENT_SCHEMA_VERSION) return 'ok';
-  return withMemoryLock(join(baseDir, '.wolf'), () => migrateLegacy(baseDir), undefined, 'migrate.lock');
-}
-
-async function migrateLegacy(baseDir: string): Promise<'migrated'> {
-  // повторная проверка под локом: параллельный процесс мог уже мигрировать
-  const again = await readSchemaVersion(baseDir);
-  if (again === CURRENT_SCHEMA_VERSION) return 'migrated';
-  if (again !== null && again > CURRENT_SCHEMA_VERSION) {
-    throw new UserFacingError(
-      `Project schema v${again} is newer than this wolf (supports v${CURRENT_SCHEMA_VERSION}). Update wolf: npm install -g mister-wolf`
-    );
-  }
-
-  // бэкап носителя схемы до изменения: config.yaml + легаси objects/ (спека §3)
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const backupDir = join(baseDir, '.wolf', 'backup', stamp);
-  await fs.mkdir(backupDir, { recursive: true });
-  await fs.copyFile(join(baseDir, '.wolf', 'config.yaml'), join(backupDir, 'config.yaml')).catch(() => undefined);
-  await fs.cp(objectsDir(baseDir), join(backupDir, 'objects'), { recursive: true }).catch(() => undefined);
-
-  await applyLayoutMigration(baseDir); // идемпотентен: пустой objects/ → no-op
-  await writeSchemaVersionIfAbsent(baseDir); // проставит CURRENT атомарно
-  return 'migrated';
-}
-```
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `npx vitest run tests/unit/adapters/schema-guard.test.ts`
-Expected: PASS (7 tests)
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add src/adapters/fs/schema-guard.ts tests/unit/adapters/schema-guard.test.ts
-git commit -m "feat: ensureCurrentSchema — ленивая миграция под migrate.lock с бэкапом, отказ на схеме из будущего"
 ```
 
 ---
@@ -3388,11 +3391,11 @@ git commit -m "test: e2e дистрибуции — tarball-assert, устано
 | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | §2 решения (npm-имя, MIT, no lifecycle-скрипты, bump sqlite3)                                            | Task 1 (гигиена-тест), Task 15                                                                                                                             |
 | §3 уровень 0 (XDG config/projects.yaml, установка ничего не пишет)                                       | Task 5, Task 1 (нет install-скриптов)                                                                                                                      |
-| §3 уровень 1: init                                                                                       | Task 6 (ensure-скелет), Task 9 (use-case: детект/no-platform/npx/реестр/scan-примечание), Task 10 (CLI: --platform replace, вывод, exit)                   |
-| §3 уровень 2: schema_version + ленивая миграция + doctor                                                 | Task 8 (маркер), Task 7 (migrate.lock), Task 11 (guard/миграция/бэкап/будущее), Task 12 (точки входа), Task 13 (doctor: версии + конфиги платформ + prune) |
+| §3 уровень 1: init                                                                                       | Task 6 (ensure-скелет), Task 9 (use-case: детект/no-platform/npx/реестр/scan-примечание), Task 11 (CLI: --platform replace, вывод, exit)                   |
+| §3 уровень 2: schema_version + ленивая миграция + doctor                                                 | Task 8 (маркер), Task 7 (migrate.lock), Task 10 (guard/миграция/бэкап/будущее), Task 12 (точки входа), Task 13 (doctor: версии + конфиги платформ + prune) |
 | §4 адаптеры (интерфейс, McpCommand, идемпотентность 'wolf', атомарность, opencode/claude)                | Task 2, Task 3, Task 4                                                                                                                                     |
 | §5 публикация (package.json, files, publish.yml OIDC/provenance/sanity/e2e, Node 22, SDK стабилизация)   | Task 1, Task 16, Task 17                                                                                                                                   |
-| §6 ошибки (схема из будущего, права, --recreate, init вне проекта, musl/Windows сообщения в README)      | Task 11, Task 3/4 (права), Task 9 (вне проекта), Task 10 (--recreate), Task 15 (статусы)                                                                   |
+| §6 ошибки (схема из будущего, права, --recreate, init вне проекта, musl/Windows сообщения в README)      | Task 10, Task 3/4 (права), Task 9 (вне проекта), Task 11 (--recreate), Task 15 (статусы)                                                                   |
 | §7 тесты (unit адаптеров/миграций/гигиены, e2e tarball/tmp-HOME/npx/tarball-assert, README, SECURITY.md) | Task 1, 3, 4, 11, 18 (e2e), Task 15 (README+SECURITY)                                                                                                      |
 | §8 scope (дедуп bootstrap, фикс перезаписи)                                                              | Task 6, Task 14                                                                                                                                            |
 | §9 риски (тайпсквот, тарболл, тег↔версия, пребилды)                                                      | Task 1, 15, 16, 17, 18                                                                                                                                     |
