@@ -9,6 +9,8 @@
  * использование. Объекты document-ref — функциональный «индекс документов»
  * (использование = регистрация/обновление сканом), исключены из метрики шума
  * и показываются отдельной строкой documents (калибровка 2026-08-30).
+ * Объекты со статусом archived исключены аналогично (из числителя и знаменателя):
+ * архивация — легитимный способ снижения шума; показываются строкой archived.
  * Пороги статусов — config learning.effectiveness_thresholds.
  */
 import type { MemoryStore } from '../../ports/memory-store.port.js';
@@ -74,8 +76,8 @@ export interface EffectivenessReport {
     /** null — мало delivery-данных (окно silentRuleIds) или нет активных правил. */
     silentShare: number | null;
   };
-  /** Блок 4: шум памяти («пишется-но-не-читается»); documents — document-ref, исключённые из метрики. */
-  noise: { totalObjects: number; writeOnly: number; share: number | null; documents: number };
+  /** Блок 4: шум памяти («пишется-но-не-читается»); documents — document-ref, исключённые из метрики; archived — вне метрики (строка панели). */
+  noise: { totalObjects: number; writeOnly: number; share: number | null; documents: number; archived: number };
   noiseStatus: BlockStatus;
   silentStatus: BlockStatus;
   /** Блок 5: роутинг по моделям (информационный); сортировка по tasks убыв. */
@@ -137,11 +139,15 @@ export async function buildEffectivenessReport(
   // document-ref — функциональный «индекс документов» (использование = регистрация/
   // обновление сканом), из метрики шума исключён и из числителя, и из знаменателя
   // (калибровка 2026-08-30); показывается отдельной строкой documents.
+  // archived — вне метрики и из числителя, и из знаменателя: архивация —
+  // легитимный способ снижения шума (иначе transition, помечающий объект
+  // «использованным», почти не улучшал метрику); показывается строкой archived.
   // memory.scan.updated = подтверждение актуальности = использование: readIds-фильтр
   // («любое событие кроме memory.added») засчитывает scan-события автоматически.
   const allObjects = await deps.store.list();
   const documents = allObjects.filter((o) => o.type === 'document-ref').length;
-  const noiseBase = allObjects.filter((o) => o.type !== 'document-ref');
+  const archived = allObjects.filter((o) => o.status === 'archived').length;
+  const noiseBase = allObjects.filter((o) => o.type !== 'document-ref' && o.status !== 'archived');
   const linked = new Set<string>();
   for (const r of await deps.relations.list()) {
     linked.add(r.subject);
@@ -170,7 +176,7 @@ export async function buildEffectivenessReport(
     .map(([model, values]) => ({ model, tasks: values.length, medianWeighted: median(values) }))
     .sort((a, b) => b.tasks - a.tasks || a.model.localeCompare(b.model));
 
-  const noise = { totalObjects: noiseBase.length, writeOnly, share: noiseShare, documents };
+  const noise = { totalObjects: noiseBase.length, writeOnly, share: noiseShare, documents, archived };
   return {
     rules: { activeRules, prevented: hasHoldoutData ? prevented : null, checked: hasHoldoutData ? checked : null },
     tools: { toolCount: toolRows.length, totalUsage: toolRows.reduce((sum, r) => sum + r.usage_count, 0), economy },

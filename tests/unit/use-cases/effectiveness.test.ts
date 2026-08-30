@@ -116,7 +116,7 @@ describe('buildEffectivenessReport (E1.2: панель эффективност�
       enoughDeliveryData: false,
       silentShare: null,
     });
-    expect(report.noise).toEqual({ totalObjects: 0, writeOnly: 0, share: null, documents: 0 });
+    expect(report.noise).toEqual({ totalObjects: 0, writeOnly: 0, share: null, documents: 0, archived: 0 });
     expect(report.noiseStatus).toBe('NO_DATA');
     expect(report.silentStatus).toBe('NO_DATA');
     expect(report.routing).toEqual([]);
@@ -194,7 +194,7 @@ describe('buildEffectivenessReport (E1.2: панель эффективност�
 
     // Блок 4: шум = r2,r3,l1,t1,t2,o1 (без связей и нечитанные) = 6/10 → 60% BAD;
     // dr1/dr2 — document-ref, исключены из числителя и знаменателя (documents=2)
-    expect(report.noise).toEqual({ totalObjects: 10, writeOnly: 6, share: 60, documents: 2 });
+    expect(report.noise).toEqual({ totalObjects: 10, writeOnly: 6, share: 60, documents: 2, archived: 0 });
     expect(report.noiseStatus).toBe('BAD');
 
     // Блок 5: glm впереди (6 задач, медиана (7+10)/2=8.5), kimi 2/150
@@ -218,7 +218,35 @@ describe('buildEffectivenessReport (E1.2: панель эффективност�
       { store: mockStore(objects), log: mockLog(events), relations: mockRelations([]) },
       { signals: [], runLogText: null, thresholds: DEFAULT_EFFECTIVENESS_THRESHOLDS }
     );
-    expect(report.noise).toEqual({ totalObjects: 2, writeOnly: 1, share: 50, documents: 1 });
+    expect(report.noise).toEqual({ totalObjects: 2, writeOnly: 1, share: 50, documents: 1, archived: 0 });
+  });
+
+  it('archived не попадает в noiseBase; перевод в archived уменьшает знаменатель', async () => {
+    // n1/n2 — шум (нет связей, только memory.added), u1 — не шум (связь с внешним id).
+    // До архивации n2: 2/3 = 66.7%; после `wolf transition n2 archived`: 1/2 = 50%,
+    // n2 уходит и из числителя, и из знаменателя → архивация снижает метрику шума
+    const mkObjects = (n2status: string): Extra[] => [
+      { id: 'n1', type: 'decision', status: 'active' },
+      { id: 'n2', type: 'decision', status: n2status },
+      { id: 'u1', type: 'decision', status: 'active' },
+    ];
+    const build = async (os: Extra[]) => {
+      const events = os.map((o) => memEvent('memory.added', o.id as string));
+      return buildEffectivenessReport(
+        { store: mockStore(os), log: mockLog(events), relations: mockRelations([relation('u1', 'outside')]) },
+        { signals: [], runLogText: null, thresholds: DEFAULT_EFFECTIVENESS_THRESHOLDS }
+      );
+    };
+    const before = await build(mkObjects('active'));
+    expect(before.noise).toEqual({
+      totalObjects: 3,
+      writeOnly: 2,
+      share: (2 / 3) * 100,
+      documents: 0,
+      archived: 0,
+    });
+    const after = await build(mkObjects('archived'));
+    expect(after.noise).toEqual({ totalObjects: 2, writeOnly: 1, share: 50, documents: 0, archived: 1 });
   });
 
   it('мало delivery-данных (окно silentRuleIds) → silentShare null, NO_DATA', async () => {
