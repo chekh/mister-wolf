@@ -1391,6 +1391,10 @@ describe('marker survives taxonomy sync (load → renderConfigYaml)', () => {
     const rendered = renderConfigYaml(loaded);
     expect(rendered).toContain(`schema_version: ${CURRENT_SCHEMA_VERSION}`);
   });
+
+  it('renderConfigYaml(null) OMITS the marker — fresh/recreated config stays LEGACY until markSchemaCurrent or migration (recovery depends on this)', () => {
+    expect(renderConfigYaml(null)).not.toContain('schema_version');
+  });
 });
 ```
 
@@ -1459,31 +1463,32 @@ export async function writeSchemaVersionIfAbsent(baseDir: string): Promise<void>
   schemaVersion?: number;
 ```
 
-В `src/adapters/fs/config-file.ts` — четыре правки:
+В `src/adapters/fs/config-file.ts` — три правки:
 
-1. Импорт в шапке: `import { CURRENT_SCHEMA_VERSION } from './schema-version.js';`
-2. В `ConfigFileSchema` первой строкой внутри `z.object({...})`:
+1. В `ConfigFileSchema` первой строкой внутри `z.object({...})`:
 
 ```ts
   schema_version: z.number().int().optional().catch(undefined),
 ```
 
-3. В объекте возврата ОБЕИХ функций `loadWolfConfig` и `loadWolfConfigSync` (после `artifact_sources: ...`):
+2. В объекте возврата ОБЕИХ функций `loadWolfConfig` и `loadWolfConfigSync` (после `artifact_sources: ...`):
 
 ```ts
     schemaVersion: cfg.schema_version,
 ```
 
-4. В `renderConfigYaml` в объект `doc` (сразу после ключа `'# comment'`, до `artifact_sources`):
+3. В `renderConfigYaml` в объект `doc` (сразу после ключа `'# comment'`, до `artifact_sources`):
 
 ```ts
-    schema_version: existing?.schemaVersion ?? CURRENT_SCHEMA_VERSION,
+    schema_version: existing?.schemaVersion,
 ```
+
+Важно: НЕ `?? CURRENT_SCHEMA_VERSION`. Рендер только СОХРАНЯЕТ существующий маркер (при `taxonomy sync`), но не штампует его: у `existing === null` ключ получает `undefined`, и `yaml.dump` опускает такой ключ. Если бы рендер штамповал v2, дефолт-конфиг после `init --recreate` уже нёс бы v2, `ensureCurrentSchema` вернул бы 'ok' без layout-миграции — и легаси `objects/` остался бы осиротевшим. Маркер в свежий конфиг пишет `writeSchemaVersionIfAbsent` (init) или миграция (guard), не рендер.
 
 - [ ] **Step 4: Run tests to verify they pass (incl. existing config-file tests)**
 
 Run: `npx vitest run tests/unit/adapters/schema-version.test.ts tests/unit/adapters/config-file.test.ts`
-Expected: PASS. Если существующий тест config-file сравнивает рендер буквально — добавь в его ожидание строку `schema_version: 2` (детерминированное изменение рендера).
+Expected: PASS. Рендер детерминированно меняется только если входной конфиг несёт `schema_version` (рендер его сохраняет); от входа без маркера рендер маркер НЕ добавляет — если существующий тест config-file сравнивает рендер буквально и его вход содержит маркер, учти эту строку в ожидании.
 
 - [ ] **Step 5: Commit**
 
@@ -1530,7 +1535,7 @@ describe('isNpxRun (спека §3: npx-путь никогда не пишет 
 
 ```ts
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { initProject, looksLikeProjectRoot, recreateConfig } from '../../../src/app/use-cases/init-project.js';
@@ -1934,7 +1939,7 @@ git commit -m "feat: use-case initProject — ensure-скелет, маркер 
 ```ts
 import { describe, it, expect } from 'vitest';
 import { spawnSync } from 'child_process';
-import { mkdtempSync, writeFileSync, readFileSync } from 'fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -1944,6 +1949,9 @@ ensureBuilt();
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const cli = join(REPO, 'dist', 'bootstrap', 'cli.js');
+
+const legacyMd =
+  '---\nid: mem_legacy\ntype: decision\ntitle: Legacy decision\nstatus: active\nreview_state: accepted\nconfidence: medium\nimportance: 0.5\ncreated_at: 2026-06-29T14:00:00Z\nupdated_at: 2026-06-29T14:00:00Z\ncreated_by: user:test\nschema_version: 1\nsource:\n  kind: manual\nrelated:\n  files: []\n  docs: []\n  decisions: []\ntags: []\nsuperseded_by: null\n---\n\nBody.\n';
 
 /** Изолированное окружение: tmp XDG, чтобы e2e не трогал реальный ~/.config/wolf. */
 function env(xdg: string): NodeJS.ProcessEnv {
@@ -2002,13 +2010,51 @@ describe('wolf init CLI (спека §3 уровень 1)', () => {
     expect(res.stdout).toContain('platform configs: skipped');
     expect(res.stdout).toContain('--platform');
   });
+
+  it('init --recreate on a LEGACY project migrates properly (marker + layout v2, objects/ not orphaned)', () => {
+    const { project, xdg } = newProject('opencode');
+    // легаси-состояние догфудера: config без маркера + layout v1 (objects/)
+    mkdirSync(join(project, '.wolf', 'memory', 'objects', 'decision'), { recursive: true });
+    writeFileSync(join(project, '.wolf', 'config.yaml'), 'artifact_sources: []\n');
+    writeFileSync(join(project, '.wolf', 'memory', 'objects', 'decision', 'mem_legacy.md'), legacyMd);
+
+    const res = spawnSync('node', [cli, 'init', '--recreate'], {
+      cwd: project,
+      env: env(xdg),
+      encoding: 'utf-8',
+      timeout: 60_000,
+    });
+    expect(res.status).toBe(0);
+    // маркер проставлен ЧЕРЕЗ миграцию, а не тихой допиской: layout v2 применён
+    expect(readFileSync(join(project, '.wolf', 'config.yaml'), 'utf-8')).toContain('schema_version: 2');
+    expect(existsSync(join(project, '.wolf', 'memory', 'objects', 'decision', 'mem_legacy.md'))).toBe(false);
+    expect(existsSync(join(project, '.wolf', 'memory', 'shared', 'decisions', 'mem_legacy.md'))).toBe(true);
+  });
+
+  it('init --recreate on schema-from-future → honest refusal, no downgrade, config untouched', () => {
+    const { project, xdg } = newProject('opencode');
+    const body = 'artifact_sources: []\nschema_version: 99\n';
+    mkdirSync(join(project, '.wolf'), { recursive: true });
+    writeFileSync(join(project, '.wolf', 'config.yaml'), body);
+
+    const res = spawnSync('node', [cli, 'init', '--recreate'], {
+      cwd: project,
+      env: env(xdg),
+      encoding: 'utf-8',
+      timeout: 60_000,
+    });
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain('npm install -g mister-wolf');
+    // 99 не перезаписана на 2 (тихий даунгрейд запрещён), конфиг байт-в-байт
+    expect(readFileSync(join(project, '.wolf', 'config.yaml'), 'utf-8')).toBe(body);
+  });
 });
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run --config tests/e2e/vitest.config.ts tests/e2e/init-cli.e2e.ts`
-Expected: FAIL — все три кейса: текущая init-заглушка не пишет MCP-конфиг (`mcp` undefined), не валидирует `--platform` (exit 0), не печатает `platform configs: skipped`.
+Expected: FAIL — все пять кейсов. (1) заглушка не пишет MCP-конфиг (`mcp` undefined); (2) заглушка не объявляет опцию `--platform`, поэтому commander сам выходит 1 с `error: unknown option '--platform'` — exit-код совпадает, но ассерт `stderr` упадёт: там `unknown option`, а не `Unknown platform`; (3) заглушка печатает только `Project memory initialized.` — нет `platform configs: skipped`; (4) легаси: заглушка не мигрирует — маркера и layout v2 нет; (5) схема-99: заглушка выходит 0 без отказа «обнови wolf».
 
 - [ ] **Step 3: Rewrite the command**
 
@@ -2022,6 +2068,7 @@ import { ProjectsRegistry } from '../../../adapters/fs/projects-registry.js';
 import { wolfUserConfigDir } from '../../../adapters/fs/user-config.js';
 import { PLATFORM_ADAPTERS, CANONICAL_MCP_COMMAND } from '../../../adapters/platforms/index.js';
 import { writeSchemaVersionIfAbsent } from '../../../adapters/fs/schema-version.js';
+import { ensureCurrentSchema } from '../../../adapters/fs/schema-guard.js';
 import { initProject, recreateConfig } from '../../../app/use-cases/init-project.js';
 import { isNpxRun } from '../../../domain/npx.js';
 import { UserFacingError } from '../../../domain/errors.js';
@@ -2033,7 +2080,14 @@ export function memoryInitCommand(): Command {
     .option('--recreate', 'backup a corrupted .wolf/config.yaml and re-create it from defaults', false)
     .action(async (options: { platform?: string; recreate?: boolean }) => {
       const baseDir = process.cwd();
-      if (options.recreate) await recreateConfig(baseDir);
+      if (options.recreate) {
+        await recreateConfig(baseDir);
+        // восстановление = приведение к валидному СОСТОЯНИЮ, а не тихий штамп маркера ниже:
+        // легаси-схема (1/без маркера) мигрирует здесь (layout + маркер), иначе markSchemaCurrent
+        // дописал бы v2 без layout-миграции и objects/ остался бы осиротевшим навсегда;
+        // схема из будущего — честный отказ «обнови wolf» (спека §3), а не даунгрейд 99→2
+        await ensureCurrentSchema(baseDir);
+      }
 
       let platformIds: string[] | undefined;
       if (options.platform !== undefined) {
@@ -2098,7 +2152,7 @@ export function memoryInitCommand(): Command {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npm run build && npx vitest run --config tests/e2e/vitest.config.ts tests/e2e/init-cli.e2e.ts`
-Expected: PASS (3 tests)
+Expected: PASS (5 tests)
 
 - [ ] **Step 5: Run full unit suite**
 
@@ -2410,8 +2464,11 @@ Expected: FAIL — все три кейса: без guard легаси-конф�
 export async function runCli(argv: string[]): Promise<void> {
   try {
     // спека §6: `init --recreate` — единственный путь восстановления при битом .wolf/config.yaml;
-    // guard на битом yaml бросает с хинтом на эту команду, поэтому она сама его обходит
-    const isRecoveryInit = argv.includes('init') && argv.includes('--recreate');
+    // guard на битом yaml бросает с хинтом на эту команду, поэтому она сама его обходит.
+    // Матч строгий: argv = [node, cli.js, <command>, ...], команда — ровно argv[2] === 'init'
+    // (не подстрока — иначе `wolf add --title "... init ..."` ложно обходил бы guard);
+    // `--recreate` проверяется точным токеном массива.
+    const isRecoveryInit = argv[2] === 'init' && argv.includes('--recreate');
     if (!isRecoveryInit) {
       await ensureCurrentSchema(process.cwd());
     }
