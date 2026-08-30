@@ -18,6 +18,8 @@ const MEMORY_STATUSES: MemoryStatus[] = [
   'obsolete',
   'proposed',
   'accepted',
+  'candidate',
+  'deprecated',
 ];
 
 export function memoryTransitionCommand(): Command {

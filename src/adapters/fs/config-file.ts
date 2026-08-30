@@ -13,6 +13,7 @@ const FieldSpecSchema: z.ZodType<FieldSpec> = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('string'), default: z.string() }),
   z.object({ kind: z.literal('string[]'), required: z.literal(true), minItems: z.number().int().optional() }),
   z.object({ kind: z.literal('string[]'), default: z.array(z.string()).optional() }),
+  z.object({ kind: z.literal('int'), default: z.number().int().optional() }),
   z.object({ kind: z.literal('enum'), values: z.array(z.string()).min(1) }),
 ]);
 

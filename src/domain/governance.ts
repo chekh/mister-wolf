@@ -33,9 +33,20 @@ export function validateGovernance(obj: {
 }
 
 export const ALLOWED_TRANSITIONS: Record<MemoryStatus, MemoryStatus[]> = {
-  // resolved/obsolete/answered из active нужны блокерам и вопросным типам
-  // (open-question); эффективные переходы = ALLOWED_TRANSITIONS ∩ lifecycle типа.
-  active: ['stale', 'superseded', 'archived', 'conflicting', 'completed', 'resolved', 'obsolete', 'answered'],
+  // resolved/obsolete/answered из active нужны блокерам и вопросам (open-question);
+  // deprecated из active — типу tool (Фаза C); эффективные переходы =
+  // ALLOWED_TRANSITIONS ∩ lifecycle типа.
+  active: [
+    'stale',
+    'superseded',
+    'archived',
+    'conflicting',
+    'completed',
+    'resolved',
+    'obsolete',
+    'answered',
+    'deprecated',
+  ],
   open: ['resolved', 'rejected', 'archived', 'answered'],
   resolved: ['archived'],
   stale: ['active', 'archived'],
@@ -49,6 +60,10 @@ export const ALLOWED_TRANSITIONS: Record<MemoryStatus, MemoryStatus[]> = {
   obsolete: ['archived'],
   proposed: ['accepted', 'rejected', 'archived'],
   accepted: ['active', 'obsolete', 'archived'],
+  // tool (Фаза C): кандидат подтверждается или отбрасывается
+  candidate: ['active', 'deprecated', 'archived'],
+  // реанимация инструмента — deprecated → active разрешена
+  deprecated: ['active', 'archived'],
 };
 
 export function canTransition(from: MemoryStatus, to: MemoryStatus): boolean {

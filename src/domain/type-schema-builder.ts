@@ -9,7 +9,7 @@ export function fieldToZod(spec: FieldSpec): z.ZodTypeAny {
     required?: boolean;
     min?: number;
     optional?: boolean;
-    default?: string | string[];
+    default?: string | string[] | number;
     minItems?: number;
     values?: readonly string[];
   };
@@ -23,6 +23,9 @@ export function fieldToZod(spec: FieldSpec): z.ZodTypeAny {
   }
   if (spec.kind === 'boolean') {
     return z.boolean().optional();
+  }
+  if (spec.kind === 'int') {
+    return z.number().int().default((s.default as number | undefined) ?? 0);
   }
   if (spec.kind === 'string[]') {
     if (s.required) return z.array(z.string()).min(s.minItems ?? 0);
