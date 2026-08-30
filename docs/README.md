@@ -19,6 +19,7 @@
 - [Протокол обработки жалоб](./guide/complaint-protocol.md) — `wolf complain` → Стюард → новая версия playbook → вердикт.
 - [Протокол Стюарда: bootstrap](./guide/steward-bootstrap.md) — свёртка черновиков стартовой памяти после `wolf bootstrap`.
 - [Протокол обучения Стюарда](./guide/steward-learn.md) — полный цикл самообучения Ф20–26 (кто/что/когда).
+- [Панель эффективности и A/B-бенчмарки](./guide/effectiveness.md) — `wolf effectiveness`: пороги OK/WARN/BAD, действия при BAD; методика `scripts/bench/`.
 - [Master plan template](./templates/master-plan-template.md) — шаблон мастер-плана фичи (5 стадий).
 - [UX scenarios](./ux-scenarios/README.md) — 12 сценариев использования как requirements-материал.
 

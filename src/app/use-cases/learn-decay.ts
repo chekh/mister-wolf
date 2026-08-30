@@ -27,9 +27,9 @@ export const DECAY_TTL_DEFAULT: Record<string, number> = {
 export const DECAY_TYPES = Object.keys(DECAY_TTL_DEFAULT);
 
 /** Окно молчания правила для rule_utilization-дрейфа [ВА] (§16). */
-const SILENT_RULE_WINDOW_SESSIONS = 30;
+export const SILENT_RULE_WINDOW_SESSIONS = 30;
 /** Минимум delivery-событий в логе, чтобы судить об утилизации правил [ВА] (§16). */
-const SILENT_RULE_MIN_DELIVERIES = 20;
+export const SILENT_RULE_MIN_DELIVERIES = 20;
 
 /**
  * Пробег = упорядоченные уникальные session_id из run-событий
@@ -100,8 +100,9 @@ function decayTtlOverrides(baseDir: string): Record<string, number> | undefined 
 /** Молчащее правило: доставки были, но нет ни одной за последние 30 сессий
  * (при ≥20 delivery-событий в логе). ponytail: [ВА]-порог rule_utilization
  * <0.5 от baseline упрощён продукт-минимумом до «ноль доставок в окне» —
- * честный апгрейд: baseline-утилизация по delivery-stats (S20-09). */
-function silentRuleIds(signals: SignalEvent[]): { ids: Set<string>; count: number } {
+ * честный апгрейд: baseline-утилизация по delivery-stats (S20-09).
+ * Экспортирована для effectiveness-панели (E1.2). */
+export function silentRuleIds(signals: SignalEvent[]): { ids: Set<string>; count: number } {
   const deliveries = signals.filter((s) => s.event === 'delivery');
   if (deliveries.length < SILENT_RULE_MIN_DELIVERIES) return { ids: new Set(), count: 0 };
   const sessions = countSessions(signals);

@@ -8,8 +8,13 @@ export interface WolfConfig {
   rawCoreBlock: unknown;
   /** Ф20: проектная таксономия классов ошибок — матчится раньше дефолтной таблицы (§2.1) */
   errorClassTaxonomy?: { id: string; match: string[] }[];
-  /** Ф21: порог паттерна N≥3 — параметр процесса (§2.2, §16); Ф26: TTL-override по типам (сессии) */
-  learning?: { patternThreshold?: number; decayTtl?: Record<string, number> };
+  /** Ф21: порог паттерна N≥3 — параметр процесса (§2.2, §16); Ф26: TTL-override по типам (сессии);
+   * E1.2: пороги effectiveness-панели (проценты, undefined-поля отбрасываются) */
+  learning?: {
+    patternThreshold?: number;
+    decayTtl?: Record<string, number>;
+    effectivenessThresholds?: { noiseOk?: number; noiseWarn?: number; silentOk?: number };
+  };
 }
 
 export class ProjectTypeConflictError extends Error {}
