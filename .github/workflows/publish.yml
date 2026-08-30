@@ -36,7 +36,7 @@ jobs:
       - name: Checks
         run: npm run check
 
-      - name: E2E (publishable artifact — правило проекта: E2E после каждого плана)
+      - name: 'E2E (publishable artifact — правило проекта: E2E после каждого плана)'
         run: npm run e2e
 
       - name: Pack dry-run (tarball audit log in CI output)
