@@ -36,6 +36,7 @@ import { memoryThinkCommand as thinkCommand } from './commands/memory-think.js';
 import { memoryScaffoldCommand as scaffoldCommand } from './commands/memory-scaffold.js';
 import { memoryToolCommand as toolCommand } from './commands/memory-tool.js';
 import { memoryComplainCommand as complainCommand } from './commands/memory-complain.js';
+import { memoryLearnCommand as learnCommand } from './commands/memory-learn.js';
 import { memoryRunCommand as runCommand } from './commands/memory-run.js';
 import { memoryBootstrapCommand as bootstrapCommand } from './commands/memory-bootstrap.js';
 import { UserFacingError } from '../../domain/errors.js';
@@ -82,6 +83,7 @@ export function createCli(): Command {
   program.addCommand(scaffoldCommand());
   program.addCommand(toolCommand());
   program.addCommand(complainCommand());
+  program.addCommand(learnCommand());
   program.addCommand(runCommand());
   program.addCommand(bootstrapCommand());
 
