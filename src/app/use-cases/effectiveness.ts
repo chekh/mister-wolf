@@ -5,7 +5,11 @@
  *
  * Методика шума: docs/planning/memory-audit-2026-08-29.md «пишется-но-не-читается» —
  * объект шум, если нет ни одной связи (relations) и ни одного события в event-log
- * кроме memory.added. Пороги статусов — config learning.effectiveness_thresholds.
+ * кроме memory.added; memory.scan.updated = подтверждение актуальности сканом =
+ * использование. Объекты document-ref — функциональный «индекс документов»
+ * (использование = регистрация/обновление сканом), исключены из метрики шума
+ * и показываются отдельной строкой documents (калибровка 2026-08-30).
+ * Пороги статусов — config learning.effectiveness_thresholds.
  */
 import type { MemoryStore } from '../../ports/memory-store.port.js';
 import type { EventLog } from '../../ports/event-log.port.js';
@@ -70,8 +74,8 @@ export interface EffectivenessReport {
     /** null — мало delivery-данных (окно silentRuleIds) или нет активных правил. */
     silentShare: number | null;
   };
-  /** Блок 4: шум памяти («пишется-но-не-читается»). */
-  noise: { totalObjects: number; writeOnly: number; share: number | null };
+  /** Блок 4: шум памяти («пишется-но-не-читается»); documents — document-ref, исключённые из метрики. */
+  noise: { totalObjects: number; writeOnly: number; share: number | null; documents: number };
   noiseStatus: BlockStatus;
   silentStatus: BlockStatus;
   /** Блок 5: роутинг по моделям (информационный); сортировка по tasks убыв. */
@@ -129,8 +133,15 @@ export async function buildEffectivenessReport(
   const silentRules = [...silent.ids].filter((id) => activeRuleIds.has(id)).length;
   const silentShare = enoughDeliveryData && activeRules > 0 ? (silentRules / activeRules) * 100 : null;
 
-  // Блок 4 «Шум памяти»: нет связей И нет событий кроме memory.added (event-log)
+  // Блок 4 «Шум памяти»: нет связей И нет событий кроме memory.added (event-log).
+  // document-ref — функциональный «индекс документов» (использование = регистрация/
+  // обновление сканом), из метрики шума исключён и из числителя, и из знаменателя
+  // (калибровка 2026-08-30); показывается отдельной строкой documents.
+  // memory.scan.updated = подтверждение актуальности = использование: readIds-фильтр
+  // («любое событие кроме memory.added») засчитывает scan-события автоматически.
   const allObjects = await deps.store.list();
+  const documents = allObjects.filter((o) => o.type === 'document-ref').length;
+  const noiseBase = allObjects.filter((o) => o.type !== 'document-ref');
   const linked = new Set<string>();
   for (const r of await deps.relations.list()) {
     linked.add(r.subject);
@@ -142,8 +153,8 @@ export async function buildEffectivenessReport(
     const mid = (ev.payload as Record<string, unknown> | undefined)?.memory_id;
     if (typeof mid === 'string') readIds.add(mid);
   }
-  const writeOnly = allObjects.filter((o) => !linked.has(o.id) && !readIds.has(o.id)).length;
-  const noiseShare = allObjects.length > 0 ? (writeOnly / allObjects.length) * 100 : null;
+  const writeOnly = noiseBase.filter((o) => !linked.has(o.id) && !readIds.has(o.id)).length;
+  const noiseShare = noiseBase.length > 0 ? (writeOnly / noiseBase.length) * 100 : null;
 
   // Блок 5 «Роутинг»: группировка run-log по model, медиана weighted (медианы переиспользуем)
   const weightedByModel = new Map<string, number[]>();
@@ -159,7 +170,7 @@ export async function buildEffectivenessReport(
     .map(([model, values]) => ({ model, tasks: values.length, medianWeighted: median(values) }))
     .sort((a, b) => b.tasks - a.tasks || a.model.localeCompare(b.model));
 
-  const noise = { totalObjects: allObjects.length, writeOnly, share: noiseShare };
+  const noise = { totalObjects: noiseBase.length, writeOnly, share: noiseShare, documents };
   return {
     rules: { activeRules, prevented: hasHoldoutData ? prevented : null, checked: hasHoldoutData ? checked : null },
     tools: { toolCount: toolRows.length, totalUsage: toolRows.reduce((sum, r) => sum + r.usage_count, 0), economy },

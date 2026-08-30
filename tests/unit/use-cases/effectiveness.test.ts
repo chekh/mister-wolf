@@ -116,14 +116,15 @@ describe('buildEffectivenessReport (E1.2: панель эффективност�
       enoughDeliveryData: false,
       silentShare: null,
     });
-    expect(report.noise).toEqual({ totalObjects: 0, writeOnly: 0, share: null });
+    expect(report.noise).toEqual({ totalObjects: 0, writeOnly: 0, share: null, documents: 0 });
     expect(report.noiseStatus).toBe('NO_DATA');
     expect(report.silentStatus).toBe('NO_DATA');
     expect(report.routing).toEqual([]);
   });
 
   it('заполненная фикстура → числа совпадают с ручным подсчётом', async () => {
-    // Объекты (10): r1/r2/r3 — active-правила, l1/l2 — lesson, t1/t2 — tool, остальное — прочие типы
+    // Объекты (12): r1/r2/r3 — active-правила, l1/l2 — lesson, t1/t2 — tool,
+    // dr1/dr2 — document-ref (исключены из метрики шума), остальное — прочие типы
     const objects: Extra[] = (
       [
         ['r1', 'rule', 'active', { holdout_prevented: 3, holdout_checked: 5 }],
@@ -136,10 +137,12 @@ describe('buildEffectivenessReport (E1.2: панель эффективност�
         ['d1', 'decision', 'active', {}],
         ['o1', 'blocker', 'open', {}],
         ['o2', 'work-thread', 'active', {}],
+        ['dr1', 'document-ref', 'active', {}],
+        ['dr2', 'document-ref', 'active', {}],
       ] as Array<[string, string, string, Extra]>
     ).map(([id, type, status, extra]) => ({ id, title: id, type, status, ...extra }));
 
-    // event-log: memory.added на все 10; o2 ещё и обновлялся (читался)
+    // event-log: memory.added на все 12; o2 ещё и обновлялся (читался)
     const events = objects.map((o) => memEvent('memory.added', o.id as string));
     events.push(memEvent('memory.updated', 'o2'));
 
@@ -189,8 +192,9 @@ describe('buildEffectivenessReport (E1.2: панель эффективност�
     expect(report.delivery.silentShare).toBeCloseTo(100 / 3, 5);
     expect(report.silentStatus).toBe('BAD');
 
-    // Блок 4: шум = r2,r3,l1,t1,t2,o1 (без связей и нечитанные) = 6/10 → 60% BAD
-    expect(report.noise).toEqual({ totalObjects: 10, writeOnly: 6, share: 60 });
+    // Блок 4: шум = r2,r3,l1,t1,t2,o1 (без связей и нечитанные) = 6/10 → 60% BAD;
+    // dr1/dr2 — document-ref, исключены из числителя и знаменателя (documents=2)
+    expect(report.noise).toEqual({ totalObjects: 10, writeOnly: 6, share: 60, documents: 2 });
     expect(report.noiseStatus).toBe('BAD');
 
     // Блок 5: glm впереди (6 задач, медиана (7+10)/2=8.5), kimi 2/150
@@ -198,6 +202,23 @@ describe('buildEffectivenessReport (E1.2: панель эффективност�
       { model: 'glm', tasks: 6, medianWeighted: 8.5 },
       { model: 'kimi', tasks: 2, medianWeighted: 150 },
     ]);
+  });
+
+  it('R2: scan-обновление считается использованием — объект со scan-событием не шум', async () => {
+    // x1 подтверждён повторным сканом (memory.scan.updated) → не шум;
+    // y1 без событий кроме memory.added → шум; dr1 (document-ref) исключён из метрики
+    const objects: Extra[] = [
+      { id: 'x1', type: 'decision', status: 'active' },
+      { id: 'y1', type: 'decision', status: 'active' },
+      { id: 'dr1', type: 'document-ref', status: 'active' },
+    ];
+    const events = objects.map((o) => memEvent('memory.added', o.id as string));
+    events.push(memEvent('memory.scan.updated', 'x1'));
+    const report = await buildEffectivenessReport(
+      { store: mockStore(objects), log: mockLog(events), relations: mockRelations([]) },
+      { signals: [], runLogText: null, thresholds: DEFAULT_EFFECTIVENESS_THRESHOLDS }
+    );
+    expect(report.noise).toEqual({ totalObjects: 2, writeOnly: 1, share: 50, documents: 1 });
   });
 
   it('мало delivery-данных (окно silentRuleIds) → silentShare null, NO_DATA', async () => {
