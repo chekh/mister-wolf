@@ -26,7 +26,9 @@ export const MemoryObjectSchema = z
       'candidate',
       'deprecated',
     ]),
-    review_state: z.enum(['accepted', 'proposed', 'rejected']),
+    // Ф26: review_required — decay-очередь пересмотра Стюарда (спека §6):
+    // значение review_state, lifecycle-статус объекта не меняется.
+    review_state: z.enum(['accepted', 'proposed', 'rejected', 'review_required']),
     confidence: z.enum(['low', 'medium', 'high']),
     importance: z.number().min(0).max(1),
     created_at: z.string().datetime(),

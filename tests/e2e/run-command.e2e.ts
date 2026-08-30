@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { spawnSync } from 'child_process';
-import { rmSync } from 'fs';
+import { rmSync, readFileSync, existsSync } from 'fs';
+import { join } from 'path';
 import { ensureBuilt, cliPath, tmpProject } from './helpers.js';
 
 /**
@@ -36,5 +37,25 @@ describe('wolf run without opencode in PATH', () => {
     const result = runCliWithoutOpencode(['run', '--agent', 'build', '--title', 't', 'ping'], dir);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('opencode');
+  });
+
+  it('Ф20 (г): ENOENT-ошибка запуска пишет tool_error-сигнал с error_class_id', () => {
+    const dir = tmpProject();
+    dirs.push(dir);
+    const result = runCliWithoutOpencode(['run', '--agent', 'build', '--title', 't', 'ping'], dir);
+    expect(result.status).toBe(1);
+    const metricsPath = join(dir, '.wolf', 'metrics', 'session-metrics.jsonl');
+    expect(existsSync(metricsPath)).toBe(true);
+    const records = readFileSync(metricsPath, 'utf-8')
+      .trim()
+      .split('\n')
+      .map((l) => JSON.parse(l));
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({
+      event: 'tool_error',
+      tool_name: 'opencode',
+      error_class_id: 'tool_not_found',
+    });
+    expect(records[0].gen_ai).toHaveProperty('modelID');
   });
 });

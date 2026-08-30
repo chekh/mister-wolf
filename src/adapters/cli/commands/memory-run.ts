@@ -5,7 +5,9 @@ import { Command } from 'commander';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { getLatestMemoryObject } from '../../../app/use-cases/get-latest-memory-object.js';
 import { UserFacingError } from '../../../domain/errors.js';
+import { resolveCreatedBy } from '../../../domain/actor.js';
 import { extractModel, parseRunMetrics } from '../opencode-run-metrics.js';
+import { appendRunSignal, recordToolError } from '../../../adapters/fs/session-metrics-log.js';
 
 const DEFAULT_ROUTING_ID = 'mem_20260829_llm_routing_v1_wolf_router_auto_zai_codi_966883';
 const FALLBACK_MODEL = 'zai-coding-plan/glm-5.3-flash';
@@ -59,6 +61,17 @@ export function memoryRunCommand(): Command {
           else reject(err);
         });
         child.once('close', (code) => resolve(code ?? 0));
+      }).catch((err: unknown) => {
+        // Ф20 (г): ошибка запуска тула — сигнал через классификатор, лог не роняем
+        if (err instanceof UserFacingError) {
+          recordToolError(process.cwd(), {
+            tool_name: 'opencode',
+            message: err.message,
+            task: options.title,
+            agent: options.agent,
+          });
+        }
+        throw err;
       });
 
       const metrics = parseRunMetrics(chunks.map(String).join(''));
@@ -81,6 +94,16 @@ export function memoryRunCommand(): Command {
       );
 
       console.error(`[wolf-run] model=${model} weighted=${metrics.weighted} log=${logPath}`);
+      // Ф20 (а): событие metrics в сигнальный лог контура самообучения
+      appendRunSignal(process.cwd(), {
+        model,
+        agent: options.agent,
+        title: options.title,
+        session: metrics.session,
+        weighted: metrics.weighted,
+        outcome: exitCode === 0 ? 'ok' : `exit_${exitCode}`,
+        actor: resolveCreatedBy(undefined),
+      });
       if (exitCode !== 0) process.exit(exitCode);
     });
 }

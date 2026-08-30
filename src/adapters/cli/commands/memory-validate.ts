@@ -11,6 +11,7 @@ import { MemoryEventSchema } from '../../../domain/schemas/memory-event-schema.j
 import { RelationSchema } from '../../../domain/schemas/relation-schema.js';
 import { LOCK_TIMING } from '../../fs/memory-lock.js';
 import { SQLiteSearchIndex } from '../../sqlite/sqlite-search-index.js';
+import { metricsLogPath } from '../../fs/session-metrics-log.js';
 
 export interface ValidateSection {
   name: string;
@@ -164,6 +165,70 @@ export async function runValidate(baseDir: string, opts?: { fix?: boolean }): Pr
   }
   displayLines.push(staleLock ? 'locks:      stale lockfile found' : 'locks:      no stale lockfiles');
 
+  // 8. pressure-integrity: supersede-цепочки (бриф D3.1)
+  const supErrors: string[] = [];
+  const supWarnings: string[] = [];
+  const allObjects = (await store.list()) as Record<string, unknown>[];
+  const ids = new Set(allObjects.map((o) => o.id as string));
+  for (const o of allObjects) {
+    const sb = o.superseded_by;
+    if (sb === null || sb === undefined) continue;
+    if (typeof sb !== 'string' || !ids.has(sb)) {
+      supErrors.push(`${String(o.id)}: superseded_by указывает на несуществующий id: ${String(sb)}`);
+    }
+  }
+  // циклы в цепочках superseded_by (обход с локальным visited; дедуп по составу)
+  const reportedCycles = new Set<string>();
+  for (const o of allObjects) {
+    const seen = new Set<string>([o.id as string]);
+    let curId = typeof o.superseded_by === 'string' ? o.superseded_by : null;
+    while (curId !== null && ids.has(curId)) {
+      if (seen.has(curId)) {
+        const canonical = [...seen].sort().join('→');
+        if (!reportedCycles.has(canonical)) {
+          reportedCycles.add(canonical);
+          supErrors.push(`цикл в цепочке supersede, вовлечены: ${[...seen].join(' → ')}`);
+        }
+        break;
+      }
+      seen.add(curId);
+      const next = allObjects.find((x) => x.id === curId);
+      curId = next && typeof next.superseded_by === 'string' ? next.superseded_by : null;
+    }
+  }
+  // >1 актуальная голова в компоненте цепочки → warning
+  const parent = new Map<string, string>(allObjects.map((o) => [o.id as string, o.id as string]));
+  const find = (x: string): string => {
+    let r = x;
+    while (parent.get(r) !== r) r = parent.get(r) as string;
+    return r;
+  };
+  for (const o of allObjects) {
+    if (typeof o.superseded_by === 'string' && ids.has(o.superseded_by)) {
+      parent.set(find(o.id as string), find(o.superseded_by));
+    }
+  }
+  const headsByRoot = new Map<string, string[]>();
+  for (const o of allObjects) {
+    if (o.superseded_by === null || o.superseded_by === undefined) {
+      const root = find(o.id as string);
+      headsByRoot.set(root, [...(headsByRoot.get(root) ?? []), o.id as string]);
+    }
+  }
+  for (const heads of headsByRoot.values()) {
+    if (heads.length > 1) supWarnings.push(`>1 актуальная голова в цепочке supersede: ${heads.join(', ')}`);
+  }
+  errors.push(...supErrors);
+  warnings.push(...supWarnings);
+  displayLines.push(`supersede:  ${supErrors.length} errors, ${supWarnings.length} warnings`);
+
+  // 9. pressure-integrity: signal log (бриф D3.1; прецедент — секция events)
+  const sigResult = await scanJsonlFile(metricsLogPath(baseDir), (line: string) => JSON.parse(line));
+  for (const p of sigResult.problems) {
+    errors.push(`signal log line ${p.line}: ${p.error}`);
+  }
+  displayLines.push(`signals:    ${sigResult.items.length} lines, bad ${sigResult.problems.length}`);
+
   displayLines.push('');
   const ok = errors.length === 0;
   displayLines.push(
@@ -185,6 +250,12 @@ export async function runValidate(baseDir: string, opts?: { fix?: boolean }): Pr
       },
       { name: 'index', errors: idxFresh ? [] : ['stale index'], warnings: [] },
       { name: 'locks', errors: [], warnings: staleLock ? ['stale'] : [] },
+      { name: 'supersede', errors: supErrors, warnings: supWarnings },
+      {
+        name: 'signal log',
+        errors: sigResult.problems.map((p) => `line ${p.line}: ${p.error}`),
+        warnings: [],
+      },
     ],
     ok,
     errors: errors.length,

@@ -6,6 +6,10 @@ export interface WolfConfig {
   projectTypes: MemoryTypeDeclaration[];
   /** Сырой core-блок как он лежит в файле (для drift-детекта); null — файла/блока нет */
   rawCoreBlock: unknown;
+  /** Ф20: проектная таксономия классов ошибок — матчится раньше дефолтной таблицы (§2.1) */
+  errorClassTaxonomy?: { id: string; match: string[] }[];
+  /** Ф21: порог паттерна N≥3 — параметр процесса (§2.2, §16); Ф26: TTL-override по типам (сессии) */
+  learning?: { patternThreshold?: number; decayTtl?: Record<string, number> };
 }
 
 export class ProjectTypeConflictError extends Error {}

@@ -1,6 +1,8 @@
 import { Command } from 'commander';
 import { getCallInjections } from '../../../app/use-cases/get-call-injections.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
+import { resolveCreatedBy } from '../../../domain/actor.js';
+import { appendDeliverySignal } from '../../../adapters/fs/session-metrics-log.js';
 
 function parseCompact(v: string | undefined): number | true {
   if (v === undefined) return true;
@@ -31,6 +33,14 @@ export function memoryCallCommand(): Command {
         if (result.truncated > 0) {
           console.log(`\n[truncated: ${result.truncated} blocks omitted]`);
         }
+      }
+      // Ф26: доставка = срабатывание (decay-пробег сбрасывается по этим событиям,
+      // спека §6). Объекты памяти НЕ обновляем (дорого) — last_triggered_at
+      // вычисляет decay-прогон из лога.
+      const baseDir = process.cwd();
+      const actor = resolveCreatedBy(undefined);
+      for (const id of result.deliveredIds) {
+        appendDeliverySignal(baseDir, { name: id, mechanism: 'call', target: options.for ?? '', actor });
       }
     });
 }

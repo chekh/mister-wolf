@@ -7,6 +7,8 @@ import { finalScore } from '../../domain/solve/relevance.js';
 export interface CallInjectionResult {
   blocks: string[];
   truncated: number;
+  /** Ф26: id объектов, реально попавших в вывод (срабатывание доставки → decay-пробег). */
+  deliveredIds: string[];
 }
 
 function formatBlock(obj: Record<string, unknown>): string {
@@ -101,8 +103,9 @@ export async function getCallInjections(
     }))
     .sort((a, b) => b.score - a.score);
 
-  // 6. build blocks
+  // 6. build blocks (deliveredIds — то, что прошло бюджет, включая fallback)
   const blocks: string[] = [];
+  const deliveredIds: string[] = [];
   let truncated = 0;
   const budget = input.compact === undefined ? Infinity : input.compact === true ? 1200 : input.compact;
   let used = 0;
@@ -111,11 +114,12 @@ export async function getCallInjections(
     const block = formatBlock(obj);
     if (used + block.length <= budget) {
       blocks.push(block);
+      deliveredIds.push(obj.id as string);
       used += block.length;
     } else {
       truncated++;
     }
   }
 
-  return { blocks, truncated };
+  return { blocks, truncated, deliveredIds };
 }

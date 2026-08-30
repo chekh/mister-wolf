@@ -10,13 +10,19 @@ import { UserFacingError } from './errors.js';
 export function parseSetPairs(inputs: readonly string[], type: MemoryType): Record<string, unknown> {
   const decl = getDeclaration(type);
   const isArrayField = (key: string): boolean => decl.fields?.[key]?.kind === 'string[]';
+  const isBooleanField = (key: string): boolean => decl.fields?.[key]?.kind === 'boolean';
   const result: Record<string, unknown> = {};
   for (const input of inputs) {
     for (const pair of splitTopLevel(input)) {
       const i = pair.indexOf('=');
       if (i <= 0) throw new UserFacingError(`Invalid --set pair "${pair}" (expected key=value)`);
       const key = pair.slice(0, i).trim();
-      const value = parseValue(pair.slice(i + 1));
+      let value = parseValue(pair.slice(i + 1));
+      // булевы поля таксономии: CLI отдаёт строки — коэрсим ('true'/'false')
+      if (isBooleanField(key) && typeof value === 'string') {
+        if (value === 'true') value = true;
+        else if (value === 'false') value = false;
+      }
       if (key in result) {
         if (!isArrayField(key)) {
           throw new UserFacingError(`Duplicate --set key "${key}" (repeat is allowed only for array fields)`);
