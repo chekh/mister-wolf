@@ -23,6 +23,8 @@ export const MemoryObjectSchema = z
       'obsolete',
       'proposed',
       'accepted',
+      'candidate',
+      'deprecated',
     ]),
     review_state: z.enum(['accepted', 'proposed', 'rejected']),
     confidence: z.enum(['low', 'medium', 'high']),

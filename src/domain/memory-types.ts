@@ -12,7 +12,9 @@ export type MemoryStatus =
   | 'rejected'
   | 'obsolete'
   | 'proposed'
-  | 'accepted';
+  | 'accepted'
+  | 'candidate'
+  | 'deprecated';
 export type ReviewState = 'accepted' | 'proposed' | 'rejected';
 export type Confidence = 'low' | 'medium' | 'high';
 export type SourceKind = 'manual' | 'session' | 'file' | 'scan';
@@ -25,6 +27,7 @@ export type FieldSpec =
   | { kind: 'string[]'; required: true; minItems?: number }
   | { kind: 'string[]'; default?: readonly string[] }
   | { kind: 'boolean'; optional: true }
+  | { kind: 'int'; default?: number }
   | { kind: 'enum'; values: readonly string[] };
 
 export interface MemoryTypeDeclaration {
@@ -254,6 +257,26 @@ const CORE_TAXONOMY_DECLS = [
       steps: { kind: 'string[]', required: true, minItems: 1 },
       owner_skill: { kind: 'string', required: true, min: 1 },
       version: { kind: 'string', required: true, min: 1 },
+    },
+  },
+  {
+    // Фаза C roadmap v3 «инструменты как память»: files remain canonical —
+    // тело скрипта живёт в .wolf/tools/<name>.<ext>, объект — только метаданные.
+    name: 'tool',
+    lifecycle: ['candidate', 'active', 'deprecated', 'archived'],
+    defaultStatus: 'candidate',
+    subdirThread: null,
+    subdirShared: 'tools',
+    fields: {
+      name: { kind: 'string', required: true, min: 1 },
+      script_path: { kind: 'string', required: true, min: 1 },
+      language: { kind: 'string', required: true, min: 1 },
+      contract_input: { kind: 'string', optional: true },
+      contract_output: { kind: 'string', optional: true },
+      contract_environment: { kind: 'string', optional: true },
+      usage_count: { kind: 'int', default: 0 },
+      last_used_at: { kind: 'string', optional: true },
+      deprecation_reason: { kind: 'string', optional: true },
     },
   },
 ] as const;
