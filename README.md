@@ -22,19 +22,43 @@ Mr. Wolf — local-first слой памяти, процессов, агенто
 | П3  | Документы проекта живут отдельно от агентов | единая точка правды отсутствует                                                     |
 | П4  | Накопленное становится шумом                | память растёт, ценность падает                                                      |
 
-## Быстрый старт
+## Installation
+
+> [!WARNING]
+> Пакет называется **`mister-wolf`** — именно так. Пакет `mr-wolf` в npm **чужой** (work-queue
+> библиотека): `npm install mr-wolf` поставит сторонний код и выполнит его install-скрипты.
+> Проверяй имя буква-в-букву перед установкой.
+
+Установка — три команды:
 
 ```bash
-# из репо
-npm install && npm run build
-alias wolf="node dist/bootstrap/cli.js"   # или npm link (bin: wolf)
-
-wolf init                                  # скелет памяти: .wolf/, конфиг, индекс, таксономия
-wolf bootstrap                             # стартовое наполнение: document-ref'ы, черновики правил, work-thread + бриф
-wolf add --type decision --title "Решение" --body "Что и почему"
-wolf brief                                 # сводка состояния проекта для агента/владельца
-wolf call                                  # активные injections и правила для сессии
+npm install -g mister-wolf   # 1) машина: бинарь wolf (уровень 0)
+cd my-project && wolf init   # 2) проект: скелет .wolf/ + MCP-конфиги платформ
+wolf bootstrap               # 3) память: стартовое наполнение из документов проекта
 ```
+
+После `wolf init` **перезапусти агентскую платформу** — MCP-сервер Wolf подключается при старте.
+Claude Code при первом старте попросит approve project-scope MCP-сервер — это штатно.
+
+- **Попробовать без установки:** `npx mister-wolf init` — создаст память проекта, но никогда
+  не пишет MCP-конфиги (try-out). Понравилось — `npm install -g mister-wolf` и повтори `wolf init`.
+- **Платформы v1:** opencode, Claude Code. Детект автоматический; явно:
+  `wolf init --platform opencode,claude` (список заменяет текущий набор). Нет маркеров платформы —
+  init честно предупредит и подскажет `--platform`.
+- **ОС/рантайм:** macOS и Linux (glibc) на Node 22/24. Alpine/musl не поддержан в v1;
+  Windows — best-effort, не заявлена. Нативная зависимость better-sqlite3 ставится из пребилдов —
+  это поведение зависимости, у mister-wolf нет своих install-скриптов.
+- **Если установка падает на better-sqlite3 — две разные ситуации:**
+  `prebuild-install ... no prebuilt binary found (musl)` — для вашей платформы пребилды не
+  выпускаются (Alpine/musl) — **не поддерживается в v1**, используйте glibc-дистрибутив;
+  `gyp ERR!` / `node-gyp` / сборка из исходников упала — пребилда под ваш Node нет или не
+  скачалась, поставь node-gyp prerequisites (python3, make, C++ toolchain) и повтори
+  `npm rebuild better-sqlite3` — это лечится, в отличие от musl.
+- **Dev-путь (из клонированного репо):** `npm install && npm run build`, затем
+  `alias wolf="node dist/bootstrap/cli.js"`. При одновременно установленном глобальном
+  `mister-wolf` помни о PATH-shadowing: какой `wolf` запустится — определяется порядком каталогов
+  в PATH. В npm есть и чужой пакет `wolf` (Wolfram CLI) — глобальная установка обоих конфликтует
+  за имя бинаря, разрешается тем же порядком PATH.
 
 Подключение агента — одна команда: `wolf scaffold agent <name>` создаёт тонкую рамку в `.opencode/agents/<name>.md`, playbook-объект в памяти и relation между ними. Доставку playbook'а в сессию выполняет плагин `.opencode/plugins/wolf-router.ts` — см. [Интеграции](#интеграции).
 
