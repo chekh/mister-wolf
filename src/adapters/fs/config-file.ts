@@ -33,6 +33,9 @@ const ConfigFileSchema = z.object({
     })
     .optional()
     .catch({}),
+  // Ф20/Ф21: классы ошибок + порог паттерна (спека §2.1, §2.2)
+  error_class_taxonomy: z.array(z.object({ id: z.string().min(1), match: z.array(z.string()).min(1) })).catch([]),
+  learning: z.object({ pattern_threshold: z.number().int().min(1).optional().catch(undefined) }).catch({}),
 });
 
 export class ConfigLoadError extends Error {}
@@ -63,6 +66,8 @@ export async function loadWolfConfig(baseDir: string): Promise<WolfConfig | null
       fields: d.fields,
     })),
     rawCoreBlock: mt.core ?? null,
+    errorClassTaxonomy: cfg.error_class_taxonomy,
+    learning: { patternThreshold: cfg.learning?.pattern_threshold },
   };
 }
 
@@ -92,6 +97,8 @@ export function loadWolfConfigSync(baseDir: string): WolfConfig | null {
       fields: d.fields,
     })),
     rawCoreBlock: mt.core ?? null,
+    errorClassTaxonomy: cfg.error_class_taxonomy,
+    learning: { patternThreshold: cfg.learning?.pattern_threshold },
   };
 }
 
@@ -100,6 +107,12 @@ export function renderConfigYaml(existing: WolfConfig | null): string {
   const doc = {
     '# comment': 'memory_types.core генерируется `wolf taxonomy sync`; ручные правки будут перезаписаны',
     artifact_sources: existing?.artifact_sources ?? [],
+    // сохраняем при regenerate (иначе taxonomy sync стёр бы настройки контура Ф20/Ф21)
+    error_class_taxonomy: existing?.errorClassTaxonomy ?? [],
+    learning:
+      existing?.learning?.patternThreshold !== undefined
+        ? { pattern_threshold: existing.learning.patternThreshold }
+        : {},
     memory_types: {
       core: generateCoreConfigBlock(),
       project: Object.fromEntries(

@@ -13,6 +13,7 @@ import {
 import { toolStats } from '../../../app/use-cases/tool-stats.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { resolveCreatedBy } from '../../../domain/actor.js';
+import { appendDeliverySignal } from '../../../adapters/fs/session-metrics-log.js';
 
 function printContractReminder(tool: ToolObject): void {
   console.log(`Input: ${tool.contract_input ?? '—'}`);
@@ -114,6 +115,14 @@ export function memoryToolCommand(): Command {
         { store, log, clock, idGen, index, lock, declarations, fs, baseDir: process.cwd() },
         { nameOrId }
       );
+      // Ф20 (в): delivery_event — методика тула доставлена как skill
+      const skillName = result.path.split('/').at(-2) ?? nameOrId;
+      appendDeliverySignal(process.cwd(), {
+        name: skillName,
+        mechanism: 'skill',
+        target: result.path,
+        actor: resolveCreatedBy(undefined),
+      });
       console.log(`Exposed skill: ${result.path}`);
     });
 

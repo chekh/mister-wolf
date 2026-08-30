@@ -3,6 +3,7 @@ import { scaffoldFrame, SCAFFOLD_KINDS, type ScaffoldKind } from '../../../app/u
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { resolveCreatedBy } from '../../../domain/actor.js';
 import { UserFacingError } from '../../../domain/errors.js';
+import { appendDeliverySignal } from '../../../adapters/fs/session-metrics-log.js';
 
 export function memoryScaffoldCommand(): Command {
   return new Command('scaffold')
@@ -36,6 +37,14 @@ export function memoryScaffoldCommand(): Command {
             createdBy: resolveCreatedBy(options.createdBy),
           }
         );
+        // Ф20 (в): delivery_event — рамка + playbook доставлены (методика из памяти)
+        appendDeliverySignal(process.cwd(), {
+          name,
+          mechanism: 'frame',
+          target: result.framePath,
+          actor: resolveCreatedBy(options.createdBy),
+          detail: { playbook_id: result.playbookId, kind },
+        });
         console.log(`Created playbook: ${result.playbookId}`);
         console.log(`Created frame: ${result.framePath}`);
       }
