@@ -26,6 +26,11 @@ export function thinkingDir(baseDir: string): string {
   return join(baseDir, '.wolf', 'thinking');
 }
 
+/** Каноничные тела скриптов типа tool (Фаза C «инструменты как память»). */
+export function toolsDir(baseDir: string): string {
+  return join(baseDir, '.wolf', 'tools');
+}
+
 export function briefsDir(baseDir: string): string {
   return join(memoryDir(baseDir), 'briefs');
 }
