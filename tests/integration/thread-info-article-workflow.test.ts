@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync } from 'fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, resolve, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -29,6 +29,8 @@ describe('Thread / Info Request / Article workflow', () => {
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'wolf-tia-'));
+    // маркер корня проекта: init вне проекта честно отказывает (спека §6 дистрибуции)
+    writeFileSync(join(dir, 'package.json'), '{ "name": "wolf-tia" }');
   });
 
   afterEach(() => {
