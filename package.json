@@ -29,7 +29,7 @@
     "pressure-test": "npm run build && node dist/bootstrap/cli.js learn gate",
     "bench:search": "npm run build && node scripts/bench-search.mjs",
     "bench:tokens": "node --disable-warning=ExperimentalWarning scripts/bench-tokens.mjs",
-    "check": "npm run format:check && npm run lint && npm run test:run && npm run build"
+    "check": "npm run format:check && npm run lint && npm run build && npm run test:run"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",
