@@ -183,6 +183,20 @@ describe('Ф21 (D1.3): событийный триггер паттерна пр
     expect(readPatterns(dir)[0]).toMatchObject({ count: 2, threshold: 2 });
   });
 
+  it('снижение порога после накопления: кластер фиксируется на следующей записи (§2.2 — порог настраиваем)', () => {
+    mkdirSync(join(dir, '.wolf'), { recursive: true });
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), 'learning:\n  pattern_threshold: 5\n');
+    complain('late');
+    complain('late');
+    complain('late'); // 3 < 5 — фиксации нет
+    expect(readPatterns(dir)).toHaveLength(0);
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), 'learning:\n  pattern_threshold: 2\n');
+    const res = complain('late'); // 4 >= 2, ключ ещё не фиксирован → фиксация
+    expect(res.count).toBe(4);
+    expect(res.patternFixed).toBe(true);
+    expect(readPatterns(dir)[0]).toMatchObject({ key: 'complaint:late', count: 4, threshold: 2 });
+  });
+
   it('дефолт порога — 3 (спека §16), битый config не роняет', () => {
     expect(patternThreshold(dir)).toBe(DEFAULT_PATTERN_THRESHOLD);
     mkdirSync(join(dir, '.wolf'), { recursive: true });

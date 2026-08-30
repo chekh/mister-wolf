@@ -110,9 +110,11 @@ export function readPatterns(baseDir: string): PatternRecord[] {
 }
 
 /**
- * Append сигнала + событийный триггер Ф21: в момент записи, перевалившей порог
- * (count === threshold, первое пересечение), паттерн фиксируется в patterns.jsonl.
- * НЕ календарный (спека §7: event-driven пороги вместо расписания).
+ * Append сигнала + событийный триггер Ф21: в момент записи, перевалившей порог,
+ * паттерн фиксируется в patterns.jsonl (один раз на ключ — повторных фиксаций нет).
+ * НЕ календарный (спека §7: event-driven пороги вместо расписания). Порог —
+ * настраиваемый параметр (§2.2): при снижении порога уже накопленный кластер
+ * фиксируется на следующей же записи, не ждёт нового пересечения.
  */
 export function appendSignal(
   baseDir: string,
@@ -126,7 +128,8 @@ export function appendSignal(
   // инкрементальные счётчики если лог вырастет до десятков тысяч строк.
   const count = readSignals(baseDir).filter((s) => signalKey(s) === key).length;
   const threshold = patternThreshold(baseDir);
-  const patternFixed = count === threshold;
+  const alreadyFixed = readPatterns(baseDir).some((p) => p.key === key);
+  const patternFixed = count >= threshold && !alreadyFixed;
   if (patternFixed) {
     appendFileSync(
       patternsLogPath(baseDir),
