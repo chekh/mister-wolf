@@ -4,7 +4,7 @@
 #   docker run --rm mister-wolf:test
 #   docker build --target runtime -t mister-wolf:latest .
 
-FROM node:20-bookworm-slim AS base
+FROM node:22-bookworm-slim AS base
 WORKDIR /app
 ENV NODE_ENV=development
 
@@ -28,7 +28,7 @@ FROM base AS build
 RUN npm run build
 CMD ["node", "dist/bootstrap/cli.js", "--help"]
 
-FROM node:20-bookworm-slim AS runtime
+FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
