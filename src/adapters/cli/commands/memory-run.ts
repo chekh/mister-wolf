@@ -10,6 +10,10 @@ import { extractModel, parseRunMetrics } from '../opencode-run-metrics.js';
 const DEFAULT_ROUTING_ID = 'mem_20260829_llm_routing_v1_wolf_router_auto_zai_codi_966883';
 const FALLBACK_MODEL = 'zai-coding-plan/glm-5.3-flash';
 
+function collect(value: string, previous: string[]): string[] {
+  return [...previous, value];
+}
+
 /** Актуальная модель по supersede-цепочке routing-объекта; любая ошибка → fallback. */
 async function resolveModel(): Promise<string> {
   const routingId = process.env.WOLF_ROUTING_ID ?? DEFAULT_ROUTING_ID;
@@ -31,6 +35,7 @@ export function memoryRunCommand(): Command {
     .requiredOption('--agent <name>', 'opencode agent name')
     .requiredOption('--title <title>', 'Run label written to the log')
     .option('--session <sid>', 'opencode session id to continue')
+    .option('--tool <name>', 'Mark this run as using tool(s) (repeatable)', collect, [])
     .argument('<prompt>', 'Prompt passed to opencode')
     .action(async (prompt: string, options) => {
       const model = await resolveModel();
@@ -71,6 +76,7 @@ export function memoryRunCommand(): Command {
           session: metrics.session,
           weighted: metrics.weighted,
           verdict_pending: true,
+          ...(options.tool.length > 0 ? { tools: options.tool } : {}),
         }) + '\n'
       );
 
