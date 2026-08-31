@@ -114,6 +114,10 @@ h2 {
   color: #d9b36a;
 }
 
+.wolf-terminal .wg-open {
+  color: #d9a441; /* lifted brass, matches .st-open */
+}
+
 .wolf-terminal .wg-verified {
   color: #7cb99a; /* ≈ 6.8:1 on the panel — matches lifted tones above */
 }
