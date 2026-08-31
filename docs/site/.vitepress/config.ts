@@ -22,6 +22,8 @@ export default defineConfig({
   title: 'Mr. Wolf',
   description: 'Local-first project memory for AI coding agents.',
   base: '/mister-wolf/',
+  // VitePress does not apply `base` to head links — hardcode it for GitHub Pages
+  head: [['link', { rel: 'icon', type: 'image/png', href: '/mister-wolf/logo-small.png' }]],
   locales: {
     root: {
       label: 'English',
@@ -53,6 +55,7 @@ export default defineConfig({
     },
   },
   themeConfig: {
+    logo: '/logo-small.png',
     search: { provider: 'local' },
   },
 })

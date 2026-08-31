@@ -5,6 +5,9 @@ hero:
   name: Mr. Wolf
   text: Память проекта, которая переживает сессию
   tagline: Local-first память для AI-агентов — CLI + MCP, без облака.
+  image:
+    src: /logo.png
+    alt: Логотип Mr. Wolf
   actions:
     - theme: brand
       text: Начать работу
