@@ -2,7 +2,7 @@
 
 **Дата:** 2026-08-29 · **Статус:** утверждён владельцем · **Замена:** roadmap-v2 (контур Ф20–26 — фазы обработки знаний из roadmap-v2 — сохраняется как Фаза D; фазы 15–19 переноса опыта superpowers (roadmap-v2) — выполнены)
 **Ревизия:** 2026-08-31 — v3.1 · **Основание ревизии:** внешняя экспертиза (`.external_experts_review/2026-08-31-self-learning-research/dialogue.md`) + спека базовых наборов (`docs/superpowers/specs/2026-08-31-base-sets-design.md`); см. «Историю»
-**Основание:** концепция v3.3 (`docs/concept/concept.md`) — постоянная проектная организация из временных агентов + типизированная память.
+**Основание:** концепция v3.3.1 (`docs/concept/concept.md`) — постоянная проектная организация из временных агентов + типизированная память.
 **Приоритет владельца:** сначала продукт из доказанного (агенты, процессы, инструменты), самообучение — после.
 **Фокус платформы:** фазы A–D — opencode-only; мультиплатформенность — архитектурный принцип (концепт §7, платформы и адаптеры), не план работ до зрелости.
 
@@ -75,11 +75,19 @@
 
 Зачем фазы: измерить накопительный эффект Wolf внешне проверяемыми числами (benchmark + ablation) — опора позиционирования (B6) и moat (B8).
 
-### E1 · Benchmark накопительной эффективности — явная фаза (не по триггеру)
+### E1 · Программа benchmark'ов накопительной эффективности (E1a–E1e) — явная фаза (не по триггеру)
 
-Vanilla agent vs agent+Wolf на 30–100 повторяющихся задачах. Метрики: **project discovery tokens · repeated mistake rate · duplicated diagnostic scripts · time to resume task · stale knowledge injection rate · council impact on ambiguous decisions**.
+Программа E1a–E1e — раздельные эксперименты, оси ablation не смешиваются (детали, режимы сравнения и статистический протокол — [evidence.md](../../concept/evidence.md)):
 
-**Ablation-тесты** (вкл/выкл): иерархия (один агент vs L0→L1→L2) · память (без/с таксономией) · консилиум (без/с) · Стюард (без/с).
+| Ось                   | Руки                                      | Класс задач                                                       |
+| --------------------- | ----------------------------------------- | ----------------------------------------------------------------- |
+| E1a Hierarchy         | single agent vs L0/L1/L2                  | сложные декомпозируемые поставки                                  |
+| E1b Continuity        | без typed memory vs с ней                 | последовательности задач с повторяющимися классами, сбросы сессий |
+| E1c Council           | без Council vs с Council                  | заранее определённые неоднозначные/высокорисковые развилки        |
+| E1d Governed Learning | без mutation vs complaint-driven mutation | повторяемые failure classes + holdout-перенос исправления         |
+| E1e Capabilities      | одноразовые скрипты vs tool registry      | повторяющиеся проверки                                            |
+
+Метрики: **project discovery tokens · repeated mistake rate · duplicated diagnostic scripts · time to resume task · stale knowledge injection rate · council impact on ambiguous decisions**. 30–100 задач на каждый эксперимент программы (не на программу целиком).
 
 ### По триггерам
 
