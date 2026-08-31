@@ -2,12 +2,9 @@
 layout: home
 
 hero:
-  name: Mr. Wolf
+  name: PROJECT MEMORY / LOCAL-FIRST
   text: Память проекта, которая переживает сессию
-  tagline: Local-first память для AI-агентов — CLI + MCP, без облака.
-  image:
-    src: /logo.png
-    alt: Логотип Mr. Wolf
+  tagline: Local-first слой памяти, процессов, агентов и инструментов для AI-кодинга — единая точка правды проекта, в которую агенты пишут опыт и из которой получают контекст. Это не оркестратор и не ещё один агент, а субстрат под любого агента.
   actions:
     - theme: brand
       text: Начать работу
@@ -15,9 +12,6 @@ hero:
     - theme: alt
       text: Справочник CLI
       link: /ru/guide/cli
-    - theme: alt
-      text: GitHub
-      link: https://github.com/chekh/mister-wolf
 
 features:
   - title: Локальное хранение

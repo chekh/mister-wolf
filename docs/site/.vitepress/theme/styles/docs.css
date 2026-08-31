@@ -1,0 +1,40 @@
+/**
+ * Docs pages: calm dossier interior.
+ * No section ::before labels, no decoration overload.
+ */
+
+/* h1/h2 Condensed via base.css h1,h2 rule; keep doc sizes default */
+
+/* Active sidebar item: full-height red thread on the left */
+.VPSidebar .VPSidebarItem.level-1.is-active > .item > .indicator,
+.VPSidebar .VPSidebarItem.level-2.is-active > .item > .indicator,
+.VPSidebar .VPSidebarItem.level-3.is-active > .item > .indicator,
+.VPSidebar .VPSidebarItem.level-4.is-active > .item > .indicator,
+.VPSidebar .VPSidebarItem.level-5.is-active > .item > .indicator {
+  top: 0;
+  bottom: 0;
+  border-radius: 0;
+  background-color: var(--wolf-signal);
+}
+
+/* Aside outline header: mono caps service label */
+.aside .outline-title,
+.VPDocAsideOutline .outline-title {
+  font-family: var(--vp-font-family-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--vp-c-text-3);
+}
+
+/* Callouts: dossier cut corner (one, top-left — same geometry as CTA) */
+.vp-doc .custom-block {
+  border-radius: 0;
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
+}
+
+/* Local nav (mobile) stays default; doc footer separators from vars */
+.vp-doc .vp-doc h1,
+.vp-doc h1 {
+  border-bottom-color: var(--vp-c-divider);
+}

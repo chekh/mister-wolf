@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Wolf Trace Mark A "open trace": one line through 5 nodes forms W; final node = current knowledge (signal). Uses currentColor: adapts to light/dark contexts. -->
+  <path d="M3 10 L9 25 L16 11 L23 25 L29 9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="3" cy="10" r="2.6" fill="currentColor"/>
+  <circle cx="9" cy="25" r="2.6" fill="currentColor"/>
+  <circle cx="16" cy="11" r="2.6" fill="currentColor"/>
+  <circle cx="23" cy="25" r="2.6" fill="currentColor"/>
+  <circle cx="29" cy="9" r="3.2" fill="#d43a2f"/>
+</svg>

@@ -1,12 +1,9 @@
 ---
 layout: home
 hero:
-  name: Mr. Wolf
+  name: PROJECT MEMORY / LOCAL-FIRST
   text: Project memory that outlives the session
-  tagline: Local-first memory harness for AI coding agents — CLI + MCP, no cloud.
-  image:
-    src: /logo.png
-    alt: Mr. Wolf logo
+  tagline: A local-first layer of memory, processes, agents and tools for AI coding — a single source of truth that agents write their experience to and read context from. It is not an orchestrator and not yet another agent — it is a substrate under any agent.
   actions:
     - theme: brand
       text: Get Started
@@ -14,9 +11,6 @@ hero:
     - theme: alt
       text: CLI Reference
       link: /guide/cli
-    - theme: alt
-      text: GitHub
-      link: https://github.com/chekh/mister-wolf
 features:
   - title: Local-first storage
     details: Everything lives in .wolf/ inside your project — markdown memory objects, a SQLite search index, no cloud. Decisions, lessons, rules and tools stay with the project after the session ends and make the next task cheaper.

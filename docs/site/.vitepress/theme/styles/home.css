@@ -1,0 +1,406 @@
+/**
+ * Home: hero, terminal scene, trust bar, feature cards.
+ */
+
+/* ---------- Hero ---------- */
+
+.VPHero .name {
+  font-family: var(--vp-font-family-mono);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: var(--vp-c-home-hero-name-color);
+  background: none;
+  -webkit-text-fill-color: var(--vp-c-home-hero-name-color);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1;
+}
+
+.VPHero .name::before {
+  content: '';
+  width: 22px;
+  height: 2px;
+  background: var(--wolf-signal);
+  flex: none;
+}
+
+.VPHero .text {
+  font-family: var(--vp-font-family-title);
+  font-weight: 700;
+  font-size: 56px;
+  line-height: 1.05;
+  padding-top: 14px;
+  letter-spacing: 0.005em;
+}
+
+.VPHero .tagline {
+  color: var(--vp-c-text-2);
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.VPHero .image-container {
+  width: 100%;
+  max-width: 520px;
+}
+
+.VPHero .image-bg {
+  display: none; /* no default glow */
+}
+
+/* Brand CTA: brass plate, ONE cut corner.
+   Paint via ::before (z -1) so the button keeps its focus outline. */
+.VPHero .actions .VPButton.brand {
+  position: relative;
+  isolation: isolate;
+  border-radius: 0;
+  border-color: var(--wolf-brass);
+  clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
+  font-family: var(--vp-font-family-base);
+  font-weight: 600;
+}
+
+/* Focus ring must survive the clip: draw it inside the clipped area */
+.VPHero .actions .VPButton.brand:focus-visible {
+  outline: 2px solid var(--wolf-signal);
+  outline-offset: -6px;
+}
+
+.VPHero .actions .VPButton.brand::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--vp-button-brand-bg);
+  clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
+  transition: background-color 0.25s;
+}
+
+.VPHero .actions .VPButton.brand:hover::before {
+  background: var(--vp-button-brand-hover-bg);
+}
+
+/* Alt CTA: outlined, straight */
+.VPHero .actions .VPButton.alt {
+  border-radius: 0;
+  font-weight: 500;
+}
+
+/* ---------- Terminal (hero image slot) ---------- */
+
+.wolf-terminal {
+  background: var(--wolf-panel);
+  clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
+  font-family: var(--vp-font-family-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  color: #ece5d3; /* terminal is always a dark plate, both themes */
+}
+
+.wolf-terminal-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #2e3138;
+}
+
+.wolf-terminal-bar .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  opacity: 0.75; /* muted, not neon */
+}
+
+.wolf-terminal-bar .dot-signal {
+  background: var(--wolf-signal);
+}
+
+.wolf-terminal-bar .dot-brass {
+  background: var(--wolf-brass);
+}
+
+.wolf-terminal-bar .dot-verified {
+  background: var(--wolf-verified);
+}
+
+.wolf-terminal-title {
+  margin-left: 8px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: #9a9280;
+}
+
+.wolf-terminal-body {
+  padding: 16px 18px 18px 20px;
+}
+
+.wolf-terminal-cmd {
+  color: #c9c0aa;
+  margin: 0 0 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Red thread: vertical line joining the nodes */
+.wolf-thread {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+.wolf-thread::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: var(--wolf-signal);
+  opacity: 0.85;
+}
+
+.wolf-thread-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 12px 76px minmax(0, 1fr) auto;
+  grid-template-areas: 'node type id status' 'node desc desc desc';
+  column-gap: 10px;
+  row-gap: 2px;
+  align-items: baseline;
+  padding: 7px 0;
+}
+
+.wolf-thread-item .node {
+  grid-area: node;
+  position: relative;
+  top: 1px;
+  justify-self: center;
+  align-self: start;
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  border: 1.5px solid var(--wolf-signal);
+  background: var(--wolf-panel);
+  z-index: 1;
+}
+
+.wolf-thread-item.is-last .node {
+  background: var(--wolf-signal); /* last node = filled */
+}
+
+.wolf-thread-item .type {
+  grid-area: type;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: #c9c0aa;
+}
+
+.wolf-thread-item .id {
+  grid-area: id;
+  font-size: 12px;
+  color: #9a9280;
+  overflow-wrap: anywhere;
+}
+
+.wolf-thread-item .status {
+  grid-area: status;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.wolf-thread-item .desc {
+  grid-area: desc;
+  font-size: 12px;
+  color: #c9c0aa;
+  overflow-wrap: anywhere;
+}
+
+/* type labels carry the status color */
+.wolf-thread-item .st-active {
+  color: #e06055;
+}
+
+.wolf-thread-item .st-verified {
+  color: var(--wolf-verified);
+}
+
+.wolf-thread-item .st-blocked {
+  color: #cf6f66; /* distinct tone + explicit word */
+}
+
+.wolf-thread-item:first-child .type {
+  color: #e06055;
+} /* RULE mirrors its ACTIVE status */
+
+.wolf-thread-item:nth-child(2) .type {
+  color: var(--wolf-verified);
+} /* LESSON = VERIFIED */
+
+.wolf-thread-item:nth-child(3) .type {
+  color: #e06055;
+} /* DECISION = ACTIVE */
+
+.wolf-thread-item:nth-child(4) .type {
+  color: #cf6f66;
+} /* BLOCKER = BLOCKED */
+
+.wolf-terminal-result {
+  margin: 14px 0 0;
+  font-size: 12px;
+  color: var(--wolf-verified);
+}
+
+/* ---------- Trust bar (home-hero-after) ---------- */
+
+.wolf-trust-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 14px 10px;
+  padding: 22px 24px 30px;
+}
+
+.wolf-trust-bar .wolf-stamp {
+  transition: transform 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.wolf-trust-bar .wolf-stamp-even {
+  transform: rotate(0.5deg); /* alternating, delicate */
+}
+
+.wolf-trust-bar .wolf-stamp:hover {
+  transform: rotate(0);
+  border-color: var(--wolf-signal);
+  color: var(--vp-c-text-2);
+}
+
+.wolf-trust-sep {
+  color: var(--wolf-muted);
+  font-size: 12px;
+}
+
+/* ---------- Feature cards ---------- */
+
+.VPFeatures .item .VPFeature {
+  border: 0;
+  border-radius: 0;
+  background: var(--wolf-line); /* frame layer */
+  padding: 1px;
+  clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
+  transition: background-color 0.25s;
+}
+
+.VPFeatures .item .VPFeature .box {
+  border: 0;
+  border-radius: 0;
+  background: var(--wolf-bg-elv);
+  clip-path: polygon(11.2px 0, 100% 0, 100% 100%, 0 100%, 0 11.2px);
+  position: relative;
+}
+
+/* red thread on hover: left edge, no lift/shadow */
+.VPFeatures .item .VPFeature .box::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--wolf-signal);
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.VPFeatures .item .VPFeature:hover {
+  background: var(--wolf-signal);
+}
+
+.VPFeatures .item .VPFeature:hover .box::before {
+  opacity: 1;
+}
+
+.VPFeatures .item .VPFeature .box .title {
+  font-family: var(--vp-font-family-title);
+  font-weight: 700;
+  font-size: 19px;
+  line-height: 1.3;
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.VPFeatures .item .VPFeature .box .details {
+  color: var(--vp-c-text-2);
+}
+
+/* ---------- Mobile ---------- */
+
+@media (max-width: 768px) {
+  .VPHero .text {
+    font-size: 38px;
+    padding-top: 10px;
+  }
+
+  .VPHero .image-container {
+    max-width: 100%;
+    margin-top: 24px;
+  }
+
+  .wolf-terminal {
+    font-size: 12px;
+  }
+
+  .wolf-terminal-body {
+    padding: 12px 12px 14px 14px;
+  }
+
+  .wolf-thread::before {
+    left: 4px;
+  }
+
+  .wolf-thread-item {
+    grid-template-columns: 10px minmax(0, 1fr);
+    grid-template-areas:
+      'node type'
+      'node id'
+      'node status'
+      'node desc';
+    column-gap: 8px;
+  }
+
+  .wolf-thread-item .type {
+    font-size: 11px;
+  }
+
+  .wolf-thread-item .id {
+    font-size: 11px;
+  }
+
+  .wolf-thread-item .desc {
+    font-size: 11.5px;
+  }
+
+  .wolf-trust-bar {
+    gap: 10px 8px;
+    padding: 16px 16px 24px;
+  }
+
+  .wolf-trust-bar .wolf-stamp {
+    font-size: 10px;
+    padding: 3px 8px 2px;
+  }
+
+  .wolf-trust-sep {
+    display: none;
+  }
+}

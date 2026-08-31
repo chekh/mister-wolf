@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Favicon = Trace Mark A geometry with fixed brass line (readable on light and dark tab bars); final node signal red. -->
+  <path d="M3 10 L9 25 L16 11 L23 25 L29 9" stroke="#c49a4a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="3" cy="10" r="2.7" fill="#c49a4a"/>
+  <circle cx="9" cy="25" r="2.7" fill="#c49a4a"/>
+  <circle cx="16" cy="11" r="2.7" fill="#c49a4a"/>
+  <circle cx="23" cy="25" r="2.7" fill="#c49a4a"/>
+  <circle cx="29" cy="9" r="3.4" fill="#d43a2f"/>
+</svg>

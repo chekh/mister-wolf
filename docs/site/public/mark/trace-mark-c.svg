@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Wolf Trace Mark C "badge/stamp": W trace contained in a rounded stamp frame; reads as a service seal, final node signal red. -->
+  <rect x="2" y="2" width="28" height="28" rx="6" stroke="currentColor" stroke-width="2"/>
+  <path d="M8 12 L12.5 22 L16 14.5 L19.5 22 L24 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="8" cy="12" r="1.7" fill="currentColor"/>
+  <circle cx="12.5" cy="22" r="1.7" fill="currentColor"/>
+  <circle cx="16" cy="14.5" r="1.7" fill="currentColor"/>
+  <circle cx="19.5" cy="22" r="1.7" fill="currentColor"/>
+  <circle cx="24" cy="12" r="2.4" fill="#d43a2f"/>
+</svg>

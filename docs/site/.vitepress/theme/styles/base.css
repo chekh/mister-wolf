@@ -1,0 +1,36 @@
+/**
+ * Base: typography + dossier utilities.
+ * Cut corner, stamps, status geometry — shared primitives.
+ */
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Condensed display face for big headings (RU falls back to Plex Sans) */
+h1,
+h2 {
+  font-family: var(--vp-font-family-title);
+  letter-spacing: 0.01em;
+}
+
+/* --- Stamps: mono caps in a thin frame --- */
+.wolf-stamp {
+  display: inline-block;
+  font-family: var(--vp-font-family-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--wolf-fg-3);
+  border: 1px solid var(--wolf-line);
+  padding: 4px 10px 3px;
+  border-radius: 0;
+  white-space: nowrap;
+}
+
+/* Rotation lives only on the home page (docs stay strictly straight) */
+.VPHome .wolf-stamp {
+  transform: rotate(-1deg);
+}
