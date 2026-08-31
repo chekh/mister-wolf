@@ -64,6 +64,12 @@ Claude Code при первом старте попросит approve project-sc
 
 `bootstrap` завершается вызовом Стюарда для свёртки черновиков стартовой памяти — протокол: [docs/guide/steward-bootstrap.md](docs/guide/steward-bootstrap.md).
 
+## Versioning
+
+- Единственный источник истины версии — `package.json`; версия меняется только командой `npm version X.Y.Z` (semver, вручную).
+- Тег `v*` — релиз-триггер: CI прогоняет `check`+`e2e` и публикует пакет (trusted publishing, provenance).
+- История изменений — [CHANGELOG.md](CHANGELOG.md); запись в него при релизе обязательна.
+
 ## Архитектура
 
 Четыре слоя ([концепт §2](docs/concept/concept.md)):
