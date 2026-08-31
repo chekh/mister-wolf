@@ -1,0 +1,56 @@
+name: Bug report
+description: Report something that isn't working as expected in mister-wolf
+labels: ['bug']
+body:
+  - type: markdown
+    id: welcome
+    attributes:
+      value: |
+        Thanks for reporting! Please fill out the sections below so we can reproduce and fix the issue quickly.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug. Attach error output or logs if you have them.
+      placeholder: |
+        Paste the error message or relevant log output here.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `mister-wolf ...`
+        2. ...
+        3. Observe the error
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: |
+        OS: (e.g. macOS 15, Ubuntu 24.04, Windows 11)
+        Node: (output of `node --version`)
+        mister-wolf: (output of `wolf --version` or `npx mister-wolf --version`)
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else that might help — screenshots, memory state, or a link to a minimal reproduction.
+    validations:
+      required: false
