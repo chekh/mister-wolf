@@ -1,28 +1,30 @@
 <script setup lang="ts">
 import DefaultTheme from 'vitepress/theme-without-fonts'
-import HeroTerminal from './components/HeroTerminal.vue'
+import HomeHero from './components/HomeHero.vue'
 import TrustBar from './components/TrustBar.vue'
-import HomeLayers from './components/HomeLayers.vue'
+import HomeWhy from './components/HomeWhy.vue'
 import HomeSessions from './components/HomeSessions.vue'
+import HomeLayers from './components/HomeLayers.vue'
 import HomeModes from './components/HomeModes.vue'
 import HomeInstall from './components/HomeInstall.vue'
-import HomeKeyArt from './components/HomeKeyArt.vue'
+import HomeFinalCTA from './components/HomeFinalCTA.vue'
 </script>
 
 <template>
   <DefaultTheme.Layout>
-    <template #home-hero-image>
-      <HeroTerminal />
+    <template #home-hero-before>
+      <HomeHero />
     </template>
     <template #home-hero-after>
       <TrustBar />
+      <HomeWhy />
     </template>
     <template #home-features-after>
-      <HomeLayers />
       <HomeSessions />
+      <HomeLayers />
       <HomeModes />
       <HomeInstall />
-      <HomeKeyArt />
+      <HomeFinalCTA />
     </template>
   </DefaultTheme.Layout>
 </template>

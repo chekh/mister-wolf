@@ -1,24 +1,44 @@
 /**
- * Home: hero, terminal scene, trust bar, feature cards.
+ * Home: custom hero (portrait-first), terminal, trust bar, feature cards,
+ * why table, custom sections, final CTA.
  */
 
-/* ---------- Hero ---------- */
+/* ---------- Hero (custom, portrait-first) ---------- */
 
-.VPHero .name {
+/* The hero is ALWAYS dark in both site themes: the character first,
+   then the paper proof below. Fixed dark palette inside — no theme vars. */
+.wolf-hero {
+  background: linear-gradient(180deg, #101115 0%, var(--wolf-graphite) 100%);
+  min-height: max(680px, calc(100vh - var(--vp-nav-height)));
+  min-height: max(680px, calc(100svh - var(--vp-nav-height)));
+  display: flex;
+}
+
+.wolf-hero-grid {
+  flex: 1;
+  width: 100%;
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: 36px 24px 56px;
+  display: flex;
+  flex-direction: column; /* mobile: DOM order = visual order, terminal last */
+}
+
+.wolf-hero-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
   font-family: var(--vp-font-family-mono);
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.18em;
-  color: var(--vp-c-home-hero-name-color);
-  background: none;
-  -webkit-text-fill-color: var(--vp-c-home-hero-name-color);
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  color: #c49a4a;
   line-height: 1;
+  overflow-wrap: anywhere;
 }
 
-.VPHero .name::before {
+.wolf-hero-label::before {
   content: '';
   width: 22px;
   height: 2px;
@@ -26,66 +46,225 @@
   flex: none;
 }
 
-.VPHero .text {
+.wolf-hero-title {
+  margin: 16px 0 0;
   font-family: var(--vp-font-family-title);
   font-weight: 700;
-  font-size: 56px;
-  line-height: 1.05;
-  padding-top: 14px;
+  font-size: 34px;
+  line-height: 1.06;
   letter-spacing: 0.005em;
+  color: #ece5d3;
+  overflow-wrap: break-word;
 }
 
-.VPHero .tagline {
-  color: var(--vp-c-text-2);
+.wolf-hero-figure {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  margin: 18px auto 6px;
+}
+
+/* portrait edges dissolve into the dark plate */
+.wolf-hero-figure img {
+  display: block;
+  width: min(88vw, 360px);
+  height: auto;
+  -webkit-mask-image:
+    linear-gradient(to bottom, transparent 0, #000 56px, #000 calc(100% - 110px), transparent),
+    linear-gradient(to right, transparent 0, #000 56px, #000 calc(100% - 56px), transparent);
+  mask-image:
+    linear-gradient(to bottom, transparent 0, #000 56px, #000 calc(100% - 110px), transparent),
+    linear-gradient(to right, transparent 0, #000 56px, #000 calc(100% - 56px), transparent);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+.wolf-hero-sub {
+  margin: 14px 0 0;
   font-size: 17px;
   line-height: 1.6;
+  color: #c9c0aa;
 }
 
-.VPHero .image-container {
-  width: 100%;
-  max-width: 520px;
+/* dossier block, not a speech bubble */
+.wolf-hero-statement {
+  margin: 24px 0 0;
+  max-width: 460px;
+  padding: 16px 20px;
+  border: 1px solid rgba(196, 154, 74, 0.5);
+  background: rgba(196, 154, 74, 0.06);
+  clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%, 0 14px);
 }
 
-.VPHero .image-bg {
-  display: none; /* no default glow */
+.wolf-stmt-label {
+  margin: 0;
+  font-family: var(--vp-font-family-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  color: #c49a4a;
 }
 
-/* Brand CTA: brass plate, ONE cut corner.
-   Paint via ::before (z -1) so the button keeps its focus outline. */
-.VPHero .actions .VPButton.brand {
-  position: relative;
-  isolation: isolate;
-  border-radius: 0;
-  border-color: var(--wolf-brass);
-  clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
-  font-family: var(--vp-font-family-base);
+.wolf-stmt-quote {
+  margin: 8px 0 0;
+  font-family: var(--vp-font-family-title);
   font-weight: 600;
+  font-size: 19px;
+  line-height: 1.45;
+  color: #ece5d3;
 }
 
-/* Focus ring must survive the clip: draw it inside the clipped area */
-.VPHero .actions .VPButton.brand:focus-visible {
-  outline: 2px solid var(--wolf-signal);
-  outline-offset: -6px;
+.wolf-stmt-quote-ru {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #9a9280;
 }
 
-.VPHero .actions .VPButton.brand::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: var(--vp-button-brand-bg);
+.wolf-hero-actions {
+  margin: 28px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+/* terminal: plain trailing block below the actions (mobile/tablet) */
+.wolf-hero .wolf-terminal {
+  width: 100%;
+  margin: 20px 0 0;
+}
+
+/* ---------- Buttons (shared: hero + final CTA) ---------- */
+
+.wolf-btn {
+  display: inline-block;
+  box-sizing: border-box;
+  height: 44px;
+  padding: 0 24px;
+  line-height: 44px;
+  font-family: var(--vp-font-family-base);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 0;
+}
+
+/* brand = brass plate with ONE cut corner */
+.wolf-btn-brand {
+  color: var(--wolf-ink);
+  background: var(--wolf-brass);
   clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
   transition: background-color 0.25s;
 }
 
-.VPHero .actions .VPButton.brand:hover::before {
-  background: var(--vp-button-brand-hover-bg);
+.wolf-btn-brand:hover {
+  background: #d0a75d;
+  color: var(--wolf-ink);
 }
 
-/* Alt CTA: outlined, straight */
-.VPHero .actions .VPButton.alt {
-  border-radius: 0;
-  font-weight: 500;
+/* focus ring must live inside the clip */
+.wolf-btn-brand:focus-visible {
+  outline: 2px solid var(--wolf-signal);
+  outline-offset: -6px;
+}
+
+/* alt = outlined dossier button (hero only → fixed dark palette) */
+.wolf-btn-alt {
+  color: #c9c0aa;
+  border: 1px solid #9a9280;
+  transition: border-color 0.25s, color 0.25s;
+}
+
+.wolf-btn-alt:hover {
+  border-color: var(--wolf-signal);
+  color: #e06055;
+}
+
+.wolf-btn-alt:focus-visible {
+  outline: 2px solid var(--wolf-signal);
+  outline-offset: 2px;
+}
+
+/* ---------- Hero: desktop (≥961px), portrait column + grid layering ---------- */
+
+@media (min-width: 961px) {
+  .wolf-hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 44fr) minmax(0, 56fr);
+    grid-template-areas:
+      'label fig'
+      'title fig'
+      'sub fig'
+      'stmt fig'
+      'act fig';
+    column-gap: 48px;
+    padding: 64px 48px 110px; /* bottom pad hosts the terminal overlap */
+  }
+
+  .wolf-hero-label {
+    grid-area: label;
+  }
+
+  .wolf-hero-title {
+    grid-area: title;
+    margin-top: 18px;
+    font-size: clamp(40px, 5vw, 58px);
+  }
+
+  .wolf-hero-sub {
+    grid-area: sub;
+    margin-top: 16px;
+    max-width: 480px;
+  }
+
+  .wolf-hero-statement {
+    grid-area: stmt;
+    margin-top: 30px;
+  }
+
+  .wolf-hero-actions {
+    grid-area: act;
+    margin-top: 34px;
+    align-self: start; /* the terminal (row 5) grows the row — keep buttons up top */
+  }
+
+  .wolf-hero-figure {
+    grid-area: fig;
+    grid-row: 1 / 6;
+    position: relative;
+    align-self: stretch;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    margin: 0;
+  }
+
+  .wolf-hero-figure img {
+    width: min(100%, 640px); /* target zone 500–650px, natural aspect */
+    aspect-ratio: 1254 / 1048; /* height known before the image loads */
+  }
+
+  /* Terminal overlaps the LOWER part of the portrait zone (face/cup visible):
+     grid row 5 is the no-JS fallback; the exact 35px overlap is pinned by a
+     JS anchor in HomeHero.vue (grid row heights differ per locale, so a pure
+     CSS transform cannot hit the portrait's bottom edge reliably). */
+  .wolf-hero .wolf-terminal {
+    grid-column: 2;
+    grid-row: 5;
+    align-self: end;
+    justify-self: start;
+    width: min(500px, 100%);
+    margin: 0;
+    z-index: 2;
+  }
+}
+
+@media (min-width: 1280px) {
+  .wolf-hero-grid {
+    padding-left: 64px;
+    padding-right: 64px;
+  }
 }
 
 /* ---------- Terminal (hero image slot) ---------- */
@@ -226,7 +405,7 @@
 
 /* type labels carry the status color */
 .wolf-thread-item .st-active {
-  color: #e06055;
+  color: #e56a60; /* lifted signal, 4.85:1 on the panel — AA */
 }
 
 .wolf-thread-item .st-verified {
@@ -238,7 +417,7 @@
 }
 
 .wolf-thread-item:first-child .type {
-  color: #e06055;
+  color: #e56a60;
 } /* RULE mirrors its ACTIVE status */
 
 .wolf-thread-item:nth-child(2) .type {
@@ -246,10 +425,6 @@
 } /* LESSON = VERIFIED */
 
 .wolf-thread-item:nth-child(3) .type {
-  color: #e06055;
-} /* DECISION = ACTIVE */
-
-.wolf-thread-item:nth-child(4) .type {
   color: #cf6f66;
 } /* BLOCKER = BLOCKED */
 
@@ -346,14 +521,16 @@
 /* ---------- Mobile ---------- */
 
 @media (max-width: 768px) {
-  .VPHero .text {
-    font-size: 38px;
-    padding-top: 10px;
-  }
-
-  .VPHero .image-container {
-    max-width: 100%;
-    margin-top: 24px;
+  .wolf-btn-alt {
+    /* secondary CTA becomes a plain text link on mobile */
+    border-color: transparent;
+    background: transparent;
+    color: #c9c0aa;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    height: auto;
+    line-height: 1.4;
+    padding: 8px 4px;
   }
 
   .wolf-terminal {
@@ -376,6 +553,10 @@
       'node status'
       'node desc';
     column-gap: 8px;
+  }
+
+  .wolf-thread-item:nth-child(3) {
+    display: none; /* terminal shows ≤ 2 entries on mobile */
   }
 
   .wolf-thread-item .type {
@@ -405,7 +586,7 @@
   }
 }
 
-/* ---------- Custom home sections (home-features-after) ---------- */
+/* ---------- Custom home sections (home-hero-after / home-features-after) ---------- */
 
 .wolf-home-section {
   max-width: 1152px;
@@ -413,7 +594,7 @@
   padding: 56px 24px;
 }
 
-/* mono section label with the red dash — mirrors .VPHero .name */
+/* mono section label with the red dash */
 .wolf-home-label {
   display: flex;
   align-items: center;
@@ -461,6 +642,60 @@
   clip-path: polygon(11.2px 0, 100% 0, 100% 100%, 0 100%, 0 11.2px);
   padding: 18px 20px;
   height: 100%;
+}
+
+/* ----- HomeWhy: problem/symptom table ----- */
+
+.wolf-why-text {
+  margin: 16px 0 0;
+  max-width: 860px;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--vp-c-text-2);
+}
+
+.wolf-why-table {
+  width: 100%;
+  margin-top: 24px;
+  border-collapse: collapse;
+}
+
+.wolf-why-table th {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--wolf-line);
+  font-family: var(--vp-font-family-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--vp-c-text-3);
+}
+
+.wolf-why-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--wolf-line);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--vp-c-text-2);
+  overflow-wrap: anywhere;
+}
+
+.wolf-why-table .num {
+  font-family: var(--vp-font-family-mono);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.wolf-why-outro {
+  margin: 24px 0 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--vp-c-text-2);
+}
+
+.wolf-why-outro a {
+  color: var(--wolf-link);
 }
 
 /* ----- HomeLayers: four nodes, closed loop ----- */
@@ -686,51 +921,51 @@
   color: var(--vp-c-text-2);
 }
 
-/* ----- HomeKeyArt: the portrait ----- */
+/* ----- HomeFinalCTA: memory ready ----- */
 
-.wolf-keyart {
+.wolf-finalcta {
   text-align: center;
 }
 
-.wolf-keyart .wolf-home-label {
+.wolf-finalcta-mark {
+  display: block;
+  margin: 0 auto 20px;
+}
+
+.wolf-finalcta .wolf-home-label {
   justify-content: center;
 }
 
-.wolf-keyart-frame {
+.wolf-finalcta-cmds {
+  margin-top: 20px;
+}
+
+/* mini version of .wolf-install-cmd, inline */
+.wolf-finalcta-cmd {
   display: inline-block;
-  margin-top: 28px;
-  padding: 10px;
-  border: 1px solid var(--wolf-line);
-  background: var(--wolf-bg-elv);
-  clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
+  margin: 8px;
+  background: var(--wolf-graphite);
+  clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px);
+  padding: 10px 14px;
 }
 
-.wolf-keyart-frame img {
-  display: block;
-  width: 100%;
-  max-width: 300px;
-  height: auto;
-}
-
-.wolf-keyart-quote {
-  margin: 32px auto 0;
-  max-width: 640px;
-}
-
-.wolf-keyart-quote-en {
-  margin: 0;
-  font-family: var(--vp-font-family-title);
-  font-weight: 600;
-  font-size: 22px;
-  line-height: 1.4;
-  color: var(--vp-c-text-1);
-}
-
-.wolf-keyart-quote-ru {
-  margin: 10px 0 0;
+.wolf-finalcta-cmd code {
+  font-family: var(--vp-font-family-mono);
   font-size: 13px;
-  line-height: 1.5;
-  color: var(--vp-c-text-3);
+  color: #ece5d3;
+  white-space: nowrap;
+  background: none;
+  padding: 0;
+}
+
+.wolf-finalcta-note {
+  margin: 12px 0 0;
+  font-size: 15px;
+  color: var(--vp-c-text-2);
+}
+
+.wolf-finalcta .wolf-btn-brand {
+  margin-top: 20px;
 }
 
 /* ----- Custom sections: mobile ----- */
@@ -742,6 +977,15 @@
 
   .wolf-home-title {
     font-size: 26px;
+  }
+
+  .wolf-why-table th,
+  .wolf-why-table td {
+    padding: 8px 8px;
+  }
+
+  .wolf-why-table td {
+    font-size: 13px;
   }
 
   /* layers: vertical column with a left red thread (like .wolf-thread) */

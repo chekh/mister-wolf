@@ -107,7 +107,7 @@ h2 {
 .wolf-terminal .wg-blocked,
 .wolf-terminal .wg-conflict,
 .wolf-terminal .wg-superseded .wg-new {
-  color: #e06055;
+  color: #e56a60; /* 4.85:1 on the panel — AA */
 }
 
 .wolf-terminal .wg-proposed {

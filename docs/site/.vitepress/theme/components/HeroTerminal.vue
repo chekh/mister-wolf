@@ -28,13 +28,6 @@
           <span class="status st-verified"><span class="wolf-glyph wg-verified" aria-hidden="true">&#9472;&#9472;&#10003;</span> VERIFIED</span>
           <span class="desc">Token-optimized shell output for agent workers</span>
         </li>
-        <li class="wolf-thread-item">
-          <span class="node" aria-hidden="true" />
-          <span class="type">DECISION</span>
-          <span class="id">mem_20260823_858573</span>
-          <span class="status st-active"><span class="wolf-glyph wg-active" aria-hidden="true">&#9472;&#9472;&#9679;</span> ACTIVE</span>
-          <span class="desc">Trunk-based git flow: main is the single truth</span>
-        </li>
         <li class="wolf-thread-item is-last">
           <span class="node" aria-hidden="true" />
           <span class="type">BLOCKER</span>
@@ -44,7 +37,7 @@
         </li>
       </ul>
 
-      <p class="wolf-terminal-result">&#10003; 4 relevant memories selected</p>
+      <p class="wolf-terminal-result">&#10003; 3 memories injected</p>
     </div>
   </div>
 </template>
