@@ -72,6 +72,21 @@ wolf get mem_001 --latest          # дойти по цепочке до акт�
 
 `supersede` валидирует оба id, ставит старому объекту `status: 'superseded'` + `superseded_by: <newId>`, пишет событие `memory.superseded` и переиндексирует поиск.
 
+### Графемы статусов
+
+Статус всегда читается по форме узла и подписи — цвет лишь вторичное усиление. Те же восемь графем используются в документации, CLI и hero-терминале:
+
+| Графема                                                                                                                       | Статус     | Значение                              |
+| ----------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------- |
+| <span class="wolf-glyph wg-active" aria-hidden="true">──●</span>                                                              | ACTIVE     | действует                             |
+| <span class="wolf-glyph wg-verified" aria-hidden="true">──✓</span>                                                            | VERIFIED   | подтверждён уликами                   |
+| <span class="wolf-glyph wg-proposed" aria-hidden="true">──◆</span>                                                            | PROPOSED   | черновик, ждёт ревью                  |
+| <span class="wolf-glyph wg-blocked" aria-hidden="true">──×</span>                                                             | BLOCKED    | работа остановлена                    |
+| <span class="wolf-glyph wg-stale" aria-hidden="true">──○</span>                                                               | STALE      | не окупается, кандидат в отставку     |
+| <span class="wolf-glyph wg-superseded" aria-hidden="true"><span class="wg-old">○──</span><span class="wg-new">●</span></span> | SUPERSEDED | заменён новым объектом (цепочка ○──●) |
+| <span class="wolf-glyph wg-archived" aria-hidden="true">──□</span>                                                            | ARCHIVED   | терминальный, хранится для истории    |
+| <span class="wolf-glyph wg-conflict" aria-hidden="true">●╱●</span>                                                            | CONFLICT   | два объекта претендуют на одну правду |
+
 ## Оси governance
 
 Каждый объект несёт три оси, отделяющие рабочие заметки от канона:

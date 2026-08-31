@@ -25,7 +25,7 @@ export default defineConfig({
   // VitePress does not apply `base` to head links — hardcode it for GitHub Pages
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/mister-wolf/mark/favicon.svg' }],
-    ['link', { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/mister-wolf/logo-small.png' }],
+    ['link', { rel: 'icon', type: 'image/png', sizes: '64x64', href: '/mister-wolf/mark/trace-mark-a.png' }],
   ],
   locales: {
     root: {
@@ -58,7 +58,7 @@ export default defineConfig({
     },
   },
   themeConfig: {
-    logo: '/logo-small.png',
+    logo: '/mark/trace-mark-a.svg',
     search: { provider: 'local' },
   },
 })

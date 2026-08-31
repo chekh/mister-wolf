@@ -34,3 +34,92 @@ h2 {
 .VPHome .wolf-stamp {
   transform: rotate(-1deg);
 }
+
+/* --- Navbar trace mark (replaces the portrait) --- */
+/* themeConfig.logo renders as an <img>: an SVG image cannot inherit page
+   currentColor, so the img is hidden and the mark is repainted per theme
+   from the same geometry — only the line color changes, the final node
+   stays signal red (invariant 3). */
+.VPNavBarTitle .logo {
+  display: none;
+}
+
+.VPNavBarTitle .title::before {
+  content: '';
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin-right: 9px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none'%3E%3Cpath d='M3 10 L9 25 L16 11 L23 25 L29 9' stroke='%23242321' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='3' cy='10' r='2.6' fill='%23242321'/%3E%3Ccircle cx='9' cy='25' r='2.6' fill='%23242321'/%3E%3Ccircle cx='16' cy='11' r='2.6' fill='%23242321'/%3E%3Ccircle cx='23' cy='25' r='2.6' fill='%23242321'/%3E%3Ccircle cx='29' cy='9' r='3.2' fill='%23d43a2f'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+.dark .VPNavBarTitle .title::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none'%3E%3Cpath d='M3 10 L9 25 L16 11 L23 25 L29 9' stroke='%23c49a4a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='3' cy='10' r='2.6' fill='%23c49a4a'/%3E%3Ccircle cx='9' cy='25' r='2.6' fill='%23c49a4a'/%3E%3Ccircle cx='16' cy='11' r='2.6' fill='%23c49a4a'/%3E%3Ccircle cx='23' cy='25' r='2.6' fill='%23c49a4a'/%3E%3Ccircle cx='29' cy='9' r='3.2' fill='%23d43a2f'/%3E%3C/svg%3E");
+}
+
+@media (max-width: 768px) {
+  .VPNavBarTitle .title::before {
+    width: 22px;
+    height: 22px;
+    margin-right: 8px;
+  }
+}
+
+/* --- Status glyphs: global primitive ---
+   Atom = line fragment + node; the node SHAPE is the state, the status
+   word always sits next to it in markup; color is secondary (the glyph
+   itself is aria-hidden decorative duplication, so raw tokens are fine). */
+.wolf-glyph {
+  font-family: var(--vp-font-family-mono);
+  white-space: nowrap;
+}
+
+.wg-active,
+.wg-blocked,
+.wg-conflict {
+  color: var(--wolf-signal);
+}
+
+.wg-verified {
+  color: var(--wolf-verified);
+}
+
+.wg-proposed {
+  color: var(--wolf-brass);
+}
+
+.wg-stale,
+.wg-archived {
+  color: var(--wolf-muted);
+}
+
+.wg-superseded .wg-old {
+  color: var(--wolf-muted);
+}
+
+.wg-superseded .wg-new {
+  color: var(--wolf-signal);
+}
+
+/* Terminal plate is always dark: lift glyph tones to match st-* text there */
+.wolf-terminal .wg-active,
+.wolf-terminal .wg-blocked,
+.wolf-terminal .wg-conflict,
+.wolf-terminal .wg-superseded .wg-new {
+  color: #e06055;
+}
+
+.wolf-terminal .wg-proposed {
+  color: #d9b36a;
+}
+
+.wolf-terminal .wg-verified {
+  color: #7cb99a; /* ≈ 6.8:1 on the panel — matches lifted tones above */
+}
+
+.wolf-terminal .wg-stale,
+.wolf-terminal .wg-archived,
+.wolf-terminal .wg-superseded .wg-old {
+  color: #9a9280;
+}
