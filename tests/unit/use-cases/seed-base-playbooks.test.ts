@@ -18,12 +18,15 @@ describe('seedBasePlaybooks', () => {
       ['steward-nastavnik.md', FILE_A],
       ['complaint-protocol.md', FILE_B],
     ]);
-    const out1 = await seedBasePlaybooks({ files, add });
+    // отклонение от плана: повторный вызов снабжён isSeeded (эмуляция wire из T6) —
+    // план-импл без предиката не скипает (комментарий плана: «по умолчанию — нет»), ассерты дословно
+    const isSeeded = async (owner: string) => added.some((a) => a.extra.owner_skill === owner);
+    const out1 = await seedBasePlaybooks({ files, add, isSeeded });
     expect(out1.map((o) => o.action)).toEqual(['created', 'created']); // C2: не 1/6, все
     expect(added[0].createdBy).toBe('wolf-init');
     expect(added[0].extra).toMatchObject({ owner_skill: 'steward', version: '1' });
     expect(Array.isArray(added[0].extra.steps)).toBe(true);
-    const out2 = await seedBasePlaybooks({ files, add });
+    const out2 = await seedBasePlaybooks({ files, add, isSeeded });
     expect(out2.every((o) => o.action === 'skipped')).toBe(true); // R2-M3: tag-skip не по пересечению тегов
     expect(added).toHaveLength(2); // ничего не досеяно
   });

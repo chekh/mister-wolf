@@ -35,7 +35,8 @@ function parseFrontmatter(raw: string): { meta: Record<string, string>; body: st
 /** Посев (спека §7): скип по owner_skill (MAJ-3/C2), не по пересечению тегов. */
 export async function seedBasePlaybooks(deps: SeedDeps): Promise<SeedOutcome[]> {
   const outcomes: SeedOutcome[] = [];
-  for (const [file, raw] of [...deps.files.entries()].sort()) {
+  // ponytail: без .sort() — план-тест ожидает порядок вставки Map (added[0]=steward); порядок посева функционально не важен
+  for (const [file, raw] of deps.files) {
     const { meta, body } = parseFrontmatter(raw);
     const ownerSkill = meta.owner_skill ?? '';
     if (deps.isSeeded && (await deps.isSeeded(ownerSkill))) {
