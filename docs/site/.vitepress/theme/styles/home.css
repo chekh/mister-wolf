@@ -404,3 +404,403 @@
     display: none;
   }
 }
+
+/* ---------- Custom home sections (home-features-after) ---------- */
+
+.wolf-home-section {
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: 56px 24px;
+}
+
+/* mono section label with the red dash — mirrors .VPHero .name */
+.wolf-home-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-family: var(--vp-font-family-mono);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: var(--vp-c-text-3);
+  line-height: 1;
+}
+
+.wolf-home-label::before {
+  content: '';
+  width: 22px;
+  height: 2px;
+  background: var(--wolf-signal);
+  flex: none;
+}
+
+.wolf-home-title {
+  font-family: var(--vp-font-family-title);
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 1.15;
+  margin: 12px 0 0;
+}
+
+/* Card: frame layer pattern generalized from .VPFeature */
+.wolf-card {
+  background: var(--wolf-line);
+  padding: 1px;
+  clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
+}
+
+/* stretch inside grids so frame layers align */
+.wolf-layers .wolf-card,
+.wolf-install .wolf-card {
+  height: 100%;
+}
+
+.wolf-card-in {
+  background: var(--wolf-bg-elv);
+  clip-path: polygon(11.2px 0, 100% 0, 100% 100%, 0 100%, 0 11.2px);
+  padding: 18px 20px;
+  height: 100%;
+}
+
+/* ----- HomeLayers: four nodes, closed loop ----- */
+
+.wolf-layers-row {
+  list-style: none;
+  margin: 28px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 28px;
+}
+
+.wolf-layer {
+  position: relative;
+}
+
+/* red thread between nodes (desktop only) */
+.wolf-layer:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 27px; /* centerline of the node label */
+  right: -28px;
+  width: 28px;
+  height: 2px;
+  background: var(--wolf-signal);
+}
+
+.wolf-layer-num {
+  margin: 0 0 4px;
+  font-family: var(--vp-font-family-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--vp-c-text-3);
+}
+
+.wolf-layer-name {
+  margin: 0 0 8px;
+  font-family: var(--vp-font-family-mono);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--vp-c-text-1);
+}
+
+.wolf-layer-desc {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--vp-c-text-2);
+}
+
+/* return loop: results back to MEMORY (CSS arc, no JS) */
+.wolf-layers-return {
+  position: relative;
+  height: 22px;
+  margin: 0 12%;
+  border: 2px solid var(--wolf-signal);
+  border-top: 0;
+}
+
+.wolf-layers-return-label {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translate(-50%, 50%);
+  padding: 0 10px;
+  background: var(--vp-c-bg); /* breaks the line behind the label */
+  font-family: var(--vp-font-family-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--vp-c-text-3);
+  white-space: nowrap;
+}
+
+/* ----- HomeSessions: two sessions, one memory ----- */
+
+.wolf-sessions-grid {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+}
+
+.wolf-session-tag {
+  margin: 0 0 10px;
+  font-family: var(--vp-font-family-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--vp-c-text-3);
+}
+
+.wolf-session-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--vp-c-text-2);
+}
+
+/* red thread words: problem → LESSON/ACTIVE */
+.wolf-session-text .hl {
+  color: var(--wolf-link);
+}
+
+.wolf-session-text .hl.tag {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.9em;
+  letter-spacing: 0.04em;
+}
+
+.wolf-sessions-takeaway {
+  margin: 44px auto 0;
+  max-width: 760px;
+  text-align: center;
+  font-family: var(--vp-font-family-title);
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 1.3;
+  color: var(--vp-c-text-1);
+}
+
+/* ----- HomeModes: CALL / SOLVE / LEARN ----- */
+
+.wolf-modes-grid {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+}
+
+.wolf-mode-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-family: var(--vp-font-family-mono);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--vp-c-text-1);
+  line-height: 1;
+}
+
+.wolf-mode-name::before {
+  content: '';
+  width: 18px;
+  height: 2px;
+  background: var(--wolf-signal);
+  flex: none;
+}
+
+.wolf-mode-text {
+  margin: 12px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--vp-c-text-2);
+}
+
+/* ----- HomeInstall: three steps ----- */
+
+.wolf-install-grid {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: 1fr 28px 1fr 28px 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.wolf-install-step {
+  min-width: 0; /* let the command plate scroll, not blow the grid */
+}
+
+.wolf-install-arrow {
+  align-self: center;
+  text-align: center;
+  font-family: var(--vp-font-family-mono);
+  font-size: 20px;
+  color: var(--wolf-signal);
+}
+
+.wolf-install-step-tag {
+  margin: 0 0 10px;
+  font-family: var(--vp-font-family-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--vp-c-text-3);
+}
+
+/* command = dark terminal plate in both themes */
+.wolf-install-cmd {
+  margin: 0 0 14px;
+  background: var(--wolf-graphite);
+  clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px);
+  padding: 10px 14px;
+  overflow-x: auto;
+}
+
+.wolf-install-cmd code {
+  font-family: var(--vp-font-family-mono);
+  font-size: 13px;
+  color: #ece5d3;
+  white-space: nowrap;
+  background: none;
+  padding: 0;
+}
+
+.wolf-install-state {
+  margin: 0 0 8px;
+}
+
+/* Install stamps stay strictly straight (rotation is TrustBar-only) */
+.VPHome .wolf-install .wolf-stamp {
+  transform: none;
+}
+
+.wolf-install-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--vp-c-text-2);
+}
+
+/* ----- HomeKeyArt: the portrait ----- */
+
+.wolf-keyart {
+  text-align: center;
+}
+
+.wolf-keyart .wolf-home-label {
+  justify-content: center;
+}
+
+.wolf-keyart-frame {
+  display: inline-block;
+  margin-top: 28px;
+  padding: 10px;
+  border: 1px solid var(--wolf-line);
+  background: var(--wolf-bg-elv);
+  clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
+}
+
+.wolf-keyart-frame img {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+}
+
+.wolf-keyart-quote {
+  margin: 32px auto 0;
+  max-width: 640px;
+}
+
+.wolf-keyart-quote-en {
+  margin: 0;
+  font-family: var(--vp-font-family-title);
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.4;
+  color: var(--vp-c-text-1);
+}
+
+.wolf-keyart-quote-ru {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--vp-c-text-3);
+}
+
+/* ----- Custom sections: mobile ----- */
+
+@media (max-width: 768px) {
+  .wolf-home-section {
+    padding: 40px 20px;
+  }
+
+  .wolf-home-title {
+    font-size: 26px;
+  }
+
+  /* layers: vertical column with a left red thread (like .wolf-thread) */
+  .wolf-layers-row {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding-left: 18px;
+    position: relative;
+  }
+
+  .wolf-layers-row::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 12px;
+    bottom: 12px;
+    width: 2px;
+    background: var(--wolf-signal);
+    opacity: 0.85;
+  }
+
+  .wolf-layer:not(:last-child)::after {
+    display: none;
+  }
+
+  .wolf-layers-return {
+    height: auto;
+    border: 0;
+    margin: 14px 0 0;
+    text-align: center;
+  }
+
+  .wolf-layers-return-label {
+    position: static;
+    transform: none;
+    padding: 0;
+  }
+
+  .wolf-sessions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wolf-sessions-takeaway {
+    font-size: 21px;
+    margin-top: 32px;
+  }
+
+  .wolf-modes-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  /* install: vertical steps, arrows point down */
+  .wolf-install-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .wolf-install-arrow {
+    transform: rotate(90deg);
+  }
+}

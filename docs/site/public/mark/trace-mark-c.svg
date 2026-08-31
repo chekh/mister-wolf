@@ -1,10 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <!-- Wolf Trace Mark C "badge/stamp": W trace contained in a rounded stamp frame; reads as a service seal, final node signal red. -->
-  <rect x="2" y="2" width="28" height="28" rx="6" stroke="currentColor" stroke-width="2"/>
-  <path d="M8 12 L12.5 22 L16 14.5 L19.5 22 L24 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="8" cy="12" r="1.7" fill="currentColor"/>
-  <circle cx="12.5" cy="22" r="1.7" fill="currentColor"/>
-  <circle cx="16" cy="14.5" r="1.7" fill="currentColor"/>
-  <circle cx="19.5" cy="22" r="1.7" fill="currentColor"/>
-  <circle cx="24" cy="12" r="2.4" fill="#d43a2f"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 84 52" fill="none">
+  <!-- Wolf Trace Mark C "seal": W trace + VERIFIED legend in a stamp frame with ONE cut corner (bottom right); legible from 32px; frame/line/legend use currentColor, final node stays signal red. -->
+  <path d="M2 2 H82 V40 L72 50 H2 Z" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M10.4 20 L15.3 35 L21 21 L26.7 35 L31.6 19" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="10.4" cy="20" r="2.3" fill="currentColor"/>
+  <circle cx="15.3" cy="35" r="2.3" fill="currentColor"/>
+  <circle cx="21" cy="21" r="2.3" fill="currentColor"/>
+  <circle cx="26.7" cy="35" r="2.3" fill="currentColor"/>
+  <circle cx="31.6" cy="19" r="2.9" fill="#d43a2f"/>
+  <text x="41" y="29" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="8" font-weight="bold" letter-spacing="0.5" fill="currentColor" textLength="39" lengthAdjust="spacingAndGlyphs">VERIFIED</text>
 </svg>

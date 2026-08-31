@@ -11,19 +11,6 @@ hero:
     - theme: alt
       text: CLI Reference
       link: /guide/cli
-features:
-  - title: Local-first storage
-    details: Everything lives in .wolf/ inside your project — markdown memory objects, a SQLite search index, no cloud. Decisions, lessons, rules and tools stay with the project after the session ends and make the next task cheaper.
-  - title: CLI + MCP dual surface
-    details: One wolf binary, two surfaces. Humans and scripts use the CLI; agents use the stdio MCP server (wolf mcp) with the same memory, processes and governance on any MCP-compatible platform.
-  - title: Call injections
-    details: wolf call delivers the right active rules, lessons and call-injections at session start — matched by trigger keywords, ranked by importance, confidence and recency, with an optional compact budget.
-  - title: Lifecycle & governance
-    details: 25 memory types, 16 lifecycle statuses, supersede chains (wolf get <id> --latest follows them to the current object) and governance axes (memory_class, truth_role, lifetime) keep accumulated knowledge from becoming noise.
-  - title: Rules, work threads & blockers
-    details: Rules with project or global scope, work threads with goals, checkpoints and diffs, blockers with impact and workarounds — the working state your agents share instead of losing it between sessions.
-  - title: Self-learning loop
-    details: The learn loop (digest → propose → validate → activate) turns repeated signal-log patterns into draft lessons and rules; mileage-based decay retires knowledge that no longer pays off.
 ---
 
 ## Why Mr. Wolf?

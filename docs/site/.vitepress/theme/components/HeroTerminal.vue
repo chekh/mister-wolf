@@ -18,28 +18,28 @@
           <span class="node" aria-hidden="true" />
           <span class="type">RULE</span>
           <span class="id">mem_20260824_2b29ad</span>
-          <span class="status st-active">&#9679; ACTIVE</span>
+          <span class="status st-active"><span class="wolf-glyph wg-active" aria-hidden="true">&#9472;&#9472;&#9679;</span> ACTIVE</span>
           <span class="desc">Limited retries for subagents: fail &rarr; escalate</span>
         </li>
         <li class="wolf-thread-item">
           <span class="node" aria-hidden="true" />
           <span class="type">LESSON</span>
           <span class="id">mem_20260825_41c0e8</span>
-          <span class="status st-verified">&#10003; VERIFIED</span>
+          <span class="status st-verified"><span class="wolf-glyph wg-verified" aria-hidden="true">&#9472;&#9472;&#10003;</span> VERIFIED</span>
           <span class="desc">Token-optimized shell output for agent workers</span>
         </li>
         <li class="wolf-thread-item">
           <span class="node" aria-hidden="true" />
           <span class="type">DECISION</span>
           <span class="id">mem_20260823_858573</span>
-          <span class="status st-active">&#9679; ACTIVE</span>
+          <span class="status st-active"><span class="wolf-glyph wg-active" aria-hidden="true">&#9472;&#9472;&#9679;</span> ACTIVE</span>
           <span class="desc">Trunk-based git flow: main is the single truth</span>
         </li>
         <li class="wolf-thread-item is-last">
           <span class="node" aria-hidden="true" />
           <span class="type">BLOCKER</span>
           <span class="id">mem_20260831_65fbb8</span>
-          <span class="status st-blocked">&times; BLOCKED</span>
+          <span class="status st-blocked"><span class="wolf-glyph wg-blocked" aria-hidden="true">&#9472;&#9472;&times;</span> BLOCKED</span>
           <span class="desc">CI publish blocked by billing &mdash; rerun pending</span>
         </li>
       </ul>

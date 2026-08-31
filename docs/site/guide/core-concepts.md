@@ -73,6 +73,21 @@ wolf get mem_001 --latest               # follow the superseded_by chain to the 
 
 `wolf supersede` validates both ids, marks the old object `status: superseded` with `superseded_by: <newId>`, writes a `memory.superseded` event (actor `system:wolf`) and reindexes. `superseded` and `archived` are terminal — the only way "back" is a new object.
 
+### Status glyphs
+
+A status is always read from the node shape plus its label — color is only secondary reinforcement. The same eight glyphs are used across the docs, the CLI and the home terminal:
+
+| Glyph                                                                                                                         | Status     | Meaning                                 |
+| ----------------------------------------------------------------------------------------------------------------------------- | ---------- | --------------------------------------- |
+| <span class="wolf-glyph wg-active" aria-hidden="true">──●</span>                                                              | ACTIVE     | live, in force                          |
+| <span class="wolf-glyph wg-verified" aria-hidden="true">──✓</span>                                                            | VERIFIED   | checked against evidence                |
+| <span class="wolf-glyph wg-proposed" aria-hidden="true">──◆</span>                                                            | PROPOSED   | draft, awaiting review                  |
+| <span class="wolf-glyph wg-blocked" aria-hidden="true">──×</span>                                                             | BLOCKED    | work stopped, needs attention           |
+| <span class="wolf-glyph wg-stale" aria-hidden="true">──○</span>                                                               | STALE      | no recent payoff, decay candidate       |
+| <span class="wolf-glyph wg-superseded" aria-hidden="true"><span class="wg-old">○──</span><span class="wg-new">●</span></span> | SUPERSEDED | replaced by a newer object (chain ○──●) |
+| <span class="wolf-glyph wg-archived" aria-hidden="true">──□</span>                                                            | ARCHIVED   | terminal, kept for history              |
+| <span class="wolf-glyph wg-conflict" aria-hidden="true">●╱●</span>                                                            | CONFLICT   | two objects claim the same truth        |
+
 ## Governance axes
 
 Three axes keep accumulated knowledge honest:
