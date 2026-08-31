@@ -1,17 +1,18 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useData } from 'vitepress'
 
 type L = { en: string; ru: string }
 
 const { lang } = useData()
-const ru = lang.value.startsWith('ru')
-const t = (s: L): string => (ru ? s.ru : s.en)
+const ru = computed(() => lang.value.startsWith('ru'))
+const t = (s: L): string => (ru.value ? s.ru : s.en)
 
 // red thread: problem → LESSON/ACTIVE (highlighted spans are our own static strings)
-const session1 = t({
+const session1 = computed(() => t({
   en: 'An agent hits a <span class="hl">failing test</span>, digs in, finds the cause — and writes a <span class="hl tag">LESSON</span> to Wolf memory (status: <span class="hl tag">ACTIVE</span>).',
   ru: 'Агент натыкается на <span class="hl">падающий тест</span>, разбирается, находит причину — и записывает <span class="hl tag">LESSON</span> в память Wolf (статус: <span class="hl tag">ACTIVE</span>).',
-})
+}))
 </script>
 
 <template>

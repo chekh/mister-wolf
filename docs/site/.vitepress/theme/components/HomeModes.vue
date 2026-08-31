@@ -1,13 +1,14 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useData } from 'vitepress'
 
 type L = { en: string; ru: string }
 
 const { lang } = useData()
-const ru = lang.value.startsWith('ru')
-const t = (s: L): string => (ru ? s.ru : s.en)
+const ru = computed(() => lang.value.startsWith('ru'))
+const t = (s: L): string => (ru.value ? s.ru : s.en)
 
-const modes = [
+const modes = computed(() => [
   {
     name: 'CALL',
     text: t({
@@ -29,7 +30,7 @@ const modes = [
       ru: 'Цикл самообучения: digest паттернов → draft урока → проверка по уликам → активация правилом.',
     }),
   },
-]
+])
 </script>
 
 <template>

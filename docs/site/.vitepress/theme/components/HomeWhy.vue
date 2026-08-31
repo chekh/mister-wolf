@@ -1,25 +1,43 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useData, withBase } from 'vitepress'
 
 type L = { en: string; ru: string }
 
 const { lang } = useData()
-const ru = lang.value.startsWith('ru')
-const t = (s: L): string => (ru ? s.ru : s.en)
+// Reactive: `lang` changes on client-side locale navigation (no reload);
+// a plain boolean would freeze the first-loaded locale.
+const ru = computed(() => lang.value.startsWith('ru'))
+const t = (s: L): string => (ru.value ? s.ru : s.en)
 
-// Verbatim from docs/site/index.md and docs/site/ru/index.md (former home bodies)
-const rowsEn: string[][] = [
-  ['P1', 'Context is lost between sessions', 'the agent starts from scratch'],
-  ['P2', 'Experience is not reused', 'recurring tasks are solved from scratch: prose reasoning + new one-off scripts'],
-  ['P3', 'Project documents live apart from agents', 'no single source of truth'],
-  ['P4', 'Accumulated knowledge becomes noise', 'memory grows, value drops'],
-]
-
-const rowsRu: string[][] = [
-  ['Контекст теряется между сессиями', 'агент начинает с нуля'],
-  ['Опыт не переиспользуется', 'повторные задачи решаются заново'],
-  ['Документы живут отдельно от агентов', 'единой точки правды нет'],
-  ['Накопленное становится шумом', 'память растёт, ценность падает'],
+// Bilingual row objects: the former EN/RU array pair indexed row[1]/row[2],
+// and the 2-element RU arrays rendered symptom-in-problem-column + an empty
+// column. Named fields are index-proof for both locales.
+type Row = { id: string; problem: L; symptom: L }
+const rows: Row[] = [
+  {
+    id: 'P1',
+    problem: { en: 'Context is lost between sessions', ru: 'Контекст теряется между сессиями' },
+    symptom: { en: 'the agent starts from scratch', ru: 'агент начинает с нуля' },
+  },
+  {
+    id: 'P2',
+    problem: { en: 'Experience is not reused', ru: 'Опыт не переиспользуется' },
+    symptom: {
+      en: 'recurring tasks are solved from scratch: prose reasoning + new one-off scripts',
+      ru: 'повторные задачи решаются заново',
+    },
+  },
+  {
+    id: 'P3',
+    problem: { en: 'Project documents live apart from agents', ru: 'Документы живут отдельно от агентов' },
+    symptom: { en: 'no single source of truth', ru: 'единой точки правды нет' },
+  },
+  {
+    id: 'P4',
+    problem: { en: 'Accumulated knowledge becomes noise', ru: 'Накопленное становится шумом' },
+    symptom: { en: 'memory grows, value drops', ru: 'память растёт, ценность падает' },
+  },
 ]
 </script>
 
@@ -29,8 +47,8 @@ const rowsRu: string[][] = [
     <h2 class="wolf-home-title">{{ t({ en: 'Why Mr. Wolf?', ru: 'Почему' }) }}</h2>
     <p class="wolf-why-text">{{
       t({
-        en: 'AI coding agents are powerful but forgetful. Mr. Wolf is a local-first layer of memory, processes, agents and tools for AI coding: a single source of truth that agents write their experience to and read context from. It is not an orchestrator and not yet another agent — it is a substrate under any agent. Accumulation instead of evaporation.',
-        ru: 'AI-агенты решают задачи, но их опыт испаряется вместе с сессией. Mr. Wolf — local-first слой памяти для AI-кодинга: единая точка правды проекта, в которую агенты пишут опыт и из которой получают контекст. Не оркестратор и не ещё один агент — субстрат под любого агента. Накопление вместо испарения: решения, уроки, инструменты и процессы остаются в проекте после сессии и делают следующую задачу дешевле.'
+        en: 'AI coding agents are powerful but forgetful. Mr. Wolf is a local-first environment for continuous agent work. It preserves project knowledge, organizes processes, and delivers the right context between sessions via CLI and MCP. Wolf doesn’t replace the model and doesn’t tie your project to one agent platform. It creates a persistent organization of work on top of different agents. Accumulation instead of evaporation.',
+        ru: 'AI-агенты решают задачи, но их опыт испаряется вместе с сессией. Mr. Wolf — local-first среда непрерывной работы агентов. Она сохраняет знания проекта, организует процессы и доставляет нужный контекст между сессиями через CLI и MCP. Wolf не заменяет модель и не привязывает проект к одной агентской платформе. Он создаёт постоянную организацию работы поверх разных агентов. Накопление вместо испарения: решения, уроки, инструменты и процессы остаются в проекте после сессии и делают следующую задачу дешевле.'
       })
     }}</p>
     <table class="wolf-why-table">
@@ -48,10 +66,10 @@ const rowsRu: string[][] = [
         </tr>
       </thead>
       <tbody>
-        <tr v-for="row in ru ? rowsRu : rowsEn" :key="row[0]">
-          <td v-if="!ru" class="num">{{ row[0] }}</td>
-          <td>{{ row[1] }}</td>
-          <td>{{ row[2] }}</td>
+        <tr v-for="row in rows" :key="row.id">
+          <td v-if="!ru" class="num">{{ row.id }}</td>
+          <td>{{ t(row.problem) }}</td>
+          <td>{{ t(row.symptom) }}</td>
         </tr>
       </tbody>
     </table>

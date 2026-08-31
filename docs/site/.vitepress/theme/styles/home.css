@@ -416,6 +416,10 @@
   color: #cf6f66; /* distinct tone + explicit word */
 }
 
+.wolf-thread-item .st-open {
+  color: #d9a441; /* lifted brass: blocker acknowledged, awaiting resolution */
+}
+
 .wolf-thread-item:first-child .type {
   color: #e56a60;
 } /* RULE mirrors its ACTIVE status */

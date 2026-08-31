@@ -1,18 +1,19 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useData } from 'vitepress'
 
 type L = { en: string; ru: string }
 
 const { lang } = useData()
-const ru = lang.value.startsWith('ru')
-const t = (s: L): string => (ru ? s.ru : s.en)
+const ru = computed(() => lang.value.startsWith('ru'))
+const t = (s: L): string => (ru.value ? s.ru : s.en)
 
-const layers = [
+const layers = computed(() => [
   { num: '01', name: 'MEMORY', desc: t({ en: 'What the project knows', ru: 'Что проект знает' }) },
   { num: '02', name: 'PROCESSES', desc: t({ en: 'How knowledge becomes action', ru: 'Как знание превращается в действие' }) },
   { num: '03', name: 'AGENTS', desc: t({ en: 'Who uses it', ru: 'Кто использует' }) },
   { num: '04', name: 'TOOLS', desc: t({ en: 'What executes', ru: 'Чем выполняется' }) },
-]
+])
 </script>
 
 <template>

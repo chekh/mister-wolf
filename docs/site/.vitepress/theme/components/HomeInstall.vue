@@ -1,14 +1,15 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useData } from 'vitepress'
 
 type L = { en: string; ru: string }
 
 const { lang } = useData()
-const ru = lang.value.startsWith('ru')
-const t = (s: L): string => (ru ? s.ru : s.en)
+const ru = computed(() => lang.value.startsWith('ru'))
+const t = (s: L): string => (ru.value ? s.ru : s.en)
 
 // Commands verbatim from guide/getting-started.md:18-20
-const steps = [
+const steps = computed(() => [
   {
     num: '01',
     name: 'MACHINE',
@@ -36,7 +37,7 @@ const steps = [
       ru: 'черновит стартовую память из документов проекта',
     }),
   },
-]
+])
 </script>
 
 <template>
