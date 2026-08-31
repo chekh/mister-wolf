@@ -1,11 +1,30 @@
 {
-  "name": "mr-wolf",
-  "version": "0.1.0",
-  "description": "Mr. Wolf — local-first Project Semantic Memory layer for AI coding agents",
+  "name": "mister-wolf",
+  "version": "1.0.1",
+  "description": "Local-first project memory for AI coding agents: decisions, lessons, tools and processes that outlive the session",
+  "keywords": [
+    "ai-agents",
+    "mcp",
+    "memory",
+    "semantic-memory",
+    "cli",
+    "local-first"
+  ],
   "type": "module",
-  "bin": {
-    "wolf": "./dist/bootstrap/cli.js"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chekh/mister-wolf.git"
   },
+  "bin": {
+    "wolf": "dist/bootstrap/cli.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -18,11 +37,11 @@
     "pressure-test": "npm run build && node dist/bootstrap/cli.js learn gate",
     "bench:search": "npm run build && node scripts/bench-search.mjs",
     "bench:tokens": "node --disable-warning=ExperimentalWarning scripts/bench-tokens.mjs",
-    "check": "npm run format:check && npm run lint && npm run test:run && npm run build"
+    "check": "npm run format:check && npm run lint && npm run build && npm run test:run"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "^2.0.0-alpha.2",
-    "better-sqlite3": "^9.0.0",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "better-sqlite3": "^13.0.3",
     "commander": "^12.0.0",
     "fast-glob": "^3.3.3",
     "js-yaml": "^4.1.0",
@@ -31,7 +50,7 @@
   },
   "devDependencies": {
     "@dietrichgebert/ponytail": "^4.8.4",
-    "@types/better-sqlite3": "^7.6.0",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/glob": "^8.1.0",
     "@types/js-yaml": "^4.0.0",
     "@types/node": "^20.0.0",

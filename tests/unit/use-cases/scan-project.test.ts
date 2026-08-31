@@ -61,4 +61,28 @@ describe('scanProject', () => {
     const loadedDoc = await store.get(result.documents[0].id);
     expect(loadedDoc?.type).toBe('document-ref');
   });
+
+  it('повторный скан: memory.scan.updated вместо memory.added', async () => {
+    const store = new MarkdownMemoryStore(projectDir);
+    const log = new JsonlEventLog(eventsPath(projectDir));
+    const clock = new SystemClock();
+    const idGen = new HashIdGenerator();
+    const scanner = new HeuristicProjectScanner(new FsFileSystem());
+
+    await scanProject({ store, log, clock, idGen, scanner }, projectDir);
+    await scanProject({ store, log, clock, idGen, scanner }, projectDir);
+
+    const events = await log.readAll();
+    expect(events).toHaveLength(4);
+    // первый скан: оба объекта новые → memory.added
+    expect(events[0].type).toBe('memory.added');
+    expect(events[0].payload).toMatchObject({ memory_id: 'project-scan-latest' });
+    expect(events[1].type).toBe('memory.added');
+    expect(events[1].payload).toMatchObject({ memory_id: 'doc_docs_guide_md', type: 'document-ref' });
+    // второй скан: оба объекта существуют → memory.scan.updated
+    expect(events[2].type).toBe('memory.scan.updated');
+    expect(events[2].payload).toMatchObject({ memory_id: 'project-scan-latest', type: 'context' });
+    expect(events[3].type).toBe('memory.scan.updated');
+    expect(events[3].payload).toMatchObject({ memory_id: 'doc_docs_guide_md', type: 'document-ref' });
+  });
 });

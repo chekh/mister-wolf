@@ -61,8 +61,13 @@ export async function bootstrapProject(
   const testCommand = await readTestCommand(deps.fs, input.baseDir);
   const drafts = draftRulesFromSnapshot(snapshot, testCommand);
 
+  // дедуп при повторе (спека §8): черновик с тем же title уже есть → пропускаем
+  const existingProposed = await deps.store.list({ type: 'rule', status: 'proposed' });
+  const draftsToCreate = drafts.filter((d) => !existingProposed.some((r) => r.title === d.title));
+  const skippedCount = drafts.length - draftsToCreate.length;
+
   const rules: MemoryObject[] = [];
-  for (const draft of drafts) {
+  for (const draft of draftsToCreate) {
     const { object } = await addMemoryObject(deps, {
       type: 'rule',
       title: draft.title,
@@ -79,19 +84,30 @@ export async function bootstrapProject(
     rules.push(object);
   }
 
-  const { object: thread } = await createWorkThread(deps, {
-    title: 'Bootstrap: наполнение стартовой памяти',
-    goal: 'Свёртка черновиков Стюардом в принятые правила',
-    currentState: `Создано черновиков правил: ${rules.length}; document-ref'ов: ${documents.length}.`,
-    nextSteps: rules.map((rule) => `${rule.id}: ${rule.title}`),
-    createdBy: input.createdBy,
-  });
+  // дедуп work-thread: повторный bootstrap переиспользует существующий
+  const BOOTSTRAP_THREAD_TITLE = 'Bootstrap: наполнение стартовой памяти';
+  const existingThread = (await deps.store.list({ type: 'work-thread' })).find(
+    (t) => t.title === BOOTSTRAP_THREAD_TITLE
+  );
+  let threadId: string;
+  if (existingThread) {
+    threadId = existingThread.id;
+  } else {
+    const { object: thread } = await createWorkThread(deps, {
+      title: BOOTSTRAP_THREAD_TITLE,
+      goal: 'Свёртка черновиков Стюардом в принятые правила',
+      currentState: `Создано черновиков правил: ${rules.length}; document-ref'ов: ${documents.length}.`,
+      nextSteps: rules.map((rule) => `${rule.id}: ${rule.title}`),
+      createdBy: input.createdBy,
+    });
+    threadId = thread.id;
+  }
 
   return {
     rules,
-    workThreadId: thread.id,
+    workThreadId: threadId,
     documentCount: documents.length,
-    brief: renderBrief(rules, documents, thread.id),
+    brief: renderBrief(rules, documents, threadId, skippedCount),
   };
 }
 
@@ -140,8 +156,14 @@ async function readTestCommand(fs: FileSystem, baseDir: string): Promise<string>
   return 'npm test';
 }
 
-function renderBrief(rules: MemoryObject[], documents: MemoryObject[], workThreadId: string): string {
-  const lines = ['# Bootstrap brief', '', '## Создано', `- Proposed rules: ${rules.length}`];
+function renderBrief(
+  rules: MemoryObject[],
+  documents: MemoryObject[],
+  workThreadId: string,
+  skippedCount: number
+): string {
+  const lines = ['# Bootstrap brief', '', '## Создано'];
+  lines.push(`- Proposed rules: ${rules.length}${skippedCount > 0 ? ` (+${skippedCount} already present)` : ''}`);
   for (const rule of rules) {
     lines.push(`  - ${rule.id}: ${rule.title}`);
   }

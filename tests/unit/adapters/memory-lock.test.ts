@@ -61,3 +61,25 @@ describe('FsMemoryLock', () => {
     expect(called).toBe(true);
   });
 });
+
+describe('withMemoryLock custom lock file name (для .wolf/migrate.lock)', () => {
+  it('creates the named lock file inside dir during fn and removes it after', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wolf-migratelock-'));
+    try {
+      let seenDuringFn = false;
+      await withMemoryLock(
+        dir,
+        async () => {
+          seenDuringFn = existsSync(join(dir, 'migrate.lock'));
+        },
+        undefined,
+        'migrate.lock'
+      );
+      expect(seenDuringFn).toBe(true);
+      expect(existsSync(join(dir, 'migrate.lock'))).toBe(false);
+      expect(existsSync(join(dir, '.lock'))).toBe(false); // дефолтное имя не используется
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

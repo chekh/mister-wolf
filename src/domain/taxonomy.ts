@@ -3,6 +3,8 @@ import { ALLOWED_TRANSITIONS } from './governance.js';
 
 export interface WolfConfig {
   artifact_sources: string[];
+  /** Маркер версии схемы проекта (спека §3, уровень 2); отсутствует = легаси. */
+  schemaVersion?: number;
   projectTypes: MemoryTypeDeclaration[];
   /** Сырой core-блок как он лежит в файле (для drift-детекта); null — файла/блока нет */
   rawCoreBlock: unknown;

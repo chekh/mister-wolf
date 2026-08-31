@@ -10,6 +10,12 @@ export class FsProjectInitializer implements ProjectInitializer {
     await fs.mkdir(sharedDir(baseDir), { recursive: true });
     await fs.mkdir(briefsDir(baseDir), { recursive: true });
     await fs.mkdir(cacheDir(baseDir), { recursive: true });
-    await fs.writeFile(configPath(baseDir), renderConfigYaml(null), 'utf-8');
+    // ensure-без-перезаписи (спека §3.1/§8): 'wx' = создать только если не существует.
+    // Существующий config.yaml и память не трогаются — повторный init идемпотентен.
+    try {
+      await fs.writeFile(configPath(baseDir), renderConfigYaml(null), { encoding: 'utf-8', flag: 'wx' });
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+    }
   }
 }

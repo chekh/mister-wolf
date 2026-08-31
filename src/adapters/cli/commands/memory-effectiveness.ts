@@ -51,6 +51,8 @@ function printReport(r: EffectivenessReport): void {
       ? 'n/a (память пуста)'
       : `${r.noise.writeOnly}/${r.noise.totalObjects} = ${fmtPct(r.noise.share)}% [${r.noiseStatus}]`;
   console.log(`noise: ${noise}`);
+  console.log(`documents: ${r.noise.documents} (registered refs, не участвуют в метрике шума) [INFO]`);
+  console.log(`archived: ${r.noise.archived} (вне метрики шума) [INFO]`);
 
   const routing =
     r.routing.length === 0
@@ -96,6 +98,8 @@ export function memoryEffectivenessCommand(baseDir: string = process.cwd()): Com
       console.log('tools: n/a | economy: n/a [INFO]');
       console.log('delivery: n/a');
       console.log('noise: n/a');
+      console.log('documents: n/a');
+      console.log('archived: n/a');
       console.log('routing: n/a');
     }
     const note = override !== undefined ? ' (config override)' : '';

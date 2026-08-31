@@ -55,10 +55,11 @@ export async function scanProject(
       lifetime: defaults.lifetime,
     };
 
+    const existingScan = await deps.store.get(object.id);
     await deps.store.save(object);
     await deps.log.append({
       id: deps.idGen.generateEventId(now),
-      type: 'memory.added',
+      type: existingScan ? 'memory.scan.updated' : 'memory.added',
       timestamp: now.toISOString(),
       actor,
       payload: { memory_id: object.id, type: object.type },
@@ -112,15 +113,13 @@ async function registerDocuments(
       lifetime: defaults.lifetime,
     };
     await deps.store.save(object);
-    if (!existing) {
-      await deps.log.append({
-        id: deps.idGen.generateEventId(now),
-        type: 'memory.added',
-        timestamp: now.toISOString(),
-        actor,
-        payload: { memory_id: object.id, type: object.type },
-      });
-    }
+    await deps.log.append({
+      id: deps.idGen.generateEventId(now),
+      type: existing ? 'memory.scan.updated' : 'memory.added',
+      timestamp: now.toISOString(),
+      actor,
+      payload: { memory_id: object.id, type: object.type },
+    });
     if (deps.index) {
       await deps.index.indexObject(object);
     }
