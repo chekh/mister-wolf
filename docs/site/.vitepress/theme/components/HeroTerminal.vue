@@ -1,5 +1,44 @@
 <script setup lang="ts">
 // Static by design: no typing animation (reduced-motion friendly).
+import { computed } from 'vue'
+import { useData } from 'vitepress'
+
+type L = { en: string; ru: string }
+
+const { lang } = useData()
+// Reactive: `lang` changes on client-side locale navigation (no reload).
+const ru = computed(() => lang.value.startsWith('ru'))
+const t = (s: L): string => (ru.value ? s.ru : s.en)
+
+// Illustrative demo, coherent with the query: what a real
+// `wolf call --for "auth refactor"` would plausibly return. Type labels
+// (RULE/LESSON/BLOCKER) and statuses stay EN — they are system marks.
+const items = computed(() => [
+  {
+    type: 'RULE',
+    id: 'mem_20260812_7c4f21',
+    status: 'ACTIVE',
+    statusClass: 'st-active',
+    glyph: '──●',
+    desc: t({ en: 'Use the repository AuthGateway', ru: 'Использовать AuthGateway из репозитория' }),
+  },
+  {
+    type: 'LESSON',
+    id: 'mem_20260818_9a3d07',
+    status: 'VERIFIED',
+    statusClass: 'st-verified',
+    glyph: '──✓',
+    desc: t({ en: 'Integration tests need isolated Redis', ru: 'Интеграционным тестам нужен изолированный Redis' }),
+  },
+  {
+    type: 'BLOCKER',
+    id: 'mem_20260829_e5b842',
+    status: 'OPEN',
+    statusClass: 'st-open',
+    glyph: '──○',
+    desc: t({ en: 'Migration 024 must run first', ru: 'Сначала должна выполниться миграция 024' }),
+  },
+])
 </script>
 
 <template>
@@ -14,30 +53,24 @@
       <p class="wolf-terminal-cmd">$ wolf call --for &quot;auth refactor&quot;</p>
 
       <ul class="wolf-thread">
-        <li class="wolf-thread-item">
+        <li
+          v-for="(item, i) in items"
+          :key="item.id"
+          class="wolf-thread-item"
+          :class="{ 'is-last': i === items.length - 1 }"
+        >
           <span class="node" aria-hidden="true" />
-          <span class="type">RULE</span>
-          <span class="id">mem_20260824_2b29ad</span>
-          <span class="status st-active"><span class="wolf-glyph wg-active" aria-hidden="true">&#9472;&#9472;&#9679;</span> ACTIVE</span>
-          <span class="desc">Limited retries for subagents: fail &rarr; escalate</span>
-        </li>
-        <li class="wolf-thread-item">
-          <span class="node" aria-hidden="true" />
-          <span class="type">LESSON</span>
-          <span class="id">mem_20260825_41c0e8</span>
-          <span class="status st-verified"><span class="wolf-glyph wg-verified" aria-hidden="true">&#9472;&#9472;&#10003;</span> VERIFIED</span>
-          <span class="desc">Token-optimized shell output for agent workers</span>
-        </li>
-        <li class="wolf-thread-item is-last">
-          <span class="node" aria-hidden="true" />
-          <span class="type">BLOCKER</span>
-          <span class="id">mem_20260831_65fbb8</span>
-          <span class="status st-blocked"><span class="wolf-glyph wg-blocked" aria-hidden="true">&#9472;&#9472;&times;</span> BLOCKED</span>
-          <span class="desc">CI publish blocked by billing &mdash; rerun pending</span>
+          <span class="type">{{ item.type }}</span>
+          <span class="id">{{ item.id }}</span>
+          <span class="status" :class="item.statusClass">
+            <span class="wolf-glyph" :class="`wg-${item.status.toLowerCase()}`" aria-hidden="true">{{ item.glyph }}</span>
+            {{ item.status }}
+          </span>
+          <span class="desc">{{ item.desc }}</span>
         </li>
       </ul>
 
-      <p class="wolf-terminal-result">&#10003; 3 memories injected</p>
+      <p class="wolf-terminal-result">{{ t({ en: '✓ 3 relevant memories injected', ru: '✓ Внедрено 3 релевантных объекта памяти' }) }}</p>
     </div>
   </div>
 </template>
