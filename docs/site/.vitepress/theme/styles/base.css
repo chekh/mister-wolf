@@ -15,22 +15,6 @@ h2 {
   letter-spacing: 0.01em;
 }
 
-/* --- One cut corner per element (top-right ~12px) --- */
-.wolf-cut {
-  clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
-}
-
-/* Double-nesting frame: outer = border color, inner = bg, 1px apart */
-.wolf-cut-frame {
-  clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
-  background: var(--wolf-line);
-  padding: 1px;
-}
-
-.wolf-cut-frame > * {
-  clip-path: polygon(11.2px 0, 100% 0, 100% 100%, 0 100%, 0 11.2px);
-}
-
 /* --- Stamps: mono caps in a thin frame --- */
 .wolf-stamp {
   display: inline-block;
@@ -49,41 +33,4 @@ h2 {
 /* Rotation lives only on the home page (docs stay strictly straight) */
 .VPHome .wolf-stamp {
   transform: rotate(-1deg);
-}
-
-/* --- Status geometry: symbol + word, color is secondary --- */
-.wolf-status {
-  font-family: var(--vp-font-family-mono);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-}
-
-.wolf-status.is-active {
-  color: var(--wolf-signal);
-}
-
-.wolf-status.is-verified {
-  color: var(--wolf-verified);
-}
-
-.wolf-status.is-blocked {
-  color: #cf6f66; /* distinct tone + explicit word, not brand red */
-}
-
-.wolf-status.is-proposed {
-  color: var(--wolf-fg-3);
-}
-
-.wolf-status.is-superseded {
-  color: var(--wolf-fg-3);
-}
-
-/* Small decorative dossier id, e.g. "MEM-01" */
-.wolf-ref {
-  font-family: var(--vp-font-family-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  color: var(--wolf-muted);
 }
