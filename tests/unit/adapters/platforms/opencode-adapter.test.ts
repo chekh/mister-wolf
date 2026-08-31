@@ -7,6 +7,8 @@ import type { McpCommand } from '../../../../src/ports/platform-adapter.port.js'
 
 const cmd: McpCommand = { command: 'wolf', args: ['mcp'] };
 let dir: string;
+// ponytail: permission-тест неприменим под root (Docker CI): root игнорирует права каталога
+const isRoot = process.getuid?.() === 0;
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'wolf-oc-adapter-'));
@@ -101,7 +103,7 @@ describe('OpencodeAdapter.writeConfig', () => {
     expect(readFileSync(join(dir, 'opencode.jsonc'), 'utf-8')).toBe(raw);
   });
 
-  it('no write permission → fails without partial write (atomicity)', async () => {
+  it.skipIf(isRoot)('no write permission → fails without partial write (atomicity)', async () => {
     writeFileSync(join(dir, 'opencode.json'), '{}');
     chmodSync(dir, 0o555); // каталог read-only: tmp-файл для atomic rename не создать
     await expect(new OpencodeAdapter().writeConfig(dir, cmd)).rejects.toThrow();
