@@ -17,7 +17,7 @@
 | #   | Факт                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Источник                                                                       |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | V1  | `MemoryStatus` — 14 статусов: `active, open, resolved, stale, conflicting, superseded, archived, paused, completed, answered, rejected, obsolete, proposed, accepted`                                                                                                                                                                                                                                                                                                | `src/domain/memory-types.ts:19-33`                                             |
-| V2  | **Все lifecycles оркестрационных типов из concept §6 состоят только из существующих статусов.** Новые значения `MemoryStatus` не нужны: task-brief `[active,completed,superseded]` ✓, report `[active,completed]` ✓, council-question `[open,answered,archived]` ✓, council-opinion `[proposed,accepted]` ✓, synthesis `[proposed,accepted]` ✓, escalation `[open,resolved,archived]` ✓, decision-request `[open,answered,archived]` ✓                               | сверка множеств с V1                                                           |
+| V2  | **Все lifecycles оркестрационных типов из concept v2 §6 состоят только из существующих статусов.** Новые значения `MemoryStatus` не нужны: task-brief `[active,completed,superseded]` ✓, report `[active,completed]` ✓, council-question `[open,answered,archived]` ✓, council-opinion `[proposed,accepted]` ✓, synthesis `[proposed,accepted]` ✓, escalation `[open,resolved,archived]` ✓, decision-request `[open,answered,archived]` ✓                            | сверка множеств с V1                                                           |
 | V3  | **Пробелы `ALLOWED_TRANSITIONS`:** нет `active → completed` (нужен task-brief/report/work-thread) и `open → answered` (нужен council-question/decision-request). `open → resolved` есть (escalation ок), `proposed → accepted` есть (council-opinion/synthesis ок)                                                                                                                                                                                                   | `src/domain/governance.ts:35-50`                                               |
 | V4  | `MEMORY_TYPES` — 13 типов, hardcoded; используются в 4 местах: `memory-object-schema.ts:7`, `fs-project-initializer.ts:31`, `memory-add.ts:9`, сам `memory-types.ts`                                                                                                                                                                                                                                                                                                 | grep `MEMORY_TYPES`                                                            |
 | V5  | Per-type zod-схемы есть только у 7 типов: decision `[active,superseded,rejected,obsolete]`, blocker `[active,resolved,obsolete]`, work-thread `[active,paused,completed,archived]`, info-request `[open,answered,rejected,obsolete,archived]`, article `[proposed,accepted,stale,superseded,archived]`, rule `[active,superseded,obsolete]`, session-checkpoint (базовый статус-enum, без override). Остальные 6 типов валидируются базовой схемой (все 14 статусов) | `src/domain/schemas/*-schema.ts`                                               |
@@ -85,10 +85,10 @@
 Одна миграция, выполняется когда таксономия финальна (после T1–T3).
 
 - **Команда:** `wolf migrate` c флагами `--dry-run` (default) / `--apply`.
-- **Маппинг:** `TYPE_TO_SUBDIR` из деклараций (concept §1.4): work-thread → `threads/<tid>/WORK-THREAD.md`; объект с `thread` (и тред существует) → `threads/<thread>/<subdir>/<id>.md`; иначе → `shared/<subdir>/<id>.md`. Shared-only типы (`rule`, `document-ref`) всегда в `shared/`.
+- **Маппинг:** `TYPE_TO_SUBDIR` из деклараций (concept v2 §1.4): work-thread → `threads/<tid>/WORK-THREAD.md`; объект с `thread` (и тред существует) → `threads/<thread>/<subdir>/<id>.md`; иначе → `shared/<subdir>/<id>.md`. Shared-only типы (`rule`, `document-ref`) всегда в `shared/`.
 - **Сплит документа (§7 #13):** `document` с непустым `source.path` → `document-ref`; без → `document-native`. Конвертация = перезапись frontmatter при переносе. Старый тип `document` остаётся в enum как `deprecated: true` (read-only compat, исключён из `wolf add --type` и из выдачи сканера — сканер сразу пишет `document-ref`).
 - **dry-run отчёт:** markdown-таблица на stdout (формат — шаг 5.4), exit 0; конфликты перечисляются, ничего не меняется.
-- **Dual-read:** store читает оба корня (`objects/` legacy + `threads/` + `shared/`) постоянно — стоимость один readdir, отдельного «переходного периода с выключателем» нет. Пишет только новый layout. Коллизия id между корнями → побеждает новый + warning (concept §6).
+- **Dual-read:** store читает оба корня (`objects/` legacy + `threads/` + `shared/`) постоянно — стоимость один readdir, отдельного «переходного периода с выключателем» нет. Пишет только новый layout. Коллизия id между корнями → побеждает новый + warning (concept v2 §6).
 - **Идемпотентность:** без маркер-файлов. `objects/` пуст или отсутствует → «nothing to migrate», exit 0. Повторный запуск после сбоя докатывает оставшееся (каждый объект переносится независимо).
 - **Не мигрируется:** `relations.jsonl`, `events.jsonl` — id объектов не меняются (V10).
 - **DoD миграции:** см. чек-лист в шаге 5.8.
@@ -229,7 +229,7 @@ export const MEMORY_TYPES = [
   // --- Phase 8: document split (contradiction #13) ---
   'document-ref',
   'document-native',
-  // --- Phase 8: orchestration pack (concept §1.2) ---
+  // --- Phase 8: orchestration pack (concept v2 §1.2) ---
   'task-brief',
   'report',
   'council-question',
@@ -406,12 +406,12 @@ describe('CORE_TAXONOMY', () => {
       }
     }
   });
-  it('orchestration lifecycles match concept §6', () => {
+  it('orchestration lifecycles match concept v2 §6', () => {
     expect(getDeclaration('task-brief').lifecycle).toEqual(['active', 'completed', 'superseded']);
     expect(getDeclaration('council-question').lifecycle).toEqual(['open', 'answered', 'archived']);
     expect(getDeclaration('escalation').lifecycle).toEqual(['open', 'resolved', 'archived']);
   });
-  it('subdir mapping follows concept §1.4', () => {
+  it('subdir mapping follows concept v2 §1.4', () => {
     expect(subdirectoryFor('task-brief', 'thread')).toBe('tasks');
     expect(subdirectoryFor('rule', 'shared')).toBe('rules');
     expect(subdirectoryFor('rule', 'thread')).toBeNull();
@@ -1101,7 +1101,7 @@ it('is idempotent: second run reports nothing to migrate', async () => {
 
 - [ ] **Step 5.6: Integration-тест** `tests/integration/phase8-workflow.test.ts` (начать): создать объекты через use-cases в legacy-раскладке (вручную положив файлы в `objects/`), запустить apply, проверить: `store.list()` видит все; `search` находит; двойной apply — no-op.
 - [ ] **Step 5.7: Пометить legacy-хелперы deprecated** в `project-paths.ts` (`/** @deprecated layout v1, используется только migration */`).
-- [ ] **Step 5.8: DoD миграции (чек-лист из concept §6):**
+- [ ] **Step 5.8: DoD миграции (чек-лист из concept v2 §6):**
 
 ```bash
 npx vitest run tests/unit/adapters/layout-migration.test.ts tests/integration/phase8-workflow.test.ts
@@ -1185,7 +1185,7 @@ function extractVote(op: MemoryObject): string {
 }
 ```
 
-VOTE-контракт — свободная строка (решение concept §6: вариантов может быть больше трёх), TIMEOUT — отсутствие.
+VOTE-контракт — свободная строка (решение concept v2 §6: вариантов может быть больше трёх), TIMEOUT — отсутствие.
 
 - [ ] **Step 6.5: createSynthesis.** Создаёт `synthesis` (status `proposed`, поля `recommendation` обязательно) через `addMemoryObject`, затем `recordRelation` `based_on` → каждый opinion. Тест: объект создан, relations записаны.
 - [ ] **Step 6.6: CLI.** `memory-council.ts`:
@@ -1442,7 +1442,7 @@ Expected: PASS целиком.
 
 ---
 
-## Definition of Done (фаза, из concept §6 + уточнения)
+## Definition of Done (фаза, из concept v2 §6 + уточнения)
 
 1. `wolf taxonomy sync` генерирует config.yaml из кода; ручная порча core-блока ловится `wolf validate` (D1).
 2. Core-типы неизменяемы извне кода; project-типы добавляются через config, shadow/статус-ошибки — fail-fast (D2).

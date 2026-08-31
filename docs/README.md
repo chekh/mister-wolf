@@ -1,10 +1,13 @@
 # Mr. Wolf Documentation
 
-Индекс живой документации. Устаревшее не удаляется, а переносится в `./archive/` (раздел Historical ниже). Канонический концепт: **v3.0**.
+Индекс живой документации. Устаревшее не удаляется, а переносится в `./archive/` (раздел Historical ниже). Канонический концепт: **v3.3**.
 
 ## Canonical concept
 
-- [Concept v3.0](./concept/concept.md) — процессы и организация работы агентов поверх единой памяти: четыре слоя, конвейер активации, Стюард, два УТП (RU).
+- [Concept v3.3](./concept/concept.md) — постоянная проектная организация из временных агентов: L0/L1/L2/консилиум, типизированная память, контур обучения, накопленные способности, опоры ценности (RU).
+- [Maturity](./concept/maturity.md) — уровни зрелости компонентов по единой шкале 0–6.
+- [Evidence](./concept/evidence.md) — доказательная база: PoC, исследования, протокол benchmark E1.
+- [Coverage](./concept/coverage.md) — смысловое покрытие канона (контроль анти-регрессионного принципа).
 - [Roadmap v3](./superpowers/plans/roadmap-v3.md) — канонический план работ: фазы A–E (продукт из доказанного → самообучение → экосистема).
 - [Roadmap v2](./superpowers/plans/roadmap-v2.md) — детальный план контура Ф20–26 (= Фаза D v3); историческое значение для остальных фаз.
 
@@ -81,4 +84,4 @@
 
 ---
 
-_Documentation index. Canonical concept: [Concept v3.0](./concept/concept.md). План: [roadmap-v3](./superpowers/plans/roadmap-v3.md). Регистр идей: [ideas-backlog](./planning/ideas-backlog.md)._
+_Documentation index. Canonical concept: [Concept v3.3](./concept/concept.md). План: [roadmap-v3](./superpowers/plans/roadmap-v3.md). Регистр идей: [ideas-backlog](./planning/ideas-backlog.md)._
