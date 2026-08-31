@@ -4,6 +4,7 @@ import { dirname, join } from 'path';
 import { Command } from 'commander';
 import { ensureCurrentSchema } from '../../adapters/fs/schema-guard.js';
 import { memoryInitCommand as initCommand } from './commands/memory-init.js';
+import { memorySyncCommand as syncCommand } from './commands/memory-sync.js';
 import { memoryDoctorCommand as doctorCommand } from './commands/memory-doctor.js';
 import { memoryAddCommand as addCommand } from './commands/memory-add.js';
 import { memoryListCommand as listCommand } from './commands/memory-list.js';
@@ -55,6 +56,7 @@ export function createCli(): Command {
   program.version(readPackageVersion());
 
   program.addCommand(initCommand());
+  program.addCommand(syncCommand());
   program.addCommand(addCommand());
   program.addCommand(listCommand());
   program.addCommand(getCommand());
