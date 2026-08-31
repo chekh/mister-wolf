@@ -1,0 +1,69 @@
+# MCP Integration
+
+## What is MCP
+
+The [Model Context Protocol](https://modelcontextprotocol.io) is a standard way for AI agents to call external tools. Mr. Wolf ships a stdio MCP server — `wolf mcp` — that exposes the same memory, processes and governance as the CLI. Any MCP-compatible agent platform can use it; no cloud, no extra services: the server talks to the same local `.wolf/` store.
+
+## Setup
+
+`wolf init` writes the MCP config for each detected platform automatically (detection is automatic; explicit: `wolf init --platform opencode,claude`). Platforms supported in v1: **opencode** and **Claude Code**.
+
+The canonical server command everywhere is the global binary — `{ command: 'wolf', args: ['mcp'] }` — **never npx**. Restart your agent platform after `wolf init`; Claude Code will ask you to approve the project-scope MCP server on first start.
+
+### opencode
+
+Written to `opencode.json`, key `mcp.wolf`:
+
+```json
+{ "mcp": { "wolf": { "type": "local", "command": ["wolf", "mcp"], "enabled": true } } }
+```
+
+### Claude Code
+
+Written to `.mcp.json`, key `mcpServers.wolf`:
+
+```json
+{ "mcpServers": { "wolf": { "command": "wolf", "args": ["mcp"] } } }
+```
+
+Note: try-out mode (`npx mister-wolf init`) never writes MCP configs — install globally and run `wolf init` to connect a platform.
+
+## All tools
+
+Tools are registered without a prefix; the MCP client adds the server name, so agents see them as `mr-wolf_<tool>`.
+
+| Tool                          | Description                                                                                                 | Key params                                                                                                                                                                                                                                                                                      |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mr-wolf_search`              | Search project memory objects by query and optional filters                                                 | `query` (string, **required**); optional: `type`, `status`, `confidence` (low\|medium\|high), `memoryClass`, `truthRole`, `lifetime`, `tags` (string[]), `minImportance`/`maxImportance` (number), `createdAfter`/`createdBefore` (string), `file_path`, `limit`, `includeSuperseded` (boolean) |
+| `mr-wolf_get`                 | Get a memory object by id                                                                                   | `id` (string, **required**)                                                                                                                                                                                                                                                                     |
+| `mr-wolf_list`                | List memory objects with optional filters                                                                   | `type`, `status`, `stale` (boolean), `memoryClass`, `truthRole`, `lifetime` — all optional                                                                                                                                                                                                      |
+| `mr-wolf_add`                 | Add a generic memory object                                                                                 | `type` (string, **required**), `title` (string, **required**), `createdBy` (string, **required**); optional: `body`, `tags` (string[]), `confidence`, `importance` (number)                                                                                                                     |
+| `mr-wolf_transition`          | Transition a memory object to a new lifecycle status                                                        | `id` (**required**), `status` (**required**); actor is recorded as `agent:mcp`                                                                                                                                                                                                                  |
+| `mr-wolf_create_thread`       | Create a work thread                                                                                        | `title` (**required**), `goal` (**required**), `createdBy` (**required**); optional: `currentState`, `nextSteps` (string[])                                                                                                                                                                     |
+| `mr-wolf_create_info_request` | Create an information request                                                                               | `title`, `thread`, `question`, `detourReason`, `expectedAnswer` (string[]), `createdBy` — **required**; optional: `neededFor` (string[]), `preliminaryAnswer`                                                                                                                                   |
+| `mr-wolf_create_article`      | Create an article                                                                                           | `title`, `thread`, `summary`, `body`, `createdBy` — **required**; optional: `answers`, `supports`, `evidence` (string[])                                                                                                                                                                        |
+| `mr-wolf_create_decision`     | Create a decision                                                                                           | `title`, `body`, `createdBy` — **required**; optional: `thread`, `basedOn` (string[])                                                                                                                                                                                                           |
+| `mr-wolf_create_blocker`      | Create a blocker                                                                                            | `title`, `impact`, `createdBy` — **required**; optional: `workaround`, `thread`                                                                                                                                                                                                                 |
+| `mr-wolf_resolve_blocker`     | Resolve a blocker                                                                                           | `id` (**required**); optional: `resolvedBy`                                                                                                                                                                                                                                                     |
+| `mr-wolf_scan`                | Scan the project and register documents                                                                     | —                                                                                                                                                                                                                                                                                               |
+| `mr-wolf_brief`               | Generate the agent brief from the latest scan and memory                                                    | — (runs a scan first)                                                                                                                                                                                                                                                                           |
+| `mr-wolf_insights`            | Heuristic pattern analysis over project memory (Level 1, no LLM)                                            | optional: `topic`, `type` (patterns\|technical_debt\|decisions\|lessons\|activity)                                                                                                                                                                                                              |
+| `mr-wolf_recap`               | Summary of active project memory: rules, work threads, blockers, questions, info requests, recent decisions | —                                                                                                                                                                                                                                                                                               |
+| `mr-wolf_create_rule`         | Create a rule (user request only)                                                                           | `title`, `body`, `scope` (project\|global), `createdBy` — **required**; optional: `appliesTo` (string[]), `trigger`                                                                                                                                                                             |
+| `mr-wolf_start_thinking`      | Start a structured thinking sequence (goal → thoughts → conclusion)                                         | `goal` (**required**), `createdBy` (**required**); optional: `thread`                                                                                                                                                                                                                           |
+| `mr-wolf_add_thought`         | Add a thought to a thinking sequence                                                                        | `sequenceId` (**required**), `type` (hypothesis\|reasoning\|evidence\|concern, **required**), `text` (**required**)                                                                                                                                                                             |
+| `mr-wolf_conclude_thinking`   | Conclude a thinking sequence into a decision with an embedded trace and based_on links                      | `sequenceId`, `title`, `body`, `createdBy` — **required**                                                                                                                                                                                                                                       |
+| `mr-wolf_abandon_thinking`    | Abandon a thinking sequence without creating a decision                                                     | `sequenceId` (**required**)                                                                                                                                                                                                                                                                     |
+| `mr-wolf_ping`                | Health check for the Mr. Wolf MCP server                                                                    | — (returns `pong`)                                                                                                                                                                                                                                                                              |
+
+## Typical agent session
+
+A connected agent usually walks this loop:
+
+1. **Health check** — `mr-wolf_ping` (expect `pong`).
+2. **Orientation** — `mr-wolf_brief` (generates the brief, running a scan first) and/or `mr-wolf_scan` + `mr-wolf_recap` for the active state: rules, work threads, blockers, open questions, recent decisions.
+3. **Targeted lookup** — `mr-wolf_search` with filters, e.g. `{ query: "supersede", type: "rule" }`; `mr-wolf_get` with `{ id: "mem_…" }` to read a hit; `mr-wolf_list` with `{ type: "decision", status: "active" }` to browse.
+4. **Write back** — `mr-wolf_create_decision` (`title`, `body`, `createdBy`, optional `thread` and `basedOn`), `mr-wolf_create_blocker` / `mr-wolf_resolve_blocker`, `mr-wolf_add` for any other type, `mr-wolf_transition` (`{ id, status }`, actor recorded as `agent:mcp`) for lifecycle moves.
+5. **Wrap-up** — `mr-wolf_recap` again to confirm the state that the next session will inherit.
+
+Attribution note: objects created over MCP carry the `createdBy` you pass (e.g. `agent:mcp`-style actor strings), and `mr-wolf_transition` records its actor as `agent:mcp`.
