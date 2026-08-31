@@ -2,17 +2,17 @@
 
 ## Supported versions
 
-Только последняя публикация `mister-wolf` (ветка `dev` → `main`, semver-теги `v*`).
+Only the latest published `mister-wolf` release (branch `dev` → `main`, semver tags `v*`).
 
 ## Reporting a vulnerability
 
-Репорть приватно через GitHub Security Advisories:
+Report privately via GitHub Security Advisories:
 
 <https://github.com/chekh/mister-wolf/security/advisories/new>
 
-Не открывай public issue с деталями уязвимости. Ответ — до 7 дней; координация патч-релиза — до 30 дней.
+Do not open a public issue with vulnerability details. We will acknowledge reports and coordinate a patch release.
 
 ## Scope
 
-Пакет `mister-wolf` и этот репозиторий. Уязвимости зависимостей репорть их апстриму
-(напр. better-sqlite3), сюда — через advisory с указанием цепочки.
+The `mister-wolf` package and this repository. Report dependency vulnerabilities upstream
+(e.g. better-sqlite3); here — via an advisory naming the chain.

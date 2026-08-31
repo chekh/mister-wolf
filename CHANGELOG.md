@@ -1,34 +1,34 @@
 # Changelog
 
-Все заметные изменения проекта документируются в этом файле.
+All notable changes to this project are documented in this file.
 
-Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/), версионирование — [SemVer](https://semver.org/lang/ru/).
+Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
-## [1.0.1] — 2026-08-31 (tag v1.0.1, ждёт публикации)
+## [1.0.1] — 2026-08-31 (tag v1.0.1, pending publication)
 
 ### Fixed
 
-- `isNpxRun` принимает `npm_command='exec'` (реальный npx), а не только `'npx'` — `npx mister-wolf init` больше не пишет MCP-конфиг вопреки спеке try-out (4ac8168).
+- `isNpxRun` accepts `npm_command='exec'` (real npx) instead of only `'npx'` — `npx mister-wolf init` no longer writes MCP configs against the try-out spec (4ac8168).
 
 ## [1.0.0] — 2026-08-31
 
-Первая публичная версия в npm.
+First public release on npm.
 
 ### Added
 
-- npm-пакет `mister-wolf` с бинарем `wolf` (`npm install -g mister-wolf`).
-- `wolf init` — идемпотентная неинтерактивная инициализация проекта: скелет `.wolf/` без перезаписи существующего, авто-детект платформ, MCP-конфиги через адаптеры opencode и Claude Code, флаг `--platform`.
-- `npx mister-wolf init` — try-out без установки: создаёт память проекта, никогда не пишет MCP-конфиги.
-- Ленивая миграция схемы: маркер `schema_version` в `.wolf/config.yaml`, guard при входе (CLI/MCP), миграция с бэкапом под лок-файлом.
-- `wolf doctor` — здоровье зарегистрированных проектов: версии схемы, валидность конфигов, чистка мёртвых записей реестра.
-- Publish-пайплайн: trusted publishing (OIDC) + provenance, `check`+`e2e` до публикации, sanity-проверка тег↔версия.
-- README (agent-first: установка тремя командами, предупреждение тайпсквота) и SECURITY.md.
+- The `mister-wolf` npm package with the `wolf` binary (`npm install -g mister-wolf`).
+- `wolf init` — idempotent non-interactive project initialization: `.wolf/` skeleton without overwriting existing files, platform auto-detection, MCP configs via opencode and Claude Code adapters, `--platform` flag.
+- `npx mister-wolf init` — installation-free try-out: creates project memory, never writes MCP configs.
+- Lazy schema migration: a `schema_version` marker in `.wolf/config.yaml`, a guard on entry (CLI/MCP), migration with a backup under a lock file.
+- `wolf doctor` — health of registered projects: schema versions, config validity, dead registry entry cleanup.
+- Publish pipeline: trusted publishing (OIDC) + provenance, `check`+`e2e` before publishing, tag↔version sanity check.
+- README (agent-first: three-command install, typosquat warning) and SECURITY.md.
 
 ### Fixed
 
-- Нормализация bin-пути в `package.json` — `npm publish` вырезал бинарник из пакета (2cb1d05).
+- Normalized the bin path in `package.json` — `npm publish` stripped the binary from the package (2cb1d05).
 
 [Unreleased]: https://github.com/chekh/mister-wolf/compare/v1.0.1...HEAD
 [1.0.1]: https://github.com/chekh/mister-wolf/compare/v1.0.0...v1.0.1

@@ -1,35 +1,35 @@
+**English** | [Русский](README.ru.md)
+
 # Mr. Wolf
 
 ![Mr. Wolf logo](docs/Mr.%20Wolf.png)
 
-> **«I solve problems.»**
+> **"I solve problems."**
 >
-> **Память — носитель. Процессы — суть. Агенты — форма. Инструменты — руки.**
-> И руки накапливаются: каждый полезный скрипт становится постоянным ресурсом проекта.
+> **Memory is the carrier. Processes are the essence. Agents are the shape. Tools are the hands.**
+> And the hands accumulate: every useful script becomes a permanent project resource.
 
-**Версия концепта:** 3.0 · Статус: opencode-first, Фазы A–B roadmap v3 реализованы.
+**Concept version:** 3.0 · Status: opencode-first, roadmap v3 Phases A–B implemented.
 
-## Что такое Wolf
+## What is Wolf
 
-Mr. Wolf — local-first слой памяти, процессов, агентов и инструментов для AI-кодинга: единая точка правды проекта, в которую агенты пишут опыт и из которой получают контекст. Это не оркестратор и не ещё один агент, а субстрат под любого агента. Накопление вместо испарения: решения, уроки, инструменты и процессы остаются в проекте после сессии и делают следующую задачу дешевле. Полная картина — в [концепте v3](docs/concept/concept.md).
+Mr. Wolf is a local-first layer of memory, processes, agents and tools for AI coding: a single source of truth that agents write their experience to and read context from. It is not an orchestrator and not yet another agent — it is a substrate under any agent. Accumulation instead of evaporation: decisions, lessons, tools and processes stay with the project after the session and make the next task cheaper. The full picture is in the [concept v3 (RU)](docs/concept/concept.md).
 
-## Решаемые проблемы
+## Problems Wolf solves
 
-| №   | Проблема                                    | Проявление                                                                          |
-| --- | ------------------------------------------- | ----------------------------------------------------------------------------------- |
-| П1  | Контекст теряется между сессиями            | агент начинает с нуля                                                               |
-| П2  | Опыт не переиспользуется                    | повторные задачи решаются заново: текстовые рассуждения + новые одноразовые скрипты |
-| П3  | Документы проекта живут отдельно от агентов | единая точка правды отсутствует                                                     |
-| П4  | Накопленное становится шумом                | память растёт, ценность падает                                                      |
+| #   | Problem                                  | Symptom                                                                        |
+| --- | ---------------------------------------- | ------------------------------------------------------------------------------ |
+| P1  | Context is lost between sessions         | the agent starts from scratch                                                  |
+| P2  | Experience is not reused                 | recurring tasks are solved from scratch: prose reasoning + new one-off scripts |
+| P3  | Project documents live apart from agents | no single source of truth                                                      |
+| P4  | Accumulated knowledge becomes noise      | memory grows, value drops                                                      |
 
 ## Installation
 
 > [!WARNING]
-> Пакет называется **`mister-wolf`** — именно так. Пакет `mr-wolf` в npm **чужой** (work-queue
-> библиотека): `npm install mr-wolf` поставит сторонний код и выполнит его install-скрипты.
-> Проверяй имя буква-в-букву перед установкой.
+> The package is named **`mister-wolf`** ([on npm](https://www.npmjs.com/package/mister-wolf)) — exactly that. The `mr-wolf` package on npm **belongs to someone else** (a work-queue library): `npm install mr-wolf` installs third-party code and runs its install scripts. Check the name letter by letter before installing.
 
-Установка — три команды:
+Installation is three commands:
 
 ```bash
 npm install -g mister-wolf   # 1) машина: бинарь wolf (уровень 0)
@@ -37,59 +37,46 @@ cd my-project && wolf init   # 2) проект: скелет .wolf/ + MCP-кон
 wolf bootstrap               # 3) память: стартовое наполнение из документов проекта
 ```
 
-После `wolf init` **перезапусти агентскую платформу** — MCP-сервер Wolf подключается при старте.
-Claude Code при первом старте попросит approve project-scope MCP-сервер — это штатно.
+After `wolf init` **restart your agent platform** — the Wolf MCP server connects at startup. Claude Code will ask you to approve the project-scope MCP server on first start — that is expected.
 
-- **Попробовать без установки:** `npx mister-wolf init` — создаст память проекта, но никогда
-  не пишет MCP-конфиги (try-out). Понравилось — `npm install -g mister-wolf` и повтори `wolf init`.
-- **Платформы v1:** opencode, Claude Code. Детект автоматический; явно:
-  `wolf init --platform opencode,claude` (список заменяет текущий набор). Нет маркеров платформы —
-  init честно предупредит и подскажет `--platform`.
-- **ОС/рантайм:** macOS и Linux (glibc) на Node 22/24. Alpine/musl не поддержан в v1;
-  Windows — best-effort, не заявлена. Нативная зависимость better-sqlite3 ставится из пребилдов —
-  это поведение зависимости, у mister-wolf нет своих install-скриптов.
-- **Если установка падает на better-sqlite3 — две разные ситуации:**
-  `prebuild-install ... no prebuilt binary found (musl)` — для вашей платформы пребилды не
-  выпускаются (Alpine/musl) — **не поддерживается в v1**, используйте glibc-дистрибутив;
-  `gyp ERR!` / `node-gyp` / сборка из исходников упала — пребилда под ваш Node нет или не
-  скачалась, поставь node-gyp prerequisites (python3, make, C++ toolchain) и повтори
-  `npm rebuild better-sqlite3` — это лечится, в отличие от musl.
-- **Dev-путь (из клонированного репо):** `npm install && npm run build`, затем
-  `alias wolf="node dist/bootstrap/cli.js"`. При одновременно установленном глобальном
-  `mister-wolf` помни о PATH-shadowing: какой `wolf` запустится — определяется порядком каталогов
-  в PATH. В npm есть и чужой пакет `wolf` (Wolfram CLI) — глобальная установка обоих конфликтует
-  за имя бинаря, разрешается тем же порядком PATH.
+- **Try it without installing:** `npx mister-wolf init` — creates project memory but never writes MCP configs (try-out mode). Like it? `npm install -g mister-wolf` and run `wolf init` again.
+- **Platforms v1:** opencode, Claude Code. Detection is automatic; explicit: `wolf init --platform opencode,claude` (the list replaces the current set). If no platform markers are found, init warns you honestly and suggests `--platform`.
+- **OS/runtime:** macOS and Linux (glibc) on Node 22/24. Alpine/musl is not supported in v1; Windows is best-effort, not claimed. The native dependency better-sqlite3 installs from prebuilds — that is the dependency's own behavior; mister-wolf ships no install scripts of its own.
+- **If installation fails on better-sqlite3 — two different situations:**
+  `prebuild-install ... no prebuilt binary found (musl)` — no prebuilds are published for your platform (Alpine/musl) — **not supported in v1**, use a glibc distribution;
+  `gyp ERR!` / `node-gyp` / a from-source build failed — there is no prebuild for your Node version or it did not download. Install the node-gyp prerequisites (python3, make, a C++ toolchain) and retry `npm rebuild better-sqlite3` — this one is fixable, unlike musl.
+- **Dev path (from a cloned repo):** `npm install && npm run build`, then `alias wolf="node dist/bootstrap/cli.js"`. With a global `mister-wolf` installed at the same time, mind PATH shadowing: which `wolf` runs is decided by the order of directories in your PATH. npm also carries a third-party `wolf` package (Wolfram CLI) — installing both globally conflicts over the binary name and resolves by the same PATH order.
 
-Подключение агента — одна команда: `wolf scaffold agent <name>` создаёт тонкую рамку в `.opencode/agents/<name>.md`, playbook-объект в памяти и relation между ними. Доставку playbook'а в сессию выполняет плагин `.opencode/plugins/wolf-router.ts` — см. [Интеграции](#интеграции).
+Connecting an agent is one command: `wolf scaffold agent <name>` creates a thin frame in `.opencode/agents/<name>.md`, a playbook object in memory, and a relation between them. Playbook delivery into the session is done by the `.opencode/plugins/wolf-router.ts` plugin — see [Integrations](#integrations).
 
-`bootstrap` завершается вызовом Стюарда для свёртки черновиков стартовой памяти — протокол: [docs/guide/steward-bootstrap.md](docs/guide/steward-bootstrap.md).
+`bootstrap` finishes by invoking the Steward to fold the startup-memory drafts — protocol: [steward bootstrap (RU)](docs/guide/steward-bootstrap.md).
 
 ## Versioning
 
-- Единственный источник истины версии — `package.json`; версия меняется только командой `npm version X.Y.Z` (semver, вручную).
-- Тег `v*` — релиз-триггер: CI прогоняет `check`+`e2e` и публикует пакет (trusted publishing, provenance).
-- История изменений — [CHANGELOG.md](CHANGELOG.md); запись в него при релизе обязательна.
+- The single source of truth for the version is `package.json`; the version changes only via `npm version X.Y.Z` (semver, manual).
+- A `v*` tag is the release trigger: CI runs `check`+`e2e` and publishes the package (trusted publishing, provenance).
+- Change history lives in [CHANGELOG.md](CHANGELOG.md); an entry there is mandatory for every release.
 
-## Архитектура
+## Architecture
 
-Четыре слоя ([концепт §2](docs/concept/concept.md)):
+Four layers ([concept §2 (RU)](docs/concept/concept.md)):
 
-| Слой            | Содержание                                                                                        | Состояние                                |
-| --------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| **Память**      | Единая точка правды: решения, уроки, правила, документы, процессы, инструменты; supersede-цепочки | зрел: CLI + MCP, таксономия, FTS-поиск   |
-| **Процессы**    | Протоколы работы: bootstrap, cold-start, complain-канал, checkpoint/wrap-up, обработка знаний     | частично в продукте, частично в практике |
-| **Агенты**      | Тонкие рамки (персона) + playbook'и (методика в памяти); доставка в платформы                     | доказано PoC #1–4                        |
-| **Инструменты** | CLI и MCP — руки, приводящие память и процессы в действие                                         | зрел                                     |
+| Layer         | Contents                                                                                             | State                                     |
+| ------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| **Memory**    | Single source of truth: decisions, lessons, rules, documents, processes, tools; supersede chains     | mature: CLI + MCP, taxonomy, FTS search   |
+| **Processes** | Working protocols: bootstrap, cold-start, complain channel, checkpoint/wrap-up, knowledge processing | partly in the product, partly in practice |
+| **Agents**    | Thin frames (persona) + playbooks (methodology in memory); delivery into platforms                   | proven by PoCs #1–4                       |
+| **Tools**     | CLI and MCP — the hands that put memory and processes into action                                    | mature                                    |
 
-Слои — не стопка, а **петля**: агенты исполняют процессы; процессы читают и пишут память; инструменты приводят всё в действие; результаты возвращаются в память как новые знания и инструменты.
+The layers are not a stack but a **loop**: agents run processes; processes read and write memory; tools put everything into action; results flow back into memory as new knowledge and new tools.
 
-Подробно: [docs/guide/architecture.md](docs/guide/architecture.md) · [концепт v3](docs/concept/concept.md).
+Details: [architecture guide (RU)](docs/guide/architecture.md) · [concept v3 (RU)](docs/concept/concept.md).
 
-## Возможности
+## Features
 
-### Память
+### Memory
 
-Всё есть память: 25 типов объектов (24 активных + 1 deprecated), версии, связи, атрибуция.
+Everything is memory: 25 object types (24 active + 1 deprecated), versions, relations, attribution.
 
 ```bash
 wolf add --type lesson --title "..." --body "..." --tags "vitest,ci" --confidence medium
@@ -101,13 +88,13 @@ wolf transition mem_002 accepted   # смена статуса жизненно�
 wolf relation add mem_001 supports mem_002
 ```
 
-- `wolf taxonomy show|sync` — эффективная таксономия и её регенерация из кода.
-- `wolf validate [--fix]` — целостность хранилища, карантин битых объектов.
-- FTS-поиск по SQLite-индексу (`wolf rebuild-index` — перестройка).
+- `wolf taxonomy show|sync` — the effective taxonomy and its regeneration from code.
+- `wolf validate [--fix]` — store integrity, quarantine for broken objects.
+- FTS search over a SQLite index (`wolf rebuild-index` to rebuild).
 
-### Процессы
+### Processes
 
-Протоколы работы агентов как продукт.
+Agent working protocols as a product.
 
 ```bash
 wolf bootstrap                                    # подключение к проекту: скан → черновики правил, document-ref'ы, work-thread
@@ -120,15 +107,15 @@ wolf solve "битые relation-ссылки" --save         # solve pack для
 wolf think start --goal "…"                       # последовательность: goal → мысли → решение
 ```
 
-### Агенты
+### Agents
 
-- `wolf scaffold agent|skill|command <name>` — рамка платформы + playbook в памяти + relation одной командой; `--persona` и `--model` для агентов, `--from-playbook <id>` — переиспользовать существующий playbook.
-- Доставка playbook'ов — плагин-инжекция в system-промпт (слой доставки №1): `.opencode/plugins/wolf-router.ts`.
-- **Стюард** — фоновый агент контура с лицами: **Наставник** (методики, по жалобам), **Библиотекарь** (инструменты), **Архивариус** (знания). Новое лицо = новый playbook, не новый агент.
+- `wolf scaffold agent|skill|command <name>` — a platform frame + a playbook in memory + a relation, all in one command; `--persona` and `--model` for agents, `--from-playbook <id>` to reuse an existing playbook.
+- Playbook delivery is plugin injection into the system prompt (delivery layer #1): `.opencode/plugins/wolf-router.ts`.
+- **Steward** — the loop's background agent with faces: **Mentor** (methodology, handles complaints), **Librarian** (tools), **Archivist** (knowledge). A new face = a new playbook, not a new agent.
 
-### Инструменты
+### Tools
 
-Tool-библиотекарь: удачный скрипт кристаллизуется в постоянный ресурс (search-before-write).
+Tool librarian: a successful script crystallizes into a permanent project resource (search-before-write).
 
 ```bash
 wolf tool register scripts/check.sh --name check --contract-in "нет" --contract-out "exit 0/1"
@@ -140,9 +127,9 @@ wolf tool deprecate check --reason "заменён линтером"
 wolf tool revive check       # deprecated → active
 ```
 
-### Самообучение
+### Self-learning
 
-Контур Ф20–26 поверх сигнального лога (`.wolf/metrics/session-metrics.jsonl`).
+The phases 20–26 loop on top of the signal log (`.wolf/metrics/session-metrics.jsonl`).
 
 ```bash
 wolf learn digest                    # активные паттерны (N≥3) + post-audit draft'ы
@@ -154,58 +141,58 @@ wolf learn decay --dry-run           # чистка знаний по пробе
 wolf learn status                    # здоровье сигнального лога: объёмы, метрики, drift
 ```
 
-### Эффективность
+### Effectiveness
 
-- `wolf effectiveness` — панель: rules holdout, tool economy, доставка, шум, роутинг (агрегация, без LLM).
-- `wolf insights [--type lessons|decisions|technical_debt|…] [--topic <t>]` — эвристический анализ памяти (Level 1, без LLM).
-- Бенчмарки: `scripts/bench/` (b1-repeat-debug, b2-bootstrap, b3-retrospective).
+- `wolf effectiveness` — dashboard: rules holdout, tool economy, delivery, noise, routing (aggregation, no LLM).
+- `wolf insights [--type lessons|decisions|technical_debt|…] [--topic <t>]` — heuristic analysis of memory (Level 1, no LLM).
+- Benchmarks: `scripts/bench/` (b1-repeat-debug, b2-bootstrap, b3-retrospective).
 
-## Демо
+## Demos
 
-Самопроверяющиеся сценарии: `bash scripts/demo/scenario-N.sh`.
+Self-checking scenarios: `bash scripts/demo/scenario-N.sh`.
 
-| №   | Сценарий                                                                                               |
-| --- | ------------------------------------------------------------------------------------------------------ |
-| 1   | Подключение Wolf к новому проекту (self-checking, PASS/FAIL-точки)                                     |
-| 2   | Жизнь знания: рождение, устаревание (supersede), чтение актуального                                    |
-| 3   | Новый агент = одна команда (scaffold: playbook + рамка + связь)                                        |
-| 4   | Жалоба владельца — hot-signal контура самообучения                                                     |
-| 5   | Скрипт становится ресурсом — tool-цикл Библиотекаря                                                    |
-| 6   | Самообучение: 3 ошибки → паттерн → draft → Sandbox Replay → активация                                  |
-| 7   | Гигиена контура: learn status, целостность памяти, decay по пробегу                                    |
-| 8   | wolf run: модель из routing-объекта памяти, расход в run-log (**один реальный LLM-вызов, ~30–60 сек**) |
+| #   | Scenario                                                                                                       |
+| --- | -------------------------------------------------------------------------------------------------------------- |
+| 1   | Connecting Wolf to a new project (self-checking, PASS/FAIL points)                                             |
+| 2   | The life of a knowledge item: birth, aging (supersede), reading the current one                                |
+| 3   | A new agent = one command (scaffold: playbook + frame + relation)                                              |
+| 4   | An owner complaint — a hot-signal into the self-learning loop                                                  |
+| 5   | A script becomes a resource — the Librarian's tool cycle                                                       |
+| 6   | Self-learning: 3 mistakes → pattern → draft → Sandbox Replay → activation                                      |
+| 7   | Loop hygiene: learn status, memory integrity, mileage-based decay                                              |
+| 8   | wolf run: model from a routing memory object, spend written to the run-log (**one real LLM call, ~30–60 sec**) |
 
-## Интеграции
+## Integrations
 
-### MCP-сервер
+### MCP server
 
-`wolf mcp` — запуск MCP-сервера (stdio): вся память и процессы доступны агентам любой MCP-совместимой платформы. Список тулов и конфигурация — в [спеке MCP-интеграции](docs/superpowers/specs/2026-07-01-mcp-server-integration-design.md).
+`wolf mcp` — runs the MCP server (stdio): all memory and processes are available to agents on any MCP-compatible platform. Tool list and configuration: [MCP integration spec (RU)](docs/superpowers/specs/2026-07-01-mcp-server-integration-design.md).
 
-### opencode-плагины
+### opencode plugins
 
-- `.opencode/plugins/wolf-router.ts` — инжекция актуального playbook в system-промпт (слой доставки №1); `wolf search` — fallback.
-- `.opencode/plugins/wolf-session-start.js` — стартовый контекст сессии.
-- Рамки агентов — `.opencode/agents/` (создаются `wolf scaffold`).
+- `.opencode/plugins/wolf-router.ts` — injects the current playbook into the system prompt (delivery layer #1); `wolf search` is the fallback.
+- `.opencode/plugins/wolf-session-start.js` — session start context.
+- Agent frames live in `.opencode/agents/` (created by `wolf scaffold`).
 
 ### WOLF_ACTOR
 
-Атрибуция мутаций: каждый объект памяти имеет автора. Приоритет: флаг `--created-by <actor>` > env `WOLF_ACTOR` > fallback (`user:cli` для CLI-команд, `steward:<лицо>` для контура Стюарда).
+Mutation attribution: every memory object has an author. Priority: the `--created-by <actor>` flag > the `WOLF_ACTOR` env var > fallback (`user:cli` for CLI commands, `steward:<face>` for the Steward loop).
 
-## Ограничения и roadmap
+## Limitations and roadmap
 
-- **opencode-first**: мультиплатформенность — архитектурный принцип (концепт §6.6), но нити других платформ — после зрелости Уровней 1–2.
-- **Что не делает Wolf** (концепт §10): редактирование кода как проектная функция · IDE-интеграция · веб-интерфейс · распределённая работа · оркестрация общего назначения (только протоколы, доказанные практикой).
-- План: [roadmap-v3](docs/superpowers/plans/roadmap-v3.md) — фазы A–E.
+- **opencode-first**: multi-platform support is an architectural principle (concept §6.6), but the threads for other platforms come after Levels 1–2 mature.
+- **What Wolf does not do** (concept §10): code editing as a project function · IDE integration · web UI · distributed work · general-purpose orchestration (only protocols proven by practice).
+- Plan: [roadmap-v3 (RU)](docs/superpowers/plans/roadmap-v3.md) — phases A–E.
 
-## Документация
+## Documentation
 
-- [Концепция v3](docs/concept/concept.md) — четыре слоя, конвейер активации, Стюард, УТП
-- [Roadmap v3](docs/superpowers/plans/roadmap-v3.md) — фазы A–E, статус и основания
-- [User guide](docs/guide/user-guide.md) — базовые команды и workflow
-- [CLI reference](docs/reference/cli.md) — полный справочник команд
-- [Architecture](docs/guide/architecture.md) — устройство системы
-- [Индекс документации](docs/README.md)
+- [Concept v3 (RU)](docs/concept/concept.md) — four layers, the activation pipeline, the Steward, USP
+- [Roadmap v3 (RU)](docs/superpowers/plans/roadmap-v3.md) — phases A–E, status and rationale
+- [User guide (RU)](docs/guide/user-guide.md) — basic commands and workflow
+- [CLI reference (RU)](docs/reference/cli.md) — full command reference
+- [Architecture (RU)](docs/guide/architecture.md) — how the system is built
+- [Documentation index (RU)](docs/README.md)
 
-## Разработка
+## Development
 
-TypeScript (strict, ESM), Node 22, vitest. Верификация: `npm run check` (format + lint + test + build); e2e-набор: `npm run e2e`. Архитектура — ports & adapters: `src/domain` · `src/app/use-cases` · `src/adapters` · `src/ports`.
+TypeScript (strict, ESM), Node 22, vitest. Verification: `npm run check` (format + lint + test + build); e2e suite: `npm run e2e`. Architecture: ports & adapters — `src/domain` · `src/app/use-cases` · `src/adapters` · `src/ports`.
