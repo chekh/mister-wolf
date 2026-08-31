@@ -37,7 +37,10 @@
     "pressure-test": "npm run build && node dist/bootstrap/cli.js learn gate",
     "bench:search": "npm run build && node scripts/bench-search.mjs",
     "bench:tokens": "node --disable-warning=ExperimentalWarning scripts/bench-tokens.mjs",
-    "check": "npm run format:check && npm run lint && npm run build && npm run test:run"
+    "check": "npm run format:check && npm run lint && npm run build && npm run test:run",
+    "docs:dev": "vitepress dev docs/site",
+    "docs:build": "vitepress build docs/site",
+    "docs:preview": "vitepress preview docs/site"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",
@@ -57,6 +60,7 @@
     "@types/uuid": "^10.0.0",
     "prettier": "^3.8.3",
     "typescript": "^5.4.0",
+    "vitepress": "^1.6.4",
     "vitest": "^1.6.0"
   }
 }
