@@ -77,7 +77,7 @@ HEAD_SHA=$(git rev-parse HEAD)
 
 [Диспетчеризую worker-reviewer через {{tool.task}}]
   WHAT_WAS_IMPLEMENTED: Функции verifyIndex() и repairIndex() для индекса диалогов
-  PLAN_OR_REQUIREMENTS: Задача 2 из docs/superpowers/plans/deployment-plan.md
+  PLAN_OR_REQUIREMENTS: Задача 2 из docs/plans/deployment-plan.md
   BASE_SHA: a7981ec
   HEAD_SHA: 3df7661
   DESCRIPTION: Добавлены verifyIndex() и repairIndex() с 4 типами проблем
