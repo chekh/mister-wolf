@@ -34,13 +34,19 @@ function isolatedEnv(): NodeJS.ProcessEnv {
 }
 
 describe('tarball-assert (спека §5, §7)', () => {
-  it('package contains ONLY dist/ + README + LICENSE + package.json', () => {
+  it('package contains ONLY dist/ + templates/ + README + LICENSE + package.json', () => {
     const out = execSync('npm pack --dry-run --json', { cwd: repoRoot, encoding: 'utf-8' });
     const files = (JSON.parse(out)[0].files as { path: string }[]).map((f) => f.path);
     expect(files.some((f) => f === 'dist/bootstrap/cli.js')).toBe(true);
     // ponytail: npm force-пакует все README* из корня; ru-версия — часть двуязычной витрины
+    // templates/ — базовый набор (base-sets C1: рендерер читает из корня пакета)
     const allowed = (p: string) =>
-      p === 'package.json' || p === 'README.md' || p === 'README.ru.md' || p === 'LICENSE' || p.startsWith('dist/');
+      p === 'package.json' ||
+      p === 'README.md' ||
+      p === 'README.ru.md' ||
+      p === 'LICENSE' ||
+      p.startsWith('dist/') ||
+      p.startsWith('templates/');
     for (const f of files) {
       expect(allowed(f), `unexpected tarball entry: ${f}`).toBe(true);
     }

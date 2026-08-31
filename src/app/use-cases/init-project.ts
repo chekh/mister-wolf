@@ -79,16 +79,8 @@ export async function initProject(
   await deps.markSchemaCurrent(baseDir);
   const scan = await scanProject(deps.scanDeps, baseDir);
 
-  const baseSetOutcomes: BaseSetOutcome[] = [];
-  if (deps.baseSet) {
-    if (deps.npx) {
-      baseSetOutcomes.push({ file: '(base set)', action: 'skipped', reason: 'npx try-out не пишет набор (спека §7)' });
-    } else {
-      baseSetOutcomes.push(...(await deps.baseSet.render(baseDir)));
-      baseSetOutcomes.push(...(await deps.baseSet.seed(baseDir)));
-    }
-  }
-
+  // Платформы детектируем ДО рендера базового набора: рендер создаёт .opencode/,
+  // и детект после него принял бы свежесозданный каталог за маркер платформы (T14).
   const platformOutcomes: PlatformInitOutcome[] = [];
   if (deps.npx) {
     // try-out: память создаём, конфиги — никогда (спека §3, npx-путь)
@@ -121,6 +113,16 @@ export async function initProject(
       for (const adapter of detected) {
         platformOutcomes.push({ platform: adapter.id, action: await adapter.writeConfig(baseDir, deps.mcpCommand) });
       }
+    }
+  }
+
+  const baseSetOutcomes: BaseSetOutcome[] = [];
+  if (deps.baseSet) {
+    if (deps.npx) {
+      baseSetOutcomes.push({ file: '(base set)', action: 'skipped', reason: 'npx try-out не пишет набор (спека §7)' });
+    } else {
+      baseSetOutcomes.push(...(await deps.baseSet.render(baseDir)));
+      baseSetOutcomes.push(...(await deps.baseSet.seed(baseDir)));
     }
   }
 
