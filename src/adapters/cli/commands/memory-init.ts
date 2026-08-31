@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { join } from 'path';
+import { readFileSync, readdirSync, existsSync } from 'fs';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { ProjectsRegistry } from '../../../adapters/fs/projects-registry.js';
 import { wolfUserConfigDir } from '../../../adapters/fs/user-config.js';
@@ -7,6 +8,10 @@ import { PLATFORM_ADAPTERS, CANONICAL_MCP_COMMAND } from '../../../adapters/plat
 import { writeSchemaVersionIfAbsent } from '../../../adapters/fs/schema-version.js';
 import { ensureCurrentSchema } from '../../../adapters/fs/schema-guard.js';
 import { initProject, recreateConfig } from '../../../app/use-cases/init-project.js';
+import { OpencodeBaseSetRenderer } from '../../../adapters/render/opencode/opencode-renderer.js';
+import { templatesRoot, harnessTemplatesRoot } from '../../../adapters/render/templates-root.js';
+import { seedBasePlaybooks } from '../../../app/use-cases/seed-base-playbooks.js';
+import { addMemoryObject } from '../../../app/use-cases/add-memory-object.js';
 import { isNpxRun } from '../../../domain/npx.js';
 import { UserFacingError } from '../../../domain/errors.js';
 
@@ -39,8 +44,24 @@ export function memoryInitCommand(): Command {
         }
       }
 
-      const { initializer, store, log, clock, idGen, scanner, index, lock } = createCliContainer(baseDir);
+      const { initializer, store, log, clock, idGen, scanner, index, lock, declarations } = createCliContainer(baseDir);
       const registry = new ProjectsRegistry(wolfUserConfigDir());
+
+      const tplPlaybooks = join(templatesRoot(), 'playbooks');
+      const playbookFiles = new Map<string, string>();
+      if (existsSync(tplPlaybooks)) {
+        for (const f of readdirSync(tplPlaybooks)) {
+          if (f.endsWith('.md')) playbookFiles.set(f, readFileSync(join(tplPlaybooks, f), 'utf-8'));
+        }
+      }
+      // ListFilters поддерживает type (memory-store.port.ts) — фильтр на уровне порта (правка r2)
+      const existing = await store.list({ type: 'playbook' });
+      const seededOwners = new Set(
+        existing.map((o) => (o as { owner_skill?: string }).owner_skill).filter((x): x is string => Boolean(x))
+      );
+      const addFn = (input: Parameters<typeof addMemoryObject>[1]) =>
+        addMemoryObject({ store, log, clock, idGen, index, lock, declarations }, input);
+
       const result = await initProject(
         {
           initializer,
@@ -50,6 +71,21 @@ export function memoryInitCommand(): Command {
           npx: isNpxRun(),
           scanDeps: { store, log, clock, idGen, scanner, index, lock },
           markSchemaCurrent: (dir) => writeSchemaVersionIfAbsent(dir),
+          baseSet: {
+            render: (dir) =>
+              new OpencodeBaseSetRenderer(templatesRoot(), {
+                harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
+              }).renderBaseSet(dir),
+            seed: () =>
+              seedBasePlaybooks({
+                files: playbookFiles,
+                add: async (i) => {
+                  await addFn(i);
+                  return {};
+                },
+                isSeeded: async (owner) => seededOwners.has(owner),
+              }),
+          },
         },
         baseDir,
         { platformIds }
@@ -58,6 +94,8 @@ export function memoryInitCommand(): Command {
       console.log('# wolf init');
       console.log(`- memory skeleton: ensured (${join(baseDir, '.wolf')})`);
       console.log(`- scan: ${result.documentCount} document(s) registered`);
+      for (const o of result.baseSetOutcomes)
+        console.log(`- base set: ${o.file} ${o.action}${o.reason ? ` — ${o.reason}` : ''}`);
       for (const outcome of result.platformOutcomes) {
         const label =
           outcome.platform === 'none' || outcome.platform === 'npx'

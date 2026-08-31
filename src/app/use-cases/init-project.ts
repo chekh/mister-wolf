@@ -10,10 +10,21 @@ import { renderConfigYaml } from '../../adapters/fs/config-file.js';
 import { configPath } from '../../adapters/fs/project-paths.js';
 import { writeFileAtomic } from '../../adapters/fs/markdown-memory-store.js';
 import { UserFacingError } from '../../domain/errors.js';
+import { RenderAction } from '../../ports/base-set-renderer.port.js';
 
 /** Минимальный контракт реестра для init (структурно совместим с ProjectsRegistry). */
 export interface ProjectRegistry {
   register(path: string, schemaVersion: number): Promise<void>;
+}
+
+export interface BaseSetOutcome {
+  file: string;
+  action: RenderAction; // тот же тип, minor 5
+  reason?: string;
+}
+export interface BaseSetDeps {
+  render: (baseDir: string) => Promise<BaseSetOutcome[]>;
+  seed: (baseDir: string) => Promise<BaseSetOutcome[]>;
 }
 
 export interface InitProjectDeps {
@@ -26,6 +37,7 @@ export interface InitProjectDeps {
   scanDeps: Parameters<typeof scanProject>[0];
   /** Проставить маркер версии схемы (writeSchemaVersionIfAbsent). */
   markSchemaCurrent: (baseDir: string) => Promise<void>;
+  baseSet?: BaseSetDeps;
 }
 
 export interface PlatformInitOutcome {
@@ -38,6 +50,7 @@ export interface InitProjectResult {
   npx: boolean;
   documentCount: number;
   platformOutcomes: PlatformInitOutcome[];
+  baseSetOutcomes: BaseSetOutcome[];
 }
 
 const PROJECT_ROOT_MARKERS = ['package.json', '.git', 'pyproject.toml', 'go.mod', 'Cargo.toml', 'README.md'];
@@ -65,6 +78,16 @@ export async function initProject(
   await deps.initializer.initialize(baseDir);
   await deps.markSchemaCurrent(baseDir);
   const scan = await scanProject(deps.scanDeps, baseDir);
+
+  const baseSetOutcomes: BaseSetOutcome[] = [];
+  if (deps.baseSet) {
+    if (deps.npx) {
+      baseSetOutcomes.push({ file: '(base set)', action: 'skipped', reason: 'npx try-out не пишет набор (спека §7)' });
+    } else {
+      baseSetOutcomes.push(...(await deps.baseSet.render(baseDir)));
+      baseSetOutcomes.push(...(await deps.baseSet.seed(baseDir)));
+    }
+  }
 
   const platformOutcomes: PlatformInitOutcome[] = [];
   if (deps.npx) {
@@ -103,7 +126,7 @@ export async function initProject(
 
   await deps.registry.register(baseDir, CURRENT_SCHEMA_VERSION);
 
-  return { npx: deps.npx, documentCount: scan.documents.length, platformOutcomes };
+  return { npx: deps.npx, documentCount: scan.documents.length, platformOutcomes, baseSetOutcomes };
 }
 
 /**
