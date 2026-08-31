@@ -30,7 +30,9 @@ onMounted(() => {
     const heroTop = hero.getBoundingClientRect().top
     const imgBottom = img.getBoundingClientRect().bottom - heroTop
     const termTop = termEl.getBoundingClientRect().top - heroTop
-    termEl.style.transform = `translateY(${(imgBottom - 35 - termTop).toFixed(1)}px)`
+    // 20px overlap: the portrait's dissolving bottom edge only — the wolf's
+    // paws/collar zone above stays uncovered
+    termEl.style.transform = `translateY(${(imgBottom - 20 - termTop).toFixed(1)}px)`
   }
   apply()
   window.addEventListener('resize', apply)

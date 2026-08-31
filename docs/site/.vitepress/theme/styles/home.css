@@ -242,7 +242,7 @@
 
   .wolf-hero-figure img {
     width: min(100%, 640px); /* target zone 500–650px, natural aspect */
-    aspect-ratio: 1254 / 1048; /* height known before the image loads */
+    aspect-ratio: 1254 / 755; /* height known before the image loads */
   }
 
   /* Terminal overlaps the LOWER part of the portrait zone (face/cup visible):
