@@ -1,0 +1,134 @@
+/**
+ * Wolf Dossier / Operational Noir — design tokens.
+ * Light = paper dossier, Dark = ops room at night.
+ * Palette is exact per accepted design audit; VitePress mappings tuned for AA.
+ */
+
+:root {
+  /* Wolf palette */
+  --wolf-ink: #0c0d0f;
+  --wolf-graphite: #181a1e;
+  --wolf-panel: #22242a;
+  --wolf-paper: #f1eadb;
+  --wolf-paper-2: #e4dac5;
+  --wolf-text: #242321;
+  --wolf-signal: #d43a2f;
+  --wolf-brass: #c49a4a;
+  --wolf-verified: #4d8b6c;
+  --wolf-muted: #858179;
+
+  /* Light: paper dossier */
+  --wolf-bg: var(--wolf-paper);
+  --wolf-bg-alt: var(--wolf-paper-2);
+  --wolf-bg-elv: #f6f0e3; /* card lifted from paper */
+  --wolf-fg: var(--wolf-text);
+  --wolf-fg-2: #4c4a44; /* ≈ 8:1 on paper */
+  --wolf-fg-3: #6b675d; /* ≈ 5:1 on paper */
+  --wolf-line: #cfc4ab;
+  --wolf-link: #b02a20; /* darkened signal, ≈ 5.4:1 on paper */
+
+  /* Fonts (self-hosted; condensed has no cyrillic → sans fallback for RU) */
+  --vp-font-family-base: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --vp-font-family-title: 'IBM Plex Sans Condensed', 'IBM Plex Sans', system-ui,
+    -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --vp-font-family-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular,
+    'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  /* VitePress surface + text */
+  --vp-c-bg: var(--wolf-bg);
+  --vp-c-bg-alt: var(--wolf-bg-alt);
+  --vp-c-bg-elv: var(--wolf-bg-elv);
+  --vp-c-bg-soft: var(--wolf-paper-2);
+  --vp-c-text-1: var(--wolf-fg);
+  --vp-c-text-2: var(--wolf-fg-2);
+  --vp-c-text-3: var(--wolf-fg-3);
+  --vp-c-border: var(--wolf-line);
+  --vp-c-divider: var(--wolf-line);
+  --vp-c-gutter: var(--wolf-paper-2);
+
+  /* Brand: signal red for links/active, brass reserved for primary CTA */
+  --vp-c-brand-1: var(--wolf-link);
+  --vp-c-brand-2: var(--wolf-signal);
+  --vp-c-brand-3: var(--wolf-signal);
+  --vp-c-brand-soft: rgba(212, 58, 47, 0.09);
+  --vp-c-brand: var(--wolf-link);
+
+  /* Buttons: brand = brass plate with ink text (≈ 7:1) */
+  --vp-button-brand-bg: var(--wolf-brass);
+  --vp-button-brand-border: var(--wolf-brass);
+  --vp-button-brand-text: var(--wolf-ink);
+  --vp-button-brand-hover-bg: #d0a75d;
+  --vp-button-brand-hover-border: #d0a75d;
+  --vp-button-brand-hover-text: var(--wolf-ink);
+  --vp-button-brand-active-bg: #b78c40;
+  --vp-button-brand-active-border: #b78c40;
+  --vp-button-brand-active-text: var(--wolf-ink);
+  /* alt = outlined dossier button */
+  --vp-button-alt-bg: transparent;
+  --vp-button-alt-border: var(--wolf-fg-3);
+  --vp-button-alt-text: var(--wolf-fg-2);
+  --vp-button-alt-hover-bg: transparent;
+  --vp-button-alt-hover-border: var(--wolf-signal);
+  --vp-button-alt-hover-text: var(--wolf-link);
+  --vp-button-alt-active-bg: transparent;
+  --vp-button-alt-active-border: var(--wolf-link);
+  --vp-button-alt-active-text: var(--wolf-link);
+
+  /* Home hero */
+  --vp-c-home-hero-name-color: var(--wolf-fg-3);
+  --vp-home-hero-name-background: none;
+
+  /* Code: dark terminal plate in BOTH themes */
+  --vp-code-block-bg: var(--wolf-graphite);
+  --vp-code-block-color: #ece5d3;
+  --vp-code-bg: rgba(196, 154, 74, 0.12);
+  --vp-code-color: var(--wolf-link);
+
+  /* Neutral for focus outlines etc. */
+  --vp-c-neutral: var(--wolf-ink);
+  --vp-c-neutral-inverse: var(--wolf-paper);
+}
+
+.dark {
+  /* Dark: operational center at night — warm cream text, never pure white */
+  --wolf-bg: var(--wolf-graphite);
+  --wolf-bg-alt: var(--wolf-ink);
+  --wolf-bg-elv: var(--wolf-panel);
+  --wolf-fg: #ece5d3; /* ≈ 13:1 on graphite */
+  --wolf-fg-2: #c9c0aa; /* ≈ 9:1 */
+  --wolf-fg-3: #9a9280; /* ≈ 5:1 */
+  --wolf-line: #34363d;
+  --wolf-link: #e06055; /* lifted signal, ≈ 5:1 on graphite */
+
+  --vp-c-bg: var(--wolf-bg);
+  --vp-c-bg-alt: var(--wolf-bg-alt);
+  --vp-c-bg-elv: var(--wolf-bg-elv);
+  --vp-c-bg-soft: var(--wolf-panel);
+  --vp-c-text-1: var(--wolf-fg);
+  --vp-c-text-2: var(--wolf-fg-2);
+  --vp-c-text-3: var(--wolf-fg-3);
+  --vp-c-border: var(--wolf-line);
+  --vp-c-divider: var(--wolf-line);
+  --vp-c-gutter: var(--wolf-ink);
+
+  --vp-c-brand-1: var(--wolf-link);
+  --vp-c-brand-2: var(--wolf-signal);
+  --vp-c-brand-3: #ef7d74;
+  --vp-c-brand-soft: rgba(212, 58, 47, 0.14);
+  --vp-c-brand: var(--wolf-link);
+
+  /* brass plate works on dark too (ink text on brass ≈ 7:1) */
+  --vp-button-alt-border: var(--wolf-fg-3);
+  --vp-button-alt-text: var(--wolf-fg-2);
+  --vp-button-alt-hover-border: var(--wolf-signal);
+  --vp-button-alt-hover-text: #ef9a92;
+
+  --vp-c-home-hero-name-color: var(--wolf-fg-3);
+
+  --vp-code-bg: rgba(196, 154, 74, 0.14);
+  --vp-code-color: #d9b36a;
+
+  --vp-c-neutral: var(--wolf-paper);
+  --vp-c-neutral-inverse: var(--wolf-ink);
+}
