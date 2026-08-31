@@ -4,6 +4,9 @@ hero:
   name: Mr. Wolf
   text: Project memory that outlives the session
   tagline: Local-first memory harness for AI coding agents — CLI + MCP, no cloud.
+  image:
+    src: /logo.png
+    alt: Mr. Wolf logo
   actions:
     - theme: brand
       text: Get Started
