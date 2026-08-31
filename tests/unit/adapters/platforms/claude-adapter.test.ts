@@ -8,6 +8,8 @@ import type { McpCommand } from '../../../../src/ports/platform-adapter.port.js'
 
 const cmd: McpCommand = { command: 'wolf', args: ['mcp'] };
 let dir: string;
+// ponytail: permission-тест неприменим под root (Docker CI): root игнорирует права каталога
+const isRoot = process.getuid?.() === 0;
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'wolf-claude-adapter-'));
@@ -74,7 +76,7 @@ describe('ClaudeAdapter.writeConfig', () => {
     expect(await new ClaudeAdapter().readConfig(dir)).toBeNull();
   });
 
-  it('no write permission → fails without partial write', async () => {
+  it.skipIf(isRoot)('no write permission → fails without partial write', async () => {
     writeFileSync(join(dir, '.mcp.json'), '{}');
     chmodSync(dir, 0o555);
     await expect(new ClaudeAdapter().writeConfig(dir, cmd)).rejects.toThrow();

@@ -9,10 +9,12 @@ WORKDIR /app
 ENV NODE_ENV=development
 
 # Install build dependencies for native modules (better-sqlite3)
+# jq — runtime-зависимость tools/pipeline/autorefine.sh (нужна его юнит-тестам в Docker CI)
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
+    jq \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
