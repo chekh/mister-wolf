@@ -11,7 +11,7 @@
 Три команды — машина, проект, память:
 
 ```bash
-npm install -g mister-wolf   # 1) машина: бинарь wolf
+npm install -g mister-wolf   # 1) машина: бинарник wolf
 cd my-project && wolf init   # 2) проект: скелет .wolf/ + MCP-конфиги платформ
 wolf bootstrap               # 3) память: стартовое наполнение из документов проекта
 ```
