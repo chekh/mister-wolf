@@ -6,7 +6,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
-## [1.0.1] — 2026-08-31 (tag v1.0.1, pending publication)
+## [1.0.2] — 2026-08-31
+
+### Changed (Docs)
+
+- English product surface — README, CHANGELOG, SECURITY, package description (Russian stays internal).
+- Community standards files: Code of Conduct, CONTRIBUTING, issue/PR templates.
+
+## [1.0.1] — 2026-08-31
 
 ### Fixed
 
@@ -30,6 +37,7 @@ First public release on npm.
 
 - Normalized the bin path in `package.json` — `npm publish` stripped the binary from the package (2cb1d05).
 
-[Unreleased]: https://github.com/chekh/mister-wolf/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/chekh/mister-wolf/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/chekh/mister-wolf/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/chekh/mister-wolf/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/chekh/mister-wolf/commits/v1.0.0
