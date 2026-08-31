@@ -1,5 +1,8 @@
 // tests/unit/use-cases/sync-base-set.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { mkdtempSync, rmSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { syncBaseSet } from '../../../src/app/use-cases/sync-base-set.js';
 import type { BaseSetRenderer } from '../../../src/ports/base-set-renderer.port.js';
 import { memorySyncCommand } from '../../../src/adapters/cli/commands/memory-sync.js';
@@ -52,8 +55,9 @@ describe('wolf sync CLI (Task 7)', () => {
   it('не-npx: печатает outcomes и orphaned', async () => {
     const logs: string[] = [];
     const spy = vi.spyOn(console, 'log').mockImplementation((...a: unknown[]) => logs.push(a.map(String).join(' ')));
-    const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue('/proj');
-    // рендерер над пустым templates/base — outcomes пуст, но путь не падает
+    // фаза B: templates/base наполнен — рендерим в реальный tmp-проект
+    const proj = mkdtempSync(join(tmpdir(), 'wolf-sync-cli-'));
+    const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(proj);
     try {
       const cmd = memorySyncCommand();
       await cmd.parseAsync(['node', 'sync']);
@@ -62,6 +66,7 @@ describe('wolf sync CLI (Task 7)', () => {
     } finally {
       spy.mockRestore();
       cwdSpy.mockRestore();
+      rmSync(proj, { recursive: true, force: true });
     }
   });
 });
