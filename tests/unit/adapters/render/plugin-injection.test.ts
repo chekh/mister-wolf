@@ -1,9 +1,32 @@
 // tests/unit/adapters/render/plugin-injection.test.ts
-// Юнит-тест чистой функции инъекции из harness-шаблона плагина (Task 13.3,
-// спека §9: H3 идемпотентность, MAJ-1 повторная инъекция, MAJ-4 усечение L2,
-// m13 fail-safe).
-import { describe, expect, it } from 'vitest';
-import { computeInjection, MARKER } from '../../../../templates/opencode/plugins/wolf-session-start.js';
+// Поведенческий тест плагина из harness-шаблона (Task 13.3, спека §9:
+// H3 идемпотентность, MAJ-1 повторная инъекция, MAJ-4 усечение L2,
+// m13 fail-safe) + контракт загрузчика opencode: ровно один export.
+//
+// computeInjection приватна (дефект догфудинга фазы C: loader opencode
+// вызывает КАЖДЫЫ export файла плагина как фабрику — лишние экспорты
+// валили загрузку всего плагина), поэтому тестируем через хуки фабрики.
+import { describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const { execFileMock } = vi.hoisted(() => {
+  const execFileMock = vi.fn((_file: unknown, _args: string[], _opts: unknown, cb?: unknown) => {
+    const done = (typeof _opts === 'function' ? _opts : cb) as
+      | ((err: Error | null, res?: { stdout: string }) => void)
+      | undefined;
+    if (!done) throw new Error('execFile: callback not found');
+    // recap/call не нужны для проверки тел инъекции — тихий stdout
+    return done(null, { stdout: '' });
+  });
+  return { execFileMock };
+});
+vi.mock('child_process', () => ({ execFile: execFileMock }));
+
+const templatePath = (rel: string) =>
+  fileURLToPath(new URL(`../../../../templates/opencode/plugins/${rel}`, import.meta.url));
+
+const { WolfSessionStartPlugin } = await import(templatePath('wolf-session-start.js'));
 
 interface Part {
   type: string;
@@ -14,55 +37,80 @@ interface Msg {
   parts: Part[];
 }
 const msg = (text: string): Msg => ({ info: { role: 'user' }, parts: [{ type: 'text', text }] });
+const MARKER = 'Mr.Wolf session bootstrap'; // контракт маркера (стабильная строка)
 const withMarker = [msg(`<session_context>\n${MARKER}\n\n## Recap\n…\n</session_context>`), msg('дальше')];
 const fresh = [msg('новый вопрос после /clear')];
 
 const GOVERNANCE = ['1%-правило', 'SUBAGENT-STOP', 'Лестница приоритетов', 'process-скиллы', 'rigid', 'flexible'];
 const DISPATCH = ['1%', 'SUBAGENT-STOP', 'Лестница приоритетов', 'process-скиллы'];
 
-describe('computeInjection (wolf-session-start, спека §5.4)', () => {
-  it('маркер в транскрипте → null (H3: идемпотентность по маркеру)', () => {
-    expect(computeInjection(withMarker, 'mr-wolf')).toBeNull();
-  });
+const hooks = await WolfSessionStartPlugin({});
+const transform = hooks['experimental.chat.messages.transform'];
+const systemTransform = hooks['experimental.chat.system.transform'];
+const setAgent = async (id: string | null) => {
+  const system = id ? `рамка агента\n\nagent-id: ${id}\n` : 'просто системный промпт';
+  await systemTransform({}, { system: [system] });
+};
+const textOf = (m: Msg) => m.parts.map((p) => String(p.text ?? '')).join('\n');
 
-  it('маркера нет → инъекция; полный governance-набор для L0/L1 (H2)', () => {
-    const out = computeInjection(fresh, 'executor-lead');
-    expect(typeof out).toBe('string');
-    for (const marker of [...GOVERNANCE, '{{tool.skill}}']) expect(out).toContain(marker);
-    // контракт рендера: только разрешённые плейсхолдеры (manifest.substitute не упадёт)
-    expect(out).not.toMatch(/\{\{tool\.(?!skill\b|task\b|todowrite\b)\w+\}\}/);
-  });
-
-  it('agentId worker-* → усечённое тело: нет диспетчерского контура, пассивный режим (MAJ-4, §11.8)', () => {
-    const out = computeInjection(fresh, 'worker-implementer');
-    expect(typeof out).toBe('string');
-    expect(out).toContain('пассив');
-    expect(out).toContain('rigid');
-    expect(out).toContain('flexible');
-    for (const marker of DISPATCH) expect(out).not.toContain(marker);
-  });
-
-  it('agentId L0/L1 (mr-wolf, steward, без id) → полное тело', () => {
-    for (const id of ['mr-wolf', 'steward', 'executor-lead', null, '']) {
-      const out = computeInjection(fresh, id as string | null);
-      expect(out, `agentId=${String(id)}`).toContain('1%-правило');
+describe('wolf-session-start: контракт загрузчика opencode (дефект фазы C)', () => {
+  it('шаблоны плагинов содержат РОВНО ОДИН export — фабрику плагина', () => {
+    for (const rel of ['wolf-session-start.js', 'wolf-router.ts']) {
+      const src = readFileSync(templatePath(rel), 'utf-8');
+      const exports = src.match(/^export\b.*$/gm) ?? [];
+      expect(exports, rel).toHaveLength(1);
+      expect(exports[0], rel).toMatch(/WolfSessionStartPlugin|WolfPlaybookPlugin/);
     }
   });
+});
 
-  it('MAJ-1: кэша на процесс нет — маркер исчез → инъекция снова', () => {
-    expect(computeInjection(withMarker, 'mr-wolf')).toBeNull();
-    const again = computeInjection(fresh, 'mr-wolf');
-    expect(typeof again).toBe('string');
-    expect(again).toContain('1%-правило');
+describe('wolf-session-start: инъекция (спека §5.4)', () => {
+  it('маркер в транскрипте → инъекции нет (H3: идемпотентность)', async () => {
+    await setAgent('mr-wolf');
+    const out = { messages: withMarker.map((m) => ({ ...m, parts: [...m.parts] })) };
+    await transform({}, out);
+    // инъекции нет: исходные части не тронуты (маркер уже был в транскрипте)
+    expect(out.messages[0].parts).toHaveLength(1);
   });
 
-  it('fail-safe (m13): битый вход → null/строка, никогда не бросает', () => {
-    expect(() => computeInjection(null as unknown as Msg[], 'x')).not.toThrow();
-    expect(computeInjection(null as unknown as Msg[], 'x')).toBeNull();
-    expect(() => computeInjection([] as Msg[], 'x')).not.toThrow();
-    const empty = computeInjection([] as Msg[], 'x');
-    // контракт маркера: пустой транскрипт — маркера нет → инъекция
-    expect(empty === null || typeof empty === 'string').toBe(true);
-    expect(() => computeInjection([{} as unknown as Msg, 'junk' as unknown as Msg], 'worker-x')).not.toThrow();
+  it('маркера нет → инъекция; полный governance-набор для L0/L1 (H2)', async () => {
+    await setAgent('executor-lead');
+    const out = { messages: fresh.map((m) => ({ ...m, parts: [...m.parts] })) };
+    await transform({}, out);
+    const injected = textOf(out.messages[0]);
+    expect(injected).toContain(MARKER);
+    for (const marker of GOVERNANCE) expect(injected, marker).toContain(marker);
+    // контракт рендера: только разрешённые плейсхолдеры (manifest.substitute не упадёт)
+    expect(injected).not.toMatch(/\{\{tool\.(?!skill\b|task\b|todowrite\b)\w+\}\}/);
+  });
+
+  it('agent-id worker-* → усечённое тело: нет диспетчерского контура (MAJ-4, §11.8)', async () => {
+    await setAgent('worker-implementer');
+    const out = { messages: fresh.map((m) => ({ ...m, parts: [...m.parts] })) };
+    execFileMock.mockClear();
+    await transform({}, out);
+    const injected = textOf(out.messages[0]);
+    expect(injected).toContain(MARKER);
+    expect(injected).toContain('пассив');
+    expect(injected).toContain('rigid');
+    for (const marker of DISPATCH) expect(injected, marker).not.toContain(marker);
+    // L2 не дергает recap/call вообще
+    expect(execFileMock).not.toHaveBeenCalled();
+  });
+
+  it('MAJ-1: маркер исчез (новая сессия) → инъекция выполняется снова', async () => {
+    await setAgent('mr-wolf');
+    const stale = { messages: withMarker.map((m) => ({ ...m, parts: [...m.parts] })) };
+    await transform({}, stale); // маркер был — ничего
+    const anew = { messages: fresh.map((m) => ({ ...m, parts: [...m.parts] })) };
+    await transform({}, anew); // чистый транскрипт — снова инъекция
+    expect(textOf(anew.messages[0])).toContain(MARKER);
+  });
+
+  it('fail-safe (m13): битый вход → не бросает, сессию не роняет', async () => {
+    await setAgent('mr-wolf');
+    await expect(transform({}, { messages: null })).resolves.toBeUndefined();
+    await expect(transform({}, {})).resolves.toBeUndefined();
+    await expect(transform(null as never, { messages: [] })).resolves.toBeUndefined();
   });
 });

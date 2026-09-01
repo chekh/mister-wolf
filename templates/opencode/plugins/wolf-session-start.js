@@ -23,7 +23,11 @@ const PROJECT_ROOT = path.join(__dirname, '..', '..');
 const LOCAL_CLI = path.join(PROJECT_ROOT, 'dist', 'bootstrap', 'cli.js');
 const TIMEOUT_MS = 10_000;
 
-export const MARKER = 'Mr.Wolf session bootstrap';
+// Контракт opencode: у файла плагина РОВНО ОДИН export — фабрика плагина;
+// loader вызывает каждый export как фабрику (лишний export-строка или
+// функция, возвращающая null, валит загрузку всего плагина — дефект,
+// найден живым догфудингом фазы C). MARKER и computeInjection — приватные.
+const MARKER = 'Mr.Wolf session bootstrap';
 
 // [ \t] вместо \s: \s съедает переводы строк и вытаскивает id с чужой строки.
 const AGENT_ID_RE = /^agent-id:[ \t]*([\w-]+)[ \t]*$/m;
@@ -53,7 +57,7 @@ const WORKER_BODY = `## using-skills: пассивный режим воркер
  * agent-id решает, какое тело доставить. null = инъекция не нужна.
  * Fail-safe (m13): битый вход → null, никогда не бросает.
  */
-export function computeInjection(messages, agentId) {
+function computeInjection(messages, agentId) {
   try {
     if (!Array.isArray(messages)) return null;
     // H3: идемпотентность — маркер в ЛЮБОМ сообщении транскрипта → не инъекцируем.

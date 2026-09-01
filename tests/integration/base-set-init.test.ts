@@ -58,6 +58,17 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
     }
     const list = runCli(['list', '--type', 'playbook'], dir).stdout;
     expect((list.match(/\[playbook\]/g) ?? []).length).toBe(6);
+
+    // триггер жалобы в воркерских playbook'ах — процедурный, не декларативный
+    // (дефект догфудинга фазы C: декларативное правило воркеры не исполняли)
+    for (const f of ['worker-implementer', 'worker-researcher', 'worker-reviewer']) {
+      const seeded = readdirSync(join(dir, '.wolf/memory/shared/playbooks'))
+        .map((p) => readFileSync(join(dir, '.wolf/memory/shared/playbooks', p), 'utf-8'))
+        .find((body) => body.includes(`owner_skill: ${f}`));
+      expect(seeded, f).toBeDefined();
+      expect(seeded, f).toContain('ТРИГГЕР ЖАЛОБЫ');
+      expect(seeded, f).toContain('НЕ заменяет');
+    }
   });
 
   it("повторный init: все файловые outcomes skipped, playbook'ы не задвоены (§11.2)", () => {
