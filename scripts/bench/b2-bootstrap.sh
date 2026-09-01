@@ -12,7 +12,7 @@ bench_flags "$@"
 FACT="Node 22" # фиксированный факт README, ищется в выводе агента
 
 step "B2.1 подготовка tmp-проекта"
-TMP_A="$(mktemp -d /tmp/wolf-bench.XXXXXX)"
+bench_tmp TMP_A
 make_bench_project "$TMP_A"
 check "README содержит фиксированные факты" "grep -q 'Node 22' \"$TMP_A/README.md\" && grep -q 'npm test' \"$TMP_A/README.md\""
 
@@ -26,7 +26,7 @@ echo "  brief: $(head -c 120 "$TMP_A/brief.out" | tr '\n' ' ')..."
 step "B2.3 прогон «чем является этот проект?»"
 if [ "$MODE" = "live" ]; then
   # ветка B — тот же вопрос без памяти Wolf
-  TMP_B="$(mktemp -d /tmp/wolf-bench.XXXXXX)"
+  bench_tmp TMP_B
   make_bench_project "$TMP_B"
   rm -rf "$TMP_B/.wolf"
   ( cd "$TMP_A" && node "$WOLF" run --agent "$BENCH_AGENT" --title bench-b2-a \
