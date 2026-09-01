@@ -47,11 +47,12 @@ GAPS: <чего не удалось выяснить, если есть>
 
 ## Жалобный контур
 
-Фидбек о методике/формате findings → жалобный протокол (playbook, тег
-`complaint`): `wolf add --type lesson` с тегом
-`complaint:worker-researcher` и дословной цитатой → вложенный вызов
-`opencode run --agent steward`. Свой playbook не мутируй: мутатор —
-всегда Стюард.
+Систематически плохое правило методики/формата findings (критерии
+W1–W4 — в твоём playbook'е) → `wolf complain --about worker-researcher
+--rule <правило> --evidence <дословная цитата + что произошло>
+--proposal <что изменить>` → строка `COMPLAINT: <id> — <about>:
+<суть>` в отчёте. Стюарда не вызываю, статусы не перевожу —
+триажирует диспетчер. Свой playbook не мутируешь.
 
 ## Безопасность
 

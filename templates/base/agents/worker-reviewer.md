@@ -46,11 +46,12 @@ VERDICT: APPROVED | CHANGES_REQUIRED
 
 ## Жалобный контур
 
-Фидбек о зонах обзора/категориях/формате → жалобный протокол (playbook,
-тег `complaint`): `wolf add --type lesson` с тегом
-`complaint:worker-reviewer` и дословной цитатой → вложенный вызов
-`opencode run --agent steward`. Свой playbook не мутируй: мутатор —
-всегда Стюард.
+Систематически плохое правило мандата/зон обзора/формата вердикта
+(критерии W1–W4 — в твоём playbook'е) → `wolf complain --about
+worker-reviewer --rule <правило> --evidence <дословная цитата + что
+произошло> --proposal <что изменить>` → строка `COMPLAINT: <id> —
+<about>: <суть>` в отчёте. Стюарда не вызываю, статусы не перевожу —
+триажирует диспетчер. Свой playbook не мутируешь.
 
 ## Безопасность
 

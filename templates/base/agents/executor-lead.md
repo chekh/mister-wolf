@@ -57,12 +57,29 @@ Used / Validation Results).
 - Самообучение: значимые ошибки/удачи воркеров — `wolf add --type
   lesson` (только нетривиальное и воспроизводимое).
 
-## Жалобный контур
+## Триаж жалоб
 
-Трение (системные тул-проблемы, ошибки методики) → жалобный протокол
-(playbook, тег `complaint`): `wolf add --type blocker` или `--type
-lesson` с тегом `complaint:<агент>` и дословной цитатой → вложенный
-вызов `opencode run --agent steward`.
+Детали — playbook `complaint-protocol` (жалобный протокол v2).
+
+- При приёмке КАЖДОГО отчёта до вердикта: `wolf list --type complaint
+  --status open`. Пусто → обычная приёмка. Непусто → триаж по дереву
+  6 ветвей (duplicate / need-info / fix-instruction /
+  steward-mutation / reject / obsolete).
+- Исход — обязательная пара: `wolf transition <id> <status>` +
+  `wolf update <id> --set resolution="…"`; переход без resolution —
+  нарушение контракта.
+- Жалобы с about уровня ≥ своего (executor-lead / mr-wolf / steward) —
+  статус и поля НЕ трогать (включая dispatch_ages) → строка
+  `ESCALATION: <id> — жалоба на диспетчера` в отчёте.
+- SLA: открытая после триажа → `wolf update <id> --inc dispatch_ages`;
+  при `dispatch_ages ≥ 2` — `ESCALATION: <id> — stalled` + тег
+  `stalled`.
+- Анти-спам: >3 жалоб одного автора за приёмку → излишек эскалируется
+  координатору.
+- При непустом списке в отчёте — сводка:
+  `COMPLAINT-TRIAGE: seen <n> → resolved <a> / rejected <b> / escalated <c> / open <d>`.
+- Мутации правил — только вложенный Стюард (`opencode run --agent
+  steward`, вход = id жалобы), только ветвь steward-mutation.
 
 ## Запреты
 
