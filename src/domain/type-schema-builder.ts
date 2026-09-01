@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { MemoryObjectSchema, type MemoryObject } from './schemas/memory-object-schema.js';
-import { type FieldSpec, type MemoryStatus, type MemoryTypeDeclaration } from './memory-types.js';
+import { CORE_TAXONOMY, type FieldSpec, type MemoryStatus, type MemoryTypeDeclaration } from './memory-types.js';
 
 /** FieldSpec -> zod. Используется для декларативных полей и будет использован
  * для project-типов из config.yaml (Phase 8, Task 3). */
@@ -77,4 +77,40 @@ export function buildTypeSchema<F extends z.ZodRawShape = Record<string, never>>
       });
     }
   });
+}
+
+/**
+ * Per-type поля всех деклараций таксономии как zod-shape — единый источник
+ * входной схемы MCP `add`: поле, добавленное в декларацию, автоматически
+ * появляется в MCP-туле. Коллизии ключей между типами (rule.trigger — string,
+ * observation.trigger — boolean) схлопываются по kind в union; enum-значения
+ * одного ключа объединяются. Все поля optional: обязательность конкретного
+ * поля для конкретного типа проверяет домен (add-memory-object → buildTypeSchema).
+ */
+export function perTypeExtraFields(
+  decls: readonly MemoryTypeDeclaration[] = CORE_TAXONOMY
+): Record<string, z.ZodTypeAny> {
+  const byKey = new Map<string, { kinds: Set<FieldSpec['kind']>; enumValues: Set<string> }>();
+  for (const decl of decls) {
+    for (const [name, spec] of Object.entries(decl.fields ?? {})) {
+      let entry = byKey.get(name);
+      if (!entry) {
+        entry = { kinds: new Set(), enumValues: new Set() };
+        byKey.set(name, entry);
+      }
+      entry.kinds.add(spec.kind);
+      if (spec.kind === 'enum') for (const v of spec.values) entry.enumValues.add(v);
+    }
+  }
+  const shape: Record<string, z.ZodTypeAny> = {};
+  for (const [name, { kinds, enumValues }] of byKey) {
+    const variants: z.ZodTypeAny[] = [];
+    if (kinds.has('string')) variants.push(z.string());
+    if (kinds.has('string[]')) variants.push(z.array(z.string()));
+    if (kinds.has('boolean')) variants.push(z.boolean());
+    if (kinds.has('int')) variants.push(z.number().int());
+    if (kinds.has('enum')) variants.push(z.enum([...enumValues] as [string, ...string[]]));
+    shape[name] = (variants.length === 1 ? variants[0] : z.union(variants)).optional();
+  }
+  return shape;
 }
