@@ -11,7 +11,7 @@ describe('council flow: question -> opinions -> tally winner -> synthesis', () =
   afterAll(() => rmSync(cwd, { recursive: true, force: true }));
 
   it('runs council flow end to end', () => {
-    const init = runCli(['init'], cwd);
+    const init = runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], cwd);
     expect(init.status).toBe(0);
 
     const q = runCli(['add', '--type', 'council-question', '--title', 'Q1', '--set', 'question=Q?'], cwd);

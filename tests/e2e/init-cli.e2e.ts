@@ -27,20 +27,26 @@ function newProject(markers: 'opencode' | 'none'): { project: string; xdg: strin
   return { project, xdg };
 }
 
-describe('wolf init CLI (спека §3 уровень 1)', () => {
+describe('wolf init CLI (спека §3 уровень 1; onboarding v2 §4.6: не-TTY требует --model)', () => {
   it('writes canonical opencode config, registers project in XDG registry, re-init is a no-op', () => {
     const { project, xdg } = newProject('opencode');
 
-    const first = spawnSync('node', [cli, 'init'], { cwd: project, env: env(xdg), encoding: 'utf-8', timeout: 60_000 });
+    const first = spawnSync('node', [cli, 'init', '--model', 'zai-coding-plan/glm-5.3'], {
+      cwd: project,
+      env: env(xdg),
+      encoding: 'utf-8',
+      timeout: 60_000,
+    });
     expect(first.status).toBe(0);
     expect(first.stdout).toContain('platform opencode: written');
-    expect(first.stdout).toContain('Restart your agent platform');
+    expect(first.stdout).toContain('перезапустите opencode'); // F7: блок «Дальше»
     const cfg = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));
     expect(cfg.mcp.wolf).toEqual({ type: 'local', command: ['wolf', 'mcp'], enabled: true });
+    expect(cfg.default_agent).toBe('mr-wolf'); // F4 закрыт: default_agent первым init'ом
     expect(readFileSync(join(xdg, 'wolf', 'projects.yaml'), 'utf-8')).toContain(project);
 
     const before = readFileSync(join(project, 'opencode.json'), 'utf-8');
-    const second = spawnSync('node', [cli, 'init'], {
+    const second = spawnSync('node', [cli, 'init', '--model', 'zai-coding-plan/glm-5.3'], {
       cwd: project,
       env: env(xdg),
       encoding: 'utf-8',
@@ -49,6 +55,15 @@ describe('wolf init CLI (спека §3 уровень 1)', () => {
     expect(second.status).toBe(0);
     expect(second.stdout).toContain('platform opencode: unchanged');
     expect(readFileSync(join(project, 'opencode.json'), 'utf-8')).toBe(before);
+  });
+
+  it('non-TTY без --model → жёсткая ошибка с точной командой (Q11)', () => {
+    const { project, xdg } = newProject('opencode');
+    const res = spawnSync('node', [cli, 'init'], { cwd: project, env: env(xdg), encoding: 'utf-8', timeout: 60_000 });
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain('non-interactive init requires a model');
+    expect(res.stderr).toContain('wolf init --model <providerID/modelID>');
+    expect(JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8')).mcp).toBeUndefined();
   });
 
   it('unknown --platform → UserFacingError, exit 1, no configs written', () => {
@@ -64,12 +79,19 @@ describe('wolf init CLI (спека §3 уровень 1)', () => {
     expect(JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8')).mcp).toBeUndefined();
   });
 
-  it('no platform markers → skip with hint, exit 0 (память создана)', () => {
+  it('no platform markers → opencode пишется безусловно (F4: факт рендера набора, не детекция)', () => {
     const { project, xdg } = newProject('none');
-    const res = spawnSync('node', [cli, 'init'], { cwd: project, env: env(xdg), encoding: 'utf-8', timeout: 60_000 });
+    const res = spawnSync('node', [cli, 'init', '--model', 'zai-coding-plan/glm-5.3'], {
+      cwd: project,
+      env: env(xdg),
+      encoding: 'utf-8',
+      timeout: 60_000,
+    });
     expect(res.status).toBe(0);
-    expect(res.stdout).toContain('platform configs: skipped');
-    expect(res.stdout).toContain('--platform');
+    expect(res.stdout).toContain('platform opencode: written');
+    expect(res.stdout).toContain('wolf bootstrap'); // F7: «Дальше» называет следующий шаг
+    const cfg = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));
+    expect(cfg.mcp.wolf).toEqual({ type: 'local', command: ['wolf', 'mcp'], enabled: true });
   });
 
   it('init --recreate on a LEGACY project migrates properly (marker + layout v2, objects/ not orphaned)', () => {
@@ -79,7 +101,7 @@ describe('wolf init CLI (спека §3 уровень 1)', () => {
     writeFileSync(join(project, '.wolf', 'config.yaml'), 'artifact_sources: []\n');
     writeFileSync(join(project, '.wolf', 'memory', 'objects', 'decision', 'mem_legacy.md'), legacyMd);
 
-    const res = spawnSync('node', [cli, 'init', '--recreate'], {
+    const res = spawnSync('node', [cli, 'init', '--recreate', '--model', 'zai-coding-plan/glm-5.3'], {
       cwd: project,
       env: env(xdg),
       encoding: 'utf-8',
@@ -98,7 +120,7 @@ describe('wolf init CLI (спека §3 уровень 1)', () => {
     mkdirSync(join(project, '.wolf'), { recursive: true });
     writeFileSync(join(project, '.wolf', 'config.yaml'), body);
 
-    const res = spawnSync('node', [cli, 'init', '--recreate'], {
+    const res = spawnSync('node', [cli, 'init', '--recreate', '--model', 'zai-coding-plan/glm-5.3'], {
       cwd: project,
       env: env(xdg),
       encoding: 'utf-8',

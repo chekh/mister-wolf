@@ -17,7 +17,7 @@ describe('solve builds stale-instruction pack on seeded memory', () => {
   function seed(): { dir: string; oldId: string; newId: string } {
     const dir = tmpProject();
     dirs.push(dir);
-    runCli(['init'], dir);
+    runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
     runCli(['thread', 'create', '--title', 'CLI repair thread', '--goal', 'Repair stale CLI guidance'], dir);
 
     const oldRun = runCli(

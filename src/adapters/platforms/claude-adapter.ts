@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { PlatformAdapter, McpCommand, PlatformConfig } from '../../ports/platform-adapter.port.js';
+import { PlatformAdapter, McpCommand, PlatformConfig, PlatformWriteResult } from '../../ports/platform-adapter.port.js';
 import { writeFileAtomic } from '../fs/markdown-memory-store.js';
 import { UserFacingError } from '../../domain/errors.js';
 
@@ -36,18 +36,18 @@ export class ClaudeAdapter implements PlatformAdapter {
     return parsed as PlatformConfig;
   }
 
-  async writeConfig(projectRoot: string, cmd: McpCommand): Promise<'written' | 'replaced' | 'unchanged'> {
+  async writeConfig(projectRoot: string, cmd: McpCommand): Promise<PlatformWriteResult> {
     const file = this.configFile(projectRoot);
     const cfg = (await this.readConfig(projectRoot)) ?? {};
     const mcpServers = asRecord(cfg.mcpServers) ?? {};
     // каноническая проекция McpCommand в формат Claude Code: command + args
     const desired = { command: cmd.command, args: [...cmd.args] };
-    if (JSON.stringify(mcpServers.wolf) === JSON.stringify(desired)) return 'unchanged';
+    if (JSON.stringify(mcpServers.wolf) === JSON.stringify(desired)) return { action: 'unchanged' };
     const replaced = mcpServers.wolf !== undefined;
     mcpServers.wolf = desired;
     cfg.mcpServers = mcpServers;
     await writeFileAtomic(file, JSON.stringify(cfg, null, 2) + '\n');
-    return replaced ? 'replaced' : 'written';
+    return { action: replaced ? 'replaced' : 'written' };
   }
 
   async removeWolf(projectRoot: string): Promise<boolean> {

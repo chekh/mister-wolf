@@ -29,12 +29,13 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
   it("создаёт полный набор: 6 агентов, 13 скиллов, 3 команды, 2 плагина + 6 seeded playbook'ов (§11.1)", () => {
-    const res = runCli(['init'], dir);
+    const res = runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
     expect(res.status).toBe(0);
 
-    // 24 файла (6+13+3+2) созданы + 6 playbook'ов посеяны
+    // 24 файла (6+13+3+2) + AGENTS.md в корне (onboarding v2 §4.2) созданы + 6 playbook'ов посеяны
     const created = (res.stdout.match(/- base set: \S+ created/g) ?? []).length;
-    expect(created).toBe(30);
+    expect(created).toBe(31);
+    expect(res.stdout).toMatch(/- base set: AGENTS\.md created/);
 
     const agents = readdirSync(join(dir, '.opencode/agents')).filter((f) => f.endsWith('.md'));
     expect(agents).toHaveLength(6);
@@ -72,11 +73,11 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
   });
 
   it("повторный init: все файловые outcomes skipped, playbook'ы не задвоены (§11.2)", () => {
-    expect(runCli(['init'], dir).status).toBe(0);
+    expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir).status).toBe(0);
     const agentPath = join(dir, '.opencode/agents/mr-wolf.md');
     const before = readFileSync(agentPath, 'utf-8');
 
-    const again = runCli(['init'], dir);
+    const again = runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
     expect(again.status).toBe(0);
     expect(again.stdout).not.toMatch(/- base set: \S+ created/); // всё skipped (wx-политика)
     expect(again.stdout).toMatch(/- base set: \S+ skipped/);
@@ -87,7 +88,7 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
   });
 
   it('контент отрендеренных агентов: agent-id ×6, тройка «рамка/лицо/доставка», wolf search у воркеров (§11.3, §11.8)', () => {
-    expect(runCli(['init'], dir).status).toBe(0);
+    expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir).status).toBe(0);
 
     for (const a of AGENTS) {
       const body = readFileSync(join(dir, '.opencode/agents', `${a}.md`), 'utf-8');

@@ -152,6 +152,25 @@ describe('getCallInjections', () => {
     }
   });
 
+  it('routing-объект (машино-состояние, тег wolf-routing) никогда не инъецируется', async () => {
+    await seed(
+      makeObj({
+        id: 'routing_1',
+        type: 'rule',
+        status: 'active',
+        title: 'Routing: модели агентов',
+        scope: 'project',
+        tags: ['wolf-routing', 'models'],
+        body: 'primary: x/y\nworker: x/y',
+      })
+    );
+
+    const noTopic = await getCallInjections({ store, clock }, { thread: true });
+    expect(noTopic.blocks).toHaveLength(0);
+    const fallback = await getCallInjections({ store, clock }, { topic: 'nonexistent-topic-xyz' });
+    expect(fallback.blocks).toHaveLength(0);
+  });
+
   it('respects compact budget dropping whole blocks', async () => {
     const longTitle = 'A'.repeat(500);
     await seed(

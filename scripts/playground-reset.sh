@@ -10,9 +10,22 @@
 #      + .opencode.json (MCP-конфиг mr-wolf) и .wolf/ (в main трекается SKILL.md)
 #   4. начальный коммит своего репо площадки (README-PLAYGROUND.md переживает reset)
 #
-# Usage: scripts/playground-reset.sh [--force]
+# Usage: scripts/playground-reset.sh [--force] [--ref <git-ref>]
+#   --ref — ветка/коммит для снапшота (по умолчанию main); нужно для
+#           верификации непримерженной ветки реализации.
 
 set -euo pipefail
+
+REF="main"
+FORCE=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --force) FORCE=1; shift ;;
+    --ref) REF="${2:?--ref требует значение}"; shift 2 ;;
+    --ref=*) REF="${1#--ref=}"; shift ;;
+    *) echo "Unknown arg: $1" >&2; exit 1 ;;
+  esac
+done
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PLAYGROUND="$REPO_ROOT/playground"
@@ -23,7 +36,7 @@ if [[ "$PLAYGROUND" != */playground || -z "$REPO_ROOT" ]]; then
   exit 1
 fi
 
-if [[ "${1:-}" != "--force" ]]; then
+if [[ "$FORCE" != "1" ]]; then
   echo "Пересоздам площадку (pristine, БЕЗ wolf init): $PLAYGROUND"
   echo "Память площадки (.wolf/, жалобы, playbook-мутации) будет УДАЛЕНА."
   read -r -p "Продолжить? [y/N] " answer
@@ -44,7 +57,7 @@ rm -rf "$PLAYGROUND"
 
 mkdir -p "$PLAYGROUND"
 git init -b main --quiet "$PLAYGROUND"
-git -C "$REPO_ROOT" archive main | tar -x -C "$PLAYGROUND"
+git -C "$REPO_ROOT" archive "$REF" | tar -x -C "$PLAYGROUND"
 
 # pristine: выкинуть wolf-артефакты, пришедшие из снапшота main
 rm -rf "$PLAYGROUND/.opencode" \

@@ -1,6 +1,6 @@
 ---
 description: "Executor-lead (L1): принимает Task Brief от Mr.Wolf'а, декомпозирует, исполняет сам или через воркеров, возвращает отчёт. Безликий."
-model: zai-coding-plan/glm-5.3
+model: {{model.primary}}
 temperature: 0.2
 permission:
   task:

@@ -56,7 +56,7 @@ describe('schema guard at entry points (спека §3 уровень 2)', () =>
     expect(dead.stderr).toContain('wolf init --recreate');
 
     // recovery-команда обходит guard и чинит конфиг
-    const heal = spawnSync('node', [cli, 'init', '--recreate'], {
+    const heal = spawnSync('node', [cli, 'init', '--recreate', '--model', 'zai-coding-plan/glm-5.3'], {
       cwd: project,
       env: { ...process.env, XDG_CONFIG_HOME: join(project, 'xdg') },
       encoding: 'utf-8',

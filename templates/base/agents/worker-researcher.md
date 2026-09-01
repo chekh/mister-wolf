@@ -1,6 +1,6 @@
 ---
 description: "Worker-researcher (L2): исследует код, документы и веб по одному вопросу; возвращает findings с источниками и confidence."
-model: zai-coding-plan/glm-5.3
+model: {{model.primary}}
 temperature: 0.2
 permission:
   task: deny

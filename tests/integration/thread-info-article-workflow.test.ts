@@ -38,7 +38,7 @@ describe('Thread / Info Request / Article workflow', () => {
   });
 
   it('creates thread, request, article, and brief end-to-end', () => {
-    runCli('init', dir);
+    runCli('init --model zai-coding-plan/glm-5.3', dir);
 
     const threadOut = runCli('thread create --title MemoryHarness --goal Build durable memory', dir);
     const threadId = threadOut.stdout.match(/Created work thread: (\S+)/)?.[1];

@@ -34,8 +34,9 @@ export function validateGovernance(obj: {
 
 export const ALLOWED_TRANSITIONS: Record<MemoryStatus, MemoryStatus[]> = {
   // resolved/obsolete/answered из active нужны блокерам и вопросам (open-question);
-  // deprecated из active — типу tool (Фаза C); эффективные переходы =
-  // ALLOWED_TRANSITIONS ∩ lifecycle типа.
+  // deprecated из active — типу tool (Фаза C); paused из active — work-thread
+  // (onboarding v2 §5.1: владелец сознательно откладывает);
+  // эффективные переходы = ALLOWED_TRANSITIONS ∩ lifecycle типа.
   active: [
     'stale',
     'superseded',
@@ -46,6 +47,7 @@ export const ALLOWED_TRANSITIONS: Record<MemoryStatus, MemoryStatus[]> = {
     'obsolete',
     'answered',
     'deprecated',
+    'paused',
   ],
   open: ['resolved', 'rejected', 'archived', 'answered'],
   resolved: ['archived'],

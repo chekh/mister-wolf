@@ -17,7 +17,7 @@ describe('solve on empty memory degrades gracefully', () => {
   it('solve on empty memory degrades gracefully', () => {
     const dir = tmpProject();
     dirs.push(dir);
-    runCli(['init'], dir);
+    runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
 
     const solve = runCli(['solve', 'anything at all'], dir);
     expect(solve.status).toBe(0);

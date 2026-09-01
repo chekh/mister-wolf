@@ -32,11 +32,14 @@ interface RuleDraft {
   body: string;
 }
 
+/** Заголовок bootstrap-thread — константа дедупа и детекции recap-секции (§3). */
+export const BOOTSTRAP_THREAD_TITLE = 'Bootstrap: наполнение стартовой памяти';
+
 /**
  * «Bootstrap-адаптивный» старт памяти проекта (концепт §7.4):
  * скан → черновики правил (proposed) из фактов → work-thread → brief.
- * Свёртку черновиков в принятые правила выполняет Стюард
- * (протокол: docs/guide/steward-bootstrap.md).
+ * Свёртка черновиков и завершение онбординга — в диалоге с пользователем
+ * (onboarding v2 §5.4, Q6: предписанных авто-ролей нет).
  */
 export async function bootstrapProject(
   deps: {
@@ -55,6 +58,21 @@ export async function bootstrapProject(
   const config = await deps.fs.readSmallTextFile(join(input.baseDir, '.wolf', 'config.yaml'));
   if (config === null) {
     throw new UserFacingError('Project is not initialized: сначала wolf init');
+  }
+
+  // Guard §5.1 «онбординг уже закрыт»: thread status ≠ active → no-op без скана.
+  // Иначе повторный bootstrap после закрытия регрессировал бы память к черновикам
+  // (дедуп смотрит только proposed, а после свёртки черновиков их нет).
+  const existingThread = (await deps.store.list({ type: 'work-thread' })).find(
+    (t) => t.title === BOOTSTRAP_THREAD_TITLE
+  );
+  if (existingThread && existingThread.status !== 'active') {
+    return {
+      rules: [],
+      workThreadId: existingThread.id,
+      documentCount: 0,
+      brief: `Онбординг уже завершён/отложен (thread ${existingThread.status}); для пересоздания — владелец вручную`,
+    };
   }
 
   const { snapshot, documents } = await scanProject(deps, input.baseDir);
@@ -84,19 +102,24 @@ export async function bootstrapProject(
     rules.push(object);
   }
 
-  // дедуп work-thread: повторный bootstrap переиспользует существующий
-  const BOOTSTRAP_THREAD_TITLE = 'Bootstrap: наполнение стартовой памяти';
-  const existingThread = (await deps.store.list({ type: 'work-thread' })).find(
-    (t) => t.title === BOOTSTRAP_THREAD_TITLE
-  );
+  // дедуп work-thread: повторный bootstrap переиспользует существующий active
+  // (currentState активного thread'а не дополняем — события живут в events.jsonl)
   let threadId: string;
   if (existingThread) {
     threadId = existingThread.id;
   } else {
+    // Указатель «что и когда сделано» (§5.2): id init-отчёта по тегам wolf-init
+    const now = deps.clock.now().toISOString();
+    const initReport = (await deps.store.list({ type: 'report' }))
+      .filter((r) => r.status === 'active' && r.tags.includes('wolf-init'))
+      .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
+    const initTs = initReport ? initReport.created_at : now;
     const { object: thread } = await createWorkThread(deps, {
       title: BOOTSTRAP_THREAD_TITLE,
-      goal: 'Свёртка черновиков Стюардом в принятые правила',
-      currentState: `Создано черновиков правил: ${rules.length}; document-ref'ов: ${documents.length}.`,
+      goal: 'Свёртка черновиков и завершение онбординга в диалоге с пользователем',
+      currentState:
+        `init ${initTs} ✓ (${initReport ? `report ${initReport.id}` : 'без отчёта'}); ` +
+        `bootstrap ${now}: черновиков ${rules.length}, document-ref'ов ${documents.length}`,
       nextSteps: rules.map((rule) => `${rule.id}: ${rule.title}`),
       createdBy: input.createdBy,
     });
@@ -172,7 +195,8 @@ function renderBrief(
   lines.push('');
   lines.push('## Финальный шаг');
   lines.push(
-    'Вызови Стюарда (рамка .opencode/agents/steward.md) для свёртки черновиков — протокол: docs/guide/steward-bootstrap.md'
+    `Онбординг не завершён: свёртка черновиков и завершение — в диалоге с пользователем; ` +
+      `когда закончите — закройте thread (\`wolf transition ${workThreadId} completed\`)`
   );
   return lines.join('\n');
 }

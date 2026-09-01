@@ -18,7 +18,7 @@ describe('insights golden scenarios', () => {
   it('insights analyzes seeded memory by topic', () => {
     const dir = tmpProject();
     dirs.push(dir);
-    runCli(['init'], dir);
+    runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
 
     const decision = runCli(
       [
@@ -62,7 +62,7 @@ describe('insights golden scenarios', () => {
   it('insights on empty memory degrades gracefully', () => {
     const dir = tmpProject();
     dirs.push(dir);
-    runCli(['init'], dir);
+    runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
     // init делает лёгкий scan (project-scan-latest) — вычищаем память, чтобы
     // проверить деградацию именно на ПУСТОЙ памяти (спека дистрибуции §3: init со scan)
     rmSync(join(dir, '.wolf', 'memory'), { recursive: true, force: true });
@@ -77,7 +77,7 @@ describe('insights golden scenarios', () => {
   it('insights renders signal log top keys after repeated complaints (Ф20, D1.5)', () => {
     const dir = tmpProject();
     dirs.push(dir);
-    runCli(['init'], dir);
+    runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
 
     for (let i = 1; i <= 3; i++) {
       const r = runCli(

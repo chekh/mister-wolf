@@ -11,7 +11,7 @@ describe('generic add supports --scope for types that declare one', () => {
   afterAll(() => rmSync(cwd, { recursive: true, force: true }));
 
   it('creates a rule via generic add --scope project', () => {
-    const init = runCli(['init'], cwd);
+    const init = runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], cwd);
     expect(init.status).toBe(0);
 
     const r = runCli(

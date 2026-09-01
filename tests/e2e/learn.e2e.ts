@@ -8,7 +8,7 @@ describe('wolf learn (Ф21)', () => {
   beforeAll(() => {
     ensureBuilt();
     cwd = tmpProject();
-    expect(runCli(['init'], cwd).status).toBe(0);
+    expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], cwd).status).toBe(0);
   });
   afterAll(() => rmSync(cwd, { recursive: true, force: true }));
 

@@ -10,7 +10,7 @@ function fakeAdapter(id: string, detectedPaths: string[], wolfInPaths: string[] 
     detect: (root: string) => detectedPaths.includes(root),
     readConfig: async (root: string) =>
       detectedPaths.includes(root) ? { mcp: wolfInPaths.includes(root) ? { wolf: {} } : {} } : null,
-    writeConfig: async () => 'written',
+    writeConfig: async () => ({ action: 'written' as const }),
     removeWolf: async () => false,
   } as PlatformAdapter;
 }

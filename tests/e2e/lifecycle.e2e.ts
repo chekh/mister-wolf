@@ -11,7 +11,7 @@ describe('task lifecycle: init -> thread -> task-brief -> report -> relation -> 
   afterAll(() => rmSync(cwd, { recursive: true, force: true }));
 
   it('runs full lifecycle', () => {
-    const init = runCli(['init'], cwd);
+    const init = runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], cwd);
     expect(init.status).toBe(0);
 
     const thread = runCli(['thread', 'create', '--title', 'T', '--goal', 'G'], cwd);

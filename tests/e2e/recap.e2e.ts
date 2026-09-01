@@ -17,7 +17,7 @@ describe('recap golden scenarios', () => {
   it('recap summarizes seeded memory sections', () => {
     const dir = tmpProject();
     dirs.push(dir);
-    runCli(['init'], dir);
+    runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
 
     const rule = runCli(
       [
@@ -61,7 +61,7 @@ describe('recap golden scenarios', () => {
   it('recap on empty memory renders placeholders', () => {
     const dir = tmpProject();
     dirs.push(dir);
-    runCli(['init'], dir);
+    runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
 
     const recap = runCli(['recap'], dir);
     expect(recap.status).toBe(0);

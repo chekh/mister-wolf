@@ -31,7 +31,7 @@ describe('wolf learn evolve (Ф24 GEPA dry-run, e2e)', () => {
   beforeAll(() => {
     ensureBuilt();
     cwd = tmpProject();
-    expect(runCli(['init'], cwd).status).toBe(0);
+    expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], cwd).status).toBe(0);
     metrics = join(cwd, '.wolf/metrics/session-metrics.jsonl');
     mkdirSync(join(cwd, '.wolf/metrics'), { recursive: true });
     mkdirSync(join(cwd, '.wolf/templates'), { recursive: true });
