@@ -142,8 +142,8 @@ describe('renderConfigYaml', () => {
 
 describe('call-injection type (phase 9)', () => {
   it('extends MEMORY_TYPES to 23 with call-injection last', () => {
-    // 25 с tool (Фаза C roadmap v3), playbook предпоследний, call-injection — третий с конца
-    expect(MEMORY_TYPES).toHaveLength(25);
+    // 26 с complaint (жалобный контур v2), playbook предпоследний, call-injection — третий с конца
+    expect(MEMORY_TYPES).toHaveLength(26);
     expect(MEMORY_TYPES[MEMORY_TYPES.length - 1]).toBe('tool');
     expect(MEMORY_TYPES[MEMORY_TYPES.length - 2]).toBe('playbook');
     expect(MEMORY_TYPES[MEMORY_TYPES.length - 3]).toBe('call-injection');

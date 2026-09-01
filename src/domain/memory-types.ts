@@ -132,6 +132,26 @@ const CORE_TAXONOMY_DECLS = [
       trigger: { kind: 'boolean', optional: true },
     },
   },
+  {
+    // Жалобный контур v2 (спека 2026-09-01 §3.1): жалоба объектом памяти;
+    // «взял в работу» — поле triage, не статус (Q2); lifecycle — штатные
+    // переходы open→resolved|rejected, гигиена archived (D2: ноль правок governance).
+    name: 'complaint',
+    lifecycle: ['open', 'resolved', 'rejected', 'archived'],
+    defaultStatus: 'open',
+    subdirThread: 'notes',
+    subdirShared: 'complaints',
+    fields: {
+      about: { kind: 'string', required: true, min: 1 },
+      rule: { kind: 'string', required: true, min: 1 },
+      evidence: { kind: 'string', required: true, min: 1 },
+      proposal: { kind: 'string', required: true, min: 1 },
+      triage: { kind: 'string', optional: true },
+      resolution: { kind: 'string', optional: true },
+      dispatch_ages: { kind: 'int', default: 0 },
+      corroborations: { kind: 'int', default: 1 },
+    },
+  },
   // Ф26: DECAY_FIELDS — TTL-пробег, спека §6/§16
   { name: 'session-summary', lifecycle: FULL, subdirThread: 'sessions', subdirShared: null, fields: DECAY_FIELDS },
   {
