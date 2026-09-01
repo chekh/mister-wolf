@@ -251,12 +251,14 @@ function renderInitReportBody(
   // §4.4 граничный случай: явный выбор без opencode — набор отрендерен, но MCP не подключён (осознанное состояние)
   if (input.platformChoice !== undefined && !input.platformChoice.includes('opencode')) {
     needsFix.push(
-      '- opencode вне списка --platform: агенты Wolf отрендерены в .opencode/, но mcp.wolf/default_agent не записаны; подключите: wolf init --platform opencode,…'
+      '- opencode вне списка --platform: агенты Wolf отрендерены в .opencode/, но mcp.wolf/default_agent/subagent_depth не записаны; подключите: wolf init --platform opencode,…'
     );
   }
   const mcpWritten = platformOutcomes.some((o) => o.action === 'written' || o.action === 'replaced');
   if (mcpWritten)
-    needsFix.push('- подключите MCP: перезапустите платформу (opencode подхватит mcp.wolf и default_agent)');
+    needsFix.push(
+      '- подключите MCP: перезапустите платформу (opencode подхватит mcp.wolf, default_agent и subagent_depth)'
+    );
 
   return [
     '## Сделано (made)',

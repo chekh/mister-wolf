@@ -43,6 +43,7 @@ describe('wolf init CLI (спека §3 уровень 1; onboarding v2 §4.6: �
     const cfg = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));
     expect(cfg.mcp.wolf).toEqual({ type: 'local', command: ['wolf', 'mcp'], enabled: true });
     expect(cfg.default_agent).toBe('mr-wolf'); // F4 закрыт: default_agent первым init'ом
+    expect(cfg.subagent_depth).toBe(2); // F15: subagent_depth первым init'ом
     expect(readFileSync(join(xdg, 'wolf', 'projects.yaml'), 'utf-8')).toContain(project);
 
     const before = readFileSync(join(project, 'opencode.json'), 'utf-8');
