@@ -23,7 +23,8 @@
     "node": ">=22"
   },
   "files": [
-    "dist"
+    "dist",
+    "templates"
   ],
   "scripts": {
     "build": "tsc",

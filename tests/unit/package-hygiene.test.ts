@@ -11,8 +11,8 @@ describe('package hygiene (спека §5, §7)', () => {
     expect(pkg.name).toBe('mister-wolf');
   });
 
-  it('ships only dist (wolf-experiment/ and .external-research/ must not leak into tarball)', () => {
-    expect(pkg.files).toEqual(['dist']);
+  it('ships only dist + templates (wolf-experiment/ and .external-research/ must not leak into tarball)', () => {
+    expect(pkg.files).toEqual(['dist', 'templates']);
   });
 
   it('declares engines.node >= 22 (prebuilt better-sqlite3 v13 line)', () => {

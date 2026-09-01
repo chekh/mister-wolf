@@ -15,8 +15,17 @@ export function ensureBuilt(): void {
   }
 }
 
-export function runCli(args: string[], cwd: string): { stdout: string; stderr: string; status: number | null } {
-  const result = spawnSync('node', [cliPath, ...args], { cwd, encoding: 'utf-8', timeout: 30_000 });
+export function runCli(
+  args: string[],
+  cwd: string,
+  env?: NodeJS.ProcessEnv
+): { stdout: string; stderr: string; status: number | null } {
+  const result = spawnSync('node', [cliPath, ...args], {
+    cwd,
+    encoding: 'utf-8',
+    timeout: 30_000,
+    env: env && { ...process.env, ...env },
+  });
   return { stdout: result.stdout ?? '', stderr: result.stderr ?? '', status: result.status };
 }
 
