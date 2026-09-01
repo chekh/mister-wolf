@@ -111,7 +111,10 @@ describe('wolf learn propose/validate/activate (Ф22 D2.2, e2e)', () => {
 
   it('(в) человеческий путь: complaint → needs_human_review → --human-approved', () => {
     for (let i = 1; i <= 3; i++) {
-      expect(runCli(['complain', '--about', 'skill:demo', '--text', `жалоба ${i}`], cwd).status).toBe(0);
+      expect(
+        runCli(['complain', '--about', 'skill:demo', '--rule', 'r', '--proposal', 'p', '--text', `жалоба ${i}`], cwd)
+          .status
+      ).toBe(0);
     }
 
     const propose = runCli(['learn', 'propose', 'complaint:skill:demo'], cwd);
