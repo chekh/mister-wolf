@@ -6,6 +6,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-09-01
+
+### Added
+
+- Base sets: `wolf init` renders starter agents (6), skills (13), commands (3) and plugins (2) from templates bundled inside the npm package, and seeds 6 base playbooks.
+- `wolf sync` — stamp-based re-rendering of base-set files with conflict/orphaned detection.
+
+### Fixed
+
+- Rendered plugin single-export contract, procedural complaint trigger, and `--title` flag in the complaint command (dogfood phase C fixes).
+
 ## [1.0.3] — 2026-08-31 (1.0.2 пропущен — тег создан до фикса e2e-allowlist, не публиковался)
 
 ### Changed (Docs)
@@ -37,7 +48,8 @@ First public release on npm.
 
 - Normalized the bin path in `package.json` — `npm publish` stripped the binary from the package (2cb1d05).
 
-[Unreleased]: https://github.com/chekh/mister-wolf/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/chekh/mister-wolf/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/chekh/mister-wolf/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/chekh/mister-wolf/compare/v1.0.2...v1.0.3
 [1.0.1]: https://github.com/chekh/mister-wolf/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/chekh/mister-wolf/commits/v1.0.0
