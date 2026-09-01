@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { searchMemory } from '../../../app/use-cases/search-memory.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
+import { FTS_COLUMNS } from '../../sqlite/sqlite-search-index.js';
 
 export function memorySearchCommand(): Command {
   return new Command('search')
@@ -40,6 +41,15 @@ export function memorySearchCommand(): Command {
       for (const result of results) {
         const mark = result.object.status === 'superseded' ? ' [superseded]' : '';
         console.log(`${result.object.id} [${result.object.type}] ${result.object.title}${mark}`);
+      }
+      // Анти-тихий-ноль (вариант D): пустота не отдаётся молча.
+      if (results.length === 0) {
+        const columns = [...FTS_COLUMNS].join(', ');
+        console.error(
+          query.trim()
+            ? `0 results for "${query}"; hint: supported syntax — words, prefix, AND/OR, field:value for columns: ${columns}`
+            : `empty query; hint: supported syntax — words, prefix, AND/OR, field:value for columns: ${columns}`
+        );
       }
     });
 }
