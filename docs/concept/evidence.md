@@ -42,7 +42,7 @@
 | EVD-POC-4  | Модель из памяти + инжекция (PoC #4)                                                            | `.external-research/POC-4-report.md`, коммит `f92dbc4`                        |
 | EVD-RES-1  | Аудит спеки самообучения: 14 фокус-областей, 43 правки                                          | `docs/superpowers/specs/2026-08-26-self-learning-design.md`                   |
 | EVD-RES-2  | Tools-as-skills: 6/6 сценариев                                                                  | `.external-research/research-tools-as-skills.md`, коммит `deafcf5`            |
-| EVD-RES-3  | wolf-experiment: 8 серий, ~70 прогонов                                                          | git-история до коммита `b31cbdd` (`b31cbdd^:wolf-experiment/REPORT.md`)        |
+| EVD-RES-3  | wolf-experiment: 8 серий, ~70 прогонов                                                          | git-история до коммита `b31cbdd` (`b31cbdd^:wolf-experiment/REPORT.md`)       |
 | EVD-RES-4  | Внешние критики концепта v3.2/v3.3                                                              | `.external_experts_review/2026-08-31-concept-v{3-2,3-3}-critique/critique.md` |
 | EVD-ORCH-1 | Dogfood-оркестрация в собственном репо (сессии 2026-08-24…31: брифы, независимый ревью, отчёты) | память Wolf (work-threads, решения) + отчёты `.external-research/`            |
 | EVD-EFF-1  | Effectiveness-панель                                                                            | `docs/guide/effectiveness.md`                                                 |
