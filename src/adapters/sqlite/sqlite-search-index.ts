@@ -6,6 +6,54 @@ import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import { SQLITE_SCHEMA } from './sqlite-schema.js';
 import { runWithBusyRetry } from './busy-retry.js';
 
+/** Колонки FTS-таблицы memory_search — единственный источник: SQLITE_SCHEMA. */
+export const FTS_COLUMNS: ReadonlySet<string> = new Set(
+  (SQLITE_SCHEMA.match(/fts5\(([^)]*)\)/)?.[1] ?? '')
+    .split(',')
+    .map((c) => c.trim().toLowerCase())
+    .filter(Boolean)
+);
+
+/** Слова = последовательности юникод-букв/цифр; всё остальное — разделитель. */
+function tokenizeWords(input: string): string[] {
+  return input.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+}
+
+/**
+ * Вариант D (report-2026-09-01-fts-query-analysis): честная токенизация +
+ * конъюнкция префикс-термов; `field:value` — column-filter только для колонок
+ * memory_search, неизвестное поле отбрасывается, значение ищется словами;
+ * заглавный AND — implicit, заглавный OR — проброс FTS5-оператора;
+ * NOT/NEAR — обычные слова (унарный NOT в FTS5 нелегален, см. отчёт).
+ */
+export function buildFtsQuery(query: string): string {
+  const parts: string[] = [];
+  const seen = new Set<string>();
+  for (const segment of query.split(/\s+/)) {
+    if (!segment) continue;
+    if (segment === 'AND') continue; // неявный AND уже есть (join(' '))
+    if (segment === 'OR') {
+      // оператор валиден только между термами
+      if (parts.length > 0 && parts[parts.length - 1] !== 'OR') parts.push('OR');
+      continue;
+    }
+    const m = segment.match(/^([\p{L}_][\p{L}\p{N}_]*):(.*)$/u);
+    // ponytail: имя неизвестного поля («steward:») отбрасываем — значение важнее
+    const column = m ? m[1].toLowerCase() : null;
+    const prefix = column && FTS_COLUMNS.has(column) ? `${column}:` : '';
+    const words = tokenizeWords(m ? m[2] : segment);
+    for (const w of words) {
+      const term = `${prefix}"${w}"*`;
+      if (!seen.has(term)) {
+        seen.add(term);
+        parts.push(term);
+      }
+    }
+  }
+  if (parts.length > 0 && parts[parts.length - 1] === 'OR') parts.pop();
+  return parts.join(' ');
+}
+
 export class SQLiteSearchIndex implements SearchIndex {
   private db: Database.Database;
 
@@ -40,7 +88,7 @@ export class SQLiteSearchIndex implements SearchIndex {
   }
 
   async search(query: string, options: SearchOptions = {}): Promise<SearchResult[]> {
-    const ftsQuery = this.buildFtsQuery(query);
+    const ftsQuery = buildFtsQuery(query);
     if (!ftsQuery) {
       return [];
     }
@@ -149,18 +197,6 @@ export class SQLiteSearchIndex implements SearchIndex {
       } as MemoryObject,
       score: this.computeScore(row.rank ?? 0, row.importance, row.confidence),
     };
-  }
-
-  private buildFtsQuery(query: string): string {
-    return (
-      query
-        .split(/\s+/)
-        .map((token) => token.replace(/["()*:^]/g, ''))
-        // ponytail: токены без букв/цифр («-», «—») дают fts5 syntax error — отбрасываем
-        .filter((token) => /[\p{L}\p{N}]/u.test(token))
-        .map((token) => `"${token}"*`)
-        .join(' ')
-    );
   }
 
   private matchesFilePath(object: MemoryObject, filePath: string): boolean {
