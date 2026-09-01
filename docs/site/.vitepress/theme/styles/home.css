@@ -9,22 +9,38 @@
    then the paper proof below. Fixed dark palette inside — no theme vars. */
 .wolf-hero {
   background: linear-gradient(180deg, #101115 0%, var(--wolf-graphite) 100%);
-  min-height: max(680px, calc(100vh - var(--vp-nav-height)));
-  min-height: max(680px, calc(100svh - var(--vp-nav-height)));
   display: flex;
 }
 
+/* Mobile: single-column grid; areas set the visual order (iteration 5):
+   label → title → emblem → sub → mech → statement → CTA → terminal.
+   Column wrappers are transparent here (display: contents). */
 .wolf-hero-grid {
   flex: 1;
   width: 100%;
   max-width: 1152px;
   margin: 0 auto;
   padding: 36px 24px 56px;
-  display: flex;
-  flex-direction: column; /* mobile: DOM order = visual order, terminal last */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'label'
+    'title'
+    'fig'
+    'sub'
+    'mech'
+    'stmt'
+    'act'
+    'term';
+}
+
+.wolf-hero-copy,
+.wolf-hero-side {
+  display: contents;
 }
 
 .wolf-hero-label {
+  grid-area: label;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -47,6 +63,7 @@
 }
 
 .wolf-hero-title {
+  grid-area: title;
   margin: 16px 0 0;
   font-family: var(--vp-font-family-title);
   font-weight: 700;
@@ -58,6 +75,7 @@
 }
 
 .wolf-hero-figure {
+  grid-area: fig;
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -82,6 +100,7 @@
 }
 
 .wolf-hero-sub {
+  grid-area: sub;
   margin: 14px 0 0;
   font-size: 17px;
   line-height: 1.6;
@@ -90,6 +109,7 @@
 
 /* mechanism: one quiet line under the sub */
 .wolf-hero-mech {
+  grid-area: mech;
   margin: 12px 0 0;
   max-width: 480px;
   font-size: 14px;
@@ -99,6 +119,7 @@
 
 /* dossier block, not a speech bubble */
 .wolf-hero-statement {
+  grid-area: stmt;
   margin: 24px 0 0;
   max-width: 460px;
   padding: 16px 20px;
@@ -133,6 +154,7 @@
 }
 
 .wolf-hero-actions {
+  grid-area: act;
   margin: 28px 0 0;
   display: flex;
   flex-wrap: wrap;
@@ -142,6 +164,7 @@
 
 /* terminal: trailing block after the actions (mobile/tablet) */
 .wolf-hero .wolf-terminal {
+  grid-area: term;
   width: 100%;
   margin: 20px 0 0;
 }
@@ -197,62 +220,59 @@
   outline-offset: 2px;
 }
 
-/* ---------- Hero: desktop (≥961px), emblem column, terminal in flow ---------- */
+/* ---------- Hero: desktop (≥961px), two independent columns ---------- */
 
+/* Flex columns (not grid): rows are NOT shared between columns, so the
+   statement never stretches, CTA hugs the statement, and the terminal sits
+   right under the emblem. Column heights are independent; the hero is as
+   tall as the taller column (no viewport min-height). */
 @media (min-width: 961px) {
   .wolf-hero-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 44fr) minmax(0, 56fr);
-    /* row 5 is 1fr: if the emblem outgrows the copy, the slack lands
-       between statement and actions instead of spreading every row */
-    grid-template-rows: auto auto auto auto 1fr auto;
-    grid-template-areas:
-      'label fig'
-      'title fig'
-      'sub fig'
-      'mech fig'
-      'stmt fig'
-      'act term';
+    display: flex;
+    align-items: flex-start; /* columns aligned at the top */
     column-gap: 48px;
     padding: 64px 48px 72px;
   }
 
-  .wolf-hero-label {
-    grid-area: label;
+  .wolf-hero-copy,
+  .wolf-hero-side {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .wolf-hero-copy {
+    flex: 44 1 0;
+  }
+
+  .wolf-hero-side {
+    flex: 56 1 0;
+    align-items: center; /* emblem and terminal centered in the column */
   }
 
   .wolf-hero-title {
-    grid-area: title;
     margin-top: 18px;
     font-size: clamp(40px, 5vw, 58px);
   }
 
   .wolf-hero-sub {
-    grid-area: sub;
     margin-top: 16px;
     max-width: 480px;
   }
 
   .wolf-hero-mech {
-    grid-area: mech;
     margin-top: 12px;
   }
 
   .wolf-hero-statement {
-    grid-area: stmt;
     margin-top: 30px;
   }
 
   .wolf-hero-actions {
-    grid-area: act;
     margin-top: 34px;
   }
 
   .wolf-hero-figure {
-    grid-area: fig;
-    align-self: start;
-    display: flex;
-    justify-content: center;
     margin: 0;
   }
 
@@ -261,13 +281,11 @@
     aspect-ratio: 1 / 1;
   }
 
-  /* terminal strictly BELOW the emblem in normal flow (own grid row,
-     positive margin) — no overlap, no anchor, no transforms */
+  /* terminal strictly BELOW the emblem in normal flow — fixed margin,
+     no shared grid rows, no empty block under the emblem */
   .wolf-hero .wolf-terminal {
-    grid-area: term;
-    justify-self: start;
     width: min(500px, 100%);
-    margin: 28px 0 0;
+    margin: 24px 0 0;
   }
 }
 
