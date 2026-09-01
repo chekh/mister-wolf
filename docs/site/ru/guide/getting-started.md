@@ -74,7 +74,7 @@ wolf recap       # сводка активной памяти: правила, �
 ## Что дальше
 
 - [Основные концепции](/ru/guide/core-concepts) — типы памяти, lifecycle, governance, инъекции.
-- [Справочник CLI](/ru/guide/cli) — все команды и подкоманды.
+- [Справочник CLI](/ru/guide/cli/) — все команды и подкоманды.
 - [Интеграция MCP](/ru/guide/mcp) — 21 инструмент для агентов.
 - [Конфигурация](/ru/guide/configuration) — `.wolf/config.yaml` и свои типы памяти.
 - [Решение проблем](/ru/guide/troubleshooting) — частые кейсы и лечение.

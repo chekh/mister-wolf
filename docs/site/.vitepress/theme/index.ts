@@ -1,6 +1,7 @@
 import type { Theme } from 'vitepress'
 import DefaultTheme from 'vitepress/theme-without-fonts'
 import Layout from './Layout.vue'
+import WolfObject from './components/WolfObject.vue'
 
 // Self-hosted fonts (no external requests). Latin + cyrillic subsets.
 // ponytail: ibm-plex-sans-condensed has NO base cyrillic subset (font itself
@@ -31,4 +32,7 @@ import './styles/code.css'
 export default {
   extends: DefaultTheme,
   Layout,
+  enhanceApp: ({ app }) => {
+    app.component('WolfObject', WolfObject)
+  },
 } satisfies Theme

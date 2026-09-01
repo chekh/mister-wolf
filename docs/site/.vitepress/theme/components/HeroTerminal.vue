@@ -20,14 +20,16 @@ const items = computed(() => [
     status: 'ACTIVE',
     statusClass: 'st-active',
     glyph: '──●',
+    glyphClass: 'wg-active',
     desc: t({ en: 'Use the repository AuthGateway', ru: 'Использовать AuthGateway из репозитория' }),
   },
   {
     type: 'LESSON',
     id: 'mem_20260818_9a3d07',
-    status: 'VERIFIED',
+    status: 'ACCEPTED',
     statusClass: 'st-verified',
     glyph: '──✓',
+    glyphClass: 'wg-verified',
     desc: t({ en: 'Integration tests need isolated Redis', ru: 'Интеграционным тестам нужен изолированный Redis' }),
   },
   {
@@ -36,6 +38,7 @@ const items = computed(() => [
     status: 'OPEN',
     statusClass: 'st-open',
     glyph: '──○',
+    glyphClass: 'wg-open',
     desc: t({ en: 'Migration 024 must run first', ru: 'Сначала должна выполниться миграция 024' }),
   },
 ])
@@ -63,7 +66,7 @@ const items = computed(() => [
           <span class="type">{{ item.type }}</span>
           <span class="id">{{ item.id }}</span>
           <span class="status" :class="item.statusClass">
-            <span class="wolf-glyph" :class="`wg-${item.status.toLowerCase()}`" aria-hidden="true">{{ item.glyph }}</span>
+            <span class="wolf-glyph" :class="item.glyphClass" aria-hidden="true">{{ item.glyph }}</span>
             {{ item.status }}
           </span>
           <span class="desc">{{ item.desc }}</span>

@@ -55,7 +55,7 @@ wolf add --type lesson --title "Run wolf search before writing new scripts" \
 wolf recap               # summary: rules, work threads, blockers, questions, decisions
 ```
 
-Key flags of `wolf add` (see the [CLI reference](/guide/cli) for the full list):
+Key flags of `wolf add` (see the [CLI reference](/guide/cli/memory#wolf-add) for the full list):
 
 - `--type <type>` — one of 24 active memory types (`decision`, `lesson`, `rule`, `blocker`, …).
 - `--title`, `--body` — the object's content.
@@ -91,7 +91,7 @@ Everything is local, inside your project's `.wolf/` directory:
 ## Next steps
 
 - [Core Concepts](/guide/core-concepts) — memory objects, the 25 types, lifecycle and governance.
-- [CLI Reference](/guide/cli) — every command and subcommand.
+- [CLI Reference](/guide/cli/) — every command and subcommand.
 - [MCP Integration](/guide/mcp) — connecting agents via MCP.
 - [Configuration](/guide/configuration) — `.wolf/config.yaml`, custom memory types, storage layout.
 - [Troubleshooting](/guide/troubleshooting) — common problems and fixes.
