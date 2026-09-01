@@ -3,7 +3,7 @@
 |               |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Дата          | 2026-09-01                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| Ревизия       | 2 — правки по мульти-линзовому ревью r1 (C1, B1–B3, m1–m7); отчёт: `.wolf/orchestration/report-2026-09-01-onboarding-v2-spec-review-r1.md`                                                                                                                                                                                                                                                                                                                                                                                     |
+| Ревизия       | 3 — правки по ревью r2 (m1–m3: kill-switch до bootstrap, авторитет `--platform`, rewrite-триггеры); раунды: r1 = 1C/3B/7m CHANGES_REQUIRED → ревизия 2 → r2 = 0C/0B/3m APPROVED → ревизия 3 (полировка minor)                                                                                                                                                                                                                                                                                                                  |
 | Статус        | К повторному ревью (решение владельца mem*20260901*…d8c6b2 — авторитетное видение трёх шагов)                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | Источники     | Решение владельца `mem_20260901_videnie_onbording_payplayn_v2_init_chist_d8c6b2`; находки догфудинга `.wolf/orchestration/playground-issues.md` (F1–F11) и `playground/MANUAL-NOTES.md`; спека base-sets `2026-08-31-base-sets-design.md` (стиль, §5.4, §7); протокол `docs/guide/steward-bootstrap.md`; код: `src/app/use-cases/init-project.ts`, `bootstrap-project.ts`, `generate-recap.ts`, `src/adapters/platforms/opencode-adapter.ts`, `templates/opencode/plugins/wolf-session-start.js`, `src/domain/memory-types.ts` |
 | Следующий шаг | Мульти-линзовое ревью до сходимости 0C/0B (≤3 раундов) → план реализации (writing-plans) → worktree                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -76,9 +76,9 @@ UNINIT ───────────────────────▶ 
 1. thread по константе заголовка (та же, что в `bootstrap-project.ts`) найден и
    `active` → fold-сигнал (независимо от init-report: покрывает legacy-проекты,
    свёрстанные до v2);
-2. иначе init-report (теги `wolf-init` + `onboarding-v2`) есть, а thread
-   **отсутствует** → bootstrap-сигнал (при `paused`-thread — тишина: владелец
-   сознательно отложил, не назойливим);
+2. иначе init-report (теги `wolf-init` + `onboarding-v2`, `status=active`) есть,
+   а thread **отсутствует** → bootstrap-сигнал (при `paused`-thread — тишина:
+   владелец сознательно отложил, не назойливим);
 3. иначе (нет ни того, ни другого; thread `completed`/`archived`/`paused`) →
    секции нет.
 
@@ -97,7 +97,9 @@ UNINIT ───────────────────────▶ 
 4. Рендер базового набора (wx-политика) + посев playbook'ов (как сейчас, D3
    base-sets). В набор добавляется ★ шаблон AGENTS.md (§4.2).
 5. ★ Платформы (D2/F4): opencode — `writeConfig` выполняется всегда при
-   отрендеренном наборе (детекция больше не гейтит opencode); claude — детекция
+   отрендеренном наборе в режиме **авто-детекции** (детекция больше не гейтит
+   opencode); явный `--platform`-список остаётся авторитетным как сегодня
+   (включая удаление wolf-записей платформ вне списка); claude — детекция
    по маркерам, не зависящим от рендера (порядок не критичен). npx try-out — без
    конфигов и без набора (как сейчас), и ★ **без init-отчёта**: пайплайн «молчит»
    до полноценной установки — отчёт из npx-прогона иначе навсегда застынет
@@ -194,9 +196,10 @@ default_agent=<значение> занят; mr-wolf не назначен` → 
 - `'unchanged'` вычисляется по **обоим** ключам (mcp.wolf и default_agent):
   равенство одного не должно маскировать отсутствие второго;
 - существующий `opencode.jsonc` при rewrite теряет комментарии — известное
-  ограничение адаптера (ponytail-комментарий в opencode-adapter.ts); v2 не
-  добавляет новых триггеров rewrite сверх mcp.wolf (default_agent пишется тем же
-  rewrite'ом) — ограничение фиксируем в §7-контексте, AST-редактор — вне MVP.
+  ограничение адаптера (ponytail-комментарий в opencode-adapter.ts). Rewrite —
+  механизм один, триггер — расхождение `mcp.wolf` **или** `default_agent` (v1
+  не трогала конфиг с корректным mcp.wolf, но без default_agent — v2 такой
+  перепишет); jsonc-оговорка покрывает оба ключа, AST-редактор — вне MVP.
 
 ### 6.2 Сигнал pending-fold
 
@@ -252,9 +255,10 @@ default_agent=<значение> занят; mr-wolf не назначен` → 
   (предложил — владелец отказал — не повторяет до следующей сессии). Мягкий лимит
   повторов между сессиями не заводим (YAGNI) — упорно падающий Стюард виден
   владельцу по events.jsonl.
-- Отказ владельца от онбординга вовсе: закрыть thread вручную
-  (`wolf transition <thread> completed` — или `archived`) — сигнал гаснет
-  (документируется).
+- Отказ владельца от онбординга вовсе: после bootstrap — закрыть thread вручную
+  (`wolf transition <thread> completed` — или `archived`); **до bootstrap** —
+  перевести сам init-отчёт (`wolf transition <init-report> completed`), убив
+  bootstrap-сигнал в зародыше. Оба пути сигнал гасят (документируются).
 
 ## 7. Влияние на дефекты площадки (F-реестр)
 
@@ -323,7 +327,8 @@ bootstrap guard `status ≠ active`; идемпотентность повтор
 - `generate-recap.ts` — секция Onboarding + фильтр accepted;
 - `bootstrap-project.ts` — guard `status ≠ active`, указатель в currentState;
 - `memory-init.ts` — вывод v2;
-- `opencode-adapter.ts` — merge default_agent (семантика §6.1, reason-канал);
+- `opencode-adapter.ts` — merge default_agent (семантика §6.1, расширение
+  результата writeConfig под reason-канал);
 - `templates/base/agents/mr-wolf.md` — permission.task + «Запреты» + процедура;
 - `templates/base/AGENTS.md` (новый) + рендерер: root-цель, create/marker-append
   ветки, sync только для штампованного цельного файла, относительный путь в
