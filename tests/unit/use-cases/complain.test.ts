@@ -50,7 +50,7 @@ describe('wolf complain (complaint-v2)', () => {
     'добавить исключение для allowlist-замен',
   ];
 
-  it('создаёт complaint/open с about/rule/evidence/proposal, relation и hot-signal', async () => {
+  it('создаёт complaint/open с about/rule/evidence/proposal и relation complain (hot-signal — session-metrics тесты)', async () => {
     await run([...V2_ARGS, '--created-by', 'worker:ses1']);
 
     const id = recordedId();
