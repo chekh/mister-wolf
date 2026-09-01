@@ -1,5 +1,5 @@
 /**
- * Home: custom hero (portrait-first), terminal, trust bar, feature cards,
+ * Home: custom hero (emblem-first), terminal, trust bar, feature cards,
  * why table, custom sections, final CTA.
  */
 
@@ -64,17 +64,19 @@
   margin: 18px auto 6px;
 }
 
-/* portrait edges dissolve into the dark plate */
+/* full square emblem; only a thin 12px feather softens the outer edges —
+   the emblem's black plate melts into the dark hero, content stays intact */
 .wolf-hero-figure img {
   display: block;
-  width: min(88vw, 360px);
+  width: min(88vw, 340px);
   height: auto;
+  aspect-ratio: 1 / 1;
   -webkit-mask-image:
-    linear-gradient(to bottom, transparent 0, #000 56px, #000 calc(100% - 110px), transparent),
-    linear-gradient(to right, transparent 0, #000 56px, #000 calc(100% - 56px), transparent);
+    linear-gradient(to bottom, transparent 0, #000 12px, #000 calc(100% - 12px), transparent),
+    linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent);
   mask-image:
-    linear-gradient(to bottom, transparent 0, #000 56px, #000 calc(100% - 110px), transparent),
-    linear-gradient(to right, transparent 0, #000 56px, #000 calc(100% - 56px), transparent);
+    linear-gradient(to bottom, transparent 0, #000 12px, #000 calc(100% - 12px), transparent),
+    linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent);
   -webkit-mask-composite: source-in;
   mask-composite: intersect;
 }
@@ -86,6 +88,15 @@
   color: #c9c0aa;
 }
 
+/* mechanism: one quiet line under the sub */
+.wolf-hero-mech {
+  margin: 12px 0 0;
+  max-width: 480px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #9a9280;
+}
+
 /* dossier block, not a speech bubble */
 .wolf-hero-statement {
   margin: 24px 0 0;
@@ -93,7 +104,6 @@
   padding: 16px 20px;
   border: 1px solid rgba(196, 154, 74, 0.5);
   background: rgba(196, 154, 74, 0.06);
-  clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%, 0 14px);
 }
 
 .wolf-stmt-label {
@@ -114,7 +124,8 @@
   color: #ece5d3;
 }
 
-.wolf-stmt-quote-ru {
+/* EN original as a small caption (RU locale only) */
+.wolf-stmt-quote-en {
   margin: 6px 0 0;
   font-size: 13px;
   line-height: 1.5;
@@ -129,7 +140,7 @@
   gap: 12px;
 }
 
-/* terminal: plain trailing block below the actions (mobile/tablet) */
+/* terminal: trailing block after the actions (mobile/tablet) */
 .wolf-hero .wolf-terminal {
   width: 100%;
   margin: 20px 0 0;
@@ -186,20 +197,24 @@
   outline-offset: 2px;
 }
 
-/* ---------- Hero: desktop (≥961px), portrait column + grid layering ---------- */
+/* ---------- Hero: desktop (≥961px), emblem column, terminal in flow ---------- */
 
 @media (min-width: 961px) {
   .wolf-hero-grid {
     display: grid;
     grid-template-columns: minmax(0, 44fr) minmax(0, 56fr);
+    /* row 5 is 1fr: if the emblem outgrows the copy, the slack lands
+       between statement and actions instead of spreading every row */
+    grid-template-rows: auto auto auto auto 1fr auto;
     grid-template-areas:
       'label fig'
       'title fig'
       'sub fig'
+      'mech fig'
       'stmt fig'
-      'act fig';
+      'act term';
     column-gap: 48px;
-    padding: 64px 48px 110px; /* bottom pad hosts the terminal overlap */
+    padding: 64px 48px 72px;
   }
 
   .wolf-hero-label {
@@ -218,6 +233,11 @@
     max-width: 480px;
   }
 
+  .wolf-hero-mech {
+    grid-area: mech;
+    margin-top: 12px;
+  }
+
   .wolf-hero-statement {
     grid-area: stmt;
     margin-top: 30px;
@@ -226,37 +246,28 @@
   .wolf-hero-actions {
     grid-area: act;
     margin-top: 34px;
-    align-self: start; /* the terminal (row 5) grows the row — keep buttons up top */
   }
 
   .wolf-hero-figure {
     grid-area: fig;
-    grid-row: 1 / 6;
-    position: relative;
-    align-self: stretch;
+    align-self: start;
     display: flex;
     justify-content: center;
-    align-items: flex-start;
     margin: 0;
   }
 
   .wolf-hero-figure img {
-    width: min(100%, 640px); /* target zone 500–650px, natural aspect */
-    aspect-ratio: 1254 / 755; /* height known before the image loads */
+    width: min(100%, 560px);
+    aspect-ratio: 1 / 1;
   }
 
-  /* Terminal overlaps the LOWER part of the portrait zone (face/cup visible):
-     grid row 5 is the no-JS fallback; the exact 35px overlap is pinned by a
-     JS anchor in HomeHero.vue (grid row heights differ per locale, so a pure
-     CSS transform cannot hit the portrait's bottom edge reliably). */
+  /* terminal strictly BELOW the emblem in normal flow (own grid row,
+     positive margin) — no overlap, no anchor, no transforms */
   .wolf-hero .wolf-terminal {
-    grid-column: 2;
-    grid-row: 5;
-    align-self: end;
+    grid-area: term;
     justify-self: start;
     width: min(500px, 100%);
-    margin: 0;
-    z-index: 2;
+    margin: 28px 0 0;
   }
 }
 
@@ -471,19 +482,15 @@
 /* ---------- Feature cards ---------- */
 
 .VPFeatures .item .VPFeature {
-  border: 0;
+  border: 1px solid var(--wolf-line);
   border-radius: 0;
-  background: var(--wolf-line); /* frame layer */
-  padding: 1px;
-  clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
-  transition: background-color 0.25s;
+  background: var(--wolf-bg-elv);
+  transition: border-color 0.25s;
 }
 
 .VPFeatures .item .VPFeature .box {
   border: 0;
   border-radius: 0;
-  background: var(--wolf-bg-elv);
-  clip-path: polygon(11.2px 0, 100% 0, 100% 100%, 0 100%, 0 11.2px);
   position: relative;
 }
 
@@ -501,7 +508,7 @@
 }
 
 .VPFeatures .item .VPFeature:hover {
-  background: var(--wolf-signal);
+  border-color: var(--wolf-signal);
 }
 
 .VPFeatures .item .VPFeature:hover .box::before {
@@ -628,22 +635,18 @@
   margin: 12px 0 0;
 }
 
-/* Card: frame layer pattern generalized from .VPFeature */
+/* Card: strict rectangle — 1px line frame on lifted paper */
 .wolf-card {
-  background: var(--wolf-line);
-  padding: 1px;
-  clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
+  background: var(--wolf-bg-elv);
+  border: 1px solid var(--wolf-line);
 }
 
-/* stretch inside grids so frame layers align */
-.wolf-layers .wolf-card,
+/* stretch inside grids so frames align */
 .wolf-install .wolf-card {
   height: 100%;
 }
 
 .wolf-card-in {
-  background: var(--wolf-bg-elv);
-  clip-path: polygon(11.2px 0, 100% 0, 100% 100%, 0 100%, 0 11.2px);
   padding: 18px 20px;
   height: 100%;
 }
@@ -702,87 +705,199 @@
   color: var(--wolf-link);
 }
 
-/* ----- HomeLayers: four nodes, closed loop ----- */
+/* ----- HomeLayers: dark full-bleed plate, vertical stack, learn loop ----- */
 
-.wolf-layers-row {
+/* Fixed dark palette (like the hero): dark in BOTH site themes */
+.wolf-layers-outer {
+  background: linear-gradient(180deg, #101115, #181a1e);
+}
+
+.wolf-layers-outer .wolf-home-label {
+  color: #9a9280; /* ≈ 5:1 on graphite */
+}
+
+.wolf-layers-outer .wolf-home-title {
+  color: #ece5d3;
+}
+
+.wolf-layers-stack {
   list-style: none;
   margin: 28px 0 0;
   padding: 0;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 28px;
-}
-
-.wolf-layer {
   position: relative;
 }
 
-/* red thread between nodes (desktop only) */
-.wolf-layer:not(:last-child)::after {
+/* red thread down the stack, ending at MEMORY */
+.wolf-layers-stack::before {
   content: '';
   position: absolute;
-  top: 27px; /* centerline of the node label */
-  right: -28px;
-  width: 28px;
-  height: 2px;
+  left: 5px;
+  top: 16px;
+  bottom: 16px;
+  width: 2px;
+  background: var(--wolf-signal);
+  opacity: 0.85;
+}
+
+.wolf-layer-item {
+  position: relative;
+  padding-left: 30px;
+}
+
+.wolf-layer-item + .wolf-layer-item {
+  margin-top: 14px;
+}
+
+/* node on the thread; MEMORY node is filled */
+.wolf-layer-item::before {
+  content: '';
+  position: absolute;
+  left: 1px;
+  top: 18px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--wolf-signal);
+  background: #181a1e; /* punch out the thread */
+  z-index: 1;
+}
+
+.wolf-layer-item.is-memory::before {
   background: var(--wolf-signal);
 }
 
+/* layer cards on the dark plate: fixed panel/line values */
+.wolf-layer-card {
+  display: grid;
+  grid-template-columns: 44px 170px minmax(0, 1fr);
+  column-gap: 16px;
+  align-items: baseline;
+  background: #22242a; /* --wolf-panel */
+  border: 1px solid #34363d;
+  padding: 16px 20px;
+}
+
 .wolf-layer-num {
-  margin: 0 0 4px;
+  margin: 0;
   font-family: var(--vp-font-family-mono);
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.14em;
-  color: var(--vp-c-text-3);
+  color: #9a9280;
 }
 
 .wolf-layer-name {
-  margin: 0 0 8px;
+  margin: 0;
   font-family: var(--vp-font-family-mono);
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.14em;
-  color: var(--vp-c-text-1);
+  color: #ece5d3;
 }
 
 .wolf-layer-desc {
   margin: 0;
   font-size: 13.5px;
   line-height: 1.5;
-  color: var(--vp-c-text-2);
+  color: #c9c0aa;
 }
 
-/* return loop: results back to MEMORY (CSS arc, no JS) */
+/* results return to MEMORY — mono caption under the stack */
 .wolf-layers-return {
-  position: relative;
-  height: 22px;
-  margin: 0 12%;
-  border: 2px solid var(--wolf-signal);
-  border-top: 0;
+  margin: 18px 0 0;
+  padding-left: 30px;
+  font-family: var(--vp-font-family-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: #9a9280;
 }
 
-.wolf-layers-return-label {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  transform: translate(-50%, 50%);
-  padding: 0 10px;
-  background: var(--vp-c-bg); /* breaks the line behind the label */
+.wolf-layers-return span {
+  color: #e56a60; /* lifted signal, AA on graphite */
+}
+
+/* learn loop: separate mini-scheme, not mixed into the stack */
+.wolf-learnloop {
+  margin-top: 40px;
+  padding-top: 26px;
+  border-top: 1px solid #34363d;
+}
+
+.wolf-learnloop-caption {
+  margin: 0 0 12px;
   font-family: var(--vp-font-family-mono);
   font-size: 11px;
-  letter-spacing: 0.12em;
-  color: var(--vp-c-text-3);
-  white-space: nowrap;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: #9a9280;
 }
 
-/* ----- HomeSessions: two sessions, one memory ----- */
+.wolf-learnloop-chain {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  font-family: var(--vp-font-family-mono);
+}
 
-.wolf-sessions-grid {
+.wolf-learnloop-step {
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: #ece5d3;
+  background: #22242a;
+  border: 1px solid #34363d;
+  padding: 5px 10px 4px;
+}
+
+.wolf-learnloop-arrow {
+  font-size: 13px;
+  color: #e56a60; /* lifted signal — AA on the dark plate */
+}
+
+/* ----- HomeSessions: two sessions joined by the memory object ----- */
+
+.wolf-sessions-flow {
   margin-top: 28px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 28px;
+  position: relative;
+}
+
+.wolf-sessions-col {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  position: relative; /* mobile: anchors the node on the thread */
+}
+
+/* the red line physically crosses all three nodes (equal thirds) */
+.wolf-sessions-flow::before {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: calc(100% / 6);
+  right: calc(100% / 6);
+  height: 2px;
+  background: var(--wolf-signal);
+}
+
+.wolf-sessions-node {
+  position: relative;
+  z-index: 1;
+  justify-self: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--wolf-signal);
+  background: var(--vp-c-bg); /* punches the line */
+  margin-bottom: 16px;
+}
+
+.wolf-sessions-node.is-filled {
+  background: var(--wolf-signal);
 }
 
 .wolf-session-tag {
@@ -801,15 +916,48 @@
   color: var(--vp-c-text-2);
 }
 
-/* red thread words: problem → LESSON/ACTIVE */
-.wolf-session-text .hl {
-  color: var(--wolf-link);
+/* the memory object: dark mono plate with the cut corner (terminal geometry) */
+.wolf-memobj {
+  align-self: center;
+  justify-self: center;
+  width: 100%;
+  max-width: 330px;
+  background: var(--wolf-panel);
+  clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
+  padding: 16px 18px;
+  font-family: var(--vp-font-family-mono);
 }
 
-.wolf-session-text .hl.tag {
-  font-family: var(--vp-font-family-mono);
-  font-size: 0.9em;
-  letter-spacing: 0.04em;
+.wolf-memobj-head {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
+.wolf-memobj-type {
+  color: #e56a60; /* lifted signal, 4.85:1 on the panel — AA */
+}
+
+.wolf-memobj-status {
+  color: #7cb99a; /* lifted verified, ≈ 6.8:1 on the panel — AA */
+}
+
+.wolf-memobj-id {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: #ece5d3;
+  overflow-wrap: anywhere;
+}
+
+.wolf-memobj-path {
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: #9a9280;
 }
 
 .wolf-sessions-takeaway {
@@ -823,22 +971,30 @@
   color: var(--vp-c-text-1);
 }
 
-/* ----- HomeModes: CALL / SOLVE / LEARN ----- */
+/* ----- HomeModes: CALL / SOLVE / LEARN cards ----- */
 
 .wolf-modes-grid {
   margin-top: 28px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 32px;
+  gap: 28px;
+}
+
+.wolf-mode-head {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .wolf-mode-name {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 0;
   font-family: var(--vp-font-family-mono);
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 600;
   letter-spacing: 0.16em;
   color: var(--vp-c-text-1);
@@ -853,11 +1009,67 @@
   flex: none;
 }
 
-.wolf-mode-text {
+/* maturity stamps stay strictly straight (rotation is TrustBar-only) */
+.VPHome .wolf-modes .wolf-stamp {
+  transform: none;
+}
+
+/* maturity tones: verified/brass/signal families, darkened for AA on paper */
+.wolf-mode-status.st-available {
+  color: #3a6b52; /* ≈ 5.4:1 on bg-elv */
+  border-color: #3a6b52;
+}
+
+.wolf-mode-status.st-preview {
+  color: #7d5f24; /* ≈ 5.2:1 on bg-elv */
+  border-color: #7d5f24;
+}
+
+.wolf-mode-status.st-experimental {
+  color: var(--wolf-link); /* ≈ 5.4:1 */
+  border-color: var(--wolf-link);
+}
+
+/* dark theme: lifted tones on the panel */
+.dark .wolf-mode-status.st-available {
+  color: #7cb99a;
+  border-color: #7cb99a;
+}
+
+.dark .wolf-mode-status.st-preview {
+  color: #d9b36a;
+  border-color: #d9b36a;
+}
+
+.dark .wolf-mode-status.st-experimental {
+  color: #e06055;
+  border-color: #e06055;
+}
+
+.wolf-mode-cmd {
+  margin-top: 16px;
+}
+
+/* command plate reused from install; commands may wrap (LEARN is long) */
+.wolf-mode-cmd code {
+  white-space: normal;
+}
+
+.wolf-mode-io {
   margin: 12px 0 0;
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 13.5px;
+  line-height: 1.55;
   color: var(--vp-c-text-2);
+}
+
+.wolf-mode-io-k {
+  font-family: var(--vp-font-family-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--vp-c-text-3);
+  margin-right: 6px;
 }
 
 /* ----- HomeInstall: three steps ----- */
@@ -895,7 +1107,6 @@
 .wolf-install-cmd {
   margin: 0 0 14px;
   background: var(--wolf-graphite);
-  clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px);
   padding: 10px 14px;
   overflow-x: auto;
 }
@@ -940,36 +1151,44 @@
   justify-content: center;
 }
 
-.wolf-finalcta-cmds {
-  margin-top: 20px;
-}
-
-/* mini version of .wolf-install-cmd, inline */
-.wolf-finalcta-cmd {
-  display: inline-block;
-  margin: 8px;
-  background: var(--wolf-graphite);
-  clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px);
-  padding: 10px 14px;
-}
-
-.wolf-finalcta-cmd code {
+/* mono status headline */
+.wolf-finalcta-status {
+  margin: 18px 0 0;
   font-family: var(--vp-font-family-mono);
-  font-size: 13px;
-  color: #ece5d3;
-  white-space: nowrap;
-  background: none;
-  padding: 0;
+  font-weight: 600;
+  font-size: clamp(24px, 4vw, 34px);
+  letter-spacing: 0.1em;
+  color: var(--vp-c-text-1);
+  overflow-wrap: anywhere;
 }
 
 .wolf-finalcta-note {
-  margin: 12px 0 0;
-  font-size: 15px;
+  margin: 14px 0 0;
+  font-family: var(--vp-font-family-title);
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.4;
   color: var(--vp-c-text-2);
 }
 
-.wolf-finalcta .wolf-btn-brand {
-  margin-top: 20px;
+.wolf-finalcta-actions {
+  margin-top: 26px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+}
+
+/* alt button re-inked for the paper section (hero variant is dark-scoped) */
+.wolf-finalcta .wolf-btn-alt {
+  color: var(--wolf-fg-2);
+  border-color: var(--wolf-fg-3);
+}
+
+.wolf-finalcta .wolf-btn-alt:hover {
+  color: var(--wolf-fg-2);
+  border-color: var(--wolf-signal);
 }
 
 /* ----- Custom sections: mobile ----- */
@@ -983,53 +1202,77 @@
     font-size: 26px;
   }
 
-  .wolf-why-table th,
-  .wolf-why-table td {
-    padding: 8px 8px;
-  }
-
-  .wolf-why-table td {
-    font-size: 13px;
-  }
-
-  /* layers: vertical column with a left red thread (like .wolf-thread) */
-  .wolf-layers-row {
-    grid-template-columns: 1fr;
-    gap: 14px;
-    padding-left: 18px;
-    position: relative;
-  }
-
-  .wolf-layers-row::before {
-    content: '';
-    position: absolute;
-    left: 4px;
-    top: 12px;
-    bottom: 12px;
-    width: 2px;
-    background: var(--wolf-signal);
-    opacity: 0.85;
-  }
-
-  .wolf-layer:not(:last-child)::after {
+  /* why table → stacked cards, fields captioned via td::before(data-label) */
+  .wolf-why-table thead {
     display: none;
   }
 
-  .wolf-layers-return {
-    height: auto;
+  .wolf-why-table,
+  .wolf-why-table tbody,
+  .wolf-why-table tr,
+  .wolf-why-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .wolf-why-table tr {
+    border: 1px solid var(--wolf-line);
+    background: var(--wolf-bg-elv);
+    padding: 12px 14px;
+  }
+
+  .wolf-why-table tr + tr {
+    margin-top: 12px;
+  }
+
+  .wolf-why-table td {
     border: 0;
-    margin: 14px 0 0;
-    text-align: center;
+    padding: 5px 0;
+    font-size: 13px;
   }
 
-  .wolf-layers-return-label {
-    position: static;
-    transform: none;
-    padding: 0;
+  .wolf-why-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-family: var(--vp-font-family-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    color: var(--vp-c-text-3);
   }
 
-  .wolf-sessions-grid {
+  .wolf-why-table .num {
+    padding: 0 0 2px;
+    font-size: 11px;
+    color: var(--vp-c-text-3);
+  }
+
+  /* sessions: vertical flow, red thread on the left (like .wolf-thread) */
+  .wolf-sessions-flow {
     grid-template-columns: 1fr;
+    gap: 20px;
+    padding-left: 26px;
+  }
+
+  .wolf-sessions-flow::before {
+    top: 10px;
+    bottom: 10px;
+    left: 7px;
+    right: auto;
+    width: 2px;
+    height: auto;
+  }
+
+  .wolf-sessions-node {
+    position: absolute;
+    left: -26px;
+    top: 2px;
+    justify-self: start;
+    margin-bottom: 12px;
+  }
+
+  .wolf-memobj {
+    justify-self: start;
   }
 
   .wolf-sessions-takeaway {
@@ -1037,9 +1280,68 @@
     margin-top: 32px;
   }
 
+  /* layers: card rows collapse — num + name on one line, desc below */
+  .wolf-layer-card {
+    display: block;
+    padding: 14px 16px;
+  }
+
+  .wolf-layer-num {
+    display: inline;
+    margin-right: 10px;
+  }
+
+  .wolf-layer-name {
+    display: inline;
+  }
+
+  .wolf-layer-desc {
+    display: block;
+    margin-top: 6px;
+  }
+
+  .wolf-layers-return {
+    margin-top: 14px;
+  }
+
+  .wolf-learnloop {
+    margin-top: 30px;
+    padding-top: 20px;
+  }
+
+  .wolf-learnloop-step {
+    font-size: 11.5px;
+    padding: 4px 8px 3px;
+  }
+
+  .wolf-learnloop-arrow {
+    font-size: 12px;
+  }
+
   .wolf-modes-grid {
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: 20px;
+  }
+
+  .wolf-finalcta-status {
+    font-size: 20px;
+    letter-spacing: 0.08em;
+  }
+
+  .wolf-finalcta-note {
+    font-size: 19px;
+  }
+
+  /* restore the bordered alt button: the global mobile rule flattens it
+     for the hero, but this section is paper */
+  .wolf-finalcta .wolf-btn-alt {
+    height: 44px;
+    line-height: 44px;
+    padding: 0 24px;
+    border-color: var(--wolf-fg-3);
+    background: transparent;
+    color: var(--wolf-fg-2);
+    text-decoration: none;
   }
 
   /* install: vertical steps, arrows point down */

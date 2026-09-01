@@ -42,7 +42,7 @@ const steps = computed(() => [
 
 <template>
   <section class="wolf-home-section wolf-install">
-    <p class="wolf-home-label">OPERATION · INSTALL</p>
+    <p class="wolf-home-label">{{ t({ en: '05 · INSTALL', ru: '05 · УСТАНОВКА' }) }}</p>
     <h2 class="wolf-home-title">{{ t({ en: 'Three commands', ru: 'Три команды' }) }}</h2>
     <div class="wolf-install-grid">
       <template v-for="(step, i) in steps" :key="step.num">
