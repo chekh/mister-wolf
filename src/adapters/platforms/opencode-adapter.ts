@@ -9,6 +9,9 @@ import { UserFacingError } from '../../domain/errors.js';
 /** Дефолтный агент Wolf в opencode (§6.1). */
 export const DEFAULT_AGENT = 'mr-wolf';
 
+/** Глубина субагентов: executor-lead спавнит worker-* (трёхуровневая схема). */
+export const SUBAGENT_DEPTH = 2;
+
 // ponytail: комментарии в opencode.jsonc теряются при rewrite (plain JSON валиден как JSONC);
 // сохранение комментариев = AST-редактор, YAGNI до запроса.
 export class OpencodeAdapter implements PlatformAdapter {
@@ -56,19 +59,25 @@ export class OpencodeAdapter implements PlatformAdapter {
     const desired = { type: 'local', command: [cmd.command, ...cmd.args], enabled: true };
     const mcpOk = JSON.stringify(mcp.wolf) === JSON.stringify(desired);
 
-    // §6.1: default_agent мерджится рядом с mcp.wolf
+    // §6.1: default_agent и subagent_depth мерджатся рядом с mcp.wolf
     const da = cfg.default_agent;
-    let reason: string | undefined;
+    const sd = cfg.subagent_depth;
+    const reasons: string[] = [];
     if (da !== undefined && da !== DEFAULT_AGENT) {
-      reason = `default_agent=${da} занят; mr-wolf не назначен`;
+      reasons.push(`default_agent=${da} занят; mr-wolf не назначен`);
     }
-    // unchanged — по ОБОИМ ключам: корректный mcp.wolf не маскирует отсутствие default_agent
-    if (mcpOk && da !== undefined) return { action: 'unchanged', reason };
+    if (sd !== undefined && !(typeof sd === 'number' && sd >= SUBAGENT_DEPTH)) {
+      reasons.push(`subagent_depth=${sd} занят; трёхуровневая схема не заработает, поставьте >=2`);
+    }
+    const reason = reasons.length > 0 ? reasons.join('; ') : undefined;
+    // unchanged — по ВСЕМ ключам: корректный mcp.wolf не маскирует отсутствие default_agent/subagent_depth
+    if (mcpOk && da !== undefined && sd !== undefined) return { action: 'unchanged', reason };
 
     const replaced = mcp.wolf !== undefined && !mcpOk;
     mcp.wolf = desired;
     cfg.mcp = mcp;
     if (da === undefined) cfg.default_agent = DEFAULT_AGENT; // конфликтный ключ не трогаем
+    if (sd === undefined) cfg.subagent_depth = SUBAGENT_DEPTH; // конфликтный ключ не трогаем
     await writeFileAtomic(file, JSON.stringify(cfg, null, 2) + '\n');
     return { action: replaced ? 'replaced' : 'written', reason };
   }
