@@ -58,6 +58,47 @@ describe('MCP stdio server', () => {
     expect(text).toContain('## Recent decisions');
   });
 
+  it('lists add tool with scope enum in inputSchema (wire level)', async () => {
+    const initMessage = {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'test', version: '0.1.0' } },
+    };
+    await sendAndReceive(child, initMessage);
+    const response = (await sendAndReceive(child, {
+      jsonrpc: '2.0',
+      id: 2,
+      method: 'tools/list',
+    })) as {
+      result?: {
+        tools?: Array<{ name: string; inputSchema?: { properties?: Record<string, { enum?: string[] }> } }>;
+      };
+    };
+    const add = response.result?.tools?.find((t) => t.name === 'add');
+    expect(add?.inputSchema?.properties?.scope?.enum).toContain('project');
+  });
+
+  it('creates a rule with scope via tools/call add', async () => {
+    const initMessage = {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'test', version: '0.1.0' } },
+    };
+    await sendAndReceive(child, initMessage);
+    const response = (await sendAndReceive(child, {
+      jsonrpc: '2.0',
+      id: 2,
+      method: 'tools/call',
+      params: {
+        name: 'add',
+        arguments: { type: 'rule', title: 'Rule via stdio', createdBy: 'user:stdio-test', scope: 'project' },
+      },
+    })) as { result?: { content?: { type: string; text: string }[] } };
+    expect(response.result?.content?.[0]?.text).toContain('Created memory object');
+  });
+
   function sendAndReceive(proc: typeof child, message: unknown): Promise<unknown> {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('timeout')), 5000);

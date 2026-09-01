@@ -3,7 +3,11 @@ import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { buildMcpServer } from '../../../src/adapters/mcp/mcp-server.js';
-import { MemorySearchInputSchema, ThinkingAddInputSchema } from '../../../src/adapters/mcp/mcp-schemas.js';
+import {
+  MemoryAddInputSchema,
+  MemorySearchInputSchema,
+  ThinkingAddInputSchema,
+} from '../../../src/adapters/mcp/mcp-schemas.js';
 import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
 import { createCli } from '../../../src/adapters/cli/cli-entry.js';
 
@@ -355,6 +359,94 @@ describe('buildMcpServer', () => {
         createdBy: 'agent:test',
       })
     ).rejects.toThrow('Rules can only be created by explicit user request');
+  });
+
+  it('add pipeline: rule with scope survives schema parse and handler, object keeps the field', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    // эмуляция SDK-пайплайна: Standard Schema validate → cb(parsed)
+    const parsed = MemoryAddInputSchema.parse({
+      type: 'rule',
+      title: 'MCP pipeline rule',
+      createdBy: 'user:mcp-test',
+      scope: 'project',
+    });
+    expect(parsed.scope).toBe('project');
+    const result = await tools.add.handler(parsed);
+    expect(result.content[0].text).toMatch(/Created memory object: mem_/);
+    const id = result.content[0].text.replace('Created memory object: ', '');
+    const got = await tools.get.handler({ id });
+    expect(got.content[0].text).toContain('"scope": "project"');
+  });
+
+  it('add rejects invalid scope at input schema with a clear error', () => {
+    expect(() =>
+      MemoryAddInputSchema.parse({
+        type: 'rule',
+        title: 'x',
+        createdBy: 'user:mcp-test',
+        scope: 'bogus',
+      })
+    ).toThrow(/scope/);
+  });
+
+  it('add without scope for rule passes input schema but is rejected by domain validation', async () => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    // handler вызывается напрямую (без parse) — объект как есть
+    await expect(tools.add.handler({ type: 'rule', title: 'x', createdBy: 'user:mcp-test' })).rejects.toThrow(
+      /Type validation failed: scope/
+    );
+  });
+
+  // C4: полный пайплайн parse → handler для всех типов с обязательными per-type полями
+  it.each([
+    ['rule', { scope: 'project' }],
+    ['task-brief', { executor: 'worker', priority: 'high' }],
+    ['work-thread', { goal: 'g' }],
+    ['info-request', { question: 'q', detour_reason: 'r', expected_answer: ['a'] }],
+    ['article', { thread: 'mem_t1', summary: 's' }],
+    ['blocker', { impact: 'blocks' }],
+    ['session-checkpoint', { thread: 'mem_t1' }],
+    ['council-question', { question: 'q' }],
+    ['council-opinion', { vote: 'yes' }],
+    ['synthesis', { recommendation: 'r' }],
+    ['escalation', { question: 'q' }],
+    ['decision-request', { question: 'q' }],
+    ['playbook', { steps: ['s1'], owner_skill: 'x', version: '1' }],
+    ['tool', { name: 'n', script_path: '.wolf/tools/n.sh', language: 'bash' }],
+  ] as const)('add pipeline creates %s with per-type fields', async (type, extra) => {
+    const server = buildMcpServer(dir);
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { handler: (args: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }
+        >;
+      }
+    )._registeredTools;
+    const parsed = MemoryAddInputSchema.parse({
+      type,
+      title: `C4 ${type}`,
+      createdBy: 'user:mcp-test',
+      ...extra,
+    });
+    const result = await tools.add.handler(parsed);
+    expect(result.content[0].text).toMatch(/Created memory object: mem_/);
   });
 });
 

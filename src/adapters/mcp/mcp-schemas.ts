@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { perTypeExtraFields } from '../../domain/type-schema-builder.js';
 
 export const EmptyInputSchema = z.object({});
 
@@ -33,15 +34,20 @@ export const MemorySearchInputSchema = z.object({
   includeSuperseded: z.boolean().optional(),
 });
 
-export const MemoryAddInputSchema = z.object({
-  type: z.string(),
-  title: z.string(),
-  body: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-  confidence: z.enum(['low', 'medium', 'high']).optional(),
-  importance: z.number().optional(),
-  createdBy: z.string(),
-});
+// Per-type поля таксономии (scope, executor, …) — из perTypeExtraFields(),
+// не вручную: неизвестные ключи отсекает .strict(), известные не стрипаются.
+export const MemoryAddInputSchema = z
+  .object({
+    type: z.string(),
+    title: z.string(),
+    body: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+    confidence: z.enum(['low', 'medium', 'high']).optional(),
+    importance: z.number().optional(),
+    createdBy: z.string(),
+    ...perTypeExtraFields(),
+  })
+  .strict();
 
 export const MemoryTransitionInputSchema = z.object({
   id: z.string(),

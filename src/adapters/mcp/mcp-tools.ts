@@ -117,7 +117,8 @@ export function registerMemoryTools(
       inputSchema: MemoryAddInputSchema,
     },
     async (input: unknown) => {
-      const args = input as {
+      // rest = per-type поля таксономии; валидацию и required-логику делает домен
+      const { type, title, body, tags, confidence, importance, createdBy, ...extra } = input as {
         type: string;
         title: string;
         body?: string;
@@ -125,15 +126,16 @@ export function registerMemoryTools(
         confidence?: 'low' | 'medium' | 'high';
         importance?: number;
         createdBy: string;
-      };
+      } & Record<string, unknown>;
       const result = await addMemoryObject(deps, {
-        type: args.type as never,
-        title: args.title,
-        body: args.body,
-        createdBy: args.createdBy,
-        tags: args.tags,
-        confidence: args.confidence,
-        importance: args.importance,
+        type: type as never,
+        title,
+        body,
+        createdBy,
+        tags,
+        confidence,
+        importance,
+        extra,
       });
       return {
         content: [{ type: 'text' as const, text: `Created memory object: ${result.object.id}` }],
