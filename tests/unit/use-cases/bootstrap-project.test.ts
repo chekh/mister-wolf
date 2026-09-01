@@ -4,6 +4,9 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { initProjectMemory } from '../../../src/app/use-cases/init-project-memory.js';
 import { bootstrapProject } from '../../../src/app/use-cases/bootstrap-project.js';
+import { addMemoryObject } from '../../../src/app/use-cases/add-memory-object.js';
+import { transitionMemoryObject } from '../../../src/app/use-cases/transition-memory-object.js';
+import type { WorkThread } from '../../../src/domain/schemas/thread-schema.js';
 import { FsProjectInitializer } from '../../../src/adapters/fs/fs-project-initializer.js';
 import { createCliContainer } from '../../../src/bootstrap/container.js';
 
@@ -11,14 +14,18 @@ describe('bootstrapProject', () => {
   let dir: string;
   let deps: ReturnType<typeof createCliContainer>;
 
+  async function createProject(): Promise<{ dir: string; deps: ReturnType<typeof createCliContainer> }> {
+    const d = mkdtempSync(join(tmpdir(), 'wolf-bootstrap-'));
+    writeFileSync(join(d, 'package.json'), JSON.stringify({ name: 'demo-app', scripts: { test: 'vitest run' } }));
+    writeFileSync(join(d, 'README.md'), '# Demo App\n\nTest project.\n');
+    mkdirSync(join(d, 'src'));
+    writeFileSync(join(d, 'src', 'index.ts'), 'export const x = 1;\n');
+    await initProjectMemory(new FsProjectInitializer(), d);
+    return { dir: d, deps: createCliContainer(d) };
+  }
+
   beforeEach(async () => {
-    dir = mkdtempSync(join(tmpdir(), 'wolf-bootstrap-'));
-    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'demo-app', scripts: { test: 'vitest run' } }));
-    writeFileSync(join(dir, 'README.md'), '# Demo App\n\nTest project.\n');
-    mkdirSync(join(dir, 'src'));
-    writeFileSync(join(dir, 'src', 'index.ts'), 'export const x = 1;\n');
-    await initProjectMemory(new FsProjectInitializer(), dir);
-    deps = createCliContainer(dir);
+    ({ dir, deps } = await createProject());
   });
 
   afterEach(() => {
@@ -55,9 +62,13 @@ describe('bootstrapProject', () => {
     expect(result.documentCount).toBeGreaterThanOrEqual(1);
     expect(result.workThreadId).toBeTruthy();
 
-    // brief непустой, машино-читаемый заголовок, указывает на Стюарда
+    // brief непустой, машино-читаемый заголовок; финал v2 (§5.4) — дословно, без Стюарда (Q6)
     expect(result.brief).toContain('# Bootstrap brief');
-    expect(result.brief).toContain('Стюард');
+    expect(result.brief).not.toContain('Стюард');
+    expect(result.brief).toContain(
+      `Онбординг не завершён: свёртка черновиков и завершение — в диалоге с пользователем; ` +
+        `когда закончите — закройте thread (\`wolf transition ${result.workThreadId} completed\`)`
+    );
     expect(result.brief).toContain(result.workThreadId);
 
     // объекты реально сохранены и читаются store
@@ -74,5 +85,92 @@ describe('bootstrapProject', () => {
     const second = await bootstrapProject(deps, { baseDir: dir, createdBy: 'user:bootstrap' });
     const docs = await deps.store.list({ type: 'document-ref' });
     expect(docs.length).toBe(second.documentCount);
+    // активный thread переиспользуется, не дублируется
+    const threads = await deps.store.list({ type: 'work-thread' });
+    expect(threads).toHaveLength(1);
+  });
+
+  // §5.1: guard «онбординг уже закрыт» — no-op без скана/черновиков/doc-ref'ов
+  it('is a no-op when bootstrap thread is completed, paused or archived', async () => {
+    for (const finalStatus of ['completed', 'paused', 'archived'] as const) {
+      const project = await createProject();
+      try {
+        const first = await bootstrapProject(project.deps, {
+          baseDir: project.dir,
+          createdBy: 'user:bootstrap',
+        });
+        await transitionMemoryObject(project.deps, first.workThreadId, finalStatus, 'user:test');
+
+        const second = await bootstrapProject(project.deps, {
+          baseDir: project.dir,
+          createdBy: 'user:bootstrap',
+        });
+
+        expect(second.rules).toEqual([]);
+        expect(second.documentCount).toBe(0);
+        expect(second.workThreadId).toBe(first.workThreadId);
+        expect(second.brief).toBe(
+          `Онбординг уже завершён/отложен (thread ${finalStatus}); для пересоздания — владелец вручную`
+        );
+        // скан не выполнялся: doc-ref'ы не добавились
+        const docs = await project.deps.store.list({ type: 'document-ref' });
+        expect(docs.length).toBe(first.documentCount);
+      } finally {
+        rmSync(project.dir, { recursive: true, force: true });
+      }
+    }
+  });
+
+  // §5.2: указатель «что и когда» в currentState — id init-отчёта по тегам wolf-init
+  it('new thread currentState carries pointer with init report id', async () => {
+    const { object: report } = await addMemoryObject(deps, {
+      type: 'report',
+      title: 'Init report: demo-app',
+      body: '## Сделано\n…',
+      createdBy: 'wolf-init',
+      tags: ['wolf-init', 'onboarding-v2'],
+    });
+
+    const result = await bootstrapProject(deps, { baseDir: dir, createdBy: 'user:bootstrap' });
+    const thread = (await deps.store.get(result.workThreadId)) as WorkThread;
+
+    expect(thread.current_state).toContain(`report ${report.id}`);
+    expect(thread.current_state).toContain('черновиков');
+    expect(thread.current_state).toContain('document-ref');
+    // goal нейтрален: без Стюарда (Q6)
+    expect(thread.goal).not.toContain('Стюард');
+  });
+
+  it('currentState says «без отчёта» when no active init report exists', async () => {
+    const result = await bootstrapProject(deps, { baseDir: dir, createdBy: 'user:bootstrap' });
+    const thread = (await deps.store.get(result.workThreadId)) as WorkThread;
+
+    expect(thread.current_state).toContain('без отчёта');
+    expect(thread.current_state).toContain('черновиков');
+  });
+
+  it('pointer prefers the latest init report by updated_at', async () => {
+    const first = await addMemoryObject(deps, {
+      type: 'report',
+      title: 'Init report: one',
+      body: '…',
+      createdBy: 'wolf-init',
+      tags: ['wolf-init', 'onboarding-v2'],
+    });
+    const second = await addMemoryObject(deps, {
+      type: 'report',
+      title: 'Init report: two',
+      body: '…',
+      createdBy: 'wolf-init',
+      tags: ['wolf-init', 'onboarding-v2'],
+    });
+    // детерминированный порядок: первый отчёт стареет
+    await deps.store.save({ ...first.object, updated_at: '2026-01-01T00:00:00.000Z' });
+
+    const result = await bootstrapProject(deps, { baseDir: dir, createdBy: 'user:bootstrap' });
+    const thread = (await deps.store.get(result.workThreadId)) as WorkThread;
+
+    expect(thread.current_state).toContain(`report ${second.object.id}`);
+    expect(thread.current_state).not.toContain(`report ${first.object.id}`);
   });
 });

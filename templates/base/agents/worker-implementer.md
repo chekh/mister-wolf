@@ -1,6 +1,6 @@
 ---
 description: "Worker-implementer (L2): однозадачный исполнитель кода — ровно одна подзадача, правки по allowlist брифа, самопроверка, короткий отчёт."
-model: zai-coding-plan/glm-5.2
+model: {{model.worker}}
 permission:
   task: deny
   bash: allow

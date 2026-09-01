@@ -49,7 +49,7 @@ describe('MVP-B workflow', () => {
     writeFileSync(indexPath, 'export const app = () => "hello";\n');
     writeFileSync(join(dir, 'README.md'), `# ${projectName}\n\nA test project for the MVP-B workflow.\n`);
 
-    runCli('init', dir);
+    runCli('init --model zai-coding-plan/glm-5.3', dir);
     const scanResult = runCli('scan', dir);
     expect(scanResult.stdout).toContain('Project scan saved: project-scan-latest');
 

@@ -35,7 +35,7 @@ describe('wolf learn propose/validate/activate (Ф22 D2.2, e2e)', () => {
   beforeAll(() => {
     ensureBuilt();
     cwd = tmpProject();
-    expect(runCli(['init'], cwd).status).toBe(0);
+    expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], cwd).status).toBe(0);
   });
   afterAll(() => rmSync(cwd, { recursive: true, force: true }));
 

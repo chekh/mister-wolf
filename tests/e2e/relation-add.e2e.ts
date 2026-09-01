@@ -18,7 +18,7 @@ describe('relation add via CLI', () => {
   function newProject(): string {
     const dir = tmpProject();
     dirs.push(dir);
-    runCli(['init'], dir);
+    runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
     return dir;
   }
 

@@ -33,7 +33,7 @@ describe('wolf base set: init + sync (спека §7, §11.1, §11.6)', () => {
     project = mkdtempSync(join(tmpdir(), 'wolf-base-set-e2e-'));
     writeFileSync(join(project, 'package.json'), '{ "name": "base-set-e2e" }');
     xdg = mkdtempSync(join(tmpdir(), 'wolf-base-set-e2e-xdg-'));
-    const res = run(['init'], project, xdg);
+    const res = run(['init', '--model', 'zai-coding-plan/glm-5.3'], project, xdg);
     expect(res.status).toBe(0);
     expect(res.stdout).toMatch(/- base set: \S+ created/);
   });

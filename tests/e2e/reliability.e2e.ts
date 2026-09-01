@@ -12,7 +12,7 @@ describe('reliability', () => {
   afterAll(() => rmSync(cwd, { recursive: true, force: true }));
 
   it('broken object file does not break list; validate reports, --fix quarantines', () => {
-    const init = runCli(['init'], cwd);
+    const init = runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], cwd);
     expect(init.status).toBe(0);
 
     const a = runCli(['add', '--type', 'observation', '--title', 'ObsA'], cwd);
@@ -48,7 +48,7 @@ describe('reliability', () => {
   });
 
   it('broken relations.jsonl line is skipped tolerantly', () => {
-    const init = runCli(['init'], cwd);
+    const init = runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], cwd);
     expect(init.status).toBe(0);
 
     runCli(['add', '--type', 'observation', '--title', 'ObsRel'], cwd);

@@ -1,10 +1,13 @@
 import * as fs from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { PlatformAdapter, McpCommand, PlatformConfig } from '../../ports/platform-adapter.port.js';
+import { PlatformAdapter, McpCommand, PlatformConfig, PlatformWriteResult } from '../../ports/platform-adapter.port.js';
 import { parseJsonc } from './jsonc.js';
 import { writeFileAtomic } from '../fs/markdown-memory-store.js';
 import { UserFacingError } from '../../domain/errors.js';
+
+/** Дефолтный агент Wolf в opencode (§6.1). */
+export const DEFAULT_AGENT = 'mr-wolf';
 
 // ponytail: комментарии в opencode.jsonc теряются при rewrite (plain JSON валиден как JSONC);
 // сохранение комментариев = AST-редактор, YAGNI до запроса.
@@ -45,18 +48,29 @@ export class OpencodeAdapter implements PlatformAdapter {
     return asConfig(parsed, file);
   }
 
-  async writeConfig(projectRoot: string, cmd: McpCommand): Promise<'written' | 'replaced' | 'unchanged'> {
+  async writeConfig(projectRoot: string, cmd: McpCommand): Promise<PlatformWriteResult> {
     const file = this.configFile(projectRoot);
     const cfg = (await this.readConfig(projectRoot)) ?? {};
     const mcp = asRecord(cfg.mcp) ?? {};
     // каноническая проекция McpCommand в формат opencode: command — массив
     const desired = { type: 'local', command: [cmd.command, ...cmd.args], enabled: true };
-    if (JSON.stringify(mcp.wolf) === JSON.stringify(desired)) return 'unchanged';
-    const replaced = mcp.wolf !== undefined;
+    const mcpOk = JSON.stringify(mcp.wolf) === JSON.stringify(desired);
+
+    // §6.1: default_agent мерджится рядом с mcp.wolf
+    const da = cfg.default_agent;
+    let reason: string | undefined;
+    if (da !== undefined && da !== DEFAULT_AGENT) {
+      reason = `default_agent=${da} занят; mr-wolf не назначен`;
+    }
+    // unchanged — по ОБОИМ ключам: корректный mcp.wolf не маскирует отсутствие default_agent
+    if (mcpOk && da !== undefined) return { action: 'unchanged', reason };
+
+    const replaced = mcp.wolf !== undefined && !mcpOk;
     mcp.wolf = desired;
     cfg.mcp = mcp;
+    if (da === undefined) cfg.default_agent = DEFAULT_AGENT; // конфликтный ключ не трогаем
     await writeFileAtomic(file, JSON.stringify(cfg, null, 2) + '\n');
-    return replaced ? 'replaced' : 'written';
+    return { action: replaced ? 'replaced' : 'written', reason };
   }
 
   async removeWolf(projectRoot: string): Promise<boolean> {

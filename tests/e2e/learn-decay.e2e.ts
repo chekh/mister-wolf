@@ -60,7 +60,7 @@ describe('wolf learn decay (Ф26, e2e на фикстуре пробега)', ()
     cwd = tmpProject();
     // npx-режим (npm_command=exec) — документированный guard: init не сеет базовый набор,
     // decay-фикстура остаётся контролируемым стейтом (только урок Ф26, без 6 seeded playbook'ов)
-    expect(runCli(['init'], cwd, { npm_command: 'exec' }).status).toBe(0);
+    expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], cwd, { npm_command: 'exec' }).status).toBe(0);
     metrics = join(cwd, '.wolf/metrics/session-metrics.jsonl');
     mkdirSync(join(cwd, '.wolf/metrics'), { recursive: true });
   });

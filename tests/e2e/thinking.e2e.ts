@@ -36,7 +36,7 @@ describe('thinking golden scenarios', () => {
   it('full cycle: start -> 4 thoughts -> conclude creates decision with trace and based_on links', () => {
     const dir = tmpProject();
     dirs.push(dir);
-    runCli(['init'], dir);
+    runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
 
     const start = runCli(['think', 'start', '--goal', 'Choose auth strategy'], dir);
     expect(start.status).toBe(0);
@@ -85,7 +85,7 @@ describe('thinking golden scenarios', () => {
   it('abandon removes the sequence without touching memory', () => {
     const dir = tmpProject();
     dirs.push(dir);
-    runCli(['init'], dir);
+    runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
 
     const start = runCli(['think', 'start', '--goal', 'Spike idea'], dir);
     expect(start.status).toBe(0);

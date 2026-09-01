@@ -15,6 +15,7 @@ import { createBlocker } from '../../../src/app/use-cases/create-blocker.js';
 import { createDecision } from '../../../src/app/use-cases/create-decision.js';
 import { createInfoRequest } from '../../../src/app/use-cases/create-info-request.js';
 import { transitionMemoryObject } from '../../../src/app/use-cases/transition-memory-object.js';
+import { BOOTSTRAP_THREAD_TITLE } from '../../../src/app/use-cases/bootstrap-project.js';
 
 describe('generateRecap', () => {
   let dir: string;
@@ -198,6 +199,7 @@ describe('generateRecap', () => {
     expect(report.openQuestions).toEqual([]);
     expect(report.openInfoRequests).toEqual([]);
     expect(report.recentDecisions).toEqual([]);
+    expect(report.onboarding).toBeNull();
 
     for (const header of [
       '## Active rules',
@@ -208,6 +210,144 @@ describe('generateRecap', () => {
       '## Recent decisions',
     ]) {
       expect(text).toContain(`${header}\n-`);
+    }
+    expect(text).not.toContain('## Onboarding');
+  });
+
+  // F11/D9: accepted-правила видны в recap рядом с active
+  it('includes accepted rules alongside active in activeRules', async () => {
+    const deps = mkDeps();
+
+    await createRule(deps, {
+      title: 'Active rule',
+      body: 'Still active.',
+      scope: 'project',
+      createdBy: 'user:test',
+    });
+    const draft = await addMemoryObject(deps, {
+      type: 'rule',
+      title: 'Accepted convention',
+      body: 'Folded by the user.',
+      createdBy: 'user:test',
+      status: 'proposed',
+      extra: { scope: 'project' },
+    });
+    await transitionMemoryObject(deps, draft.object.id, 'accepted', 'user:test');
+
+    const report = await generateRecap({ store: deps.store });
+
+    expect(report.activeRules.map((o) => o.title).sort()).toEqual(['Accepted convention', 'Active rule']);
+    expect(renderRecap(report)).toContain('Accepted convention');
+  });
+
+  // §3 правило 2: init-report active + thread отсутствует → bootstrap-сигнал
+  it('onboarding: bootstrap signal when active init-report exists and no thread', async () => {
+    const deps = mkDeps();
+    await addMemoryObject(deps, {
+      type: 'report',
+      title: 'Init report: demo',
+      body: '## Сделано\n…',
+      createdBy: 'wolf-init',
+      tags: ['wolf-init', 'onboarding-v2'],
+    });
+
+    const report = await generateRecap({ store: deps.store });
+
+    expect(report.onboarding).toEqual({ kind: 'bootstrap' });
+    const text = renderRecap(report);
+    expect(text).toContain('## Onboarding');
+    // текст §6.2 — дословный контракт для рамки mr-wolf
+    expect(text).toContain(
+      'Onboarding v2: init выполнен, bootstrap — нет. Уточни у пользователя: предложить выполнить ' +
+        '`wolf bootstrap` (можно исполнить прямо в сессии: `wolf bootstrap`; в dogfood-репо Wolf — ' +
+        '`node dist/bootstrap/cli.js bootstrap`) или следовать пути пользователя. ' +
+        'Действия с побочными эффектами — только с согласия пользователя.'
+    );
+    // секция — первая после 'Recap', до Active rules
+    expect(text.indexOf('## Onboarding')).toBeGreaterThan(0);
+    expect(text.indexOf('## Onboarding')).toBeLessThan(text.indexOf('## Active rules'));
+  });
+
+  // §3 правило 1: thread active → продолжение-сигнал (legacy: без init-report)
+  it('onboarding: continue signal when bootstrap thread is active (legacy without report)', async () => {
+    const deps = mkDeps();
+    const { object } = await createWorkThread(deps, {
+      title: BOOTSTRAP_THREAD_TITLE,
+      goal: 'Свёртка черновиков и завершение онбординга',
+      createdBy: 'user:test',
+    });
+
+    const report = await generateRecap({ store: deps.store });
+
+    expect(report.onboarding).toEqual({ kind: 'continue', threadId: object.id });
+    const text = renderRecap(report);
+    expect(text).toContain('## Onboarding');
+    expect(text).toContain('Onboarding v2: bootstrap выполнен, онбординг не завершён');
+    // текст §6.2 — дословный контракт, <id> = реальный threadId
+    expect(text).toContain(
+      'Onboarding v2: bootstrap выполнен, онбординг не завершён (thread active). Работай под управлением ' +
+        'пользователя — свёртка черновиков, глубокое изучение проекта — как решит пользователь; предписанных ' +
+        `ролей нет. Когда онбординг завершён — предложи закрыть thread (\`wolf transition ${object.id} ` +
+        'completed`) и закрой с согласия пользователя.'
+    );
+  });
+
+  it('onboarding: active thread wins over init-report (continue)', async () => {
+    const deps = mkDeps();
+    await addMemoryObject(deps, {
+      type: 'report',
+      title: 'Init report: demo',
+      body: '…',
+      createdBy: 'wolf-init',
+      tags: ['wolf-init', 'onboarding-v2'],
+    });
+    const { object } = await createWorkThread(deps, {
+      title: BOOTSTRAP_THREAD_TITLE,
+      goal: 'g',
+      createdBy: 'user:test',
+    });
+
+    const report = await generateRecap({ store: deps.store });
+
+    expect(report.onboarding).toEqual({ kind: 'continue', threadId: object.id });
+  });
+
+  // §3 правило 2/Q4: paused — тишина, даже при активном init-report
+  it('onboarding: silence when thread paused even with active init-report', async () => {
+    const deps = mkDeps();
+    await addMemoryObject(deps, {
+      type: 'report',
+      title: 'Init report: demo',
+      body: '…',
+      createdBy: 'wolf-init',
+      tags: ['wolf-init', 'onboarding-v2'],
+    });
+    const { object } = await createWorkThread(deps, {
+      title: BOOTSTRAP_THREAD_TITLE,
+      goal: 'g',
+      createdBy: 'user:test',
+    });
+    await transitionMemoryObject(deps, object.id, 'paused', 'user:test');
+
+    const report = await generateRecap({ store: deps.store });
+
+    expect(report.onboarding).toBeNull();
+    expect(renderRecap(report)).not.toContain('## Onboarding');
+  });
+
+  it('onboarding: silence when thread completed or archived', async () => {
+    for (const finalStatus of ['completed', 'archived'] as const) {
+      const deps = mkDeps();
+      const { object } = await createWorkThread(deps, {
+        title: BOOTSTRAP_THREAD_TITLE,
+        goal: 'g',
+        createdBy: 'user:test',
+      });
+      await transitionMemoryObject(deps, object.id, finalStatus, 'user:test');
+
+      const report = await generateRecap({ store: deps.store });
+      expect(report.onboarding).toBeNull();
+      expect(renderRecap(report)).not.toContain('## Onboarding');
     }
   });
 });

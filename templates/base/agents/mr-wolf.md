@@ -1,7 +1,7 @@
 ---
 description: "Mr.Wolf — координатор (L0): брифы, диспетчеризация executor'ов, приёмка по отчётам. Кода не касается. Безликий."
 mode: primary
-model: zai-coding-plan/glm-5.3
+model: {{model.primary}}
 temperature: 0.3
 permission:
   task:

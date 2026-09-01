@@ -16,12 +16,14 @@ describe('wolf bootstrap: starting project memory in one command', () => {
   afterAll(() => rmSync(cwd, { recursive: true, force: true }));
 
   it('init -> bootstrap creates proposed rules, document-ref and work-thread', () => {
-    expect(runCli(['init'], cwd).status).toBe(0);
+    expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], cwd).status).toBe(0);
 
     const r = runCli(['bootstrap'], cwd);
     expect(r.status).toBe(0);
     expect(r.stdout).toContain('Bootstrap brief');
-    expect(r.stdout).toContain('Стюард');
+    // onboarding v2 (Q6): финал — диалог с пользователем, Стюард не предписывается
+    expect(r.stdout).not.toContain('Стюард');
+    expect(r.stdout).toContain('wolf transition');
 
     // proposed-правила в shared/rules
     const rulesDir = join(cwd, '.wolf', 'memory', 'shared', 'rules');

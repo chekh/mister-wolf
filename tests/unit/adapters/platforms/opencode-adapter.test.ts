@@ -42,18 +42,19 @@ describe('OpencodeAdapter.detect (маркеры: opencode.json / opencode.jsonc
 });
 
 describe('OpencodeAdapter.writeConfig', () => {
-  it('creates opencode.json with canonical mcp.wolf entry', async () => {
+  it('creates opencode.json with canonical mcp.wolf entry + default_agent', async () => {
     const result = await new OpencodeAdapter().writeConfig(dir, cmd);
-    expect(result).toBe('written');
+    expect(result).toEqual({ action: 'written' });
     const cfg = JSON.parse(readFileSync(join(dir, 'opencode.json'), 'utf-8'));
     expect(cfg.mcp.wolf).toEqual(WOLF_ENTRY);
+    expect(cfg.default_agent).toBe('mr-wolf');
   });
 
   it('idempotent: second call is unchanged and file content identical', async () => {
     const adapter = new OpencodeAdapter();
     await adapter.writeConfig(dir, cmd);
     const before = readFileSync(join(dir, 'opencode.json'), 'utf-8');
-    expect(await adapter.writeConfig(dir, cmd)).toBe('unchanged');
+    expect(await adapter.writeConfig(dir, cmd)).toEqual({ action: 'unchanged' });
     expect(readFileSync(join(dir, 'opencode.json'), 'utf-8')).toBe(before);
   });
 
@@ -71,7 +72,7 @@ describe('OpencodeAdapter.writeConfig', () => {
         2
       )
     );
-    expect(await new OpencodeAdapter().writeConfig(dir, cmd)).toBe('replaced');
+    expect(await new OpencodeAdapter().writeConfig(dir, cmd)).toEqual({ action: 'replaced' });
     const cfg = JSON.parse(readFileSync(join(dir, 'opencode.json'), 'utf-8'));
     expect(cfg.mcp.wolf).toEqual(WOLF_ENTRY);
     expect(cfg.mcp.other).toEqual({ type: 'local', command: ['x'] });
@@ -79,7 +80,7 @@ describe('OpencodeAdapter.writeConfig', () => {
 
   it('reads opencode.jsonc with comments (comments are lost on rewrite — documented trade-off)', async () => {
     writeFileSync(join(dir, 'opencode.jsonc'), '{\n  // my config\n  "plugin": ["p"],\n}');
-    expect(await new OpencodeAdapter().writeConfig(dir, cmd)).toBe('written');
+    expect(await new OpencodeAdapter().writeConfig(dir, cmd)).toEqual({ action: 'written' });
     const cfg = JSON.parse(readFileSync(join(dir, 'opencode.jsonc'), 'utf-8'));
     expect(cfg.mcp.wolf).toEqual(WOLF_ENTRY);
     expect(cfg.plugin).toEqual(['p']);
@@ -109,6 +110,46 @@ describe('OpencodeAdapter.writeConfig', () => {
     await expect(new OpencodeAdapter().writeConfig(dir, cmd)).rejects.toThrow();
     chmodSync(dir, 0o755);
     expect(JSON.parse(readFileSync(join(dir, 'opencode.json'), 'utf-8'))).toEqual({});
+  });
+});
+
+describe('OpencodeAdapter.writeConfig: merge default_agent (§6.1)', () => {
+  const CANONICAL = JSON.stringify({ mcp: { wolf: WOLF_ENTRY }, default_agent: 'mr-wolf' });
+
+  it('ключ отсутствует → устанавливается (v1-конфиг с корректным mcp.wolf, но без default_agent)', async () => {
+    writeFileSync(join(dir, 'opencode.json'), JSON.stringify({ mcp: { wolf: WOLF_ENTRY } }));
+    const result = await new OpencodeAdapter().writeConfig(dir, cmd);
+    expect(result).toEqual({ action: 'written' }); // unchanged считается по ОБОИМ ключам
+    const cfg = JSON.parse(readFileSync(join(dir, 'opencode.json'), 'utf-8'));
+    expect(cfg.default_agent).toBe('mr-wolf');
+    expect(cfg.mcp.wolf).toEqual(WOLF_ENTRY);
+  });
+
+  it('равен mr-wolf → unchanged по обоим ключам, файл не трогается', async () => {
+    writeFileSync(join(dir, 'opencode.json'), CANONICAL);
+    expect(await new OpencodeAdapter().writeConfig(dir, cmd)).toEqual({ action: 'unchanged' });
+    expect(readFileSync(join(dir, 'opencode.json'), 'utf-8')).toBe(CANONICAL);
+  });
+
+  it('отличен → НЕ трогаем: unchanged + reason, значение сохраняется', async () => {
+    writeFileSync(join(dir, 'opencode.json'), JSON.stringify({ mcp: { wolf: WOLF_ENTRY }, default_agent: 'other' }));
+    const result = await new OpencodeAdapter().writeConfig(dir, cmd);
+    expect(result).toEqual({ action: 'unchanged', reason: 'default_agent=other занят; mr-wolf не назначен' });
+    const cfg = JSON.parse(readFileSync(join(dir, 'opencode.json'), 'utf-8'));
+    expect(cfg.default_agent).toBe('other');
+  });
+
+  it('mcp.wolf расходится И default_agent занят → rewrite mcp (триггер — любое расхождение), ключ сохранён, reason прокинут', async () => {
+    writeFileSync(
+      join(dir, 'opencode.json'),
+      JSON.stringify({ mcp: { wolf: { type: 'local', command: ['node', 'dist/mcp.js'] } }, default_agent: 'other' })
+    );
+    const result = await new OpencodeAdapter().writeConfig(dir, cmd);
+    expect(result.action).toBe('replaced');
+    expect(result.reason).toBe('default_agent=other занят; mr-wolf не назначен');
+    const cfg = JSON.parse(readFileSync(join(dir, 'opencode.json'), 'utf-8'));
+    expect(cfg.mcp.wolf).toEqual(WOLF_ENTRY);
+    expect(cfg.default_agent).toBe('other');
   });
 });
 

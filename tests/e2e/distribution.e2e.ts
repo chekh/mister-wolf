@@ -70,7 +70,7 @@ describe('global install from tarball into isolated HOME (спека §3, §7)',
     writeFileSync(join(project, 'opencode.json'), '{ "$schema": "https://opencode.ai/config.json" }');
     mkdirSync(join(project, '.claude'), { recursive: true });
 
-    const init = spawnSync(join(prefix, 'bin', 'wolf'), ['init'], {
+    const init = spawnSync(join(prefix, 'bin', 'wolf'), ['init', '--model', 'zai-coding-plan/glm-5.3'], {
       cwd: project,
       env,
       encoding: 'utf-8',
@@ -79,7 +79,7 @@ describe('global install from tarball into isolated HOME (спека §3, §7)',
     expect(init.status).toBe(0);
     expect(init.stdout).toContain('platform opencode: written');
     expect(init.stdout).toContain('platform claude: written');
-    expect(init.stdout).toContain('Restart your agent platform');
+    expect(init.stdout).toContain('перезапустите opencode');
 
     const oc = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));
     expect(oc.mcp.wolf).toEqual({ type: 'local', command: ['wolf', 'mcp'], enabled: true });
@@ -108,10 +108,20 @@ describe('global install from tarball into isolated HOME (спека §3, §7)',
     writeFileSync(join(project, 'package.json'), '{ "name": "dist-e2e-2" }');
     writeFileSync(join(project, 'opencode.json'), '{}');
     const wolf = join(prefix, 'bin', 'wolf');
-    const first = spawnSync(wolf, ['init'], { cwd: project, env, encoding: 'utf-8', timeout: 60_000 });
+    const first = spawnSync(wolf, ['init', '--model', 'zai-coding-plan/glm-5.3'], {
+      cwd: project,
+      env,
+      encoding: 'utf-8',
+      timeout: 60_000,
+    });
     expect(first.status).toBe(0);
     const before = readFileSync(join(project, 'opencode.json'), 'utf-8');
-    const second = spawnSync(wolf, ['init'], { cwd: project, env, encoding: 'utf-8', timeout: 60_000 });
+    const second = spawnSync(wolf, ['init', '--model', 'zai-coding-plan/glm-5.3'], {
+      cwd: project,
+      env,
+      encoding: 'utf-8',
+      timeout: 60_000,
+    });
     expect(second.status).toBe(0);
     expect(readFileSync(join(project, 'opencode.json'), 'utf-8')).toBe(before);
   });
@@ -124,12 +134,16 @@ describe('global install from tarball into isolated HOME (спека §3, §7)',
     const project = tmpProject();
     writeFileSync(join(project, 'package.json'), '{ "name": "npx-e2e" }');
     writeFileSync(join(project, 'opencode.json'), '{}');
-    const res = spawnSync('node', [join(repoRoot, 'dist', 'bootstrap', 'cli.js'), 'init'], {
-      cwd: project,
-      env: { ...process.env, npm_command: 'npx', XDG_CONFIG_HOME: join(home, '.config') },
-      encoding: 'utf-8',
-      timeout: 60_000,
-    });
+    const res = spawnSync(
+      'node',
+      [join(repoRoot, 'dist', 'bootstrap', 'cli.js'), 'init', '--model', 'zai-coding-plan/glm-5.3'],
+      {
+        cwd: project,
+        env: { ...process.env, npm_command: 'npx', XDG_CONFIG_HOME: join(home, '.config') },
+        encoding: 'utf-8',
+        timeout: 60_000,
+      }
+    );
     expect(res.status).toBe(0);
     expect(JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8')).mcp).toBeUndefined();
     expect(res.stdout).toContain('npx try-out');
@@ -147,7 +161,7 @@ describe('global install from tarball into isolated HOME (спека §3, §7)',
       // npm_command сам; изоляция через tmp-HOME (реестр + npx-кеш не мусорят в дев-машину).
       const project = tmpProject();
       writeFileSync(join(project, 'opencode.json'), '{}');
-      const res = spawnSync('npx', ['-y', `file:${tarball}`, 'init'], {
+      const res = spawnSync('npx', ['-y', `file:${tarball}`, 'init', '--model', 'zai-coding-plan/glm-5.3'], {
         cwd: project,
         env: isolatedEnv(),
         encoding: 'utf-8',

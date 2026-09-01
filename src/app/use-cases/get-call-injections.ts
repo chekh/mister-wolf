@@ -15,6 +15,11 @@ function formatBlock(obj: Record<string, unknown>): string {
   return `- [${obj.id}] ${obj.title} (${obj.confidence}, ${obj.updated_at})\n  source: ${obj.id}`;
 }
 
+/** Машино-состояние (routing-объект моделей) — не руководство для агента: в инъекции никогда. */
+function isMachineState(obj: Record<string, unknown>): boolean {
+  return Array.isArray(obj.tags) && (obj.tags as unknown[]).includes('wolf-routing');
+}
+
 export async function getCallInjections(
   deps: { store: MemoryStore; index?: SearchIndex; clock: Clock },
   input: { topic?: string; thread?: boolean | string; compact?: number | true }
@@ -56,13 +61,13 @@ export async function getCallInjections(
       if (kwMatched(l) && !matched.some((m) => m.id === l.id)) matched.push(l);
     }
     const rules = (await deps.store.list({ type: 'rule', status: 'active' })) as Record<string, unknown>[];
-    const keywordRules = rules.filter(kwMatched);
+    const keywordRules = rules.filter((r) => !isMachineState(r) && kwMatched(r));
     for (const r of keywordRules) {
       if (!matched.some((m) => m.id === r.id)) matched.push(r);
     }
     // 3. fallback to rules if no matches (keyword-matched rules excluded)
     if (matched.length === 0) {
-      matched = rules.filter((r) => !keywordRules.some((k) => k.id === r.id)).slice(0, 3);
+      matched = rules.filter((r) => !isMachineState(r) && !keywordRules.some((k) => k.id === r.id)).slice(0, 3);
     }
   } else {
     matched = injections;
@@ -73,7 +78,7 @@ export async function getCallInjections(
     const threadId = typeof input.thread === 'string' ? input.thread : null;
     const rules = (await deps.store.list({ type: 'rule', status: 'active' })) as Record<string, unknown>[];
     for (const r of rules) {
-      if (r.scope === 'project' && !matched.some((m) => m.id === r.id)) {
+      if (!isMachineState(r) && r.scope === 'project' && !matched.some((m) => m.id === r.id)) {
         matched.push(r);
       }
     }

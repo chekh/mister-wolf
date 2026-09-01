@@ -99,7 +99,7 @@ make_bench_project() {
   printf '# Bench cart\nStack: Node 22 (module: ES2022).\nTests: npm test.\n' > "$dir/README.md"
   printf 'function items(){return []}\nfunction add(c,i){c.push(i);return c}\nmodule.exports={items,add};\n' > "$dir/src/inventory.js"
   printf 'const inv=require("./inventory");\nconst cart=inv.items();\ninv.add(cart,"apple");\ninv.reserve(cart,"apple");\nconsole.log("reserved");\n' > "$dir/src/checkout.js"
-  ( cd "$dir" && node "$WOLF" init >/dev/null 2>&1 )
+  ( cd "$dir" && node "$WOLF" init --model zai-coding-plan/glm-5.3 >/dev/null 2>&1 )
 }
 
 # save_report <name> <json> — JSON-отчёт в .wolf/bench КОРНЯ репо wolf

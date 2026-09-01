@@ -1,6 +1,6 @@
 ---
 description: "Worker-reviewer (L2): ревьюит код/документы воркеров против требований брифа, вердикт по контракту VERDICT/SUMMARY."
-model: zai-coding-plan/glm-5.3
+model: {{model.primary}}
 permission:
   task: deny
 ---

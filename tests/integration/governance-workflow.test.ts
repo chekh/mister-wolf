@@ -10,6 +10,7 @@ import { SystemClock } from '../../src/adapters/fs/system-clock.js';
 import { HashIdGenerator } from '../../src/adapters/fs/hash-id-generator.js';
 import { FsProjectInitializer } from '../../src/adapters/fs/fs-project-initializer.js';
 import { transitionMemoryObject } from '../../src/app/use-cases/transition-memory-object.js';
+import { createWorkThread } from '../../src/app/use-cases/create-work-thread.js';
 import { eventsPath } from '../../src/adapters/fs/project-paths.js';
 
 describe('Governance workflow', () => {
@@ -94,5 +95,28 @@ describe('Governance workflow', () => {
     await expect(transitionMemoryObject({ store, log, clock, idGen }, object.id, 'active')).rejects.toThrow(
       'Invalid transition from archived to active'
     );
+  });
+
+  // onboarding v2 §5.1: владелец сознательно откладывает bootstrap-thread
+  it('allows active → paused for work-thread', async () => {
+    await initProjectMemory(new FsProjectInitializer(), dir);
+
+    const store = new MarkdownMemoryStore(dir);
+    const log = new JsonlEventLog(eventsPath(dir));
+    const clock = new SystemClock();
+    const idGen = new HashIdGenerator();
+
+    const { object } = await createWorkThread(
+      { store, log, clock, idGen },
+      {
+        title: 'Bootstrap: наполнение стартовой памяти',
+        goal: 'Свёртка черновиков и завершение онбординга',
+        createdBy: 'user:cli',
+      }
+    );
+
+    await transitionMemoryObject({ store, log, clock, idGen }, object.id, 'paused');
+
+    expect((await store.get(object.id))?.status).toBe('paused');
   });
 });

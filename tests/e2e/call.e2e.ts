@@ -19,7 +19,7 @@ describe('clean session repairs memory and call injects the fix', () => {
   function seedWithConflict(): { dir: string; oldId: string; newId: string; threadId: string } {
     const dir = tmpProject();
     dirs.push(dir);
-    runCli(['init'], dir);
+    runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
     const threadRun = runCli(
       ['thread', 'create', '--title', 'CLI repair thread', '--goal', 'Repair stale CLI guidance'],
       dir

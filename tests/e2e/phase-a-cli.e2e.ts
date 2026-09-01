@@ -7,7 +7,7 @@ describe('search: superseded marking and --hide-superseded (W3)', () => {
   beforeAll(() => {
     ensureBuilt();
     cwd = tmpProject();
-    expect(runCli(['init'], cwd).status).toBe(0);
+    expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], cwd).status).toBe(0);
     expect(
       runCli(['add', '--type', 'decision', '--title', 'alpha decision unique', '--body', 'first'], cwd).status
     ).toBe(0);
@@ -48,7 +48,7 @@ describe('clean CLI errors (W4): одна строка Error:, exit 1, без с
   beforeAll(() => {
     ensureBuilt();
     cwd = tmpProject();
-    expect(runCli(['init'], cwd).status).toBe(0);
+    expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], cwd).status).toBe(0);
   });
   afterAll(() => rmSync(cwd, { recursive: true, force: true }));
 
@@ -87,7 +87,7 @@ describe('WOLF_ACTOR env в wolf add (W1, e2e-ветка)', () => {
   beforeAll(() => {
     ensureBuilt();
     cwd = tmpProject();
-    expect(runCli(['init'], cwd).status).toBe(0);
+    expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], cwd).status).toBe(0);
   });
   afterAll(() => rmSync(cwd, { recursive: true, force: true }));
 
