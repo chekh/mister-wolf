@@ -9,8 +9,8 @@ source "$(dirname "$0")/lib.sh"
 bench_flags "$@"
 
 step "B1.1 подготовка веток: A (wolf) и B (без памяти)"
-TMP_A="$(mktemp -d /tmp/wolf-bench.XXXXXX)"
-TMP_B="$(mktemp -d /tmp/wolf-bench.XXXXXX)"
+bench_tmp TMP_A
+bench_tmp TMP_B
 make_bench_project "$TMP_A"
 make_bench_project "$TMP_B"
 check "поломка воспроизводится в A (reserve is not a function)" "( cd \"$TMP_A\" && node src/checkout.js 2>&1 | grep -q 'reserve is not a function' )"

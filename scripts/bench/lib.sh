@@ -11,6 +11,18 @@ NODE_BIN="$(command -v node)"
 MODE="dry"
 BENCH_AGENT="apprentice" # агент-рамка из .opencode/agents (используется живым scenario-8)
 
+# F14: изоляция бенча — конфиг wolf в tmp (XDG_CONFIG_HOME уважает src/adapters/fs/user-config.ts),
+# tmp-каталоги регистрируются и вычищаются trap'ом на EXIT.
+BENCH_TMP_DIRS=()
+bench_tmp() { # bench_tmp <var> — mktemp /tmp/wolf-bench.XXXXXX в переменную <var> + регистрация на очистку.
+  # Без command substitution: subshell не смог бы дописать родительский BENCH_TMP_DIRS.
+  local d; d="$(mktemp -d /tmp/wolf-bench.XXXXXX)"; BENCH_TMP_DIRS+=("$d"); printf -v "$1" '%s' "$d"
+}
+bench_cleanup() { local d; for d in "${BENCH_TMP_DIRS[@]}"; do [ -n "$d" ] && rm -rf -- "$d"; done; }
+export XDG_CONFIG_HOME="$(mktemp -d /tmp/wolf-bench-cfg.XXXXXX)"
+BENCH_TMP_DIRS+=("$XDG_CONFIG_HOME")
+trap bench_cleanup EXIT
+
 bench_flags() { # bench_flags "$@" — разбор --dry|--live + защита живых вызовов
   for arg in "$@"; do
     case "$arg" in

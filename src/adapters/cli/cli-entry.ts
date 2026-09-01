@@ -99,6 +99,21 @@ export function createCli(): Command {
   return program;
 }
 
+/**
+ * process.cwd() с защитой от удалённого каталога (F13): если cwd удалён
+ * (например, это был wolf worktree), Node кидает сырой ENOENT uv_cwd —
+ * переводим его в UserFacingError (одна строка `Error: …`, exit 1, без стека).
+ */
+export function safeCwd(): string {
+  try {
+    return process.cwd();
+  } catch {
+    throw new UserFacingError(
+      'текущий каталог не существует (вероятно, удалён) — перейдите (cd) в существующий каталог и повторите команду'
+    );
+  }
+}
+
 /** Единая точка запуска: UserFacingError → одна строка Error:, иначе стек (W4). */
 export async function runCli(argv: string[]): Promise<void> {
   try {
@@ -109,7 +124,7 @@ export async function runCli(argv: string[]): Promise<void> {
     // `--recreate` проверяется точным токеном массива.
     const isRecoveryInit = argv[2] === 'init' && argv.includes('--recreate');
     if (!isRecoveryInit) {
-      await ensureCurrentSchema(process.cwd());
+      await ensureCurrentSchema(safeCwd());
     }
     await createCli().parseAsync(argv);
   } catch (err: unknown) {

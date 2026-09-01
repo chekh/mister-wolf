@@ -13,7 +13,7 @@ source "$(dirname "$0")/lib.sh"
 bench_flags "$@"
 
 MARKERS="reserve tool_error delivery"
-TMP_A="$(mktemp -d /tmp/wolf-bench.XXXXXX)"
+bench_tmp TMP_A
 
 step "B3.1 сессия с 10 фиксированными событиями в сигнальном логе"
 make_bench_project "$TMP_A"
