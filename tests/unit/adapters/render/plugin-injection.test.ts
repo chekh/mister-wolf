@@ -4,10 +4,10 @@
 // m13 fail-safe) + контракт загрузчика opencode: ровно один export.
 //
 // computeInjection приватна (дефект догфудинга фазы C: loader opencode
-// вызывает КАЖДЫЫ export файла плагина как фабрику — лишние экспорты
+// вызывает КАЖДЫЙ export файла плагина как фабрику — лишние экспорты
 // валили загрузку всего плагина), поэтому тестируем через хуки фабрики.
 import { describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const { execFileMock } = vi.hoisted(() => {
@@ -55,11 +55,14 @@ const textOf = (m: Msg) => m.parts.map((p) => String(p.text ?? '')).join('\n');
 
 describe('wolf-session-start: контракт загрузчика opencode (дефект фазы C)', () => {
   it('шаблоны плагинов содержат РОВНО ОДИН export — фабрику плагина', () => {
-    for (const rel of ['wolf-session-start.js', 'wolf-router.ts']) {
-      const src = readFileSync(templatePath(rel), 'utf-8');
+    const pluginsDir = fileURLToPath(new URL('../../../../templates/opencode/plugins/', import.meta.url));
+    const files = readdirSync(pluginsDir).filter((f) => /\.(js|ts)$/.test(f));
+    expect(files.length).toBeGreaterThanOrEqual(2); // известные два на месте
+    for (const rel of files) {
+      const src = readFileSync(pluginsDir + rel, 'utf-8');
       const exports = src.match(/^export\b.*$/gm) ?? [];
       expect(exports, rel).toHaveLength(1);
-      expect(exports[0], rel).toMatch(/WolfSessionStartPlugin|WolfPlaybookPlugin/);
+      expect(exports[0], rel).toMatch(/WolfSessionStartPlugin|WolfPlaybookPlugin|Plugin/);
     }
   });
 });

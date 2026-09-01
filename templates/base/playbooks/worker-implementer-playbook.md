@@ -37,8 +37,8 @@ playbook: v1 (worker-implementer). Владелец: worker-implementer.
 - ТРИГГЕР ЖАЛОБЫ (обязателен, не на усмотрение): бриф диспетчера
   противоречит пункту МЕТОДИКИ или ФОРМАТА ОТЧЁТА, либо методика не
   покрывает случай подзадачи. Сработал → жалобный протокол (тег
-  `complaint`): `wolf add --type lesson --tags
-  complaint:worker-implementer` с дословной цитатой трения → вложенный
+  `complaint`): `wolf add --type lesson --title "complaint: <суть>"
+  --tags complaint:worker-implementer` с дословной цитатой трения → вложенный
   вызов Стюарда (`opencode run --agent steward`). Строка в
   «Отклонениях» отчёта жалобу НЕ заменяет. Не мутируй playbook сам —
   мутатор всегда Стюард.

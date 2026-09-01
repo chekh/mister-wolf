@@ -41,8 +41,9 @@ VERDICT: APPROVED | CHANGES_REQUIRED
   наибольшей версии.
 - ТРИГГЕР ЖАЛОБЫ (обязателен, не на усмотрение): мандат не покрывает
   случай ревью, либо формат вердикта противоречит брифу. Сработал →
-  жалобный протокол (тег `complaint`): `wolf add --type lesson --tags
-  complaint:worker-reviewer` с дословной цитатой трения → вложенный
+  жалобный протокол (тег `complaint`): `wolf add --type lesson
+  --title "complaint: <суть>" --tags complaint:worker-reviewer` с дословной
+  цитатой трения → вложенный
   вызов Стюарда (`opencode run --agent steward`). Строка в отчёте
   жалобу НЕ заменяет. Не мутируй playbook сам — мутатор всегда Стюард.
 
