@@ -34,17 +34,20 @@ const t = (s: L): string => (ru.value ? s.ru : s.en)
       <circle cx="23" cy="25" r="2.6" fill="#c49a4a" />
       <circle cx="29" cy="9" r="3.2" fill="#d43a2f" />
     </svg>
-    <p class="wolf-home-label">PROJECT MEMORY READY</p>
-    <div class="wolf-finalcta-cmds">
-      <p class="wolf-finalcta-cmd"><code>npm install -g mister-wolf</code></p>
-      <p class="wolf-finalcta-cmd"><code>wolf init</code></p>
-    </div>
+    <p class="wolf-home-label">{{ t({ en: '06 · START', ru: '06 · СТАРТ' }) }}</p>
+    <p class="wolf-finalcta-status">PROJECT MEMORY READY</p>
     <p class="wolf-finalcta-note">{{
       t({ en: 'Give your agents a memory.', ru: 'Дайте вашим агентам память.' })
     }}</p>
-    <a
-      class="wolf-btn wolf-btn-brand"
-      :href="withBase(t({ en: '/guide/getting-started', ru: '/ru/guide/getting-started' }))"
-    >{{ t({ en: 'Get Started', ru: 'Начать работу' }) }}</a>
+    <div class="wolf-finalcta-actions">
+      <a
+        class="wolf-btn wolf-btn-brand"
+        :href="withBase(t({ en: '/guide/getting-started', ru: '/ru/guide/getting-started' }))"
+      >{{ t({ en: 'Get Started', ru: 'Начать работу' }) }}</a>
+      <a
+        class="wolf-btn wolf-btn-alt"
+        href="https://github.com/chekh/mister-wolf"
+      >GitHub</a>
+    </div>
   </section>
 </template>

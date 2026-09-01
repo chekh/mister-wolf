@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const stamps = ['LOCAL-FIRST', 'NO CLOUD', 'MCP-NATIVE', 'HUMAN-READABLE', 'VERSIONED']
+const stamps = ['PROJECT-OWNED DATA', 'PLAIN MARKDOWN', 'CLI + MCP', 'NO CLOUD STORAGE', 'SUPERSEDE CHAINS']
 </script>
 
 <template>

@@ -8,40 +8,63 @@ const { lang } = useData()
 const ru = computed(() => lang.value.startsWith('ru'))
 const t = (s: L): string => (ru.value ? s.ru : s.en)
 
+// statuses sourced from docs/concept/maturity.md: CLI/MCP core I3/E3 (AVAILABLE);
+// solve implemented+dogfooded, no maturity row yet (PREVIEW);
+// learn pipeline I2/E2 core but pattern clustering I0/E0 (EXPERIMENTAL)
 const modes = computed(() => [
   {
     name: 'CALL',
-    text: t({
-      en: 'Cold start: active rules, lessons and blockers delivered into the session, matched to the task (--for, --thread, --compact).',
-      ru: 'Холодный старт: актуальные правила, уроки и блокеры доставляются в начало сессии по теме задачи (--for, --thread, --compact).',
+    status: 'AVAILABLE',
+    statusClass: 'st-available',
+    cmd: '$ wolf call --for "auth refactor"',
+    input: t({ en: 'the task at hand.', ru: 'тема задачи или ветка — задача сессии.' }),
+    output: t({
+      en: 'active rules, lessons and blockers injected at session start.',
+      ru: 'активные правила, уроки и блокеры доставлены в начало сессии.',
     }),
   },
   {
     name: 'SOLVE',
-    text: t({
-      en: 'A recurring problem gets a solve pack: context, similar lessons, a plan — then the outcome is saved back to memory.',
-      ru: 'Повторяющаяся проблема получает solve pack: контекст, похожие уроки, план — результат сохраняется обратно в память.',
+    status: 'PREVIEW',
+    statusClass: 'st-preview',
+    cmd: '$ wolf solve "broken links" --save',
+    input: t({ en: 'a recurring problem.', ru: 'повторяющаяся проблема.' }),
+    output: t({
+      en: 'a solve pack — context, similar lessons, a plan; the outcome is saved back to memory.',
+      ru: 'solve pack — контекст, похожие уроки, план; итог сохраняется в память.',
     }),
   },
   {
     name: 'LEARN',
-    text: t({
-      en: 'The self-learning loop: digest patterns → propose draft lessons → validate against evidence → activate as rules.',
-      ru: 'Цикл самообучения: digest паттернов → draft урока → проверка по уликам → активация правилом.',
-    }),
+    status: 'EXPERIMENTAL',
+    statusClass: 'st-experimental',
+    cmd: '$ wolf learn digest → propose → validate → activate',
+    input: t({ en: 'the session signal log — errors, complaints, metrics.', ru: 'сигнал-лог сессий — ошибки, жалобы, метрики.' }),
+    output: t({ en: 'validated lessons become active rules.', ru: 'проверенные уроки становятся активными правилами.' }),
   },
 ])
 </script>
 
 <template>
   <section class="wolf-home-section wolf-modes">
-    <p class="wolf-home-label">MODES</p>
+    <p class="wolf-home-label">{{ t({ en: '04 · OPERATIONS', ru: '04 · ОПЕРАЦИИ' }) }}</p>
     <h2 class="wolf-home-title">{{ t({ en: 'Call. Solve. Learn.', ru: 'Call. Solve. Learn.' }) }}</h2>
     <div class="wolf-modes-grid">
-      <div v-for="mode in modes" :key="mode.name" class="wolf-mode">
-        <p class="wolf-mode-name">{{ mode.name }}</p>
-        <p class="wolf-mode-text">{{ mode.text }}</p>
-      </div>
+      <article v-for="mode in modes" :key="mode.name" class="wolf-card wolf-mode">
+        <div class="wolf-card-in">
+          <p class="wolf-mode-head">
+            <span class="wolf-mode-name">{{ mode.name }}</span>
+            <span class="wolf-stamp wolf-mode-status" :class="mode.statusClass">{{ mode.status }}</span>
+          </p>
+          <p class="wolf-install-cmd wolf-mode-cmd"><code>{{ mode.cmd }}</code></p>
+          <p class="wolf-mode-io">
+            <span class="wolf-mode-io-k">{{ t({ en: 'Input:', ru: 'Вход:' }) }}</span>{{ mode.input }}
+          </p>
+          <p class="wolf-mode-io">
+            <span class="wolf-mode-io-k">{{ t({ en: 'Output:', ru: 'Результат:' }) }}</span>{{ mode.output }}
+          </p>
+        </div>
+      </article>
     </div>
   </section>
 </template>
