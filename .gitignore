@@ -25,3 +25,6 @@ __pycache__/
 .autorefine/
 docs/site/.vitepress/dist/
 docs/site/.vitepress/cache/
+
+# playground: независимая площадка-снапшот (свой git, git init внутри)
+playground/
