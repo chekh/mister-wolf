@@ -80,7 +80,10 @@ describe('insights golden scenarios', () => {
     runCli(['init'], dir);
 
     for (let i = 1; i <= 3; i++) {
-      const r = runCli(['complain', '--about', 'skill:ins', '--text', `жалоба ${i}`], dir);
+      const r = runCli(
+        ['complain', '--about', 'skill:ins', '--rule', 'r', '--proposal', 'p', '--text', `жалоба ${i}`],
+        dir
+      );
       expect(r.status).toBe(0);
     }
 

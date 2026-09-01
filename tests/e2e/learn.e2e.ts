@@ -14,7 +14,10 @@ describe('wolf learn (Ф21)', () => {
 
   it('digest: паттерн после 3 жалоб; status: счётчики и порог; patterns.jsonl — 1 запись', () => {
     for (let i = 1; i <= 3; i++) {
-      const r = runCli(['complain', '--about', 'skill:demo', '--text', `жалоба ${i}`], cwd);
+      const r = runCli(
+        ['complain', '--about', 'skill:demo', '--rule', 'r', '--proposal', 'p', '--text', `жалоба ${i}`],
+        cwd
+      );
       expect(r.status).toBe(0);
     }
 

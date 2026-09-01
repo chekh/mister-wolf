@@ -44,11 +44,12 @@ agent-id: worker-implementer
 
 ## Жалобный контур
 
-Фидбек о методике/формате, трение по тулам → жалобный протокол
-(playbook, тег `complaint`): `wolf add --type lesson` с тегом
-`complaint:worker-implementer` и дословной цитатой → вложенный вызов
-`opencode run --agent steward`. Свой playbook не мутируй: мутатор —
-всегда Стюард.
+Систематически плохое правило (критерии W1–W4 — в твоём playbook'е) →
+`wolf complain --about worker-implementer --rule <правило>
+--evidence <дословная цитата + что произошло> --proposal <что
+изменить>` → строка `COMPLAINT: <id> — <about>: <суть>` в отчёте.
+Стюарда не вызываю, статусы не перевожу — триажирует диспетчер. Свой
+playbook не мутируешь.
 
 ## Безопасность
 
