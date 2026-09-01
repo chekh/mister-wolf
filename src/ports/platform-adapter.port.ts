@@ -26,7 +26,7 @@ export interface PlatformAdapter {
    * Идемпотентная запись wolf-сервера (ключ идемпотентности — имя MCP-сервера 'wolf'):
    * 'written' — создан, 'replaced' — существующая запись wolf перезаписана (в т.ч. ручная
    * dev-запись), 'unchanged' — уже канонический. Чужие серверы и секции не трогаются.
-   * opencode мерджит ещё и default_agent (§6.1): конфликт — unchanged + reason.
+   * opencode мерджит ещё и default_agent/subagent_depth (§6.1): конфликт — unchanged + reason.
    */
   writeConfig(projectRoot: string, cmd: McpCommand): Promise<PlatformWriteResult>;
   /** Удалить wolf-запись (для --platform replace-семантики); true если удалил. */
