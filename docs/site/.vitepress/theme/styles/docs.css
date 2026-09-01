@@ -38,3 +38,59 @@
 .vp-doc h1 {
   border-bottom-color: var(--vp-c-divider);
 }
+
+/* --- WolfObject component (core-concepts and friends) ---
+   Reuses the dark .wolf-memobj plate from home.css. The plate is always
+   dark, so lifted panel tones (same as .wolf-terminal in base.css) keep
+   the status word + glyph at AA on any page background. */
+.wolf-obj {
+  max-width: 480px;
+  margin: 18px 0;
+}
+
+.wolf-obj .wolf-memobj-status.wg-active,
+.wolf-obj .wolf-memobj-status.wg-blocked,
+.wolf-obj .wolf-memobj-status.wg-conflict {
+  color: #e56a60; /* lifted signal, 4.85:1 on the panel — AA */
+}
+
+.wolf-obj .wolf-memobj-status.wg-verified {
+  color: #7cb99a; /* ≈ 6.8:1 on the panel — AA */
+}
+
+.wolf-obj .wolf-memobj-status.wg-proposed {
+  color: #d9b36a; /* lifted brass */
+}
+
+.wolf-obj .wolf-memobj-status.wg-stale,
+.wolf-obj .wolf-memobj-status.wg-archived,
+.wolf-obj .wolf-memobj-status.wg-superseded {
+  color: #9a9280; /* ≈ 5:1 on the panel — AA */
+}
+
+.wolf-obj .wolf-glyph {
+  margin-right: 4px;
+}
+
+.wolf-obj .wolf-glyph .wg-new {
+  color: #e56a60;
+}
+
+.wolf-obj .wolf-glyph .wg-old {
+  color: #9a9280;
+}
+
+.wolf-obj-body {
+  margin-top: 10px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #c9c0aa; /* ≈ 9:1 on the panel */
+}
+
+.wolf-obj-body p {
+  margin: 0 0 6px;
+}
+
+.wolf-obj-body p:last-child {
+  margin-bottom: 0;
+}

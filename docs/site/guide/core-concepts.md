@@ -42,9 +42,17 @@ Because objects are files:
 | `tool`               | "Tool as memory"; default status `candidate`; name, script_path, language (required); script body lives in `.wolf/tools/` |
 | `document`           | **Deprecated** legacy type                                                                                                |
 
+<WolfObject type="LESSON" status="accepted" id="mem_20260901_4b7c21" note="stored in .wolf/memory/">
+Integration tests need an isolated Redis instance — checked against a red/green run.
+</WolfObject>
+
 ## Lifecycle
 
 Every object has one of **16 statuses**: `active`, `open`, `resolved`, `stale`, `conflicting`, `superseded`, `archived`, `paused`, `completed`, `answered`, `rejected`, `obsolete`, `proposed`, `accepted`, `candidate`, `deprecated`.
+
+<WolfObject type="DECISION" status="active" id="mem_20260831_8c1e77" note="stored in .wolf/memory/">
+Trunk-based flow: main is the source of truth, work happens in task worktrees, releases are tagged.
+</WolfObject>
 
 Valid transitions (the effective set for a type is this matrix intersected with the type's declared lifecycle):
 
@@ -73,20 +81,24 @@ wolf get mem_001 --latest               # follow the superseded_by chain to the 
 
 `wolf supersede` validates both ids, marks the old object `status: superseded` with `superseded_by: <newId>`, writes a `memory.superseded` event (actor `system:wolf`) and reindexes. `superseded` and `archived` are terminal — the only way "back" is a new object.
 
+<WolfObject type="DECISION" status="superseded" id="mem_20260831_8c1e77" note="superseded by mem_20260831_9d2f10 → wolf get --latest follows the chain">
+Earlier revision of the same decision — kept for history, out of the way by default.
+</WolfObject>
+
 ### Status glyphs
 
 A status is always read from the node shape plus its label — color is only secondary reinforcement. The same eight glyphs are used across the docs, the CLI and the home terminal:
 
-| Glyph                                                                                                                         | Status     | Meaning                                 |
-| ----------------------------------------------------------------------------------------------------------------------------- | ---------- | --------------------------------------- |
-| <span class="wolf-glyph wg-active" aria-hidden="true">──●</span>                                                              | ACTIVE     | live, in force                          |
-| <span class="wolf-glyph wg-verified" aria-hidden="true">──✓</span>                                                            | VERIFIED   | checked against evidence                |
-| <span class="wolf-glyph wg-proposed" aria-hidden="true">──◆</span>                                                            | PROPOSED   | draft, awaiting review                  |
-| <span class="wolf-glyph wg-blocked" aria-hidden="true">──×</span>                                                             | BLOCKED    | work stopped, needs attention           |
-| <span class="wolf-glyph wg-stale" aria-hidden="true">──○</span>                                                               | STALE      | no recent payoff, decay candidate       |
-| <span class="wolf-glyph wg-superseded" aria-hidden="true"><span class="wg-old">○──</span><span class="wg-new">●</span></span> | SUPERSEDED | replaced by a newer object (chain ○──●) |
-| <span class="wolf-glyph wg-archived" aria-hidden="true">──□</span>                                                            | ARCHIVED   | terminal, kept for history              |
-| <span class="wolf-glyph wg-conflict" aria-hidden="true">●╱●</span>                                                            | CONFLICT   | two objects claim the same truth        |
+| Glyph                                                                                                                         | Status      | Meaning                               |
+| ----------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------- |
+| <span class="wolf-glyph wg-active" aria-hidden="true">──●</span>                                                              | ACTIVE      | live, in force                        |
+| <span class="wolf-glyph wg-verified" aria-hidden="true">──✓</span>                                                            | ACCEPTED    | checked against evidence              |
+| <span class="wolf-glyph wg-proposed" aria-hidden="true">──◆</span>                                                            | PROPOSED    | draft, awaiting review                |
+| <span class="wolf-glyph wg-blocked" aria-hidden="true">──×</span>                                                             | OPEN        | needs attention — blockers, questions |
+| <span class="wolf-glyph wg-stale" aria-hidden="true">──○</span>                                                               | STALE       | no recent payoff, decay candidate     |
+| <span class="wolf-glyph wg-superseded" aria-hidden="true"><span class="wg-old">○──</span><span class="wg-new">●</span></span> | SUPERSEDED  | replaced by newer, chain              |
+| <span class="wolf-glyph wg-archived" aria-hidden="true">──□</span>                                                            | ARCHIVED    | terminal, kept for history            |
+| <span class="wolf-glyph wg-conflict" aria-hidden="true">●╱●</span>                                                            | CONFLICTING | two objects claim the same truth      |
 
 ## Governance axes
 

@@ -42,9 +42,17 @@
 | `playbook`           | плейбук; steps, owner_skill, version (req)                                                                          |
 | `tool`               | «инструмент как память»; defaultStatus: candidate; name, script_path, language (req); тело скрипта в `.wolf/tools/` |
 
+<WolfObject type="LESSON" status="accepted" id="mem_20260901_4b7c21" note="stored in .wolf/memory/">
+Интеграционным тестам нужен изолированный Redis — проверено на красно-зелёном прогоне.
+</WolfObject>
+
 ## Жизненный цикл
 
 16 статусов: `active`, `open`, `resolved`, `stale`, `conflicting`, `superseded`, `archived`, `paused`, `completed`, `answered`, `rejected`, `obsolete`, `proposed`, `accepted`, `candidate`, `deprecated`.
+
+<WolfObject type="DECISION" status="active" id="mem_20260831_8c1e77" note="stored in .wolf/memory/">
+Trunk-based: main — источник истины, работа идёт в task-worktree, релизы — тегами.
+</WolfObject>
 
 Допустимые переходы (эффективные для типа = глобальная матрица ∩ lifecycle типа):
 
@@ -72,20 +80,24 @@ wolf get mem_001 --latest          # дойти по цепочке до акт�
 
 `supersede` валидирует оба id, ставит старому объекту `status: 'superseded'` + `superseded_by: <newId>`, пишет событие `memory.superseded` и переиндексирует поиск.
 
+<WolfObject type="DECISION" status="superseded" id="mem_20260831_8c1e77" note="superseded by mem_20260831_9d2f10 → wolf get --latest follows the chain">
+Предыдущая ревизия того же решения — хранится для истории, по умолчанию не попадает в выдачу.
+</WolfObject>
+
 ### Графемы статусов
 
 Статус всегда читается по форме узла и подписи — цвет лишь вторичное усиление. Те же восемь графем используются в документации, CLI и hero-терминале:
 
-| Графема                                                                                                                       | Статус     | Значение                              |
-| ----------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------- |
-| <span class="wolf-glyph wg-active" aria-hidden="true">──●</span>                                                              | ACTIVE     | действует                             |
-| <span class="wolf-glyph wg-verified" aria-hidden="true">──✓</span>                                                            | VERIFIED   | подтверждён уликами                   |
-| <span class="wolf-glyph wg-proposed" aria-hidden="true">──◆</span>                                                            | PROPOSED   | черновик, ждёт ревью                  |
-| <span class="wolf-glyph wg-blocked" aria-hidden="true">──×</span>                                                             | BLOCKED    | работа остановлена                    |
-| <span class="wolf-glyph wg-stale" aria-hidden="true">──○</span>                                                               | STALE      | не окупается, кандидат в отставку     |
-| <span class="wolf-glyph wg-superseded" aria-hidden="true"><span class="wg-old">○──</span><span class="wg-new">●</span></span> | SUPERSEDED | заменён новым объектом (цепочка ○──●) |
-| <span class="wolf-glyph wg-archived" aria-hidden="true">──□</span>                                                            | ARCHIVED   | терминальный, хранится для истории    |
-| <span class="wolf-glyph wg-conflict" aria-hidden="true">●╱●</span>                                                            | CONFLICT   | два объекта претендуют на одну правду |
+| Графема                                                                                                                       | Статус      | Значение                              |
+| ----------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------- |
+| <span class="wolf-glyph wg-active" aria-hidden="true">──●</span>                                                              | ACTIVE      | действует                             |
+| <span class="wolf-glyph wg-verified" aria-hidden="true">──✓</span>                                                            | ACCEPTED    | проверен, принят                      |
+| <span class="wolf-glyph wg-proposed" aria-hidden="true">──◆</span>                                                            | PROPOSED    | черновик, ждёт ревью                  |
+| <span class="wolf-glyph wg-blocked" aria-hidden="true">──×</span>                                                             | OPEN        | требует внимания — блокеры, вопросы   |
+| <span class="wolf-glyph wg-stale" aria-hidden="true">──○</span>                                                               | STALE       | не окупается, кандидат в отставку     |
+| <span class="wolf-glyph wg-superseded" aria-hidden="true"><span class="wg-old">○──</span><span class="wg-new">●</span></span> | SUPERSEDED  | заменён новым, цепочка                |
+| <span class="wolf-glyph wg-archived" aria-hidden="true">──□</span>                                                            | ARCHIVED    | терминальный, хранится для истории    |
+| <span class="wolf-glyph wg-conflict" aria-hidden="true">●╱●</span>                                                            | CONFLICTING | два объекта претендуют на одну правду |
 
 ## Оси governance
 

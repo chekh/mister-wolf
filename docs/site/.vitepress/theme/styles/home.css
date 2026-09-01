@@ -437,7 +437,7 @@
 
 .wolf-thread-item:nth-child(2) .type {
   color: var(--wolf-verified);
-} /* LESSON = VERIFIED */
+} /* LESSON = ACCEPTED */
 
 .wolf-thread-item:nth-child(3) .type {
   color: #cf6f66;

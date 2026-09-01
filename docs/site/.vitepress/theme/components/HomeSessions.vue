@@ -8,7 +8,7 @@ const { lang } = useData()
 const ru = computed(() => lang.value.startsWith('ru'))
 const t = (s: L): string => (ru.value ? s.ru : s.en)
 
-// Session copy; LESSON/VERIFIED marks live in the memory object (system marks, EN)
+// Session copy; LESSON/ACCEPTED marks live in the memory object (system marks, EN)
 const discover = computed(() => t({
   en: 'An agent hits a failing test, digs in, finds the cause — and writes a LESSON to Wolf memory.',
   ru: 'Агент натыкается на падающий тест, разбирается, находит причину — и записывает LESSON в память Wolf.',
@@ -40,7 +40,7 @@ const inject = computed(() => t({
         <div class="wolf-memobj">
           <p class="wolf-memobj-head">
             <span class="wolf-memobj-type">LESSON</span>
-            <span class="wolf-memobj-status">VERIFIED</span>
+            <span class="wolf-memobj-status">ACCEPTED</span>
           </p>
           <p class="wolf-memobj-id">mem_20260901_4b7c21</p>
           <p class="wolf-memobj-path">stored in .wolf/memory/</p>
