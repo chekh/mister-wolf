@@ -6,6 +6,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-09-01
+
+### Breaking Changes
+
+- Non-interactive `wolf init` (no TTY) now fails without an explicit `--model` — pass `--model` and `--platform` in scripts and CI.
+- Model pins removed from rendered agents: models are set at `init` time (routing object, referenced as `{{model.*}}` in templates).
+- `wolf init` no longer runs a full project scan — scanning moved to `wolf bootstrap`.
+
+### Added
+
+- Onboarding pipeline v2: first-session dialog policy in `AGENTS.md`, init report, explicit platform/model selection (flag > TTY prompt > documented default).
+- Complaint loop v2: `complaint` memory type, triage, SLA, `wolf update` whitelist, anti-spam guard.
+- FTS search (variant D): tokenized queries, `field:` allowlist, AND/OR operators, no silent zero-result fallbacks.
+- `scripts/playground-reset.sh [--ref]` — snapshot an arbitrary git ref into the playground.
+
+### Fixed
+
+- F4: `opencode.json` with `mcp.wolf` and `default_agent` is written by the first init run (explicit platform choice instead of silent detection).
+- F5/F6/F7: init output lists relative file paths, honest `skipped` reasons, and a next-steps block naming `opencode.json`/MCP and bootstrap.
+- F8: init no longer scans the project ("foreign memory" issue) — the full scan lives in `wolf bootstrap`.
+- F11: recap includes `accepted` rules alongside `active` ones.
+
 ## [1.1.0] — 2026-09-01
 
 ### Added
@@ -48,7 +70,8 @@ First public release on npm.
 
 - Normalized the bin path in `package.json` — `npm publish` stripped the binary from the package (2cb1d05).
 
-[Unreleased]: https://github.com/chekh/mister-wolf/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/chekh/mister-wolf/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/chekh/mister-wolf/compare/v1.1.0...v2.0.0
 [1.1.0]: https://github.com/chekh/mister-wolf/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/chekh/mister-wolf/compare/v1.0.2...v1.0.3
 [1.0.1]: https://github.com/chekh/mister-wolf/compare/v1.0.0...v1.0.1
