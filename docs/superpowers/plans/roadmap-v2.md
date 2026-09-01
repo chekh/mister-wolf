@@ -2,7 +2,7 @@
 
 > Date: 2026-07-02  
 > Status: active (rev. 2026-08-29) — реализованы фазы 6–12 (Phase 11 — structured thinking, влита в dev 2026-08-26; Phase 9 semantic-часть deferred, см. Phase 9); superpowers-интеграция: Phases 15–17, 19 сделаны, 18 слита с Phase 23 (см. блок Superpowers Integration); добавлен блок Self-Learning Phases 20–26 (дизайн: `docs/superpowers/specs/2026-08-26-self-learning-design.md`; разработка — после утверждения плана; rev. 2026-08-27 — поправки внешнего эксперта; rev. 2026-08-29 — единая ревизия блока 20–26 по итогам внешнего исследования (expert-013: 43 позиции) и решений владельца (Стюард, пост-аудит, пробег, playbook); детали — в спеке (§21 Changelog), см. блок 2a)  
-> Supersedes: `docs/superpowers/plans/roadmap.md` (архив: `docs/archive/roadmap-v1.md`)
+> Supersedes: `docs/superpowers/plans/roadmap.md` (архив: roadmap-v1.md — git-история до `b31cbdd`)
 
 ## 1. Концептуальные изменения
 

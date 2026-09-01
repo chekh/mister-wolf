@@ -11,7 +11,7 @@ describe('package hygiene (спека §5, §7)', () => {
     expect(pkg.name).toBe('mister-wolf');
   });
 
-  it('ships only dist + templates (wolf-experiment/ and .external-research/ must not leak into tarball)', () => {
+  it('ships only dist + templates (sandbox and research dirs must not leak into tarball)', () => {
     expect(pkg.files).toEqual(['dist', 'templates']);
   });
 

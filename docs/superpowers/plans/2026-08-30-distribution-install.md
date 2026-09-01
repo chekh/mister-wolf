@@ -29,7 +29,7 @@
 | `package.json`: name `mr-wolf`; нет `files`/`engines`/`license`/`repository`; bin `wolf` → `dist/bootstrap/cli.js`; `better-sqlite3 ^9.0.0`; `@modelcontextprotocol/server ^2.0.0-alpha.2`; `check = format:check && lint && test:run && build`                                   | `package.json`                                   |
 | Актуальный мажор better-sqlite3 — **13.0.3** (engines `node >=22`, prebuilds Node 22/24); `@modelcontextprotocol/server` стабильная **2.0.0** (subpath `./stdio` жив, `McpServer`/`fromJsonSchema` в корне — проверено по exports-мапе); `@types/better-sqlite3` latest **9.6.0** | `npm view` 2026-08-30                            |
 | ci.yml: node-version 20; Dockerfile base `node:20-bookworm-slim`                                                                                                                                                                                                                  | `.github/workflows/ci.yml`, `Dockerfile`         |
-| `dist/` в `.gitignore` (без `files` tarball сломан); трекаются `wolf-experiment/`, `.external-research/` (утекут без `files`)                                                                                                                                                     | `.gitignore`                                     |
+| `dist/` в `.gitignore` (без `files` tarball сломан); трекаются песочницы: wolf-experiment (вырезан 2026-09-01 — git до `b31cbdd`), `.external-research/` (утекут без `files`)                                                                                                                                           | `.gitignore`                                     |
 | Формат opencode MCP: `"mcp": { "wolf": { "type": "local", "command": ["wolf","mcp"], "enabled": true } }` в `opencode.json`/`.jsonc`                                                                                                                                              | docs.opencode.ai/docs/mcp-servers                |
 | Формат Claude Code MCP: `"mcpServers": { "wolf": { "command": "wolf", "args": ["mcp"] } }` в `.mcp.json`                                                                                                                                                                          | стандарт project-scope MCP Claude Code           |
 
@@ -124,7 +124,7 @@ describe('package hygiene (спека §5, §7)', () => {
     expect(pkg.name).toBe('mister-wolf');
   });
 
-  it('ships only dist (wolf-experiment/ and .external-research/ must not leak into tarball)', () => {
+  it('ships only dist (sandbox and .external-research must not leak into tarball)', () => {
     expect(pkg.files).toEqual(['dist']);
   });
 
@@ -236,7 +236,7 @@ Expected: build без ошибок (импорты `serveStdio`, `McpServer`, `
 - [ ] **Step 6: Verify tarball composition**
 
 Run: `npm pack --dry-run 2>&1 | tail -25`
-Expected: `Tarball Contents` — только `dist/**`, `README.md`, `LICENSE`, `package.json`. Никаких `wolf-experiment/`, `.external-research/`, `src/`, `tests/`. (Автоматический assert — Task 18.)
+Expected: `Tarball Contents` — только `dist/**`, `README.md`, `LICENSE`, `package.json`. Никаких песочниц (wolf-experiment — git до `b31cbdd`), `.external-research/`, `src/`, `tests/`. (Автоматический assert — Task 18.)
 
 - [ ] **Step 7: Run test to verify it passes**
 

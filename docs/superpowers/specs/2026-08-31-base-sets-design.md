@@ -5,10 +5,10 @@
 | Дата          | 2026-08-31                                                                                                                                                                                                                                                     |
 | Ревизия       | 2 — правки по мульти-линзовому ревью r1 (C1, M1–M18, m1–m17); отчёт: `.wolf/orchestration/report-2026-08-31-base-sets-spec-review-r1.md`                                                                                                                       |
 | Статус        | Утверждено владельцем (решения D1–D6); ревью r2 — перезапуск линз L1+L4                                                                                                                                                                                        |
-| Источники     | Канон `docs/concept/concept.md` (актуальная v3.3); архив v2.0 `docs/concept/archive/concept-2026-08-18-v2.0-memory-substrate.md` (§2.x — только там, где детали не вошли в канон); research-отчёт `.wolf/orchestration/report-2026-08-31-base-set-research.md` |
+| Источники     | Канон `docs/concept/concept.md` (актуальная v3.3); архив v2.0 `concept-2026-08-18-v2.0-memory-substrate.md` (git-история до `b31cbdd`; §2.x — только там, где детали не вошли в канон); research-отчёт `.wolf/orchestration/report-2026-08-31-base-set-research.md` |
 | Следующий шаг | План реализации (writing-plans) → worktree                                                                                                                                                                                                                     |
 
-Ссылки на концепт квалифицированы: «канон §x» — нумерация v3.1/v3.2 (текст — архив `docs/concept/archive/concept-2026-08-31-v3.2.md`; в v3.3 те же тезисы — см. `docs/concept/coverage.md`), «архив §x» = v2.0 (M7).
+Ссылки на концепт квалифицированы: «канон §x» — нумерация v3.1/v3.2 (текст — архив `concept-2026-08-31-v3.2.md`, git-история до `b31cbdd`; в v3.3 те же тезисы — см. `docs/concept/coverage.md`), «архив §x» = v2.0 (M7).
 
 ## 1. Проблема
 

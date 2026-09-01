@@ -1424,11 +1424,11 @@ objects:    scanned 42, broken 1
 
 **Files:**
 
-- Modify: `AGENTS.md`, `README.md`, `MEMORY.md`, `docs/superpowers/plans/roadmap-v2.md` <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
+- Modify: `AGENTS.md`, `README.md`, `MEMORY.md`, `docs/superpowers/plans/roadmap-v2.md` <!-- MEMORY.md заархивирован 2026-08-25; с 2026-09-01 — только git-история до b31cbdd -->
 
 - [ ] **Step 8.1:** `AGENTS.md`: Completed phases += Phase 8 (кратко: taxonomy via config, orchestration types, layout v2 migrated, write reliability); Next phase += Phase 9; Architecture notes — упомянуть `CORE_TAXONOMY` как канон и layout `threads/ + shared/`.
 - [ ] **Step 8.2:** `README.md`: команды `wolf taxonomy sync/show`, `wolf migrate`, `wolf validate [--fix]`, `wolf council tally/synthesize`; раздел про layout v2 и правило «без config.yaml работает на дефолтах».
-- [ ] **Step 8.3:** `MEMORY.md`: запись решения (layout v2 naming deviations D-dev1/D-dev2, canon D2). <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
+- [ ] **Step 8.3:** `MEMORY.md`: запись решения (layout v2 naming deviations D-dev1/D-dev2, canon D2). <!-- MEMORY.md заархивирован 2026-08-25; с 2026-09-01 — только git-история до b31cbdd -->
 - [ ] **Step 8.4:** `roadmap-v2.md` §Phase 8: пометка `> Superseded by docs/superpowers/specs/2026-08-23-phase-8-schema-taxonomy.md (concept v2)`.
 - [ ] **Step 8.5:** Полный гейт:
 

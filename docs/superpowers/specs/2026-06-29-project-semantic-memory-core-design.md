@@ -368,7 +368,7 @@ The `validate-memory.ts` use-case encodes these rules as warnings, not hard bloc
 
 ### Phase 1 — Reframe
 
-Rewrite README to reflect new positioning. Archive old concept docs to `docs/archive/` and old specs to `docs/superpowers/archive/`. Remove or deprecate orchestrator-related commands from CLI. Publish new `docs/concept-v3.md` with the Project Semantic Memory vision.
+Rewrite README to reflect new positioning. Archive old concept docs and old specs to the archive dirs (dirs cut from tracking 2026-09-01; git history pre-`b31cbdd`). Remove or deprecate orchestrator-related commands from CLI. Publish new `docs/concept-v3.md` with the Project Semantic Memory vision.
 
 ### Phase 2 — Core Memory
 

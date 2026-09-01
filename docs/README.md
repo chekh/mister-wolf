@@ -1,6 +1,6 @@
 # Mr. Wolf Documentation
 
-Индекс живой документации. Устаревшее не удаляется, а переносится в `./archive/` (раздел Historical ниже). Канонический концепт: **v3.3.1**.
+Индекс живой документации. Устаревшее ранее переносилось в архив; с 2026-09-01 архивы удалены из дерева и доступны только в git-истории (коммиты до `b31cbdd`, восстановление: `git checkout b31cbdd^ -- <путь>`). Канонический концепт: **v3.3.1**.
 
 ## Canonical concept
 
@@ -53,21 +53,21 @@
 
 ## Phase specs & implementation plans
 
-Спецификации и планы реализованных фаз (история решений, ADR-ценность):
+Спецификации реализованных фаз (история решений, ADR-ценность). Планы реализации удалены 2026-09-01 — git-история до `b31cbdd` (каталог plans той эпохи); живы спеки:
 
-- MVP-A — [spec](./superpowers/specs/2026-06-29-project-semantic-memory-core-design.md) / [plan](./superpowers/plans/2026-06-29-project-semantic-memory-mvp-a.md)
-- MVP-B (scan + brief) — [spec](./superpowers/specs/2026-06-29-mvp-b-project-scan-agent-brief-design.md) / [plan](./superpowers/plans/2026-06-29-mvp-b-project-scan-agent-brief.md)
-- Phase 1 (threads / info requests / articles) — [plan](./superpowers/plans/2026-06-30-phase-1-thread-info-article.md)
-- Phase 2 (decisions / blockers) — [spec](./superpowers/specs/2026-06-30-phase-2-decisions-and-blockers-design.md) / [plan](./superpowers/plans/2026-06-30-phase-2-decisions-and-blockers-plan.md)
-- MCP integration — [spec](./superpowers/specs/2026-07-01-mcp-server-integration-design.md) / [plan](./superpowers/plans/2026-07-01-mcp-server-integration-plan.md)
+- MVP-A — [spec](./superpowers/specs/2026-06-29-project-semantic-memory-core-design.md)
+- MVP-B (scan + brief) — [spec](./superpowers/specs/2026-06-29-mvp-b-project-scan-agent-brief-design.md)
+- Phase 1 (threads / info requests / articles) — план в git-истории до `b31cbdd`
+- Phase 2 (decisions / blockers) — [spec](./superpowers/specs/2026-06-30-phase-2-decisions-and-blockers-design.md)
+- MCP integration — [spec](./superpowers/specs/2026-07-01-mcp-server-integration-design.md)
 - Incremental indexing — [spec](./superpowers/specs/2026-07-02-incremental-indexing-blocker-resolution-design.md)
-- Phase 6 (governance + flat namespace) — [spec](./superpowers/specs/2026-07-02-phase-6-governance-design.md) / [plan](./superpowers/plans/2026-07-02-phase-6-flat-namespace-plan.md)
-- Session wrap-up habit — [spec](./superpowers/specs/2026-07-02-session-wrap-up-habit-design.md) / [plan](./superpowers/plans/2026-07-02-session-wrap-up-habit.md)
+- Phase 6 (governance + flat namespace) — [spec](./superpowers/specs/2026-07-02-phase-6-governance-design.md)
+- Session wrap-up habit — [spec](./superpowers/specs/2026-07-02-session-wrap-up-habit-design.md)
 - Deterministic refinement pipeline — [spec](./superpowers/specs/2026-07-29-deterministic-refinement-pipeline-design.md) (реализован как `tools/pipeline/autorefine.sh`)
 - Phase 8 (schema-driven taxonomy) — [spec/plan](./superpowers/specs/2026-08-23-phase-8-schema-taxonomy.md)
-- Phase 9 (solve/call) — [spec](./superpowers/specs/2026-08-23-phase-9-solve-call.md) / [plan](./superpowers/plans/2026-08-23-phase-9-solve-call.md)
-- Phase 10 (insights) — [spec](./superpowers/specs/2026-08-26-phase-10-insights.md) / [plan](./superpowers/plans/2026-08-26-phase-10-insights.md)
-- Phase 11 (structured thinking) — [spec](./superpowers/specs/2026-08-26-phase-11-thinking.md) / [plan](./superpowers/plans/2026-08-26-phase-11-thinking.md)
+- Phase 9 (solve/call) — [spec](./superpowers/specs/2026-08-23-phase-9-solve-call.md)
+- Phase 10 (insights) — [spec](./superpowers/specs/2026-08-26-phase-10-insights.md)
+- Phase 11 (structured thinking) — [spec](./superpowers/specs/2026-08-26-phase-11-thinking.md)
 - Master plans по фазам — [./master-plans/](./master-plans/)
 
 ## Research
@@ -79,16 +79,7 @@
 
 ## Historical / Archive
 
-Архив устаревших документов (`./archive/`). Ключевое:
-
-- [Concept v1–v3 (архивная v3)](./archive/concept-v3.md) — эволюция концепта до memory-harness-пивота
-- [Project Memory Harness — Base Concept (June 30)](./archive/project-memory-harness-base-concept.md) — исходный базовый концепт
-- [Roadmap v1](./archive/roadmap-v1.md) — superseded by roadmap-v2
-- [FUP-1 WAC requirements](./archive/fup-1-wac-requirements.md) — эпоха standalone-CLI-прототипа
-- [External experts review (2026-07-03)](./archive/external-experts-review-aggregate-2026-07-03.md) — point-in-time фактчек
-- [Orchestrator-era guides](./archive/getting-started.md) — getting-started, workflow-syntax, cli-reference, development
-- [Discussions](./archive/discussions/index.md) — архитектурные дискуссии оркестраторской эры
-- [MVP1A–MVP7 specs & plans](./superpowers/archive/) — superpowers-архив оркестраторской эры
+Архив устаревших документов — эволюция концепта v1–v3, roadmap v1, FUP-требования эпохи standalone-CLI, orchestrator-era guides, архитектурные дискуссии, MVP1A–MVP7 specs — удалён из дерева 2026-09-01: git-история до коммита `b31cbdd`.
 
 ---
 

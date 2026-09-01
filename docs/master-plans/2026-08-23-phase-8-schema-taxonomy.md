@@ -3,7 +3,7 @@
 **Дата:** 2026-08-23
 **Идея:** Перевести таксономию памяти из hardcoded-кода в `.wolf/config.yaml`, добавить 7 оркестрационных типов, надёжность записи (lockfile, JSONL-валидация, карантин) и одну миграцию layout `objects/ → threads/`.
 
-**Источник требований:** `docs/concept/archive/concept-2026-08-18-v2.0-memory-substrate.md` §1.2, §1.4, §6 (Phase 8), §7 (#11–13).
+**Источник требований:** `concept-2026-08-18-v2.0-memory-substrate.md` (git-история до `b31cbdd`) §1.2, §1.4, §6 (Phase 8), §7 (#11–13).
 
 ---
 
@@ -14,7 +14,7 @@
 | Сложность | рассудительная                                                                                                                                      |
 | Модель    | opencode/big-pickle                                                                                                                                 |
 | Агент     | requirements-builder                                                                                                                                |
-| Вход      | `docs/concept/archive/concept-2026-08-18-v2.0-memory-substrate.md` §1.2, §1.4, §6 Phase 8; `src/domain/memory-types.ts`; `src/domain/governance.ts` |
+| Вход      | `concept-2026-08-18-v2.0-memory-substrate.md` (git-история до `b31cbdd`) §1.2, §1.4, §6 Phase 8; `src/domain/memory-types.ts`; `src/domain/governance.ts` |
 | Выход     | `docs/superpowers/specs/2026-08-23-phase-8-schema-taxonomy.md`                                                                                      |
 | Гейт      | **обязательный** — человек одобряет спеку                                                                                                           |
 
@@ -30,7 +30,7 @@
 
 ```bash
 opencode run --agent requirements-builder --model opencode/big-pickle --auto \
-  "Создай спеку Phase 8 по концепции @docs/concept/archive/concept-2026-08-18-v2.0-memory-substrate.md (§1.2, §1.4, §6 Phase 8). Сверь с реальным доменом @src/domain/memory-types.ts и @src/domain/governance.ts. Обязательно закрой вопросы: генератор lifecycles, канон config-vs-zod, работа без конфига, миграция layout (одна, с document-ref/native), lockfile/карантин/wolf validate. Формат: superpowers/writing-plans."
+  "Создай спеку Phase 8 по концепции @concept-2026-08-18-v2.0-memory-substrate.md (git до b31cbdd) (§1.2, §1.4, §6 Phase 8). Сверь с реальным доменом @src/domain/memory-types.ts и @src/domain/governance.ts. Обязательно закрой вопросы: генератор lifecycles, канон config-vs-zod, работа без конфига, миграция layout (одна, с document-ref/native), lockfile/карантин/wolf validate. Формат: superpowers/writing-plans."
 ```
 
 ---
@@ -107,4 +107,4 @@ opencode run --agent executor --model opencode/big-pickle --auto \
 - Ветка: `feat/phase-8-schema-taxonomy` от `dev` (git-flow), merge обратно в `dev`
 - Между стадиями — git commit (идемпотентность, откат)
 - Производительность: перед серией вызовов агентов — `opencode serve --port 4096 &`, далее `--attach http://localhost:4096`
-- После стадии 4 — обновить AGENTS.md, README.md, MEMORY.md (rule: update project docs after every implementation phase) <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
+- После стадии 4 — обновить AGENTS.md, README.md, MEMORY.md (rule: update project docs after every implementation phase) <!-- MEMORY.md заархивирован 2026-08-25; с 2026-09-01 — только git-история до b31cbdd -->

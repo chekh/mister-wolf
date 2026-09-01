@@ -49,7 +49,7 @@
 
    ## Active Rules
 
-   - rule_001: After completing any phase, update AGENTS.md, README.md, MEMORY.md. <!-- MEMORY.md заархивирован 2026-08-25 -> docs/archive/MEMORY.md -->
+   - rule_001: After completing any phase, update AGENTS.md, README.md, MEMORY.md. <!-- MEMORY.md заархивирован 2026-08-25; с 2026-09-01 — только git-история до b31cbdd -->
    - rule_002: Do not commit .codegraph/ to repository.
 
    ## Recent Decisions

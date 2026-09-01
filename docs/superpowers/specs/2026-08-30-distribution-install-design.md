@@ -90,7 +90,7 @@ interface PlatformAdapter {
 
 - Репо: `github.com/chekh/mister-wolf` — уже подключён как `origin`, публичный. Лицензия MIT (`LICENSE` есть).
 - npm: имя `mister-wolf`, bin `wolf`; в `package.json` — rename `name`, поля `license`, `repository`, `files`, `engines`.
-- **Состав пакета (load-bearing):** `"files": ["dist"]` — без него tarball сломан: `dist/` в `.gitignore` и не уедет вовсе, а трекаемые `wolf-experiment/` (500+ файлов) и `.external-research/` утекут. README/LICENSE включаются npm автоматически. CI перед publish логирует `npm pack --dry-run` (манифест — аудит-след).
+- **Состав пакета (load-bearing):** `"files": ["dist"]` — без него tarball сломан: `dist/` в `.gitignore` и не уедет вовсе, а трекаемые песочницы (wolf-experiment, вырезан 2026-09-01 — git до `b31cbdd`) и `.external-research/` утекут. README/LICENSE включаются npm автоматически. CI перед publish логирует `npm pack --dry-run` (манифест — аудит-след).
 - **Аутентификация публикации:** npm **trusted publishing** (OIDC, `permissions: id-token: write`, токен не хранится) + `npm publish --provenance`. Fallback: granular-токен только на `mister-wolf` + GitHub Environment с required reviewers. Явный `permissions: contents: read` в workflow. Тег-триггер не срабатывает из форков (push тега требует write-доступ); `workflow_dispatch` — только с environment protection.
 - **Publish job = `npm run check` + `npm run e2e` → publish.** Публикация — точка невозврата; e2e тестирует ровно публикуемый артефакт (правило проекта: E2E после каждого плана).
 - **Sanity-check тег↔версия:** CI-шаг `test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}"`.
