@@ -1,1 +1,0 @@
-{"task":"RS1","type":"orch","iter":3,"aborted":true,"note":"убит user-abort обёртки (без setsid); старт-мс прибл. 1787010900000"}
