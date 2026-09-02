@@ -72,6 +72,9 @@ export interface PlatformInitOutcome {
   platform: string;
   action: 'written' | 'replaced' | 'unchanged' | 'skipped' | 'removed';
   reason?: string;
+  /** F6 (спека 2.1.0 §2.4): имя конфиг-файла платформы + фактические wolf-ключи (проброс из writeConfig). */
+  configFile?: string;
+  keys?: string[];
 }
 
 export interface InitProjectResult {
@@ -154,7 +157,13 @@ export async function initProject(
     for (const adapter of deps.adapters) {
       if (wanted.has(adapter.id)) {
         const r = await adapter.writeConfig(baseDir, deps.mcpCommand);
-        platformOutcomes.push({ platform: adapter.id, action: r.action, reason: r.reason });
+        platformOutcomes.push({
+          platform: adapter.id,
+          action: r.action,
+          reason: r.reason,
+          configFile: r.configFile,
+          keys: r.keys,
+        });
       } else if (adapter.detect(baseDir)) {
         const removed = await adapter.removeWolf(baseDir);
         platformOutcomes.push({
@@ -170,7 +179,13 @@ export async function initProject(
     for (const adapter of deps.adapters) {
       if (adapter.id === 'opencode' || adapter.detect(baseDir)) {
         const r = await adapter.writeConfig(baseDir, deps.mcpCommand);
-        platformOutcomes.push({ platform: adapter.id, action: r.action, reason: r.reason });
+        platformOutcomes.push({
+          platform: adapter.id,
+          action: r.action,
+          reason: r.reason,
+          configFile: r.configFile,
+          keys: r.keys,
+        });
       }
     }
   }

@@ -343,6 +343,9 @@ export type MemoryType = (typeof CORE_TAXONOMY_DECLS)[number]['name'];
 
 export const MEMORY_TYPES = CORE_TAXONOMY_DECLS.map((d) => d.name);
 
+/** Deprecated-алиасы типов (спека 2.1.0 §2.2 F10): единый источник для CLI/app. */
+export const DEPRECATED_TYPE_ALIASES: Readonly<Record<string, string>> = { document: 'document-ref' };
+
 /** Типизированное представление канона (compile-time проверка полей деклараций). */
 export const CORE_TAXONOMY: readonly MemoryTypeDeclaration[] = CORE_TAXONOMY_DECLS;
 

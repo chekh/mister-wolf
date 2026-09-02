@@ -42,12 +42,14 @@ export class ClaudeAdapter implements PlatformAdapter {
     const mcpServers = asRecord(cfg.mcpServers) ?? {};
     // каноническая проекция McpCommand в формат Claude Code: command + args
     const desired = { command: cmd.command, args: [...cmd.args] };
-    if (JSON.stringify(mcpServers.wolf) === JSON.stringify(desired)) return { action: 'unchanged' };
+    // F6 (спека 2.1.0 §2.4): честный лог — имя файла + фактический wolf-ключ
+    const reported = { configFile: '.mcp.json', keys: ['mcpServers.wolf'] };
+    if (JSON.stringify(mcpServers.wolf) === JSON.stringify(desired)) return { action: 'unchanged', ...reported };
     const replaced = mcpServers.wolf !== undefined;
     mcpServers.wolf = desired;
     cfg.mcpServers = mcpServers;
     await writeFileAtomic(file, JSON.stringify(cfg, null, 2) + '\n');
-    return { action: replaced ? 'replaced' : 'written' };
+    return { action: replaced ? 'replaced' : 'written', ...reported };
   }
 
   async removeWolf(projectRoot: string): Promise<boolean> {

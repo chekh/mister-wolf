@@ -39,7 +39,12 @@ describe('ClaudeAdapter.detect (маркеры: .mcp.json / .claude/)', () => {
 
 describe('ClaudeAdapter.writeConfig', () => {
   it('creates .mcp.json with canonical mcpServers.wolf', async () => {
-    expect(await new ClaudeAdapter().writeConfig(dir, cmd)).toEqual({ action: 'written' });
+    // F6: честный лог — configFile + фактический wolf-ключ
+    expect(await new ClaudeAdapter().writeConfig(dir, cmd)).toEqual({
+      action: 'written',
+      configFile: '.mcp.json',
+      keys: ['mcpServers.wolf'],
+    });
     const cfg = JSON.parse(readFileSync(join(dir, '.mcp.json'), 'utf-8'));
     expect(cfg.mcpServers.wolf).toEqual(WOLF_ENTRY);
   });
@@ -48,7 +53,11 @@ describe('ClaudeAdapter.writeConfig', () => {
     const adapter = new ClaudeAdapter();
     await adapter.writeConfig(dir, cmd);
     const before = readFileSync(join(dir, '.mcp.json'), 'utf-8');
-    expect(await adapter.writeConfig(dir, cmd)).toEqual({ action: 'unchanged' });
+    expect(await adapter.writeConfig(dir, cmd)).toEqual({
+      action: 'unchanged',
+      configFile: '.mcp.json',
+      keys: ['mcpServers.wolf'],
+    });
     expect(readFileSync(join(dir, '.mcp.json'), 'utf-8')).toBe(before);
   });
 
@@ -66,7 +75,11 @@ describe('ClaudeAdapter.writeConfig', () => {
         2
       )
     );
-    expect(await new ClaudeAdapter().writeConfig(dir, cmd)).toEqual({ action: 'replaced' });
+    expect(await new ClaudeAdapter().writeConfig(dir, cmd)).toEqual({
+      action: 'replaced',
+      configFile: '.mcp.json',
+      keys: ['mcpServers.wolf'],
+    });
     const cfg = JSON.parse(readFileSync(join(dir, '.mcp.json'), 'utf-8'));
     expect(cfg.mcpServers.wolf).toEqual(WOLF_ENTRY);
     expect(cfg.mcpServers.sqlite).toEqual({ command: 'sqlite' });

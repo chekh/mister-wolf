@@ -22,7 +22,8 @@ export interface MigrationReport {
   total: number;
 }
 
-function parseFrontmatter(content: string): { fm: Record<string, any>; body: string } | null {
+/** Экспортировано для переиспользования в doc-id-migration.ts (спека 2.1.0 §2.6). */
+export function parseFrontmatter(content: string): { fm: Record<string, any>; body: string } | null {
   const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
   if (!match) return null;
   try {
@@ -33,7 +34,8 @@ function parseFrontmatter(content: string): { fm: Record<string, any>; body: str
   }
 }
 
-async function walkMd(dir: string): Promise<string[]> {
+/** Экспортировано для переиспользования в doc-id-migration.ts (спека 2.1.0 §2.6). */
+export async function walkMd(dir: string): Promise<string[]> {
   const results: string[] = [];
   async function recurse(d: string) {
     let entries;

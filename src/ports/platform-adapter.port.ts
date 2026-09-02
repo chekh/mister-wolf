@@ -11,6 +11,10 @@ export type PlatformConfig = Record<string, unknown>;
 export interface PlatformWriteResult {
   action: 'written' | 'replaced' | 'unchanged';
   reason?: string;
+  /** F6 (спека 2.1.0 §2.4): имя конфиг-файла платформы для честного лога (напр. 'opencode.json'). */
+  configFile?: string;
+  /** F6 (спека 2.1.0 §2.4): фактические wolf-ключи после записи (напр. ['mcp.wolf', 'default_agent=mr-wolf']). */
+  keys?: string[];
 }
 
 /**

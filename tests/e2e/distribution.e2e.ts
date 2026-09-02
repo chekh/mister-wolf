@@ -77,8 +77,9 @@ describe('global install from tarball into isolated HOME (спека §3, §7)',
       timeout: 60_000,
     });
     expect(init.status).toBe(0);
-    expect(init.stdout).toContain('platform opencode: written');
-    expect(init.stdout).toContain('platform claude: written');
+    // F6: честный лог — имя конфиг-файла вместо `platform <id>`
+    expect(init.stdout).toContain('opencode.json: written');
+    expect(init.stdout).toContain('.mcp.json: written');
     expect(init.stdout).toContain('перезапустите opencode');
 
     const oc = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));

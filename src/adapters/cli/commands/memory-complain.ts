@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { safeCwd } from '../cli-entry.js';
 import { addMemoryObject } from '../../../app/use-cases/add-memory-object.js';
 import { recordRelation } from '../../../app/use-cases/record-relation.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
@@ -22,8 +23,8 @@ const BASE_AGENT_IDS = [
 ] as const;
 
 // baseDir инъектится для тестов (прецедент: runValidate в memory-validate.ts);
-// при обычной регистрации в cli-entry используется process.cwd().
-export function memoryComplainCommand(baseDir: string = process.cwd()): Command {
+// при обычной регистрации в cli-entry cwd идёт через safeCwd (§2.5).
+export function memoryComplainCommand(baseDir: string = safeCwd()): Command {
   return new Command('complain')
     .description('File a complaint about a rule/playbook/agent as a memory object (type complaint, status open)')
     .requiredOption('--about <about>', 'Complaint target: agent id, skill:<name> or existing mem-id')
