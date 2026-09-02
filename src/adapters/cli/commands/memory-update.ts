@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { safeCwd } from '../cli-entry.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { getDeclaration } from '../../../domain/memory-types.js';
 import { buildTypeSchema } from '../../../domain/type-schema-builder.js';
@@ -19,7 +20,7 @@ function collect(value: string, previous: string[]): string[] {
 }
 
 // baseDir инъектится для тестов (прецедент: memory-complain.ts).
-export function memoryUpdateCommand(baseDir: string = process.cwd()): Command {
+export function memoryUpdateCommand(baseDir: string = safeCwd()): Command {
   return new Command('update')
     .description(
       'Update triage fields of a memory object (whitelist: --set triage|resolution, --inc dispatch_ages|corroborations, --tags append)'

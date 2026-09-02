@@ -8,6 +8,7 @@ import { MemoryLock } from '../../ports/memory-lock.port.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import { ProjectSnapshot } from '../../domain/schemas/project-scan-schema.js';
 import { governanceDefaults } from '../../domain/governance.js';
+import { documentRefId, withTieBreak } from '../../adapters/fs/document-id.js';
 
 export interface ScanProjectResult {
   object: MemoryObject;
@@ -88,9 +89,19 @@ async function registerDocuments(
 ): Promise<MemoryObject[]> {
   const results: MemoryObject[] = [];
   const defaults = governanceDefaults(actor);
+  // Канон id document-ref (спека 2.1.0 §2.1 F9): существующие ищем по source.path
+  // (один list), занятость id — Set всех id памяти (второй list, без фильтра).
+  const existingByPath = new Map<string, MemoryObject>();
+  for (const ref of await deps.store.list({ type: 'document-ref' })) {
+    if (ref.source?.path) existingByPath.set(ref.source.path, ref);
+  }
+  const takenIds = new Set((await deps.store.list()).map((o) => o.id));
   for (const doc of snapshot.docs) {
-    const id = `doc_${doc.path.replace(/[^a-zA-Z0-9]/g, '_')}`;
-    const existing = await deps.store.get(id);
+    const existing = existingByPath.get(doc.path);
+    // Скан не мигрирует (§2.1): у существующего объекта id сохраняется как есть
+    // (даже легаси doc_*); канонический id — только для новых объектов.
+    const id = existing ? existing.id : withTieBreak(documentRefId(doc.path, now.toISOString()), takenIds);
+    takenIds.add(id);
     const object: MemoryObject = {
       id,
       type: 'document-ref',

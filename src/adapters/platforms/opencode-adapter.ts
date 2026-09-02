@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import { existsSync } from 'fs';
-import { join } from 'path';
+import { basename, join } from 'path';
 import { PlatformAdapter, McpCommand, PlatformConfig, PlatformWriteResult } from '../../ports/platform-adapter.port.js';
 import { parseJsonc } from './jsonc.js';
 import { writeFileAtomic } from '../fs/markdown-memory-store.js';
@@ -70,8 +70,20 @@ export class OpencodeAdapter implements PlatformAdapter {
       reasons.push(`subagent_depth=${sd} занят; трёхуровневая схема не заработает, поставьте >=2`);
     }
     const reason = reasons.length > 0 ? reasons.join('; ') : undefined;
+
+    // F6 (спека 2.1.0 §2.4): фактические wolf-ключи после ensured — только наши
+    // (mcp.wolf в обоих ветках ниже каноничен; default_agent/subagent_depth — если ключ наш, не занят чужим значением)
+    const ours = (): string[] => {
+      const keys = ['mcp.wolf'];
+      if (cfg.default_agent === DEFAULT_AGENT) keys.push(`default_agent=${DEFAULT_AGENT}`);
+      if (typeof cfg.subagent_depth === 'number' && cfg.subagent_depth >= SUBAGENT_DEPTH)
+        keys.push(`subagent_depth=${cfg.subagent_depth}`);
+      return keys;
+    };
+
     // unchanged — по ВСЕМ ключам: корректный mcp.wolf не маскирует отсутствие default_agent/subagent_depth
-    if (mcpOk && da !== undefined && sd !== undefined) return { action: 'unchanged', reason };
+    if (mcpOk && da !== undefined && sd !== undefined)
+      return { action: 'unchanged', reason, configFile: basename(file), keys: ours() };
 
     const replaced = mcp.wolf !== undefined && !mcpOk;
     mcp.wolf = desired;
@@ -79,7 +91,7 @@ export class OpencodeAdapter implements PlatformAdapter {
     if (da === undefined) cfg.default_agent = DEFAULT_AGENT; // конфликтный ключ не трогаем
     if (sd === undefined) cfg.subagent_depth = SUBAGENT_DEPTH; // конфликтный ключ не трогаем
     await writeFileAtomic(file, JSON.stringify(cfg, null, 2) + '\n');
-    return { action: replaced ? 'replaced' : 'written', reason };
+    return { action: replaced ? 'replaced' : 'written', reason, configFile: basename(file), keys: ours() };
   }
 
   async removeWolf(projectRoot: string): Promise<boolean> {

@@ -38,7 +38,8 @@ describe('wolf init CLI (спека §3 уровень 1; onboarding v2 §4.6: �
       timeout: 60_000,
     });
     expect(first.status).toBe(0);
-    expect(first.stdout).toContain('platform opencode: written');
+    // F6: честный лог — имя конфиг-файла + фактические ключи
+    expect(first.stdout).toContain('opencode.json: written (mcp.wolf, default_agent=mr-wolf, subagent_depth=2)');
     expect(first.stdout).toContain('перезапустите opencode'); // F7: блок «Дальше»
     const cfg = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));
     expect(cfg.mcp.wolf).toEqual({ type: 'local', command: ['wolf', 'mcp'], enabled: true });
@@ -54,7 +55,7 @@ describe('wolf init CLI (спека §3 уровень 1; onboarding v2 §4.6: �
       timeout: 60_000,
     });
     expect(second.status).toBe(0);
-    expect(second.stdout).toContain('platform opencode: unchanged');
+    expect(second.stdout).toContain('opencode.json: unchanged');
     expect(readFileSync(join(project, 'opencode.json'), 'utf-8')).toBe(before);
   });
 
@@ -89,7 +90,7 @@ describe('wolf init CLI (спека §3 уровень 1; onboarding v2 §4.6: �
       timeout: 60_000,
     });
     expect(res.status).toBe(0);
-    expect(res.stdout).toContain('platform opencode: written');
+    expect(res.stdout).toContain('opencode.json: written');
     expect(res.stdout).toContain('wolf bootstrap'); // F7: «Дальше» называет следующий шаг
     const cfg = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));
     expect(cfg.mcp.wolf).toEqual({ type: 'local', command: ['wolf', 'mcp'], enabled: true });

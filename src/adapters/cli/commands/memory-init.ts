@@ -16,6 +16,7 @@ import { seedBasePlaybooks } from '../../../app/use-cases/seed-base-playbooks.js
 import { addMemoryObject } from '../../../app/use-cases/add-memory-object.js';
 import { isNpxRun } from '../../../domain/npx.js';
 import { UserFacingError } from '../../../domain/errors.js';
+import { safeCwd } from '../cli-entry.js';
 import type { ModelContext } from '../../../ports/base-set-renderer.port.js';
 
 /* ---------- предложения модели «по возможности» (§4.5, только чтение) ---------- */
@@ -134,6 +135,36 @@ export function renderNextSteps(opts: { npx: boolean; mcpWritten: boolean; claud
   return lines;
 }
 
+/** F5 (спека 2.1.0 §2.3): скиллы в логе init — `[skill] <имя> → <путь>`; прочие файлы — прежний формат. */
+export function formatBaseSetLine(o: { file: string; action: string; reason?: string }): string {
+  const skill = o.file.match(/^\.opencode[/\\]skills[/\\]([^/\\]+)[/\\]/);
+  if (skill) {
+    const suffix = o.action === 'created' ? '' : ` (${o.action}${o.reason ? `: ${o.reason}` : ''})`;
+    return `[skill] ${skill[1]} → ${o.file}${suffix}`;
+  }
+  return `- base set: ${o.file} ${o.action}${o.reason ? ` — ${o.reason}` : ''}`;
+}
+
+/** F6 (спека 2.1.0 §2.4): честный лог платформ — имя конфиг-файла + фактические ключи wolf. */
+export function formatPlatformLine(o: {
+  platform: string;
+  action: string;
+  reason?: string;
+  configFile?: string;
+  keys?: string[];
+}): string {
+  if (o.platform === 'none' || o.platform === 'npx') {
+    return `- platform configs: ${o.action} — ${o.reason ?? 'unknown reason'}`;
+  }
+  if (o.configFile !== undefined) {
+    return `- ${o.configFile}: ${o.action}${o.keys?.length ? ` (${o.keys.join(', ')})` : ''}${
+      o.reason ? ` — ${o.reason}` : ''
+    }`;
+  }
+  // без configFile (напр. removed) — прежний формат
+  return `- platform ${o.platform}: ${o.action}${o.reason ? ` — ${o.reason}` : ''}`;
+}
+
 /* ---------- команда ---------- */
 
 export function memoryInitCommand(): Command {
@@ -143,7 +174,9 @@ export function memoryInitCommand(): Command {
     .option('--model <id>', 'model for Mr.Wolf and its agents (<providerID>/<modelID>); required when non-interactive')
     .option('--recreate', 'backup a corrupted .wolf/config.yaml and re-create it from defaults', false)
     .action(async (options: { platform?: string; model?: string; recreate?: boolean }) => {
-      const baseDir = process.cwd();
+      // §2.5 (recreate-guard): init --recreate — единственный вход CLI в обход guard runCli;
+      // поэтому cwd берём тоже под защитой (safeCwd: удалённый каталог → однострочный Error, не сырой ENOENT)
+      const baseDir = safeCwd();
       if (options.recreate) {
         await recreateConfig(baseDir);
         // восстановление = приведение к валидному СОСТОЯНИЮ, а не тихий штамп маркера ниже:
@@ -249,15 +282,8 @@ export function memoryInitCommand(): Command {
 
       console.log('# wolf init');
       console.log(`- memory skeleton: ensured (${join(baseDir, '.wolf')})`);
-      for (const o of result.baseSetOutcomes)
-        console.log(`- base set: ${o.file} ${o.action}${o.reason ? ` — ${o.reason}` : ''}`);
-      for (const outcome of result.platformOutcomes) {
-        const label =
-          outcome.platform === 'none' || outcome.platform === 'npx'
-            ? 'platform configs'
-            : `platform ${outcome.platform}`;
-        console.log(`- ${label}: ${outcome.action}${outcome.reason ? ` — ${outcome.reason}` : ''}`);
-      }
+      for (const o of result.baseSetOutcomes) console.log(formatBaseSetLine(o)); // F5: скиллы — [skill] имя → путь
+      for (const outcome of result.platformOutcomes) console.log(formatPlatformLine(outcome)); // F6: configFile + keys
       if (result.routing.action !== 'skipped') {
         console.log(`- routing: модели агентов — ${result.routing.action} (primary ${models.primary})`);
       }

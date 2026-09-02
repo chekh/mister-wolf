@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { safeCwd } from '../cli-entry.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { readSignals } from '../../../adapters/fs/session-metrics-log.js';
@@ -61,7 +62,7 @@ function printReport(r: EffectivenessReport): void {
   console.log(`routing: ${routing}`);
 }
 
-export function memoryEffectivenessCommand(baseDir: string = process.cwd()): Command {
+export function memoryEffectivenessCommand(baseDir: string = safeCwd()): Command {
   const cmd = new Command('effectiveness').description(
     'Memory effectiveness panel: rules holdout, tool economy, delivery, noise, routing (aggregation only, no LLM)'
   );

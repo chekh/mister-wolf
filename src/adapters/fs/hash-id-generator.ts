@@ -3,8 +3,8 @@ import { IdGenerator } from '../../ports/id-generator.port.js';
 
 export class HashIdGenerator implements IdGenerator {
   // ponytail: flat translit map, deterministic; switch to a lib only if other
-  // alphabets (CJK etc.) need real slugs
-  private static readonly CYRILLIC: Record<string, string> = {
+  // alphabets (CJK etc.) need real slugs. Публичная: переиспользуется document-id.ts.
+  static readonly CYRILLIC: Record<string, string> = {
     а: 'a',
     б: 'b',
     в: 'v',

@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { safeCwd } from '../cli-entry.js';
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import {
@@ -99,7 +100,7 @@ async function printDecaySection(baseDir: string): Promise<void> {
   }
 }
 
-export function memoryLearnCommand(baseDir: string = process.cwd()): Command {
+export function memoryLearnCommand(baseDir: string = safeCwd()): Command {
   const cmd = new Command('learn').description(
     'Self-learning loop: pattern digest, signal-log health, draft propose/validate/activate'
   );
