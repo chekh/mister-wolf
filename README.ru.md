@@ -44,6 +44,9 @@ Claude Code при первом старте попросит approve project-sc
 
 - **Попробовать без установки:** `npx mister-wolf init` — создаст память проекта, но никогда
   не пишет MCP-конфиги (try-out). Понравилось — `npm install -g mister-wolf` и повтори `wolf init`.
+- **Обновление:** `wolf upgrade` — сравнит установленную версию с npm registry и выполнит
+  `npm install -g mister-wolf@latest` (`--check` только сообщает; dev/linked-установке откажет честно).
+  Вручную: `npm i -g mister-wolf@latest`.
 - **Платформы v1:** opencode, Claude Code. Детект автоматический; явно:
   `wolf init --platform opencode,claude` (список заменяет текущий набор). Нет маркеров платформы —
   init честно предупредит и подскажет `--platform`.

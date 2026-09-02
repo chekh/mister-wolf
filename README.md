@@ -40,6 +40,7 @@ wolf bootstrap               # 3) память: стартовое наполн�
 After `wolf init` **restart your agent platform** — the Wolf MCP server connects at startup. Claude Code will ask you to approve the project-scope MCP server on first start — that is expected.
 
 - **Try it without installing:** `npx mister-wolf init` — creates project memory but never writes MCP configs (try-out mode). Like it? `npm install -g mister-wolf` and run `wolf init` again.
+- **Updating:** `wolf upgrade` — compares the installed version with the npm registry and runs `npm install -g mister-wolf@latest` (`--check` only reports, dev/linked installs are refused honestly). Manual path: `npm i -g mister-wolf@latest`.
 - **Platforms v1:** opencode, Claude Code. Detection is automatic; explicit: `wolf init --platform opencode,claude` (the list replaces the current set). If no platform markers are found, init warns you honestly and suggests `--platform`.
 - **OS/runtime:** macOS and Linux (glibc) on Node 22/24. Alpine/musl is not supported in v1; Windows is best-effort, not claimed. The native dependency better-sqlite3 installs from prebuilds — that is the dependency's own behavior; mister-wolf ships no install scripts of its own.
 - **If installation fails on better-sqlite3 — two different situations:**
