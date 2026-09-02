@@ -27,4 +27,4 @@ jobs:
         run: npm install -g npm@^11
 
       - name: Deprecate mr-wolf@*
-        run: npm deprecate "mr-wolf@*" "Renamed! This legacy package (0.1.1) is unmaintained. Install 'mister-wolf' instead: npm i -g mister-wolf"
+        run: 'npm deprecate "mr-wolf@*" "Renamed! This legacy package (0.1.1) is unmaintained. Install ''mister-wolf'' instead: npm i -g mister-wolf"'
