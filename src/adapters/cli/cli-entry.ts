@@ -44,6 +44,7 @@ import { memoryLearnCommand as learnCommand } from './commands/memory-learn.js';
 import { memoryEffectivenessCommand as effectivenessCommand } from './commands/memory-effectiveness.js';
 import { memoryRunCommand as runCommand } from './commands/memory-run.js';
 import { memoryBootstrapCommand as bootstrapCommand } from './commands/memory-bootstrap.js';
+import { memoryUpgradeCommand as upgradeCommand } from './commands/memory-upgrade.js';
 import { UserFacingError } from '../../domain/errors.js';
 
 function readPackageVersion(): string {
@@ -94,6 +95,7 @@ export function createCli(): Command {
   program.addCommand(effectivenessCommand());
   program.addCommand(runCommand());
   program.addCommand(bootstrapCommand());
+  program.addCommand(upgradeCommand());
   program.addCommand(doctorCommand());
 
   return program;
