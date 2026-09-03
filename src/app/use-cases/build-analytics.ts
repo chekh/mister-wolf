@@ -11,8 +11,10 @@ import type { MemoryEvent } from '../../domain/schemas/memory-event-schema.js';
 import { DEFAULT_PATTERN_THRESHOLD, type SignalEvent } from '../../adapters/fs/session-metrics-log.js';
 import { parseRunLog } from '../../domain/tool-economy.js';
 import { UNCATEGORIZED_ERROR_CLASS } from '../../domain/error-class.js';
-import { silentRuleIds } from './learn-decay.js';
+import { runCostUsd } from '../../domain/pricing.js';
 import type { PricingTable } from '../../domain/pricing.js';
+import { silentRuleIds } from './learn-decay.js';
+import { mondayOf } from './generate-insights.js';
 
 // ---------------------------------------------------------------------------
 // Контракт отчёта (сквозной для задач 6–11: меняется ТОЛЬКО в задаче 6)
@@ -357,15 +359,329 @@ function buildRuleRanking(ruleObjects: MemoryObject[], signals: SignalEvent[]): 
     .sort((a, b) => b.prevented - a.prevented || Number(a.silent) - Number(b.silent) || a.id.localeCompare(b.id));
 }
 
-/** Нулевой steward-view (задача 8 заменит расчётом). */
-function emptyStewardView(): StewardView {
+/** Ключи недельных бакетов (понедельники ISO), от старой к новой; weeks — глубина окна. */
+function weekBuckets(now: Date, weeks: number): string[] {
+  const currentMondayMs = Date.parse(`${mondayOf(now.toISOString())}T00:00:00Z`);
+  const keys: string[] = [];
+  for (let i = weeks - 1; i >= 0; i--)
+    keys.push(new Date(currentMondayMs - i * 7 * 86_400_000).toISOString().slice(0, 10));
+  return keys;
+}
+
+/** Воронка Q6: write (memory.added) → deliver (delivery-сигналы) → trigger (уникальные имена).
+ * prevented НЕ входит: holdout-счётчики кумулятивны, без таймстампов (спека §5 M5, rev.4). */
+function buildFunnel(events: MemoryEvent[], signals: SignalEvent[], now: Date, weeks: number): FunnelWeek[] {
+  const buckets = new Map<string, { week: string; writes: number; delivers: number; names: Set<string> }>();
+  for (const week of weekBuckets(now, weeks)) {
+    buckets.set(week, { week, writes: 0, delivers: 0, names: new Set<string>() });
+  }
+  for (const ev of events) {
+    if (ev.type !== 'memory.added') continue;
+    const b = buckets.get(mondayOf(ev.timestamp));
+    if (b !== undefined) b.writes += 1;
+  }
+  for (const s of signals) {
+    if (s.event !== 'delivery') continue;
+    const b = buckets.get(mondayOf(s.ts));
+    if (b === undefined) continue;
+    b.delivers += 1;
+    if (typeof s.detail?.name === 'string') b.names.add(s.detail.name); // прецедент delivery.triggeredObjects
+  }
+  return [...buckets.values()].map(({ week, writes, delivers, names }) => ({
+    week,
+    writes,
+    delivers,
+    triggers: names.size,
+    writeToDeliverPct: writes > 0 ? (delivers / writes) * 100 : null,
+    deliverToTriggerPct: delivers > 0 ? (names.size / delivers) * 100 : null,
+  }));
+}
+
+/** Outliers Q8: top-N прогонов по finite weighted; $ при pricing (D9 — без данных null). */
+function buildOutliers(runLogText: string | null, pricing: PricingTable | undefined, top: number): OutlierRun[] {
+  return parseRunLog(runLogText ?? '')
+    .filter((e) => finiteNumber(e.weighted) !== null)
+    .sort((a, b) => (b.weighted ?? 0) - (a.weighted ?? 0))
+    .slice(0, top)
+    .map((e) => ({
+      ts: typeof e.ts === 'string' ? e.ts : null,
+      model: typeof e.model === 'string' ? e.model : null,
+      agent: typeof e.agent === 'string' ? e.agent : null,
+      title: typeof e.title === 'string' ? e.title : null,
+      weighted: e.weighted as number,
+      costUsd: runCostUsd(e.tokens, pricing, typeof e.model === 'string' ? e.model : null),
+      tools: e.tools ?? [],
+    }));
+}
+
+/** Agent ledger Q11: строки по run-агентам ∪ complaint-акторам `agent:<имя>`; три уровня —
+ * объём (runs/weighted/duration/cost), проблемы (failures/toolErrors/жалобы), достижения
+ * (successes/holdout_prevented его rule/lesson). */
+function buildAgents(
+  signals: SignalEvent[],
+  objects: MemoryObject[],
+  pricing: PricingTable | undefined
+): AgentLedgerRow[] {
+  const AGENT_PREFIX = 'agent:';
+  interface AgentAcc {
+    runs: number;
+    failures: number;
+    successes: number;
+    weighted: number;
+    durations: number[];
+    cost: number | null;
+    toolErrors: number;
+    complaintsBy: number;
+    complaintsAbout: number;
+    holdoutSum: number;
+    hasHoldout: boolean;
+  }
+  const acc = new Map<string, AgentAcc>();
+  const rowOf = (name: string): AgentAcc => {
+    let r = acc.get(name);
+    if (r === undefined) {
+      r = {
+        runs: 0,
+        failures: 0,
+        successes: 0,
+        weighted: 0,
+        durations: [],
+        cost: null,
+        toolErrors: 0,
+        complaintsBy: 0,
+        complaintsAbout: 0,
+        holdoutSum: 0,
+        hasHoldout: false,
+      };
+      acc.set(name, r);
+    }
+    return r;
+  };
+
+  // проход 1: источники строк (run-агенты, complaint-акторы) + объём/ошибки
+  for (const ev of signals) {
+    if (ev.event === 'run' && typeof ev.gen_ai.agent === 'string' && ev.gen_ai.agent !== '') {
+      const r = rowOf(ev.gen_ai.agent);
+      r.runs += 1;
+      if (ev.outcome === 'ok') r.successes += 1;
+      else r.failures += 1;
+      r.weighted += finiteNumber(ev.weighted) ?? 0;
+      const d = finiteNumber(ev.duration_ms);
+      if (d !== null) r.durations.push(d);
+      const cost = runCostUsd(ev.tokens, pricing, ev.gen_ai.modelID);
+      if (cost !== null) r.cost = (r.cost ?? 0) + cost;
+    }
+    if (ev.event === 'complaint') {
+      const actor = ev.orchestration.actor;
+      if (actor.startsWith(`${AGENT_PREFIX}`) && actor.length > AGENT_PREFIX.length) {
+        rowOf(actor.slice(AGENT_PREFIX.length)).complaintsBy += 1;
+      }
+    }
+  }
+  // tool-ошибки по агенту — только для существующих строк (строки создают run/complaint-actor)
+  for (const ev of signals) {
+    if (ev.event === 'tool_error' && typeof ev.gen_ai.agent === 'string' && acc.has(ev.gen_ai.agent)) {
+      acc.get(ev.gen_ai.agent)!.toolErrors += 1;
+    }
+  }
+  // проход 2: жалобы НА агента — detail.about содержит имя
+  for (const ev of signals) {
+    if (ev.event !== 'complaint') continue;
+    const about = String(ev.detail?.about ?? '');
+    if (about === '') continue;
+    for (const name of acc.keys()) {
+      if (about.includes(name)) acc.get(name)!.complaintsAbout += 1;
+    }
+  }
+  // достижения: holdout_prevented у rule/lesson с created_by === 'agent:<имя>'
+  for (const o of objects) {
+    if (o.type !== 'rule' && o.type !== 'lesson') continue;
+    // план-код падал на моках без created_by: guard (схема требует, тестовые фикстуры — нет)
+    if (typeof o.created_by !== 'string' || !o.created_by.startsWith(AGENT_PREFIX)) continue;
+    const name = o.created_by.slice(AGENT_PREFIX.length);
+    if (!acc.has(name)) continue;
+    const p = finiteNumber((o as Record<string, unknown>).holdout_prevented);
+    if (p !== null) {
+      acc.get(name)!.holdoutSum += p;
+      acc.get(name)!.hasHoldout = true;
+    }
+  }
+
+  return [...acc.entries()]
+    .map(([agent, r]) => ({
+      agent,
+      runs: r.runs,
+      failures: r.failures,
+      failureRatePct: r.runs > 0 ? (r.failures / r.runs) * 100 : null,
+      weighted: r.weighted,
+      avgDurationMs: r.durations.length > 0 ? r.durations.reduce((s, v) => s + v, 0) / r.durations.length : null,
+      costUsd: r.cost,
+      toolErrors: r.toolErrors,
+      complaintsBy: r.complaintsBy,
+      complaintsAbout: r.complaintsAbout,
+      successes: r.successes,
+      holdoutPrevented: r.hasHoldout ? r.holdoutSum : null,
+    }))
+    .sort((a, b) => b.runs - a.runs || a.agent.localeCompare(b.agent));
+}
+
+/** Вид мутации события: update/supersede/resolve/transition; memory.updated с kind='tool.used'
+ * → tool-mutation; added/scan.updated — не мутации. */
+function mutationKindOf(ev: MemoryEvent): string | null {
+  switch (ev.type) {
+    case 'memory.updated': {
+      const kind = (ev.payload as Record<string, unknown> | undefined)?.kind;
+      return kind === 'tool.used' ? 'tool-mutation' : 'update';
+    }
+    case 'memory.superseded':
+      return 'supersede';
+    case 'memory.resolved':
+      return 'resolve';
+    case 'memory.transitioned':
+      return 'transition';
+    default:
+      return null;
+  }
+}
+
+const MUTATION_KINDS = ['update', 'supersede', 'resolve', 'transition', 'tool-mutation'] as const;
+
+/** Steward view Q12: мутации за окно weeks (то же, что воронка), жалобная воронка,
+ * SLA-эскалации (dispatch_ages >= 3), рецидивы, churn, доля авто-мутаций. */
+function buildSteward(
+  events: MemoryEvent[],
+  signals: SignalEvent[],
+  objects: MemoryObject[],
+  now: Date,
+  weeks: number
+): StewardView {
+  const keys = weekBuckets(now, weeks);
+
+  // мутации: виды + недели + churn + авто-доля
+  const kindCount = new Map<string, number>(MUTATION_KINDS.map((k) => [k, 0]));
+  const weekTotal = new Map<string, number>(keys.map((k) => [k, 0]));
+  const mutationsById = new Map<string, number>();
+  let totalMutations = 0;
+  let autoMutations = 0;
+  for (const ev of events) {
+    const kind = mutationKindOf(ev);
+    if (kind === null) continue;
+    if (!weekTotal.has(mondayOf(ev.timestamp))) continue; // вне окна
+    kindCount.set(kind, (kindCount.get(kind) ?? 0) + 1);
+    weekTotal.set(mondayOf(ev.timestamp), (weekTotal.get(mondayOf(ev.timestamp)) ?? 0) + 1);
+    totalMutations += 1;
+    if (ev.actor === 'system:wolf') autoMutations += 1;
+    const mid = (ev.payload as Record<string, unknown> | undefined)?.memory_id;
+    if (typeof mid === 'string') mutationsById.set(mid, (mutationsById.get(mid) ?? 0) + 1);
+  }
+
+  // жалобная воронка
+  const complaints = signals.filter((s) => s.event === 'complaint' && weekTotal.has(mondayOf(s.ts)));
+  const filed = complaints.length;
+  let resolved = 0;
+  let rejected = 0;
+  for (const ev of events) {
+    if (!weekTotal.has(mondayOf(ev.timestamp))) continue;
+    if (ev.type === 'memory.resolved') resolved += 1;
+    if (ev.type === 'memory.transitioned' && (ev.payload as Record<string, unknown> | undefined)?.to === 'rejected') {
+      rejected += 1;
+    }
+  }
+  // время жизни: resolved-событие − первый complaint по тому же id (в часах)
+  const firstComplaintById = new Map<string, string>();
+  for (const s of signals) {
+    if (s.event !== 'complaint') continue;
+    const id = s.detail?.object_id;
+    if (typeof id !== 'string') continue;
+    const cur = firstComplaintById.get(id);
+    if (cur === undefined || s.ts < cur) firstComplaintById.set(id, s.ts);
+  }
+  const lifetimes: number[] = [];
+  for (const ev of events) {
+    if (ev.type !== 'memory.resolved') continue;
+    const mid = (ev.payload as Record<string, unknown> | undefined)?.memory_id;
+    if (typeof mid !== 'string') continue;
+    const first = firstComplaintById.get(mid);
+    if (first === undefined) continue;
+    lifetimes.push((Date.parse(ev.timestamp) - Date.parse(first)) / 3_600_000);
+  }
+  const avgLifetimeHours = lifetimes.length > 0 ? lifetimes.reduce((s, v) => s + v, 0) / lifetimes.length : null;
+
+  // SLA: объекты с dispatch_ages >= 3 (passthrough-поле)
+  let slaEscalations = 0;
+  for (const o of objects) {
+    const dispatchAges = finiteNumber((o as Record<string, unknown>).dispatch_ages);
+    if (dispatchAges !== null && dispatchAges >= 3) slaEscalations += 1;
+  }
+
+  // рецидивы: ≥2 жалобы на объект И update по нему строго между первой и последней жалобой
+  const complaintTsById = new Map<string, string[]>();
+  for (const s of signals) {
+    if (s.event !== 'complaint') continue;
+    const id = s.detail?.object_id;
+    if (typeof id !== 'string') continue;
+    const arr = complaintTsById.get(id) ?? [];
+    arr.push(s.ts);
+    complaintTsById.set(id, arr);
+  }
+  const updateTsById = new Map<string, string[]>();
+  for (const ev of events) {
+    if (ev.type !== 'memory.updated') continue;
+    const mid = (ev.payload as Record<string, unknown> | undefined)?.memory_id;
+    if (typeof mid !== 'string') continue;
+    const arr = updateTsById.get(mid) ?? [];
+    arr.push(ev.timestamp);
+    updateTsById.set(mid, arr);
+  }
+  let recidivismCount = 0;
+  for (const [id, tsList] of complaintTsById) {
+    if (tsList.length < 2) continue;
+    const sorted = [...tsList].sort();
+    const first = sorted[0]!;
+    const last = sorted[sorted.length - 1]!;
+    if ((updateTsById.get(id) ?? []).some((ts) => ts > first && ts < last)) recidivismCount += 1;
+  }
+
+  const churnIds = [...mutationsById.entries()]
+    .filter(([, n]) => n >= 2)
+    .map(([id]) => id)
+    .sort();
+
   return {
-    mutations: [],
-    mutationsByWeek: [],
-    complaintFunnel: { filed: 0, resolved: 0, rejected: 0, avgLifetimeHours: null, slaEscalations: 0 },
-    recidivismCount: 0,
-    churnIds: [],
-    autoMutationSharePct: null,
+    mutations: MUTATION_KINDS.map((kind) => ({ kind, count: kindCount.get(kind) ?? 0 })),
+    mutationsByWeek: keys.map((week) => ({ week, total: weekTotal.get(week) ?? 0 })),
+    complaintFunnel: { filed, resolved, rejected, avgLifetimeHours, slaEscalations },
+    recidivismCount,
+    churnIds,
+    autoMutationSharePct: totalMutations > 0 ? (autoMutations / totalMutations) * 100 : null,
+  };
+}
+
+/** Experiment readiness Q10: доля run-сигналов с experiment.arm; выборки по группам. */
+function buildReadiness(signals: SignalEvent[]): ExperimentReadiness {
+  const runs = signals.filter((s) => s.event === 'run');
+  let withArm = 0;
+  const byArm = new Map<string, number>();
+  const byExperiment = new Map<string, number>();
+  for (const ev of runs) {
+    const experiment = ev.experiment as { arm?: unknown; id?: unknown } | undefined;
+    const arm = experiment?.arm;
+    if (typeof arm === 'string' && arm !== '') {
+      withArm += 1;
+      byArm.set(arm, (byArm.get(arm) ?? 0) + 1);
+    }
+    const id = experiment?.id;
+    if (typeof id === 'string' && id !== '') byExperiment.set(id, (byExperiment.get(id) ?? 0) + 1);
+  }
+  const totalRuns = runs.length;
+  return {
+    totalRuns,
+    withArm,
+    withArmPct: totalRuns > 0 ? (withArm / totalRuns) * 100 : null,
+    byArm: [...byArm.entries()].map(([arm, n]) => ({ arm, runs: n })).sort((a, b) => a.arm.localeCompare(b.arm)),
+    byExperiment: [...byExperiment.entries()]
+      .map(([experiment, n]) => ({ experiment, runs: n }))
+      .sort((a, b) => b.runs - a.runs || a.experiment.localeCompare(b.experiment)),
   };
 }
 
@@ -383,6 +699,7 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
   // ponytail: store.list() — полный reparse всех md; ровно один вызов на отчёт (прецедент generateInsights)
   const allObjects = await deps.store.list();
   const events = await deps.log.readAll();
+  const weeks = input.weeks ?? 8;
 
   const memory = buildMemoryLedger(allObjects, events, input.signals, now, thresholds);
   const tools = buildToolLedger(
@@ -395,6 +712,11 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
     allObjects.filter((o) => o.type === 'rule'),
     input.signals
   );
+  const funnel = buildFunnel(events, input.signals, now, weeks);
+  const outliers = buildOutliers(input.runLogText, input.pricing, input.topOutliers ?? 10);
+  const agents = buildAgents(input.signals, allObjects, input.pricing);
+  const steward = buildSteward(events, input.signals, allObjects, now, weeks);
+  const readiness = buildReadiness(input.signals);
 
   return {
     generatedAt: now.toISOString(),
@@ -402,11 +724,11 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
     memory,
     tools,
     rules,
-    funnel: [], // задача 8: воронка по неделям (Q6)
-    outliers: [], // задача 8: top-N дорогих прогонов (Q8)
-    agents: [], // задача 8: agent ledger (Q11)
-    steward: emptyStewardView(), // задача 8: steward view (Q12)
-    readiness: { totalRuns: 0, withArm: 0, withArmPct: null, byArm: [], byExperiment: [] }, // задача 8: Q10
+    funnel,
+    outliers,
+    agents,
+    steward,
+    readiness,
   };
 }
 

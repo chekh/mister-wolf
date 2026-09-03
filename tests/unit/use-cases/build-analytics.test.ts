@@ -386,3 +386,208 @@ describe('buildAnalyticsReport: rule ranking (Q4)', () => {
     expect(report.rules[2]!.prevented).toBe(2);
   });
 });
+
+describe('buildAnalyticsReport: funnel (Q6)', () => {
+  it('2 недели: writes/delivers/triggers + конверсии; пустая неделя → null-конверсии', async () => {
+    const events: MemoryEvent[] = [
+      memEvent('memory.added', 'm1', '2026-09-01T10:00:00Z'),
+      memEvent('memory.added', 'm2', '2026-09-01T11:00:00Z'),
+    ];
+    const signals: SignalEvent[] = [
+      deliveryEvent('r1', '2026-09-02T10:00:00Z'),
+      deliveryEvent('r1', '2026-09-02T11:00:00Z'),
+      deliveryEvent('r2', '2026-09-02T12:00:00Z'),
+    ];
+    const report = await buildAnalyticsReport(
+      { store: mockStore([]), log: mockLog(events), clock: fixedClock },
+      { signals, runLogText: null, weeks: 2 }
+    );
+    // текущий понедельник 2026-08-31 (ср. часы 2026-09-03 — четверг); бакеты от старой к новой
+    expect(report.funnel).toHaveLength(2);
+    expect(report.funnel[0]).toEqual({
+      week: '2026-08-24',
+      writes: 0,
+      delivers: 0,
+      triggers: 0,
+      writeToDeliverPct: null,
+      deliverToTriggerPct: null,
+    });
+    const w = report.funnel[1]!;
+    expect(w.week).toBe('2026-08-31');
+    expect(w.writes).toBe(2);
+    expect(w.delivers).toBe(3);
+    expect(w.triggers).toBe(2); // уникальные имена: r1, r2
+    expect(w.writeToDeliverPct).toBe(150); // 3/2
+    expect(w.deliverToTriggerPct).toBeCloseTo(66.6667, 3); // 2/3
+  });
+});
+
+describe('buildAnalyticsReport: outliers (Q8)', () => {
+  it('top-N по weighted; costUsd при pricing (2M input × 1.5 $/Mtok = 3$); без tokens → null', async () => {
+    const big = JSON.stringify({
+      ts: '2026-09-01T00:00:00Z',
+      model: 'glm',
+      agent: 'worker',
+      title: 'big',
+      weighted: 300,
+      tokens: { input: 2_000_000, output: 0, cache_read: 0 },
+      tools: ['webfetch'],
+    });
+    const mid = JSON.stringify({
+      ts: '2026-09-01T01:00:00Z',
+      model: 'kimi',
+      agent: 'steward',
+      title: 'mid',
+      weighted: 200,
+    });
+    const small = JSON.stringify({
+      ts: '2026-09-01T02:00:00Z',
+      model: 'glm',
+      agent: 'worker',
+      title: 'small',
+      weighted: 100,
+    });
+    const report = await buildAnalyticsReport(
+      { store: mockStore([]), log: mockLog([]), clock: fixedClock },
+      {
+        signals: [],
+        runLogText: [big, mid, small].join('\n'),
+        topOutliers: 2,
+        pricing: { glm: { input: 1.5, output: 2, cache_read: 0.1 } },
+      }
+    );
+    expect(report.outliers).toHaveLength(2);
+    expect(report.outliers[0]).toEqual({
+      ts: '2026-09-01T00:00:00Z',
+      model: 'glm',
+      agent: 'worker',
+      title: 'big',
+      weighted: 300,
+      costUsd: 3,
+      tools: ['webfetch'],
+    });
+    expect(report.outliers[1]!.weighted).toBe(200);
+    expect(report.outliers[1]!.costUsd).toBeNull(); // нет raw-токенов — стоимости нет
+  });
+});
+
+describe('buildAnalyticsReport: agent ledger (Q11)', () => {
+  it('объём/проблемы/достижения per-agent; строка из complaint-actor тоже существует', async () => {
+    const objects: Extra[] = [
+      {
+        id: 'l1',
+        type: 'lesson',
+        status: 'active',
+        created_at: '2026-08-01T00:00:00Z',
+        created_by: 'agent:worker',
+        holdout_prevented: 4,
+      },
+      { id: 'l2', type: 'lesson', status: 'active', created_at: '2026-08-01T00:00:00Z', created_by: 'agent:worker' },
+    ];
+    const signals: SignalEvent[] = [
+      runSignal({ agent: 'worker', model: 'glm', weighted: 100, outcome: 'ok', durationMs: 60_000 }),
+      runSignal({ agent: 'worker', model: 'glm', weighted: 50, outcome: 'exit_1', durationMs: 30_000 }),
+      toolErrorEvent('bash', 'timeout_error', '2026-09-01T00:00:00Z', 'worker'),
+      complaintEvent('x1', '2026-09-01T00:00:00Z', 'worker flooded logs', 'agent:steward'),
+    ];
+    const report = await buildAnalyticsReport(
+      { store: mockStore(objects), log: mockLog([]), clock: fixedClock },
+      { signals, runLogText: null }
+    );
+    expect(report.agents.map((a) => a.agent)).toEqual(['worker', 'steward']); // сортировка runs убыв.
+    expect(report.agents[0]).toEqual({
+      agent: 'worker',
+      runs: 2,
+      failures: 1,
+      failureRatePct: 50,
+      weighted: 150,
+      avgDurationMs: 45_000,
+      costUsd: null, // без pricing
+      toolErrors: 1,
+      complaintsBy: 0,
+      complaintsAbout: 1, // about содержит 'worker'
+      successes: 1,
+      holdoutPrevented: 4, // lesson created_by agent:worker
+    });
+    const steward = report.agents[1]!;
+    expect(steward.runs).toBe(0);
+    expect(steward.failureRatePct).toBeNull();
+    expect(steward.complaintsBy).toBe(1); // жалоба подана от agent:steward
+    expect(steward.complaintsAbout).toBe(0);
+    expect(steward.holdoutPrevented).toBeNull(); // ни одного holdout-поля у его объектов
+  });
+});
+
+describe('buildAnalyticsReport: steward view (Q12)', () => {
+  it('мутации по видам/неделям, жалобная воронка, SLA, рецидив, churn, авто-доля', async () => {
+    const objects: Extra[] = [
+      { id: 'b1', type: 'blocker', status: 'resolved', created_at: '2026-08-01T00:00:00Z' },
+      { id: 'c1', type: 'rule', status: 'active', created_at: '2026-08-01T00:00:00Z', dispatch_ages: 4 },
+    ];
+    const events: MemoryEvent[] = [
+      memEvent('memory.added', 'zz', '2026-09-01T00:00:00Z'), // не мутация
+      memEvent('memory.scan.updated', 'zz', '2026-09-01T00:01:00Z'), // не мутация
+      memEvent('memory.updated', 'd1', '2026-09-01T00:05:00Z', { memory_id: 'd1' }, 'system:wolf'),
+      memEvent('memory.updated', 'd1', '2026-09-01T00:06:00Z', { memory_id: 'd1' }, 'user:cli'),
+      memEvent('memory.updated', 't9', '2026-09-01T00:07:00Z', { memory_id: 't9', kind: 'tool.used' }, 'system:wolf'),
+      memEvent('memory.updated', 'c1', '2026-09-01T00:15:00Z'), // между двумя жалобами c1
+      memEvent('memory.resolved', 'b1', '2026-09-01T02:00:00Z'),
+      memEvent('memory.transitioned', 'q1', '2026-09-01T03:00:00Z', { memory_id: 'q1', to: 'rejected' }),
+    ];
+    const signals: SignalEvent[] = [
+      complaintEvent('b1', '2026-09-01T00:00:00Z'),
+      complaintEvent('c1', '2026-09-01T00:10:00Z'),
+      complaintEvent('c1', '2026-09-01T00:20:00Z'),
+    ];
+    const report = await buildAnalyticsReport(
+      { store: mockStore(objects), log: mockLog(events), clock: fixedClock },
+      { signals, runLogText: null, weeks: 2 }
+    );
+    const st = report.steward;
+    // мутации: update ×3 (d1 ×2 + c1), resolve ×1, transition ×1, tool-mutation ×1, supersede 0
+    expect(st.mutations).toEqual([
+      { kind: 'update', count: 3 },
+      { kind: 'supersede', count: 0 },
+      { kind: 'resolve', count: 1 },
+      { kind: 'transition', count: 1 },
+      { kind: 'tool-mutation', count: 1 },
+    ]);
+    expect(st.mutationsByWeek).toEqual([
+      { week: '2026-08-24', total: 0 },
+      { week: '2026-08-31', total: 6 },
+    ]);
+    // жалобы: 3 подано; b1 resolved через 2ч после первой жалобы → lifetime 2; q1 rejected
+    expect(st.complaintFunnel).toEqual({ filed: 3, resolved: 1, rejected: 1, avgLifetimeHours: 2, slaEscalations: 1 });
+    expect(st.recidivismCount).toBe(1); // c1: 2 жалобы + update между ними
+    expect(st.churnIds).toEqual(['d1']); // d1: 2 мутации за окно
+    expect(st.autoMutationSharePct).toBeCloseTo(33.3333, 3); // 2 из 6 мутаций от system:wolf
+  });
+});
+
+describe('buildAnalyticsReport: experiment readiness (Q10)', () => {
+  it('доля прогонов с arm; выборки по группам и экспериментам', async () => {
+    const signals: SignalEvent[] = [
+      runSignal({ agent: 'w', outcome: 'ok', experiment: { id: 'e1', arm: 'wolf' } }),
+      runSignal({ agent: 'w', outcome: 'ok', experiment: { id: 'e1', arm: 'wolf' } }),
+      runSignal({ agent: 'w', outcome: 'ok', experiment: { id: 'e2', arm: 'baseline' } }),
+      runSignal({ agent: 'w', outcome: 'ok' }),
+    ];
+    const report = await buildAnalyticsReport(
+      { store: mockStore([]), log: mockLog([]), clock: fixedClock },
+      { signals, runLogText: null }
+    );
+    expect(report.readiness).toEqual({
+      totalRuns: 4,
+      withArm: 3,
+      withArmPct: 75,
+      byArm: [
+        { arm: 'baseline', runs: 1 },
+        { arm: 'wolf', runs: 2 },
+      ], // сорт по имени arm
+      byExperiment: [
+        { experiment: 'e1', runs: 2 },
+        { experiment: 'e2', runs: 1 },
+      ], // сорт runs убыв.
+    });
+  });
+});
