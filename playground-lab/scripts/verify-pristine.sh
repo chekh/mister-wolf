@@ -14,7 +14,7 @@ fi
 
 fail=0
 for p in .wolf .opencode AGENTS.md opencode.json .opencode.json .wolfrc \
-         docs/site/public playground-lab; do
+         docs/site/public playground-lab .external-research; do
   if [[ -e "$PLAYGROUND/$p" ]]; then
     echo "DIRTY: остался $p"
     fail=1
