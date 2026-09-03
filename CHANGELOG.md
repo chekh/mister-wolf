@@ -6,6 +6,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+## [2.2.1] — 2026-09-03
+
+### Changed
+
+- All wolf user-facing output is now English (CLI, MCP tool text, help); Russian remains in code comments/internal dev docs (bilingual policy: EN primary).
+
+### Added
+
+- english-surface gate in `npm run check`.
+
 ## [2.2.0] — 2026-09-02
 
 ### Added
