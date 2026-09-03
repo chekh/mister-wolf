@@ -8,7 +8,8 @@
 #   2. git init -b main + git archive main | tar -x (снапшот без истории/node_modules)
 #   3. исключить wolf-артефакты снапшота: .opencode/ AGENTS.md opencode.json
 #      + .opencode.json (MCP-конфиг mr-wolf) и .wolf/ (в main трекается SKILL.md)
-#      + шум: docs/site/public (ассеты витрины), playground-lab/ (полигон)
+#      + шум: docs/site/public (ассеты витрины), playground-lab/ (полигон),
+#        .external-research/ (исследования концепта)
 #   4. начальный коммит своего репо площадки (README-PLAYGROUND.md переживает reset)
 #
 # Usage: scripts/playground-reset.sh [--force] [--ref <git-ref>]
@@ -68,13 +69,14 @@ rm -rf "$PLAYGROUND/.opencode" \
        "$PLAYGROUND/.opencode.json" \
        "$PLAYGROUND/.wolf" \
        "$PLAYGROUND/docs/site/public" \
-       "$PLAYGROUND/playground-lab"
+       "$PLAYGROUND/playground-lab" \
+       "$PLAYGROUND/.external-research"
 
 [[ -n "$README_BAK" ]] && cp "$README_BAK" "$PLAYGROUND/README-PLAYGROUND.md"
 
 # контроль pristine ДО коммита: волчьих следов быть не должно
 for p in .opencode .wolf AGENTS.md opencode.json .opencode.json .wolfrc \
-         docs/site/public playground-lab; do
+         docs/site/public playground-lab .external-research; do
   if [[ -e "$PLAYGROUND/$p" ]]; then
     echo "ERROR: pristine нарушен — остался $p" >&2
     exit 1
