@@ -27,6 +27,12 @@ export interface SignalEvent {
   orchestration: { task: string | null; actor: string };
   /** weighted-токены (input + 0.1×cache_read + 5×output) — для run-событий. */
   weighted?: number;
+  /** M1 (D4): wall-clock длительность прогона, мс (только run-события). */
+  duration_ms?: number;
+  /** M1 (D3): сырые токены прогона (только run-события). */
+  tokens?: { input: number; output: number; cache_read: number };
+  /** M1 (D5): экспериментальные примитивы (arm/task_id пишутся только с experiment). */
+  experiment?: { id: string; arm: 'wolf' | 'baseline'; task_id?: string };
   /** run: 'ok' | 'exit_<code>'; tool_error: 'error'. */
   outcome?: string;
   /** tool_error. */
@@ -143,7 +149,7 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-/** Writer (а): `wolf run` — метрики сессии (модель из routing, weighted, outcome). */
+/** Writer (а): `wolf run` — метрики сессии (модель из routing, weighted, outcome; M1: duration/tokens/experiment). */
 export function appendRunSignal(
   baseDir: string,
   input: {
@@ -155,6 +161,9 @@ export function appendRunSignal(
     outcome: string;
     actor: string;
     task?: string;
+    durationMs?: number;
+    tokens?: { input: number; output: number; cache_read: number };
+    experiment?: { id: string; arm: 'wolf' | 'baseline'; taskId?: string };
   }
 ): { key: string | null; count: number; patternFixed: boolean } {
   return appendSignal(baseDir, {
@@ -166,6 +175,17 @@ export function appendRunSignal(
     weighted: input.weighted,
     outcome: input.outcome,
     ...(input.task !== undefined ? { detail: { task: input.task } } : {}),
+    ...(input.durationMs !== undefined ? { duration_ms: input.durationMs } : {}),
+    ...(input.tokens !== undefined ? { tokens: input.tokens } : {}),
+    ...(input.experiment !== undefined
+      ? {
+          experiment: {
+            id: input.experiment.id,
+            arm: input.experiment.arm,
+            ...(input.experiment.taskId !== undefined ? { task_id: input.experiment.taskId } : {}),
+          },
+        }
+      : {}),
   });
 }
 

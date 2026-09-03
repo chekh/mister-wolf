@@ -16,6 +16,7 @@ import {
   DEFAULT_PATTERN_THRESHOLD,
   type SignalEvent,
 } from '../../../src/adapters/fs/session-metrics-log.js';
+import { parseRunLog } from '../../../src/domain/tool-economy.js';
 
 describe("Ф20 (D1.1): session-metrics.jsonl — writer'ы и формат", () => {
   let dir: string;
@@ -118,6 +119,67 @@ describe("Ф20 (D1.1): session-metrics.jsonl — writer'ы и формат", () 
         '\n'
     );
     expect(signals()).toHaveLength(1);
+  });
+
+  it('(M1-а) run: опциональные durationMs/tokens/experiment записываются и читаются', () => {
+    appendRunSignal(dir, {
+      model: 'zai-coding-plan/glm-5.3',
+      agent: 'worker-implementer',
+      title: 'M1 примитивы',
+      session: 'ses_1',
+      weighted: 42,
+      outcome: 'ok',
+      actor: 'executor-lead',
+      durationMs: 1234,
+      tokens: { input: 10, output: 2, cache_read: 3 },
+      experiment: { id: 'exp-1', arm: 'wolf', taskId: 'task-9' },
+    });
+    const [rec] = signals();
+    expect(rec.duration_ms).toBe(1234);
+    expect(rec.tokens).toEqual({ input: 10, output: 2, cache_read: 3 });
+    expect(rec.experiment).toEqual({ id: 'exp-1', arm: 'wolf', task_id: 'task-9' });
+  });
+
+  it('(M1-б) run без опциональных полей — в записи нет ключей duration_ms/tokens/experiment (backward-compat)', () => {
+    appendRunSignal(dir, {
+      model: 'm',
+      agent: 'a',
+      title: 't',
+      session: null,
+      weighted: 1,
+      outcome: 'ok',
+      actor: 'x',
+    });
+    const raw = JSON.parse(readFileSync(metricsLogPath(dir), 'utf-8').trim()) as Record<string, unknown>;
+    expect(Object.prototype.hasOwnProperty.call(raw, 'duration_ms')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(raw, 'tokens')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(raw, 'experiment')).toBe(false);
+  });
+
+  it('(M1-в) parseRunLog: записи с новыми полями M1 парсятся с сохранением типов', () => {
+    const entries = parseRunLog(
+      JSON.stringify({
+        ts: '2026-09-03T00:00:00.000Z',
+        model: 'glm',
+        agent: 'a',
+        title: 't',
+        session: 'ses_1',
+        weighted: 100,
+        duration_ms: 5000,
+        tokens: { input: 10, output: 2, cache_read: 3 },
+        experiment: { id: 'exp-1', arm: 'wolf', task_id: 'task-9' },
+      })
+    );
+    expect(entries).toHaveLength(1);
+    const [entry] = entries;
+    expect(typeof entry?.duration_ms).toBe('number');
+    expect(entry?.duration_ms).toBe(5000);
+    expect(typeof entry?.tokens).toBe('object');
+    expect(entry?.tokens).toEqual({ input: 10, output: 2, cache_read: 3 });
+    expect(typeof entry?.experiment).toBe('object');
+    expect(entry?.experiment).toEqual({ id: 'exp-1', arm: 'wolf', task_id: 'task-9' });
+    expect(typeof entry?.session).toBe('string');
+    expect(entry?.session).toBe('ses_1');
   });
 });
 
