@@ -32,7 +32,7 @@ describe('routeReviewDepth (Ф25)', () => {
     expect(routeReviewDepth({ blastRadius: BLAST_RADIUS_REVIEW }).depth).toBe('review-council');
     const mid = routeReviewDepth({ blastRadius: BLAST_RADIUS_ATTENTION });
     expect(mid.depth).toBe('flat');
-    expect(mid.reasons.some((r) => r.includes('внимания'))).toBe(true);
+    expect(mid.reasons.some((r) => r.includes('attention'))).toBe(true);
   });
 
   it(`объём: >${REVIEW_FILES_THRESHOLD} файлов или >${REVIEW_LINES_THRESHOLD} строк → review-council`, () => {
@@ -55,6 +55,6 @@ describe('routeReviewDepth (Ф25)', () => {
   it('пустые признаки — flat с обоснованием', () => {
     const d = routeReviewDepth({});
     expect(d.depth).toBe('flat');
-    expect(d.reasons[0]).toContain('плоская');
+    expect(d.reasons[0]).toContain('flat');
   });
 });

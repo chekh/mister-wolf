@@ -82,7 +82,7 @@ describe('memory integrity: mass write + pressure-integrity секции validat
     expect(broken.ok).toBe(false);
     const section = broken.sections.find((s) => s.name === 'supersede');
     expect(section?.errors.length).toBeGreaterThan(0);
-    expect(section?.errors[0]).toContain('несуществующий id');
+    expect(section?.errors[0]).toContain('non-existent id');
   });
 
   it('(б2) цикл A→B→A в цепочке supersede → ошибка validate', async () => {
@@ -103,7 +103,7 @@ describe('memory integrity: mass write + pressure-integrity секции validat
     const result = await runValidate(dir);
     expect(result.ok).toBe(false);
     const section = result.sections.find((s) => s.name === 'supersede');
-    expect(section?.errors.some((e) => e.includes('цикл'))).toBe(true);
+    expect(section?.errors.some((e) => e.includes('cycle'))).toBe(true);
   });
 
   it('(в) битая строка в session-metrics.jsonl → ошибка секции signal log', async () => {

@@ -43,7 +43,7 @@ function toolError(tool: string, i: number): SignalEvent {
 
 describe('buildExamplePool (M24-02: 20–100)', () => {
   it('< 20 tool_error → UserFacingError', () => {
-    expect(() => buildExamplePool([toolError('bash', 1), toolError('bash', 2)])).toThrowError(/пул примеров 2 < 20/);
+    expect(() => buildExamplePool([toolError('bash', 1), toolError('bash', 2)])).toThrowError(/example pool 2 < 20/);
   });
 
   it('> 100 → обрезка до последних 100, порядок сохранён', () => {
@@ -59,7 +59,7 @@ describe('buildExamplePool (M24-02: 20–100)', () => {
 
 describe('validateTemplateLength (M24-03: 1500)', () => {
   it('1501 символ → UserFacingError', () => {
-    expect(() => validateTemplateLength('x'.repeat(1501), 'candidate')).toThrowError(/1501 символов > лимита 1500/);
+    expect(() => validateTemplateLength('x'.repeat(1501), 'candidate')).toThrowError(/1501 chars > limit 1500/);
   });
 
   it('ровно 1500 — ок', () => {
@@ -115,7 +115,7 @@ describe('compareTemplates — Парето по инстансам (S24-05)', (
 describe('reflectorConstraints (M24-04)', () => {
   it('содержит запрет дословного копирования примеров и лимит', () => {
     const text = reflectorConstraints().join('\n').toLowerCase();
-    expect(text).toContain('дословн');
+    expect(text).toContain('verbatim');
     expect(text).toContain('1500');
     expect(text).toContain('avoid');
   });
@@ -190,7 +190,7 @@ describe('evolveTemplate — dry-run и кандидат-файл', () => {
     files.clear();
     await expect(
       evolveTemplate(makeDeps(), dir, { templateId: 'brief', reflector, dryRun: true })
-    ).rejects.toThrowError(/создайте файл шаблона/);
+    ).rejects.toThrowError(/create the template file/);
   });
 });
 

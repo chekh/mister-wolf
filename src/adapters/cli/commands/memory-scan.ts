@@ -16,7 +16,7 @@ export function memoryScanCommand(): Command {
     }
     // §2.6: легаси doc_* сохранены как есть — миграция только явная
     if (result.documents.some((d) => !isCanonicalDocumentId(d.id))) {
-      console.log('обнаружены объекты вне канона id: запустите wolf migrate doc-ids');
+      console.log('objects outside the id canon detected: run wolf migrate doc-ids');
     }
   });
 }

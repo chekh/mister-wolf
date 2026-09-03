@@ -79,7 +79,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
         // diff-ветка (§4.5): unstamped — чужое (wx); stamped — сравнение контента
         const current = readFileSync(f.target, 'utf-8');
         if (parseStamp(current) === null) {
-          outcomes.push({ file: rel, action: 'skipped', reason: 'exists, unstamped (wx-политика)' });
+          outcomes.push({ file: rel, action: 'skipped', reason: 'exists, unstamped (wx policy)' });
           continue;
         }
         const fresh = this.renderContent(f, opts?.bake, opts?.models);
@@ -87,7 +87,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
           outcomes.push({ file: rel, action: 'skipped', reason: 'content identical' });
         } else {
           await writeFile(f.target, fresh, 'utf-8');
-          outcomes.push({ file: rel, action: 'updated', reason: 'content differs (diff-ветка, §4.5)' });
+          outcomes.push({ file: rel, action: 'updated', reason: 'content differs (diff branch, §4.5)' });
         }
         continue;
       }
@@ -118,7 +118,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
         outcomes.push({
           file: rel,
           action: 'conflict',
-          reason: 'unstamped на месте шаблонного — владелец решает: переименовать / удалить / принять текущий',
+          reason: 'unstamped in place of a template one — the owner decides: rename / delete / accept the current one',
         });
         continue;
       }
@@ -181,7 +181,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
     const block = content.endsWith('\n') ? content : `${content}\n`;
     const sep = current.endsWith('\n') ? (current.endsWith('\n\n') ? '' : '\n') : '\n\n';
     await writeFile(paths.target, `${current}${sep}${block}`, 'utf-8');
-    return [{ file: 'AGENTS.md', action: 'appended', reason: 'marker-append (D3: чужой контент не тронут)' }];
+    return [{ file: 'AGENTS.md', action: 'appended', reason: 'marker-append (D3: foreign content untouched)' }];
   }
 
   /** Sync-ветка AGENTS.md: только штампованный цельный файл; append-блок синку не принадлежит. */
@@ -200,7 +200,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
     const current = readFileSync(paths.target, 'utf-8');
     if (parseStamp(current) === null) {
       return [
-        { file: 'AGENTS.md', action: 'skipped', reason: 'без штампа (append-блок) — синку не принадлежит (§4.2)' },
+        { file: 'AGENTS.md', action: 'skipped', reason: 'no stamp (append block) — does not belong to sync (§4.2)' },
       ];
     }
     if (fresh === current) {

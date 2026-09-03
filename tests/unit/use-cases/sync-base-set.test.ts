@@ -75,7 +75,7 @@ describe('wolf sync CLI (Task 7)', () => {
       await cmd.parseAsync(['node', 'sync']);
       expect(logs.some((l) => l.includes('# wolf sync'))).toBe(true);
       expect(logs.some((l) => l.includes('models: omit'))).toBe(true);
-      expect(logs.some((l) => l.includes('Память (.wolf/) не тронута'))).toBe(true);
+      expect(logs.some((l) => l.includes('Memory (.wolf/) untouched'))).toBe(true);
       // omit-режим: в отрендеренных агентах нет model:-строки и нет пинов
       const agent = readFileSync(join(proj, '.opencode/agents/mr-wolf.md'), 'utf-8');
       expect(agent).not.toMatch(/^model:/m);

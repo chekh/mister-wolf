@@ -64,10 +64,10 @@ export class OpencodeAdapter implements PlatformAdapter {
     const sd = cfg.subagent_depth;
     const reasons: string[] = [];
     if (da !== undefined && da !== DEFAULT_AGENT) {
-      reasons.push(`default_agent=${da} занят; mr-wolf не назначен`);
+      reasons.push(`default_agent=${da} is taken; mr-wolf not assigned`);
     }
     if (sd !== undefined && !(typeof sd === 'number' && sd >= SUBAGENT_DEPTH)) {
-      reasons.push(`subagent_depth=${sd} занят; трёхуровневая схема не заработает, поставьте >=2`);
+      reasons.push(`subagent_depth=${sd} is taken; the three-level scheme will not work, set >=2`);
     }
     const reason = reasons.length > 0 ? reasons.join('; ') : undefined;
 

@@ -41,7 +41,7 @@ export function buildExamplePool(signals: SignalEvent[]): EvolveExample[] {
     }));
   if (all.length < POOL_MIN) {
     throw new UserFacingError(
-      `пул примеров ${all.length} < ${POOL_MIN} — GEPA-эволюция не запускается (M24-02: ${POOL_MIN}–${POOL_MAX})`
+      `example pool ${all.length} < ${POOL_MIN} — GEPA evolution does not start (M24-02: ${POOL_MIN}–${POOL_MAX})`
     );
   }
   // больше POOL_MAX — последние POOL_MAX по порядку файла (свежие важнее старых)
@@ -64,9 +64,9 @@ export interface TemplateReflector {
 /** Constraint-блок рефлектору (M24-04): против утечки примеров в шаблон. */
 export function reflectorConstraints(): string[] {
   return [
-    'не копируй примеры ошибок дословно в шаблон — обобщай до воспроизводимых указаний',
-    `не превышай лимит ${TEMPLATE_CHAR_LIMIT} символов (M24-03)`,
-    "указания — только воспроизводимые, вида 'avoid: <tool_name>'",
+    'do not copy error examples into the template verbatim — generalize into reproducible instructions',
+    `do not exceed the ${TEMPLATE_CHAR_LIMIT} character limit (M24-03)`,
+    "instructions — reproducible only, of the form 'avoid: <tool_name>'",
   ];
 }
 
@@ -92,7 +92,7 @@ export function mechanicalReflector(): TemplateReflector {
         if (next.length > TEMPLATE_CHAR_LIMIT) break;
         candidate = next;
       }
-      return { candidate, notes: 'механический рефлектор: avoid-указания по топ-тулам пула' };
+      return { candidate, notes: 'mechanical reflector: avoid-instructions for the pool top tools' };
     },
   };
 }
@@ -164,7 +164,7 @@ export function compareTemplates(
 /** Длина шаблона > 1500 символов → отказ (M24-03). */
 export function validateTemplateLength(template: string, label: string): void {
   if (template.length > TEMPLATE_CHAR_LIMIT) {
-    throw new UserFacingError(`шаблон ${label}: ${template.length} символов > лимита ${TEMPLATE_CHAR_LIMIT} (M24-03)`);
+    throw new UserFacingError(`template ${label}: ${template.length} chars > limit ${TEMPLATE_CHAR_LIMIT} (M24-03)`);
   }
 }
 
@@ -199,7 +199,7 @@ export async function evolveTemplate(
     current = await deps.readFile(templatePath);
   } catch {
     throw new UserFacingError(
-      `шаблон ${input.templateId} не найден (${templatePath}) — создайте файл шаблона, прежде чем эволюционировать`
+      `template ${input.templateId} not found (${templatePath}) — create the template file before evolving`
     );
   }
   validateTemplateLength(current, 'current');

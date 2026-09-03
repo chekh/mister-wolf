@@ -121,7 +121,7 @@ describe('initProject + baseSet (Task 6 + §4.5: модели — в ренде�
     };
     const result = await initProject(makeDeps(npxBaseSet, true), dir, { models: MODELS });
     expect(result.baseSetOutcomes).toEqual([
-      { file: '(base set)', action: 'skipped', reason: 'npx try-out не пишет набор (спека §7)' },
+      { file: '(base set)', action: 'skipped', reason: 'npx try-out does not write the base set (spec §7)' },
     ]);
     expect(renderCalled).toBe(false);
   });

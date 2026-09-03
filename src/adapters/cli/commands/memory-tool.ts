@@ -169,17 +169,17 @@ export function memoryToolCommand(): Command {
       console.log('');
       const e = result.economy;
       if (!e.sufficient) {
-        console.log(`economy: недостаточно данных (${e.reason ?? 'нет валидных записей run-log'})`);
+        console.log(`economy: not enough data (${e.reason ?? 'no valid run-log records'})`);
       } else {
-        console.log(`economy: tool-задач ${e.toolRuns} из ${e.totalRuns}`);
-        console.log(`  weighted-медиана с tool: ${e.medianTool}`);
-        console.log(`  weighted-медиана всех:   ${e.medianAll}`);
+        console.log(`economy: tool runs ${e.toolRuns} of ${e.totalRuns}`);
+        console.log(`  weighted median with tool: ${e.medianTool}`);
+        console.log(`  weighted median overall:   ${e.medianAll}`);
         if (e.savingsPct !== null) {
           console.log(
-            `  оценка экономии: ${e.savingsPct >= 0 ? '' : '+'}${Math.abs(e.savingsPct).toFixed(1)}% (индикатор, не доказательство)`
+            `  savings estimate: ${e.savingsPct >= 0 ? '' : '+'}${Math.abs(e.savingsPct).toFixed(1)}% (indicator, not proof)`
           );
         } else {
-          console.log('  оценка экономии: не вычислена (медиана всех = 0)');
+          console.log('  savings estimate: not computed (overall median = 0)');
         }
       }
     });

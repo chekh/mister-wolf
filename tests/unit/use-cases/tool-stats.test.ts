@@ -34,7 +34,7 @@ describe('toolStats (C3: экономика переиспользования)'
   it('runLogText null → sufficient false, reason про отсутствующий run-log', async () => {
     const result = await toolStats({ store: mockStore([]) }, { runLogText: null });
     expect(result.economy.sufficient).toBe(false);
-    expect(result.economy.reason).toContain('run-log отсутствует');
+    expect(result.economy.reason).toContain('run-log missing');
     expect(result.economy.toolRuns).toBe(0);
     expect(result.economy.totalRuns).toBe(0);
     expect(result.economy.medianAll).toBeNull();

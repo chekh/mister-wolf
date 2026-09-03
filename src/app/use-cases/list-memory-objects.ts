@@ -35,7 +35,7 @@ export function resolveListType(
   // алиас проверяем раньше known: 'document' формально в таксономии, но deprecated
   const alias = aliases[requested];
   if (alias) {
-    return { type: alias, warning: `тип '${requested}' устарел, используйте '${alias}'` };
+    return { type: alias, warning: `type '${requested}' is deprecated, use '${alias}'` };
   }
   if (known.includes(requested)) return { type: requested };
   const nearest = [...known]
@@ -44,8 +44,8 @@ export function resolveListType(
     .sort((a, b) => a.d - b.d || a.t.localeCompare(b.t))[0];
   // ближайший не должен быть deprecated-алиасом: предлагаем его каноническое имя
   const suggestion = nearest ? (aliases[nearest.t] ?? nearest.t) : undefined;
-  const hint = suggestion ? ` ближайший: '${suggestion}';` : '';
-  return { type: '', error: `неизвестный тип '${requested}';${hint} допустимые: ${[...known].sort().join(', ')}` };
+  const hint = suggestion ? ` closest: '${suggestion}';` : '';
+  return { type: '', error: `unknown type '${requested}';${hint} allowed: ${[...known].sort().join(', ')}` };
 }
 
 /** Levenshtein (двухрядный DP, без зависимостей) — только для подсказки «ближайший». */

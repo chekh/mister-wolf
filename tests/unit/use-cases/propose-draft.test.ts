@@ -68,9 +68,9 @@ describe('proposeDraft (Ф22 D2.2)', () => {
     expect(rec.polarity).toBe('positive');
     expect(rec.pattern_key).toBe('bash:timeout');
     expect(rec.pattern_count).toBe(3);
-    expect(rec.predicted_effect).toBe('предотвращение повторений bash:timeout');
+    expect(rec.predicted_effect).toBe('prevention of bash:timeout recurrences');
     expect(rec.risk_level).toBe('low');
-    expect(object.body).toContain('Повторяющаяся ошибка bash:timeout 3 раз — правило:');
+    expect(object.body).toContain('Recurring error bash:timeout 3 times — rule:');
     expect(object.body).toContain(MECHANICAL_ADVICE.timeout!);
     expect(object.body).toContain(
       'evidence: session-metrics.jsonl:1, session-metrics.jsonl:2, session-metrics.jsonl:3'
@@ -149,7 +149,7 @@ describe('proposeDraft (Ф22 D2.2)', () => {
         patterns: patternsFor('bash:timeout', 3),
         actor: 'steward:archivist',
       })
-    ).rejects.toThrow('активный паттерн не найден: bash:auth; активные: bash:timeout');
+    ).rejects.toThrow('active pattern not found: bash:auth; active: bash:timeout');
   });
 
   it('(г) дедуп: второй propose того же паттерна при живом draft → UserFacingError', async () => {
@@ -165,7 +165,7 @@ describe('proposeDraft (Ф22 D2.2)', () => {
         patterns: patternsFor('bash:timeout', 4),
         actor: 'steward:archivist',
       })
-    ).rejects.toThrow(`draft для паттерна уже существует: ${first.object.id} (proposed)`);
+    ).rejects.toThrow(`a draft for the pattern already exists: ${first.object.id} (proposed)`);
   });
 
   it('(д) --negative: анти-правило с medium-риском и запретом тула', async () => {
@@ -179,11 +179,11 @@ describe('proposeDraft (Ф22 D2.2)', () => {
     const rec = object as Record<string, unknown>;
 
     expect(rec.polarity).toBe('negative');
-    expect(object.body).toContain('АНТИ-ПРАВИЛО: не использовать bash');
-    expect(object.body).toContain('класс timeout');
+    expect(object.body).toContain('ANTI-RULE: do not use bash');
+    expect(object.body).toContain('class timeout');
     expect(rec.risk_level).toBe('medium');
-    expect(rec.blast_radius).toBe('high: запрет тула целиком');
-    expect(rec.regression_risks).toEqual(['блокирует и легитимные использования тула — сигнальный лог их не видит']);
+    expect(rec.blast_radius).toBe('high: bans the tool entirely');
+    expect(rec.regression_risks).toEqual(['blocks legitimate tool uses too — the signal log does not see them']);
   });
 
   it('(е) complaint-паттерн: rule без механики, scope project', async () => {
@@ -200,7 +200,7 @@ describe('proposeDraft (Ф22 D2.2)', () => {
     expect(rec.scope).toBe('project');
     expect(rec.constraint_tool).toBeUndefined();
     expect(rec.trigger_keywords).toEqual(['skill:demo']);
-    expect(object.body).toContain('Повторяющаяся жалоба complaint:skill:demo 3 раз');
-    expect(object.body).toContain('Analyzer (LLM) или человек');
+    expect(object.body).toContain('Recurring complaint complaint:skill:demo 3 times');
+    expect(object.body).toContain('Analyzer (LLM) or a human');
   });
 });

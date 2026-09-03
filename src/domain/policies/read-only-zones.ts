@@ -25,16 +25,16 @@ export interface ReadOnlyZone {
 }
 
 export const READ_ONLY_ZONES: readonly ReadOnlyZone[] = [
-  { path: '.wolf/events.jsonl', reason: 'аудит-лог контура (спека §5: read-only зоны)' },
-  { path: '.wolf/relations.jsonl', reason: 'граф связей контура (спека §5)' },
-  { path: '.wolf/memory/events.jsonl', reason: 'аудит-лог контура, фактический путь layout (спека §5)' },
-  { path: '.wolf/memory/relations.jsonl', reason: 'граф связей контура, фактический путь layout (спека §5)' },
-  { path: '.wolf/metrics/session-metrics.jsonl', reason: 'сигнальный лог контура (спека §5)' },
-  { path: '.wolf/metrics/patterns.jsonl', reason: 'журнал паттернов контура (спека §5)' },
-  { path: 'src/domain/gates/', reason: 'код гейтов — контур не меняет свои гейты (спека §5)' },
-  { path: 'src/domain/policies/', reason: 'код валидаторов/политик (спека §5)' },
-  { path: '.opencode/', reason: 'скелет/рамки платформы (спека §13)' },
-  { path: 'AGENTS.md', reason: 'рамка AGENTS.md (спека §13)' },
+  { path: '.wolf/events.jsonl', reason: 'loop audit log (spec §5: read-only zones)' },
+  { path: '.wolf/relations.jsonl', reason: 'loop relation graph (spec §5)' },
+  { path: '.wolf/memory/events.jsonl', reason: 'loop audit log, actual layout path (spec §5)' },
+  { path: '.wolf/memory/relations.jsonl', reason: 'loop relation graph, actual layout path (spec §5)' },
+  { path: '.wolf/metrics/session-metrics.jsonl', reason: 'loop signal log (spec §5)' },
+  { path: '.wolf/metrics/patterns.jsonl', reason: 'loop pattern journal (spec §5)' },
+  { path: 'src/domain/gates/', reason: 'gate code — the loop does not change its own gates (spec §5)' },
+  { path: 'src/domain/policies/', reason: 'validator/policy code (spec §5)' },
+  { path: '.opencode/', reason: 'platform skeleton/frames (spec §13)' },
+  { path: 'AGENTS.md', reason: 'AGENTS.md frame (spec §13)' },
 ];
 
 /** Сигнальные логи: append разрешён (наблюдение, не адаптация — §3, §9). */
@@ -73,9 +73,9 @@ export function assertLearnWriteAllowed(relPath: string, op: 'write' | 'rewrite'
   if (op === 'append-signal' && SIGNAL_APPEND_ALLOWED.has(normalized)) return;
   if (op === 'append-signal') {
     throw new UserFacingError(
-      `read-only зона контура: ${relPath} (${zone.reason}); append-сигнал разрешён только ` +
-        `сигнальным логам (.wolf/metrics/session-metrics.jsonl, .wolf/metrics/patterns.jsonl)`
+      `loop read-only zone: ${relPath} (${zone.reason}); append-signal is allowed only ` +
+        `for the signal logs (.wolf/metrics/session-metrics.jsonl, .wolf/metrics/patterns.jsonl)`
     );
   }
-  throw new UserFacingError(`read-only зона контура: ${relPath} (${zone.reason})`);
+  throw new UserFacingError(`loop read-only zone: ${relPath} (${zone.reason})`);
 }

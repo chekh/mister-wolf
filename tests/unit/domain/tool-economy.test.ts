@@ -43,8 +43,8 @@ describe('analyzeEconomy', () => {
     const entries = [entry(100, ['t']), entry(200, ['t']), entry(900), entry(1000)];
     const result = analyzeEconomy(entries);
     expect(result.sufficient).toBe(false);
-    expect(result.reason).toContain('tool-задач: 2');
-    expect(result.reason).toContain('всего: 4');
+    expect(result.reason).toContain('tool runs: 2');
+    expect(result.reason).toContain('total: 4');
     expect(result.reason).toContain('≥ 3');
     expect(result.toolRuns).toBe(2);
     expect(result.totalRuns).toBe(4);

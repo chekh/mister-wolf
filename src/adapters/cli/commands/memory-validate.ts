@@ -174,7 +174,7 @@ export async function runValidate(baseDir: string, opts?: { fix?: boolean }): Pr
     const sb = o.superseded_by;
     if (sb === null || sb === undefined) continue;
     if (typeof sb !== 'string' || !ids.has(sb)) {
-      supErrors.push(`${String(o.id)}: superseded_by указывает на несуществующий id: ${String(sb)}`);
+      supErrors.push(`${String(o.id)}: superseded_by points to a non-existent id: ${String(sb)}`);
     }
   }
   // циклы в цепочках superseded_by (обход с локальным visited; дедуп по составу)
@@ -187,7 +187,7 @@ export async function runValidate(baseDir: string, opts?: { fix?: boolean }): Pr
         const canonical = [...seen].sort().join('→');
         if (!reportedCycles.has(canonical)) {
           reportedCycles.add(canonical);
-          supErrors.push(`цикл в цепочке supersede, вовлечены: ${[...seen].join(' → ')}`);
+          supErrors.push(`cycle in the supersede chain, involved: ${[...seen].join(' → ')}`);
         }
         break;
       }
@@ -216,7 +216,7 @@ export async function runValidate(baseDir: string, opts?: { fix?: boolean }): Pr
     }
   }
   for (const heads of headsByRoot.values()) {
-    if (heads.length > 1) supWarnings.push(`>1 актуальная голова в цепочке supersede: ${heads.join(', ')}`);
+    if (heads.length > 1) supWarnings.push(`more than one current head in the supersede chain: ${heads.join(', ')}`);
   }
   errors.push(...supErrors);
   warnings.push(...supWarnings);

@@ -139,7 +139,11 @@ export async function initProject(
   const baseSetOutcomes: BaseSetOutcome[] = [];
   if (deps.baseSet) {
     if (deps.npx) {
-      baseSetOutcomes.push({ file: '(base set)', action: 'skipped', reason: 'npx try-out не пишет набор (спека §7)' });
+      baseSetOutcomes.push({
+        file: '(base set)',
+        action: 'skipped',
+        reason: 'npx try-out does not write the base set (spec §7)',
+      });
     } else {
       baseSetOutcomes.push(...(await deps.baseSet.render(baseDir, { models: input.models })));
       baseSetOutcomes.push(...(await deps.baseSet.seed(baseDir)));
@@ -237,27 +241,27 @@ function renderInitReportBody(
 
   const made: string[] = [];
   for (const o of baseSetOutcomes) {
-    if (o.file !== 'AGENTS.md') made.push(`- набор: ${o.file} — ${o.action}${o.reason ? ` (${o.reason})` : ''}`);
+    if (o.file !== 'AGENTS.md') made.push(`- base set: ${o.file} — ${o.action}${o.reason ? ` (${o.reason})` : ''}`);
   }
   for (const o of platformOutcomes) {
-    if (o.action !== 'removed' && o.action !== 'skipped') made.push(`- конфиг платформы ${o.platform}: ${o.action}`);
+    if (o.action !== 'removed' && o.action !== 'skipped') made.push(`- platform config ${o.platform}: ${o.action}`);
   }
   if (agentsMd) made.push(`- AGENTS.md: ${agentsMd.action}`);
-  made.push(`- платформы: ${selectedPlatforms.join(', ') || '—'} (источник: ${platformSource})`);
+  made.push(`- platforms: ${selectedPlatforms.join(', ') || '—'} (source: ${platformSource})`);
   made.push(
-    `- модель: primary ${input.models.primary} (источник: ${modelSource}) — подставлена всем агентам (worker = primary)`
+    `- model: primary ${input.models.primary} (source: ${modelSource}) — applied to all agents (worker = primary)`
   );
-  made.push(`- routing-объект моделей: ${routingAction}`);
+  made.push(`- model routing object: ${routingAction}`);
 
   const found: string[] = [];
   const skippedFiles = baseSetOutcomes.filter((o) => o.action === 'skipped' && o.file !== '(base set)');
   if (skippedFiles.length > 0)
-    found.push(`- существовавшие файлы (skipped): ${skippedFiles.map((o) => o.file).join(', ')}`);
-  if (agentsMd && agentsMd.action !== 'created') found.push(`- AGENTS.md уже существовал (${agentsMd.action})`);
+    found.push(`- pre-existing files (skipped): ${skippedFiles.map((o) => o.file).join(', ')}`);
+  if (agentsMd && agentsMd.action !== 'created') found.push(`- AGENTS.md already existed (${agentsMd.action})`);
   const versions: string[] = [];
   if (deps.wolfVersion) versions.push(`wolf ${deps.wolfVersion}`);
   versions.push(`schema v${CURRENT_SCHEMA_VERSION}`);
-  found.push(`- версии: ${versions.join(', ')}`);
+  found.push(`- versions: ${versions.join(', ')}`);
 
   const needsFix: string[] = [];
   for (const o of platformOutcomes) {
@@ -266,23 +270,23 @@ function renderInitReportBody(
   // §4.4 граничный случай: явный выбор без opencode — набор отрендерен, но MCP не подключён (осознанное состояние)
   if (input.platformChoice !== undefined && !input.platformChoice.includes('opencode')) {
     needsFix.push(
-      '- opencode вне списка --platform: агенты Wolf отрендерены в .opencode/, но mcp.wolf/default_agent/subagent_depth не записаны; подключите: wolf init --platform opencode,…'
+      '- opencode not in the --platform list: Wolf agents are rendered into .opencode/, but mcp.wolf/default_agent/subagent_depth are not written; connect: wolf init --platform opencode,…'
     );
   }
   const mcpWritten = platformOutcomes.some((o) => o.action === 'written' || o.action === 'replaced');
   if (mcpWritten)
     needsFix.push(
-      '- подключите MCP: перезапустите платформу (opencode подхватит mcp.wolf, default_agent и subagent_depth)'
+      '- connect MCP: restart the platform (opencode will pick up mcp.wolf, default_agent and subagent_depth)'
     );
 
   return [
-    '## Сделано (made)',
+    '## Done (made)',
     ...made,
     '',
-    '## Обнаружено (found)',
+    '## Detected (found)',
     ...found,
     '',
-    '## Требует поправки (needs-fix)',
+    '## Needs fixing (needs-fix)',
     ...needsFix,
   ].join('\n');
 }

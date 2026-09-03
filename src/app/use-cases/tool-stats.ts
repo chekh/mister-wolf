@@ -37,7 +37,7 @@ export async function toolStats(
     input.runLogText === null
       ? {
           sufficient: false,
-          reason: 'run-log отсутствует (.wolf/run-log.jsonl не найден)',
+          reason: 'run-log missing (.wolf/run-log.jsonl not found)',
           toolRuns: 0,
           totalRuns: 0,
           medianTool: null,

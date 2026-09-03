@@ -57,7 +57,7 @@ describe('scaffoldFrame', () => {
     expect(frame).toContain('mode: all');
     expect(frame).toContain('model: zai-coding-plan/glm-5.3');
     expect(frame).toContain('temperature: 0.2');
-    expect(frame).toContain('Ты — demo-agent. Работай строго по playbook');
+    expect(frame).toContain('You are demo-agent. Work strictly by the playbook');
 
     const rels = await relations.list({ subject: result.playbookId });
     expect(rels.map((r) => `${r.predicate}:${r.object}`)).toContain('owner_skill:agent:demo-agent');
@@ -83,7 +83,7 @@ describe('scaffoldFrame', () => {
       UserFacingError
     );
     await expect(scaffoldFrame(deps, { kind: 'agent', name: 'demo-agent', createdBy: 'user:test' })).rejects.toThrow(
-      /уже существует/
+      /already exists/
     );
     const playbooks = await store.list({ type: 'playbook' });
     expect(playbooks).toHaveLength(1);
@@ -117,7 +117,7 @@ describe('scaffoldFrame', () => {
         fromPlaybook: 'mem_20260829_nope_000000',
         createdBy: 'user:test',
       })
-    ).rejects.toThrow(/Playbook не найден/);
+    ).rejects.toThrow(/Playbook not found/);
     expect(await store.list({ type: 'playbook' })).toHaveLength(0);
   });
 

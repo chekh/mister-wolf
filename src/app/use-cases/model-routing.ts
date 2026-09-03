@@ -60,8 +60,8 @@ export async function upsertModelRouting(
   }
   const { object } = await addMemoryObject(deps, {
     type: 'rule',
-    title: 'Routing: модели агентов',
-    body: `Модели агентов базового набора (onboarding v2, §4.5).\nprimary: ${models.primary}\nworker: ${models.worker}\n`,
+    title: 'Routing: agent models',
+    body: `Base-set agent models (onboarding v2, §4.5).\nprimary: ${models.primary}\nworker: ${models.worker}\n`,
     createdBy,
     tags: [...ROUTING_TAGS],
     memoryClass: 'working',

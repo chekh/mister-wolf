@@ -90,7 +90,7 @@ describe('activateDraft (Ф22 D2.2, гейт §2.5)', () => {
   it('(а) без вердикта → UserFacingError «вердикт отсутствует»', async () => {
     const { deps, draftId } = await proposeDeps('bash:timeout');
     await expect(activateDraft(deps, { draftId, actor: 'user:owner' })).rejects.toThrow(UserFacingError);
-    await expect(activateDraft(deps, { draftId, actor: 'user:owner' })).rejects.toThrow('вердикт отсутствует');
+    await expect(activateDraft(deps, { draftId, actor: 'user:owner' })).rejects.toThrow('holdout verdict missing');
   });
 
   it('(б) после validate fail → активация заблокирована', async () => {
@@ -101,7 +101,7 @@ describe('activateDraft (Ф22 D2.2, гейт §2.5)', () => {
       { draftId, signals: [toolError('bash', 'timeout', before)] }
     );
     await expect(activateDraft(deps, { draftId, actor: 'user:owner' })).rejects.toThrow(
-      'активация заблокирована: holdout fail'
+      'activation blocked: holdout fail'
     );
   });
 
@@ -142,7 +142,7 @@ describe('activateDraft (Ф22 D2.2, гейт §2.5)', () => {
     );
     expect(v.verdict).toBe('needs_human_review');
 
-    await expect(activateDraft(deps, { draftId, actor: 'user:owner' })).rejects.toThrow('требуется человеческое ревью');
+    await expect(activateDraft(deps, { draftId, actor: 'user:owner' })).rejects.toThrow('human review required');
     await activateDraft(deps, { draftId, actor: 'user:owner', humanApproved: true });
     expect((await deps.store.get(draftId))?.status).toBe('active');
   });
@@ -154,7 +154,7 @@ describe('activateDraft (Ф22 D2.2, гейт §2.5)', () => {
       { draftId, signals: [toolError('bash', 'timeout', after)] }
     );
     await activateDraft(deps, { draftId, actor: 'user:owner' });
-    await expect(activateDraft(deps, { draftId, actor: 'user:owner' })).rejects.toThrow('уже активен');
+    await expect(activateDraft(deps, { draftId, actor: 'user:owner' })).rejects.toThrow('already active');
   });
 
   it('не-draft объект (нет pattern_key) отклоняется', async () => {
@@ -166,7 +166,7 @@ describe('activateDraft (Ф22 D2.2, гейт §2.5)', () => {
       { type: 'lesson', title: 'Обычный урок', body: 'текст без draft-полей', createdBy: 'user:owner' }
     );
     await expect(activateDraft(deps, { draftId: plain.object.id, actor: 'user:owner' })).rejects.toThrow(
-      `не draft propose: ${plain.object.id}`
+      `not a propose draft: ${plain.object.id}`
     );
   });
 
@@ -187,7 +187,7 @@ describe('activateDraft (Ф22 D2.2, гейт §2.5)', () => {
       { store: deps.store, clock: deps.clock },
       { draftId, signals: [toolError('bash', 'timeout', after)] }
     );
-    await expect(activateDraft(deps, { draftId, actor: 'user:owner' })).rejects.toThrow('STOP-гейт красный');
+    await expect(activateDraft(deps, { draftId, actor: 'user:owner' })).rejects.toThrow('STOP-gate red');
     expect((await deps.store.get(draftId))?.status).toBe('proposed');
   });
 
@@ -198,7 +198,7 @@ describe('activateDraft (Ф22 D2.2, гейт §2.5)', () => {
       { store: deps.store, clock: deps.clock },
       { draftId, signals: [toolError('bash', 'timeout', after)] }
     );
-    await expect(activateDraft(deps, { draftId, actor: 'user:owner' })).rejects.toThrow('STOP-гейт красный');
+    await expect(activateDraft(deps, { draftId, actor: 'user:owner' })).rejects.toThrow('STOP-gate red');
   });
 
   it('(и) Ф23 STOP-гейт: --human-approved обходит гейт (человек — компенсатор)', async () => {

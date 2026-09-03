@@ -71,7 +71,7 @@ export function runStopGate(
       return {
         id: sc.id,
         passed: false,
-        reason: `действие до wolf call (premature action): знание по теме «${sc.topic}» не получено`,
+        reason: `action before wolf call (premature action): knowledge on topic “${sc.topic}” was not fetched`,
         prematureAction: true,
       };
     }
@@ -80,13 +80,13 @@ export function runStopGate(
         ? {
             id: sc.id,
             passed: true,
-            reason: `знание доставлено: агент воздержался от «${sc.forbidden_tool}»`,
+            reason: `knowledge delivered: the agent abstained from “${sc.forbidden_tool}”`,
             prematureAction: false,
           }
         : {
             id: sc.id,
             passed: false,
-            reason: `delivery не сработал: использован «${sc.forbidden_tool}» без доставленного знания по теме «${sc.topic}»`,
+            reason: `delivery failed: “${sc.forbidden_tool}” was used without delivered knowledge on topic “${sc.topic}”`,
             prematureAction: false,
           };
     }
@@ -94,16 +94,16 @@ export function runStopGate(
       return {
         id: sc.id,
         passed: false,
-        reason: `отказ без адресного запрета (false positive): зря воздержался по теме «${sc.topic}»`,
+        reason: `refusal without a targeted ban (false positive): abstained for nothing on topic “${sc.topic}”`,
         prematureAction: false,
       };
     }
     return sc.expect_action === true
-      ? { id: sc.id, passed: true, reason: 'запретов не доставлено — действие выполнено', prematureAction: false }
+      ? { id: sc.id, passed: true, reason: 'no bans delivered — action taken', prematureAction: false }
       : {
           id: sc.id,
           passed: false,
-          reason: 'сценарий без forbidden_tool и без expect_action — ожидание не определено',
+          reason: 'scenario without forbidden_tool and without expect_action — expectation is undefined',
           prematureAction: false,
         };
   });

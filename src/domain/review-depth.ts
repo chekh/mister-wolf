@@ -48,33 +48,33 @@ export function routeReviewDepth(traits: TaskTraits): RouteDecision {
 
   if (traits.touchesReadOnlyZone) {
     review = true;
-    reasons.push('read-only зона (гейты/логи/скелет): изменения только через человека (§5, §15)');
+    reasons.push('read-only zone (gates/logs/skeleton): changes only through a human (§5, §15)');
   }
   if (traits.security) {
     review = true;
-    reasons.push('безопасность: доверенные границы требуют council-ревью');
+    reasons.push('security: trust boundaries require council review');
   }
   if (traits.blastRadius !== undefined && traits.blastRadius >= BLAST_RADIUS_REVIEW) {
     review = true;
-    reasons.push(`blast radius ${traits.blastRadius} ≥ ${BLAST_RADIUS_REVIEW} — высокий радиус (§16)`);
+    reasons.push(`blast radius ${traits.blastRadius} ≥ ${BLAST_RADIUS_REVIEW} — high radius (§16)`);
   }
   if ((traits.files ?? 0) > REVIEW_FILES_THRESHOLD || (traits.lines ?? 0) > REVIEW_LINES_THRESHOLD) {
     review = true;
     reasons.push(
-      `объём: ${traits.files ?? 0} файлов / ${traits.lines ?? 0} строк — больше порога ${REVIEW_FILES_THRESHOLD}/${REVIEW_LINES_THRESHOLD}`
+      `volume: ${traits.files ?? 0} files / ${traits.lines ?? 0} lines — above the ${REVIEW_FILES_THRESHOLD}/${REVIEW_LINES_THRESHOLD} threshold`
     );
   }
   if (traits.taskType === 'experiment' && traits.hasDeterministicMetric === false) {
     review = true;
-    reasons.push('эксперимент без детерминированной метрики — GEPA-скоринг неприменим, только гейт человека (§3)');
+    reasons.push('experiment without a deterministic metric — GEPA scoring not applicable, human gate only (§3)');
   }
 
   if (!review && traits.blastRadius !== undefined && traits.blastRadius >= BLAST_RADIUS_ATTENTION) {
     reasons.push(
-      `blast radius ${traits.blastRadius} в зоне внимания (≥${BLAST_RADIUS_ATTENTION}) — ревьюеру проверить радиус`
+      `blast radius ${traits.blastRadius} in the attention zone (≥${BLAST_RADIUS_ATTENTION}) — the reviewer checks the radius`
     );
   }
-  if (reasons.length === 0) reasons.push('признаков риска нет — плоская схема достаточна');
+  if (reasons.length === 0) reasons.push('no risk traits — a flat scheme is sufficient');
 
   return { depth: review ? 'review-council' : 'flat', reasons, decisionBy: 'human' };
 }

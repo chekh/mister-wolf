@@ -69,7 +69,7 @@ export async function planDocIdMigration(baseDir: string): Promise<DocIdMigratio
     if (fm.type !== 'document-ref' || isCanonicalDocumentId(fm.id)) continue;
     const sourcePath: string | undefined = fm.source?.path;
     if (!sourcePath) {
-      problems.push({ path: rel, error: `document-ref ${fm.id} без source.path — миграция невозможна` });
+      problems.push({ path: rel, error: `document-ref ${fm.id} without source.path — migration impossible` });
       continue;
     }
     const newId = withTieBreak(documentRefId(sourcePath, fm.created_at), takenIds);
