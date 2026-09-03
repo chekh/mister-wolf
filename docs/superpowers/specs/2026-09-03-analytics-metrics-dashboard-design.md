@@ -103,9 +103,11 @@ holdout-счётчики Ф22), но аналитический слой раз�
 
 ### M3. Абсолютные величины + pricing (fix D3, D4; Q5, Q7, Q8)
 
-- Effectiveness получает блок 6 «Абсолюты» из run-log: суммы weighted и raw
-  токенов за период (неделя) и всего, по моделям; count runs; средняя
-  duration; cost-per-success по (model, agent).
+- Effectiveness получает блок 6 «Абсолюты» из run-СИГНАЛОВ (outcome, model,
+  agent, а после M1 — tokens и duration живут там; в run-log их нет):
+  суммы weighted и raw токенов, по моделям; count runs и failures; средняя
+  duration; cost-per-success по (model, agent). Run-log остаётся источником
+  economy/routing-блоков.
 - `pricing` в config.yaml (`src/adapters/fs/config-file.ts`): map
   model → {input, output, cache_read} ($/Mtok). При наличии — $-стоящие поля
   в блоке абсолютов; при отсутствии — блок $ скрыт (D9).
