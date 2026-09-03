@@ -1,6 +1,6 @@
 # EXP-20260903-first-cycle: init + T1 на pristine
 
-- Статус: running (этап 1 из 3: init+T1 → T2 → X1)
+- Статус: running (этап 2 из 3: init+T1 ✅ → T2 ✅ → X1)
 - Дата: 2026-09-03
 - Гипотеза: `wolf init` на pristine-площадке (playground/, снапшот main) даёт полный корректный набор с первого раза: 6 агентов/13 скиллов/3 команд/2 плагинов, 6 playbook'ов active, штампы, opencode.json с subagent_depth=2, 0 doc-файлов в памяти, идемпотентность. Охватывает регрессии F4/F5/F6/F7/F8/F15.
 
@@ -61,10 +61,30 @@ Pristine playground (снапшот main, 1 коммит `b593fe9`, память
 - `git add -A` + commit → `4e19f43`, log: 2 коммита, status чист.
 - ОТКЛОНЕНИЕ: `.wolf/*` и `opencode.json` игнорируются унаследованным `.gitignore` (строки 3 и 15) → в коммит попали только `.opencode/*` + AGENTS.md (25 файлов). → F18.
 
+### Этап 2. T2 — живой спавн (трёхуровневая схема)
+
+- **Сетап:** каталог `measurements/2026-09-03-first-cycle` создан; линк `playground/dist -> ../dist` создан (не существовал) — сетап-шаг конвенции RT2, не починка.
+- **Команда:** `opencode run --agent mr-wolf --model zai-coding-plan/glm-5.2 --format json "<промпт из карты>"` (cwd=playground). Попытка 1 с инлайновым промптом упала до запуска — `zsh: unmatched '` (shell-квотинг), ноль событий; повтор через файл промпта `t2-prompt.txt` (правило повтора: конфигурационная причина).
+- **Результат:** EXIT=0, 498s. Транскрипт: raw 50739 байт / 22 строки (JSONL, только корневая сессия mr-wolf), stderr пуст. Полный разбор — `measurements/2026-09-03-first-cycle/t2-transcript.md` (с приложенным raw).
+- **Чек-лист T2:** авторство событий субсессий в raw не наблюдаемо (headless пишет только корневую сессию) — c/f на косвенных свидетельствах (task_result lead'а + git diff).
+
+| # | Проверка | Вердикт | Цитата-основание |
+|---|---|---|---|
+| a | mr-wolf не редактировал сам | PASS | tool_use корневой сессии: `skill`, `glob`×2, `mr-wolf_brief`, `task`, `mr-wolf_list`, `mr-wolf_add` — edit/write/bash нет |
+| b | спавн executor-lead | PASS | `"tool":"task"`, `subagent_type: "executor-lead"`, sub-сессия `ses_f97398b3dffehx5CgrPDXzpty2` ≠ корневая |
+| c | lead → worker-implementer + reviewer, отчёт через lead | PASS (косвенно) | task_result lead'а: «Свежий worker-implementer на исполнение… Ревью стадия 1 ✅ … стадия 2 ✅ … Итог ревьюера: ACCEPT» |
+| d | README.md изменён | PASS | diff: `+- [Security policy](SECURITY.md) — supported versions, vulnerability reporting` (строка 196, `## Documentation`; 1 файл, 1 insertion) |
+| e | финальный статус с основаниями | PASS | text-part mr-wolf: «# Отчёт координатора: **ACCEPTED** ✅ … Критерии: 4/4» (таблица AC1–AC4) |
+| f | ревью не-self | PASS (косвенно) | роли разделены: «worker-implementer — исполнение, worker-reviewer — двухстадийное ревью»; «подтверждено ревьюером стадии 2» |
+
+- **README площадки:** изменён внутренней сессией, коммита inner-сессия не делала (в брифе: «НЕ коммитить»); закоммичено этапом: `git -C playground add README.md` (только README — dist-симлинк untracked `?? dist`, не ignored, в коммит не берём; наблюдение, не находка).
+- **Находки этапа:** отклонений нет (6/6 PASS). Зарезервированная F19 (headless не поддерживает спавн) НЕ воспроизвелась — task-вызов с subagent_type отработал в `opencode run` при subagent_depth=2; F19 не активируется, новые F не заводились.
+- Побочное: Mr.Wolf внутри live-сессии использовал MCP-тулы (`mr-wolf_brief/list/add`), приёмочный след — `mem_20260903_acceptance_readme_md_ssylka_na_security_1bffdf`; FRICTION lead'а — rtk-обёртка grep исказила вывод (единично, перезапуск через bash).
+
 ## Находки
 
 - F18 (INFRA, сетап полигона, open): pristine-снапшот унаследовал `.gitignore` main — артефакты init (`.wolf/`, `opencode.json`) не версионируются git'ом площадки; память нельзя откатывать/сравнивать через git между этапами. Решение за владельцем.
 
 ## Вердикт
 
-Не окончательный (этап 1 в рамках running). Этап 1 пройден: чек-лист сценария 1 — 7/7 PASS, T1 PASS, M2 PASS, идемпотентность PASS, регрессии F4/F5/F6/F7/F8/F15 не воспроизвелись. Единственное отклонение — F18 (git-игнор артефактов, сетап полигона, не дефект Wolf). Ожидает T2/X1.
+Не окончательный (этап 2 в рамках running). Этап 1 пройден: 7/7 PASS, T1/M2/идемпотентность PASS, регрессии F4/F5/F6/F7/F8/F15 не воспроизвелись; отклонение — F18 (сетап полигона). Этап 2 пройден: T2 живой спавн — 6/6 PASS (0 FAIL), трёхуровневая схема L0→L1→L2 сработала в headless-режиме, README площадки изменён и закоммичен. Новых находок нет (F19-резерв не воспроизвелся). Ожидает X1.
