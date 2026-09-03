@@ -8,7 +8,10 @@ import type { EventLog } from '../../ports/event-log.port.js';
 import type { Clock } from '../../ports/clock.port.js';
 import type { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import type { MemoryEvent } from '../../domain/schemas/memory-event-schema.js';
-import type { SignalEvent } from '../../adapters/fs/session-metrics-log.js';
+import { DEFAULT_PATTERN_THRESHOLD, type SignalEvent } from '../../adapters/fs/session-metrics-log.js';
+import { parseRunLog } from '../../domain/tool-economy.js';
+import { UNCATEGORIZED_ERROR_CLASS } from '../../domain/error-class.js';
+import { silentRuleIds } from './learn-decay.js';
 import type { PricingTable } from '../../domain/pricing.js';
 
 // ---------------------------------------------------------------------------
@@ -249,6 +252,111 @@ function buildMemoryLedger(
   return { rows, garbage: { dead, base, ratioPct: base > 0 ? (dead / base) * 100 : null } };
 }
 
+/** Каст tool-полей реестра (ToolFields в tool-librarian.ts): name — ключ lookup'а. */
+function toolNameOf(o: MemoryObject): string | null {
+  const rec = o as Record<string, unknown>;
+  return o.type === 'tool' && typeof rec.name === 'string' && rec.name !== '' ? rec.name : null;
+}
+
+/** Tool ledger (Q3, D11): script = объекты type:'tool'; model-native = имена из логов минус script. */
+function buildToolLedger(
+  toolObjects: MemoryObject[],
+  signals: SignalEvent[],
+  runLogText: string | null,
+  patternThreshold: number
+): ToolLedgerRow[] {
+  // ошибки по имени тула: tool_error-сигналы, группа по error_class_id
+  const errorsByName = new Map<string, { count: number; classes: Map<string, number> }>();
+  for (const ev of signals) {
+    if (ev.event !== 'tool_error' || typeof ev.tool_name !== 'string') continue;
+    const tally = errorsByName.get(ev.tool_name) ?? { count: 0, classes: new Map<string, number>() };
+    tally.count += 1;
+    const cls = ev.error_class_id ?? UNCATEGORIZED_ERROR_CLASS;
+    tally.classes.set(cls, (tally.classes.get(cls) ?? 0) + 1);
+    errorsByName.set(ev.tool_name, tally);
+  }
+  const errorRow = (name: string): { errorCount: number; errorClasses: { id: string; count: number }[] } => {
+    const tally = errorsByName.get(name);
+    if (tally === undefined) return { errorCount: 0, errorClasses: [] };
+    return {
+      errorCount: tally.count,
+      errorClasses: [...tally.classes.entries()]
+        .map(([id, count]) => ({ id, count }))
+        .sort((a, b) => b.count - a.count || a.id.localeCompare(b.id)),
+    };
+  };
+
+  const rows: ToolLedgerRow[] = [];
+  const scriptNames = new Set<string>();
+
+  // script-ряды: реестр type:'tool' (каст ToolFields — прецедент tool-stats)
+  for (const o of toolObjects) {
+    const rec = o as Record<string, unknown>;
+    const name = toolNameOf(o) ?? o.title;
+    scriptNames.add(name);
+    const usageCount = typeof rec.usage_count === 'number' ? rec.usage_count : 0;
+    rows.push({
+      name,
+      origin: 'script',
+      id: o.id,
+      status: o.status,
+      usageCount,
+      lastUsedAt: typeof rec.last_used_at === 'string' ? rec.last_used_at : null,
+      ...errorRow(name),
+      promotion: o.status === 'candidate' && usageCount >= patternThreshold ? 'expose-candidate' : null,
+    });
+  }
+
+  // model-native: имена из tool_error-сигналов ∪ run-log tools[], минус зарегистрированные script
+  const nativeCounts = new Map<string, number>();
+  const bumpNative = (name: string): void => {
+    nativeCounts.set(name, (nativeCounts.get(name) ?? 0) + 1);
+  };
+  for (const ev of signals) {
+    if (ev.event === 'tool_error' && typeof ev.tool_name === 'string') bumpNative(ev.tool_name);
+  }
+  for (const entry of parseRunLog(runLogText ?? '')) {
+    for (const name of entry.tools ?? []) bumpNative(name);
+  }
+  for (const [name, usageCount] of nativeCounts) {
+    if (scriptNames.has(name)) continue;
+    rows.push({
+      name,
+      origin: 'model-native',
+      id: null,
+      status: null,
+      usageCount,
+      lastUsedAt: null,
+      ...errorRow(name),
+      promotion: usageCount >= patternThreshold ? 'register-candidate' : null,
+    });
+  }
+
+  // сортировка: script первым, потом usageCount убыв., потом имя
+  return rows.sort((a, b) => {
+    if (a.origin !== b.origin) return a.origin === 'script' ? -1 : 1;
+    return b.usageCount - a.usageCount || a.name.localeCompare(b.name);
+  });
+}
+
+/** Rule ranking (Q4): все статусы; prevented из holdout_prevented; silent от silentRuleIds. */
+function buildRuleRanking(ruleObjects: MemoryObject[], signals: SignalEvent[]): RuleRankingRow[] {
+  const silent = silentRuleIds(signals).ids;
+  return ruleObjects
+    .map((o) => {
+      const rec = o as Record<string, unknown>;
+      return {
+        id: o.id,
+        title: o.title,
+        status: o.status,
+        prevented: finiteNumber(rec.holdout_prevented) ?? 0,
+        checked: finiteNumber(rec.holdout_checked),
+        silent: silent.has(o.id),
+      };
+    })
+    .sort((a, b) => b.prevented - a.prevented || Number(a.silent) - Number(b.silent) || a.id.localeCompare(b.id));
+}
+
 /** Нулевой steward-view (задача 8 заменит расчётом). */
 function emptyStewardView(): StewardView {
   return {
@@ -277,13 +385,23 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
   const events = await deps.log.readAll();
 
   const memory = buildMemoryLedger(allObjects, events, input.signals, now, thresholds);
+  const tools = buildToolLedger(
+    allObjects.filter((o) => o.type === 'tool'),
+    input.signals,
+    input.runLogText,
+    input.patternThreshold ?? DEFAULT_PATTERN_THRESHOLD
+  );
+  const rules = buildRuleRanking(
+    allObjects.filter((o) => o.type === 'rule'),
+    input.signals
+  );
 
   return {
     generatedAt: now.toISOString(),
     thresholds,
     memory,
-    tools: [], // задача 7: tool ledger (Q3, D11)
-    rules: [], // задача 7: rule ranking (Q4)
+    tools,
+    rules,
     funnel: [], // задача 8: воронка по неделям (Q6)
     outliers: [], // задача 8: top-N дорогих прогонов (Q8)
     agents: [], // задача 8: agent ledger (Q11)

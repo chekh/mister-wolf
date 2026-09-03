@@ -81,6 +81,51 @@ function memEvent(
   return { id: `ev-${type}-${id}-${timestamp}`, type, timestamp, actor, payload };
 }
 
+/** ISO-таймстамп «минута N» — лексикографическая сортировка = хронология. */
+const T = (minute: number): string => new Date(Date.UTC(2026, 0, 1, 0, minute, 0)).toISOString();
+
+function runSignal(opts: {
+  agent?: string | null;
+  model?: string | null;
+  ts?: string;
+  session?: string | null;
+  weighted?: number;
+  outcome?: string;
+  durationMs?: number;
+  experiment?: { id: string; arm: 'wolf' | 'baseline'; task_id?: string };
+}): SignalEvent {
+  return {
+    ts: opts.ts ?? '2026-09-01T00:00:00Z',
+    event: 'run',
+    session_id: opts.session ?? null,
+    gen_ai: { modelID: opts.model ?? null, agent: opts.agent ?? null },
+    orchestration: { task: null, actor: 'user:cli' },
+    ...(opts.weighted !== undefined ? { weighted: opts.weighted } : {}),
+    ...(opts.outcome !== undefined ? { outcome: opts.outcome } : {}),
+    ...(opts.durationMs !== undefined ? { duration_ms: opts.durationMs } : {}),
+    ...(opts.experiment !== undefined ? { experiment: opts.experiment } : {}),
+  };
+}
+
+function toolErrorEvent(
+  toolName: string,
+  errorClassId: string,
+  ts = '2026-09-01T00:00:00Z',
+  agent: string | null = null
+): SignalEvent {
+  return {
+    ts,
+    event: 'tool_error',
+    session_id: null,
+    gen_ai: { modelID: null, agent },
+    orchestration: { task: null, actor: 'user:cli' },
+    outcome: 'error',
+    tool_name: toolName,
+    error_class_id: errorClassId,
+    detail: { message: 'boom' },
+  };
+}
+
 describe('classifyLifecycle (D7: newDays=14 / workhorseUses=3)', () => {
   const t = DEFAULT_LIFECYCLE_THRESHOLDS;
 
@@ -184,27 +229,6 @@ describe('buildAnalyticsReport: memory ledger (Q1/Q2)', () => {
     expect(report.memory.garbage.dead).toBe(report.memory.rows.filter((r) => r.lifecycle === 'dead').length);
   });
 
-  it('ЗАГЛУШКИ (временный тест — удаляется в задаче 7): tools/rules/funnel/outliers/agents пусты, steward/readiness нулевые', async () => {
-    const report = await buildAnalyticsReport(
-      { store: mockStore(objects), log: mockLog(events), clock: fixedClock },
-      { signals, runLogText: null }
-    );
-    expect(report.tools).toEqual([]);
-    expect(report.rules).toEqual([]);
-    expect(report.funnel).toEqual([]);
-    expect(report.outliers).toEqual([]);
-    expect(report.agents).toEqual([]);
-    expect(report.steward).toEqual({
-      mutations: [],
-      mutationsByWeek: [],
-      complaintFunnel: { filed: 0, resolved: 0, rejected: 0, avgLifetimeHours: null, slaEscalations: 0 },
-      recidivismCount: 0,
-      churnIds: [],
-      autoMutationSharePct: null,
-    });
-    expect(report.readiness).toEqual({ totalRuns: 0, withArm: 0, withArmPct: null, byArm: [], byExperiment: [] });
-  });
-
   it('filterAnalytics: view-срезы, class/type-фильтр, top-лимит, view=all', async () => {
     const report = await buildAnalyticsReport(
       { store: mockStore(objects), log: mockLog(events), clock: fixedClock },
@@ -230,5 +254,135 @@ describe('buildAnalyticsReport: memory ledger (Q1/Q2)', () => {
     const all = filterAnalytics(report, { view: 'all' });
     if (all.view !== 'all') throw new Error('expected all view');
     expect(all.report).toBe(report);
+  });
+});
+
+describe('buildAnalyticsReport: tool ledger (Q3, D11)', () => {
+  const objects: Extra[] = [
+    {
+      id: 'tb',
+      type: 'tool',
+      status: 'active',
+      created_at: '2026-08-01T00:00:00Z',
+      name: 'busy-tool',
+      usage_count: 10,
+    },
+    {
+      id: 'tc',
+      type: 'tool',
+      status: 'candidate',
+      created_at: '2026-08-01T00:00:00Z',
+      name: 'fetch-helper',
+      usage_count: 3,
+    },
+    {
+      id: 'ta',
+      type: 'tool',
+      status: 'candidate',
+      created_at: '2026-08-01T00:00:00Z',
+      name: 'almost-tool',
+      usage_count: 2,
+    },
+  ];
+  const runLog = [
+    JSON.stringify({ model: 'glm', weighted: 100, tools: ['webfetch'] }),
+    JSON.stringify({ model: 'glm', weighted: 100, tools: ['webfetch'] }),
+    JSON.stringify({ model: 'glm', weighted: 100, tools: ['webfetch'] }),
+    JSON.stringify({ model: 'glm', weighted: 100, tools: ['webfetch'] }),
+    JSON.stringify({ model: 'glm', weighted: 100, tools: ['busy-tool'] }), // script-имя — не native
+  ].join('\n');
+  const signals: SignalEvent[] = [
+    toolErrorEvent('fetch-helper', 'http_error'),
+    toolErrorEvent('fetch-helper', 'http_error'),
+    toolErrorEvent('fetch-helper', 'timeout_error'),
+    toolErrorEvent('mcp-fetch', 'http_error'),
+  ];
+
+  it('script первым, usageCount убыв.; candidate+порог → expose; native без регистрации → register; ошибки по классам', async () => {
+    const report = await buildAnalyticsReport(
+      { store: mockStore(objects), log: mockLog([]), clock: fixedClock },
+      { signals, runLogText: runLog }
+    );
+    expect(report.tools.map((r) => [r.name, r.origin, r.usageCount])).toEqual([
+      ['busy-tool', 'script', 10],
+      ['fetch-helper', 'script', 3],
+      ['almost-tool', 'script', 2],
+      ['webfetch', 'model-native', 4],
+      ['mcp-fetch', 'model-native', 1],
+    ]);
+    const byName = new Map(report.tools.map((r) => [r.name, r]));
+    expect(byName.get('busy-tool')!.promotion).toBeNull(); // active, не candidate
+    expect(byName.get('busy-tool')!.errorCount).toBe(0);
+    expect(byName.get('fetch-helper')!.promotion).toBe('expose-candidate'); // candidate && 3 >= 3
+    expect(byName.get('fetch-helper')!.errorCount).toBe(3);
+    expect(byName.get('fetch-helper')!.errorClasses).toEqual([
+      { id: 'http_error', count: 2 },
+      { id: 'timeout_error', count: 1 },
+    ]);
+    expect(byName.get('almost-tool')!.promotion).toBeNull(); // candidate, но 2 < 3
+    const webfetch = byName.get('webfetch')!;
+    expect(webfetch.id).toBeNull();
+    expect(webfetch.status).toBeNull();
+    expect(webfetch.lastUsedAt).toBeNull();
+    expect(webfetch.promotion).toBe('register-candidate'); // 4 появлений >= 3
+    expect(byName.get('mcp-fetch')!.promotion).toBeNull(); // 1 < 3
+  });
+
+  it('patternThreshold из input повышает планку promotion', async () => {
+    const report = await buildAnalyticsReport(
+      { store: mockStore(objects), log: mockLog([]), clock: fixedClock },
+      { signals, runLogText: runLog, patternThreshold: 5 }
+    );
+    const byName = new Map(report.tools.map((r) => [r.name, r]));
+    expect(byName.get('fetch-helper')!.promotion).toBeNull(); // 3 < 5
+    expect(byName.get('webfetch')!.promotion).toBeNull(); // 4 < 5
+  });
+});
+
+describe('buildAnalyticsReport: rule ranking (Q4)', () => {
+  const objects: Extra[] = [
+    {
+      id: 'rule-c',
+      title: 'rule-c',
+      type: 'rule',
+      status: 'active',
+      created_at: '2026-01-01T00:00:00Z',
+      holdout_prevented: 5,
+    },
+    {
+      id: 'rule-a',
+      title: 'rule-a',
+      type: 'rule',
+      status: 'active',
+      created_at: '2026-01-01T00:00:00Z',
+      holdout_prevented: 5,
+    },
+    {
+      id: 'rule-b',
+      title: 'rule-b',
+      type: 'rule',
+      status: 'active',
+      created_at: '2026-01-01T00:00:00Z',
+      holdout_prevented: 2,
+    },
+  ];
+  // ЛОВУШКА silentRuleIds: нужно ≥20 delivery-событий и >30 сессий; молчит тот,
+  // чья ПОСЛЕДНЯЯ доставка раньше первого run сессии, открывающей последние 30
+  // (sessions[32-30] = s02 → граница T(2)). rule-c: последняя T(1) < T(2) → молчит;
+  // rule-a: последняя T(29) → свежий; rule-b без доставок → не попадает в карту.
+  const signals: SignalEvent[] = [];
+  for (let i = 0; i < 32; i++) signals.push(runSignal({ session: `s${String(i).padStart(2, '0')}`, ts: T(i) }));
+  signals.push(deliveryEvent('rule-c', T(0)), deliveryEvent('rule-c', T(1)));
+  for (let i = 10; i <= 29; i++) signals.push(deliveryEvent('rule-a', T(i)));
+
+  it('все статусы; prevented убыв., silent false первым, потом id; silent от silentRuleIds', async () => {
+    const report = await buildAnalyticsReport(
+      { store: mockStore(objects), log: mockLog([]), clock: fixedClock },
+      { signals, runLogText: null }
+    );
+    expect(report.rules.map((r) => r.id)).toEqual(['rule-a', 'rule-c', 'rule-b']);
+    expect(report.rules.map((r) => r.silent)).toEqual([false, true, false]);
+    expect(report.rules[0]).toMatchObject({ title: 'rule-a', status: 'active', prevented: 5, checked: null });
+    expect(report.rules[2]!.prevented).toBe(2);
   });
 });
