@@ -75,6 +75,8 @@ wolf learn activate <draft-id>
 wolf effectiveness
 ```
 
+`--snapshot` — аппендить полный отчёт в `.wolf/metrics/effectiveness-snapshots.jsonl` (история для трендов). Подробности — в разделе [Аналитика](/ru/guide/cli/analytics#wolf-effectiveness).
+
 ## `wolf complain`
 
 Записать жалобу на поведение агента/методики (hot-signal для Стюарда).

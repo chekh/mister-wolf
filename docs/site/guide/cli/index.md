@@ -1,6 +1,6 @@
 # CLI Reference
 
-Quick index of all 37 `wolf` commands. Each row links to the command's reference entry; group headings link to the section pages.
+Quick index of all 39 `wolf` commands. Each row links to the command's reference entry; group headings link to the section pages.
 
 ## Memory
 
@@ -53,6 +53,13 @@ Quick index of all 37 `wolf` commands. Each row links to the command's reference
 | [`wolf learn`](/guide/cli/learning#wolf-learn)                 | Self-learning loop: pattern digest, signal-log health, draft propose/validate/activate | [Learning](/guide/cli/learning) |
 | [`wolf effectiveness`](/guide/cli/learning#wolf-effectiveness) | Memory effectiveness panel: rules holdout, tool economy, delivery, noise, routing      | [Learning](/guide/cli/learning) |
 | [`wolf complain`](/guide/cli/learning#wolf-complain)           | Record a complaint about agent/methodology behavior                                    | [Learning](/guide/cli/learning) |
+
+## Analytics
+
+| Command                                                 | What it does                                                                                   | Page                              |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------- |
+| [`wolf analytics`](/guide/cli/analytics#wolf-analytics) | Effectiveness analytics: ledgers, funnel, agents, steward view, outliers, experiment readiness | [Analytics](/guide/cli/analytics) |
+| [`wolf dashboard`](/guide/cli/analytics#wolf-dashboard) | Console dashboard: health, ledgers, trends                                                     | [Analytics](/guide/cli/analytics) |
 
 ## Platform & Maintenance
 

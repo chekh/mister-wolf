@@ -253,6 +253,11 @@ Options:
 - `--title <title>` — run label written to the log
 - `--session <sid>` — opencode session id to continue
 - `--tool <name>` — mark this run as using tool(s) (repeatable; default: `[]`)
+- `--experiment <id>` — experiment id (comparative methodologies, e.g. RCT)
+- `--arm <choice>` — experiment arm (choices: `wolf`, `baseline`)
+- `--task-id <id>` — task id within the experiment (golden tasks)
+
+See [Analytics](/guide/cli/analytics#wolf-run-enrichment) for run enrichment: raw tokens, `duration_ms` and experiment fields in the logs.
 
 ```bash
 wolf run "Summarize the current blockers" --title "blocker-scan"

@@ -52,6 +52,16 @@ rebuildable, в git не коммитится); markdown-отчёты конту
 | `tokens`      | `{input, output, cache_read}`            | суммы сырых токенов по step-finish   |
 | `experiment`  | `{id, arm: 'wolf'\|'baseline', task_id}` | флаги `--experiment/--arm/--task-id` |
 
+Тот же enrichment `wolf run` пишет и в `.wolf/run-log.jsonl` (поля `session`,
+`duration_ms`, `tokens`, `experiment`): run-log остаётся источником блоков
+экономики/роутинга, run-сигналы — блока абсолютов и agent ledger
+(см. [analytics.md](./analytics.md)).
+
+Семантика флагов: `experiment` записывается только полным набором
+`--experiment` + `--arm` (arm обязателен). `--arm`/`--task-id` без
+`--experiment` игнорируются, `--experiment` без `--arm` не записывается —
+в обоих случаях `wolf run` печатает warning в stderr, прогон не ломается.
+
 Пример записи:
 
 ```jsonc

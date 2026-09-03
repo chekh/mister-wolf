@@ -12,6 +12,7 @@ const cliItems = [
   { text: 'Work Management', link: '/guide/cli/work-management' },
   { text: 'Thinking & Council', link: '/guide/cli/thinking-council' },
   { text: 'Learning', link: '/guide/cli/learning' },
+  { text: 'Analytics', link: '/guide/cli/analytics' },
   { text: 'Platform & Maintenance', link: '/guide/cli/platform' },
 ]
 
@@ -23,6 +24,7 @@ const ruCliItems = [
   { text: 'Управление работой', link: '/ru/guide/cli/work-management' },
   { text: 'Мышление и совет', link: '/ru/guide/cli/thinking-council' },
   { text: 'Самообучение', link: '/ru/guide/cli/learning' },
+  { text: 'Аналитика', link: '/ru/guide/cli/analytics' },
   { text: 'Платформа и обслуживание', link: '/ru/guide/cli/platform' },
 ]
 

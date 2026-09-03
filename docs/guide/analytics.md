@@ -25,6 +25,24 @@
 Общие флаги: `--json` (машинный вывод — дефолт для агентского потребления),
 `--top N` (лимит строк, дефолт 20), `--weeks N` (окно воронки, дефолт 8).
 
+Известное ограничение: фильтры `--class/--type/--origin/--agent/--silent`
+сейчас применяются только к `--json`-выводу (и MCP-инструменту) — текстовый
+рендер печатает секцию без фильтрации; строкам таблицы выше с этими флагами
+нужен `--json`.
+
+Lifecycle-классы памяти (D7) для `--view memory --class new|sleeper|workhorse|dead`:
+
+- `WORKHORSE` — использований ≥ `workhorse_uses` (дефолт 3);
+- `SLEEPER` — от 1 до `workhorse_uses − 1` (при дефолте — 1–2);
+- `NEW` — 0 использований, возраст ≤ `new_days` (дефолт 14 дней);
+- `DEAD` — 0 использований, возраст > `new_days` → кандидат на archive.
+
+Пороги конфигурируются (`analytics.thresholds`, см. раздел «Конфигурация»).
+
+Честное ограничение воронки: holdout-счётчики кумулятивны (без таймстампов),
+поэтому `prevent` в недельную воронку `--view funnel` не входит —
+`holdout_prevented` показывается суммарно в `--view rules`.
+
 MCP-инструмент `analytics` принимает те же параметры (`view/class/type/origin/
 agent/top/weeks/silent`) и возвращает тот же JSON, что `--json`.
 
@@ -43,6 +61,20 @@ agent/top/weeks/silent`) и возвращает тот же JSON, что `--jso
   `.wolf/metrics/effectiveness-snapshots.jsonl` (append-only, история для трендов);
 - обычный вызов при наличии ≥1 снапшота печатает дельту к последнему
   (`delta vs <ts>` по числовым полям блоков).
+
+### `wolf insights --type activity` — недельная динамика мутаций (M4)
+
+Агрегация event-log по неделям (те же 8 бакетов, что density-линза), без LLM:
+
+- **Weekly density** — новые объекты по неделям: decisions / lessons / debug / total;
+- **Weekly mutations** — мутации по неделям: added / updated / superseded /
+  resolved / transitioned + total — виден баланс «рождение vs вытеснение»;
+- **Status tally** — текущее распределение объектов по статусам.
+
+Отвечает на вопрос «растёт ли отдача памяти вместе с захватом» (Q6): если
+added неделями опережает superseded/resolved — память растёт быстрее, чем
+очищается (сигнал к `wolf learn decay` и аудиту шума,
+см. [effectiveness.md](./effectiveness.md)).
 
 ## Конфигурация
 
@@ -85,7 +117,7 @@ agents, steward, outliers, readiness.
 | ------------------------------------------------- | ------------------------------------------------------------------------- |
 | run-события (объём, токены, duration, experiment) | `.wolf/run-log.jsonl` + run-сигналы `.wolf/metrics/session-metrics.jsonl` |
 | deliveries/жалобы/tool_error                      | сигнальный лог `.wolf/metrics/session-metrics.jsonl`                      |
-| рождения/мутации/срабатывания                     | event log `.wolf/events.jsonl` (actor, memory_id)                         |
+| рождения/мутации/срабатывания                     | event log `.wolf/memory/events.jsonl` (actor, memory_id)                  |
 | объекты памяти                                    | markdown-стор `.wolf/memory/`                                             |
 | снапшоты для трендов                              | `.wolf/metrics/effectiveness-snapshots.jsonl`                             |
 

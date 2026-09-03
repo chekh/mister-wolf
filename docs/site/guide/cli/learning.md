@@ -136,7 +136,7 @@ Memory effectiveness panel: rules holdout, tool economy, delivery, noise, routin
 Usage: wolf effectiveness [options]
 ```
 
-No options beyond `-h, --help`.
+- `--snapshot` — append the full report to `.wolf/metrics/effectiveness-snapshots.jsonl` (append-only history for trends). See [Analytics](/guide/cli/analytics#wolf-effectiveness) for deltas and the absolutes block.
 
 ## wolf complain
 
