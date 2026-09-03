@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { MemoryAddInputSchema } from '../../../src/adapters/mcp/mcp-schemas.js';
+import { MemoryAddInputSchema, AnalyticsInputSchema } from '../../../src/adapters/mcp/mcp-schemas.js';
 import { CORE_TAXONOMY } from '../../../src/domain/memory-types.js';
 
 describe('MemoryAddInputSchema (derived from taxonomy)', () => {
@@ -70,5 +70,41 @@ describe('MemoryAddInputSchema (derived from taxonomy)', () => {
     };
     expect(json.additionalProperties).toBe(false);
     expect(json.properties?.scope?.enum).toEqual(['project', 'global']);
+  });
+});
+
+describe('AnalyticsInputSchema (analytics MCP tool)', () => {
+  it('parses a full valid object and keeps every field', () => {
+    const parsed = AnalyticsInputSchema.safeParse({
+      view: 'memory',
+      class: 'dead',
+      type: 'rule',
+      origin: 'script',
+      agent: 'dev',
+      top: 5,
+      weeks: 4,
+      silent: true,
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data).toEqual({
+        view: 'memory',
+        class: 'dead',
+        type: 'rule',
+        origin: 'script',
+        agent: 'dev',
+        top: 5,
+        weeks: 4,
+        silent: true,
+      });
+    }
+  });
+
+  it('rejects unknown view value', () => {
+    const parsed = AnalyticsInputSchema.safeParse({ view: 'bogus' });
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues.some((i) => i.path.includes('view'))).toBe(true);
+    }
   });
 });
