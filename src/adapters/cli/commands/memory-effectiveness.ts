@@ -3,6 +3,8 @@ import { safeCwd } from '../cli-entry.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { readSignals } from '../../../adapters/fs/session-metrics-log.js';
+import { appendSnapshot, readSnapshots } from '../../../adapters/fs/effectiveness-snapshots.js';
+import { computeSnapshotDelta } from '../../../app/use-cases/snapshot-delta.js';
 import { loadWolfConfigSync } from '../../../adapters/fs/config-file.js';
 import {
   buildEffectivenessReport,
@@ -66,8 +68,9 @@ export function memoryEffectivenessCommand(baseDir: string = safeCwd()): Command
   const cmd = new Command('effectiveness').description(
     'Memory effectiveness panel: rules holdout, tool economy, delivery, noise, routing (aggregation only, no LLM)'
   );
+  cmd.option('--snapshot', 'Append the full report to .wolf/metrics/effectiveness-snapshots.jsonl');
 
-  cmd.action(async () => {
+  cmd.action(async (options) => {
     // пороги: override из config поверх дефолтов (битый конфиг → дефолты)
     let override: Partial<EffectivenessThresholds> | undefined;
     try {
@@ -92,6 +95,26 @@ export function memoryEffectivenessCommand(baseDir: string = safeCwd()): Command
         { signals: readSignals(baseDir), runLogText, thresholds }
       );
       printReport(report);
+      // M2: --snapshot аппендит полный отчёт; обычный вызов печатает дельту к последнему
+      if (options.snapshot) {
+        appendSnapshot(baseDir, report, new Date().toISOString());
+        console.log(`snapshot appended (total: ${readSnapshots(baseDir).length})`);
+      } else {
+        const snaps = readSnapshots(baseDir);
+        if (snaps.length > 0) {
+          const last = snaps[snaps.length - 1]!;
+          const changed = computeSnapshotDelta(last.report, report).filter((r) => r.diff !== null && r.diff !== 0);
+          console.log(`delta vs ${last.ts}:`);
+          if (changed.length === 0) {
+            console.log('  no changes');
+          } else {
+            for (const r of changed) {
+              const sign = r.diff! > 0 ? '+' : '';
+              console.log(`  ${r.path}: ${r.prev} -> ${r.curr} (${sign}${r.diff})`);
+            }
+          }
+        }
+      }
     } catch (err: unknown) {
       // .wolf не инициализирован — честные n/a; реальную причину не глушим (stderr)
       console.error(`[effectiveness] Warning: ${err instanceof Error ? err.message : String(err)}`);
