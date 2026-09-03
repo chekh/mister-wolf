@@ -3,7 +3,7 @@
 |               |                                                                                                                                                                                                                     |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Дата          | 2026-09-03                                                                                                                                                                                                          |
-| Ревизия       | 2 — дашборд переведён в консоль (решение владельца), добавлен контур доступа Стюарда (CLI-обзоры + MCP-инструмент)                                                                                                 |
+| Ревизия       | 3 — tool ledger разделён по происхождению (script vs model-native), promotion-сигналы; 2 — дашборд переведён в консоль, контур доступа Стюарда (CLI-обзоры + MCP); 1 — исходная                                                                                    |
 | Статус        | На ревью владельца; реализация — после аппрува → wolf-plan → worktree                                                                                                                                               |
 | Источники     | Аудит механизмов сбора (эта сессия): `src/adapters/cli/opencode-run-metrics.ts`, `src/adapters/cli/commands/memory-run.ts`, `src/adapters/fs/session-metrics-log.ts` (Ф20), `src/app/use-cases/effectiveness.ts`, `src/app/use-cases/generate-insights.ts`, `src/domain/tool-economy.ts`; урок методики `mem_20260824_v2_a3ed39` (весовые токены); внешние методики: Copilot RCT (Peng et al. 2023), SWE-bench, SPACE, DORA 2024 |
 | Следующий шаг | Аппрув владельца → wolf-plan → реализация в worktree `.worktrees/<имя-задачи>`                                                                                                                                      |
@@ -44,6 +44,7 @@ holdout-счётчики Ф22), но аналитический слой раз�
 | D8  | Дашборд — консольный: `wolf dashboard` рендерит Unicode-таблицы и текстовые спарклайны (`▁▂▃▄▅▆▇█`) прямо в терминал, без зависимостей и без записи файлов; `--json` — машинный вывод. HTML-витрина — отложена (добавится опциональным флагом при появлении потребности) | Серверный веб-дашборд: против local-first философии; chart-библиотеки и HTML-файл по умолчанию: зависимость/артефакт ради того, что терминал показывает сразу; прямое решение владельца — «выводиться в консоль по команде wolf dashboard» |
 | D9  | $-конверсия только при явном `pricing` в config.yaml; без прайса блок $ скрыт — числа не выдумываем (прецедент EconomyResult.sufficient)                                                                                    | Зашивать прайсы в код: цены меняются, источник должен быть у владельца                                                                                                                      |
 | D10 | Мутации файлов скиллов/агентов не трекаем новым сборщиком: git log = источник истины об изменениях файлов, `memory.scan.updated` = свежесть регистрации                                                                   | Файловый вотчер: дублирует git, лишний сборщик; прямое решение владельца в обсуждении                                                                                                       |
+| D11 | Tool ledger разделяет происхождение: `script` — объекты реестра `type:'tool'` (кастомные скрипты в `.wolf/tools/`, полный lifecycle register→use→expose→deprecate) vs `model-native` — тула модели (MCP, встроенные), которых в реестре нет и которые видны только через run-log `--tool` и tool_error. Экономика у них разная: reuse скрипта = экономия на пересоздании, у нативного экономики создания нет. Действия Стюарда разные: script — expose/fix/deprecate; native — вне юрисдикции Wolf. Promotion-сигналы: script в candidate с usage_count ≥ 3 → кандидат на expose; имя, многократно встречающееся в логах без регистрации → кандидат на register (прецедент pattern_threshold=3, правило search-before-write) | Смешанный пул «все тула подряд»: невозможна ни экономика переиспользования (у native её нет), ни путь зрелости скрипта; различие категорий установлено владельцем, реестр `tool` уже моделирует только скрипты |
 
 ## 3. Модель эффективности: воронка ценности
 
@@ -127,8 +128,12 @@ store, signals, event log, relations — чистая детерминирова
   `detail.object_id`), holdout_prevented/checked (у rule/lesson), last_used;
   lifecycle-класс D7.
 - **Garbage ratio**: DEAD / активные, тренд по неделям.
-- **Tool ledger**: registry (usage_count, last_used_at) + tool_error по
-  классам → error rate, тренд.
+- **Tool ledger** (D11): происхождение `origin: 'script' | 'model-native'`
+  (script = имя в реестре `type:'tool'`; native = только в логах); для script —
+  usage_count, last_used_at, статус lifecycle, error rate по классам, тренд;
+  для native — только появления в атрибуциях и tool_error. Promotion-кандидаты:
+  script candidate с usage_count ≥ `patternThreshold` → expose; имя native,
+  встреченное ≥ порога, → register.
 - **Rule ranking**: убыв. holdout_prevented; отдельный список silent rules.
 - **Воронка по неделям**: write (memory.added) → deliver (delivery-события)
   → trigger (уникальные сработавшие) → prevent (holdout_prevented за неделю).
@@ -170,7 +175,7 @@ store, signals, event log, relations — чистая детерминирова
 | `wolf analytics --view memory --class sleeper [--top N]`               | редко используемые                                                    | пересмотр формулировок/триггеров      |
 | `wolf analytics --view memory [--type <тип>] [--top N]`                | полный ledger                                                         | общий осмотр                          |
 | `wolf analytics --view rules [--silent]`                               | ranking по holdout_prevented; с `--silent` — только молчащие          | суперсид/переформулировка правил      |
-| `wolf analytics --view tools [--top N]`                                | tool ledger: usage, error rate по классам                             | починка/удаление тулов                |
+| `wolf analytics --view tools [--origin script\|native] [--top N]`     | tool ledger: usage, error rate, lifecycle (script); атрибуции (native); promotion-кандидаты | expose/register/починка/удаление      |
 | `wolf analytics --view funnel [--weeks N]`                             | конверсия по неделям                                                  | локализация разрыва воронки           |
 | `wolf analytics --view outliers [--top N]`                             | самые дорогие прогоны                                                 | приоритет оптимизации                 |
 | `wolf analytics --view readiness`                                      | experiment readiness                                                  | готовность к сравнительным методикам  |
@@ -207,12 +212,15 @@ e2e на CLI: run→логи→dashboard. Критерии приёмки (пр�
 4. Команда `wolf analytics` возвращает по `--view memory` memory ledger
    с per-object следом и lifecycle-классификацией; garbage ratio сходится
    с длиной списка DEAD; фильтры `--class/--type/--top` и `--json` работают.
-5. `wolf dashboard` рендерит три секции в stdout (Unicode-таблицы,
+5. Tool ledger разделяет `origin` script/model-native; promotion-кандидаты
+   (candidate + usage ≥ порога; частое native-имя без регистрации) определяются
+   согласно D11.
+6. `wolf dashboard` рендерит три секции в stdout (Unicode-таблицы,
    спарклайны), `--tab` показывает одну секцию, `--json` валиден; записи
    файлов нет.
-6. MCP-инструмент `analytics` зарегистрирован и возвращает тот же JSON,
+7. MCP-инструмент `analytics` зарегистрирован и возвращает тот же JSON,
    что `wolf analytics --json`.
-7. `npm run check` зелёный.
+8. `npm run check` зелёный.
 
 ## 9. Open questions
 
