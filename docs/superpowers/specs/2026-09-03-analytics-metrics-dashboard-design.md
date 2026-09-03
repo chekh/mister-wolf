@@ -3,7 +3,7 @@
 |               |                                                                                                                                                                                                                     |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Дата          | 2026-09-03                                                                                                                                                                                                          |
-| Ревизия       | 3 — tool ledger разделён по происхождению (script vs model-native), promotion-сигналы; 2 — дашборд переведён в консоль, контур доступа Стюарда (CLI-обзоры + MCP); 1 — исходная                                                                                    |
+| Ревизия       | 4 — agent ledger по трёхуровневой схеме (объём/проблемы/достижения per-agent) + view steward (мутации, жалобная воронка, SLA, рецидивы, churn); 3 — tool ledger разделён по происхождению (script vs model-native), promotion-сигналы; 2 — дашборд переведён в консоль, контур доступа Стюарда (CLI-обзоры + MCP); 1 — исходная                                                                                    |
 | Статус        | На ревью владельца; реализация — после аппрува → wolf-plan → worktree                                                                                                                                               |
 | Источники     | Аудит механизмов сбора (эта сессия): `src/adapters/cli/opencode-run-metrics.ts`, `src/adapters/cli/commands/memory-run.ts`, `src/adapters/fs/session-metrics-log.ts` (Ф20), `src/app/use-cases/effectiveness.ts`, `src/app/use-cases/generate-insights.ts`, `src/domain/tool-economy.ts`; урок методики `mem_20260824_v2_a3ed39` (весовые токены); внешние методики: Copilot RCT (Peng et al. 2023), SWE-bench, SPACE, DORA 2024 |
 | Следующий шаг | Аппрув владельца → wolf-plan → реализация в worktree `.worktrees/<имя-задачи>`                                                                                                                                      |
@@ -73,6 +73,8 @@ holdout-счётчики Ф22), но аналитический слой раз�
 | Q8  | «Что съедает бюджет?»                                        | Top-N дорогих прогонов (weighted и $), outliers                                              | run-log (есть)                                 |
 | Q9  | «Стало ли лучше после изменения X?»                          | Диф последнего снапшота с предыдущим по всем блокам                                          | M2 снапшоты                                    |
 | Q10 | «Готовы ли к эксперименту?»                                  | Доля прогонов с arm/task_id, объём выборки по группам                                        | M1 примитивы                                   |
+| Q11 | «Кто чаще/больше работает? У кого проблемы/достижения?»      | Agent ledger per `gen_ai.agent`/`actor`: runs, weighted, duration, failure rate, tool errors, жалобы на/от агента, holdout_prevented его правил | сигналы (run/complaint/tool_error) + event log actor — всё есть |
+| Q12 | «Что делает Стюард и как он справляется?»                    | Мутации по видам/периодам; жалобная воронка (подано→триаж→resolved/rejected), SLA-нарушения, рецидивы, churn объектов; доля авто-мутаций | event log actor + complaint-сигналы — всё есть |
 
 ## 5. Механизмы
 
@@ -138,6 +140,16 @@ store, signals, event log, relations — чистая детерминирова
 - **Воронка по неделям**: write (memory.added) → deliver (delivery-события)
   → trigger (уникальные сработавшие) → prevent (holdout_prevented за неделю).
 - **Top-N outliers**: N=10 самых дорогих прогонов (weighted; $ при pricing).
+- **Agent ledger** (Q11): per-agent (L0/L1/L2 по actor-конвенции
+  `agent:<имя>`) — runs, weighted, duration (после M1), failure rate, tool
+  error rate; жалобы: поданные агентом (`orchestration.actor`) и на агента
+  (`detail.about`); достижения: успешные прогоны, holdout_prevented у
+  правил/уроков с `created_by` агента.
+- **Steward view** (Q12): мутации за период по видам (transition/supersede/
+  resolve/repair/tool-mutation — из event log по actor); жалобная воронка
+  (подано → resolved/rejected, время жизни, SLA-эскалации `dispatch_ages`);
+  рецидивы (повторная жалоба на тот же объект после repair); churn (объект
+  с ≥2 мутациями за окно); доля авто-мутаций (`actor='system:wolf'`).
 - **Experiment readiness** (Q10): доля прогонов с arm, выборки по группам.
 
 ## 6. Дашборд и контур доступа Стюарда
@@ -157,9 +169,10 @@ store, signals, event log, relations — чистая детерминирова
   1. **Health** (L1): блоки effectiveness с статусами, абсолюты M3, воронка
      текущего периода;
   2. **Ledgers** (L2): таблицы — memory ledger (Q1/Q2), tool ledger (Q3),
-     rule ranking (Q4), top-N (Q8);
+     rule ranking (Q4), agent ledger (Q11), top-N (Q8);
   3. **Trends** (L3): спарклайны по снапшотам (Q9), недельная воронка (Q6),
-     cache-hit ratio (Q7), experiment readiness (Q10).
+     cache-hit ratio (Q7), experiment readiness (Q10), активность Стюарда и
+     жалобная воронка (Q12).
 
 ### 6.2 Контур Стюарда: `wolf analytics` + MCP-инструмент
 
@@ -178,6 +191,8 @@ store, signals, event log, relations — чистая детерминирова
 | `wolf analytics --view tools [--origin script\|native] [--top N]`     | tool ledger: usage, error rate, lifecycle (script); атрибуции (native); promotion-кандидаты | expose/register/починка/удаление      |
 | `wolf analytics --view funnel [--weeks N]`                             | конверсия по неделям                                                  | локализация разрыва воронки           |
 | `wolf analytics --view outliers [--top N]`                             | самые дорогие прогоны                                                 | приоритет оптимизации                 |
+| `wolf analytics --view agents [--agent <имя>] [--top N]`              | agent ledger: объём, стоимость, ошибки, жалобы, достижения                   | коучинг агентов, ротация ролей        |
+| `wolf analytics --view steward [--weeks N]`                           | мутации Стюарда, жалобная воронка, SLA, рецидивы, churn                      | настройка контуров ремонта/жалоб      |
 | `wolf analytics --view readiness`                                      | experiment readiness                                                  | готовность к сравнительным методикам  |
 
 Общие флаги: `--json` (машинный вывод, дефолт для агентского потребления),
@@ -215,12 +230,15 @@ e2e на CLI: run→логи→dashboard. Критерии приёмки (пр�
 5. Tool ledger разделяет `origin` script/model-native; promotion-кандидаты
    (candidate + usage ≥ порога; частое native-имя без регистрации) определяются
    согласно D11.
-6. `wolf dashboard` рендерит три секции в stdout (Unicode-таблицы,
+6. `--view agents` отдаёт per-agent объём/ошибки/жалобы, сходящиеся с
+   run- и complaint-сигналами; `--view steward` — воронку жалоб и мутации,
+   сходящиеся с event log.
+7. `wolf dashboard` рендерит три секции в stdout (Unicode-таблицы,
    спарклайны), `--tab` показывает одну секцию, `--json` валиден; записи
    файлов нет.
-7. MCP-инструмент `analytics` зарегистрирован и возвращает тот же JSON,
+8. MCP-инструмент `analytics` зарегистрирован и возвращает тот же JSON,
    что `wolf analytics --json`.
-8. `npm run check` зелёный.
+9. `npm run check` зелёный.
 
 ## 9. Open questions
 
