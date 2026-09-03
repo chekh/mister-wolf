@@ -54,11 +54,11 @@ describe('wolf learn gate (Ф23 STOP-гейт, e2e)', () => {
 
     const gate = runCli(['learn', 'gate'], cwd);
     expect(gate.status).toBe(0);
-    expect(gate.stdout).toContain('STOP-гейт: ЗЕЛЁНЫЙ');
+    expect(gate.stdout).toContain('STOP-gate: GREEN');
     expect(gate.stdout).toContain(`PASS draft:${draftId}`);
     expect(gate.stdout).toContain('PASS fp-probe');
-    expect(gate.stdout).toContain('read-only зоны:');
-    expect(gate.stdout).not.toContain('НЕ ЗАЩИЩЕНА');
+    expect(gate.stdout).toContain('read-only zones:');
+    expect(gate.stdout).not.toContain('NOT ENFORCED');
     expect(gate.stdout).toContain('layer4:');
   });
 
@@ -87,7 +87,7 @@ describe('wolf learn gate (Ф23 STOP-гейт, e2e)', () => {
 
     const gate = runCli(['learn', 'gate'], cwd);
     expect(gate.status).not.toBe(0);
-    expect(gate.stdout).toContain('STOP-гейт: КРАСНЫЙ');
+    expect(gate.stdout).toContain('STOP-gate: RED');
     expect(gate.stdout).toContain('FAIL');
     expect(gate.stdout).toContain('old-tool');
   });

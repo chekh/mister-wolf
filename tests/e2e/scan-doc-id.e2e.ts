@@ -49,13 +49,13 @@ describe('wolf scan/list: канон doc-id + резолв --type (спека 2.
     const aliasList = runCli(['list', '--type', 'document'], project, env(xdg));
     expect(aliasList.status).toBe(0);
     expect(aliasList.stdout).toContain('[document-ref]');
-    expect(aliasList.stderr).toContain("Warning: тип 'document' устарел, используйте 'document-ref'");
+    expect(aliasList.stderr).toContain("Warning: type 'document' is deprecated, use 'document-ref'");
 
     // опечатка: однострочная ошибка с ближайшим типом, exit 1
     const typoList = runCli(['list', '--type', 'documnt'], project, env(xdg));
     expect(typoList.status).toBe(1);
-    expect(typoList.stderr).toContain("неизвестный тип 'documnt'");
-    expect(typoList.stderr).toContain("ближайший: 'document-ref'");
-    expect(typoList.stderr).toContain('допустимые:');
+    expect(typoList.stderr).toContain("unknown type 'documnt'");
+    expect(typoList.stderr).toContain("closest: 'document-ref'");
+    expect(typoList.stderr).toContain('allowed:');
   });
 });

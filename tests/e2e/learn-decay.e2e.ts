@@ -93,7 +93,7 @@ describe('wolf learn decay (Ф26, e2e на фикстуре пробега)', ()
     expect(decay.status).toBe(0);
     expect(decay.stdout).toContain('ttl_marked=1');
     expect(decay.stdout).toContain(lessonId);
-    expect(decay.stdout).toContain('причина: ttl');
+    expect(decay.stdout).toContain('reason: ttl');
 
     // жизненный цикл: review_required — НЕ удаление, статус остаётся active
     const get = runCli(['get', lessonId], cwd);
@@ -115,7 +115,7 @@ describe('wolf learn decay (Ф26, e2e на фикстуре пробега)', ()
     const decay = runCli(['learn', 'decay'], cwd);
     expect(decay.status).toBe(0);
     expect(decay.stdout).toContain('reactivated=1');
-    expect(decay.stdout).toContain('очередь пересмотра: пусто');
+    expect(decay.stdout).toContain('review queue: empty');
 
     const get = runCli(['get', lessonId], cwd);
     expect(get.stdout).toContain('accepted');

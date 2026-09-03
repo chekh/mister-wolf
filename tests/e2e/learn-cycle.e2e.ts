@@ -50,7 +50,7 @@ describe('wolf learn propose/validate/activate (Ф22 D2.2, e2e)', () => {
     expect(propose.status).toBe(0);
     draftId = draftIdFrom(propose.stdout);
     expect(propose.stdout).toContain('type: lesson');
-    expect(propose.stdout).toContain('mechanical: да');
+    expect(propose.stdout).toContain('mechanical: yes');
 
     // §8 п.3: создание = недоставляемая запись — draft не виден wolf call до активации (§2.5)
     const callBefore = runCli(['call', '--for', 'bash'], cwd);
@@ -121,7 +121,7 @@ describe('wolf learn propose/validate/activate (Ф22 D2.2, e2e)', () => {
     expect(propose.status).toBe(0);
     const id = draftIdFrom(propose.stdout);
     expect(propose.stdout).toContain('type: rule');
-    expect(propose.stdout).toContain('mechanical: нет');
+    expect(propose.stdout).toContain('mechanical: no');
 
     const validate = runCli(['learn', 'validate', id], cwd);
     expect(validate.status).toBe(0);

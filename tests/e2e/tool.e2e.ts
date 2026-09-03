@@ -55,14 +55,14 @@ describe('wolf tool (C2 librarian v1)', () => {
       cwd
     );
     expect(r.status).toBe(1);
-    expect(r.stderr.trim()).toMatch(/^Error: .*занято/);
+    expect(r.stderr.trim()).toMatch(/^Error: .*already taken/);
 
     const forced = runCli(
       ['tool', 'register', 'extract-todos.ts', '--name', 'extract-todos', '--language', 'typescript', '--force'],
       cwd
     );
     expect(forced.status).toBe(1);
-    expect(forced.stderr.trim()).toMatch(/^Error: .*занято/);
+    expect(forced.stderr.trim()).toMatch(/^Error: .*already taken/);
   });
 
   it('register похожего по контракту под другим именем — подсказка «похожие»; --force обходит', () => {
@@ -81,7 +81,7 @@ describe('wolf tool (C2 librarian v1)', () => {
       cwd
     );
     expect(r.status).toBe(1);
-    expect(r.stderr.trim()).toMatch(/^Error: .*похожие/);
+    expect(r.stderr.trim()).toMatch(/^Error: Similar tools found/);
     expect(r.stderr).toContain('extract-todos');
   });
 

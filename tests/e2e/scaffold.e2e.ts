@@ -46,7 +46,7 @@ describe('wolf scaffold (B1)', () => {
   it('повторный scaffold того же имени — чистая ошибка, exit 1', () => {
     const r = runCli(['scaffold', 'agent', 'demo-agent'], cwd);
     expect(r.status).toBe(1);
-    expect(r.stderr.trim()).toMatch(/^Error: .*уже существует$/);
+    expect(r.stderr.trim()).toMatch(/^Error: .*already exists$/);
   });
 
   it('scaffold skill и command пишут в правильные каталоги', () => {

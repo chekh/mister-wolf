@@ -61,7 +61,7 @@ describe('E1: wolf upgrade --check (замоканный npm view, изолир�
       timeout: 60_000,
     });
     expect(res.status).toBe(0);
-    expect(res.stdout).toContain('доступна 9.9.9');
+    expect(res.stdout).toContain('available 9.9.9');
     expect(res.stdout).toContain(repoVersion); // текущая версия из package.json
   });
 
@@ -73,7 +73,7 @@ describe('E1: wolf upgrade --check (замоканный npm view, изолир�
       timeout: 60_000,
     });
     expect(res.status).toBe(0);
-    expect(res.stdout).toContain('уже последняя версия');
+    expect(res.stdout).toContain('already the latest version');
   });
 });
 
@@ -90,7 +90,7 @@ describe('E2: refusal-path — linked/dev-копия', () => {
     const lines = res.stderr.trim().split('\n');
     expect(lines).toHaveLength(1); // однострочный Error: без стека
     expect(lines[0]).toMatch(/^Error: /);
-    expect(lines[0]).toContain('dev/linked-копия');
+    expect(lines[0]).toContain('dev/linked copy');
     expect(lines[0]).toContain('npm rm -g mister-wolf');
     expect(lines[0]).toContain(join(repoRoot, 'dist/bootstrap/cli.js')); // путь к бинарю в сообщении
   });
@@ -108,7 +108,7 @@ describe('E3: регресс safeCwd — удалённый каталог', () 
     const lines = res.stderr.trim().split('\n');
     expect(lines).toHaveLength(1);
     expect(lines[0]).toMatch(/^Error: /);
-    expect(lines[0]).toContain('каталог');
+    expect(lines[0]).toContain('directory does not exist');
     expect(res.stderr).not.toContain('    at '); // стека нет — UserFacingError
   });
 });

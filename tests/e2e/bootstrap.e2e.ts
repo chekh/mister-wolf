@@ -22,7 +22,7 @@ describe('wolf bootstrap: starting project memory in one command', () => {
     expect(r.status).toBe(0);
     expect(r.stdout).toContain('Bootstrap brief');
     // onboarding v2 (Q6): финал — диалог с пользователем, Стюард не предписывается
-    expect(r.stdout).not.toContain('Стюард');
+    expect(r.stdout).not.toContain('Steward');
     expect(r.stdout).toContain('wolf transition');
 
     // proposed-правила в shared/rules

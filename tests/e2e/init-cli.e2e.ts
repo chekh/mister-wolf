@@ -40,7 +40,7 @@ describe('wolf init CLI (спека §3 уровень 1; onboarding v2 §4.6: �
     expect(first.status).toBe(0);
     // F6: честный лог — имя конфиг-файла + фактические ключи
     expect(first.stdout).toContain('opencode.json: written (mcp.wolf, default_agent=mr-wolf, subagent_depth=2)');
-    expect(first.stdout).toContain('перезапустите opencode'); // F7: блок «Дальше»
+    expect(first.stdout).toContain('restart opencode'); // F7: блок «Дальше»
     const cfg = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));
     expect(cfg.mcp.wolf).toEqual({ type: 'local', command: ['wolf', 'mcp'], enabled: true });
     expect(cfg.default_agent).toBe('mr-wolf'); // F4 закрыт: default_agent первым init'ом

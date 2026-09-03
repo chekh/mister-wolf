@@ -62,7 +62,7 @@ describe('wolf base set: init + sync (спека §7, §11.1, §11.6)', () => {
     expect(res.status).toBe(0);
     expect(res.stdout).toContain('analyze-doc.md: updated');
     expect(readFileSync(p, 'utf-8')).not.toContain('E2E-EDIT-LINE');
-    expect(res.stdout).toContain('Память (.wolf/) не тронута'); // sync память не трогает
+    expect(res.stdout).toContain('Memory (.wolf/) untouched'); // sync память не трогает
   });
 
   it('sync: unstamped файл на месте шаблонного → conflict, файл не тронут (§11.6)', () => {

@@ -52,10 +52,10 @@ describe('wolf learn evolve (Ф24 GEPA dry-run, e2e)', () => {
     for (let i = 6; i <= 25; i++) appendFileSync(metrics, toolErrorLine(i * 1000, i % 2 === 0 ? 'bash' : 'grep'));
     const evolve = runCli(['learn', 'evolve', 'brief'], cwd);
     expect(evolve.status).toBe(0);
-    expect(evolve.stdout).toContain('пул 25 примеров');
-    expect(evolve.stdout).toContain('метрика:');
+    expect(evolve.stdout).toContain('pool 25 examples');
+    expect(evolve.stdout).toContain('metric:');
     expect(evolve.stdout).toContain('verdict:');
-    expect(evolve.stdout).toContain('dry-run: ничего не записано');
+    expect(evolve.stdout).toContain('dry-run: nothing written');
     expect(existsSync(candidatePath)).toBe(false);
     expect(readFileSync(templatePath, 'utf-8')).toBe('Шаблон брифа v1. Секция контекста и критерии приёмки.');
   });
@@ -63,7 +63,7 @@ describe('wolf learn evolve (Ф24 GEPA dry-run, e2e)', () => {
   it('(в) --write: только кандидат-файл, текущий шаблон не тронут', () => {
     const evolve = runCli(['learn', 'evolve', 'brief', '--write'], cwd);
     expect(evolve.status).toBe(0);
-    expect(evolve.stdout).toContain('кандидат записан');
+    expect(evolve.stdout).toContain('candidate written');
     expect(existsSync(candidatePath)).toBe(true);
     const candidate = readFileSync(candidatePath, 'utf-8');
     expect(candidate).toContain('Шаблон брифа v1');
@@ -74,6 +74,6 @@ describe('wolf learn evolve (Ф24 GEPA dry-run, e2e)', () => {
   it('(г) нет файла шаблона — отказ с подсказкой', () => {
     const evolve = runCli(['learn', 'evolve', 'nonexistent-template'], cwd);
     expect(evolve.status).not.toBe(0);
-    expect(evolve.stderr).toContain('шаблон');
+    expect(evolve.stderr).toContain('template');
   });
 });
