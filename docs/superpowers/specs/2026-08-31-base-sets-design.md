@@ -153,7 +153,7 @@ validators. **PoC-артефакты**: `apprentice-inj` (доставку ре�
 REQUIRED-предусловие wolf-sdd и wolf-execute; wolf-brainstorm worktree не
 создаёт (одностороннее upstream-ребро upstream не воспроизводим).
 
-**Не берём**: `mr-wolf-scenario-lab` (машино-специфичные абсолютные пути),
+**Не берём**: `mr-wolf-scenario-lab` (машино-специфичные абсолютные пути), материал лаборатории заархивирован в playground-lab/archive/scenario-lab (2026-09-03)
 `dispatching-parallel-agents` (дублируется wolf-sdd и ролью executor-lead),
 `writing-skills` (отложен до Библиотекаря, Ф20–26), deprecated-команды
 superpowers. **Второй эшелон**: `receiving-code-review`.
