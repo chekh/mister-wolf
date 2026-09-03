@@ -667,6 +667,57 @@ cat .wolf/router.log
 - сессия отвечает штатно (miss пользователю не виден);
 - тихого провала нет: miss зафиксирован в router.log.
 
+### RT5. Маршрутизация моделей
+
+**Цель:** выбор модели агентов управляется init-конфигурацией (`--model` →
+routing-объект памяти → frontmatter фреймов), без ручной правки конфигов.
+
+**Шаги:**
+
+```bash
+# pristine площадка; не-TTY без --model — жёсткая ошибка (exit≠0, memory-init.ts:208):
+node ../dist/bootstrap/cli.js init --model zai-coding-plan/glm-5.3
+grep -rn "^model:" .opencode/agents/   # подставленные значения во frontmatter
+grep -n "model" opencode.json          # пусто: opencode.json модель не хранит
+node ../dist/bootstrap/cli.js sync     # первая строка: models: primary=… worker=… (routing object <id>)
+# смена модели — повторный init (routing-объект superseded, фреймы обновятся diff-веткой):
+node ../dist/bootstrap/cli.js init --model <other-provider/modelID>
+grep -rn "^model:" .opencode/agents/
+```
+
+- живая сессия на площадке (сетап T2), тривиальный запрос → метаданные
+  сессии показывают модель из frontmatter; затем повторить после смены —
+  новая сессия на новой модели;
+- факт сверки (memory-init.ts:227): запрашивается ОДНА модель,
+  `worker = primary` (Q7); worker-implementer рендерится из
+  `{{model.worker}}`, фреймы mr-wolf / worker-researcher /
+  worker-reviewer / executor-lead — из `{{model.primary}}`
+  (templates/base/agents/*.md); steward — исключение: захардкоженная
+  константа `model: zai-coding-plan/glm-5.3` (steward.md:4), от
+  `--model` не зависит — прогон с другой моделью его не меняет;
+- факт сверки (init-project.ts:136, model-routing.ts): значение доезжает
+  через routing-объект памяти (type=rule, теги wolf-routing+models, body
+  `primary:`/`worker:`) — рендер только подставляет; тот же --model →
+  unchanged, иной → superseded;
+- агент видит уже подставленное `model: <id>` во frontmatter своего фрейма:
+  плейсхолдер `{{model.*}}` живёт только в шаблонах фреймов, в рендере
+  AGENTS.md его нет (grep templates/base/AGENTS.md пуст) — не выдумывать;
+- канонический путь смены модели: повторный `wolf init --model <id>`;
+  альтернатива — supersede routing-объекта + `wolf sync` (memory-sync.ts:24:
+  sync берёт модели из routing-объекта; легаси без него — omit model-строк).
+
+**Ожидания/чек-лист:**
+
+- после init: каждый штампованный фрейм несёт `model: <providerID/modelID>`,
+  остатков `{{model.` в `.opencode/agents/` нет;
+- init-отчёт содержит строку `routing: agent models — created (primary …)`;
+- модель отсутствует в opencode.json — места хранения: frontmatter фреймов +
+  routing-объект `.wolf/`;
+- сессия обслужена моделью из frontmatter (дополняет RT2: RT2 — факт
+  live-сессии, RT5 — откуда значение попадает в frontmatter при рендере);
+- после смены модели повторным init: routing-объект superseded, фреймы
+  updated (diff-ветка §4.5), новая сессия — на новой модели.
+
 ## Группа X — доказательные измерения эффективности
 
 Главная цель полигона. Общая методика (обязательна для всех карточек группы):
