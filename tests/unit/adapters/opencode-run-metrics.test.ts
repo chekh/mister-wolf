@@ -48,8 +48,24 @@ describe('parseRunMetrics', () => {
     expect(metrics.weighted).toBeCloseTo(1, 9); // 0 + 0.1×10 + 0
   });
 
+  it('raw token sums alongside weighted (M1: Σ tokens по step-finish)', () => {
+    const ndjson = [stepFinish(21679, 3, 0, 'ses_a'), stepFinish(1000, 20, 500, 'ses_a')].join('\n');
+    const metrics = parseRunMetrics(ndjson);
+    expect(metrics.tokensIn).toBe(22679); // 21679 + 1000
+    expect(metrics.tokensOut).toBe(23); // 3 + 20
+    expect(metrics.cacheRead).toBe(500); // 0 + 500
+    expect(metrics.weighted).toBeCloseTo(22844, 9); // старая формула не изменилась: 21694 + 1150
+  });
+
   it('returns zeroes on empty and garbage input without throwing', () => {
-    expect(parseRunMetrics('')).toEqual({ session: null, weighted: 0, stepFinishes: 0 });
+    expect(parseRunMetrics('')).toEqual({
+      session: null,
+      weighted: 0,
+      stepFinishes: 0,
+      tokensIn: 0,
+      tokensOut: 0,
+      cacheRead: 0,
+    });
     const garbage = parseRunMetrics('not json\n{"broken":\n\n{"type":"text","part":{"type":"text"}}');
     expect(garbage.weighted).toBe(0);
     expect(garbage.stepFinishes).toBe(0);
