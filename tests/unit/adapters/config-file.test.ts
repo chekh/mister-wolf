@@ -68,3 +68,43 @@ describe('config learning.effectiveness_thresholds (E1.2)', () => {
     expect(loadWolfConfigSync(dir)?.learning?.effectivenessThresholds).toBeUndefined();
   });
 });
+
+// M3: pricing ($/Mtok) + analytics.thresholds (D7) из config.yaml; битые блоки отбрасываются схемой
+describe('config pricing + analytics.thresholds (M3)', () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'wolf-config-m3-'));
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  function writeConfig(yaml: string): void {
+    mkdirSync(join(dir, '.wolf'), { recursive: true });
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), yaml);
+  }
+
+  it('pricing-таблица и analytics.thresholds читаются, пороги маппятся в camelCase', () => {
+    writeConfig(
+      'pricing:\n' +
+        "  'zai-coding-plan/glm-5.3':\n" +
+        '    input: 0.6\n' +
+        '    output: 2.2\n' +
+        '    cache_read: 0.06\n' +
+        'analytics:\n' +
+        '  thresholds:\n' +
+        '    new_days: 14\n' +
+        '    workhorse_uses: 3\n'
+    );
+    const loaded = loadWolfConfigSync(dir);
+    expect(loaded?.pricing).toEqual({
+      'zai-coding-plan/glm-5.3': { input: 0.6, output: 2.2, cache_read: 0.06 },
+    });
+    expect(loaded?.analytics?.thresholds).toEqual({ newDays: 14, workhorseUses: 3 });
+  });
+
+  it('без блоков — undefined', () => {
+    writeConfig('learning:\n  pattern_threshold: 5\n');
+    const loaded = loadWolfConfigSync(dir);
+    expect(loaded?.pricing).toBeUndefined();
+    expect(loaded?.analytics).toBeUndefined();
+  });
+});

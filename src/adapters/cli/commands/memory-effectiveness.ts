@@ -12,6 +12,7 @@ import {
   type EffectivenessReport,
   type EffectivenessThresholds,
 } from '../../../app/use-cases/effectiveness.js';
+import type { PricingTable } from '../../../domain/pricing.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 
 /**
@@ -62,6 +63,19 @@ function printReport(r: EffectivenessReport): void {
       ? 'n/a (run-log is empty)'
       : r.routing.map((row) => `${row.model}: tasks=${row.tasks} median=${row.medianWeighted}`).join(' | ');
   console.log(`routing: ${routing}`);
+
+  // M3: блок абсолютов из run-сигналов; null → честное n/a
+  const t = r.totals;
+  const cache = t.cacheHitRatio === null ? 'n/a' : `${fmtPct(t.cacheHitRatio)}%`;
+  const avg = t.avgDurationMs === null ? 'n/a' : `${t.avgDurationMs}ms`;
+  console.log(`totals: runs=${t.runs} failures=${t.failures} weighted=${t.sumWeighted} cache=${cache} avg=${avg}`);
+  const cost = t.costUsd === null ? 'n/a (no pricing configured)' : `$${t.costUsd} (pricing enabled)`;
+  console.log(`cost: ${cost}`);
+  for (const row of t.byModel) {
+    const c = row.costUsd === null ? 'n/a' : `$${row.costUsd}`;
+    const cps = row.costPerSuccess === null ? 'n/a' : `$${row.costPerSuccess}`;
+    console.log(`model ${row.model}: runs=${row.runs} failures=${row.failures} cost=${c} cost/success=${cps}`);
+  }
 }
 
 export function memoryEffectivenessCommand(baseDir: string = safeCwd()): Command {
@@ -71,10 +85,13 @@ export function memoryEffectivenessCommand(baseDir: string = safeCwd()): Command
   cmd.option('--snapshot', 'Append the full report to .wolf/metrics/effectiveness-snapshots.jsonl');
 
   cmd.action(async (options) => {
-    // пороги: override из config поверх дефолтов (битый конфиг → дефолты)
+    // пороги + pricing: override из config поверх дефолтов (битый конфиг → дефолты)
     let override: Partial<EffectivenessThresholds> | undefined;
+    let pricing: PricingTable | undefined;
     try {
-      override = loadWolfConfigSync(baseDir)?.learning?.effectivenessThresholds;
+      const cfg = loadWolfConfigSync(baseDir);
+      override = cfg?.learning?.effectivenessThresholds;
+      pricing = cfg?.pricing;
     } catch {
       override = undefined;
     }
@@ -92,7 +109,7 @@ export function memoryEffectivenessCommand(baseDir: string = safeCwd()): Command
       const { store, log, relations } = createCliContainer(baseDir);
       const report = await buildEffectivenessReport(
         { store, log, relations },
-        { signals: readSignals(baseDir), runLogText, thresholds }
+        { signals: readSignals(baseDir), runLogText, thresholds, pricing }
       );
       printReport(report);
       // M2: --snapshot аппендит полный отчёт; обычный вызов печатает дельту к последнему

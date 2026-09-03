@@ -52,6 +52,23 @@ const ConfigFileSchema = z.object({
         .catch(undefined),
     })
     .catch({}),
+  // M3: $-прайсы ($/Mtok) и пороги lifecycle-аналитики (D7); битые блоки отбрасываются
+  pricing: z
+    .record(z.string(), z.object({ input: z.number(), output: z.number(), cache_read: z.number() }))
+    .optional()
+    .catch(undefined),
+  analytics: z
+    .object({
+      thresholds: z
+        .object({
+          new_days: z.number().int().min(1).optional(),
+          workhorse_uses: z.number().int().min(1).optional(),
+        })
+        .optional()
+        .catch(undefined),
+    })
+    .optional()
+    .catch(undefined),
 });
 
 export class ConfigLoadError extends Error {}
@@ -67,6 +84,18 @@ function mapEffectivenessThresholds(t?: {
   if (t.noise_ok !== undefined) out.noiseOk = t.noise_ok;
   if (t.noise_warn !== undefined) out.noiseWarn = t.noise_warn;
   if (t.silent_ok !== undefined) out.silentOk = t.silent_ok;
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** M3: analytics.thresholds → camelCase, undefined-поля отбрасываются. */
+function mapAnalyticsThresholds(t?: {
+  new_days?: number;
+  workhorse_uses?: number;
+}): { newDays?: number; workhorseUses?: number } | undefined {
+  if (t === undefined) return undefined;
+  const out: { newDays?: number; workhorseUses?: number } = {};
+  if (t.new_days !== undefined) out.newDays = t.new_days;
+  if (t.workhorse_uses !== undefined) out.workhorseUses = t.workhorse_uses;
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
@@ -98,6 +127,9 @@ export async function loadWolfConfig(baseDir: string): Promise<WolfConfig | null
     })),
     rawCoreBlock: mt.core ?? null,
     errorClassTaxonomy: cfg.error_class_taxonomy,
+    pricing: cfg.pricing,
+    analytics:
+      cfg.analytics === undefined ? undefined : { thresholds: mapAnalyticsThresholds(cfg.analytics.thresholds) },
     learning: {
       patternThreshold: cfg.learning?.pattern_threshold,
       decayTtl: cfg.learning?.decay_ttl,
@@ -134,6 +166,9 @@ export function loadWolfConfigSync(baseDir: string): WolfConfig | null {
     })),
     rawCoreBlock: mt.core ?? null,
     errorClassTaxonomy: cfg.error_class_taxonomy,
+    pricing: cfg.pricing,
+    analytics:
+      cfg.analytics === undefined ? undefined : { thresholds: mapAnalyticsThresholds(cfg.analytics.thresholds) },
     learning: {
       patternThreshold: cfg.learning?.pattern_threshold,
       decayTtl: cfg.learning?.decay_ttl,

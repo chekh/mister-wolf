@@ -25,6 +25,16 @@ function baseReport(): EffectivenessReport {
       { model: 'glm', tasks: 6, medianWeighted: 8.5 },
       { model: 'kimi', tasks: 2, medianWeighted: 150 },
     ],
+    totals: {
+      runs: 0,
+      failures: 0,
+      sumWeighted: 0,
+      sumTokens: null,
+      cacheHitRatio: null,
+      avgDurationMs: null,
+      costUsd: null,
+      byModel: [],
+    },
   };
 }
 
@@ -84,5 +94,36 @@ describe('computeSnapshotDelta (Q9: диф последнего снапшота
     const rows = computeSnapshotDelta(prev, curr);
     expect(row(rows, 'routing.qwen.tasks')).toEqual({ path: 'routing.qwen.tasks', prev: null, curr: 3, diff: null });
     expect(row(rows, 'routing.kimi.tasks')).toEqual({ path: 'routing.kimi.tasks', prev: 2, curr: null, diff: null });
+  });
+});
+
+describe('flattenReportNumbers + totals (M3)', () => {
+  it('totals-пути попадают в дельту; null-поля (sumTokens/costUsd) пропущены', () => {
+    const r = baseReport();
+    (r as { totals?: unknown }).totals = {
+      runs: 5,
+      failures: 1,
+      sumWeighted: 500,
+      sumTokens: { input: 3000, output: 500, cache_read: 1500 },
+      cacheHitRatio: 33.3,
+      avgDurationMs: 2000,
+      costUsd: null,
+      byModel: [
+        {
+          model: 'm1',
+          runs: 2,
+          failures: 0,
+          sumWeighted: 30,
+          avgDurationMs: 2000,
+          costUsd: 0.00299,
+          costPerSuccess: 0.001495,
+        },
+      ],
+    };
+    const flat = flattenReportNumbers(r);
+    expect(flat.get('totals.runs')).toBe(5);
+    expect(flat.get('totals.sumTokens.cache_read')).toBe(1500);
+    expect(flat.get('totals.byModel.m1.costPerSuccess')).toBeCloseTo(0.001495, 10);
+    expect(flat.has('totals.costUsd')).toBe(false); // null — не попадает
   });
 });

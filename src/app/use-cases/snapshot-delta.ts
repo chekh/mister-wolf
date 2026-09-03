@@ -5,6 +5,7 @@
  * пропускаются (в Map<string, number> null не кладётся — «не знаем» ≠ 0).
  */
 import type { EffectivenessReport } from './effectiveness.js';
+import type { TotalsBlock } from './effectiveness.js';
 
 export interface DeltaRow {
   path: string;
@@ -43,7 +44,31 @@ export function flattenReportNumbers(report: EffectivenessReport): Map<string, n
     flat.set(`routing.${r.model}.tasks`, r.tasks);
     put(flat, `routing.${r.model}.medianWeighted`, r.medianWeighted);
   }
+  flattenTotals(flat, report.totals);
   return flat;
+}
+
+/** M3: плоские числа totals для дельты снапшотов (Q9); null-поля не попадают в дельту. */
+function flattenTotals(flat: Map<string, number>, t: TotalsBlock): void {
+  flat.set('totals.runs', t.runs);
+  flat.set('totals.failures', t.failures);
+  flat.set('totals.sumWeighted', t.sumWeighted);
+  if (t.sumTokens !== null) {
+    flat.set('totals.sumTokens.input', t.sumTokens.input);
+    flat.set('totals.sumTokens.output', t.sumTokens.output);
+    flat.set('totals.sumTokens.cache_read', t.sumTokens.cache_read);
+  }
+  put(flat, 'totals.cacheHitRatio', t.cacheHitRatio);
+  put(flat, 'totals.avgDurationMs', t.avgDurationMs);
+  put(flat, 'totals.costUsd', t.costUsd);
+  for (const row of t.byModel) {
+    flat.set(`totals.byModel.${row.model}.runs`, row.runs);
+    flat.set(`totals.byModel.${row.model}.failures`, row.failures);
+    flat.set(`totals.byModel.${row.model}.sumWeighted`, row.sumWeighted);
+    put(flat, `totals.byModel.${row.model}.avgDurationMs`, row.avgDurationMs);
+    put(flat, `totals.byModel.${row.model}.costUsd`, row.costUsd);
+    put(flat, `totals.byModel.${row.model}.costPerSuccess`, row.costPerSuccess);
+  }
 }
 
 /**

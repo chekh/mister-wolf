@@ -25,6 +25,16 @@ function report(activeRules: number): EffectivenessReport {
     noiseStatus: 'NO_DATA',
     silentStatus: 'NO_DATA',
     routing: [],
+    totals: {
+      runs: 0,
+      failures: 0,
+      sumWeighted: 0,
+      sumTokens: null,
+      cacheHitRatio: null,
+      avgDurationMs: null,
+      costUsd: null,
+      byModel: [],
+    },
   };
 }
 

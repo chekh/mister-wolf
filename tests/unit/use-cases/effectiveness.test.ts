@@ -13,6 +13,7 @@ import type { MemoryEvent } from '../../../src/domain/schemas/memory-event-schem
 import type { Relation } from '../../../src/domain/schemas/relation-schema.js';
 import type { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
 import type { SignalEvent } from '../../../src/adapters/fs/session-metrics-log.js';
+import type { PricingTable } from '../../../src/domain/pricing.js';
 
 type Extra = Record<string, unknown>;
 
@@ -324,5 +325,101 @@ describe('resolveThresholds (config override поверх дефолтов)', ()
   it('частичный и полный override мержится поверх дефолтов', () => {
     expect(resolveThresholds({ noiseOk: 10 })).toEqual({ noiseOk: 10, noiseWarn: 40, silentOk: 30 });
     expect(resolveThresholds({ noiseWarn: 50, silentOk: 60 })).toEqual({ noiseOk: 20, noiseWarn: 50, silentOk: 60 });
+  });
+});
+
+describe('totals (M3: блок абсолютов из run-сигналов)', () => {
+  const pricing: PricingTable = {
+    m1: { input: 0.6, output: 2.2, cache_read: 0.06 },
+    m2: { input: 1.0, output: 4.0, cache_read: 0.1 },
+  };
+
+  function runTotalsSignal(over: Partial<SignalEvent>): SignalEvent {
+    return {
+      ts: T(0),
+      event: 'run',
+      session_id: 's',
+      gen_ai: { modelID: 'm1', agent: 'a' },
+      orchestration: { task: 't', actor: 'user:cli' },
+      outcome: 'ok',
+      ...over,
+    };
+  }
+
+  it('3 run (2 ok / 1 exit_1, tokens и duration у двух, m1/m1/m2) → суммы и byModel точные', async () => {
+    const signals = [
+      runTotalsSignal({ weighted: 10, duration_ms: 1000, tokens: { input: 1000, output: 200, cache_read: 500 } }),
+      runTotalsSignal({ weighted: 20, duration_ms: 3000, tokens: { input: 2000, output: 300, cache_read: 1000 } }),
+      runTotalsSignal({ gen_ai: { modelID: 'm2', agent: 'a' }, outcome: 'exit_1', weighted: 40 }),
+    ];
+    const report = await buildEffectivenessReport(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]) },
+      { signals, runLogText: null, thresholds: DEFAULT_EFFECTIVENESS_THRESHOLDS, pricing }
+    );
+
+    expect(report.totals.runs).toBe(3);
+    expect(report.totals.failures).toBe(1);
+    expect(report.totals.sumWeighted).toBe(70); // 10+20+40
+    expect(report.totals.sumTokens).toEqual({ input: 3000, output: 500, cache_read: 1500 });
+    expect(report.totals.cacheHitRatio).toBeCloseTo(100 / 3, 5); // 1500/(3000+1500)×100
+    expect(report.totals.avgDurationMs).toBe(2000); // (1000+3000)/2
+    // m1: (1070 + 1920)/1e6; m2 без tokens → вклад null
+    expect(report.totals.costUsd).toBeCloseTo(0.00299, 10);
+
+    // сортировка: runs убыв., потом model — m1 (2 прогона) первым
+    expect(report.totals.byModel).toHaveLength(2);
+    const m1 = report.totals.byModel[0];
+    expect(m1.model).toBe('m1');
+    expect(m1.runs).toBe(2);
+    expect(m1.failures).toBe(0);
+    expect(m1.sumWeighted).toBe(30);
+    expect(m1.avgDurationMs).toBe(2000);
+    expect(m1.costUsd).toBeCloseTo(0.00299, 10); // 1070/1e6 + 1920/1e6
+    expect(m1.costPerSuccess).toBeCloseTo(0.001495, 10); // 0.00299/2
+
+    expect(report.totals.byModel[1]).toEqual({
+      model: 'm2',
+      runs: 1,
+      failures: 1,
+      sumWeighted: 40,
+      avgDurationMs: null, // ни одного duration_ms
+      costUsd: null, // ни одного tokens
+      costPerSuccess: null, // costUsd null И успехов 0
+    });
+  });
+
+  it('run-сигналы без tokens/duration → sumTokens null, cacheHitRatio null, costUsd null', async () => {
+    const signals = [runTotalsSignal({ weighted: 5 }), runTotalsSignal({ weighted: 7, outcome: 'exit_1' })];
+    const report = await buildEffectivenessReport(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]) },
+      { signals, runLogText: null, thresholds: DEFAULT_EFFECTIVENESS_THRESHOLDS, pricing }
+    );
+    expect(report.totals.runs).toBe(2);
+    expect(report.totals.failures).toBe(1);
+    expect(report.totals.sumWeighted).toBe(12);
+    expect(report.totals.sumTokens).toBeNull();
+    expect(report.totals.cacheHitRatio).toBeNull();
+    expect(report.totals.avgDurationMs).toBeNull();
+    expect(report.totals.costUsd).toBeNull();
+    expect(report.totals.byModel).toEqual([
+      { model: 'm1', runs: 2, failures: 1, sumWeighted: 12, avgDurationMs: null, costUsd: null, costPerSuccess: null },
+    ]);
+  });
+
+  it('run-сигналов нет → нулевой totals без byModel', async () => {
+    const report = await buildEffectivenessReport(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]) },
+      { signals: [], runLogText: null, thresholds: DEFAULT_EFFECTIVENESS_THRESHOLDS, pricing }
+    );
+    expect(report.totals).toEqual({
+      runs: 0,
+      failures: 0,
+      sumWeighted: 0,
+      sumTokens: null,
+      cacheHitRatio: null,
+      avgDurationMs: null,
+      costUsd: null,
+      byModel: [],
+    });
   });
 });

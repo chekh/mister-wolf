@@ -1,5 +1,6 @@
 import { CORE_TAXONOMY, MemoryType, MemoryTypeDeclaration, MemoryStatus } from './memory-types.js';
 import { ALLOWED_TRANSITIONS } from './governance.js';
+import type { PricingTable } from './pricing.js';
 
 export interface WolfConfig {
   artifact_sources: string[];
@@ -17,6 +18,10 @@ export interface WolfConfig {
     decayTtl?: Record<string, number>;
     effectivenessThresholds?: { noiseOk?: number; noiseWarn?: number; silentOk?: number };
   };
+  /** M3: $-прайсы ($/Mtok) из config.yaml; без прайса $-поля скрыты (D9). */
+  pricing?: PricingTable;
+  /** M3: пороги lifecycle-классификации D7 (analytics.thresholds из config.yaml). */
+  analytics?: { thresholds?: { newDays?: number; workhorseUses?: number } };
 }
 
 export class ProjectTypeConflictError extends Error {}
