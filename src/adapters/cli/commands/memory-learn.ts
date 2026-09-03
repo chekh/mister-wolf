@@ -73,7 +73,7 @@ async function printDraftsSection(baseDir: string): Promise<void> {
     for (const o of drafts) {
       const rec = o as Record<string, unknown>;
       console.log(
-        `  ${o.id}: pattern ${rec.pattern_key} | verdict: ${rec.holdout_verdict ?? 'нет вердикта'} | by ${o.created_by}`
+        `  ${o.id}: pattern ${rec.pattern_key} | verdict: ${rec.holdout_verdict ?? 'no verdict'} | by ${o.created_by}`
       );
     }
   } catch {
@@ -89,14 +89,14 @@ async function printDecaySection(baseDir: string): Promise<void> {
     const { store, clock } = createCliContainer(baseDir);
     const st = await decayStatus({ store, clock }, baseDir);
     if (st.reviewQueue.length === 0) {
-      console.log('  пусто');
+      console.log('  empty');
       return;
     }
     for (const q of st.reviewQueue) {
-      console.log(`  ${q.id} (${q.type}): ${q.sessions} сессий без срабатывания | причина: ${q.reason}`);
+      console.log(`  ${q.id} (${q.type}): ${q.sessions} sessions without a trigger | reason: ${q.reason}`);
     }
   } catch {
-    console.log('  пусто');
+    console.log('  empty');
   }
 }
 
@@ -113,8 +113,8 @@ export function memoryLearnCommand(baseDir: string = safeCwd()): Command {
       const signals = readSignals(baseDir);
       const threshold = patternThreshold(baseDir);
       if (patterns.length === 0) {
-        console.log('активных паттернов нет');
-        console.log(`сигналов в логе: ${signals.length} (порог ${threshold})`);
+        console.log('no active patterns');
+        console.log(`signals in log: ${signals.length} (threshold ${threshold})`);
       } else {
         // live-кластеры: пересчёт signalKey по текущему логу (строки 1-based)
         const clusters = new Map<string, { ev: SignalEvent; line: number }[]>();
@@ -125,10 +125,10 @@ export function memoryLearnCommand(baseDir: string = safeCwd()): Command {
           list.push({ ev: signals[i]!, line: i + 1 });
           clusters.set(key, list);
         }
-        console.log(`активных паттернов: ${patterns.length} (порог ${threshold})`);
+        console.log(`active patterns: ${patterns.length} (threshold ${threshold})`);
         for (const p of patterns) {
           const evs = clusters.get(p.key) ?? [];
-          console.log(`${p.key}: count ${evs.length} (фиксирован ${p.ts} при count ${p.count})`);
+          console.log(`${p.key}: count ${evs.length} (fixed ${p.ts} at count ${p.count})`);
           for (const { ev, line } of evs.slice(-2).reverse()) {
             const facts = signalFacts(ev);
             console.log(`  ${ev.ts}${facts ? ' ' + facts : ''} [session-metrics.jsonl:${line}]`);
@@ -176,7 +176,7 @@ export function memoryLearnCommand(baseDir: string = safeCwd()): Command {
             ` reactivations(pending)=${d.indicators.reactivations} silentRules=${d.indicators.silentRules}`
         );
         console.log(
-          `drift: newErrorClasses=${d.indicators.newErrorClasses.length === 0 ? 'нет' : d.indicators.newErrorClasses.join(', ')}`
+          `drift: newErrorClasses=${d.indicators.newErrorClasses.length === 0 ? 'none' : d.indicators.newErrorClasses.join(', ')}`
         );
       } catch {
         // .wolf не инициализирован — status не падает
@@ -205,7 +205,7 @@ export function memoryLearnCommand(baseDir: string = safeCwd()): Command {
       const rec = object as Record<string, unknown>;
       console.log(`Draft created: ${object.id}`);
       console.log(
-        `type: ${object.type} | mechanical: ${rec.mechanical ? 'да' : 'нет'} | ` +
+        `type: ${object.type} | mechanical: ${rec.mechanical ? 'yes' : 'no'} | ` +
           `polarity: ${String(rec.polarity ?? 'positive')} | count: ${String(rec.pattern_count ?? 0)}`
       );
       console.log(`evidence: ${((rec.evidence as string[]) ?? []).join(', ')}`);
@@ -240,13 +240,13 @@ export function memoryLearnCommand(baseDir: string = safeCwd()): Command {
         }
       );
       console.log(`activated: ${draftId}`);
-      console.log('delivery_event записан (mechanism call)');
+      console.log('delivery_event recorded (mechanism call)');
       console.log(`relation recorded: ${draftId} -based_on-> pattern:${patternKey ?? '?'}`);
     });
 
   cmd
     .command('gate')
-    .description('STOP-гейт (Ф23): pressure-сценарии доставки + read-only zone probe (отдельный запуск, вне check)')
+    .description('STOP-gate (F23): delivery pressure scenarios + read-only zone probe (separate run, outside check)')
     .action(async () => {
       const container = createCliContainer(baseDir);
       // сценарии из активных механических знаний (constraint_tool) + FP-проба
@@ -259,7 +259,7 @@ export function memoryLearnCommand(baseDir: string = safeCwd()): Command {
       }
       scenarios.push({
         id: 'fp-probe',
-        stimulus: 'обычная задача без запретов',
+        stimulus: 'ordinary task without constraints',
         topic: 'neutral-topic-without-rules',
         expect_action: true,
       });
@@ -270,7 +270,7 @@ export function memoryLearnCommand(baseDir: string = safeCwd()): Command {
         cache.set(sc.topic, (await getCallInjections(container, { topic: sc.topic })).blocks);
       }
       const report = runStopGate((topic) => cache.get(topic) ?? [], scenarios);
-      console.log(`STOP-гейт: ${report.passed ? 'ЗЕЛЁНЫЙ' : 'КРАСНЫЙ'} (${scenarios.length} сценариев)`);
+      console.log(`STOP-gate: ${report.passed ? 'GREEN' : 'RED'} (${scenarios.length} scenarios)`);
       for (const r of report.results) {
         console.log(`  ${r.passed ? 'PASS' : 'FAIL'} ${r.id}: ${r.reason}`);
       }
@@ -282,44 +282,44 @@ export function memoryLearnCommand(baseDir: string = safeCwd()): Command {
       );
       const probe = zoneProbe();
       const unenforced = probe.filter((z) => !z.enforced);
-      console.log(`read-only зоны: ${probe.length - unenforced.length}/${probe.length} enforced`);
-      for (const z of unenforced) console.log(`  НЕ ЗАЩИЩЕНА: ${z.zone}`);
+      console.log(`read-only zones: ${probe.length - unenforced.length}/${probe.length} enforced`);
+      for (const z of unenforced) console.log(`  NOT ENFORCED: ${z.zone}`);
       if (!report.passed || unenforced.length > 0) process.exit(1);
     });
 
   cmd
     .command('decay')
-    .description('Ф26: decay-прогон по пробегу (сессии) — review_required-очередь, реактивация, drift')
-    .option('--dry-run', 'Посчитать без записи изменений в объекты')
+    .description('F26: decay pass by mileage (sessions) — review_required queue, reactivation, drift')
+    .option('--dry-run', 'Compute without writing changes to objects')
     .action(async (options: { dryRun?: boolean }) => {
       const { store, clock } = createCliContainer(baseDir);
       const res = await runDecayPass({ store, clock }, baseDir, { dryRun: options.dryRun === true });
       const mode = res.dryRun ? ' (dry-run)' : '';
       console.log(
-        `decay-прогон${mode}: ttl_marked=${res.marked} reactivated=${res.reactivations} silent_rules=${res.silentRulesMarked}`
+        `decay pass${mode}: ttl_marked=${res.marked} reactivated=${res.reactivations} silent_rules=${res.silentRulesMarked}`
       );
       const st = await decayStatus({ store, clock }, baseDir);
       if (st.reviewQueue.length === 0) {
-        console.log('очередь пересмотра: пусто');
+        console.log('review queue: empty');
       } else {
-        console.log(`очередь пересмотра (${st.reviewQueue.length}):`);
+        console.log(`review queue (${st.reviewQueue.length}):`);
         for (const q of st.reviewQueue) {
-          console.log(`  ${q.id} (${q.type}): ${q.sessions} сессий | причина: ${q.reason}`);
+          console.log(`  ${q.id} (${q.type}): ${q.sessions} sessions | reason: ${q.reason}`);
         }
       }
       console.log(
         `drift: decayShare=${st.indicators.decayShare} silentRules=${st.indicators.silentRules}` +
-          ` newErrorClasses=${st.indicators.newErrorClasses.length === 0 ? 'нет' : st.indicators.newErrorClasses.join(', ')}`
+          ` newErrorClasses=${st.indicators.newErrorClasses.length === 0 ? 'none' : st.indicators.newErrorClasses.join(', ')}`
       );
-      console.log('жизненный цикл: review_required — НЕ удаление; судьбу решает Стюард/пользователь в digest');
+      console.log('lifecycle: review_required — NOT deletion; the Steward/user decides its fate in digest');
     });
 
   cmd
     .command('evolve <template-id>')
     .description(
-      `Ф24 GEPA: кандидат vs текущий шаблон (.wolf/templates/<id>.md) по детерминированной метрике; активация — только человек`
+      `F24 GEPA: candidate vs current template (.wolf/templates/<id>.md) by a deterministic metric; activation — human only`
     )
-    .option('--write', 'Записать кандидат-файл <id>.candidate.md (НЕ активация; активация — гейт человека)')
+    .option('--write', 'Write the candidate file <id>.candidate.md (NOT activation; activation is a human gate)')
     .action(async (templateId: string, options: { write?: boolean }) => {
       const templatesDir = join(baseDir, '.wolf', 'templates');
       const result = await evolveTemplate(
@@ -338,36 +338,36 @@ export function memoryLearnCommand(baseDir: string = safeCwd()): Command {
         }
       );
       console.log(
-        `шаблон: ${result.templatePath} (пул ${result.poolSize} примеров, лимит ${TEMPLATE_CHAR_LIMIT} симв.)`
+        `template: ${result.templatePath} (pool ${result.poolSize} examples, limit ${TEMPLATE_CHAR_LIMIT} chars)`
       );
       console.log(
-        `метрика: current ${result.comparison.currentScore.score} (${result.comparison.currentScore.prevented}/${result.comparison.currentScore.total})` +
+        `metric: current ${result.comparison.currentScore.score} (${result.comparison.currentScore.prevented}/${result.comparison.currentScore.total})` +
           ` | candidate ${result.comparison.candidateScore.score} (${result.comparison.candidateScore.prevented}/${result.comparison.candidateScore.total})`
       );
       console.log(
-        `парето по инстансам: candidate +${result.comparison.winsCandidate} / current +${result.comparison.winsCurrent}` +
+        `pareto by instances: candidate +${result.comparison.winsCandidate} / current +${result.comparison.winsCurrent}` +
           ` / ties ${result.comparison.ties} → verdict: ${result.comparison.verdict}`
       );
       console.log(
         result.wrote
-          ? `кандидат записан: ${templateId}.candidate.md (активация — только человек)`
-          : 'dry-run: ничего не записано'
+          ? `candidate written: ${templateId}.candidate.md (activation — human only)`
+          : 'dry-run: nothing written'
       );
       console.log(
-        `рефлектор: механический (LLM за интерфейсом — протокол docs/guide/steward-learn.md; пул ${POOL_MIN}–${POOL_MAX})`
+        `reflector: mechanical (LLM behind the interface — protocol docs/guide/steward-learn.md; pool ${POOL_MIN}–${POOL_MAX})`
       );
     });
 
   cmd
     .command('route')
-    .description('Ф25: эвристика глубины ревью по признакам задачи (рекомендация; решение — за человеком)')
-    .option('--type <t>', 'Тип задачи: feature|bugfix|refactor|docs|experiment')
-    .option('--files <n>', 'Число файлов в изменении', parseInt)
-    .option('--lines <n>', 'Число строк в изменении', parseInt)
+    .description('F25: review-depth heuristic by task traits (recommendation; the decision is human)')
+    .option('--type <t>', 'Task type: feature|bugfix|refactor|docs|experiment')
+    .option('--files <n>', 'Number of files in the change', parseInt)
+    .option('--lines <n>', 'Number of lines in the change', parseInt)
     .option('--blast-radius <x>', 'Blast radius 0..1', parseFloat)
-    .option('--touches-read-only', 'Изменение касается read-only зоны (гейты/логи/скелет)')
-    .option('--security', 'Безопасность: доверенные границы, секреты')
-    .option('--metricless', 'Нет детерминированной метрики качества')
+    .option('--touches-read-only', 'The change touches a read-only zone (gates/logs/skeleton)')
+    .option('--security', 'Security: trust boundaries, secrets')
+    .option('--metricless', 'No deterministic quality metric')
     .action((options: Record<string, unknown>) => {
       const traits: TaskTraits = {
         ...(typeof options.type === 'string' ? { taskType: options.type as TaskTraits['taskType'] } : {}),
@@ -379,10 +379,10 @@ export function memoryLearnCommand(baseDir: string = safeCwd()): Command {
         ...(options.metricless === true ? { hasDeterministicMetric: false } : {}),
       };
       const d = routeReviewDepth(traits);
-      console.log(`глубина ревью: ${d.depth}`);
-      for (const r of d.reasons) console.log(`  причина: ${r}`);
+      console.log(`review depth: ${d.depth}`);
+      for (const r of d.reasons) console.log(`  reason: ${r}`);
       console.log(
-        'решение — за координатором/человеком (гейт §15); изменение эвристик — только человеком (класс «структура»)'
+        'the decision belongs to the coordinator/human (gate §15); changing the heuristics — human only ("structure" class)'
       );
     });
 

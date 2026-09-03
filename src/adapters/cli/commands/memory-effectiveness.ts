@@ -26,21 +26,21 @@ function fmtPct(v: number): string {
 function printReport(r: EffectivenessReport): void {
   const holdout =
     r.rules.prevented === null || r.rules.checked === null
-      ? 'n/a (мало пробега)'
+      ? 'n/a (not enough mileage)'
       : `${r.rules.prevented}/${r.rules.checked}`;
   console.log(`rules: active=${r.rules.activeRules} | prevented/checked: ${holdout}`);
 
   const e = r.tools.economy;
   const economy = e.sufficient
     ? `medianTool=${e.medianTool} medianAll=${e.medianAll} savings=${e.savingsPct !== null ? fmtPct(e.savingsPct) + '%' : 'n/a'}`
-    : `n/a: ${e.reason ?? 'мало данных'}`;
+    : `n/a: ${e.reason ?? 'not enough data'}`;
   console.log(`tools: count=${r.tools.toolCount} | usage=${r.tools.totalUsage} | economy: ${economy} [INFO]`);
 
   const silent =
     r.delivery.silentShare === null
       ? !r.delivery.enoughDeliveryData
-        ? 'мало delivery-данных'
-        : 'нет активных правил'
+        ? 'not enough delivery data'
+        : 'no active rules'
       : `${fmtPct(r.delivery.silentShare)}% [${r.silentStatus}]`;
   console.log(
     `delivery: events=${r.delivery.deliveryEvents} | triggered=${r.delivery.triggeredObjects}` +
@@ -49,15 +49,15 @@ function printReport(r: EffectivenessReport): void {
 
   const noise =
     r.noise.share === null
-      ? 'n/a (память пуста)'
+      ? 'n/a (memory is empty)'
       : `${r.noise.writeOnly}/${r.noise.totalObjects} = ${fmtPct(r.noise.share)}% [${r.noiseStatus}]`;
   console.log(`noise: ${noise}`);
-  console.log(`documents: ${r.noise.documents} (registered refs, не участвуют в метрике шума) [INFO]`);
-  console.log(`archived: ${r.noise.archived} (вне метрики шума) [INFO]`);
+  console.log(`documents: ${r.noise.documents} (registered refs, not part of the noise metric) [INFO]`);
+  console.log(`archived: ${r.noise.archived} (outside the noise metric) [INFO]`);
 
   const routing =
     r.routing.length === 0
-      ? 'n/a (run-log пуст)'
+      ? 'n/a (run-log is empty)'
       : r.routing.map((row) => `${row.model}: tasks=${row.tasks} median=${row.medianWeighted}`).join(' | ');
   console.log(`routing: ${routing}`);
 }
@@ -84,7 +84,7 @@ export function memoryEffectivenessCommand(baseDir: string = safeCwd()): Command
       runLogText = null; // ENOENT — run-log ещё не пишется
     }
 
-    console.log('effectiveness panel (агрегация пробега, без LLM):');
+    console.log('effectiveness panel (mileage aggregation, no LLM):');
     try {
       const { store, log, relations } = createCliContainer(baseDir);
       const report = await buildEffectivenessReport(
@@ -95,7 +95,7 @@ export function memoryEffectivenessCommand(baseDir: string = safeCwd()): Command
     } catch (err: unknown) {
       // .wolf не инициализирован — честные n/a; реальную причину не глушим (stderr)
       console.error(`[effectiveness] Warning: ${err instanceof Error ? err.message : String(err)}`);
-      console.log('rules: n/a (.wolf не инициализирован или не читается)');
+      console.log('rules: n/a (.wolf not initialized or unreadable)');
       console.log('tools: n/a | economy: n/a [INFO]');
       console.log('delivery: n/a');
       console.log('noise: n/a');

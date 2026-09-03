@@ -55,7 +55,7 @@ export interface DraftGenerator {
   generate(input: DraftGeneratorInput): Promise<GeneratedDraft>;
 }
 
-const GENERIC_ADVICE = 'класс ошибки вне таблицы — сформулируй правило по сообщению ошибки вручную';
+const GENERIC_ADVICE = 'error class outside the table — formulate the rule from the error message manually';
 
 /**
  * Дефолтный генератор: без LLM, детерминированный (тот же вход → тот же draft).
@@ -80,15 +80,15 @@ export function mechanicalDraftGenerator(): DraftGenerator {
           type: 'rule',
           title,
           body:
-            `Повторяющаяся ${kind === 'complaint' ? 'жалоба' : 'доставка'} ${patternKey} ${count} раз — ` +
-            `поведение требует правила; текст draft'а готовит Analyzer (LLM) или человек\n${evidenceLine}`,
+            `Recurring ${kind === 'complaint' ? 'complaint' : 'delivery'} ${patternKey} ${count} times — ` +
+            `the behavior needs a rule; the draft text is prepared by an Analyzer (LLM) or a human\n${evidenceLine}`,
           triggerKeywords: [about],
           mechanical: false,
           polarity,
           constraint: null,
           manifest: {
-            predicted_effect: 'правило формализует поведение по повторяющемуся сигналу',
-            regression_risks: ['текст правила не сгенерирован механически — содержание задаёт ревьюер'],
+            predicted_effect: 'the rule formalizes behavior from a recurring signal',
+            regression_risks: ['the rule text is not generated mechanically — the reviewer defines the content'],
             blast_radius: 'low',
             risk_level: 'low',
           },
@@ -104,16 +104,16 @@ export function mechanicalDraftGenerator(): DraftGenerator {
           type: 'lesson',
           title,
           body:
-            `АНТИ-ПРАВИЛО: не использовать ${toolName} — повторяющаяся ошибка ${patternKey} ${count} раз ` +
-            `(класс ${errorClass}: ${advice})\n${evidenceLine}`,
+            `ANTI-RULE: do not use ${toolName} — recurring error ${patternKey} ${count} times ` +
+            `(class ${errorClass}: ${advice})\n${evidenceLine}`,
           triggerKeywords: [toolName, errorClass],
           mechanical: true,
           polarity,
           constraint,
           manifest: {
-            predicted_effect: `отсечение ошибок тула ${toolName} целиком`,
-            regression_risks: ['блокирует и легитимные использования тула — сигнальный лог их не видит'],
-            blast_radius: 'high: запрет тула целиком',
+            predicted_effect: `elimination of ${toolName} errors entirely`,
+            regression_risks: ['blocks legitimate tool uses too — the signal log does not see them'],
+            blast_radius: 'high: bans the tool entirely',
             risk_level: 'medium',
           },
         };
@@ -121,15 +121,15 @@ export function mechanicalDraftGenerator(): DraftGenerator {
       return {
         type: 'lesson',
         title,
-        body: `Повторяющаяся ошибка ${patternKey} ${count} раз — правило: ${advice}\n${evidenceLine}`,
+        body: `Recurring error ${patternKey} ${count} times — rule: ${advice}\n${evidenceLine}`,
         triggerKeywords: [toolName, errorClass],
         mechanical: true,
         polarity: 'positive',
         constraint,
         manifest: {
-          predicted_effect: `предотвращение повторений ${patternKey}`,
-          regression_risks: ['совет может не покрыть новые классы ошибок тула'],
-          blast_radius: 'low: срабатывание только при повторении класса ошибки',
+          predicted_effect: `prevention of ${patternKey} recurrences`,
+          regression_risks: ['the advice may not cover new error classes of the tool'],
+          blast_radius: 'low: triggers only when the error class repeats',
           risk_level: 'low',
         },
       };
@@ -168,7 +168,7 @@ export async function proposeDraft(
   const pattern = input.patterns.find((p) => p.key === input.patternKey);
   if (!pattern) {
     const keys = input.patterns.map((p) => p.key).join(', ');
-    throw new UserFacingError(`активный паттерн не найден: ${input.patternKey}; активные: ${keys || 'нет'}`);
+    throw new UserFacingError(`active pattern not found: ${input.patternKey}; active: ${keys || 'none'}`);
   }
   const polarity: 'positive' | 'negative' = input.polarity === 'negative' ? 'negative' : 'positive';
   const generator = input.generator ?? mechanicalDraftGenerator();
@@ -187,7 +187,7 @@ export async function proposeDraft(
     );
     if (dup) {
       throw new UserFacingError(
-        `draft для паттерна уже существует: ${dup.id} (${dup.status}) — закрой его (activate/transition) перед новым propose`
+        `a draft for the pattern already exists: ${dup.id} (${dup.status}) — close it (activate/transition) before a new propose`
       );
     }
   }

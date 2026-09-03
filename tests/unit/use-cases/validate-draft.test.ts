@@ -93,7 +93,7 @@ describe('validateDraft / replayHoldout (Ф22 D2.2)', () => {
     );
     expect(v.verdict).toBe('fail');
     expect(v.checked).toBe(0);
-    expect(v.note).toContain('данных для активации недостаточно');
+    expect(v.note).toContain('not enough data for activation');
   });
 
   it('(в) negative: анти-правило покрывает все классы ошибок тула + предупреждение', async () => {
@@ -114,7 +114,7 @@ describe('validateDraft / replayHoldout (Ф22 D2.2)', () => {
     expect(v.prevented).toBe(3);
     expect(v.checked).toBe(4);
     expect(v.note).toContain('timeout, file_not_found');
-    expect(v.note).toContain('легитимные использования тула не логируются — риск блокировки оценивает человек');
+    expect(v.note).toContain('legitimate tool uses are not logged — a human assesses the blocking risk');
   });
 
   it('(г) текстовый draft (mechanical false) → needs_human_review', async () => {
@@ -126,7 +126,7 @@ describe('validateDraft / replayHoldout (Ф22 D2.2)', () => {
     expect(v.verdict).toBe('needs_human_review');
     expect(v.prevented).toBe(0);
     expect(v.checked).toBe(0);
-    expect(v.note).toContain('не поддаётся механическому replay');
+    expect(v.note).toContain('not mechanically replayable');
   });
 
   it('(д) вердикт фиксируется в объекте и пересчитывается повторным прогоном', async () => {

@@ -202,20 +202,20 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     expect(result.baseSetOutcomes[0].action).toBe('created');
     expect(result.platformOutcomes.some((o) => o.platform === 'opencode' && o.action === 'removed')).toBe(true);
     const report = store.objects.find((o) => o.type === 'report');
-    expect(report?.body).toContain('## Требует поправки (needs-fix)');
-    expect(report?.body).toContain('opencode вне списка --platform');
+    expect(report?.body).toContain('## Needs fixing (needs-fix)');
+    expect(report?.body).toContain('opencode not in the --platform list');
   });
 
   it('§6.1 reason-канал: reason из writeConfig попадает в platformOutcomes', async () => {
     writeFileSync(join(dir, 'package.json'), '{}');
     const oc = new FakeAdapter('opencode', false, {
       action: 'unchanged',
-      reason: 'default_agent=other занят; mr-wolf не назначен',
+      reason: 'default_agent=other is taken; mr-wolf not assigned',
     });
     const { deps } = makeDeps([oc]);
     const result = await initProject(deps, dir, { models: MODELS });
     expect(result.platformOutcomes).toEqual([
-      { platform: 'opencode', action: 'unchanged', reason: 'default_agent=other занят; mr-wolf не назначен' },
+      { platform: 'opencode', action: 'unchanged', reason: 'default_agent=other is taken; mr-wolf not assigned' },
     ]);
   });
 
@@ -260,9 +260,9 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     expect(r.status).toBe('active');
     expect(r.tags).toEqual([...INIT_REPORT_TAGS]);
     expect(r.importance).toBeGreaterThan(0.5);
-    expect(r.body).toContain('## Сделано (made)');
-    expect(r.body).toContain('## Обнаружено (found)');
-    expect(r.body).toContain('## Требует поправки (needs-fix)');
+    expect(r.body).toContain('## Done (made)');
+    expect(r.body).toContain('## Detected (found)');
+    expect(r.body).toContain('## Needs fixing (needs-fix)');
     expect(r.body).toContain('.opencode/agents/mr-wolf.md — created');
     expect(r.body).toContain('AGENTS.md: created');
     expect(r.body).toContain('zai-coding-plan/glm-5.3');
@@ -293,13 +293,13 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     writeFileSync(join(dir, 'package.json'), '{}');
     const oc = new FakeAdapter('opencode', false, {
       action: 'unchanged',
-      reason: 'default_agent=other занят; mr-wolf не назначен',
+      reason: 'default_agent=other is taken; mr-wolf not assigned',
     });
     const { deps, store } = makeDeps([oc]);
     await initProject(deps, dir, { models: MODELS });
     const report = store.objects.find((o) => o.type === 'report');
-    const needsFix = report!.body.split('## Требует поправки (needs-fix)')[1];
-    expect(needsFix).toContain('default_agent=other занят');
+    const needsFix = report!.body.split('## Needs fixing (needs-fix)')[1];
+    expect(needsFix).toContain('default_agent=other is taken');
   });
 
   it('npx (§4 п.6): конфиги и набор не пишутся, отчёт и routing НЕ создаются', async () => {

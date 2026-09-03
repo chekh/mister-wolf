@@ -13,7 +13,9 @@ export function memorySyncCommand(): Command {
     .description('Re-render the wolf base set (stamped files only; memory untouched)')
     .action(async () => {
       if (isNpxRun()) {
-        throw new UserFacingError('npx try-out: sync не пишет набор. Установи пакет: npm i -g mister-wolf');
+        throw new UserFacingError(
+          'npx try-out: sync does not write the base set. Install the package: npm i -g mister-wolf'
+        );
       }
       const baseDir = process.cwd();
       const renderer = new OpencodeBaseSetRenderer(templatesRoot(), {
@@ -26,11 +28,11 @@ export function memorySyncCommand(): Command {
       console.log('# wolf sync');
       console.log(
         routing
-          ? `- models: primary=${routing.primary} worker=${routing.worker} (routing-объект ${routingObj?.id})`
-          : '- models: omit — routing-объект не найден (легаси), model:-строки опущены (§4.5)'
+          ? `- models: primary=${routing.primary} worker=${routing.worker} (routing object ${routingObj?.id})`
+          : '- models: omit — routing object not found (legacy), model: lines omitted (§4.5)'
       );
       for (const o of outcomes) console.log(`- ${o.file}: ${o.action}${o.reason ? ` — ${o.reason}` : ''}`);
-      for (const f of orphaned) console.log(`- orphaned (шаблон исчез — можешь удалить): ${f}`);
-      console.log("Память (.wolf/) не тронута: мутации playbook'ов — зона Стюарда (D4).");
+      for (const f of orphaned) console.log(`- orphaned (template is gone — you may delete): ${f}`);
+      console.log('Memory (.wolf/) untouched: playbook mutations are the Steward zone (D4).');
     });
 }

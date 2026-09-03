@@ -18,8 +18,8 @@ export interface HoldoutVerdict {
   note: string;
 }
 
-const NEEDS_HUMAN_NOTE = 'текстовый draft: не поддаётся механическому replay, требуется человеческое ревью';
-const LEGIT_WARNING = 'легитимные использования тула не логируются — риск блокировки оценивает человек';
+const NEEDS_HUMAN_NOTE = 'text draft: not mechanically replayable, human review required';
+const LEGIT_WARNING = 'legitimate tool uses are not logged — a human assesses the blocking risk';
 
 /** Чистая функция реплея: draft + лог → вердикт (детерминированно). */
 export function replayHoldout(
@@ -51,14 +51,14 @@ export function replayHoldout(
         verdict: 'pass',
         prevented: matches.length,
         checked: holdout.length,
-        note: `классы повторений: ${classes.join(', ')}; ${LEGIT_WARNING}`,
+        note: `repetition classes: ${classes.join(', ')}; ${LEGIT_WARNING}`,
       };
     }
     return {
       verdict: 'fail',
       prevented: 0,
       checked: holdout.length,
-      note: `паттерн не повторился на holdout (после создания draft) — данных для активации недостаточно; ${LEGIT_WARNING}`,
+      note: `pattern did not repeat on holdout (after draft creation) — not enough data for activation; ${LEGIT_WARNING}`,
     };
   }
   if (matches.length >= 1) {
@@ -66,14 +66,14 @@ export function replayHoldout(
       verdict: 'pass',
       prevented: matches.length,
       checked: holdout.length,
-      note: `паттерн повторился на holdout после создания draft (${matches.length} из ${holdout.length})`,
+      note: `pattern repeated on holdout after draft creation (${matches.length} of ${holdout.length})`,
     };
   }
   return {
     verdict: 'fail',
     prevented: 0,
     checked: holdout.length,
-    note: 'паттерн не повторился на holdout (после создания draft) — данных для активации недостаточно',
+    note: 'pattern did not repeat on holdout (after draft creation) — not enough data for activation',
   };
 }
 
@@ -89,7 +89,7 @@ export async function validateDraft(
   if (!draft) throw new UserFacingError(`Memory object not found: ${input.draftId}`);
   const rec = draft as Record<string, unknown>;
   if (rec.pattern_key === undefined) {
-    throw new UserFacingError(`не draft propose: ${input.draftId}`);
+    throw new UserFacingError(`not a propose draft: ${input.draftId}`);
   }
   const verdict = replayHoldout(
     {

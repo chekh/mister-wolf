@@ -66,7 +66,7 @@ export function analyzeEconomy(entries: RunLogEntry[], minSample = 3): EconomyRe
   if (marked.length < minSample || all.length < minSample) {
     return {
       sufficient: false,
-      reason: `недостаточно данных (tool-задач: ${marked.length}, всего: ${all.length}, нужно ≥ ${minSample} в каждой группе)`,
+      reason: `not enough data (tool runs: ${marked.length}, total: ${all.length}, need ≥ ${minSample} in each group)`,
       toolRuns: marked.length,
       totalRuns: all.length,
       medianTool: null,

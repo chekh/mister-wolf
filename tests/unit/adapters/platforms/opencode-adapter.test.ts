@@ -165,7 +165,7 @@ describe('OpencodeAdapter.writeConfig: merge default_agent (§6.1)', () => {
     // F6: занятый чужим default_agent ключ — НЕ наш, в keys его нет
     expect(result).toEqual({
       action: 'unchanged',
-      reason: 'default_agent=other занят; mr-wolf не назначен',
+      reason: 'default_agent=other is taken; mr-wolf not assigned',
       configFile: 'opencode.json',
       keys: ['mcp.wolf', 'subagent_depth=2'],
     });
@@ -180,7 +180,7 @@ describe('OpencodeAdapter.writeConfig: merge default_agent (§6.1)', () => {
     );
     const result = await new OpencodeAdapter().writeConfig(dir, cmd);
     expect(result.action).toBe('replaced');
-    expect(result.reason).toBe('default_agent=other занят; mr-wolf не назначен');
+    expect(result.reason).toBe('default_agent=other is taken; mr-wolf not assigned');
     const cfg = JSON.parse(readFileSync(join(dir, 'opencode.json'), 'utf-8'));
     expect(cfg.mcp.wolf).toEqual(WOLF_ENTRY);
     expect(cfg.default_agent).toBe('other');
@@ -207,7 +207,7 @@ describe('OpencodeAdapter.writeConfig: merge subagent_depth', () => {
     );
     const result = await new OpencodeAdapter().writeConfig(dir, cmd);
     expect(result.action).toBe('unchanged');
-    expect(result.reason).toContain('subagent_depth=1 занят');
+    expect(result.reason).toContain('subagent_depth=1 is taken');
     const cfg = JSON.parse(readFileSync(join(dir, 'opencode.json'), 'utf-8'));
     expect(cfg.subagent_depth).toBe(1);
   });
@@ -238,7 +238,7 @@ describe('OpencodeAdapter.writeConfig: merge subagent_depth', () => {
     expect(result).toEqual({
       action: 'unchanged',
       reason:
-        'default_agent=other занят; mr-wolf не назначен; subagent_depth=1 занят; трёхуровневая схема не заработает, поставьте >=2',
+        'default_agent=other is taken; mr-wolf not assigned; subagent_depth=1 is taken; the three-level scheme will not work, set >=2',
       configFile: 'opencode.json',
       keys: ['mcp.wolf'],
     });

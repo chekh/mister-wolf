@@ -42,11 +42,11 @@ export function frameRelativePath(kind: ScaffoldKind, name: string): string {
 }
 
 function defaultPersona(name: string): string {
-  return `Ты — ${name}. Работай строго по playbook, доставленному плагином в системный промпт.`;
+  return `You are ${name}. Work strictly by the playbook delivered by the plugin into the system prompt.`;
 }
 
 function frameContent(input: ScaffoldFrameInput, ownerSkill: string, playbookId: string): string {
-  const description = `Рамка ${input.name}: работает по playbook из памяти Wolf (доставка плагином wolf-router)`;
+  const description = `${input.name} frame: works by a playbook from Wolf memory (delivered by the wolf-router plugin)`;
   if (input.kind === 'agent') {
     const persona =
       input.persona?.trim() !== '' && input.persona !== undefined ? input.persona.trim() : defaultPersona(input.name);
@@ -72,21 +72,21 @@ function frameContent(input: ScaffoldFrameInput, ownerSkill: string, playbookId:
       `description: ${description}.`,
       '---',
       '',
-      `# ${input.name} — рамочный скилл`,
+      `# ${input.name} — frame skill`,
       '',
-      `Содержимое методики — в памяти Wolf (playbook ${playbookId}), этот файл только рамка.`,
-      'Работай строго по playbook, доставленному плагином в системный промпт.',
+      `The methodology content is in Wolf memory (playbook ${playbookId}); this file is only a frame.`,
+      'Work strictly by the playbook delivered by the plugin into the system prompt.',
       '',
     ].join('\n');
   }
   return [
     '---',
-    `description: ${description}. Использование: /${input.name} <задача>`,
+    `description: ${description}. Usage: /${input.name} <task>`,
     `agent: ${input.name}`,
     '---',
-    'Выполни: $ARGUMENTS',
+    'Execute: $ARGUMENTS',
     '',
-    'Работай строго по playbook из памяти Wolf (доставка плагином wolf-router).',
+    'Work strictly by the playbook from Wolf memory (delivered by the wolf-router plugin).',
     '',
   ].join('\n');
 }
@@ -110,7 +110,7 @@ export async function scaffoldFrame(
     const framePath = frameRelativePath(input.kind, input.name);
     // Идемпотентность ДО создания playbook — чтобы не плодить объекты-сироты.
     if (await deps.fs.exists(join(deps.baseDir, framePath))) {
-      throw new UserFacingError(`${framePath} уже существует`);
+      throw new UserFacingError(`${framePath} already exists`);
     }
 
     let playbookId: string;
@@ -118,7 +118,7 @@ export async function scaffoldFrame(
     if (input.fromPlaybook) {
       const pb = await deps.store.get(input.fromPlaybook);
       if (!pb || pb.type !== 'playbook') {
-        throw new UserFacingError(`Playbook не найден: ${input.fromPlaybook}`);
+        throw new UserFacingError(`Playbook not found: ${input.fromPlaybook}`);
       }
       playbookId = pb.id;
       const existing = pb as MemoryObject & { owner_skill?: unknown };
@@ -140,10 +140,10 @@ export async function scaffoldFrame(
         {
           type: 'playbook',
           title: `Playbook: ${input.name}`,
-          body: `Заглушка scaffold для рамки ${input.kind}:${input.name}. Заполни steps и методику.`,
+          body: `Scaffold stub for the ${input.kind}:${input.name} frame. Fill in steps and methodology.`,
           createdBy: input.createdBy,
           extra: {
-            steps: ['Заполни шаги playbook (заглушка scaffold)'],
+            steps: ['Fill in the playbook steps (scaffold stub)'],
             owner_skill: input.name,
             version: 'v1',
           },

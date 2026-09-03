@@ -74,11 +74,11 @@ interface Rl {
 export async function askPlatformChoice(rl: Rl, baseDir: string): Promise<string[]> {
   const detected = PLATFORM_ADAPTERS.filter((a) => a.id !== 'opencode' && a.detect(baseDir)).map((a) => a.id);
   const offer = ['opencode', ...detected];
-  const hint = detected.length > 0 ? `; найдены по маркерам: ${detected.join(', ')} — добавьте id через запятую` : '';
+  const hint = detected.length > 0 ? `; detected by markers: ${detected.join(', ')} — add ids comma-separated` : '';
   const known = new Set(PLATFORM_ADAPTERS.map((a) => a.id));
   for (;;) {
     const ans = (
-      await rl.question(`Wolf MCP: платформы [${offer.join(', ')}] (через запятую, Enter = opencode${hint}): `)
+      await rl.question(`Wolf MCP: platforms [${offer.join(', ')}] (comma-separated, Enter = opencode${hint}): `)
     ).trim();
     if (ans === '') return ['opencode'];
     const ids = ans
@@ -101,7 +101,7 @@ export async function askModel(rl: Rl, suggestions: string[]): Promise<string> {
     for (;;) {
       const ans = (
         await rl.question(
-          `Модель Mr.Wolf и его агентов <providerID>/<modelID>:\n${list}\nНомер или свой id, Enter = 1: `
+          `Mr.Wolf and its agents model <providerID>/<modelID>:\n${list}\nNumber or your own id, Enter = 1: `
         )
       ).trim();
       if (ans === '') return suggestions[0];
@@ -111,7 +111,7 @@ export async function askModel(rl: Rl, suggestions: string[]): Promise<string> {
     }
   }
   for (;;) {
-    const ans = (await rl.question('Модель Mr.Wolf и его агентов <providerID>/<modelID>: ')).trim();
+    const ans = (await rl.question('Mr.Wolf and its agents model <providerID>/<modelID>: ')).trim();
     if (ans !== '') return ans;
   }
 }
@@ -125,9 +125,9 @@ export function renderNextSteps(opts: { npx: boolean; mcpWritten: boolean; claud
       '  → this was an npx try-out; to connect your platform: npm install -g mister-wolf, then re-run: wolf init',
     ];
   }
-  const lines = ['Дальше:', '  1. wolf bootstrap — первичный образ памяти проекта'];
+  const lines = ['Next steps:', '  1. wolf bootstrap — initial project memory image'];
   if (opts.mcpWritten) {
-    lines.push('  2. перезапустите opencode — подхватить MCP-сервер и дефолтного агента Mr.Wolf');
+    lines.push('  2. restart opencode — to pick up the MCP server and the default Mr.Wolf agent');
     if (opts.claudeConnected) {
       lines.push('     Claude Code: approve the project-scoped MCP server on first start.');
     }
@@ -285,12 +285,12 @@ export function memoryInitCommand(): Command {
       for (const o of result.baseSetOutcomes) console.log(formatBaseSetLine(o)); // F5: скиллы — [skill] имя → путь
       for (const outcome of result.platformOutcomes) console.log(formatPlatformLine(outcome)); // F6: configFile + keys
       if (result.routing.action !== 'skipped') {
-        console.log(`- routing: модели агентов — ${result.routing.action} (primary ${models.primary})`);
+        console.log(`- routing: agent models — ${result.routing.action} (primary ${models.primary})`);
       }
       console.log(
         result.initReport.action === 'created'
           ? `- init-report: created (${result.initReport.id})`
-          : '- init-report: already exists — не дублирую'
+          : '- init-report: already exists — not duplicating'
       );
       for (const line of renderNextSteps({
         npx: result.npx,

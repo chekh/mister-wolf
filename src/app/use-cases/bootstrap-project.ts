@@ -33,7 +33,7 @@ interface RuleDraft {
 }
 
 /** Заголовок bootstrap-thread — константа дедупа и детекции recap-секции (§3). */
-export const BOOTSTRAP_THREAD_TITLE = 'Bootstrap: наполнение стартовой памяти';
+export const BOOTSTRAP_THREAD_TITLE = 'Bootstrap: seeding initial memory';
 
 /**
  * «Bootstrap-адаптивный» старт памяти проекта (концепт §7.4):
@@ -57,7 +57,7 @@ export async function bootstrapProject(
 ): Promise<BootstrapProjectResult> {
   const config = await deps.fs.readSmallTextFile(join(input.baseDir, '.wolf', 'config.yaml'));
   if (config === null) {
-    throw new UserFacingError('Project is not initialized: сначала wolf init');
+    throw new UserFacingError('Project is not initialized: run wolf init first');
   }
 
   // Guard §5.1 «онбординг уже закрыт»: thread status ≠ active → no-op без скана.
@@ -71,7 +71,7 @@ export async function bootstrapProject(
       rules: [],
       workThreadId: existingThread.id,
       documentCount: 0,
-      brief: `Онбординг уже завершён/отложен (thread ${existingThread.status}); для пересоздания — владелец вручную`,
+      brief: `Onboarding already finished/deferred (thread ${existingThread.status}); to re-create — the owner does it manually`,
     };
   }
 
@@ -116,10 +116,10 @@ export async function bootstrapProject(
     const initTs = initReport ? initReport.created_at : now;
     const { object: thread } = await createWorkThread(deps, {
       title: BOOTSTRAP_THREAD_TITLE,
-      goal: 'Свёртка черновиков и завершение онбординга в диалоге с пользователем',
+      goal: 'Collapse drafts and finish onboarding in dialogue with the user',
       currentState:
-        `init ${initTs} ✓ (${initReport ? `report ${initReport.id}` : 'без отчёта'}); ` +
-        `bootstrap ${now}: черновиков ${rules.length}, document-ref'ов ${documents.length}`,
+        `init ${initTs} ✓ (${initReport ? `report ${initReport.id}` : 'no report'}); ` +
+        `bootstrap ${now}: drafts ${rules.length}, document-refs ${documents.length}`,
       nextSteps: rules.map((rule) => `${rule.id}: ${rule.title}`),
       createdBy: input.createdBy,
     });
@@ -141,14 +141,14 @@ function draftRulesFromSnapshot(snapshot: ProjectSnapshot, testCommand: string):
   const { languages, fileCount } = snapshot.summary;
   if (languages.length > 0) {
     drafts.push({
-      title: `Стек: ${languages.join(', ')}`,
-      body: `Скан проекта «${snapshot.projectName}»: ${fileCount} файлов, языки по расширениям — ${languages.join(', ')}. Подтверди стек и дополни версиями.`,
+      title: `Stack: ${languages.join(', ')}`,
+      body: `Project scan “${snapshot.projectName}”: ${fileCount} files, languages by extension — ${languages.join(', ')}. Confirm the stack and add versions.`,
     });
   }
 
   drafts.push({
-    title: `Проверка проекта: ${testCommand}`,
-    body: `Команда проверки проекта (scripts.test из package.json, иначе fallback). Запускай перед завершением работы.`,
+    title: `Project check: ${testCommand}`,
+    body: `Project check command (scripts.test from package.json, otherwise a fallback). Run it before finishing work.`,
   });
 
   if (snapshot.docs.length > 0) {
@@ -157,8 +157,8 @@ function draftRulesFromSnapshot(snapshot: ProjectSnapshot, testCommand: string):
       .map((doc) => doc.path)
       .join(', ');
     drafts.push({
-      title: `Документация: ${snapshot.docs.length} документ(ов)`,
-      body: `Зарегистрированные документы: ${top}. Проверь полноту списка и актуальность заголовков (wolf list --type document-ref).`,
+      title: `Documentation: ${snapshot.docs.length} document(s)`,
+      body: `Registered documents: ${top}. Check the list is complete and titles are current (wolf list --type document-ref).`,
     });
   }
 
@@ -185,7 +185,7 @@ function renderBrief(
   workThreadId: string,
   skippedCount: number
 ): string {
-  const lines = ['# Bootstrap brief', '', '## Создано'];
+  const lines = ['# Bootstrap brief', '', '## Created'];
   lines.push(`- Proposed rules: ${rules.length}${skippedCount > 0 ? ` (+${skippedCount} already present)` : ''}`);
   for (const rule of rules) {
     lines.push(`  - ${rule.id}: ${rule.title}`);
@@ -193,10 +193,10 @@ function renderBrief(
   lines.push(`- Document-refs: ${documents.length}`);
   lines.push(`- Work-thread: ${workThreadId}`);
   lines.push('');
-  lines.push('## Финальный шаг');
+  lines.push('## Final step');
   lines.push(
-    `Онбординг не завершён: свёртка черновиков и завершение — в диалоге с пользователем; ` +
-      `когда закончите — закройте thread (\`wolf transition ${workThreadId} completed\`)`
+    `Onboarding not finished: collapsing drafts and finishing — in dialogue with the user; ` +
+      `when done — close the thread (\`wolf transition ${workThreadId} completed\`)`
   );
   return lines.join('\n');
 }

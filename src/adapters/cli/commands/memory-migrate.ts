@@ -87,6 +87,6 @@ function printDocIdReport(report: DocIdMigrationReport, mode: 'dry-run' | 'apply
   }
   if (report.conflicts.length > 0) {
     console.log('conflicts (untouched):');
-    for (const c of report.conflicts) console.log(`  ${c.id} -> ${c.newId}: target ${c.to} занят другим объектом`);
+    for (const c of report.conflicts) console.log(`  ${c.id} -> ${c.newId}: target ${c.to} is taken by another object`);
   }
 }

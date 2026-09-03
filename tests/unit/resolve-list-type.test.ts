@@ -12,22 +12,22 @@ describe('resolveListType (спека 2.1.0 §2.2 F10)', () => {
   it('алиас document → document-ref + warning', () => {
     expect(resolveListType('document', KNOWN, ALIASES)).toEqual({
       type: 'document-ref',
-      warning: "тип 'document' устарел, используйте 'document-ref'",
+      warning: "type 'document' is deprecated, use 'document-ref'",
     });
   });
 
   it("unknown 'documnt' → ближайший 'document-ref' (алиас подставлен каноном) + допустимые", () => {
     const res = resolveListType('documnt', KNOWN, ALIASES);
     expect(res.error).toBeDefined();
-    expect(res.error).toContain("неизвестный тип 'documnt'");
-    expect(res.error).toContain("ближайший: 'document-ref'");
-    expect(res.error).toContain(`допустимые: ${[...KNOWN].sort().join(', ')}`);
+    expect(res.error).toContain("unknown type 'documnt'");
+    expect(res.error).toContain("closest: 'document-ref'");
+    expect(res.error).toContain(`allowed: ${[...KNOWN].sort().join(', ')}`);
   });
 
   it("расстояние > 2 ('zzz') — без «ближайший», только допустимые", () => {
     const res = resolveListType('zzz', KNOWN, ALIASES);
-    expect(res.error).toContain("неизвестный тип 'zzz'");
-    expect(res.error).toContain('допустимые:');
-    expect(res.error).not.toContain('ближайший');
+    expect(res.error).toContain("unknown type 'zzz'");
+    expect(res.error).toContain('allowed:');
+    expect(res.error).not.toContain('closest');
   });
 });

@@ -57,7 +57,7 @@ async function registryVersion(): Promise<string> {
   const version = res.stdout.trim();
   if (res.code !== 0 || version === '') {
     const detail = res.stderr.trim() !== '' ? `: ${res.stderr.trim()}` : '';
-    throw new UserFacingError(`не удалось получить версию из npm registry${detail}`);
+    throw new UserFacingError(`failed to get the version from the npm registry${detail}`);
   }
   return version;
 }
@@ -76,29 +76,29 @@ async function installLatest(from: string, to: string): Promise<void> {
   console.log(`${from} → ${to}`);
   const res = await runNpm(['install', '-g', 'mister-wolf@latest'], true);
   if (res.code !== 0) {
-    throw new UserFacingError('npm install -g mister-wolf@latest завершился с ошибкой (вывод npm выше)');
+    throw new UserFacingError('npm install -g mister-wolf@latest failed (npm output above)');
   }
 }
 
 function printOutcome(outcome: UpgradeOutcome): void {
   switch (outcome.kind) {
     case 'up-to-date':
-      console.log(`уже последняя версия (${outcome.current})`);
+      console.log(`already the latest version (${outcome.current})`);
       return;
     case 'local-newer':
       console.log(
-        `установленная ${outcome.current} новее версии в registry (${outcome.latest}) — обновление не требуется`
+        `installed ${outcome.current} is newer than the registry version (${outcome.latest}) — no update needed`
       );
       return;
     case 'available':
-      console.log(`доступна ${outcome.latest} (установлена ${outcome.current}) — запустите wolf upgrade`);
+      console.log(`available ${outcome.latest} (installed ${outcome.current}) — run wolf upgrade`);
       return;
     case 'updated':
-      console.log('обновлено; новая версия wolf вступит в силу при следующем запуске');
+      console.log('updated; the new wolf version takes effect on the next run');
       return;
     case 'linked-refusal':
       throw new UserFacingError(
-        `установлена dev/linked-копия (${outcome.binaryPath ?? 'путь неизвестен'}) — upgrade неприменим; для обновления: npm rm -g mister-wolf && npm i -g mister-wolf`
+        `a dev/linked copy is installed (${outcome.binaryPath ?? 'path unknown'}) — upgrade not applicable; to update: npm rm -g mister-wolf && npm i -g mister-wolf`
       );
   }
 }

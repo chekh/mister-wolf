@@ -21,7 +21,7 @@ export function memoryScaffoldCommand(): Command {
         options: { persona?: string; model?: string; fromPlaybook?: string; createdBy?: string }
       ) => {
         if (kind !== 'agent' && (options.persona !== undefined || options.model !== undefined)) {
-          throw new UserFacingError('--persona и --model поддерживаются только для kind=agent');
+          throw new UserFacingError('--persona and --model are supported only for kind=agent');
         }
         const { store, log, clock, idGen, index, relations, declarations, fs, lock } = createCliContainer(
           process.cwd()

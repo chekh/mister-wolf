@@ -107,13 +107,13 @@ describe('renderNextSteps (F6/F7: «Дальше»; restart — только п�
   it('MCP записан: «Дальше» упоминает bootstrap и перезапуск opencode', () => {
     const text = renderNextSteps({ npx: false, mcpWritten: true, claudeConnected: false }).join('\n');
     expect(text).toContain('wolf bootstrap');
-    expect(text).toContain('перезапустите opencode');
+    expect(text).toContain('restart opencode');
   });
 
   it('MCP не записан в этом прогоне: restart-строки нет, bootstrap есть', () => {
     const text = renderNextSteps({ npx: false, mcpWritten: false, claudeConnected: false }).join('\n');
     expect(text).toContain('wolf bootstrap');
-    expect(text).not.toContain('перезапустите opencode');
+    expect(text).not.toContain('restart opencode');
   });
 });
 

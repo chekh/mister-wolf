@@ -161,7 +161,7 @@ describe('sync', () => {
     const { outcomes, orphaned } = await renderer().syncBaseSet(proj);
     const c = outcomes.find((o) => o.file.endsWith('rogue.md'));
     expect(c?.action).toBe('conflict');
-    expect(c?.reason).toContain('переименовать'); // M10: опции разрешения
+    expect(c?.reason).toContain('rename'); // M10: опции разрешения
     expect(readFileSync(join(proj, '.opencode/agents/rogue.md'), 'utf-8')).toBe('no stamp\n');
     expect(orphaned.some((f) => f.includes('wolf-router.ts'))).toBe(true);
   });

@@ -87,7 +87,7 @@ describe('tool librarian (C2)', () => {
         language: 'typescript',
         createdBy: 'user:test',
       })
-    ).rejects.toThrow(/Скрипт не найден/);
+    ).rejects.toThrow(/Script not found/);
     expect(await store.list({ type: 'tool' })).toHaveLength(0);
   });
 
@@ -109,7 +109,7 @@ describe('tool librarian (C2)', () => {
         language: 'typescript',
         createdBy: 'user:test',
       })
-    ).rejects.toThrow(/занято/);
+    ).rejects.toThrow(/is already taken/);
     await expect(
       registerTool(deps, {
         scriptPath: 'extract-todos.ts',
@@ -118,7 +118,7 @@ describe('tool librarian (C2)', () => {
         force: true,
         createdBy: 'user:test',
       })
-    ).rejects.toThrow(/занято/);
+    ).rejects.toThrow(/is already taken/);
     expect(await store.list({ type: 'tool' })).toHaveLength(1);
 
     // другое имя, общий contract-токен — dedup-подсказка, force обходит
@@ -130,7 +130,7 @@ describe('tool librarian (C2)', () => {
         contractOut: 'список todo из исходников',
         createdBy: 'user:test',
       })
-    ).rejects.toThrow(/похожие/);
+    ).rejects.toThrow(/Similar tools found/);
     expect(await store.list({ type: 'tool' })).toHaveLength(1);
 
     const forced = await registerTool(deps, {
@@ -150,7 +150,7 @@ describe('tool librarian (C2)', () => {
     for (const bad of ['../escape', 'a/b', 'BadName', '.hidden', 'имя-кириллицей']) {
       await expect(
         registerTool(makeDeps(), { scriptPath: 'extract-todos.ts', name: bad, language: 'ts', createdBy: 'u:t' })
-      ).rejects.toThrow(/Недопустимое имя/);
+      ).rejects.toThrow(/Invalid tool name/);
     }
     expect(await store.list({ type: 'tool' })).toHaveLength(0);
     expect(existsSync(join(dir, '.wolf', 'tools'))).toBe(false);
@@ -176,7 +176,7 @@ describe('tool librarian (C2)', () => {
     expect(stored.usage_count).toBe(2);
     expect(stored.last_used_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 
-    await expect(useTool(deps, { nameOrId: 'nope', actor: 'agent:test' })).rejects.toThrow(/Tool не найден/);
+    await expect(useTool(deps, { nameOrId: 'nope', actor: 'agent:test' })).rejects.toThrow(/Tool not found/);
   });
 
   it('use по id работает', async () => {
@@ -245,7 +245,7 @@ describe('tool librarian (C2)', () => {
 
   it('deprecate несуществующего → UserFacingError', async () => {
     await expect(deprecateTool(makeDeps(), { nameOrId: 'ghost', reason: 'x', actor: 'user:test' })).rejects.toThrow(
-      /Tool не найден/
+      /Tool not found/
     );
   });
 });

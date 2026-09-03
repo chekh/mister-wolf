@@ -243,7 +243,7 @@ export function renderInsights(report: InsightsReport): string {
       report.typeDistribution.map((t) => `- ${t.tag} (${t.count})`)
     );
     if (report.signalLog) {
-      section(lines, 'Signal log (Ф20)', [
+      section(lines, 'Signal log (F20)', [
         `events: ${report.signalLog.totalEvents}`,
         ...report.signalLog.topKeys.map((k) => `- ${k.key} (${k.count})`),
       ]);

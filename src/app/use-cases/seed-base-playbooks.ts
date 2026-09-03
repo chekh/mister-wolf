@@ -40,7 +40,7 @@ export async function seedBasePlaybooks(deps: SeedDeps): Promise<SeedOutcome[]> 
     const { meta, body } = parseFrontmatter(raw);
     const ownerSkill = meta.owner_skill ?? '';
     if (deps.isSeeded && (await deps.isSeeded(ownerSkill))) {
-      outcomes.push({ file, action: 'skipped', reason: `owner_skill=${ownerSkill} уже в памяти (R2-M3)` });
+      outcomes.push({ file, action: 'skipped', reason: `owner_skill=${ownerSkill} already in memory (R2-M3)` });
       continue;
     }
     const steps = (meta.steps ?? '')

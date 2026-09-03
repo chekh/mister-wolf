@@ -64,10 +64,10 @@ describe('bootstrapProject', () => {
 
     // brief непустой, машино-читаемый заголовок; финал v2 (§5.4) — дословно, без Стюарда (Q6)
     expect(result.brief).toContain('# Bootstrap brief');
-    expect(result.brief).not.toContain('Стюард');
+    expect(result.brief).not.toContain('Steward');
     expect(result.brief).toContain(
-      `Онбординг не завершён: свёртка черновиков и завершение — в диалоге с пользователем; ` +
-        `когда закончите — закройте thread (\`wolf transition ${result.workThreadId} completed\`)`
+      `Onboarding not finished: collapsing drafts and finishing — in dialogue with the user; ` +
+        `when done — close the thread (\`wolf transition ${result.workThreadId} completed\`)`
     );
     expect(result.brief).toContain(result.workThreadId);
 
@@ -110,7 +110,7 @@ describe('bootstrapProject', () => {
         expect(second.documentCount).toBe(0);
         expect(second.workThreadId).toBe(first.workThreadId);
         expect(second.brief).toBe(
-          `Онбординг уже завершён/отложен (thread ${finalStatus}); для пересоздания — владелец вручную`
+          `Onboarding already finished/deferred (thread ${finalStatus}); to re-create — the owner does it manually`
         );
         // скан не выполнялся: doc-ref'ы не добавились
         const docs = await project.deps.store.list({ type: 'document-ref' });
@@ -135,18 +135,18 @@ describe('bootstrapProject', () => {
     const thread = (await deps.store.get(result.workThreadId)) as WorkThread;
 
     expect(thread.current_state).toContain(`report ${report.id}`);
-    expect(thread.current_state).toContain('черновиков');
+    expect(thread.current_state).toContain('drafts');
     expect(thread.current_state).toContain('document-ref');
     // goal нейтрален: без Стюарда (Q6)
-    expect(thread.goal).not.toContain('Стюард');
+    expect(thread.goal).not.toContain('Steward');
   });
 
   it('currentState says «без отчёта» when no active init report exists', async () => {
     const result = await bootstrapProject(deps, { baseDir: dir, createdBy: 'user:bootstrap' });
     const thread = (await deps.store.get(result.workThreadId)) as WorkThread;
 
-    expect(thread.current_state).toContain('без отчёта');
-    expect(thread.current_state).toContain('черновиков');
+    expect(thread.current_state).toContain('no report');
+    expect(thread.current_state).toContain('drafts');
   });
 
   it('pointer prefers the latest init report by updated_at', async () => {

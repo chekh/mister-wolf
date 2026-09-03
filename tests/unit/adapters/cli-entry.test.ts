@@ -20,7 +20,7 @@ describe('safeCwd (F13: удалённый cwd → ENOENT uv_cwd)', () => {
       expect.unreachable('safeCwd должен был бросить UserFacingError');
     } catch (err) {
       expect(err).toBeInstanceOf(UserFacingError);
-      expect((err as UserFacingError).message).toContain('текущий каталог не существует');
+      expect((err as UserFacingError).message).toContain('current directory does not exist');
     }
   });
 });

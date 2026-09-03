@@ -10,7 +10,7 @@ describe('read-only зоны контура (Ф23, спека §5)', () => {
     for (const zone of READ_ONLY_ZONES) {
       for (const op of MUTATIONS) {
         expect(() => assertLearnWriteAllowed(zone.path, op)).toThrow(UserFacingError);
-        expect(() => assertLearnWriteAllowed(zone.path, op)).toThrow('read-only зона контура');
+        expect(() => assertLearnWriteAllowed(zone.path, op)).toThrow('loop read-only zone');
       }
     }
   });

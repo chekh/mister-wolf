@@ -31,7 +31,7 @@ describe('wolf learn (Ф21)', () => {
 
   it('пустой лог: digest и status завершаются без ошибок и честно сообщают о пустоте', async () => {
     await run(['digest']);
-    expect(logs.some((l) => l.includes('активных паттернов нет'))).toBe(true);
+    expect(logs.some((l) => l.includes('no active patterns'))).toBe(true);
 
     await run(['status']);
     expect(logs.some((l) => l.includes('events: 0'))).toBe(true);
@@ -68,7 +68,7 @@ describe('wolf learn (Ф21)', () => {
     const created = logs.find((l) => l.startsWith('Draft created: '));
     expect(created).toBeDefined();
     const id = created!.slice('Draft created: '.length);
-    expect(logs.some((l) => l.includes('type: lesson') && l.includes('mechanical: да'))).toBe(true);
+    expect(logs.some((l) => l.includes('type: lesson') && l.includes('mechanical: yes'))).toBe(true);
     expect(logs.some((l) => l.includes('evidence: session-metrics.jsonl:1'))).toBe(true);
 
     // holdout пуст (все события старее draft) → fail; команда при этом успешна
@@ -76,7 +76,7 @@ describe('wolf learn (Ф21)', () => {
     expect(logs.some((l) => l.startsWith('verdict: fail'))).toBe(true);
 
     // гейт §2.5: после fail-вердикта активация блокируется (UserFacingError → parseAsync reject)
-    await expect(run(['activate', id])).rejects.toThrow('активация заблокирована: holdout fail');
+    await expect(run(['activate', id])).rejects.toThrow('activation blocked: holdout fail');
 
     // пост-аудит: draft виден в digest
     await run(['digest']);

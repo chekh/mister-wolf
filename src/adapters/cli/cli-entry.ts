@@ -111,7 +111,7 @@ export function safeCwd(): string {
     return process.cwd();
   } catch {
     throw new UserFacingError(
-      'текущий каталог не существует (вероятно, удалён) — перейдите (cd) в существующий каталог и повторите команду'
+      'current directory does not exist (probably deleted) — cd into an existing directory and rerun the command'
     );
   }
 }

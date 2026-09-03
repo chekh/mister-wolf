@@ -70,17 +70,17 @@ function section(lines: string[], title: string, items: string[]): void {
 function onboardingText(signal: OnboardingSignal): string {
   if (signal.kind === 'bootstrap') {
     return (
-      'Onboarding v2: init выполнен, bootstrap — нет. Уточни у пользователя: предложить выполнить ' +
-      '`wolf bootstrap` (можно исполнить прямо в сессии: `wolf bootstrap`; в dogfood-репо Wolf — ' +
-      '`node dist/bootstrap/cli.js bootstrap`) или следовать пути пользователя. ' +
-      'Действия с побочными эффектами — только с согласия пользователя.'
+      'Onboarding v2: init done, bootstrap not yet. Ask the user: offer to run ' +
+      '`wolf bootstrap` (can be executed right in the session: `wolf bootstrap`; in the Wolf dogfood repo — ' +
+      '`node dist/bootstrap/cli.js bootstrap`) or follow the user’s path. ' +
+      'Actions with side effects — only with the user’s consent.'
     );
   }
   return (
-    'Onboarding v2: bootstrap выполнен, онбординг не завершён (thread active). Работай под управлением ' +
-    'пользователя — свёртка черновиков, глубокое изучение проекта — как решит пользователь; предписанных ' +
-    `ролей нет. Когда онбординг завершён — предложи закрыть thread (\`wolf transition ${signal.threadId} ` +
-    'completed`) и закрой с согласия пользователя.'
+    'Onboarding v2: bootstrap done, onboarding not finished (thread active). Work under the user’s ' +
+    'direction — collapsing drafts, deep project study — as the user decides; no prescribed ' +
+    `roles. When onboarding is finished — offer to close the thread (\`wolf transition ${signal.threadId} ` +
+    'completed`) and close it with the user’s consent.'
   );
 }
 

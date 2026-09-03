@@ -39,25 +39,25 @@ export async function activateDraft(
   if (!draft) throw new UserFacingError(`Memory object not found: ${input.draftId}`);
   const rec = draft as Record<string, unknown>;
   const patternKey = rec.pattern_key as string | undefined;
-  if (patternKey === undefined) throw new UserFacingError(`не draft propose: ${input.draftId}`);
+  if (patternKey === undefined) throw new UserFacingError(`not a propose draft: ${input.draftId}`);
   if (draft.type !== 'rule' && draft.type !== 'lesson') {
-    throw new UserFacingError(`не draft-тип: ${input.draftId} (${draft.type})`);
+    throw new UserFacingError(`not a draft type: ${input.draftId} (${draft.type})`);
   }
-  if (draft.status === 'active') throw new UserFacingError(`уже активен: ${input.draftId}`);
+  if (draft.status === 'active') throw new UserFacingError(`already active: ${input.draftId}`);
   if (draft.status !== 'proposed') {
-    throw new UserFacingError(`активация возможна только из proposed (текущий: ${draft.status})`);
+    throw new UserFacingError(`activation is possible only from proposed (current: ${draft.status})`);
   }
 
   // Гейт §2.5: pass ИЛИ человек. Причина отказа — точной формулировкой.
   const verdict = rec.holdout_verdict as string | undefined;
   if (verdict !== 'pass' && input.humanApproved !== true) {
     if (verdict === undefined) {
-      throw new UserFacingError(`holdout-вердикт отсутствует — сначала \`wolf learn validate ${input.draftId}\``);
+      throw new UserFacingError(`holdout verdict missing — run \`wolf learn validate ${input.draftId}\` first`);
     }
     if (verdict === 'fail') {
-      throw new UserFacingError('активация заблокирована: holdout fail');
+      throw new UserFacingError('activation blocked: holdout fail');
     }
-    throw new UserFacingError('текстовый draft: требуется человеческое ревью (--human-approved)');
+    throw new UserFacingError('text draft: human review required (--human-approved)');
   }
 
   // STOP-гейт Ф23 (спека §3 правило границы (б)): барьер автономной активации —
@@ -78,7 +78,7 @@ export async function activateDraft(
         : inj.blocks;
       const gate = runStopGate(() => blocks, [scenario]);
       if (!gate.passed) {
-        throw new UserFacingError(`STOP-гейт красный: ${gate.results[0]?.reason ?? 'fail'}`);
+        throw new UserFacingError(`STOP-gate red: ${gate.results[0]?.reason ?? 'fail'}`);
       }
     }
   }

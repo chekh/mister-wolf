@@ -100,14 +100,14 @@ const NAME_RE = /^[a-z0-9][a-z0-9_-]*$/;
 async function resolveToolRef(deps: Pick<ToolLibrarianDeps, 'store'>, nameOrId: string): Promise<ToolObject> {
   if (nameOrId.startsWith('mem_')) {
     const obj = await deps.store.get(nameOrId);
-    if (!obj || obj.type !== 'tool') throw new UserFacingError(`Tool не найден: ${nameOrId}`);
+    if (!obj || obj.type !== 'tool') throw new UserFacingError(`Tool not found: ${nameOrId}`);
     return asTool(obj);
   }
   const matches = (await deps.store.list({ type: 'tool' })).filter((o) => asTool(o).name === nameOrId);
-  if (matches.length === 0) throw new UserFacingError(`Tool не найден: ${nameOrId}`);
+  if (matches.length === 0) throw new UserFacingError(`Tool not found: ${nameOrId}`);
   if (matches.length > 1) {
     throw new UserFacingError(
-      `Неоднозначное имя инструмента "${nameOrId}" (${matches.length} объектов): ${matches.map((m) => m.id).join(', ')}`
+      `Ambiguous tool name "${nameOrId}" (${matches.length} objects): ${matches.map((m) => m.id).join(', ')}`
     );
   }
   return asTool(matches[0]!);
@@ -117,13 +117,11 @@ export async function registerTool(deps: ToolLibrarianDeps, input: RegisterToolI
   const run = async (): Promise<RegisterToolResult> => {
     // имя = имя файла в .wolf/tools/ и ключ `tool use <name>`: без слэшей/точек/путей.
     if (!NAME_RE.test(input.name)) {
-      throw new UserFacingError(
-        `Недопустимое имя инструмента "${input.name}": только [a-z0-9-_], начинается с цифры/буквы`
-      );
+      throw new UserFacingError(`Invalid tool name "${input.name}": only [a-z0-9-_], starting with a digit/letter`);
     }
     const absSrc = isAbsolute(input.scriptPath) ? input.scriptPath : join(deps.baseDir, input.scriptPath);
     if (!(await deps.fs.exists(absSrc))) {
-      throw new UserFacingError(`Скрипт не найден: ${absSrc}`);
+      throw new UserFacingError(`Script not found: ${absSrc}`);
     }
 
     // Коллизия имени — всегда отказ (даже с --force): name — ключ lookup'а,
@@ -133,19 +131,19 @@ export async function registerTool(deps: ToolLibrarianDeps, input: RegisterToolI
     );
     if (taken.length > 0) {
       const list = taken.map((o) => `${o.id} [${o.status}]`).join('; ');
-      throw new UserFacingError(`Имя "${input.name}" уже занято: ${list}. Выбери другое имя`);
+      throw new UserFacingError(`Name "${input.name}" is already taken: ${list}. Choose another name`);
     }
 
     // Dedup-подсказка (search-before-write): похожие по контракту — только предупреждение.
     const similar = await findSimilar(deps.store, input);
     if (similar.length > 0 && !input.force) {
       const list = similar.map((s) => `${s.name} (${s.id}) [${s.status}]`).join('; ');
-      throw new UserFacingError(`Найдены похожие инструменты: ${list}. Подтверди намерение флагом --force`);
+      throw new UserFacingError(`Similar tools found: ${list}. Confirm the intent with --force`);
     }
 
     const relDest = join('.wolf', 'tools', `${input.name}${extname(absSrc)}`);
     const content = await deps.fs.readSmallTextFile(absSrc);
-    if (content === null) throw new UserFacingError(`Скрипт не найден: ${absSrc}`);
+    if (content === null) throw new UserFacingError(`Script not found: ${absSrc}`);
     await deps.fs.writeFile(join(deps.baseDir, relDest), content);
 
     const extra: Record<string, unknown> = {
@@ -219,7 +217,7 @@ export async function useTool(deps: StoreDeps, input: { nameOrId: string; actor:
 
 /** Детерминированный контент SKILL.md из объекта tool — повторная генерация даёт тот же текст. */
 export function toolSkillContent(tool: ToolObject): string {
-  const description = tool.contract_output ?? 'скрипт из памяти Wolf';
+  const description = tool.contract_output ?? 'script from Wolf memory';
   return [
     `<!-- generated from tool:${tool.id} -->`,
     '---',
@@ -232,11 +230,11 @@ export function toolSkillContent(tool: ToolObject): string {
     `- Input: ${tool.contract_input ?? '—'}`,
     `- Output: ${tool.contract_output ?? '—'}`,
     `- Environment: ${tool.contract_environment ?? '—'}`,
-    `- Script: \`${tool.script_path}\` (каноничный файл; Wolf его не исполняет)`,
+    `- Script: \`${tool.script_path}\` (canonical file; Wolf does not execute it)`,
     '',
-    '## Инструкция',
+    '## Instruction',
     '',
-    `Вызови скрипт и учти вывод. После использования отметь факт: \`wolf tool use ${tool.name}\`.`,
+    `Call the script and account for its output. After use, record the fact: \`wolf tool use ${tool.name}\`.`,
     '',
   ].join('\n');
 }
@@ -257,7 +255,7 @@ export async function deprecateTool(
   input: { nameOrId: string; reason: string; actor: string }
 ): Promise<ToolObject> {
   if (!input.reason || input.reason.trim() === '') {
-    throw new UserFacingError('Причина депрекации обязательна (--reason)');
+    throw new UserFacingError('Deprecation reason is required (--reason)');
   }
   const tool = await resolveToolRef(deps, input.nameOrId);
   await transitionMemoryObject(deps, tool.id, 'deprecated', input.actor);
