@@ -4,7 +4,7 @@
 инстанц; сценарии живут здесь и переживают reset. CLI для площадок:
 `node dist/bootstrap/cli.js` из cwd `playground/` (см. README-PLAYGROUND.md).
 
-Расширенный каталог (2026-09-03): группы U/M/T/L/S/W/X/R/G — см. оглавление ниже.
+Расширенный каталог (2026-09-03): группы U/M/T/L/S/W/RT/X/R/G — см. оглавление ниже.
 
 - U — установка и дистрибуция;
 - M — память и поиск;
@@ -12,6 +12,7 @@
 - L — проверка обучения;
 - S — Стюард;
 - W — лица воркеров;
+- RT — проверка роутинга wolf-router;
 - X — доказательные измерения эффективности;
 - R — отказоустойчивость;
 - G — сводный регресс-чеклист перед релизами.
@@ -542,6 +543,118 @@ node ../dist/bootstrap/cli.js list --type complaint   # статус triaged/clo
 
 - новый воркер получает обновлённое лицо (наибольшая версия);
 - старое поведение исчезает.
+
+## Группа RT — проверка роутинга wolf-router
+
+Плагин `.opencode/plugins/wolf-router.ts` — слой доставки №1: перехватывает
+`experimental.chat.system.transform`, ищет маркер `agent-id: <id>` в ТЕЛЕ
+рамки агента (frontmatter в system-промпт не попадает), подтягивает playbook
+из памяти (`search --type playbook --hide-superseded` → `get` → гвард
+`owner_skill` → максимальная version) и инжектит тело в system-промпт.
+Miss → fallback слой №2: рамка сама зовёт `wolf search`. Маршрут = сами
+playbook-объекты: секции роутинга в `.wolf/config.yaml` нет (факт сверки
+2026-09-03). Кэш 2.5с живёт в процессе сессии — между сессиями не мешает.
+Лог `.wolf/router.log` создаётся лениво при первой попытке доставки; формат
+строки (эталон живого поведения — main `.wolf/router.log`):
+`<ISO> agent-id=<id> playbook=hit|miss injected=yes|no`.
+
+### RT1. Роутер установлен и активен
+
+**Цель:** после init плагин на месте, конфиг базовый, лога ещё нет.
+
+**Шаги:**
+
+```bash
+ls .opencode/plugins               # 2 файла: wolf-router.ts, wolf-session-start.js
+ls .wolf/router.log                # No such file — ленивое создание
+grep -n "rout" .wolf/config.yaml   # пусто: секции роутинга в конфиге нет
+```
+
+- базовый init (сценарий 1), без мутаций конфига после.
+
+**Ожидания/чек-лист:**
+
+- `.opencode/plugins` = **2** файла (wolf-router.ts, wolf-session-start.js);
+- регистрация = само наличие файла: opencode подхватывает
+  `.opencode/plugins/*` автоматически, отдельной записи в opencode.json нет
+  (сверка по opencode-renderer.ts: плагин копируется, в конфиг не пишется);
+- `.wolf/router.log` отсутствует до первой сессии с маркером agent-id.
+
+### RT2. Живая маршрутизация playbook по agent-id
+
+**Цель:** сессия с агентом, у фрейма которого маркер `agent-id:` в теле,
+получает свой playbook инжектом в system-промпт.
+
+**Шаги:**
+
+```bash
+node ../dist/bootstrap/cli.js list --type playbook   # взять active-playbook, его owner_skill
+grep "^agent-id:" .opencode/agents/*.md              # маркер в ТЕЛЕ фрейма
+grep "^model:" .opencode/agents/*.md                 # модель задаёт frontmatter фрейма
+```
+
+- живая сессия opencode в playground с этим агентом (сетап T2), тривиальный
+  запрос;
+- `cat .wolf/router.log` на площадке.
+
+**Ожидания/чек-лист:**
+
+- в логе `<ISO> agent-id=<id> playbook=hit injected=yes` — формат строк по
+  эталону main `.wolf/router.log`;
+- инжект идемпотентен: заголовок уже в system-промпте → второй вставки нет;
+- факт сверки: модель сессии задаёт frontmatter `model:` фрейма агента
+  (правило памяти LLM routing v2 определяет целевую модель по умолчанию);
+  флага/опции `auto` в плагине НЕТ — не выдумывать в прогонах.
+
+### RT3. Смена маршрута через память
+
+**Цель:** маршрут управляется playbook-объектом (owner_skill + version):
+новая версия → доставляется новое тело, без правки конфига.
+
+**Шаги:**
+
+```bash
+# новая версия playbook агента (v2):
+node ../dist/bootstrap/cli.js add --type playbook --title "Playbook: <agent-id>" \
+  --body "<новое тело>" --set owner_skill=<agent-id> --set version=v2
+# НОВАЯ сессия с агентом (кэш 2.5с живёт в старом процессе — не мешает):
+cat .wolf/router.log
+# откат маршрута на v1:
+node ../dist/bootstrap/cli.js supersede <id-v2> <id-v1>
+```
+
+- флаги сверены по `--help` (add: extra-поля через повторяемый `--set k=v`;
+  supersede: два позиционных id).
+
+**Ожидания/чек-лист:**
+
+- роутер берёт максимальную version среди не-superseded (v2 > v1);
+- после supersede доставляется снова v1;
+- маршрут меняется только объектами памяти — конфиг не трогаем.
+
+### RT4. Недоступный маршрут
+
+**Цель:** agent-id без playbook — miss зафиксирован, сессия не роняется.
+
+**Шаги:**
+
+```bash
+# фрейм-призрак: копия любого seeded-фрейма с несуществующим agent-id:
+sed 's/^agent-id: .*/agent-id: rt-ghost/' .opencode/agents/<agent>.md \
+  > .opencode/agents/rt-ghost.md
+# живая сессия с rt-ghost, тривиальный запрос, затем:
+cat .wolf/router.log
+```
+
+- поведение по исходнику плагина: playbook не найден → инжекта нет, но
+  сессия жива — весь transform в try/catch (плагин не имеет права уронить
+  сессию), fallback слой №2: рамка сама зовёт `wolf search`.
+
+**Ожидания/чек-лист:**
+
+- в логе `<ISO> agent-id=rt-ghost playbook=miss injected=no`;
+- сессия отвечает штатно (miss пользователю не виден);
+- тихого провала нет: miss зафиксирован в router.log.
 
 ## Группа X — доказательные измерения эффективности
 
