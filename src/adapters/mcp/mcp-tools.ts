@@ -14,6 +14,7 @@ import {
   MemoryResolveBlockerInputSchema,
   MemoryCreateRuleInputSchema,
   InsightsInputSchema,
+  AnalyticsInputSchema,
   ThinkingStartInputSchema,
   ThinkingAddInputSchema,
   ThinkingConcludeInputSchema,
@@ -37,6 +38,11 @@ import { generateRecap, renderRecap } from '../../app/use-cases/generate-recap.j
 import { createRule } from '../../app/use-cases/create-rule.js';
 import { startThinking, addThought, concludeThinking, abandonThinking } from '../../app/use-cases/thinking.js';
 import { createCliContainer } from '../../bootstrap/container.js';
+import { buildAnalyticsReport, filterAnalytics } from '../../app/use-cases/build-analytics.js';
+import { readSignals } from '../../adapters/fs/session-metrics-log.js';
+import { loadWolfConfigSync } from '../../adapters/fs/config-file.js';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 export function registerMemoryTools(
   server: McpServer,
@@ -311,6 +317,63 @@ export function registerMemoryTools(
         { topic: args.topic, analysisType: args.type }
       );
       return { content: [{ type: 'text' as const, text: renderInsights(report) }] };
+    }
+  );
+
+  server.registerTool(
+    'analytics',
+    {
+      description:
+        'Effectiveness analytics: ledgers (memory/tools/rules), funnel, agents, steward view, outliers, experiment readiness — same JSON as `wolf analytics --json`',
+      inputSchema: AnalyticsInputSchema,
+    },
+    async (input: unknown) => {
+      const args = input as {
+        view?: 'memory' | 'tools' | 'rules' | 'funnel' | 'agents' | 'steward' | 'outliers' | 'readiness' | 'all';
+        class?: 'new' | 'sleeper' | 'workhorse' | 'dead';
+        type?: string;
+        origin?: 'script' | 'native';
+        agent?: string;
+        top?: number;
+        weeks?: number;
+        silent?: boolean;
+      };
+
+      // те же входы, что CLI: сигналы, run-log, config (битый yaml → undefined)
+      let config: ReturnType<typeof loadWolfConfigSync> | undefined = undefined;
+      try {
+        config = loadWolfConfigSync(baseDir);
+      } catch {
+        config = undefined;
+      }
+      let runLogText: string | null = null;
+      try {
+        runLogText = readFileSync(join(baseDir, '.wolf', 'run-log.jsonl'), 'utf-8');
+      } catch {
+        runLogText = null; // ENOENT — run-log ещё не пишется
+      }
+
+      const report = await buildAnalyticsReport(
+        { store: deps.store, log: deps.log, clock: deps.clock },
+        {
+          signals: readSignals(baseDir),
+          runLogText,
+          ...(config?.analytics?.thresholds !== undefined ? { thresholds: config.analytics.thresholds } : {}),
+          ...(args.weeks !== undefined ? { weeks: args.weeks } : {}),
+          ...(config?.pricing !== undefined ? { pricing: config.pricing } : {}),
+        }
+      );
+      const payload = filterAnalytics(report, {
+        view: args.view ?? 'all',
+        ...(args.class !== undefined ? { class: args.class } : {}),
+        ...(args.type !== undefined ? { type: args.type } : {}),
+        // схема MCP — script|native (зеркало CLI §6.2); контракт задачи 6 — 'model-native'
+        ...(args.origin !== undefined ? { origin: args.origin === 'native' ? 'model-native' : 'script' } : {}),
+        ...(args.agent !== undefined ? { agent: args.agent } : {}),
+        ...(args.silent ? { silent: true } : {}),
+        ...(args.top !== undefined ? { top: args.top } : {}),
+      });
+      return { content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }] };
     }
   );
 

@@ -42,6 +42,33 @@ rebuildable, в git не коммитится); markdown-отчёты конту
 `gen_ai.modelID` присутствует в каждой записи — без него сравнение «до/после» теряет
 смысл (роутинг делает модель пер-сессионной переменной, PoC#4).
 
+### Новые опциональные поля run-события (M1 спеки аналитики 2026-09-03)
+
+Обратно-совместимо: старые записи без этих полей читаются как раньше.
+
+| Поле          | Тип                                      | Откуда                               |
+| ------------- | ---------------------------------------- | ------------------------------------ |
+| `duration_ms` | number                                   | замер `wolf run` вокруг spawn        |
+| `tokens`      | `{input, output, cache_read}`            | суммы сырых токенов по step-finish   |
+| `experiment`  | `{id, arm: 'wolf'\|'baseline', task_id}` | флаги `--experiment/--arm/--task-id` |
+
+Пример записи:
+
+```jsonc
+{
+  "ts": "2026-09-03T12:00:00.000Z",
+  "event": "run",
+  "session_id": "s-e2e",
+  "gen_ai": { "modelID": "zai-coding-plan/glm-5.3", "agent": "dev" },
+  "orchestration": { "task": "e2e", "actor": "user:cli" },
+  "weighted": 205,
+  "duration_ms": 1520,
+  "tokens": { "input": 100, "output": 20, "cache_read": 50 },
+  "experiment": { "id": "exp1", "arm": "wolf", "task_id": "t-1" },
+  "outcome": "ok",
+}
+```
+
 ## Классификатор ошибок (D1.2)
 
 `src/domain/error-class.ts`: детерминированная таблица (первое совпадение подстроки,

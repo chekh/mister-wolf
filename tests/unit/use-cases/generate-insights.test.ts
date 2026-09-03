@@ -3,6 +3,7 @@ import { generateInsights, renderInsights, ANALYSIS_TYPES } from '../../../src/a
 import { MemoryStore } from '../../../src/ports/memory-store.port.js';
 import { Clock } from '../../../src/ports/clock.port.js';
 import { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
+import type { MemoryEvent } from '../../../src/domain/schemas/memory-event-schema.js';
 import { mkdtempSync, rmSync, readdirSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, relative } from 'path';
@@ -263,6 +264,7 @@ describe('renderInsights', () => {
     decisionsByStatus: {},
     lessonsTopTags: [],
     density: [],
+    mutations: [],
     statusTally: [],
     truthRoleTally: [{ tag: 'accepted_knowledge', count: 2 }],
   };
@@ -362,5 +364,74 @@ describe('generateInsights — signal log passthrough (Ф20, D1.5)', () => {
     const store = fakeStore([obj()]);
     const report = await generateInsights({ store, clock: fakeClock() }, { analysisType: 'activity', signalLog });
     expect(renderInsights(report)).not.toContain('Signal log');
+  });
+});
+
+describe('generateInsights — weekly mutation buckets (M4)', () => {
+  function memEvent(type: MemoryEvent['type'], timestamp: string): MemoryEvent {
+    return { id: `ev-${type}-${timestamp}`, type, timestamp, actor: 'user:cli', payload: {} };
+  }
+
+  it('считает мутации по видам в неделях события; memory.scan.updated не мутация; вне окна не считается', async () => {
+    const store = fakeStore([obj()]);
+    const events = [
+      memEvent('memory.added', '2026-08-25T10:00:00.000Z'), // неделя 2026-08-24
+      memEvent('memory.updated', '2026-08-25T11:00:00.000Z'),
+      memEvent('memory.superseded', '2026-08-18T10:00:00.000Z'), // неделя 2026-08-17
+      memEvent('memory.resolved', '2026-08-19T10:00:00.000Z'),
+      memEvent('memory.transitioned', '2026-08-20T10:00:00.000Z'),
+      memEvent('memory.scan.updated', '2026-08-25T12:00:00.000Z'), // D10 — не мутация
+      memEvent('memory.added', '2026-06-01T10:00:00.000Z'), // вне окна 8 недель
+    ];
+    const report = await generateInsights({ store, clock: fakeClock() }, { events });
+    expect(report.mutations).toHaveLength(8);
+    expect(report.mutations[7]).toEqual({
+      week: '2026-08-24',
+      added: 1,
+      updated: 1,
+      superseded: 0,
+      resolved: 0,
+      transitioned: 0,
+      total: 2,
+    });
+    expect(report.mutations[6]).toEqual({
+      week: '2026-08-17',
+      added: 0,
+      updated: 0,
+      superseded: 1,
+      resolved: 1,
+      transitioned: 1,
+      total: 3,
+    });
+    expect(report.mutations.reduce((sum, b) => sum + b.total, 0)).toBe(5);
+  });
+
+  it('без events → 8 нулевых бакетов (стабильная форма для рендера/JSON)', async () => {
+    const store = fakeStore([obj()]);
+    const report = await generateInsights({ store, clock: fakeClock() }, {});
+    expect(report.mutations).toHaveLength(8);
+    for (const b of report.mutations) {
+      expect(b).toEqual({
+        week: b.week,
+        added: 0,
+        updated: 0,
+        superseded: 0,
+        resolved: 0,
+        transitioned: 0,
+        total: 0,
+      });
+    }
+  });
+
+  it("renderInsights activity содержит 'Weekly mutations' со счётчиками видов", async () => {
+    const store = fakeStore([obj()]);
+    const events = [
+      memEvent('memory.added', '2026-08-25T10:00:00.000Z'),
+      memEvent('memory.updated', '2026-08-25T11:00:00.000Z'),
+    ];
+    const report = await generateInsights({ store, clock: fakeClock() }, { analysisType: 'activity', events });
+    const text = renderInsights(report);
+    expect(text).toContain('## Weekly mutations');
+    expect(text).toContain('- 2026-08-24: added 1, updated 1, superseded 0, resolved 0, transitioned 0 (total 2)');
   });
 });

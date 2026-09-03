@@ -141,3 +141,14 @@ export const ThinkingConcludeInputSchema = z.object({
 export const ThinkingAbandonInputSchema = z.object({
   sequenceId: z.string(),
 });
+
+export const AnalyticsInputSchema = z.object({
+  view: z.enum(['memory', 'tools', 'rules', 'funnel', 'agents', 'steward', 'outliers', 'readiness', 'all']).optional(),
+  class: z.enum(['new', 'sleeper', 'workhorse', 'dead']).optional(),
+  type: z.string().optional(),
+  origin: z.enum(['script', 'native']).optional(),
+  agent: z.string().optional(),
+  top: z.number().int().min(1).optional(),
+  weeks: z.number().int().min(1).optional(),
+  silent: z.boolean().optional(),
+});

@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { getLatestMemoryObject } from '../../../app/use-cases/get-latest-memory-object.js';
 import { UserFacingError } from '../../../domain/errors.js';
@@ -38,9 +38,13 @@ export function memoryRunCommand(): Command {
     .requiredOption('--title <title>', 'Run label written to the log')
     .option('--session <sid>', 'opencode session id to continue')
     .option('--tool <name>', 'Mark this run as using tool(s) (repeatable)', collect, [])
+    .option('--experiment <id>', 'Experiment id (comparative methodologies, e.g. RCT)')
+    .addOption(new Option('--arm <choice>', 'Experiment arm').choices(['wolf', 'baseline']))
+    .option('--task-id <id>', 'Task id within the experiment (golden tasks)')
     .argument('<prompt>', 'Prompt passed to opencode')
     .action(async (prompt: string, options) => {
       const model = await resolveModel();
+      const startedAt = Date.now();
 
       const args = ['run', '--format', 'json', '--agent', options.agent, '--model', model];
       if (options.session) args.push('--session', options.session);
@@ -76,6 +80,27 @@ export function memoryRunCommand(): Command {
 
       const metrics = parseRunMetrics(chunks.map(String).join(''));
 
+      // M1 (D4): wall-clock длительность прогона
+      const durationMs = Date.now() - startedAt;
+
+      // M1 (D5): experiment пишется только полным набором --experiment + --arm;
+      // arm — union 'wolf' | 'baseline' (обязателен в типе сигнала), поэтому
+      // experiment без arm не записывается, как и arm/task-id без experiment
+      if (options.experiment === undefined && (options.arm !== undefined || options.taskId !== undefined)) {
+        console.error('[wolf-run] Warning: --arm/--task-id without --experiment are ignored');
+      }
+      if (options.experiment !== undefined && options.arm === undefined) {
+        console.error('[wolf-run] Warning: --experiment without --arm: experiment fields are not recorded');
+      }
+      const experiment =
+        options.experiment !== undefined && options.arm !== undefined
+          ? {
+              id: options.experiment as string,
+              arm: options.arm as string,
+              ...(options.taskId !== undefined ? { task_id: options.taskId as string } : {}),
+            }
+          : undefined;
+
       const wolfDir = join(process.cwd(), '.wolf');
       mkdirSync(wolfDir, { recursive: true });
       const logPath = join(wolfDir, 'run-log.jsonl');
@@ -89,6 +114,9 @@ export function memoryRunCommand(): Command {
           session: metrics.session,
           weighted: metrics.weighted,
           verdict_pending: true,
+          duration_ms: durationMs,
+          tokens: { input: metrics.tokensIn, output: metrics.tokensOut, cache_read: metrics.cacheRead },
+          ...(experiment !== undefined ? { experiment } : {}),
           ...(options.tool.length > 0 ? { tools: options.tool } : {}),
         }) + '\n'
       );
@@ -103,6 +131,17 @@ export function memoryRunCommand(): Command {
         weighted: metrics.weighted,
         outcome: exitCode === 0 ? 'ok' : `exit_${exitCode}`,
         actor: resolveCreatedBy(undefined),
+        durationMs,
+        tokens: { input: metrics.tokensIn, output: metrics.tokensOut, cache_read: metrics.cacheRead },
+        ...(experiment !== undefined
+          ? {
+              experiment: {
+                id: experiment.id,
+                arm: experiment.arm as 'wolf' | 'baseline',
+                ...(options.taskId !== undefined ? { taskId: options.taskId as string } : {}),
+              },
+            }
+          : {}),
       });
       if (exitCode !== 0) process.exit(exitCode);
     });

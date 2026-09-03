@@ -9,8 +9,15 @@ export interface RunLogEntry {
   model?: string;
   agent?: string;
   title?: string;
+  session?: string;
   weighted?: number;
   tools?: string[];
+  /** M1 (D4): wall-clock длительность прогона, мс (замер wolf run вокруг spawn). */
+  duration_ms?: number;
+  /** M1 (D3): сырые токены прогона (Σ по step-finish). */
+  tokens?: { input: number; output: number; cache_read: number };
+  /** M1 (D5): экспериментальные примитивы; arm/task_id пишутся только с experiment. */
+  experiment?: { id: string; arm: string; task_id?: string };
 }
 
 export interface EconomyResult {

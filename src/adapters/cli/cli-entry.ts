@@ -42,6 +42,8 @@ import { memoryComplainCommand as complainCommand } from './commands/memory-comp
 import { memoryUpdateCommand as updateCommand } from './commands/memory-update.js';
 import { memoryLearnCommand as learnCommand } from './commands/memory-learn.js';
 import { memoryEffectivenessCommand as effectivenessCommand } from './commands/memory-effectiveness.js';
+import { analyticsCommand } from './commands/analytics.js';
+import { dashboardCommand } from './commands/dashboard.js';
 import { memoryRunCommand as runCommand } from './commands/memory-run.js';
 import { memoryBootstrapCommand as bootstrapCommand } from './commands/memory-bootstrap.js';
 import { memoryUpgradeCommand as upgradeCommand } from './commands/memory-upgrade.js';
@@ -93,6 +95,8 @@ export function createCli(): Command {
   program.addCommand(updateCommand());
   program.addCommand(learnCommand());
   program.addCommand(effectivenessCommand());
+  program.addCommand(analyticsCommand());
+  program.addCommand(dashboardCommand());
   program.addCommand(runCommand());
   program.addCommand(bootstrapCommand());
   program.addCommand(upgradeCommand());

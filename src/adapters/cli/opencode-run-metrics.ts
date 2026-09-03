@@ -15,6 +15,12 @@ export interface RunMetrics {
   session: string | null;
   weighted: number;
   stepFinishes: number;
+  /** M1 (D3, Q7): Σ tokens.input по step-finish — сырые токены рядом с weighted. */
+  tokensIn: number;
+  /** M1: Σ tokens.output по step-finish. */
+  tokensOut: number;
+  /** M1: Σ tokens.cache.read по step-finish. */
+  cacheRead: number;
 }
 
 function asNumber(value: unknown): number {
@@ -23,6 +29,7 @@ function asNumber(value: unknown): number {
 
 /**
  * weighted = Σ по всем step-finish событиям: input + 0.1 × cache.read + 5 × output.
+ * M1: рядом с weighted суммируются сырые токены (tokensIn/tokensOut/cacheRead).
  * Малформ-строки молча пропускаются. sessionID — из любого события
  * (верхнего уровня или part.sessionID).
  */
@@ -30,6 +37,9 @@ export function parseRunMetrics(ndjsonText: string): RunMetrics {
   let session: string | null = null;
   let weighted = 0;
   let stepFinishes = 0;
+  let tokensIn = 0;
+  let tokensOut = 0;
+  let cacheRead = 0;
   for (const rawLine of ndjsonText.split('\n')) {
     const line = rawLine.trim();
     if (line === '') continue;
@@ -49,8 +59,14 @@ export function parseRunMetrics(ndjsonText: string): RunMetrics {
     stepFinishes++;
     if (typeof part.tokens === 'object' && part.tokens !== null) {
       const tokens = part.tokens as { input?: unknown; output?: unknown; cache?: { read?: unknown } | null };
-      weighted += asNumber(tokens.input) + 0.1 * asNumber(tokens.cache?.read) + 5 * asNumber(tokens.output);
+      const inTok = asNumber(tokens.input);
+      const outTok = asNumber(tokens.output);
+      const cacheTok = asNumber(tokens.cache?.read);
+      tokensIn += inTok;
+      tokensOut += outTok;
+      cacheRead += cacheTok;
+      weighted += inTok + 0.1 * cacheTok + 5 * outTok; // формула weighted не изменилась
     }
   }
-  return { session, weighted, stepFinishes };
+  return { session, weighted, stepFinishes, tokensIn, tokensOut, cacheRead };
 }
