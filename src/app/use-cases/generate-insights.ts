@@ -1,6 +1,7 @@
 import { MemoryStore } from '../../ports/memory-store.port.js';
 import { Clock } from '../../ports/clock.port.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
+import type { MemoryEvent } from '../../domain/schemas/memory-event-schema.js';
 
 export type AnalysisType = 'patterns' | 'technical_debt' | 'decisions' | 'lessons' | 'activity';
 
@@ -31,6 +32,8 @@ export interface InsightsInput {
   topic?: string; // undefined => весь проект
   analysisType?: AnalysisType; // default 'patterns'
   signalLog?: SignalLogSummary; // Ф20: densities/top-повторы без LLM (§8 п.1)
+  /** M4: event log для недельных мутаций (passthrough, прецедент signalLog). */
+  events?: MemoryEvent[];
 }
 
 export interface TagCount {
@@ -46,6 +49,17 @@ export interface WeekBucket {
   decisions: number;
   lessons: number;
   debug: number;
+  total: number;
+}
+
+/** M4: недельные мутации памяти по event log; memory.scan.updated — НЕ мутация (D10). */
+export interface MutationBucket {
+  week: string; // YYYY-MM-DD понедельника
+  added: number;
+  updated: number;
+  superseded: number;
+  resolved: number;
+  transitioned: number;
   total: number;
 }
 
@@ -65,6 +79,7 @@ export interface InsightsReport {
   decisionsByStatus: Record<string, MemoryObject[]>; // active/superseded/rejected/obsolete
   lessonsTopTags: TagCount[]; // top 5 по типам lesson+observation
   density: WeekBucket[]; // 8 недель, D7
+  mutations: MutationBucket[]; // 8 недель, M4; всегда массив — стабильная форма для рендера/JSON
   statusTally: TagCount[];
   truthRoleTally: TagCount[];
   signalLog?: SignalLogSummary; // passthrough из input
@@ -88,7 +103,7 @@ function topCounts(values: string[], limit: number): TagCount[] {
     .slice(0, limit);
 }
 
-function mondayOf(iso: string): string {
+export function mondayOf(iso: string): string {
   const d = new Date(iso);
   const day = (d.getUTCDay() + 6) % 7; // 0 = понедельник
   const mondayMs = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - day * 86_400_000;
@@ -159,6 +174,33 @@ export async function generateInsights(
     bucket.total += 1;
   }
 
+  // M4: мутации по event.timestamp; вид из event.type; scan.updated не считается (D10);
+  // events не переданы → все бакеты нулевые, но массив из 8 недель — стабильная форма
+  const mutationBuckets = new Map<string, MutationBucket>();
+  for (let i = 7; i >= 0; i--) {
+    const key = new Date(currentMondayMs - i * 7 * 86_400_000).toISOString().slice(0, 10);
+    mutationBuckets.set(key, {
+      week: key,
+      added: 0,
+      updated: 0,
+      superseded: 0,
+      resolved: 0,
+      transitioned: 0,
+      total: 0,
+    });
+  }
+  for (const ev of input.events ?? []) {
+    const bucket = mutationBuckets.get(mondayOf(ev.timestamp));
+    if (bucket === undefined) continue; // вне окна 8 недель
+    if (ev.type === 'memory.added') bucket.added += 1;
+    else if (ev.type === 'memory.updated') bucket.updated += 1;
+    else if (ev.type === 'memory.superseded') bucket.superseded += 1;
+    else if (ev.type === 'memory.resolved') bucket.resolved += 1;
+    else if (ev.type === 'memory.transitioned') bucket.transitioned += 1;
+    else continue; // memory.scan.updated — не мутация
+    bucket.total += 1;
+  }
+
   const lessonsTopTags = topCounts(
     matched.filter((obj) => obj.type === 'lesson' || obj.type === 'observation').flatMap((obj) => obj.tags),
     5
@@ -200,6 +242,7 @@ export async function generateInsights(
     decisionsByStatus,
     lessonsTopTags,
     density: [...buckets.values()],
+    mutations: [...mutationBuckets.values()],
     statusTally,
     truthRoleTally,
     signalLog: input.signalLog,
@@ -301,6 +344,14 @@ export function renderInsights(report: InsightsReport): string {
       'Weekly density',
       report.density.map(
         (b) => `- ${b.week}: ${b.decisions} decisions, ${b.lessons} lessons, ${b.debug} debug, ${b.total} total`
+      )
+    );
+    section(
+      lines,
+      'Weekly mutations',
+      report.mutations.map(
+        (b) =>
+          `- ${b.week}: added ${b.added}, updated ${b.updated}, superseded ${b.superseded}, resolved ${b.resolved}, transitioned ${b.transitioned} (total ${b.total})`
       )
     );
     section(

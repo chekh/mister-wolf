@@ -27,7 +27,8 @@ export function memoryInsightsCommand(): Command {
     .addOption(new Option('--type <type>', 'Analysis lens').choices([...ANALYSIS_TYPES]).default('patterns'))
     .action(async (options) => {
       const baseDir = process.cwd();
-      const { store, clock } = createCliContainer(baseDir);
+      const { store, clock, log } = createCliContainer(baseDir);
+      const events = await log.readAll();
       const summary = signalLogSummary(baseDir);
       const report = await generateInsights(
         { store, clock },
@@ -36,6 +37,7 @@ export function memoryInsightsCommand(): Command {
           analysisType: options.type,
           // пустой лог — секции нет вовсе (регресс существующего вывода)
           ...(summary.totalEvents > 0 ? { signalLog: summary } : {}),
+          ...(events.length > 0 ? { events } : {}),
         }
       );
       console.log(renderInsights(report));
