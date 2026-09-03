@@ -10,6 +10,7 @@
 **Стек:** bash, markdown, git, wolf CLI (`node dist/bootstrap/cli.js` — только в финальных шагах координатора).
 
 **Важно всем задачам:**
+
 - План из двух фаз. **Фаза A — worktree** `.worktrees/playground-lab`
   (`git worktree add .worktrees/playground-lab -b feature/playground-lab`),
   задачи 1, 2, 6, 7 (только трекаемые файлы), затем мерж в main.
@@ -29,6 +30,7 @@
 ### Задача 1: Скелет playground-lab — README, шаблон карты, каталоги (Фаза A, worktree)
 
 **Файлы:**
+
 - Create: `playground-lab/README.md`
 - Create: `playground-lab/templates/experiment-card.md`
 - Create: `playground-lab/experiments/.gitkeep`
@@ -45,7 +47,7 @@ touch playground-lab/experiments/.gitkeep playground-lab/registry/.gitkeep playg
 
 - [ ] **Шаг 2: Написать `playground-lab/README.md`**
 
-````markdown
+```markdown
 # Playground Lab — полигон испытаний Mr. Wolf
 
 Постоянная зона проекта для тестирования, испытаний и проверки гипотез на
@@ -54,11 +56,11 @@ touch playground-lab/experiments/.gitkeep playground-lab/registry/.gitkeep playg
 
 ## Три зоны и что где живёт
 
-| Зона | Роль | Что можно |
-|---|---|---|
-| `playground/` | расходный pristine-инстанс (свой git) | запускать сценарии, ломать, reset |
-| `playground-lab/` | постоянный материал проекта (git main-репо) | карты, реестры, измерения, скрипты |
-| память Wolf (`.wolf/` main-репо) | индекс состояния | experiment-объекты, уроки, решения |
+| Зона                             | Роль                                        | Что можно                          |
+| -------------------------------- | ------------------------------------------- | ---------------------------------- |
+| `playground/`                    | расходный pristine-инстанс (свой git)       | запускать сценарии, ломать, reset  |
+| `playground-lab/`                | постоянный материал проекта (git main-репо) | карты, реестры, измерения, скрипты |
+| память Wolf (`.wolf/` main-репо) | индекс состояния                            | experiment-объекты, уроки, решения |
 
 **Правило:** в `playground/` не остаётся ничего ценного. Протокол и материалы
 переносятся в лабораторию сразу по завершении эксперимента — reset имеет право
@@ -69,7 +71,7 @@ touch playground-lab/experiments/.gitkeep playground-lab/registry/.gitkeep playg
 
 - **Эксперимент** — карта `experiments/YYYY-MM-DD-<slug>.md`, id
   `EXP-ГГГГММДД-<slug>`. Жизненный цикл: `planned → running → analyzed →
-  concluded`. Шаблон: `templates/experiment-card.md`.
+concluded`. Шаблон: `templates/experiment-card.md`.
 - **Находка** — строка в `registry/findings.md`. Формат: таблица
   `ID | Дата | Сценарий | Тип | Описание | Статус`; F-нумерация сквозная.
   Статусы: `open → in-brief → fixed / rejected / documented`.
@@ -77,7 +79,7 @@ touch playground-lab/experiments/.gitkeep playground-lab/registry/.gitkeep playg
   шаги, чек-лист, ожидания.
 - **Измерение** — сырые данные в `measurements/<exp-id>/`; выжимка с
   интерпретацией — в карту. Весовые токены: input + 0.1×cache_read + 5×output
-  (правило mem_20260824__d072b4); плюс время, итерации.
+  (правило mem_20260824\_\_d072b4); плюс время, итерации.
 
 ## Граница с памятью Wolf
 
@@ -92,11 +94,11 @@ touch playground-lab/experiments/.gitkeep playground-lab/registry/.gitkeep playg
 - `scripts/verify-pristine.sh` — чиста ли площадка (запускать перед экспериментом).
 - Пересоздание: `scripts/playground-reset.sh [--force]` из корня main-репо
   (pristine, без wolf init — init всегда первый эксперимент свежей площадки).
-````
+```
 
 - [ ] **Шаг 3: Написать `playground-lab/templates/experiment-card.md`**
 
-````markdown
+```markdown
 # EXP-<ГГГГММДД>-<slug>: <короткое имя>
 
 - Статус: planned <!-- planned | running | analyzed | concluded -->
@@ -104,32 +106,40 @@ touch playground-lab/experiments/.gitkeep playground-lab/registry/.gitkeep playg
 - Гипотеза: <одно проверяемое утверждение>
 
 ## Сетап
+
 <!-- варианты инстанса площадки; для сравнительных опытов — по строке на вариант -->
-| Вариант | Агенты/конфигурация | Отличие от базового |
-|---|---|---|
-| baseline | без Wolf | — |
-| variant-wolf | base-set Wolf (wolf init) | + |
+
+| Вариант      | Агенты/конфигурация       | Отличие от базового |
+| ------------ | ------------------------- | ------------------- |
+| baseline     | без Wolf                  | —                   |
+| variant-wolf | base-set Wolf (wolf init) | +                   |
 
 ## Метод измерения
+
 <!-- какие метрики и как снимаются: весовые токены (input + 0.1×cache_read + 5×output),
      время, число итераций/правок; инструменты фиксации -->
 
 ## Сценарии
+
 <!-- ссылки на карты из registry/scenarios.md -->
 
 ## Ожидаемое поведение
+
 <!-- что наблюдаем, если гипотеза верна (дисциплина scenario-lab: expected_visible_behavior) -->
 
 ## Протокол
+
 <!-- ход прогона, наблюдения, отклонения; сырьё (логи, счётчики) — в measurements/<exp-id>/ -->
 
 ## Находки
+
 <!-- F-id из registry/findings.md, по одному на строку, с контекстом -->
 
 ## Вердикт
+
 <!-- подтверждена / опровергнута + следствия;
      уроки и решения по итогам — в память Wolf с тегом playground -->
-````
+```
 
 - [ ] **Шаг 4: Проверка структуры**
 
@@ -151,6 +161,7 @@ git commit -m "feat(playground-lab): скелет полигона — мето�
 ### Задача 2: Скрипт verify-pristine.sh (Фаза A, worktree)
 
 **Файлы:**
+
 - Create: `playground-lab/scripts/verify-pristine.sh`
 
 - [ ] **Шаг 1: Написать скрипт**
@@ -217,6 +228,7 @@ git commit -m "feat(playground-lab): verify-pristine — проверка чис
 ### Задача 3: Миграция реестра находок (Фаза B, cwd main-репо)
 
 **Файлы:**
+
 - Move: `.wolf/orchestration/playground-issues.md` → `playground-lab/registry/findings.md`
   (файл НЕ трекается git — обычный `mv`; `.wolf/` в git — только SKILL.md)
 
@@ -262,6 +274,7 @@ git commit -m "feat(playground-lab): реестр находок перееха�
 ### Задача 4: Библиотека сценариев + облегчение README-PLAYGROUND (Фаза B, cwd main-репо)
 
 **Файлы:**
+
 - Create: `playground-lab/registry/scenarios.md`
 - Modify: `playground/README-PLAYGROUND.md` (сократить; файл переживает reset — правим до reset)
 - Delete: `playground-lab/registry/.gitkeep`
@@ -339,13 +352,14 @@ git commit -m "feat(playground-lab): библиотека сценариев; RE
 ### Задача 5: Образец карты эксперимента + measurements + обнуление MANUAL-NOTES (Фаза B, cwd main-репо)
 
 **Файлы:**
+
 - Create: `playground-lab/experiments/2026-09-01-onboarding-v2.md`
 - Create: `playground-lab/measurements/2026-09-01-onboarding-v2/protocol.md`
 - Modify: `playground/MANUAL-NOTES.md` (обнулить до роли черновика)
 
 - [ ] **Шаг 1: Создать `playground-lab/experiments/2026-09-01-onboarding-v2.md`**
 
-````markdown
+```markdown
 # EXP-20260901-onboarding-v2: онбординг v2 на площадке
 
 - Статус: concluded
@@ -354,26 +368,31 @@ git commit -m "feat(playground-lab): библиотека сценариев; RE
   владельцем на pristine-площадке без ручной починки артефактов.
 
 ## Сетап
-| Вариант | Конфигурация | Отличие от базового |
-|---|---|---|
+
+| Вариант            | Конфигурация                                           | Отличие от базового                |
+| ------------------ | ------------------------------------------------------ | ---------------------------------- |
 | onboarding-v2-impl | глобальный wolf = npm link на ветку onboarding-v2-impl | ветка с фиксом онбординга (F4, F8) |
 
 ## Метод измерения
+
 Чек-лист прогона (PASS/FAIL по пунктам), ручная верификация артефактов init
 (состав рендера, идемпотентность, память не тронута). Метрики токенов не
 снимались.
 
 ## Сценарии
+
 Сценарий 3 из `playground/README-PLAYGROUND.md` (редакция 2026-09-01):
 онбординг v2 — init без флагов, init повторный, диалог первой сессии, sync.
 
 ## Ожидаемое поведение
+
 - init без флагов в не-TTY → exit 1 + подсказка флагов
 - init с первого раза пишет opencode.json + default_agent, не сеет документы
 - повторный init — 0 created, память не тронута
 - сигнал онбординга гаснет после bootstrap, новая сессия его не поднимает
 
 ## Протокол
+
 Полный маршрут владельца исполнен координатором — ALL PASS:
 Q11 (exit 1 + подсказки) ✓; init: opencode.json + default_agent=mr-wolf
 с первого раза (F4 закрыт) ✓, 0 doc-файлов (F8 закрыт) ✓, AGENTS.md создан ✓,
@@ -384,15 +403,17 @@ Q11 (exit 1 + подсказки) ✓; init: opencode.json + default_agent=mr-wo
 Сырой протокол: `../measurements/2026-09-01-onboarding-v2/protocol.md`.
 
 ## Находки
+
 - Наблюдение (не дефект): командный хинт «node dist/bootstrap/cli.js bootstrap
   (в dogfood-репо)» контекстно неточен для чужого проекта; агент сам исправился.
 - Наблюдение (уточнение спеки): сигнал гаснет при выполненном bootstrap, а не
   при «thread completed» — UX удобнее буквы Q4, зафиксировать в спеке.
 
 ## Вердикт
+
 Гипотеза подтверждена. Онбординг v2 принят (релиз 2.0.0). Наблюдения переданы
 в спеку онбординга; отдельный код не требуется.
-````
+```
 
 - [ ] **Шаг 2: Создать `playground-lab/measurements/2026-09-01-onboarding-v2/protocol.md`**
 
@@ -435,6 +456,7 @@ git commit -m "feat(playground-lab): образец карты эксперим�
 ### Задача 6: Поглощение scenario-lab (Фаза A, worktree)
 
 **Файлы:**
+
 - Move (git mv): `scenario-lab/` → `playground-lab/archive/scenario-lab/` (26 трекаемых файлов)
 - Delete: `playground-lab/archive/.gitkeep` (маркер не нужен после mv)
 - Modify: `docs/superpowers/specs/2026-08-31-base-sets-design.md:156` (строка «Не берём: mr-wolf-scenario-lab …»)
@@ -455,8 +477,7 @@ git status --short | head -30
 - [ ] **Шаг 2: Поправить упоминание в спеке base-sets**
 
 В `docs/superpowers/specs/2026-08-31-base-sets-design.md` найти строку
-(≈156): `**Не берём**: \`mr-wolf-scenario-lab\` (машино-специфичные абсолютные пути),`
-и дописать в конец строки: `материал лаборатории заархивирован в playground-lab/archive/scenario-lab (2026-09-03)`.
+(≈156): `**Не берём**: \`mr-wolf-scenario-lab\` (машино-специфичные абсолютные пути),`и дописать в конец строки:`материал лаборатории заархивирован в playground-lab/archive/scenario-lab (2026-09-03)`.
 
 - [ ] **Шаг 3: Обновить глобальный скилл**
 
@@ -494,6 +515,7 @@ git commit -m "feat(playground-lab): поглощение scenario-lab — ар�
 ### Задача 7: Reset-скрипт — фильтр шума снапшота (Фаза A, worktree)
 
 **Файлы:**
+
 - Modify: `scripts/playground-reset.sh:62-67` (блок исключений) и `:71-77` (контроль pristine)
 
 - [ ] **Шаг 1: Расширить список исключений**

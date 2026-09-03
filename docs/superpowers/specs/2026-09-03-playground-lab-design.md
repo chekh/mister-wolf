@@ -60,7 +60,7 @@ md), `generated/` (агрегаты вручную), собственный SKIL
   варианты (например, `variant-wolf` vs `variant-baseline`: два одинаковых
   проекта с разными агентами)
 - `метод измерения` — какие метрики и как снимаются (весовые токены по
-  правилу mem_20260824__d072b4: input + 0.1×cache_read + 5×output; время;
+  правилу mem_20260824\_\_d072b4: input + 0.1×cache_read + 5×output; время;
   число итераций/правок)
 - `сценарии` — ссылки на карты из `registry/scenarios.md`
 - `протокол` — ход прогона и наблюдения (в карте или `measurements/<id>/`)
@@ -119,13 +119,13 @@ md), `generated/` (агрегаты вручную), собственный SKIL
 
 ## 6. Миграция существующего
 
-| Источник | Судьба |
-|---|---|
-| `.wolf/orchestration/playground-issues.md` | `git mv` → `playground-lab/registry/findings.md` (F1–F16 как есть) |
-| Сценарии 1–7 из `playground/README-PLAYGROUND.md` | → `registry/scenarios.md`; в README-PLAYGROUND остаются только запуск/пересоздание |
-| `playground/MANUAL-NOTES.md` | Объявляется черновиком-протоколом; материал существующих сценариев 3–4 переносится в карты/`measurements/`, файл обнуляется |
-| Work-thread dogfooding (mem_20260901_dogfooding_ploshchadki) | Обновить указатели путей через решение в памяти Wolf |
-| Правило «память площадки неприкосновенна» | Без изменений; дополняется: артефакты опытов живут в `playground-lab/`, площадка расходная |
+| Источник                                                     | Судьба                                                                                                                      |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `.wolf/orchestration/playground-issues.md`                   | `git mv` → `playground-lab/registry/findings.md` (F1–F16 как есть)                                                          |
+| Сценарии 1–7 из `playground/README-PLAYGROUND.md`            | → `registry/scenarios.md`; в README-PLAYGROUND остаются только запуск/пересоздание                                          |
+| `playground/MANUAL-NOTES.md`                                 | Объявляется черновиком-протоколом; материал существующих сценариев 3–4 переносится в карты/`measurements/`, файл обнуляется |
+| Work-thread dogfooding (mem_20260901_dogfooding_ploshchadki) | Обновить указатели путей через решение в памяти Wolf                                                                        |
+| Правило «память площадки неприкосновенна»                    | Без изменений; дополняется: артефакты опытов живут в `playground-lab/`, площадка расходная                                  |
 
 ## 7. Поглощение scenario-lab
 
