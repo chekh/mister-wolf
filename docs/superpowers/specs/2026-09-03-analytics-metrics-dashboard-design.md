@@ -138,7 +138,9 @@ store, signals, event log, relations — чистая детерминирова
   встреченное ≥ порога, → register.
 - **Rule ranking**: убыв. holdout_prevented; отдельный список silent rules.
 - **Воронка по неделям**: write (memory.added) → deliver (delivery-события)
-  → trigger (уникальные сработавшие) → prevent (holdout_prevented за неделю).
+  → trigger (уникальные сработавшие). Prevented в недельную воронку не
+  входит (holdout-счётчики кумулятивны, без таймстампов) и показывается
+  суммарно в rule ranking — честное ограничение данных, не метрика.
 - **Top-N outliers**: N=10 самых дорогих прогонов (weighted; $ при pricing).
 - **Agent ledger** (Q11): per-agent (L0/L1/L2 по actor-конвенции
   `agent:<имя>`) — runs, weighted, duration (после M1), failure rate, tool
