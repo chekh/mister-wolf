@@ -558,6 +558,12 @@ playbook-объекты: секции роутинга в `.wolf/config.yaml` н
 строки (эталон живого поведения — main `.wolf/router.log`):
 `<ISO> agent-id=<id> playbook=hit|miss injected=yes|no`.
 
+Провизионинг (важно): копия плагина на площадке резолвит CLI от своей
+локации — `playground/dist/bootstrap/cli.js`; init его не создаёт (билд
+живёт в main-репо). Без линка на dist любая живая сессия площадки даст
+`playbook=miss` по любой agent-id — дегенерация, не проверка роутинга
+(сетап см. RT2).
+
 ### RT1. Роутер установлен и активен
 
 **Цель:** после init плагин на месте, конфиг базовый, лога ещё нет.
@@ -588,6 +594,7 @@ grep -n "rout" .wolf/config.yaml   # пусто: секции роутинга �
 **Шаги:**
 
 ```bash
+ls dist >/dev/null 2>&1 || ln -s ../dist dist   # провизионинг: плагин зовёт CLI от своей локации
 node ../dist/bootstrap/cli.js list --type playbook   # взять active-playbook, его owner_skill
 grep "^agent-id:" .opencode/agents/*.md              # маркер в ТЕЛЕ фрейма
 grep "^model:" .opencode/agents/*.md                 # модель задаёт frontmatter фрейма
@@ -614,17 +621,19 @@ grep "^model:" .opencode/agents/*.md                 # модель задаёт
 **Шаги:**
 
 ```bash
-# новая версия playbook агента (v2):
+# новая версия playbook агента (v2); steps — обязательное поле типа (string[]):
 node ../dist/bootstrap/cli.js add --type playbook --title "Playbook: <agent-id>" \
-  --body "<новое тело>" --set owner_skill=<agent-id> --set version=v2
+  --body "<новое тело>" --set owner_skill=<agent-id> --set version=v2 \
+  --set "steps=[шаг-1,шаг-2]"
 # НОВАЯ сессия с агентом (кэш 2.5с живёт в старом процессе — не мешает):
 cat .wolf/router.log
 # откат маршрута на v1:
 node ../dist/bootstrap/cli.js supersede <id-v2> <id-v1>
 ```
 
-- флаги сверены по `--help` (add: extra-поля через повторяемый `--set k=v`;
-  supersede: два позиционных id).
+- флаги сверены по `--help` (add: extra-поля через повторяемый `--set k=v`,
+  массив через `[a,b]`; supersede: два позиционных id);
+- требует провизонинга dist из RT2 — иначе hit недостижим.
 
 **Ожидания/чек-лист:**
 
@@ -653,6 +662,8 @@ cat .wolf/router.log
 **Ожидания/чек-лист:**
 
 - в логе `<ISO> agent-id=rt-ghost playbook=miss injected=no`;
+- miss именно по ghost-id (после провизонинга RT2): без dist-линка miss
+  даст и валидный agent-id — это дегенерация окружения, не проверка;
 - сессия отвечает штатно (miss пользователю не виден);
 - тихого провала нет: miss зафиксирован в router.log.
 
