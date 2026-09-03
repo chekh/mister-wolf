@@ -245,7 +245,7 @@ mv .wolf/orchestration/playground-issues.md playground-lab/registry/findings.md
 Живой реестр дефектов и трения из догфудинга `playground/` (расходный
 pristine-инстанс). Сырой протокол сценариев — черновик `playground/MANUAL-NOTES.md`
 до переноса в карты экспериментов. F-нумерация сквозная с момента основания.
-Статусы: `open` → `in-brief` (диспетчено) → `fixed` / `rejected` (с причиной).
+Статусы: `open` → `in-brief` (диспетчено) → `fixed` / `rejected` (с причиной) / `documented`.
 ```
 
 Таблицу F1–F16 и раздел «Принятые решения по находкам» не менять.
