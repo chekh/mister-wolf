@@ -39,7 +39,7 @@ import { createRule } from '../../app/use-cases/create-rule.js';
 import { startThinking, addThought, concludeThinking, abandonThinking } from '../../app/use-cases/thinking.js';
 import { createCliContainer } from '../../bootstrap/container.js';
 import { buildAnalyticsReport, filterAnalytics } from '../../app/use-cases/build-analytics.js';
-import { readSignalLog } from '../../adapters/fs/session-metrics-log.js';
+import { appendSignal, readSignalLog } from '../../adapters/fs/session-metrics-log.js';
 import { loadWolfConfigSync } from '../../adapters/fs/config-file.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -49,7 +49,53 @@ export function registerMemoryTools(
   deps: ReturnType<typeof createCliContainer>,
   baseDir: string
 ): void {
-  server.registerTool(
+  // P1 D5: телеметрия mcp_call вокруг каждого handler'а. Дешёвая: appendSignal с
+  // signalKey(mcp_call) = null → без reparse лога; сбой телеметрии не ломает вызов.
+  const withMcpCall = (
+    name: string,
+    handler: (input: unknown) => Promise<unknown>
+  ): ((input: unknown) => Promise<unknown>) => {
+    const record = (outcome: 'ok' | 'error', startedAt: number): void => {
+      try {
+        appendSignal(baseDir, {
+          ts: new Date().toISOString(),
+          event: 'mcp_call',
+          session_id: null,
+          gen_ai: { modelID: null, agent: null },
+          orchestration: { task: null, actor: 'system:wolf' },
+          outcome,
+          tool_name: name,
+          duration_ms: Date.now() - startedAt,
+          detail: { method: name },
+        });
+      } catch {
+        // телеметрия не должна ломать вызов
+      }
+    };
+    return async (input: unknown) => {
+      const startedAt = Date.now();
+      try {
+        const result = await handler(input);
+        record('ok', startedAt);
+        return result;
+      } catch (err) {
+        record('error', startedAt);
+        throw err;
+      }
+    };
+  };
+
+  const register = (
+    name: string,
+    config: { description: string; inputSchema: unknown },
+    handler: (input: unknown) => Promise<unknown>
+  ): void => {
+    // as never: registerTool перегружен (standard-schema + deprecated raw-shape),
+    // Parameters<> берёт последний оверлоад и требует ZodRawShape — наши ZodObject туда не входят
+    server.registerTool(name, config as never, withMcpCall(name, handler) as never);
+  };
+
+  register(
     'search',
     {
       description: 'Search project memory objects by query and optional filters',
@@ -79,7 +125,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'get',
     {
       description: 'Get a memory object by id',
@@ -95,7 +141,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'list',
     {
       description: 'List memory objects with optional filters',
@@ -116,7 +162,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'add',
     {
       description: 'Add a generic memory object',
@@ -149,7 +195,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'transition',
     {
       description: 'Transition a memory object to a new lifecycle status',
@@ -162,7 +208,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'create_thread',
     {
       description: 'Create a work thread',
@@ -181,7 +227,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'create_info_request',
     {
       description: 'Create an information request',
@@ -203,7 +249,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'create_article',
     {
       description: 'Create an article',
@@ -225,7 +271,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'create_decision',
     {
       description: 'Create a decision',
@@ -244,7 +290,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'create_blocker',
     {
       description: 'Create a blocker',
@@ -263,7 +309,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'resolve_blocker',
     {
       description: 'Resolve a blocker',
@@ -276,7 +322,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'scan',
     {
       description: 'Scan the project and register documents',
@@ -288,7 +334,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'brief',
     {
       description: 'Generate the agent brief from the latest scan and memory',
@@ -301,7 +347,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'insights',
     {
       description: 'Heuristic pattern analysis over project memory (Level 1, no LLM)',
@@ -320,7 +366,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'analytics',
     {
       description:
@@ -390,7 +436,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'recap',
     {
       description:
@@ -403,7 +449,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'create_rule',
     {
       description: 'Create a rule (user request only)',
@@ -423,7 +469,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'start_thinking',
     {
       description: 'Start a structured thinking sequence (goal -> thoughts -> conclusion)',
@@ -439,7 +485,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'add_thought',
     {
       description: 'Add a thought to a thinking sequence',
@@ -459,7 +505,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'conclude_thinking',
     {
       description: 'Conclude a thinking sequence into a decision with an embedded trace and based_on links',
@@ -484,7 +530,7 @@ export function registerMemoryTools(
     }
   );
 
-  server.registerTool(
+  register(
     'abandon_thinking',
     {
       description: 'Abandon a thinking sequence without creating a decision',
