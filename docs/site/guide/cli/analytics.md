@@ -4,18 +4,18 @@ Effectiveness analytics aggregates the logs the harness already writes — run-l
 
 ## wolf analytics
 
-Sample queries for the Steward: ledgers, funnel, agent and steward views.
+Sample queries for the Steward: ledgers, weekly activity, agent and steward views.
 
 ```text
 Usage: wolf analytics [options]
 
-Effectiveness analytics: ledgers (memory/tools/rules), funnel, agents, steward
-view, councils, outliers, experiment readiness
+Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents,
+steward view, councils, outliers, experiment readiness
 
 Options:
   --view <view>      Analytics view (choices: "memory", "tools", "rules",
-                     "funnel", "agents", "steward", "councils", "outliers",
-                     "readiness", "all", default: "all")
+                     "weeklyActivity", "agents", "steward", "outliers",
+                     "readiness", "councils", "all", default: "all")
   --class <class>    Memory lifecycle filter (choices: "new", "sleeper",
                      "workhorse", "dead")
   --type <type>      Memory type filter
@@ -23,37 +23,37 @@ Options:
   --agent <agent>    Agent name filter
   --silent           Rules view: only silent rules (default: false)
   --top <n>          Row limit (default: 20)
-  --weeks <n>        Funnel window in weeks (default: 8)
+  --weeks <n>        Weekly activity window in weeks (default: 8)
   --json             Machine-readable JSON output (default: false)
   -h, --help         display help for command
 ```
 
 Options:
 
-- `--view <view>` — analytics view (choices: `memory`, `tools`, `rules`, `funnel`, `agents`, `steward`, `councils`, `outliers`, `readiness`, `all`; default: `all`)
+- `--view <view>` — analytics view (choices: `memory`, `tools`, `rules`, `weeklyActivity`, `agents`, `steward`, `outliers`, `readiness`, `councils`, `all`; default: `all`)
 - `--class <class>` — memory lifecycle filter (choices: `new`, `sleeper`, `workhorse`, `dead`)
 - `--type <type>` — memory type filter
 - `--origin <origin>` — tool origin filter (choices: `script`, `native`)
 - `--agent <agent>` — agent name filter
 - `--silent` — rules view: only silent rules (default: false)
 - `--top <n>` — row limit (default: 20)
-- `--weeks <n>` — funnel window in weeks (default: 8)
+- `--weeks <n>` — weekly activity window in weeks (default: 8)
 - `--json` — machine-readable JSON output (default: false)
 
 Views:
 
-| View        | What it returns                                                                                                                                                                                            |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `memory`    | Memory ledger: per-object age, deliveries, triggers, complaints, last_used, lifecycle class; garbage ratio (DEAD / active)                                                                                 |
-| `tools`     | Tool ledger: usage, error rate, lifecycle (script tools); run-log attributions (model-native); promotion candidates                                                                                        |
-| `rules`     | Rule ranking by `holdout_prevented`; silent rules list                                                                                                                                                     |
-| `funnel`    | Weekly write → deliver → trigger conversion                                                                                                                                                                |
-| `agents`    | Per-agent runs, weighted cost, duration, failure rate, tool errors, complaints (filed and received), achievements                                                                                          |
-| `steward`   | Steward mutations by kind, complaint funnel, SLA escalations, recurrences, churn, share of auto-mutations                                                                                                  |
-| `councils`  | Councils: questions called (total / window / open), opinions per question, per-agent participation, vote distribution, synthesis share and median question→synthesis time, weekly activity, open questions |
-| `outliers`  | Most expensive runs (weighted; `$` with pricing)                                                                                                                                                           |
-| `readiness` | Experiment readiness: share of runs with an arm, sample sizes per group                                                                                                                                    |
-| `all`       | All sections in sequence (default)                                                                                                                                                                         |
+| View             | What it returns                                                                                                                                                                                            |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `memory`         | Memory ledger: per-object age, deliveries, triggers, complaints, last_used, lifecycle class; garbage ratio (DEAD / active)                                                                                 |
+| `tools`          | Tool ledger: usage, error rate, lifecycle (script tools); run-log attributions (model-native); promotion candidates                                                                                        |
+| `rules`          | Rule ranking by `holdout_prevented`; silent rules list                                                                                                                                                     |
+| `weeklyActivity` | Weekly write / deliver / trigger activity per week                                                                                                                                                         |
+| `agents`         | Per-agent runs, weighted cost, duration, process-failure rate, completed and accepted tasks, complaints (filed and received), prevented                                                                    |
+| `steward`        | Steward mutations by kind, complaint funnel, SLA escalations, recurrences, churn, share of auto-mutations                                                                                                  |
+| `councils`       | Councils: questions called (total / window / open), opinions per question, per-agent participation, vote distribution, synthesis share and median question→synthesis time, weekly activity, open questions |
+| `outliers`       | Most expensive runs (weighted; `$` with pricing)                                                                                                                                                           |
+| `readiness`      | Experiment readiness: share of runs with an arm, sample sizes per group                                                                                                                                    |
+| `all`            | All sections in sequence (default)                                                                                                                                                                         |
 
 ### Lifecycle classes
 
@@ -103,7 +103,7 @@ Promotion candidates: a script candidate whose `usage_count` reaches the pattern
 - **Participation** — opinions per question (min/avg/max over all questions) and a per-agent opinion count (`created_by` is the voter);
 - **Votes** — distribution of `vote` values; the parser is shared with council vote tallying (the `vote` field → a `VOTE:` line in the body → `TIMEOUT`). Values are free-form strings — the set is not hardcoded;
 - **Effectiveness** — share of questions that got a synthesis (a synthesis links to the question's opinions via `based_on`) and the median question→synthesis time;
-- **Weekly activity** — the same 8 week buckets as the funnel;
+- **Weekly activity** — the same 8 week buckets as the `weeklyActivity` view;
 - **Open questions** — id, days open, opinion count, vote summary.
 
 ```bash
@@ -169,22 +169,22 @@ wolf analytics --view rules --top 3
 ```
 
 ```bash
-wolf analytics --view funnel --weeks 4
+wolf analytics --view weeklyActivity --weeks 4
 ```
 
 ```text
-== funnel ==
-┌────────────┬────────┬──────────┬──────────┬───────┬──────┐
-│ week       │ writes │ delivers │ triggers │ W->D  │ D->T │
-├────────────┼────────┼──────────┼──────────┼───────┼──────┤
-│ 2026-08-10 │ 0      │ 0        │ 0        │ -     │ -    │
-│ 2026-08-17 │ 27     │ 0        │ 0        │ 0.0%  │ -    │
-│ 2026-08-24 │ 298    │ 4427     │ 8        │ ×14.9 │ 0.2% │
-│ 2026-08-31 │ 292    │ 18112    │ 10       │ ×62.0 │ 0.1% │
-└────────────┴────────┴──────────┴──────────┴───────┴──────┘
+== Weekly activity ==
+┌────────────┬────────┬──────────┬──────────┐
+│ week       │ writes │ delivers │ triggers │
+├────────────┼────────┼──────────┼──────────┤
+│ 2026-08-10 │ 0      │ 0        │ 0        │
+│ 2026-08-17 │ 27     │ 0        │ 0        │
+│ 2026-08-24 │ 298    │ 4427     │ 8        │
+│ 2026-08-31 │ 311    │ 20123    │ 10       │
+└────────────┴────────┴──────────┴──────────┘
 ```
 
-Funnel ratios above 100% render as multipliers: `×14.9` means ~14.9 deliveries per write. Delivery events are counted per session (not unique objects), so percentages beyond 100% would be misleading — the multiplier states the actual ratio.
+Delivery events are counted per session (not unique objects), so `delivers` can exceed `writes` — the table is a weekly activity count, not a conversion rate.
 
 ## wolf dashboard
 
@@ -205,7 +205,7 @@ Options:
 
 Options:
 
-- `--tab <tab>` — render a single section: `health` (L1 statuses, absolutes, current-period funnel), `ledgers` (L2 tables: memory, tools, rules, agents, open council questions, top-N), `trends` (L3 sparklines over snapshots, weekly funnel, cache-hit ratio, experiment readiness, council activity per week)
+- `--tab <tab>` — render a single section: `health` (L1 statuses, absolutes, current-period weekly activity), `ledgers` (L2 tables: memory, tools, rules, agents, open council questions, top-N), `trends` (L3 sparklines over snapshots, weekly activity, cache-hit ratio, experiment readiness, council activity per week, coverage and data quality lines)
 - `--json` — machine-readable JSON output of the whole dashboard (`DashboardData`)
 
 ```bash
@@ -244,7 +244,7 @@ Options:
 
 A plain call prints the panel; once at least one snapshot exists, it also prints a delta versus the latest snapshot (`delta vs <ts>` over the numeric fields of each block).
 
-The panel ends with an absolutes block: run/failure counts, weighted and raw token sums, cache-hit ratio, average duration, and per-model cost-per-success. `$` fields appear only when `pricing` is configured (see [Configuration](#configuration)).
+The panel ends with an absolutes block: run and process-failure counts (`processFailures`), weighted and raw token sums, cache-hit ratio, average duration, and per-model `costPerCompletedRun`. `$` fields appear only when `pricing` is configured (see [Configuration](#configuration)).
 
 ```bash
 wolf effectiveness
@@ -254,11 +254,11 @@ wolf effectiveness
 effectiveness panel (mileage aggregation, no LLM):
 rules: active=17 | prevented/checked: 0/0
 ...
-noise: 391/460 = 85.0% [BAD]
+noise: 416/485 = 85.8% [BAD]
 routing: zai-coding-plan/glm-5.2: tasks=3 median=22868.2
-totals: runs=2 failures=0 weighted=42736 cache=n/a avg=n/a
+totals: runs=2 processFailures=0 weighted=42736 cache=n/a avg=n/a
 cost: n/a (no pricing configured)
-model zai-coding-plan/glm-5.2: runs=2 failures=0 cost=n/a cost/success=n/a
+model zai-coding-plan/glm-5.2: runs=2 processFailures=0 cost=n/a cost/completedRun=n/a
 thresholds: noise ok<20 warn<=40 bad | silent ok<30
 ```
 
@@ -275,6 +275,39 @@ Every run now writes raw tokens (`input`, `output`, `cache_read`) and `duration_
 ```bash
 wolf run "Fix the failing test" --experiment exp-20260904-x1 --arm wolf --task-id t3
 ```
+
+## wolf task-eval
+
+Records a task verdict into the signal log (`task_evaluated` event) — the input for honest acceptance metrics and run coverage:
+
+- `--verdict <verdict>` — `accepted`, `rejected`, `partial`, `inconclusive`
+- `--scorer <scorer>` — who evaluated: `human` (default), `deterministic`, `llm_judge`, `hidden_tests`
+- `--session <id>` / `--task-id <id>` — link the verdict to a run/task (without a link it still counts toward coverage, but is not attributed to an agent)
+- `--criteria-passed <n>` / `--criteria-total <m>` — numeric criteria counts
+- `--critical-failure` — mark a critical failure; `--note <text>` — free-form note
+
+A completed run is not the same as a useful task: verdicts feed `accepted` and `costPerAcceptedTask` (the acceptance block) and the coverage line below.
+
+```bash
+wolf task-eval --verdict accepted --task-id docs-v2.5.0-rename --scorer human --note "v2.5.0 docs sync"
+```
+
+```text
+task verdict recorded: verdict=accepted scorer=human
+```
+
+## Coverage, acceptance and data quality
+
+`wolf analytics` (end of `--view all`) and `wolf dashboard` (trends section) print data-honesty lines. Real output:
+
+```text
+coverage: partial — scored 1/2 (50.0%)
+dataQuality: valid 100.0% (malformed lines: 0)
+```
+
+- `coverage: partial — scored X/Y (Z%)` — share of runs with a verdict (`task_evaluated` signals / run signals); `partial` means not every run has been scored, so treat per-run metrics with caution
+- `acceptance` (JSON block) — `accepted` count and `costPerAcceptedTask` (`$` with pricing): how many tasks were actually accepted and what an accepted task costs
+- `dataQuality` — share of valid lines in the signal log (`validEventRatePct`, `malformedLines`)
 
 ## wolf insights --type activity
 
@@ -327,5 +360,5 @@ The `analytics` MCP tool mirrors the CLI: it accepts the same parameters (`view`
 ## Limitations
 
 - `$` fields are hidden unless `pricing` is configured — prices come from the owner, never from the code.
-- `holdout_prevented` counters are cumulative (no timestamps), so prevented counts are not part of the weekly funnel; they surface as totals in the rule ranking.
+- `holdout_prevented` counters are cumulative (no timestamps), so prevented counts are not part of the weekly activity view; they surface as totals in the rule ranking.
 - `wolf dashboard` is read-only: it renders to stdout and writes no files; the HTML storefront is deferred by design.

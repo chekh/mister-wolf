@@ -8,23 +8,23 @@
 
 ### `wolf analytics` — выборки для Стюарда
 
-| Вызов                                     | Ответ                                                          |
-| ----------------------------------------- | -------------------------------------------------------------- |
-| `--view memory --class dead --json`       | DEAD-объекты: id, тип, возраст, last_used, счётчики            |
-| `--view memory --class sleeper [--top N]` | редко используемые объекты                                     |
-| `--view memory [--type <тип>] [--top N]`  | полный memory ledger + garbage ratio                           |
-| `--view rules [--silent]`                 | ranking по holdout_prevented; `--silent` — только молчащие     |
-| `--view tools [--origin script\|native]`  | tool ledger: usage, ошибки, lifecycle, promotion-кандидаты     |
-| `--view funnel [--weeks N]`               | конверсия write→deliver→trigger по неделям                     |
-| `--view agents [--agent <имя>] [--top N]` | per-agent объём, стоимость, ошибки, жалобы, достижения         |
-| `--view steward [--weeks N]`              | мутации, жалобная воронка, рецидивы, churn, доля авто-мутаций  |
-| `--view councils [--weeks N]`             | консилиумы: созывы, участие, голоса, синтезы, открытые вопросы |
-| `--view outliers [--top N]`               | самые дорогие прогоны (weighted; $ при pricing)                |
-| `--view readiness`                        | готовность к экспериментам (доля прогонов с arm)               |
-| `--view all`                              | все секции подряд                                              |
+| Вызов                                     | Ответ                                                           |
+| ----------------------------------------- | --------------------------------------------------------------- |
+| `--view memory --class dead --json`       | DEAD-объекты: id, тип, возраст, last_used, счётчики             |
+| `--view memory --class sleeper [--top N]` | редко используемые объекты                                      |
+| `--view memory [--type <тип>] [--top N]`  | полный memory ledger + garbage ratio                            |
+| `--view rules [--silent]`                 | ranking по holdout_prevented; `--silent` — только молчащие      |
+| `--view tools [--origin script\|native]`  | tool ledger: usage, ошибки, lifecycle, promotion-кандидаты      |
+| `--view weeklyActivity [--weeks N]`       | недельная активность: writes/delivers/triggers по неделям       |
+| `--view agents [--agent <имя>] [--top N]` | per-agent объём, стоимость, process-провалы, completed/accepted |
+| `--view steward [--weeks N]`              | мутации, жалобная воронка, рецидивы, churn, доля авто-мутаций   |
+| `--view councils [--weeks N]`             | консилиумы: созывы, участие, голоса, синтезы, открытые вопросы  |
+| `--view outliers [--top N]`               | самые дорогие прогоны (weighted; $ при pricing)                 |
+| `--view readiness`                        | готовность к экспериментам (доля прогонов с arm)                |
+| `--view all`                              | все секции подряд                                               |
 
 Общие флаги: `--json` (машинный вывод — дефолт для агентского потребления),
-`--top N` (лимит строк, дефолт 20), `--weeks N` (окно воронки, дефолт 8).
+`--top N` (лимит строк, дефолт 20), `--weeks N` (окно недельной активности, дефолт 8).
 Фильтры `--class/--type/--origin/--agent/--silent` работают в обоих режимах
 (текст и `--json`), как и в MCP-инструменте.
 
@@ -37,28 +37,27 @@ Lifecycle-классы памяти (D7) для `--view memory --class new|sleep
 
 Пороги конфигурируются (`analytics.thresholds`, см. раздел «Конфигурация»).
 
-Честное ограничение воронки: holdout-счётчики кумулятивны (без таймстампов),
-поэтому `prevent` в недельную воронку `--view funnel` не входит —
+Честное ограничение: holdout-счётчики кумулятивны (без таймстампов),
+поэтому `prevent` в недельную активность `--view weeklyActivity` не входит —
 `holdout_prevented` показывается суммарно в `--view rules`.
-
-Отношения воронки (`W->D`/`D->T`) сверх 100% печатаются множителем `×N.N`:
-delivery-события кратны сессиям (не уникальны), проценты сверх 100% вводили бы
-в заблуждение. Пример реального вывода:
+Delivery-события кратны сессиям (не уникальны), поэтому `delivers` может
+превышать `writes` — это счётчики активности по неделям, а не конверсия.
+Пример реального вывода:
 
 ```bash
-wolf analytics --view funnel --weeks 4
+wolf analytics --view weeklyActivity --weeks 4
 ```
 
 ```text
-== funnel ==
-┌────────────┬────────┬──────────┬──────────┬───────┬──────┐
-│ week       │ writes │ delivers │ triggers │ W->D  │ D->T │
-├────────────┼────────┼──────────┼──────────┼───────┼──────┤
-│ 2026-08-10 │ 0      │ 0        │ 0        │ -     │ -    │
-│ 2026-08-17 │ 27     │ 0        │ 0        │ 0.0%  │ -    │
-│ 2026-08-24 │ 298    │ 4427     │ 8        │ ×14.9 │ 0.2% │
-│ 2026-08-31 │ 292    │ 18112    │ 10       │ ×62.0 │ 0.1% │
-└────────────┴────────┴──────────┴──────────┴───────┴──────┘
+== Weekly activity ==
+┌────────────┬────────┬──────────┬──────────┐
+│ week       │ writes │ delivers │ triggers │
+├────────────┼────────┼──────────┼──────────┤
+│ 2026-08-10 │ 0      │ 0        │ 0        │
+│ 2026-08-17 │ 27     │ 0        │ 0        │
+│ 2026-08-24 │ 298    │ 4427     │ 8        │
+│ 2026-08-31 │ 311    │ 20123    │ 10       │
+└────────────┴────────┴──────────┴──────────┘
 ```
 
 ### `--view councils` — консилиумы
@@ -74,7 +73,7 @@ wolf analytics --view funnel --weeks 4
   строки, набор не хардкодится;
 - **Результативность** — доля вопросов с синтезом (синтез связан `based_on`
   с мнениями вопроса) и медианное время вопрос → синтез;
-- **Недельная активность** — те же 8 бакетов, что воронка;
+- **Недельная активность** — те же 8 бакетов, что `--view weeklyActivity`;
 - **Открытые вопросы** — id, дней открыт, мнений, сводка голосов.
 
 Пример реального вывода:
@@ -132,7 +131,7 @@ agent/top/weeks/silent`) и возвращает тот же JSON, что `--jso
 - без флагов — три секции в stdout: `health` (L1-статусы), `ledgers` (L2-таблицы:
   memory, tools, rules, agents, открытые council-вопросы, outliers),
   `trends` (L3-спарклайны `▁▂▃▄▅▆▇█` по снапшотам + недельная активность
-  консилиумов);
+  консилиумов и строки `coverage`/`dataQuality`);
 - `--tab health|ledgers|trends` — одна секция;
 - `--json` — единый JSON-документ `DashboardData`;
 - Unicode-таблицы и спарклайны рендерятся прямо в терминал, файлы НЕ пишутся
@@ -144,6 +143,49 @@ agent/top/weeks/silent`) и возвращает тот же JSON, что `--jso
   `.wolf/metrics/effectiveness-snapshots.jsonl` (append-only, история для трендов);
 - обычный вызов при наличии ≥1 снапшота печатает дельту к последнему
   (`delta vs <ts>` по числовым полям блоков).
+
+### `wolf task-eval` — вердикты по задачам
+
+Записывает вердикт завершённой задачи в сигнальный лог (событие
+`task_evaluated`) — источник честного acceptance и coverage:
+
+- `--verdict` — `accepted` | `rejected` | `partial` | `inconclusive`;
+- `--scorer` — кто оценил: `human` (дефолт) | `deterministic` | `llm_judge` |
+  `hidden_tests`;
+- `--session <id>` / `--task-id <id>` — привязка вердикта к прогону/задаче
+  (без привязки вердикт попадает в coverage, но не атрибутируется агенту);
+- `--criteria-passed <n>` / `--criteria-total <m>` — численные критерии,
+  `--critical-failure` — критический провал, `--note <text>` — заметка.
+
+Завершённый прогон ≠ полезная задача: по вердиктам считаются `accepted` и
+`costPerAcceptedTask` (блок acceptance) и покрытие прогонов оценками
+(coverage, см. ниже).
+
+```bash
+wolf task-eval --verdict accepted --task-id docs-v2.5.0-rename --scorer human --note "v2.5.0 docs sync"
+```
+
+```text
+task verdict recorded: verdict=accepted scorer=human
+```
+
+### Coverage, acceptance и dataQuality
+
+`wolf analytics` (конец `--view all`) и `wolf dashboard` (секция trends)
+печатают строки честности данных. Реальный вывод живого прогона:
+
+```text
+coverage: partial — scored 1/2 (50.0%)
+dataQuality: valid 100.0% (malformed lines: 0)
+```
+
+- `coverage: partial — scored X/Y (Z%)` — доля прогонов с вердиктом
+  (сигналы `task_evaluated` / run-сигналы); `partial` — оценены не все
+  прогоны, к per-run метрикам — осторожность;
+- `acceptance` (JSON-блок) — `accepted` и `costPerAcceptedTask` (`$` при
+  pricing): сколько задач реально принято и сколько стоит принятая задача;
+- `dataQuality` — доля валидных строк сигнального лога
+  (`validEventRatePct`, `malformedLines`).
 
 ### `wolf insights --type activity` — недельная динамика мутаций (M4)
 
@@ -182,8 +224,9 @@ analytics:
 
 `wolf analytics --view <v> --json` возвращает payload секции: `{view, rows, ...}`
 (например, memory — `rows` per-object + `garbage {dead, base, ratioPct}`),
-`--view all` — полный `AnalyticsReport`: ledgers (memory/tools/rules), funnel,
-agents, steward, councils, outliers, readiness. Секция councils — объект
+`--view all` — полный `AnalyticsReport`: ledgers (memory/tools/rules),
+weeklyActivity, agents, steward, councils, outliers, readiness, acceptance,
+coverage, dataQuality. Секция councils — объект
 `CouncilsView`: `questions {total, inWindow, open}`, `opinions {total,
 perQuestionMin/Avg/Max}`, `participation [{agent, opinions}]`, `votes`
 (Record: значение голоса → число), `synthesis {questionsWithSynthesis,
@@ -194,7 +237,7 @@ sharePct, medianHours}`, `weeks [{week, questions, opinions, syntheses}]`,
 
 - `generatedAt` — ISO-время сборки;
 - `effectiveness` — полный `EffectivenessReport` (rules/tools/delivery/noise/
-  routing + totals: суммы токенов, средняя duration, cost-per-success);
+  routing + totals: суммы токенов, средняя duration, costPerCompletedRun);
 - `analytics` — полный `AnalyticsReport`;
 - `snapshot` — `{prevTs, delta}`: дельта к последнему снапшоту
   (`{path, prev, curr, diff}` по числовым полям), `prevTs: null` — снапшотов ещё нет.
@@ -204,11 +247,12 @@ sharePct, medianHours}`, `weeks [{week, questions, opinions, syntheses}]`,
 | Данные                                            | Источник                                                                  |
 | ------------------------------------------------- | ------------------------------------------------------------------------- |
 | run-события (объём, токены, duration, experiment) | `.wolf/run-log.jsonl` + run-сигналы `.wolf/metrics/session-metrics.jsonl` |
-| deliveries/жалобы/tool_error                      | сигнальный лог `.wolf/metrics/session-metrics.jsonl`                      |
+| доставки/жалобы/tool_error                        | сигнальный лог `.wolf/metrics/session-metrics.jsonl`                      |
+| вердикты задач (`task_evaluated`)                 | `wolf task-eval` → сигнальный лог `.wolf/metrics/session-metrics.jsonl`   |
 | рождения/мутации/срабатывания                     | event log `.wolf/memory/events.jsonl` (actor, memory_id)                  |
 | связи консилиумов (вопрос↔мнение↔синтез)          | relation log `.wolf/memory/relations.jsonl` (`answers`, `based_on`)       |
 | объекты памяти                                    | markdown-стор `.wolf/memory/`                                             |
 | снапшоты для трендов                              | `.wolf/metrics/effectiveness-snapshots.jsonl`                             |
 
-Всё уже пишется штатными командами (`run`, `complain`, `scaffold`, `tool expose`)
-— аналитика только агрегирует, новых сборщиков нет.
+Всё уже пишется штатными командами (`run`, `complain`, `task-eval`,
+`scaffold`, `tool expose`) — аналитика только агрегирует, новых сборщиков нет.

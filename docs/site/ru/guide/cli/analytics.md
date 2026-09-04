@@ -4,18 +4,18 @@
 
 ## `wolf analytics`
 
-Выборки для Стюарда: ledger'ы, воронка, view по агентам и steward view.
+Выборки для Стюарда: ledger'ы, недельная активность, view по агентам и steward view.
 
 ```text
 Usage: wolf analytics [options]
 
-Effectiveness analytics: ledgers (memory/tools/rules), funnel, agents, steward
-view, councils, outliers, experiment readiness
+Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents,
+steward view, councils, outliers, experiment readiness
 
 Options:
   --view <view>      Analytics view (choices: "memory", "tools", "rules",
-                     "funnel", "agents", "steward", "councils", "outliers",
-                     "readiness", "all", default: "all")
+                     "weeklyActivity", "agents", "steward", "outliers",
+                     "readiness", "councils", "all", default: "all")
   --class <class>    Memory lifecycle filter (choices: "new", "sleeper",
                      "workhorse", "dead")
   --type <type>      Memory type filter
@@ -23,39 +23,39 @@ Options:
   --agent <agent>    Agent name filter
   --silent           Rules view: only silent rules (default: false)
   --top <n>          Row limit (default: 20)
-  --weeks <n>        Funnel window in weeks (default: 8)
+  --weeks <n>        Weekly activity window in weeks (default: 8)
   --json             Machine-readable JSON output (default: false)
   -h, --help         display help for command
 ```
 
 Опции:
 
-| Опция               | Описание                                                                                                                       |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `--view <view>`     | Выборка: `memory`, `tools`, `rules`, `funnel`, `agents`, `steward`, `councils`, `outliers`, `readiness`, `all` (дефолт: `all`) |
-| `--class <class>`   | Фильтр по lifecycle-классу памяти: `new`, `sleeper`, `workhorse`, `dead`                                                       |
-| `--type <type>`     | Фильтр по типу памяти                                                                                                          |
-| `--origin <origin>` | Фильтр по tool origin: `script`, `native`                                                                                      |
-| `--agent <agent>`   | Фильтр по имени агента                                                                                                         |
-| `--silent`          | Rules view: только молчащие правила (дефолт: false)                                                                            |
-| `--top <n>`         | Лимит строк (дефолт: 20)                                                                                                       |
-| `--weeks <n>`       | Окно воронки в неделях (дефолт: 8)                                                                                             |
-| `--json`            | Машинный JSON-вывод (дефолт: false)                                                                                            |
+| Опция               | Описание                                                                                                                               |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `--view <view>`     | Выборка: `memory`, `tools`, `rules`, `weeklyActivity`, `agents`, `steward`, `outliers`, `readiness`, `councils`, `all` (дефолт: `all`) |
+| `--class <class>`   | Фильтр по lifecycle-классу памяти: `new`, `sleeper`, `workhorse`, `dead`                                                               |
+| `--type <type>`     | Фильтр по типу памяти                                                                                                                  |
+| `--origin <origin>` | Фильтр по tool origin: `script`, `native`                                                                                              |
+| `--agent <agent>`   | Фильтр по имени агента                                                                                                                 |
+| `--silent`          | Rules view: только молчащие правила (дефолт: false)                                                                                    |
+| `--top <n>`         | Лимит строк (дефолт: 20)                                                                                                               |
+| `--weeks <n>`       | Окно недельной активности в неделях (дефолт: 8)                                                                                        |
+| `--json`            | Машинный JSON-вывод (дефолт: false)                                                                                                    |
 
 Выборки:
 
-| Выборка     | Что возвращает                                                                                                                                                                                      |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `memory`    | Memory ledger: возраст, доставки, срабатывания, жалобы, last_used, lifecycle-класс на объект; garbage ratio (DEAD / active)                                                                         |
-| `tools`     | Tool ledger: usage, доля ошибок, lifecycle (script-инструменты); атрибуции run-лога (model-native); promotion-кандидаты                                                                             |
-| `rules`     | Ранжирование правил по `holdout_prevented`; список молчащих правил                                                                                                                                  |
-| `funnel`    | Недельная конверсия write → deliver → trigger                                                                                                                                                       |
-| `agents`    | Прогоны по агентам: weighted-стоимость, длительность, доля провалов, ошибки инструментов, жалобы (поданные и полученные), достижения                                                                |
-| `steward`   | Мутации Стюарда по видам, жалобная воронка, нарушения SLA (dispatch ages), рецидивы, churn, доля авто-мутаций                                                                                       |
-| `councils`  | Консилиумы: созывы (всего / за окно / открытые), мнений на вопрос, участие по агентам, распределение голосов, доля синтезов и медианное время вопрос→синтез, недельная активность, открытые вопросы |
-| `outliers`  | Самые дорогие прогоны (weighted; `$` при pricing)                                                                                                                                                   |
-| `readiness` | Готовность к экспериментам: доля прогонов с arm, размер выборки по группам                                                                                                                          |
-| `all`       | Все секции подряд (дефолт)                                                                                                                                                                          |
+| Выборка          | Что возвращает                                                                                                                                                                                      |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `memory`         | Memory ledger: возраст, доставки, срабатывания, жалобы, last_used, lifecycle-класс на объект; garbage ratio (DEAD / active)                                                                         |
+| `tools`          | Tool ledger: usage, доля ошибок, lifecycle (script-инструменты); атрибуции run-лога (model-native); promotion-кандидаты                                                                             |
+| `rules`          | Ранжирование правил по `holdout_prevented`; список молчащих правил                                                                                                                                  |
+| `weeklyActivity` | Недельная активность: writes / delivers / triggers по неделям                                                                                                                                       |
+| `agents`         | Прогоны по агентам: weighted-стоимость, длительность, доля process-провалов, завершённые и принятые задачи, жалобы, prevented                                                                       |
+| `steward`        | Мутации Стюарда по видам, жалобная воронка, нарушения SLA (dispatch ages), рецидивы, churn, доля авто-мутаций                                                                                       |
+| `councils`       | Консилиумы: созывы (всего / за окно / открытые), мнений на вопрос, участие по агентам, распределение голосов, доля синтезов и медианное время вопрос→синтез, недельная активность, открытые вопросы |
+| `outliers`       | Самые дорогие прогоны (weighted; `$` при pricing)                                                                                                                                                   |
+| `readiness`      | Готовность к экспериментам: доля прогонов с arm, размер выборки по группам                                                                                                                          |
+| `all`            | Все секции подряд (дефолт)                                                                                                                                                                          |
 
 ### Lifecycle-классы
 
@@ -105,7 +105,7 @@ Promotion-кандидаты: script-инструмент, чей `usage_count` 
 - **Участие** — мнений на вопрос (min/avg/max по всем вопросам) и per-agent счётчик мнений (`created_by` = голосующий);
 - **Голоса** — распределение значений `vote`; парсер общий с подсчётом голосов консилиума (поле `vote` → строка `VOTE:` в теле → `TIMEOUT`). Значения — свободные строки, набор не хардкодится;
 - **Результативность** — доля вопросов с синтезом (синтез связан `based_on` с мнениями вопроса) и медианное время вопрос → синтез;
-- **Недельная активность** — те же 8 недельных бакетов, что у воронки;
+- **Недельная активность** — те же 8 недельных бакетов, что у `--view weeklyActivity`;
 - **Открытые вопросы** — id, дней открыт, мнений, сводка голосов.
 
 ```bash
@@ -171,22 +171,22 @@ wolf analytics --view rules --top 3
 ```
 
 ```bash
-wolf analytics --view funnel --weeks 4
+wolf analytics --view weeklyActivity --weeks 4
 ```
 
 ```text
-== funnel ==
-┌────────────┬────────┬──────────┬──────────┬───────┬──────┐
-│ week       │ writes │ delivers │ triggers │ W->D  │ D->T │
-├────────────┼────────┼──────────┼──────────┼───────┼──────┤
-│ 2026-08-10 │ 0      │ 0        │ 0        │ -     │ -    │
-│ 2026-08-17 │ 27     │ 0        │ 0        │ 0.0%  │ -    │
-│ 2026-08-24 │ 298    │ 4427     │ 8        │ ×14.9 │ 0.2% │
-│ 2026-08-31 │ 292    │ 18112    │ 10       │ ×62.0 │ 0.1% │
-└────────────┴────────┴──────────┴──────────┴───────┴──────┘
+== Weekly activity ==
+┌────────────┬────────┬──────────┬──────────┐
+│ week       │ writes │ delivers │ triggers │
+├────────────┼────────┼──────────┼──────────┤
+│ 2026-08-10 │ 0      │ 0        │ 0        │
+│ 2026-08-17 │ 27     │ 0        │ 0        │
+│ 2026-08-24 │ 298    │ 4427     │ 8        │
+│ 2026-08-31 │ 311    │ 20123    │ 10       │
+└────────────┴────────┴──────────┴──────────┘
 ```
 
-Отношения воронки сверх 100% печатаются множителем: `×14.9` — примерно 14.9 доставок на одну запись. Delivery-события кратны сессиям (не уникальны), поэтому проценты сверх 100% вводили бы в заблуждение — множитель показывает фактическое отношение.
+Delivery-события считаются на сессию, а не на уникальный объект, поэтому `delivers` может превышать `writes` — это счётчики активности по неделям, а не конверсия.
 
 ## `wolf dashboard`
 
@@ -207,10 +207,10 @@ Options:
 
 Опции:
 
-| Опция         | Описание                                                                                                                                                                                                                                                                                               |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--tab <tab>` | Одна секция: `health` (L1-статусы, абсолюты, воронка текущего периода), `ledgers` (L2-таблицы: memory, tools, rules, agents, открытые council-вопросы, top-N), `trends` (L3-спарклайны по снапшотам, недельная воронка, cache-hit ratio, готовность к экспериментам, недельная активность консилиумов) |
-| `--json`      | Машинный JSON всего дашборда (`DashboardData`)                                                                                                                                                                                                                                                         |
+| Опция         | Описание                                                                                                                                                                                                                                                                                                                                            |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--tab <tab>` | Одна секция: `health` (L1-статусы, абсолюты, недельная активность текущего периода), `ledgers` (L2-таблицы: memory, tools, rules, agents, открытые council-вопросы, top-N), `trends` (L3-спарклайны по снапшотам, недельная активность, cache-hit ratio, готовность к экспериментам, недельная активность консилиумов, строки coverage/dataQuality) |
+| `--json`      | Машинный JSON всего дашборда (`DashboardData`)                                                                                                                                                                                                                                                                                                      |
 
 ```bash
 wolf dashboard --tab health
@@ -250,7 +250,7 @@ Options:
 
 Обычный вызов печатает панель; когда есть хотя бы один снапшот, дополнительно печатается дельта к последнему снапшоту (`delta vs <ts>` по числовым полям каждого блока).
 
-Панель завершается блоком абсолютов: количества прогонов/провалов, суммы токенов weighted и raw, cache-hit ratio, средняя длительность и cost-per-success по моделям. `$`-поля появляются, только если настроен `pricing` (см. [Конфигурация](#конфигурация)).
+Панель завершается блоком абсолютов: прогоны и process-провалы (`processFailures`), суммы токенов weighted и raw, cache-hit ratio, средняя длительность и `costPerCompletedRun` по моделям. `$`-поля появляются, только если настроен `pricing` (см. [Конфигурация](#конфигурация)).
 
 ```bash
 wolf effectiveness
@@ -260,11 +260,11 @@ wolf effectiveness
 effectiveness panel (mileage aggregation, no LLM):
 rules: active=17 | prevented/checked: 0/0
 ...
-noise: 391/460 = 85.0% [BAD]
+noise: 416/485 = 85.8% [BAD]
 routing: zai-coding-plan/glm-5.2: tasks=3 median=22868.2
-totals: runs=2 failures=0 weighted=42736 cache=n/a avg=n/a
+totals: runs=2 processFailures=0 weighted=42736 cache=n/a avg=n/a
 cost: n/a (no pricing configured)
-model zai-coding-plan/glm-5.2: runs=2 failures=0 cost=n/a cost/success=n/a
+model zai-coding-plan/glm-5.2: runs=2 processFailures=0 cost=n/a cost/completedRun=n/a
 thresholds: noise ok<20 warn<=40 bad | silent ok<30
 ```
 
@@ -281,6 +281,39 @@ thresholds: noise ok<20 warn<=40 bad | silent ok<30
 ```bash
 wolf run "Fix the failing test" --experiment exp-20260904-x1 --arm wolf --task-id t3
 ```
+
+## `wolf task-eval`
+
+Записывает вердикт по задаче в сигнальный лог (событие `task_evaluated`) — источник честных acceptance-метрик и coverage:
+
+- `--verdict <verdict>` — `accepted`, `rejected`, `partial`, `inconclusive`
+- `--scorer <scorer>` — кто оценил: `human` (дефолт), `deterministic`, `llm_judge`, `hidden_tests`
+- `--session <id>` / `--task-id <id>` — привязка вердикта к прогону/задаче (без привязки вердикт считается в coverage, но не атрибутируется агенту)
+- `--criteria-passed <n>` / `--criteria-total <m>` — численные критерии
+- `--critical-failure` — критический провал; `--note <text>` — свободная заметка
+
+Завершённый прогон ≠ полезная задача: по вердиктам считаются `accepted` и `costPerAcceptedTask` (блок acceptance) и coverage оценённых прогонов (см. ниже).
+
+```bash
+wolf task-eval --verdict accepted --task-id docs-v2.5.0-rename --scorer human --note "v2.5.0 docs sync"
+```
+
+```text
+task verdict recorded: verdict=accepted scorer=human
+```
+
+## Coverage, acceptance и dataQuality
+
+`wolf analytics` (конец `--view all`) и `wolf dashboard` (секция trends) печатают строки честности данных. Реальный вывод:
+
+```text
+coverage: partial — scored 1/2 (50.0%)
+dataQuality: valid 100.0% (malformed lines: 0)
+```
+
+- `coverage: partial — scored X/Y (Z%)` — доля прогонов с вердиктом (сигналы `task_evaluated` / run-сигналы); `partial` — оценены не все прогоны, к per-run метрикам — осторожность
+- `acceptance` (JSON-блок) — `accepted` и `costPerAcceptedTask` (`$` при pricing): сколько задач реально принято и сколько стоит принятая задача
+- `dataQuality` — доля валидных строк сигнального лога (`validEventRatePct`, `malformedLines`)
 
 ## `wolf insights --type activity`
 
@@ -333,5 +366,5 @@ MCP-инструмент `analytics` зеркалит CLI: принимает т
 ## Ограничения
 
 - `$`-поля скрыты, пока не настроен `pricing`, — цены даёт владелец, никогда код.
-- Счётчики `holdout_prevented` кумулятивны (без таймстампов), поэтому prevented-количества не входят в недельную воронку; они показываются суммарно в ранжировании правил.
+- Счётчики `holdout_prevented` кумулятивны (без таймстампов), поэтому prevented-количества не входят в недельную активность; они показываются суммарно в ранжировании правил.
 - `wolf dashboard` read-only: рендерит в stdout и не пишет файлов; HTML-витрина отложена by design.
