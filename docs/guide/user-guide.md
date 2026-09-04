@@ -524,6 +524,7 @@ wolf effectiveness
 ## 9. Legacy
 
 - `wolf migrate [--apply]` — **разовая** миграция старой структуры памяти: `objects/<type>/` → `threads/<tid>/<subdir>/` + `shared/`. По умолчанию dry-run; `--apply` выполняет перенос. Для свежих проектов не нужна.
+- `wolf migrate run-log` — архивирует устаревший `.wolf/run-log.jsonl` в `.wolf/metrics/archive/run-log-<дата>-legacy.jsonl` (rename, без перезаписи содержимого; коллизия имени → суффикс `-2`). Запусти после обновления, если `wolf run` раньше писал run-лог: пока legacy-файл на месте, analytics считает старые прогоны дважды. Идемпотентно: файла нет → `nothing to migrate`, exit 0.
 
 ---
 

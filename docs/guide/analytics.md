@@ -253,15 +253,15 @@ sharePct, medianHours}`, `weeks [{week, questions, opinions, syntheses}]`,
 
 ## Сбор данных
 
-| Данные                                                   | Источник                                                                                                           |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| run-события (объём, токены, duration, tools, experiment) | run-сигналы `.wolf/metrics/session-metrics.jsonl` (канон, P1 D4) + compat-мерж исторического `.wolf/run-log.jsonl` |
-| доставки/жалобы/tool_error                               | сигнальный лог `.wolf/metrics/session-metrics.jsonl`                                                               |
-| вердикты задач (`task_evaluated`)                        | `wolf task-eval` → сигнальный лог `.wolf/metrics/session-metrics.jsonl`                                            |
-| рождения/мутации/срабатывания                            | event log `.wolf/memory/events.jsonl` (actor, memory_id)                                                           |
-| связи консилиумов (вопрос↔мнение↔синтез)                 | relation log `.wolf/memory/relations.jsonl` (`answers`, `based_on`)                                                |
-| объекты памяти                                           | markdown-стор `.wolf/memory/`                                                                                      |
-| снапшоты для трендов                                     | `.wolf/metrics/effectiveness-snapshots.jsonl`                                                                      |
+| Данные                                                   | Источник                                                                                                                                                        |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| run-события (объём, токены, duration, tools, experiment) | run-сигналы `.wolf/metrics/session-metrics.jsonl` (канон, P1 D4) + compat-мерж исторического `.wolf/run-log.jsonl` (архируется командой `wolf migrate run-log`) |
+| доставки/жалобы/tool_error                               | сигнальный лог `.wolf/metrics/session-metrics.jsonl`                                                                                                            |
+| вердикты задач (`task_evaluated`)                        | `wolf task-eval` → сигнальный лог `.wolf/metrics/session-metrics.jsonl`                                                                                         |
+| рождения/мутации/срабатывания                            | event log `.wolf/memory/events.jsonl` (actor, memory_id)                                                                                                        |
+| связи консилиумов (вопрос↔мнение↔синтез)                 | relation log `.wolf/memory/relations.jsonl` (`answers`, `based_on`)                                                                                             |
+| объекты памяти                                           | markdown-стор `.wolf/memory/`                                                                                                                                   |
+| снапшоты для трендов                                     | `.wolf/metrics/effectiveness-snapshots.jsonl`                                                                                                                   |
 
 Всё уже пишется штатными командами (`run`, `complain`, `task-eval`,
 `scaffold`, `tool expose`) — аналитика только агрегирует, новых сборщиков нет.

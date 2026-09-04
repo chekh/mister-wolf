@@ -273,7 +273,7 @@ thresholds: noise ok<20 warn<=40 bad | silent ok<30
 - `--trace-id <id>` — trace id grouping runs of one task (defaults to a fresh uuid)
 - `--attempt <n>` — attempt number within the task
 
-Every run writes raw tokens (`input`, `output`, `cache_read`), `duration_ms` and the v2 identity fields (`event_id`, `run_id`, `trace_id`, `config_hash`, `prompt_hash`, `tools`, `schema_version: 2`) into the signal log — since P1 the signal log is the single canonical source of run metrics, and `.wolf/run-log.jsonl` is no longer written (existing history is still read for the economy transition window). Runs without the new flags keep the old record format — the enrichment is backward-compatible.
+Every run writes raw tokens (`input`, `output`, `cache_read`), `duration_ms` and the v2 identity fields (`event_id`, `run_id`, `trace_id`, `config_hash`, `prompt_hash`, `tools`, `schema_version: 2`) into the signal log — since P1 the signal log is the single canonical source of run metrics, and `.wolf/run-log.jsonl` is no longer written (existing history is still read for the economy transition window; run `wolf migrate run-log` to archive the legacy file and stop the double count). Runs without the new flags keep the old record format — the enrichment is backward-compatible.
 
 ```bash
 wolf run "Fix the failing test" --experiment exp-20260904-x1 --arm wolf --task-id t3 --tool wolf-search --trace-id 7f3a2b1c-9d4e-4f6a-8b2c-1e5d7a9f0b3e

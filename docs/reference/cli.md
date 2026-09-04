@@ -1179,6 +1179,22 @@ One-time migration: objects/\<type\>/ -> threads/\<tid\>/\<subdir\>/ + shared/ �
 wolf migrate --apply
 ```
 
+Подкоманды:
+
+- `run-log` — Archive legacy .wolf/run-log.jsonl to .wolf/metrics/archive (idempotent)
+
+#### wolf migrate run-log
+
+Archive legacy .wolf/run-log.jsonl to .wolf/metrics/archive — архивирует устаревший run-лог, чтобы analytics не считала старые прогоны дважды (сигнальный лог — канонический источник).
+
+`Usage: wolf migrate run-log`
+
+Без опций. Перемещение — rename (содержимое не переписывается), целевое имя `run-log-<дата>-legacy.jsonl` (локальная дата; коллизия → суффикс `-2`, `-3`, …). Идемпотентно: файла нет → `nothing to migrate`, exit 0.
+
+```bash
+wolf migrate run-log
+```
+
 ---
 
 Полный список команд: `wolf --help`.

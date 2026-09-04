@@ -1,7 +1,9 @@
 import { Command } from 'commander';
+import { relative } from 'path';
 import { safeCwd } from '../cli-entry.js';
 import { planLayoutMigration, applyLayoutMigration, type MigrationReport } from '../../fs/layout-migration.js';
 import { planDocIdMigration, applyDocIdMigration, type DocIdMigrationReport } from '../../fs/doc-id-migration.js';
+import { migrateRunLog, type RunLogMigrationReport } from '../../fs/run-log-migration.js';
 
 export function memoryMigrateCommand(): Command {
   const migrate = new Command('migrate')
@@ -28,6 +30,22 @@ export function memoryMigrateCommand(): Command {
           : await planDocIdMigration(baseDir);
         printDocIdReport(report, apply ? 'apply' : 'dry-run');
         process.exitCode = report.conflicts.length > 0 ? 2 : 0;
+      })
+  );
+  // run-log: архивация legacy-файла тривиальна и идемпотентна — dry-run не нужен
+  // (спека P1: двойной счёт у обновившихся, пока analytics мержит legacy-файл).
+  migrate.addCommand(
+    new Command('run-log')
+      .description('Archive legacy .wolf/run-log.jsonl to .wolf/metrics/archive (idempotent)')
+      .action(async () => {
+        const baseDir = safeCwd();
+        try {
+          const report = await migrateRunLog(baseDir);
+          printRunLogReport(report, baseDir);
+        } catch (err: unknown) {
+          console.error(`Error: wolf migrate run-log failed: ${err instanceof Error ? err.message : String(err)}`);
+          process.exitCode = 1;
+        }
       })
   );
   return migrate;
@@ -89,4 +107,16 @@ function printDocIdReport(report: DocIdMigrationReport, mode: 'dry-run' | 'apply
     console.log('conflicts (untouched):');
     for (const c of report.conflicts) console.log(`  ${c.id} -> ${c.newId}: target ${c.to} is taken by another object`);
   }
+}
+
+function printRunLogReport(report: RunLogMigrationReport, baseDir: string): void {
+  console.log('# wolf migrate run-log');
+  console.log();
+  if (!report.moved) {
+    console.log('nothing to migrate');
+    return;
+  }
+  console.log(`from: ${relative(baseDir, report.from)}`);
+  console.log(`to: ${relative(baseDir, report.to)}`);
+  console.log(`lines: ${report.lineCount}`);
 }

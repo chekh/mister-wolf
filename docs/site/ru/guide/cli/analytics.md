@@ -279,7 +279,7 @@ thresholds: noise ok<20 warn<=40 bad | silent ok<30
 - `--trace-id <id>` — id трассы, объединяющий раны одной задачи (дефолт — свежий uuid)
 - `--attempt <n>` — номер попытки в рамках задачи
 
-Каждый прогон пишет raw-токены (`input`, `output`, `cache_read`), `duration_ms` и v2-поля идентичности (`event_id`, `run_id`, `trace_id`, `config_hash`, `prompt_hash`, `tools`, `schema_version: 2`) в сигнальный лог — с P1 сигнальный лог является единственным каноническим источником run-метрик, а `.wolf/run-log.jsonl` больше не пишется (существующая история читается в переходном окне экономики). Прогоны без новых флагов сохраняют старый формат записи — обогащение обратно совместимо.
+Каждый прогон пишет raw-токены (`input`, `output`, `cache_read`), `duration_ms` и v2-поля идентичности (`event_id`, `run_id`, `trace_id`, `config_hash`, `prompt_hash`, `tools`, `schema_version: 2`) в сигнальный лог — с P1 сигнальный лог является единственным каноническим источником run-метрик, а `.wolf/run-log.jsonl` больше не пишется (существующая история читается в переходном окне экономики; запусти `wolf migrate run-log`, чтобы архивировать legacy-файл и убрать двойной счёт). Прогоны без новых флагов сохраняют старый формат записи — обогащение обратно совместимо.
 
 ```bash
 wolf run "Fix the failing test" --experiment exp-20260904-x1 --arm wolf --task-id t3 --tool wolf-search --trace-id 7f3a2b1c-9d4e-4f6a-8b2c-1e5d7a9f0b3e
