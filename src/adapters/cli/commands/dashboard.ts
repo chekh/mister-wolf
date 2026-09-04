@@ -3,17 +3,21 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { safeCwd } from '../cli-entry.js';
 import { readSignals } from '../../fs/session-metrics-log.js';
-import { readSnapshots } from '../../fs/effectiveness-snapshots.js';
+import { readSnapshots, type SnapshotEntry } from '../../fs/effectiveness-snapshots.js';
 import { loadWolfConfigSync } from '../../fs/config-file.js';
 import { resolveThresholds } from '../../../app/use-cases/effectiveness.js';
 import { buildDashboard, type DashboardData } from '../../../app/use-cases/build-dashboard.js';
 import { filterAnalytics } from '../../../app/use-cases/build-analytics.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
+import { renderTable, formatFunnelRatio } from './table-render.js';
 
 /** §6.1 + D8 спеки аналитики: консольный дашборд — Unicode-таблицы, спарклайны,
  * статусы-значки; ноль зависимостей, БЕЗ записи файлов (HTML отложен). Рендер —
  * чистые экспортируемые функции (тестируемость, детерминизм: без ANSI-цветов и
  * без terminal width). baseDir инъектится для тестов (прецедент: memory-effectiveness.ts). */
+
+// генератор таблиц общий с analytics (DRY); реэкспорт держит старый импорт в тестах
+export { renderTable } from './table-render.js';
 
 const BARS = '▁▂▃▄▅▆▇█';
 
@@ -25,24 +29,17 @@ export function sparkline(values: number[]): string {
   return values.map((v) => BARS[Math.floor((v / max) * (BARS.length - 1))]).join('');
 }
 
-/** Обрезка ячейки: > 40 символов → 39 + '…' (ширина терминала НЕ читается — детерминизм e2e). */
-function clip(text: string): string {
-  return text.length > 40 ? `${text.slice(0, 39)}…` : text;
-}
-
-/** Unicode-таблица: `│` между колонками, рамки ┌┬┐├┼┤└┴┘, ширина = max ширина контента. */
-export function renderTable(headers: string[], rows: string[][]): string {
-  const widths = headers.map((h, i) => Math.max(h.length, ...rows.map((r) => (r[i] ?? '').length)));
-  const rowLine = (cells: string[]) => cells.map((c, i) => ` ${clip(c ?? '').padEnd(widths[i] ?? 0)} `).join('│');
-  const border = (left: string, mid: string, right: string) =>
-    left + widths.map((w) => '─'.repeat(w + 2)).join(mid) + right;
+/** Строки трендов по снапшотам; <2 снапшотов → 'n/a' (спарклайн из 0–1 точки не информативен). */
+export function trendSparklineLines(snaps: SnapshotEntry[]): string[] {
+  if (snaps.length < 2) {
+    const na = 'n/a (need ≥2 snapshots)';
+    return [`noise.share: ${na}`, `silentShare: ${na}`, `totals.sumWeighted: ${na}`];
+  }
   return [
-    border('┌', '┬', '┐'),
-    rowLine(headers),
-    border('├', '┼', '┤'),
-    ...rows.map(rowLine),
-    border('└', '┴', '┘'),
-  ].join('\n');
+    `noise.share: ${sparkline(snaps.map((s) => s.report.noise.share ?? 0))}`,
+    `silentShare: ${sparkline(snaps.map((s) => s.report.delivery.silentShare ?? 0))}`,
+    `totals.sumWeighted: ${sparkline(snaps.map((s) => s.report.totals.sumWeighted))}`,
+  ];
 }
 
 /** Значок статуса L1-блока: OK/WARN/BAD/NO_DATA -> ✓/!/✗/· */
@@ -177,22 +174,20 @@ function renderTrends(baseDir: string, d: DashboardData): string {
   const parts: string[] = ['== trends =='];
 
   const snaps = readSnapshots(baseDir);
-  parts.push(`noise.share: ${sparkline(snaps.map((s) => s.report.noise.share ?? 0))}`);
-  parts.push(`silentShare: ${sparkline(snaps.map((s) => s.report.delivery.silentShare ?? 0))}`);
-  parts.push(`totals.sumWeighted: ${sparkline(snaps.map((s) => s.report.totals.sumWeighted))}`);
+  parts.push(...trendSparklineLines(snaps));
 
   const funnel = filterAnalytics(d.analytics, { view: 'funnel', top: 20 });
   if (funnel.view === 'funnel') {
     parts.push(
       renderTable(
-        ['week', 'writes', 'delivers', 'triggers', 'W->D %', 'D->T %'],
+        ['week', 'writes', 'delivers', 'triggers', 'W->D', 'D->T'],
         funnel.weeks.map((r) => [
           r.week,
           cell(r.writes),
           cell(r.delivers),
           cell(r.triggers),
-          cell(r.writeToDeliverPct === null ? null : r.writeToDeliverPct.toFixed(1)),
-          cell(r.deliverToTriggerPct === null ? null : r.deliverToTriggerPct.toFixed(1)),
+          formatFunnelRatio(r.writeToDeliverPct),
+          formatFunnelRatio(r.deliverToTriggerPct),
         ])
       )
     );

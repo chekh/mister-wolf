@@ -4,15 +4,21 @@ import { join } from 'path';
 import { safeCwd } from '../cli-entry.js';
 import { readSignals } from '../../fs/session-metrics-log.js';
 import { loadWolfConfigSync } from '../../fs/config-file.js';
-import { buildAnalyticsReport, filterAnalytics, type AnalyticsReport } from '../../../app/use-cases/build-analytics.js';
+import {
+  buildAnalyticsReport,
+  filterAnalytics,
+  type AnalyticsReport,
+  type AnalyticsViewFilter,
+} from '../../../app/use-cases/build-analytics.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
+import { renderTable, formatFunnelRatio } from './table-render.js';
 
 /**
  * §6.2 спеки аналитики: `wolf analytics` — выборки для Стюарда с фильтрами.
  * Фильтры class/type/origin/agent/silent/top применяются ВНУТРИ filterAnalytics —
  * CLI только парсит аргументы. `--json` — машинный вывод (дефолт для агентов),
- * иначе текстовые таблицы по секциям. baseDir инъектится для тестов (прецедент:
- * memory-effectiveness.ts).
+ * иначе текстовые таблицы по секциям (общий Unicode-генератор с dashboard — DRY).
+ * baseDir инъектится для тестов (прецедент: memory-effectiveness.ts).
  */
 
 type AnalyticsView = 'memory' | 'tools' | 'rules' | 'funnel' | 'agents' | 'steward' | 'outliers' | 'readiness' | 'all';
@@ -29,22 +35,18 @@ const SECTION_VIEWS: SectionView[] = [
   'readiness',
 ];
 
-/** null/undefined → '-', остальное — строкой (колонки с nullable-полями). */
+/** null/undefined → '-', остальное — строкой (колонки с nullable-полей). */
 function cell(v: unknown): string {
   return v === null || v === undefined ? '-' : String(v);
 }
 
-/** Плоская текстовая таблица: ширина колонки = max длины, разделитель '  '. */
-function renderRows(headers: string[], rows: string[][]): string {
-  const widths = headers.map((h, i) => Math.max(h.length, ...rows.map((r) => (r[i] ?? '').length)));
-  const line = (cells: string[]) => cells.map((c, i) => (c ?? '').padEnd(widths[i] ?? 0)).join('  ');
-  return [line(headers), ...rows.map(line)].join('\n');
-}
+/** Фильтр секции: AnalyticsViewFilter с view конкретной секции (без 'all'). */
+export type SectionViewFilter = AnalyticsViewFilter & { view: SectionView };
 
-/** Одна секция текстового рендера: `== <view> ==` + таблица/строки. */
-function renderSection(report: AnalyticsReport, view: SectionView, top: number): string {
-  const payload = filterAnalytics(report, { view, top });
-  const header = `== ${view} ==`;
+/** Одна секция текстового рендера: `== <view> ==` + таблица/строки; фильтры применяет filterAnalytics. */
+export function renderSection(report: AnalyticsReport, filter: SectionViewFilter): string {
+  const payload = filterAnalytics(report, filter);
+  const header = `== ${filter.view} ==`;
   switch (payload.view) {
     case 'memory': {
       const rows = payload.rows.map((r) => [
@@ -60,7 +62,7 @@ function renderSection(report: AnalyticsReport, view: SectionView, top: number):
       const garbage = payload.garbage.ratioPct === null ? 'n/a' : `${payload.garbage.ratioPct.toFixed(1)}%`;
       return [
         header,
-        renderRows(['id', 'type', 'lifecycle', 'age_days', 'deliveries', 'triggers', 'complaints', 'last_used'], rows),
+        renderTable(['id', 'type', 'lifecycle', 'age_days', 'deliveries', 'triggers', 'complaints', 'last_used'], rows),
         `garbage: dead/base = ${payload.garbage.dead}/${payload.garbage.base} = ${garbage}`,
       ].join('\n');
     }
@@ -73,7 +75,7 @@ function renderSection(report: AnalyticsReport, view: SectionView, top: number):
         cell(r.errorCount),
         cell(r.promotion),
       ]);
-      return [header, renderRows(['name', 'origin', 'status', 'usage', 'errors', 'promotion'], rows)].join('\n');
+      return [header, renderTable(['name', 'origin', 'status', 'usage', 'errors', 'promotion'], rows)].join('\n');
     }
     case 'rules': {
       const rows = payload.rows.map((r) => [
@@ -83,7 +85,7 @@ function renderSection(report: AnalyticsReport, view: SectionView, top: number):
         r.silent ? 'yes' : 'no',
         r.title,
       ]);
-      return [header, renderRows(['id', 'prevented', 'checked', 'silent', 'title'], rows)].join('\n');
+      return [header, renderTable(['id', 'prevented', 'checked', 'silent', 'title'], rows)].join('\n');
     }
     case 'funnel': {
       const rows = payload.weeks.map((r) => [
@@ -91,10 +93,10 @@ function renderSection(report: AnalyticsReport, view: SectionView, top: number):
         cell(r.writes),
         cell(r.delivers),
         cell(r.triggers),
-        cell(r.writeToDeliverPct === null ? null : r.writeToDeliverPct.toFixed(1)),
-        cell(r.deliverToTriggerPct === null ? null : r.deliverToTriggerPct.toFixed(1)),
+        formatFunnelRatio(r.writeToDeliverPct),
+        formatFunnelRatio(r.deliverToTriggerPct),
       ]);
-      return [header, renderRows(['week', 'writes', 'delivers', 'triggers', 'W->D %', 'D->T %'], rows)].join('\n');
+      return [header, renderTable(['week', 'writes', 'delivers', 'triggers', 'W->D', 'D->T'], rows)].join('\n');
     }
     case 'agents': {
       const rows = payload.rows.map((r) => [
@@ -108,19 +110,19 @@ function renderSection(report: AnalyticsReport, view: SectionView, top: number):
       ]);
       return [
         header,
-        renderRows(['agent', 'runs', 'weighted', 'avg_ms', 'fail_%', 'compl by/about', 'prevented'], rows),
+        renderTable(['agent', 'runs', 'weighted', 'avg_ms', 'fail_%', 'compl by/about', 'prevented'], rows),
       ].join('\n');
     }
     case 'steward': {
       const lines = [
         header,
         'mutations:',
-        renderRows(
+        renderTable(
           ['kind', 'count'],
           payload.steward.mutations.map((m) => [m.kind, cell(m.count)])
         ),
         'mutations by week:',
-        renderRows(
+        renderTable(
           ['week', 'total'],
           payload.steward.mutationsByWeek.map((w) => [w.week, cell(w.total)])
         ),
@@ -152,7 +154,7 @@ function renderSection(report: AnalyticsReport, view: SectionView, top: number):
         cell(r.costUsd === null ? null : `$${r.costUsd}`),
         cell(r.title),
       ]);
-      return [header, renderRows(['ts', 'model', 'weighted', 'cost', 'title'], rows)].join('\n');
+      return [header, renderTable(['ts', 'model', 'weighted', 'cost', 'title'], rows)].join('\n');
     }
     case 'readiness': {
       const share = payload.readiness.withArmPct === null ? 'n/a' : `${payload.readiness.withArmPct.toFixed(1)}%`;
@@ -168,6 +170,11 @@ function renderSection(report: AnalyticsReport, view: SectionView, top: number):
       // 'all' обрабатывается вызывающим кодом до renderSection; ветка закрывает switch (TS2366)
       throw new Error(`renderSection: unexpected view ${String((payload as { view: string }).view)}`);
   }
+}
+
+/** `view: 'all'`: все секции подряд, каждая — с теми же фильтрами (прокидываются в filterAnalytics). */
+export function renderAllSections(report: AnalyticsReport, filter: AnalyticsViewFilter): string {
+  return SECTION_VIEWS.map((v) => renderSection(report, { ...filter, view: v })).join('\n\n');
 }
 
 export function analyticsCommand(baseDir: string = safeCwd()): Command {
@@ -188,8 +195,9 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
     .addOption(new Option('--origin <origin>', 'Tool origin filter').choices(['script', 'native']))
     .option('--agent <agent>', 'Agent name filter')
     .option('--silent', 'Rules view: only silent rules', false)
-    .option('--top <n>', 'Row limit', parseInt, 20)
-    .option('--weeks <n>', 'Funnel window in weeks', parseInt, 8)
+    // ponytail: явный radix 10 — commander передаёт дефолт как previous, bare parseInt принял бы его за radix
+    .option('--top <n>', 'Row limit', (v: string) => parseInt(v, 10), 20)
+    .option('--weeks <n>', 'Funnel window in weeks', (v: string) => parseInt(v, 10), 8)
     .option('--json', 'Machine-readable JSON output', false);
 
   cmd.action(async (options) => {
@@ -234,7 +242,8 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
         ? options.class
         : undefined;
 
-    const payload = filterAnalytics(report, {
+    // единая точка: фильтры строятся ОДИН раз и идут и в --json, и в текстовый рендер
+    const filter: AnalyticsViewFilter = {
       view: options.view as AnalyticsView,
       ...(klass !== undefined ? { class: klass } : {}),
       ...(options.type !== undefined ? { type: options.type } : {}),
@@ -242,7 +251,8 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
       ...(options.agent !== undefined ? { agent: options.agent } : {}),
       ...(options.silent ? { silent: true } : {}),
       top: options.top,
-    });
+    };
+    const payload = filterAnalytics(report, filter);
 
     if (options.json) {
       console.log(JSON.stringify(payload, null, 2));
@@ -251,9 +261,9 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
 
     // текстовый рендер: all — все секции подряд с заголовками, иначе одна секция
     if (payload.view === 'all') {
-      console.log(SECTION_VIEWS.map((v) => renderSection(report, v, options.top)).join('\n\n'));
+      console.log(renderAllSections(report, filter));
     } else {
-      console.log(renderSection(report, payload.view as SectionView, options.top));
+      console.log(renderSection(report, { ...filter, view: payload.view as SectionView }));
     }
   });
 

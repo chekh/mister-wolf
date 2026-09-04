@@ -63,7 +63,7 @@ Memory objects are classified by usage count and age. Thresholds are configurabl
 - `NEW` — zero uses, age ≤ `new_days` (default 14)
 - `DEAD` — zero uses, older than `new_days`
 
-Filter with `--class`, e.g. `--class dead` to list archive candidates:
+Filter with `--class`, e.g. `--class dead` to list archive candidates (works in both text and `--json` modes):
 
 ```bash
 wolf analytics --view memory --class dead --top 3
@@ -71,14 +71,15 @@ wolf analytics --view memory --class dead --top 3
 
 ```text
 == memory ==
-id                                                            type         lifecycle  age_days  deliveries  triggers  complaints  last_used
-mem_20260630_mr_wolf_schema_driven_memory_control_pla_300359  work-thread  sleeper    65        0           1         0           2026-08-25T08:49:35.952Z
-mem_20260630_need_incremental_indexing_bddb0a                 blocker      dead       65        0           0         0           -
-mem_20260630_use_decision_and_blocker_types_for_phase_e7f8ee  decision     dead       65        0           0         0           -
-garbage: dead/base = 27/460 = 5.9%
+┌──────────────────────────────────────────┬──────────────┬───────────┬──────────┬────────────┬──────────┬────────────┬───────────┐
+│ id                                       │ type         │ lifecycle │ age_days │ deliveries │ triggers │ complaints │ last_used │
+├──────────────────────────────────────────┼──────────────┼───────────┼──────────┼────────────┼──────────┼────────────┼───────────┤
+│ mem_20260630_need_incremental_indexing_… │ blocker      │ dead      │ 65       │ 0          │ 0        │ 0          │ -         │
+│ mem_20260630_use_decision_and_blocker_t… │ decision     │ dead      │ 65       │ 0          │ 0        │ 0          │ -         │
+│ mem_20260630__c0acde                     │ info-request │ dead      │ 65       │ 0          │ 0        │ 0          │ -         │
+└──────────────────────────────────────────┴──────────────┴───────────┴──────────┴────────────┴──────────┴────────────┴───────────┘
+garbage: dead/base = 27/465 = 5.8%
 ```
-
-Note: the `--class`/`--type`/`--origin`/`--agent`/`--silent` filters currently apply to `--json` output only; the text render prints the section unfiltered (the sleeper first row above is real output, not a mistake). `--top` applies in both modes.
 
 ### Tool origin
 
@@ -101,11 +102,32 @@ wolf analytics --view rules --top 3
 
 ```text
 == rules ==
-id                                                            prevented  checked  silent  title
-mem_20260703_update_project_docs_after_every_implemen_53189e  0          0        no      Update project docs after every implementation phase
-mem_20260823__c93eac                                          0          0        no      Коммитить изменения после завершённой работы
-mem_20260823_e2e_5459cc                                       0          0        no      Полное E2E-тестирование после каждого выполненного плана
+┌──────────────────────────────────────────┬───────────┬─────────┬────────┬──────────────────────────────────────────┐
+│ id                                       │ prevented │ checked │ silent │ title                                    │
+├──────────────────────────────────────────┼───────────┼─────────┼────────┼──────────────────────────────────────────┤
+│ mem_20260703_update_project_docs_after_… │ 0         │ 0       │ no     │ Update project docs after every impleme… │
+│ mem_20260823__c93eac                     │ 0         │ 0       │ no     │ Коммитить изменения после завершённой р… │
+│ mem_20260823_e2e_5459cc                  │ 0         │ 0       │ no     │ Полное E2E-тестирование после каждого в… │
+└──────────────────────────────────────────┴───────────┴─────────┴────────┴──────────────────────────────────────────┘
 ```
+
+```bash
+wolf analytics --view funnel --weeks 4
+```
+
+```text
+== funnel ==
+┌────────────┬────────┬──────────┬──────────┬───────┬──────┐
+│ week       │ writes │ delivers │ triggers │ W->D  │ D->T │
+├────────────┼────────┼──────────┼──────────┼───────┼──────┤
+│ 2026-08-10 │ 0      │ 0        │ 0        │ -     │ -    │
+│ 2026-08-17 │ 27     │ 0        │ 0        │ 0.0%  │ -    │
+│ 2026-08-24 │ 298    │ 4427     │ 8        │ ×14.9 │ 0.2% │
+│ 2026-08-31 │ 292    │ 18112    │ 10       │ ×62.0 │ 0.1% │
+└────────────┴────────┴──────────┴──────────┴───────┴──────┘
+```
+
+Funnel ratios above 100% render as multipliers: `×14.9` means ~14.9 deliveries per write. Delivery events are counted per session (not unique objects), so percentages beyond 100% would be misleading — the multiplier states the actual ratio.
 
 ## wolf dashboard
 
