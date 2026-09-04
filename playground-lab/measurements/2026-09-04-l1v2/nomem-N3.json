@@ -1,0 +1,1 @@
+{"ts":"2026-09-04T15:43:18Z","cwd":"/tmp/wolf-l1v2-nomem","agent":"worker-implementer","model":"zai-coding-plan/glm-5.2","exit":0,"secs":276,"tokens":{"input":28221,"cache_read":185920,"output":1134,"weight":52483.0},"log":"session-20260904-184318.log"}
