@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { renderTable } from '../../../src/adapters/cli/commands/dashboard.js';
-import { formatFunnelRatio } from '../../../src/adapters/cli/commands/table-render.js';
 
 /** Независимый оракул визуальной ширины (минимальная wide-таблица из ТЗ). */
 function oracleWidth(s: string): number {
@@ -74,14 +73,4 @@ describe('renderTable: инварианты выравнивания Unicode-т�
       }
     });
   }
-});
-
-describe('formatFunnelRatio: >100% → множитель, иначе проценты', () => {
-  it('null → -, обычные проценты остаются %, кратные → ×N.N', () => {
-    expect(formatFunnelRatio(null)).toBe('-');
-    expect(formatFunnelRatio(85.3)).toBe('85.3%');
-    expect(formatFunnelRatio(100)).toBe('100.0%');
-    expect(formatFunnelRatio(1485.6)).toBe('×14.9');
-    expect(formatFunnelRatio(6126.6)).toBe('×61.3');
-  });
 });

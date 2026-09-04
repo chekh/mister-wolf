@@ -68,7 +68,7 @@ function dashboardFixture(): DashboardData {
       memory: { rows: [], garbage: {} },
       tools: [],
       rules: [],
-      funnel: [],
+      weeklyActivity: [],
       outliers: [],
       agents: [],
       steward: { mutationsByWeek: [] },

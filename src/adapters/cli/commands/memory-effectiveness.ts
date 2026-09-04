@@ -68,13 +68,17 @@ function printReport(r: EffectivenessReport): void {
   const t = r.totals;
   const cache = t.cacheHitRatio === null ? 'n/a' : `${fmtPct(t.cacheHitRatio)}%`;
   const avg = t.avgDurationMs === null ? 'n/a' : `${t.avgDurationMs}ms`;
-  console.log(`totals: runs=${t.runs} failures=${t.failures} weighted=${t.sumWeighted} cache=${cache} avg=${avg}`);
+  console.log(
+    `totals: runs=${t.runs} processFailures=${t.processFailures} weighted=${t.sumWeighted} cache=${cache} avg=${avg}`
+  );
   const cost = t.costUsd === null ? 'n/a (no pricing configured)' : `$${t.costUsd} (pricing enabled)`;
   console.log(`cost: ${cost}`);
   for (const row of t.byModel) {
     const c = row.costUsd === null ? 'n/a' : `$${row.costUsd}`;
-    const cps = row.costPerSuccess === null ? 'n/a' : `$${row.costPerSuccess}`;
-    console.log(`model ${row.model}: runs=${row.runs} failures=${row.failures} cost=${c} cost/success=${cps}`);
+    const cpc = row.costPerCompletedRun === null ? 'n/a' : `$${row.costPerCompletedRun}`;
+    console.log(
+      `model ${row.model}: runs=${row.runs} processFailures=${row.processFailures} cost=${c} cost/completedRun=${cpc}`
+    );
   }
 }
 

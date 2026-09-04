@@ -11,7 +11,7 @@ import {
   type AnalyticsViewFilter,
 } from '../../../app/use-cases/build-analytics.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
-import { renderTable, formatFunnelRatio } from './table-render.js';
+import { renderTable } from './table-render.js';
 
 /**
  * §6.2 спеки аналитики: `wolf analytics` — выборки для Стюарда с фильтрами.
@@ -25,7 +25,7 @@ type AnalyticsView =
   | 'memory'
   | 'tools'
   | 'rules'
-  | 'funnel'
+  | 'weeklyActivity'
   | 'agents'
   | 'steward'
   | 'outliers'
@@ -38,7 +38,7 @@ const SECTION_VIEWS: SectionView[] = [
   'memory',
   'tools',
   'rules',
-  'funnel',
+  'weeklyActivity',
   'agents',
   'steward',
   'outliers',
@@ -62,7 +62,9 @@ export type SectionViewFilter = AnalyticsViewFilter & { view: SectionView };
 /** Одна секция текстового рендера: `== <view> ==` + таблица/строки; фильтры применяет filterAnalytics. */
 export function renderSection(report: AnalyticsReport, filter: SectionViewFilter): string {
   const payload = filterAnalytics(report, filter);
-  const header = `== ${filter.view} ==`;
+  // D1/D8: единственный view с человекочитаемым заголовком (не camelCase-идентификатор)
+  const title = filter.view === 'weeklyActivity' ? 'Weekly activity' : filter.view;
+  const header = `== ${title} ==`;
   switch (payload.view) {
     case 'memory': {
       const rows = payload.rows.map((r) => [
@@ -103,16 +105,15 @@ export function renderSection(report: AnalyticsReport, filter: SectionViewFilter
       ]);
       return [header, renderTable(['id', 'prevented', 'checked', 'silent', 'title'], rows)].join('\n');
     }
-    case 'funnel': {
+    case 'weeklyActivity': {
+      // D1: текст без колонок конверсии; проценты остаются только в JSON (WeeklyActivityWeek)
       const rows = payload.weeks.map((r) => [
         r.week,
         cell(r.writes),
         cell(r.delivers),
         cell(r.triggers),
-        formatFunnelRatio(r.writeToDeliverPct),
-        formatFunnelRatio(r.deliverToTriggerPct),
       ]);
-      return [header, renderTable(['week', 'writes', 'delivers', 'triggers', 'W->D', 'D->T'], rows)].join('\n');
+      return [header, renderTable(['week', 'writes', 'delivers', 'triggers'], rows)].join('\n');
     }
     case 'agents': {
       const rows = payload.rows.map((r) => [
@@ -120,13 +121,13 @@ export function renderSection(report: AnalyticsReport, filter: SectionViewFilter
         cell(r.runs),
         cell(r.weighted),
         cell(r.avgDurationMs),
-        cell(r.failureRatePct === null ? null : r.failureRatePct.toFixed(1)),
+        cell(r.processFailureRatePct === null ? null : r.processFailureRatePct.toFixed(1)),
         `${r.complaintsBy}/${r.complaintsAbout}`,
         cell(r.holdoutPrevented),
       ]);
       return [
         header,
-        renderTable(['agent', 'runs', 'weighted', 'avg_ms', 'fail_%', 'compl by/about', 'prevented'], rows),
+        renderTable(['agent', 'runs', 'weighted', 'avg_ms', 'pfail_%', 'compl by/about', 'prevented'], rows),
       ].join('\n');
     }
     case 'steward': {
@@ -235,7 +236,7 @@ export function renderAllSections(report: AnalyticsReport, filter: AnalyticsView
 
 export function analyticsCommand(baseDir: string = safeCwd()): Command {
   const cmd = new Command('analytics').description(
-    'Effectiveness analytics: ledgers (memory/tools/rules), funnel, agents, steward view, councils, outliers, experiment readiness'
+    'Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness'
   );
 
   cmd
@@ -245,7 +246,7 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
           'memory',
           'tools',
           'rules',
-          'funnel',
+          'weeklyActivity',
           'agents',
           'steward',
           'outliers',
@@ -264,7 +265,7 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
     .option('--silent', 'Rules view: only silent rules', false)
     // ponytail: явный radix 10 — commander передаёт дефолт как previous, bare parseInt принял бы его за radix
     .option('--top <n>', 'Row limit', (v: string) => parseInt(v, 10), 20)
-    .option('--weeks <n>', 'Funnel window in weeks', (v: string) => parseInt(v, 10), 8)
+    .option('--weeks <n>', 'Weekly activity window in weeks', (v: string) => parseInt(v, 10), 8)
     .option('--json', 'Machine-readable JSON output', false);
 
   cmd.action(async (options) => {

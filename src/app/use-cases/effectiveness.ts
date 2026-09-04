@@ -45,7 +45,7 @@ export const DEFAULT_EFFECTIVENESS_THRESHOLDS: EffectivenessThresholds = {
 export interface TotalsBlock {
   runs: number;
   /** run-сигналы с outcome !== 'ok'. */
-  failures: number;
+  processFailures: number;
   sumWeighted: number;
   /** null = ни один run-сигнал не несёт tokens (до M1-данных). */
   sumTokens: RawTokens | null;
@@ -56,12 +56,12 @@ export interface TotalsBlock {
   byModel: Array<{
     model: string;
     runs: number;
-    failures: number;
+    processFailures: number;
     sumWeighted: number;
     avgDurationMs: number | null;
     costUsd: number | null;
-    /** costUsd/(runs-failures); null если costUsd null или успехов 0. */
-    costPerSuccess: number | null;
+    /** costUsd/(runs-processFailures); null если costUsd null или завершённых 0. */
+    costPerCompletedRun: number | null;
   }>;
 }
 
@@ -118,7 +118,7 @@ function finiteNumber(value: unknown): number | null {
 /** M3: агрегация run-сигналов в блок абсолютов; пустые данные → нули/null, не выдумываем. */
 function buildTotals(signals: SignalEvent[], pricing?: PricingTable): TotalsBlock {
   const runs = signals.filter((s) => s.event === 'run');
-  const failures = runs.filter((s) => s.outcome !== 'ok').length;
+  const processFailures = runs.filter((s) => s.outcome !== 'ok').length;
   const sumWeighted = runs.reduce((sum, s) => sum + (s.weighted ?? 0), 0);
 
   let sumTokens: RawTokens | null = null;
@@ -126,7 +126,7 @@ function buildTotals(signals: SignalEvent[], pricing?: PricingTable): TotalsBloc
   let costUsd: number | null = null;
   const byModelMap = new Map<
     string,
-    { runs: number; failures: number; sumWeighted: number; durations: number[]; costUsd: number | null }
+    { runs: number; processFailures: number; sumWeighted: number; durations: number[]; costUsd: number | null }
   >();
   for (const s of runs) {
     if (typeof s.duration_ms === 'number' && Number.isFinite(s.duration_ms)) durations.push(s.duration_ms);
@@ -140,9 +140,9 @@ function buildTotals(signals: SignalEvent[], pricing?: PricingTable): TotalsBloc
     if (c !== null) costUsd = (costUsd ?? 0) + c;
 
     const model = s.gen_ai.modelID ?? 'unknown';
-    const row = byModelMap.get(model) ?? { runs: 0, failures: 0, sumWeighted: 0, durations: [], costUsd: null };
+    const row = byModelMap.get(model) ?? { runs: 0, processFailures: 0, sumWeighted: 0, durations: [], costUsd: null };
     row.runs += 1;
-    if (s.outcome !== 'ok') row.failures += 1;
+    if (s.outcome !== 'ok') row.processFailures += 1;
     row.sumWeighted += s.weighted ?? 0;
     if (typeof s.duration_ms === 'number' && Number.isFinite(s.duration_ms)) row.durations.push(s.duration_ms);
     if (c !== null) row.costUsd = (row.costUsd ?? 0) + c;
@@ -154,22 +154,22 @@ function buildTotals(signals: SignalEvent[], pricing?: PricingTable): TotalsBloc
 
   const byModel = [...byModelMap.entries()]
     .map(([model, row]) => {
-      const successes = row.runs - row.failures;
+      const completedRuns = row.runs - row.processFailures;
       return {
         model,
         runs: row.runs,
-        failures: row.failures,
+        processFailures: row.processFailures,
         sumWeighted: row.sumWeighted,
         avgDurationMs: avg(row.durations),
         costUsd: row.costUsd,
-        costPerSuccess: row.costUsd === null || successes === 0 ? null : row.costUsd / successes,
+        costPerCompletedRun: row.costUsd === null || completedRuns === 0 ? null : row.costUsd / completedRuns,
       };
     })
     .sort((a, b) => b.runs - a.runs || a.model.localeCompare(b.model));
 
   return {
     runs: runs.length,
-    failures,
+    processFailures,
     sumWeighted,
     sumTokens,
     cacheHitRatio: sumTokens === null || denom === 0 ? null : (sumTokens.cache_read / denom) * 100,

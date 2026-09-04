@@ -405,7 +405,7 @@ describe('buildAnalyticsReport: rule ranking (Q4)', () => {
   });
 });
 
-describe('buildAnalyticsReport: funnel (Q6)', () => {
+describe('buildAnalyticsReport: weeklyActivity (Q6)', () => {
   it('2 недели: writes/delivers/triggers + конверсии; пустая неделя → null-конверсии', async () => {
     const events: MemoryEvent[] = [
       memEvent('memory.added', 'm1', '2026-09-01T10:00:00Z'),
@@ -421,8 +421,8 @@ describe('buildAnalyticsReport: funnel (Q6)', () => {
       { signals, runLogText: null, weeks: 2 }
     );
     // текущий понедельник 2026-08-31 (ср. часы 2026-09-03 — четверг); бакеты от старой к новой
-    expect(report.funnel).toHaveLength(2);
-    expect(report.funnel[0]).toEqual({
+    expect(report.weeklyActivity).toHaveLength(2);
+    expect(report.weeklyActivity[0]).toEqual({
       week: '2026-08-24',
       writes: 0,
       delivers: 0,
@@ -430,7 +430,7 @@ describe('buildAnalyticsReport: funnel (Q6)', () => {
       writeToDeliverPct: null,
       deliverToTriggerPct: null,
     });
-    const w = report.funnel[1]!;
+    const w = report.weeklyActivity[1]!;
     expect(w.week).toBe('2026-08-31');
     expect(w.writes).toBe(2);
     expect(w.delivers).toBe(3);
@@ -516,20 +516,20 @@ describe('buildAnalyticsReport: agent ledger (Q11)', () => {
     expect(report.agents[0]).toEqual({
       agent: 'worker',
       runs: 2,
-      failures: 1,
-      failureRatePct: 50,
+      processFailures: 1,
+      processFailureRatePct: 50,
       weighted: 150,
       avgDurationMs: 45_000,
       costUsd: null, // без pricing
       toolErrors: 1,
       complaintsBy: 0,
       complaintsAbout: 1, // about содержит 'worker'
-      successes: 1,
+      completedRuns: 1,
       holdoutPrevented: 4, // lesson created_by agent:worker
     });
     const steward = report.agents[1]!;
     expect(steward.runs).toBe(0);
-    expect(steward.failureRatePct).toBeNull();
+    expect(steward.processFailureRatePct).toBeNull();
     expect(steward.complaintsBy).toBe(1); // жалоба подана от agent:steward
     expect(steward.complaintsAbout).toBe(0);
     expect(steward.holdoutPrevented).toBeNull(); // ни одного holdout-поля у его объектов

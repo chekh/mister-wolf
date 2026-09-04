@@ -48,15 +48,15 @@ function fixtureReport(): AnalyticsReport {
   const agentRow = (agent: string): AgentLedgerRow => ({
     agent,
     runs: 1,
-    failures: 0,
-    failureRatePct: 0,
+    processFailures: 0,
+    processFailureRatePct: 0,
     weighted: 1,
     avgDurationMs: 100,
     costUsd: null,
     toolErrors: 0,
     complaintsBy: 0,
     complaintsAbout: 0,
-    successes: 1,
+    completedRuns: 1,
     holdoutPrevented: null,
   });
   return {
@@ -74,7 +74,7 @@ function fixtureReport(): AnalyticsReport {
     },
     tools: [toolRow('tool-script', 'script'), toolRow('tool-native', 'model-native')],
     rules: [ruleRow('rule-silent', true), ruleRow('rule-loud', false)],
-    funnel: [
+    weeklyActivity: [
       {
         week: '2026-W36',
         writes: 1,

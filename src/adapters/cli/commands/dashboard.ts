@@ -9,7 +9,7 @@ import { resolveThresholds } from '../../../app/use-cases/effectiveness.js';
 import { buildDashboard, type DashboardData } from '../../../app/use-cases/build-dashboard.js';
 import { filterAnalytics } from '../../../app/use-cases/build-analytics.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
-import { renderTable, formatFunnelRatio } from './table-render.js';
+import { renderTable } from './table-render.js';
 
 /** §6.1 + D8 спеки аналитики: консольный дашборд — Unicode-таблицы, спарклайны,
  * статусы-значки; ноль зависимостей, БЕЗ записи файлов (HTML отложен). Рендер —
@@ -136,13 +136,13 @@ export function renderLedgers(d: DashboardData): string {
   if (agents.view === 'agents') {
     parts.push(
       renderTable(
-        ['agent', 'runs', 'weighted', 'avg_ms', 'fail_%', 'compl by/about', 'prevented'],
+        ['agent', 'runs', 'weighted', 'avg_ms', 'pfail_%', 'compl by/about', 'prevented'],
         agents.rows.map((r) => [
           r.agent,
           cell(r.runs),
           cell(r.weighted),
           cell(r.avgDurationMs),
-          cell(r.failureRatePct === null ? null : r.failureRatePct.toFixed(1)),
+          cell(r.processFailureRatePct === null ? null : r.processFailureRatePct.toFixed(1)),
           `${r.complaintsBy}/${r.complaintsAbout}`,
           cell(r.holdoutPrevented),
         ])
@@ -186,26 +186,20 @@ export function renderLedgers(d: DashboardData): string {
   return parts.join('\n');
 }
 
-/** Секция trends (L3): спарклайны по снапшотам, недельная воронка, cache-hit, readiness, steward, councils. */
+/** Секция trends (L3): спарклайны по снапшотам, недельная активность, cache-hit, readiness, steward, councils. */
 export function renderTrends(baseDir: string, d: DashboardData): string {
   const parts: string[] = ['== trends =='];
 
   const snaps = readSnapshots(baseDir);
   parts.push(...trendSparklineLines(snaps));
 
-  const funnel = filterAnalytics(d.analytics, { view: 'funnel', top: 20 });
-  if (funnel.view === 'funnel') {
+  // D1: текст без колонок конверсии; проценты остаются только в JSON (WeeklyActivityWeek)
+  const weeklyActivity = filterAnalytics(d.analytics, { view: 'weeklyActivity', top: 20 });
+  if (weeklyActivity.view === 'weeklyActivity') {
     parts.push(
       renderTable(
-        ['week', 'writes', 'delivers', 'triggers', 'W->D', 'D->T'],
-        funnel.weeks.map((r) => [
-          r.week,
-          cell(r.writes),
-          cell(r.delivers),
-          cell(r.triggers),
-          formatFunnelRatio(r.writeToDeliverPct),
-          formatFunnelRatio(r.deliverToTriggerPct),
-        ])
+        ['week', 'writes', 'delivers', 'triggers'],
+        weeklyActivity.weeks.map((r) => [r.week, cell(r.writes), cell(r.delivers), cell(r.triggers)])
       )
     );
   }

@@ -51,7 +51,7 @@ export function flattenReportNumbers(report: EffectivenessReport): Map<string, n
 /** M3: плоские числа totals для дельты снапшотов (Q9); null-поля не попадают в дельту. */
 function flattenTotals(flat: Map<string, number>, t: TotalsBlock): void {
   flat.set('totals.runs', t.runs);
-  flat.set('totals.failures', t.failures);
+  flat.set('totals.processFailures', t.processFailures);
   flat.set('totals.sumWeighted', t.sumWeighted);
   if (t.sumTokens !== null) {
     flat.set('totals.sumTokens.input', t.sumTokens.input);
@@ -63,11 +63,11 @@ function flattenTotals(flat: Map<string, number>, t: TotalsBlock): void {
   put(flat, 'totals.costUsd', t.costUsd);
   for (const row of t.byModel) {
     flat.set(`totals.byModel.${row.model}.runs`, row.runs);
-    flat.set(`totals.byModel.${row.model}.failures`, row.failures);
+    flat.set(`totals.byModel.${row.model}.processFailures`, row.processFailures);
     flat.set(`totals.byModel.${row.model}.sumWeighted`, row.sumWeighted);
     put(flat, `totals.byModel.${row.model}.avgDurationMs`, row.avgDurationMs);
     put(flat, `totals.byModel.${row.model}.costUsd`, row.costUsd);
-    put(flat, `totals.byModel.${row.model}.costPerSuccess`, row.costPerSuccess);
+    put(flat, `totals.byModel.${row.model}.costPerCompletedRun`, row.costPerCompletedRun);
   }
 }
 

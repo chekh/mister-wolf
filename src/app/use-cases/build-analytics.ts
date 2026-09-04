@@ -1,5 +1,5 @@
 /**
- * M5 (ядро L2): `wolf analytics` — реестры и воронка (Q1–Q4, Q6, Q8, Q10–Q12).
+ * M5 (ядро L2): `wolf analytics` — реестры и недельная активность (Q1–Q4, Q6, Q8, Q10–Q12).
  * Чистая детерминированная агрегация store + signals + event-log + run-log, без LLM.
  * Дизайн: docs/superpowers/specs/2026-09-03-analytics-metrics-dashboard-design.md §5 M5, §6.2.
  */
@@ -86,7 +86,7 @@ export interface RuleRankingRow {
   silent: boolean;
 }
 
-export interface FunnelWeek {
+export interface WeeklyActivityWeek {
   week: string;
   writes: number;
   delivers: number;
@@ -108,15 +108,15 @@ export interface OutlierRun {
 export interface AgentLedgerRow {
   agent: string;
   runs: number;
-  failures: number;
-  failureRatePct: number | null;
+  processFailures: number;
+  processFailureRatePct: number | null;
   weighted: number;
   avgDurationMs: number | null;
   costUsd: number | null;
   toolErrors: number;
   complaintsBy: number;
   complaintsAbout: number;
-  successes: number;
+  completedRuns: number;
   holdoutPrevented: number | null;
 }
 
@@ -179,7 +179,7 @@ export interface AnalyticsReport {
   memory: { rows: MemoryLedgerRow[]; garbage: GarbageStats };
   tools: ToolLedgerRow[];
   rules: RuleRankingRow[];
-  funnel: FunnelWeek[];
+  weeklyActivity: WeeklyActivityWeek[];
   outliers: OutlierRun[];
   agents: AgentLedgerRow[];
   steward: StewardView;
@@ -402,9 +402,15 @@ function weekBuckets(now: Date, weeks: number): string[] {
   return keys;
 }
 
-/** Воронка Q6: write (memory.added) → deliver (delivery-сигналы) → trigger (уникальные имена).
- * prevented НЕ входит: holdout-счётчики кумулятивны, без таймстампов (спека §5 M5, rev.4). */
-function buildFunnel(events: MemoryEvent[], signals: SignalEvent[], now: Date, weeks: number): FunnelWeek[] {
+/** Недельная активность Q6: write (memory.added) → deliver (delivery-сигналы) → trigger
+ * (уникальные имена). prevented НЕ входит: holdout-счётчики кумулятивны, без
+ * таймстампов (спека §5 M5, rev.4). */
+function buildWeeklyActivity(
+  events: MemoryEvent[],
+  signals: SignalEvent[],
+  now: Date,
+  weeks: number
+): WeeklyActivityWeek[] {
   const buckets = new Map<string, { week: string; writes: number; delivers: number; names: Set<string> }>();
   for (const week of weekBuckets(now, weeks)) {
     buckets.set(week, { week, writes: 0, delivers: 0, names: new Set<string>() });
@@ -449,8 +455,8 @@ function buildOutliers(runLogText: string | null, pricing: PricingTable | undefi
 }
 
 /** Agent ledger Q11: строки по run-агентам ∪ complaint-акторам `agent:<имя>`; три уровня —
- * объём (runs/weighted/duration/cost), проблемы (failures/toolErrors/жалобы), достижения
- * (successes/holdout_prevented его rule/lesson). */
+ * объём (runs/weighted/duration/cost), проблемы (processFailures/toolErrors/жалобы), достижения
+ * (completedRuns/holdout_prevented его rule/lesson). */
 function buildAgents(
   signals: SignalEvent[],
   objects: MemoryObject[],
@@ -459,8 +465,8 @@ function buildAgents(
   const AGENT_PREFIX = 'agent:';
   interface AgentAcc {
     runs: number;
-    failures: number;
-    successes: number;
+    processFailures: number;
+    completedRuns: number;
     weighted: number;
     durations: number[];
     cost: number | null;
@@ -476,8 +482,8 @@ function buildAgents(
     if (r === undefined) {
       r = {
         runs: 0,
-        failures: 0,
-        successes: 0,
+        processFailures: 0,
+        completedRuns: 0,
         weighted: 0,
         durations: [],
         cost: null,
@@ -497,8 +503,8 @@ function buildAgents(
     if (ev.event === 'run' && typeof ev.gen_ai.agent === 'string' && ev.gen_ai.agent !== '') {
       const r = rowOf(ev.gen_ai.agent);
       r.runs += 1;
-      if (ev.outcome === 'ok') r.successes += 1;
-      else r.failures += 1;
+      if (ev.outcome === 'ok') r.completedRuns += 1;
+      else r.processFailures += 1;
       r.weighted += finiteNumber(ev.weighted) ?? 0;
       const d = finiteNumber(ev.duration_ms);
       if (d !== null) r.durations.push(d);
@@ -545,15 +551,15 @@ function buildAgents(
     .map(([agent, r]) => ({
       agent,
       runs: r.runs,
-      failures: r.failures,
-      failureRatePct: r.runs > 0 ? (r.failures / r.runs) * 100 : null,
+      processFailures: r.processFailures,
+      processFailureRatePct: r.runs > 0 ? (r.processFailures / r.runs) * 100 : null,
       weighted: r.weighted,
       avgDurationMs: r.durations.length > 0 ? r.durations.reduce((s, v) => s + v, 0) / r.durations.length : null,
       costUsd: r.cost,
       toolErrors: r.toolErrors,
       complaintsBy: r.complaintsBy,
       complaintsAbout: r.complaintsAbout,
-      successes: r.successes,
+      completedRuns: r.completedRuns,
       holdoutPrevented: r.hasHoldout ? r.holdoutSum : null,
     }))
     .sort((a, b) => b.runs - a.runs || a.agent.localeCompare(b.agent));
@@ -580,7 +586,7 @@ function mutationKindOf(ev: MemoryEvent): string | null {
 
 const MUTATION_KINDS = ['update', 'supersede', 'resolve', 'transition', 'tool-mutation'] as const;
 
-/** Steward view Q12: мутации за окно weeks (то же, что воронка), жалобная воронка,
+/** Steward view Q12: мутации за окно weeks (то же, что weekly activity), жалобная воронка,
  * SLA-эскалации (dispatch_ages >= 3), рецидивы, churn, доля авто-мутаций. */
 function buildSteward(
   events: MemoryEvent[],
@@ -749,7 +755,7 @@ async function buildCouncils(
     answersByQuestion.set(r.object, arr);
   }
 
-  // недельные бакеты (те же ключи, что воронка) по mondayOf(created_at)
+  // недельные бакеты (те же ключи, что weekly activity) по mondayOf(created_at)
   const buckets = new Map<string, CouncilWeekActivity>(
     weekBuckets(now, weeks).map((week) => [week, { week, questions: 0, opinions: 0, syntheses: 0 }])
   );
@@ -873,7 +879,7 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
     allObjects.filter((o) => o.type === 'rule'),
     input.signals
   );
-  const funnel = buildFunnel(events, input.signals, now, weeks);
+  const weeklyActivity = buildWeeklyActivity(events, input.signals, now, weeks);
   const outliers = buildOutliers(input.runLogText, input.pricing, input.topOutliers ?? 10);
   const agents = buildAgents(input.signals, allObjects, input.pricing);
   const steward = buildSteward(events, input.signals, allObjects, now, weeks);
@@ -886,7 +892,7 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
     memory,
     tools,
     rules,
-    funnel,
+    weeklyActivity,
     outliers,
     agents,
     steward,
@@ -900,7 +906,17 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
 // ---------------------------------------------------------------------------
 
 export interface AnalyticsViewFilter {
-  view: 'memory' | 'tools' | 'rules' | 'funnel' | 'agents' | 'steward' | 'outliers' | 'readiness' | 'councils' | 'all';
+  view:
+    | 'memory'
+    | 'tools'
+    | 'rules'
+    | 'weeklyActivity'
+    | 'agents'
+    | 'steward'
+    | 'outliers'
+    | 'readiness'
+    | 'councils'
+    | 'all';
   class?: 'new' | 'sleeper' | 'workhorse' | 'dead';
   type?: string;
   origin?: 'script' | 'model-native';
@@ -913,7 +929,7 @@ export type AnalyticsViewPayload =
   | { view: 'memory'; rows: MemoryLedgerRow[]; garbage: GarbageStats }
   | { view: 'tools'; rows: ToolLedgerRow[] }
   | { view: 'rules'; rows: RuleRankingRow[] }
-  | { view: 'funnel'; weeks: FunnelWeek[] }
+  | { view: 'weeklyActivity'; weeks: WeeklyActivityWeek[] }
   | { view: 'agents'; rows: AgentLedgerRow[] }
   | { view: 'steward'; steward: StewardView }
   | { view: 'outliers'; runs: OutlierRun[] }
@@ -941,8 +957,8 @@ export function filterAnalytics(report: AnalyticsReport, filter: AnalyticsViewFi
       if (filter.silent !== undefined) rows = rows.filter((r) => r.silent === filter.silent);
       return { view: 'rules', rows: rows.slice(0, top) };
     }
-    case 'funnel':
-      return { view: 'funnel', weeks: report.funnel };
+    case 'weeklyActivity':
+      return { view: 'weeklyActivity', weeks: report.weeklyActivity };
     case 'agents': {
       let rows = report.agents;
       if (filter.agent !== undefined) rows = rows.filter((r) => r.agent === filter.agent);

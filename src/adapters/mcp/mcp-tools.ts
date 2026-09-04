@@ -324,7 +324,7 @@ export function registerMemoryTools(
     'analytics',
     {
       description:
-        'Effectiveness analytics: ledgers (memory/tools/rules), funnel, agents, steward view, councils, outliers, experiment readiness — same JSON as `wolf analytics --json`',
+        'Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness — same JSON as `wolf analytics --json`',
       inputSchema: AnalyticsInputSchema,
     },
     async (input: unknown) => {
@@ -333,7 +333,7 @@ export function registerMemoryTools(
           | 'memory'
           | 'tools'
           | 'rules'
-          | 'funnel'
+          | 'weeklyActivity'
           | 'agents'
           | 'steward'
           | 'outliers'
