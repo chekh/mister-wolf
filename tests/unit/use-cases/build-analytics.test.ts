@@ -14,6 +14,7 @@ import type { Clock } from '../../../src/ports/clock.port.js';
 import type { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
 import type { MemoryEvent } from '../../../src/domain/schemas/memory-event-schema.js';
 import type { SignalEvent } from '../../../src/adapters/fs/session-metrics-log.js';
+import type { PricingTable } from '../../../src/domain/pricing.js';
 
 type Extra = Record<string, unknown>;
 
@@ -813,13 +814,84 @@ describe('buildAnalyticsReport: dataQuality (D7, критерий №6 — би�
       { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
       { signals: [], runLogText: null, signalLogStats: { malformedLines: 1, totalLines: 4 } }
     );
-    expect(report.dataQuality).toEqual({ validEventRatePct: 75, malformedLines: 1 });
+    expect(report.dataQuality).toEqual({
+      validEventRatePct: 75,
+      malformedLines: 1,
+      duplicateEventRatePct: null,
+      unknownModelRatePct: null,
+      pricingCoveragePct: null,
+      completeTraceRatePct: null,
+      completeTraceRateReason: 'span model planned P2',
+    });
 
     const noStats = await buildAnalyticsReport(
       { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
       { signals: [], runLogText: null }
     );
-    expect(noStats.dataQuality).toEqual({ validEventRatePct: null, malformedLines: 0 });
+    expect(noStats.dataQuality).toEqual({
+      validEventRatePct: null,
+      malformedLines: 0,
+      duplicateEventRatePct: null,
+      unknownModelRatePct: null,
+      pricingCoveragePct: null,
+      completeTraceRatePct: null,
+      completeTraceRateReason: 'span model planned P2',
+    });
+  });
+});
+
+describe('P1 D6+D7 data-quality v2', () => {
+  const deps = { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock };
+
+  it('дубль event_id: duplicateEventRatePct=100; дубль не попадает в аналитику (runs=1)', async () => {
+    const signals: SignalEvent[] = [
+      { ...runSignal({ agent: 'w', outcome: 'ok', ts: T(1) }), event_id: 'ev-1' },
+      { ...runSignal({ agent: 'w', outcome: 'ok', ts: T(2) }), event_id: 'ev-1' },
+    ];
+    const report = await buildAnalyticsReport(deps, { signals, runLogText: null });
+    expect(report.dataQuality.duplicateEventRatePct).toBe(100);
+    expect(report.coverage.runs).toBe(1);
+    expect(report.readiness.totalRuns).toBe(1);
+  });
+
+  it('unknownModelRatePct: null-модель + обычная → 50; сигналы без run → null', async () => {
+    const mixed = await buildAnalyticsReport(deps, {
+      signals: [runSignal({ model: null }), runSignal({ model: 'm1' })],
+      runLogText: null,
+    });
+    expect(mixed.dataQuality.unknownModelRatePct).toBe(50);
+
+    const noRuns = await buildAnalyticsReport(deps, { signals: [deliveryEvent('mem-1', T(1))], runLogText: null });
+    expect(noRuns.dataQuality.unknownModelRatePct).toBe(null);
+  });
+
+  it('pricingCoveragePct: 1 из 2 run с tokens покрыт → 50; без pricing → null', async () => {
+    const pricing: PricingTable = { m1: { input: 0.6, output: 2.2, cache_read: 0.06 } };
+    const tokens = { input: 1000, output: 200, cache_read: 500 };
+    const signals: SignalEvent[] = [
+      { ...runSignal({ model: 'm1' }), tokens },
+      { ...runSignal({ model: 'm-unpriced' }), tokens },
+    ];
+    const withPricing = await buildAnalyticsReport(deps, { signals, runLogText: null, pricing });
+    expect(withPricing.dataQuality.pricingCoveragePct).toBe(50);
+
+    const noPricing = await buildAnalyticsReport(deps, { signals, runLogText: null });
+    expect(noPricing.dataQuality.pricingCoveragePct).toBe(null);
+  });
+
+  it('completeTraceRatePct === null; completeTraceRateReason — span model planned P2', async () => {
+    const report = await buildAnalyticsReport(deps, { signals: [], runLogText: null });
+    expect(report.dataQuality.completeTraceRatePct).toBe(null);
+    expect(report.dataQuality.completeTraceRateReason).toBe('span model planned P2');
+  });
+
+  it('смесь v1 (без event_id) + v2: v1 не влияет на знаменатель duplicate-метрики', async () => {
+    const signals: SignalEvent[] = [
+      runSignal({ agent: 'w', outcome: 'ok' }), // v1: без event_id
+      { ...runSignal({ agent: 'w', outcome: 'ok' }), event_id: 'ev-1' },
+    ];
+    const report = await buildAnalyticsReport(deps, { signals, runLogText: null });
+    expect(report.dataQuality.duplicateEventRatePct).toBe(0); // 0 дублей / 1 уникальный event_id
   });
 });
 

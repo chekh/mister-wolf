@@ -98,7 +98,15 @@ function fixtureReport(): AnalyticsReport {
     readiness: { totalRuns: 0, withArm: 0, withArmPct: null, byArm: [], byExperiment: [] },
     acceptance: { accepted: 0, costPerAcceptedTask: null },
     coverage: { scored: 1, runs: 3, scoredTaskRatePct: 100 / 3 },
-    dataQuality: { validEventRatePct: 75, malformedLines: 1 },
+    dataQuality: {
+      validEventRatePct: 75,
+      malformedLines: 1,
+      duplicateEventRatePct: 50,
+      unknownModelRatePct: 25,
+      pricingCoveragePct: 100,
+      completeTraceRatePct: null,
+      completeTraceRateReason: 'span model planned P2',
+    },
     councils: {
       questions: { total: 2, inWindow: 1, open: 1 },
       opinions: { total: 5, perQuestionMin: 0, perQuestionAvg: 2.5, perQuestionMax: 5 },
@@ -255,6 +263,10 @@ describe('renderAllSections: coverage/dataQuality строки честност�
     const out = renderAllSections(report, { view: 'all' });
     expect(out).toContain('coverage: partial — scored 1/3 (33.3%)');
     expect(out).toContain('dataQuality: valid 75.0% (malformed lines: 1)');
+    expect(out).toContain('duplicateEventRatePct: 50.0%');
+    expect(out).toContain('unknownModelRatePct: 25.0%');
+    expect(out).toContain('pricingCoveragePct: 100.0%');
+    expect(out).toContain('completeTraceRatePct: n/a (span model planned P2)');
   });
 
   it('coverage-строка НЕ появляется при 100% и при runs=0; dataQuality при null → n/a', () => {
@@ -264,7 +276,15 @@ describe('renderAllSections: coverage/dataQuality строки честност�
 
     const noRuns = fixtureReport();
     noRuns.coverage = { scored: 0, runs: 0, scoredTaskRatePct: null };
-    noRuns.dataQuality = { validEventRatePct: null, malformedLines: 0 };
+    noRuns.dataQuality = {
+      validEventRatePct: null,
+      malformedLines: 0,
+      duplicateEventRatePct: null,
+      unknownModelRatePct: null,
+      pricingCoveragePct: null,
+      completeTraceRatePct: null,
+      completeTraceRateReason: 'span model planned P2',
+    };
     const out = renderAllSections(noRuns, { view: 'all' });
     expect(out).not.toContain('coverage: partial');
     expect(out).toContain('dataQuality: n/a');

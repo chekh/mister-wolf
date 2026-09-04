@@ -86,7 +86,15 @@ describe('buildDashboard (композиция effectiveness + analytics + snaps
     expect(data.effectiveness).toBeDefined();
     expect(data.analytics).toBeDefined();
     // без signalLogStats (D7) → dataQuality n/a
-    expect(data.analytics.dataQuality).toEqual({ validEventRatePct: null, malformedLines: 0 });
+    expect(data.analytics.dataQuality).toEqual({
+      validEventRatePct: null,
+      malformedLines: 0,
+      duplicateEventRatePct: null,
+      unknownModelRatePct: null,
+      pricingCoveragePct: null,
+      completeTraceRatePct: null,
+      completeTraceRateReason: 'span model planned P2',
+    });
   });
 
   it('signalLogStats passthrough -> analytics.dataQuality (D7)', async () => {
@@ -100,7 +108,15 @@ describe('buildDashboard (композиция effectiveness + analytics + snaps
         signalLogStats: { malformedLines: 1, totalLines: 4 },
       }
     );
-    expect(data.analytics.dataQuality).toEqual({ validEventRatePct: 75, malformedLines: 1 });
+    expect(data.analytics.dataQuality).toEqual({
+      validEventRatePct: 75,
+      malformedLines: 1,
+      duplicateEventRatePct: null,
+      unknownModelRatePct: null,
+      pricingCoveragePct: null,
+      completeTraceRatePct: null,
+      completeTraceRateReason: 'span model planned P2',
+    });
   });
 
   it('prevSnapshot с другим отчётом -> delta содержит изменившийся path', async () => {

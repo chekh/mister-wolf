@@ -139,6 +139,15 @@ export interface CoverageStats {
 export interface DataQualityStats {
   validEventRatePct: number | null;
   malformedLines: number;
+  /** D6: повторы event_id в логе (вторая копия в аналитику не попадает); null — нет событий с event_id. */
+  duplicateEventRatePct: number | null;
+  /** D6: run-события с modelID null/'unknown' / все run-события; null — нет run-событий. */
+  unknownModelRatePct: number | null;
+  /** D6: run с tokens, чья модель есть в pricing / все run с tokens; null — pricing нет или нет run с tokens. */
+  pricingCoveragePct: number | null;
+  /** D6: всегда null до span-модели (P2). */
+  completeTraceRatePct: null;
+  completeTraceRateReason: string;
 }
 
 export interface StewardView {
@@ -945,40 +954,69 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
   const events = await deps.log.readAll();
   const weeks = input.weeks ?? 8;
 
-  const memory = buildMemoryLedger(allObjects, events, input.signals, now, thresholds);
+  // P1 D7: дедуп signals по event_id (остаётся первая копия по порядку) — повтор не
+  // попадает ни в один построитель отчёта; считается метрикой duplicateEventRatePct.
+  const seenEventIds = new Set<string>();
+  let duplicateLines = 0;
+  const signals: SignalEvent[] = [];
+  for (const s of input.signals) {
+    if (s.event_id === undefined) {
+      signals.push(s);
+      continue;
+    }
+    if (seenEventIds.has(s.event_id)) {
+      duplicateLines += 1;
+      continue;
+    }
+    seenEventIds.add(s.event_id);
+    signals.push(s);
+  }
+
+  const memory = buildMemoryLedger(allObjects, events, signals, now, thresholds);
   // P1 D4: канонический источник run-метрик — сигналы + compat-мерж legacy run-log
-  const runEntries = mergeRunEntries(input.signals, input.runLogText);
+  const runEntries = mergeRunEntries(signals, input.runLogText);
   const tools = buildToolLedger(
     allObjects.filter((o) => o.type === 'tool'),
-    input.signals,
+    signals,
     runEntries,
     input.patternThreshold ?? DEFAULT_PATTERN_THRESHOLD
   );
   const rules = buildRuleRanking(
     allObjects.filter((o) => o.type === 'rule'),
-    input.signals
+    signals
   );
-  const weeklyActivity = buildWeeklyActivity(events, input.signals, now, weeks);
+  const weeklyActivity = buildWeeklyActivity(events, signals, now, weeks);
   const outliers = buildOutliers(runEntries, input.pricing, input.topOutliers ?? 10);
-  const acceptance = buildAcceptance(input.signals);
-  const agents = buildAgents(input.signals, allObjects, input.pricing, acceptance.acceptedByAgent);
-  const steward = buildSteward(events, input.signals, allObjects, now, weeks);
-  const readiness = buildReadiness(input.signals);
+  const acceptance = buildAcceptance(signals);
+  const agents = buildAgents(signals, allObjects, input.pricing, acceptance.acceptedByAgent);
+  const steward = buildSteward(events, signals, allObjects, now, weeks);
+  const readiness = buildReadiness(signals);
   const councils = await buildCouncils(allObjects, deps.relations, now, weeks);
-  const coverage = buildCoverage(input.signals);
+  const coverage = buildCoverage(signals);
+  // D6: unknown-model и pricing-coverage по дедуплицированным run-сигналам
+  const runSignals = signals.filter((s) => s.event === 'run');
+  const unknownModels = runSignals.filter((s) => s.gen_ai.modelID === null || s.gen_ai.modelID === 'unknown').length;
+  const runsWithTokens = runSignals.filter((s) => s.tokens !== undefined);
+  const pricedRuns =
+    input.pricing === undefined
+      ? 0
+      : runsWithTokens.filter((s) => runCostUsd(s.tokens, input.pricing, s.gen_ai.modelID) !== null).length;
   // D7: без signalLogStats (старые вызывающие) → n/a; totalLines=0 → null-процент
-  const dataQuality: DataQualityStats =
-    input.signalLogStats === undefined
-      ? { validEventRatePct: null, malformedLines: 0 }
-      : {
-          validEventRatePct:
-            input.signalLogStats.totalLines > 0
-              ? ((input.signalLogStats.totalLines - input.signalLogStats.malformedLines) /
-                  input.signalLogStats.totalLines) *
-                100
-              : null,
-          malformedLines: input.signalLogStats.malformedLines,
-        };
+  const dataQuality: DataQualityStats = {
+    validEventRatePct:
+      input.signalLogStats === undefined || input.signalLogStats.totalLines <= 0
+        ? null
+        : ((input.signalLogStats.totalLines - input.signalLogStats.malformedLines) / input.signalLogStats.totalLines) *
+          100,
+    malformedLines: input.signalLogStats?.malformedLines ?? 0,
+    // повторы относительно уникальных event_id (v1-записи без event_id в знаменатель не входят)
+    duplicateEventRatePct: seenEventIds.size > 0 ? (duplicateLines / seenEventIds.size) * 100 : null,
+    unknownModelRatePct: runSignals.length > 0 ? (unknownModels / runSignals.length) * 100 : null,
+    pricingCoveragePct:
+      input.pricing === undefined || runsWithTokens.length === 0 ? null : (pricedRuns / runsWithTokens.length) * 100,
+    completeTraceRatePct: null,
+    completeTraceRateReason: 'span model planned P2',
+  };
   return {
     generatedAt: now.toISOString(),
     thresholds,

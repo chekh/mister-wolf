@@ -235,11 +235,17 @@ export function coverageLine(c: AnalyticsReport['coverage']): string | null {
   return `coverage: partial — scored ${c.scored}/${c.runs} (${c.scoredTaskRatePct.toFixed(1)}%)`;
 }
 
-/** D7: строка dataQuality; nullText — текст при отсутствии stats (контекст вызывающего). */
+/** D7/D6: блок dataQuality; nullText — текст при отсутствии stats (контекст вызывающего). */
 export function dataQualityLine(q: AnalyticsReport['dataQuality'], nullText: string): string {
-  return q.validEventRatePct === null
-    ? `dataQuality: ${nullText}`
-    : `dataQuality: valid ${q.validEventRatePct.toFixed(1)}% (malformed lines: ${q.malformedLines})`;
+  if (q.validEventRatePct === null) return `dataQuality: ${nullText}`;
+  const pct = (v: number | null): string => (v === null ? 'n/a' : `${v.toFixed(1)}%`);
+  return [
+    `dataQuality: valid ${q.validEventRatePct.toFixed(1)}% (malformed lines: ${q.malformedLines})`,
+    `duplicateEventRatePct: ${pct(q.duplicateEventRatePct)}`,
+    `unknownModelRatePct: ${pct(q.unknownModelRatePct)}`,
+    `pricingCoveragePct: ${pct(q.pricingCoveragePct)}`,
+    `completeTraceRatePct: n/a (${q.completeTraceRateReason})`,
+  ].join('\n');
 }
 
 /** `view: 'all'`: все секции подряд, каждая — с теми же фильтрами (прокидываются в filterAnalytics);
