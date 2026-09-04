@@ -1,0 +1,113 @@
+mem_20260903_acceptance_readme_md_ssylka_na_security_1bffdf [decision] [active] Acceptance: README.md → ссылка на SECURITY.md
+mem_20260903_doc_2026-06-29-memory-control-plane-design_e5ae58dd [document-ref] [active] Design Spec: Mr. Wolf as Memory Control Plane
+mem_20260903_doc_2026-06-29-mvp-b-project-scan-agent-brie_70467e38 [document-ref] [active] Design Spec: MVP-B — Project Scan + Agent Brief
+mem_20260903_doc_2026-06-29-project-semantic-memory-core_dee04576 [document-ref] [active] Design Spec: Project Semantic Memory Core
+mem_20260903_doc_2026-06-30-phase-2-decisions-and-blocker_2a81be9c [document-ref] [active] Design Spec: Phase 2 — Decisions and Blockers
+mem_20260903_doc_2026-07-01-mcp-server-integration-design_4223bfd6 [document-ref] [active] MCP Server Integration Design
+mem_20260903_doc_2026-07-02-incremental-indexing-blocker_76bc77f3 [document-ref] [active] Design: Resolve Incremental Indexing Blocker
+mem_20260903_doc_2026-07-02-phase-6-governance-design_f3312aa7 [document-ref] [active] Design: Phase 6 — Governance
+mem_20260903_doc_2026-07-02-recallium-mr-wolf-synthesis_9b441e5a [document-ref] [active] Синтез: лучшие решения Recallium и Mr. Wolf для Mr. Wolf
+mem_20260903_doc_2026-07-02-session-wrap-up-habit-design_9c58a722 [document-ref] [active] Design: Session Wrap-Up Habit
+mem_20260903_doc_2026-07-03-wolf-solve_f5823bd2 [document-ref] [active] Mr. Wolf Solve / Call: Memory-Assisted Problem Repair UX
+mem_20260903_doc_2026-07-29-deterministic-refinement-pipe_9c3d4dc1 [document-ref] [active] Deterministic Multi-Round Refinement Pipeline
+mem_20260903_doc_2026-08-23-phase-8-schema-taxonomy_27d6ca41 [document-ref] [active] Мастер-план: Phase 8 — Schema-driven taxonomy + оркестрационные типы + надёжность записи
+mem_20260903_doc_2026-08-23-phase-8-schema-taxonomy_49fbe96e [document-ref] [active] Phase 8 — Schema-Driven Taxonomy + Оркестрационные типы + Надёжность записи + Одна миграция layout — Implementation Plan
+mem_20260903_doc_2026-08-23-phase-9-solve-call_41900346 [document-ref] [active] Phase 9 — wolf solve / wolf call: Memory-Assisted Problem Repair — Implementation Plan
+mem_20260903_doc_2026-08-26-phase-10-insights_70e1fda5 [document-ref] [active] Phase 10 — wolf insights: эвристическая аналитика памяти (Level 1) — Implementation Plan
+mem_20260903_doc_2026-08-26-phase-11-thinking_fa14f845 [document-ref] [active] Phase 11 — wolf think: структурированные последовательности рассуждений — Implementation Plan
+mem_20260903_doc_2026-08-26-self-learning-design_05ed992f [document-ref] [active] Self-Learning Design — контур обучения Mr.Wolf v1
+mem_20260903_doc_2026-08-30-distribution-install-design_ec66571d [document-ref] [active] Дизайн: дистрибуция и инсталляция Mr.Wolf
+mem_20260903_doc_2026-08-30-distribution-install_17d9332b [document-ref] [active] Дистрибуция и инсталляция Mr.Wolf — Implementation Plan
+mem_20260903_doc_2026-08-30-web-gui-design_d865a8ac [document-ref] [active] Дизайн: Web GUI (wolf serve + SPA)
+mem_20260903_doc_2026-08-31-base-sets-design_c3382685 [document-ref] [active] Дизайн: базовые наборы агентов/скиллов/команд Wolf
+mem_20260903_doc_2026-08-31-base-sets_cb98ad03 [document-ref] [active] Base Sets (агенты/скиллы/команды) Implementation Plan — ревизия 3
+mem_20260903_doc_2026-09-01-complaint-loop-v2-design_590d5d27 [document-ref] [active] Дизайн: жалобный контур v2 — жалоба объектом памяти, триаж диспетчером
+mem_20260903_doc_2026-09-01-onboarding-pipeline-v2_bb52e4ef [document-ref] [active] Дизайн: онбординг-пайплайн v2 — init → bootstrap → первая сессия → завершение
+mem_20260903_doc_2026-09-02-findings-2-1-0_0efd63fa [document-ref] [active] Спека 2.1.0: остатки догфудинга — канон id документов, таксономия, UX логов, изоляция тестов
+mem_20260903_doc_2026-09-03-analytics-metrics-dashboard-d_b019efab [document-ref] [active] Дизайн: система аналитики эффективности — метрики, реестры, дашборд
+mem_20260903_doc_2026-09-03-playground-lab-design_758e3a7c [document-ref] [active] Дизайн: полигон испытаний `playground-lab/`
+mem_20260903_doc_2026-09-03-playground-lab_3d4c9c9d [document-ref] [active] Полигон испытаний playground-lab — план реализации
+mem_20260903_doc_agentic-tools-comparative-research_d7af15f1 [document-ref] [active] Agentic Tools Comparative Research
+mem_20260903_doc_agentic-tools-cross-findings_11f63ccf [document-ref] [active] Agentic Tools: Cross-project Findings
+mem_20260903_doc_agentic-tools-project-cards_93aa68aa [document-ref] [active] Agentic Tools: Project Cards
+mem_20260903_doc_agents_a54ff182 [document-ref] [active] AGENTS.md
+mem_20260903_doc_architecture_53c1cba8 [document-ref] [active] Архитектура Mr. Wolf
+mem_20260903_doc_changelog_06572a96 [document-ref] [active] Changelog
+mem_20260903_doc_cli_975000db [document-ref] [active] Справочник CLI Mr. Wolf (v0.1.0)
+mem_20260903_doc_code-of-conduct_ffdbe3a1 [document-ref] [active] Contributor Covenant Code of Conduct
+mem_20260903_doc_complaint-protocol_cb64d9ae [document-ref] [active] Протокол обработки жалоб (complaint protocol)
+mem_20260903_doc_concept_6da549e1 [document-ref] [active] Wolf: концепция
+mem_20260903_doc_configuration_66e2cdc0 [document-ref] [active] Configuration
+mem_20260903_doc_configuration_e5c99010 [document-ref] [active] Конфигурация
+mem_20260903_doc_contributing_eca12c0a [document-ref] [active] Contributing to mister-wolf
+mem_20260903_doc_core-concepts_56a6345a [document-ref] [active] Основные концепции
+mem_20260903_doc_core-concepts_ce18338b [document-ref] [active] Core Concepts
+mem_20260903_doc_coverage_fda8f9ae [document-ref] [active] Wolf: смысловое покрытие канона
+mem_20260903_doc_effectiveness_1231b61f [document-ref] [active] Панель эффективности и A/B-бенчмарки
+mem_20260903_doc_evidence_9d600d2c [document-ref] [active] Wolf: доказательная база
+mem_20260903_doc_getting-started_9025dafd [document-ref] [active] Начало работы
+mem_20260903_doc_getting-started_c2d5ad9e [document-ref] [active] Getting Started
+mem_20260903_doc_ideas-backlog_9e1e1a27 [document-ref] [active] Ideas Backlog — реестр зафиксированных, но не реализованных идей
+mem_20260903_doc_index_1f835668 [document-ref] [active] CLI Reference
+mem_20260903_doc_index_794a20ee [document-ref] [active] Справочник CLI
+mem_20260903_doc_index_8709f9f0 [document-ref] [active] index.md
+mem_20260903_doc_index_bb990766 [document-ref] [active] index.md
+mem_20260903_doc_learning_511909df [document-ref] [active] Самообучение
+mem_20260903_doc_learning_b69792ad [document-ref] [active] Learning
+mem_20260903_doc_master-plan-template_b2c1db7f [document-ref] [active] Мастер-план: [Название фичи]
+mem_20260903_doc_maturity_2bb3af16 [document-ref] [active] Wolf: зрелость компонентов
+mem_20260903_doc_mcp_c1d764b9 [document-ref] [active] MCP Integration
+mem_20260903_doc_mcp_d694c9e9 [document-ref] [active] Интеграция MCP
+mem_20260903_doc_memory-audit-2026-08-29_bc1cbb3a [document-ref] [active] Аудит памяти Wolf — 2026-08-29
+mem_20260903_doc_memory_0751d6dc [document-ref] [active] Память
+mem_20260903_doc_memory_2040967e [document-ref] [active] Memory
+mem_20260903_doc_overview_852b4a3a [document-ref] [active] Справочник CLI
+mem_20260903_doc_overview_8bd4d01a [document-ref] [active] CLI Reference
+mem_20260903_doc_platform_99fb325c [document-ref] [active] Platform & Maintenance
+mem_20260903_doc_platform_c6e69cd2 [document-ref] [active] Платформа и обслуживание
+mem_20260903_doc_readme-playground_12e0d3da [document-ref] [active] Mr. Wolf Playground (pristine)
+mem_20260903_doc_readme-ru_fb460bf7 [document-ref] [active] README.ru.md
+mem_20260903_doc_readme_0b5ca119 [document-ref] [active] Mr. Wolf Documentation
+mem_20260903_doc_readme_0e9d996c [document-ref] [active] UX-сценарии использования Mr. Wolf
+mem_20260903_doc_readme_b3356305 [document-ref] [active] README.md
+mem_20260903_doc_roadmap-v2_bf6b5cef [document-ref] [active] Mr. Wolf — Roadmap v2
+mem_20260903_doc_roadmap-v3_b819a4fe [document-ref] [active] Wolf: Roadmap v3
+mem_20260903_doc_s01-start-session-recall_f83effc7 [document-ref] [active] S01: Старт новой сессии — быстро войти в контекст
+mem_20260903_doc_s02-fix-repeated-agent-mistake_6b40b6ac [document-ref] [active] S02: Агент повторяет ошибку — исправить память через solve/call
+mem_20260903_doc_s03-long-running-thread_1161328f [document-ref] [active] S03: Долгоживущая задача — вести work-thread между сессиями
+mem_20260903_doc_s04-defer-side-question_72f36798 [document-ref] [active] S04: Побочное исследование — отложить через info-request
+mem_20260903_doc_s05-record-architecture-decision_4192b94a [document-ref] [active] S05: Архитектурное решение — зафиксировать decision
+mem_20260903_doc_s06-track-blocker_4665e590 [document-ref] [active] S06: Блокер — зафиксировать и разрешить
+mem_20260903_doc_s07-add-project-rule_ad820bde [document-ref] [active] S07: Правило проекта — добавить rule и заставить агентов следовать
+mem_20260903_doc_s08-search-why-done-this-way_42d0c763 [document-ref] [active] S08: Поиск по памяти — найти, почему так сделано
+mem_20260903_doc_s09-supersede-stale-knowledge_35f8f326 [document-ref] [active] S09: Устаревшее знание — заместить через supersede
+mem_20260903_doc_s10-wrap-up-session_18c06ca4 [document-ref] [active] S10: Конец сессии — зафиксировать итоги
+mem_20260903_doc_s11-onboard-new-developer_54ef8453 [document-ref] [active] S11: Новый разработчик — onboard через project memory
+mem_20260903_doc_s12-memory-audit_71161fef [document-ref] [active] S12: Аудит памяти — проверить, что не устарело
+mem_20260903_doc_security_f6ed156e [document-ref] [active] Security Policy
+mem_20260903_doc_sessions-context_4b38ebe5 [document-ref] [active] Sessions & Context
+mem_20260903_doc_sessions-context_a24f176c [document-ref] [active] Сессии и контекст
+mem_20260903_doc_signal-log_d47c1462 [document-ref] [active] Сигнальный лог контура самообучения (Ф20/Ф21)
+mem_20260903_doc_steward-bootstrap_89ce6f03 [document-ref] [active] Steward Bootstrap: протокол свёртки стартовой памяти
+mem_20260903_doc_steward-learn_a2d1bf80 [document-ref] [active] Протокол обучения Стюарда (steward learn protocol)
+mem_20260903_doc_superpowers-adoption_95d7988f [document-ref] [active] Перенос лучших практик superpowers в Mr.Wolf
+mem_20260903_doc_thinking-council_b17a0148 [document-ref] [active] Thinking & Council
+mem_20260903_doc_thinking-council_cfaa6560 [document-ref] [active] Мышление и совет
+mem_20260903_doc_tool-economy_6898390c [document-ref] [active] Экономика переиспользования инструментов
+mem_20260903_doc_troubleshooting_40a4562b [document-ref] [active] Troubleshooting
+mem_20260903_doc_troubleshooting_c65b69bb [document-ref] [active] Решение проблем
+mem_20260903_doc_user-guide_f95e514a [document-ref] [active] Руководство пользователя Mr. Wolf
+mem_20260903_doc_wolf-concept-implications_6aa65bed [document-ref] [active] Implications for Mr. Wolf Concept
+mem_20260903_doc_wolf-fup-implications_6a711360 [document-ref] [active] Implications for Mr. Wolf First Useful Product (FUP)
+mem_20260903_doc_work-management_5b012389 [document-ref] [active] Управление работой
+mem_20260903_doc_work-management_6e47e8d7 [document-ref] [active] Work Management
+mem_20260903_npm_run_check_english_surface_gate_tolko_2b589c [lesson] [active] npm run check: english-surface gate — только src/adapters/**.ts строковые литералы; docs/**/*.md гейтом не покрываются
+project-scan-latest [context] [active] Project scan for mister-wolf
+mem_20260903_nastavnik_v1_protokol_mutatsii_playbook_0004f4 [playbook] [active] Наставник v1 — протокол мутации playbook'ов
+mem_20260903_wolf_review_linzy_v1_poryadok_kontrakty_828662 [playbook] [active] Wolf-review линзы v1 — порядок, контракты, сходимость
+mem_20260903_worker_implementer_playbook_v1_metodika_b585a7 [playbook] [active] Worker Implementer playbook v1 — методика и формат отчёта
+mem_20260903_worker_researcher_playbook_v1_metodika_a_264be1 [playbook] [active] Worker Researcher playbook v1 — методика анализа и формат findings
+mem_20260903_worker_reviewer_playbook_v1_zony_obzora_7914ae [playbook] [active] Worker Reviewer playbook v1 — зоны обзора и VERDICT-контракт
+mem_20260903_zhalobnyy_protokol_v2_podacha_i_triazh_4344fa [playbook] [active] Жалобный протокол v2 — подача и триаж
+mem_20260903_routing_agent_models_8fa36c [rule] [active] Routing: agent models
+mem_20260903_init_report_playground_9200d9 [report] [active] Init report: playground

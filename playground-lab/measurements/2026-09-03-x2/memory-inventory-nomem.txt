@@ -1,0 +1,8 @@
+mem_20260904_nastavnik_v1_protokol_mutatsii_playbook_c1454f [playbook] [active] Наставник v1 — протокол мутации playbook'ов
+mem_20260904_wolf_review_linzy_v1_poryadok_kontrakty_2c4d1c [playbook] [active] Wolf-review линзы v1 — порядок, контракты, сходимость
+mem_20260904_worker_implementer_playbook_v1_metodika_8dcb2c [playbook] [active] Worker Implementer playbook v1 — методика и формат отчёта
+mem_20260904_worker_researcher_playbook_v1_metodika_a_929c41 [playbook] [active] Worker Researcher playbook v1 — методика анализа и формат findings
+mem_20260904_worker_reviewer_playbook_v1_zony_obzora_8c453c [playbook] [active] Worker Reviewer playbook v1 — зоны обзора и VERDICT-контракт
+mem_20260904_zhalobnyy_protokol_v2_podacha_i_triazh_673324 [playbook] [active] Жалобный протокол v2 — подача и триаж
+mem_20260904_routing_agent_models_0a9fb9 [rule] [active] Routing: agent models
+mem_20260904_init_report_wolf_x2_nomem_873f34 [report] [active] Init report: wolf-x2-nomem
