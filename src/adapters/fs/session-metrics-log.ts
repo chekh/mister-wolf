@@ -11,37 +11,46 @@
  */
 import { appendFileSync, mkdirSync, readFileSync } from 'fs';
 import { join } from 'path';
+import { z } from 'zod';
 import { metricsDir } from './project-paths.js';
 import { classifyError } from '../../domain/error-class.js';
 import { loadWolfConfigSync } from './config-file.js';
 
 export type SignalEventName = 'run' | 'complaint' | 'delivery' | 'tool_error';
 
-export interface SignalEvent {
+/**
+ * Схема сигнального лога (P0 D6): чтение лога валидируется Zod, неизвестные поля
+ * отбрасываются (strip — дефолт zod-object). Тип SignalEvent выводится из схемы.
+ */
+export const SignalEventSchema = z.object({
   /** ISO8601. */
-  ts: string;
-  event: SignalEventName;
-  session_id: string | null;
+  ts: z.string(),
+  event: z.enum(['run', 'complaint', 'delivery', 'tool_error']),
+  session_id: z.string().nullable(),
   /** gen_ai-неймспейс OTEL; modelID — обязательное поле записи (null = неизвестна). */
-  gen_ai: { modelID: string | null; agent: string | null };
-  orchestration: { task: string | null; actor: string };
+  gen_ai: z.object({ modelID: z.string().nullable(), agent: z.string().nullable() }),
+  orchestration: z.object({ task: z.string().nullable(), actor: z.string() }),
   /** weighted-токены (input + 0.1×cache_read + 5×output) — для run-событий. */
-  weighted?: number;
+  weighted: z.number().optional(),
   /** M1 (D4): wall-clock длительность прогона, мс (только run-события). */
-  duration_ms?: number;
+  duration_ms: z.number().optional(),
   /** M1 (D3): сырые токены прогона (только run-события). */
-  tokens?: { input: number; output: number; cache_read: number };
+  tokens: z.object({ input: z.number(), output: z.number(), cache_read: z.number() }).optional(),
   /** M1 (D5): экспериментальные примитивы (arm/task_id пишутся только с experiment). */
-  experiment?: { id: string; arm: 'wolf' | 'baseline'; task_id?: string };
+  experiment: z
+    .object({ id: z.string(), arm: z.enum(['wolf', 'baseline']), task_id: z.string().optional() })
+    .optional(),
   /** run: 'ok' | 'exit_<code>'; tool_error: 'error'. */
-  outcome?: string;
+  outcome: z.string().optional(),
   /** tool_error. */
-  tool_name?: string;
+  tool_name: z.string().optional(),
   /** tool_error: id из classifyError. */
-  error_class_id?: string;
+  error_class_id: z.string().optional(),
   /** Факты события: about/text у жалобы, name/mechanism/target у доставки, message у ошибки. */
-  detail?: Record<string, unknown>;
-}
+  detail: z.record(z.string(), z.unknown()).optional(),
+});
+
+export type SignalEvent = z.infer<typeof SignalEventSchema>;
 
 export interface PatternRecord {
   ts: string;
@@ -85,34 +94,72 @@ export function signalKey(ev: SignalEvent): string | null {
   return null;
 }
 
-function readJsonl<T>(path: string): T[] {
+/**
+ * Мягкое чтение jsonl: без схемы — только JSON.parse (patterns.jsonl), со схемой —
+ * Zod-валидация каждой строки (session-metrics.jsonl). Малформ-строки (не-JSON или
+ * не прошедшие схему) считаются и пропускаются: лог append-only, битая строка
+ * не должна ронять контур.
+ */
+function readJsonl<T>(path: string, schema?: z.ZodType<T>): {
+  items: T[];
+  malformedLines: number;
+  totalLines: number;
+} {
   let raw: string;
   try {
     raw = readFileSync(path, 'utf-8');
   } catch {
-    return [];
+    return { items: [], malformedLines: 0, totalLines: 0 };
   }
-  const out: T[] = [];
+  const items: T[] = [];
+  let malformedLines = 0;
+  let totalLines = 0;
   for (const line of raw.split('\n')) {
     const trimmed = line.trim();
     if (trimmed === '') continue;
+    totalLines++;
     try {
-      out.push(JSON.parse(trimmed) as T);
+      const parsed: unknown = JSON.parse(trimmed);
+      if (schema) {
+        const res = schema.safeParse(parsed);
+        if (!res.success) {
+          malformedLines++;
+          continue;
+        }
+        items.push(res.data);
+      } else {
+        items.push(parsed as T);
+      }
     } catch {
-      // малформ-строка пропускается: лог append-only, битая строка не должна ронять контур
+      malformedLines++;
     }
   }
-  return out;
+  return { items, malformedLines, totalLines };
+}
+
+export interface SignalLogStats {
+  /** Валидные события в порядке записи. */
+  events: SignalEvent[];
+  /** Не-JSON строки + строки, не прошедшие схему. */
+  malformedLines: number;
+  /** Все непустые строки лога. */
+  totalLines: number;
+}
+
+/** Сигнальный лог со счётчиком малформа (P0 D6: честная статистика аналитики). */
+export function readSignalLog(baseDir: string): SignalLogStats {
+  const { items, malformedLines, totalLines } = readJsonl(metricsLogPath(baseDir), SignalEventSchema);
+  return { events: items, malformedLines, totalLines };
 }
 
 /** Все сигналы лога (порядок записи); отсутствующий/битый лог → максимально читаемое. */
 export function readSignals(baseDir: string): SignalEvent[] {
-  return readJsonl<SignalEvent>(metricsLogPath(baseDir));
+  return readSignalLog(baseDir).events;
 }
 
 /** Зафиксированные паттерны (события пересечения порога). */
 export function readPatterns(baseDir: string): PatternRecord[] {
-  return readJsonl<PatternRecord>(patternsLogPath(baseDir));
+  return readJsonl<PatternRecord>(patternsLogPath(baseDir)).items;
 }
 
 /**
