@@ -30,6 +30,14 @@ function isolatedEnv(): NodeJS.ProcessEnv {
     HOME: home,
     XDG_CONFIG_HOME: join(home, '.config'),
     PATH: `${join(prefix, 'bin')}:${process.env.PATH ?? ''}`,
+    // npm-установка внутри тестов делает блокирующий audit-запрос
+    // (POST /-/npm/v1/security/advisories/bulk): на npm 10 (штатный для Node 22
+    // в CI до шага npm@11) он зависает на минуты и валил publish-e2e по
+    // таймауту с пустым stderr. Audit не относится к проверяемому поведению —
+    // выключаем, как и прочую сеть-вариативность (замер 2026-09-04, npm
+    // 10.9.8/linux, холодный кеш: audit=on — hang >330s; audit=off — 10s).
+    npm_config_audit: 'false',
+    npm_config_fund: 'false',
   };
 }
 
@@ -160,6 +168,8 @@ describe('global install from tarball into isolated HOME (спека §3, §7)',
       // Дефект 1.0.0: isNpxRun ждал npm_command='npx', реальный npx ставит 'exec'
       // → init писал MCP-конфиг вопреки спеке. Здесь env НЕ мокаем — npx ставит
       // npm_command сам; изоляция через tmp-HOME (реестр + npx-кеш не мусорят в дев-машину).
+      // timeout 240s — потолок с запасом ×24: с audit=off (isolatedEnv) холодная
+      // npx-установка занимает ~10s; поднимать потолок не нужно — зависаний больше нет.
       const project = tmpProject();
       writeFileSync(join(project, 'opencode.json'), '{}');
       const res = spawnSync('npx', ['-y', `file:${tarball}`, 'init', '--model', 'zai-coding-plan/glm-5.3'], {
