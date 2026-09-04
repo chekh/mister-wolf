@@ -9,6 +9,8 @@ import { briefsDir } from '../../adapters/fs/project-paths.js';
 export interface GenerateAgentBriefResult {
   content: string;
   path: string;
+  /** Id объектов, попавших в бриф (acceptedMemory + openQuestions + blockers) — P2 D1. */
+  injectedIds: string[];
 }
 
 export async function generateAgentBrief(
@@ -45,7 +47,7 @@ export async function generateAgentBrief(
   const briefPath = join(briefsDir(root), 'agent-brief-latest.md');
   await deps.fs.writeFile(briefPath, content);
 
-  return { content, path: briefPath };
+  return { content, path: briefPath, injectedIds: [...acceptedMemory, ...openQuestions, ...blockers].map((o) => o.id) };
 }
 
 async function buildProjectDescription(fsPort: FileSystem, root: string, snapshot: ProjectSnapshot): Promise<string> {

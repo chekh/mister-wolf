@@ -4,6 +4,22 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Memory lifecycle, attribution and coordination events (P2, spec `docs/superpowers/specs/2026-09-04-p2-lifecycle-attribution-design.md`):
+  - `memory_stage` signal event (`detail.stage`: `retrieved`|`injected`|`cited`|`applied`, `detail.memory_ids: string[]` non-empty): auto-writers in `wolf search`/`get` (retrieved, ids from the result set) and `wolf brief`/`call` (injected, ids of delivered injections; no event when empty); new CLI `wolf memory-stage --stage <s> --ids <id,...> [--actor <a>] [--session <id>]` for external actors (cited/applied — harness responsibility). Telemetry failures never break the wrapped command; `WOLF_SESSION` env links auto-writers to the agent session (attribution key, symmetry with `WOLF_ACTOR`).
+  - `coord_event` signal event (`detail.kind`: `handoff`|`review`|`acceptance`|`blocker`|`escalation`, `actor_from`, optional `actor_to`, `refs`, `note`): new CLI `wolf coord --kind <k> [--from a] [--to b] [--ref id,...] [--note s]` for all orchestration levels.
+  - `mcp_call` signals now carry `detail.wolf_version` (runtime version from package.json, single cached read).
+  - `wolf analytics --view memory`: memory lifecycle funnel added→retrieved→injected→cited→applied (events + unique ids per stage, `appliedUniqueIds`) and attribution — `attributionCoveragePct` = share of accepted `task_evaluated` verdicts preceded by an injection in the same `session_id` (honest `null` + reason when data is missing).
+  - `wolf analytics --view coordination` (CLI and MCP): counts kind × actor, 20 most recent events, blocker open/resolve pairs by refs; payload of `--view memory` extended additively with funnel + attribution.
+  - Docs: signal-log guide (event schemas, live examples), analytics guide + site (EN/RU) cover the two new views, new `docs/guide/harness-integration.md` — how harness actors record cited/applied and coordination events.
+
+### Changed
+
+- `wolf brief` use-case now returns `injectedIds` (ids of all sections rendered into the brief) alongside the content.
+
 ## [2.6.1] — 2026-09-04
 
 ### Added

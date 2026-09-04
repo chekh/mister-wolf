@@ -47,7 +47,7 @@ describe('generateAgentBrief', () => {
     const scanner = new HeuristicProjectScanner(fs);
     const snapshot = await scanner.scan(dir);
 
-    await addMemoryObject(
+    const decision = await addMemoryObject(
       { store, log, clock, idGen },
       {
         type: 'decision',
@@ -57,7 +57,7 @@ describe('generateAgentBrief', () => {
       }
     );
 
-    await addMemoryObject(
+    const question = await addMemoryObject(
       { store, log, clock, idGen },
       {
         type: 'open-question',
@@ -67,7 +67,7 @@ describe('generateAgentBrief', () => {
       }
     );
 
-    await createBlocker(
+    const blocker = await createBlocker(
       { store, log, clock, idGen },
       {
         title: 'Missing OAuth provider',
@@ -76,7 +76,10 @@ describe('generateAgentBrief', () => {
       }
     );
 
-    const { content, path } = await generateAgentBrief({ store, fs, clock }, dir, snapshot);
+    const { content, path, injectedIds } = await generateAgentBrief({ store, fs, clock }, dir, snapshot);
+
+    // P2 D1: injectedIds — id объектов всех трёх секций брифа
+    expect(injectedIds).toEqual([decision.object.id, question.object.id, blocker.object.id]);
 
     expect(path).toBe(join(dir, '.wolf', 'memory', 'briefs', 'agent-brief-latest.md'));
     expect(content).toContain('# Agent Brief: brief-test');
@@ -102,5 +105,17 @@ describe('generateAgentBrief', () => {
 
     const written = readFileSync(path, 'utf-8');
     expect(written).toBe(content);
+  });
+
+  it('P2 D1: пустая память → injectedIds пуст', async () => {
+    const store = new MarkdownMemoryStore(dir);
+    const fs = new FsFileSystem();
+    const clock = new SystemClock();
+
+    const scanner = new HeuristicProjectScanner(fs);
+    const snapshot = await scanner.scan(dir);
+
+    const { injectedIds } = await generateAgentBrief({ store, fs, clock }, dir, snapshot);
+    expect(injectedIds).toEqual([]);
   });
 });

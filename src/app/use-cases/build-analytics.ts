@@ -135,6 +135,62 @@ export interface CoverageStats {
   scoredTaskRatePct: number | null;
 }
 
+/** P2 D4: счётчик стадии — события + уникальные memory_ids. */
+export interface StageCount {
+  events: number;
+  uniqueIds: number;
+}
+
+/** P2 D4: воронка added→retrieved→injected→cited→applied. */
+export interface MemoryLifecycleFunnel {
+  added: number;
+  retrieved: StageCount;
+  injected: StageCount;
+  cited: StageCount;
+  applied: StageCount;
+  /** Уникальные id, доходившие до applied (D4), отсортирован. */
+  appliedUniqueIds: string[];
+}
+
+/** P2 D4: атрибуция — доля accepted-вердиктов с предшествующей инъекцией в сессии. */
+export interface AttributionCoverage {
+  acceptedTotal: number;
+  acceptedWithInjection: number;
+  attributionCoveragePct: number | null;
+  /** При pct === null: 'no task_evaluated' | 'no injected' | 'no accepted verdicts'. */
+  reason?: string;
+}
+
+/** P2 D5: координационное view. */
+export interface CoordinationCount {
+  kind: string;
+  actorFrom: string;
+  count: number;
+}
+
+export interface CoordinationRecentEvent {
+  ts: string;
+  kind: string;
+  from: string;
+  to: string | null;
+  refs: string[];
+}
+
+export interface CoordinationBlockerPair {
+  ref: string;
+  openedAt: string;
+  resolvedAt: string | null;
+}
+
+export interface CoordinationView {
+  /** kind × actor_from; sort: count убыв., потом kind, потом actorFrom. */
+  counts: CoordinationCount[];
+  /** Последние 20 по ts, свежие первыми. */
+  recent: CoordinationRecentEvent[];
+  /** По refs coord_event kind=blocker, sort по ref. */
+  blockers: CoordinationBlockerPair[];
+}
+
 /** D7: data-quality сигнального лога (битые строки не роняют контур — только метрика). */
 export interface DataQualityStats {
   validEventRatePct: number | null;
@@ -206,7 +262,12 @@ export interface CouncilsView {
 export interface AnalyticsReport {
   generatedAt: string;
   thresholds: LifecycleThresholds;
-  memory: { rows: MemoryLedgerRow[]; garbage: GarbageStats };
+  memory: {
+    rows: MemoryLedgerRow[];
+    garbage: GarbageStats;
+    funnel: MemoryLifecycleFunnel;
+    attribution: AttributionCoverage;
+  };
   tools: ToolLedgerRow[];
   rules: RuleRankingRow[];
   weeklyActivity: WeeklyActivityWeek[];
@@ -215,6 +276,7 @@ export interface AnalyticsReport {
   steward: StewardView;
   readiness: ExperimentReadiness;
   councils: CouncilsView;
+  coordination: CoordinationView;
   acceptance: AcceptanceStats;
   coverage: CoverageStats;
   dataQuality: DataQualityStats;
@@ -248,14 +310,15 @@ function finiteNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-/** Memory ledger (Q1/Q2): per-object след использования + lifecycle-класс D7. */
+/** Memory ledger (Q1/Q2): per-object след использования + lifecycle-класс D7.
+ * (funnel/attribution добавляет вызов buildAnalyticsReport — P2 D4.) */
 function buildMemoryLedger(
   objects: MemoryObject[],
   events: MemoryEvent[],
   signals: SignalEvent[],
   now: Date,
   t: LifecycleThresholds
-): AnalyticsReport['memory'] {
+): { rows: MemoryLedgerRow[]; garbage: GarbageStats } {
   const rows: MemoryLedgerRow[] = [];
   for (const o of objects) {
     // база: активная память минус archived и document-ref (прецедент noise-метрики)
@@ -532,6 +595,152 @@ function buildCoverage(signals: SignalEvent[]): CoverageStats {
   const scored = signals.filter((s) => s.event === 'task_evaluated').length;
   const runs = signals.filter((s) => s.event === 'run').length;
   return { scored, runs, scoredTaskRatePct: runs > 0 ? (scored / runs) * 100 : null };
+}
+
+// --- P2 D4/D5: lifecycle-воронка, атрибуция, координация ---
+
+type MemoryStageName = 'retrieved' | 'injected' | 'cited' | 'applied';
+
+/** Валидный memory_stage-сигнал (D4 guard): detail есть, stage — одна из четырёх,
+ * memory_ids — массив непустых строк (≥1); малформ → null, отчёт не роняет. */
+function memoryStageOf(s: SignalEvent): { stage: MemoryStageName; ids: string[] } | null {
+  if (s.event !== 'memory_stage') return null;
+  const d = s.detail as Record<string, unknown> | undefined;
+  if (d === undefined) return null;
+  const stage = d.stage;
+  if (stage !== 'retrieved' && stage !== 'injected' && stage !== 'cited' && stage !== 'applied') {
+    return null;
+  }
+  if (!Array.isArray(d.memory_ids)) return null;
+  const ids = d.memory_ids.filter((id): id is string => typeof id === 'string' && id !== '');
+  return ids.length > 0 ? { stage, ids } : null;
+}
+
+/** Воронка D4: added = все объекты store; стадии — события + уникальные memory_ids. */
+function buildLifecycleFunnel(added: number, signals: SignalEvent[]): MemoryLifecycleFunnel {
+  const acc: Record<MemoryStageName, { events: number; ids: Set<string> }> = {
+    retrieved: { events: 0, ids: new Set() },
+    injected: { events: 0, ids: new Set() },
+    cited: { events: 0, ids: new Set() },
+    applied: { events: 0, ids: new Set() },
+  };
+  for (const s of signals) {
+    const st = memoryStageOf(s);
+    if (st === null) continue;
+    const a = acc[st.stage];
+    a.events += 1;
+    for (const id of st.ids) a.ids.add(id);
+  }
+  const count = (a: { events: number; ids: Set<string> }): StageCount => ({ events: a.events, uniqueIds: a.ids.size });
+  return {
+    added,
+    retrieved: count(acc.retrieved),
+    injected: count(acc.injected),
+    cited: count(acc.cited),
+    applied: count(acc.applied),
+    appliedUniqueIds: [...acc.applied.ids].sort(),
+  };
+}
+
+/** Атрибуция D4: доля accepted-вердиктов, перед которыми в той же сессии была
+ * инъекция (memory_stage injected, session_id !== null, ts <= ts вердикта). */
+function buildAttribution(signals: SignalEvent[]): AttributionCoverage {
+  if (!signals.some((s) => s.event === 'task_evaluated')) {
+    return { acceptedTotal: 0, acceptedWithInjection: 0, attributionCoveragePct: null, reason: 'no task_evaluated' };
+  }
+  // ts injected-сигналов по сессии (без session_id в атрибуции не участвуют)
+  const injectedTsBySession = new Map<string, string[]>();
+  for (const s of signals) {
+    const st = memoryStageOf(s);
+    if (st === null || st.stage !== 'injected' || s.session_id === null) continue;
+    const arr = injectedTsBySession.get(s.session_id) ?? [];
+    arr.push(s.ts);
+    injectedTsBySession.set(s.session_id, arr);
+  }
+  if (injectedTsBySession.size === 0) {
+    return { acceptedTotal: 0, acceptedWithInjection: 0, attributionCoveragePct: null, reason: 'no injected' };
+  }
+  let acceptedTotal = 0;
+  let acceptedWithInjection = 0;
+  for (const s of signals) {
+    if (s.event !== 'task_evaluated' || s.detail?.verdict !== 'accepted') continue;
+    acceptedTotal += 1;
+    if (s.session_id === null) continue;
+    if ((injectedTsBySession.get(s.session_id) ?? []).some((ts) => ts <= s.ts)) acceptedWithInjection += 1;
+  }
+  if (acceptedTotal === 0) {
+    return { acceptedTotal: 0, acceptedWithInjection: 0, attributionCoveragePct: null, reason: 'no accepted verdicts' };
+  }
+  return {
+    acceptedTotal,
+    acceptedWithInjection,
+    attributionCoveragePct: (acceptedWithInjection / acceptedTotal) * 100,
+  };
+}
+
+/** Валидный coord_event-сигнал (D5 guard): kind/actor_from — строки, refs — массив строк. */
+function coordEventOf(s: SignalEvent): { kind: string; from: string; to: string | null; refs: string[] } | null {
+  if (s.event !== 'coord_event') return null;
+  const d = s.detail as Record<string, unknown> | undefined;
+  if (d === undefined || typeof d.kind !== 'string' || typeof d.actor_from !== 'string' || !Array.isArray(d.refs)) {
+    return null;
+  }
+  return {
+    kind: d.kind,
+    from: d.actor_from,
+    to: typeof d.actor_to === 'string' ? d.actor_to : null,
+    refs: d.refs.filter((r): r is string => typeof r === 'string' && r !== ''),
+  };
+}
+
+/** Координация D5: counts (kind × actor_from), последние 20 событий, blocker-пары
+ * (ref → earliest blocker-открытие → первый memory.resolved не раньше openedAt). */
+function buildCoordination(signals: SignalEvent[], events: MemoryEvent[]): CoordinationView {
+  const parsed: { ts: string; kind: string; from: string; to: string | null; refs: string[] }[] = [];
+  // ключ kind ⊕ actor_from; \u001f не встречается в именах агентов (unit-separator)
+  const countAcc = new Map<string, { kind: string; actorFrom: string; count: number }>();
+  for (const s of signals) {
+    const c = coordEventOf(s);
+    if (c === null) continue;
+    parsed.push({ ts: s.ts, ...c });
+    const key = `${c.kind}\u001f${c.from}`;
+    const cur = countAcc.get(key);
+    if (cur === undefined) countAcc.set(key, { kind: c.kind, actorFrom: c.from, count: 1 });
+    else cur.count += 1;
+  }
+  const counts = [...countAcc.values()].sort(
+    (a, b) => b.count - a.count || a.kind.localeCompare(b.kind) || a.actorFrom.localeCompare(b.actorFrom)
+  );
+
+  const recent = [...parsed].sort((a, b) => (a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0)).slice(0, 20);
+
+  // openedAt по ref — самый ранний blocker-сигнал
+  const openedByRef = new Map<string, string>();
+  for (const p of parsed) {
+    if (p.kind !== 'blocker') continue;
+    for (const ref of p.refs) {
+      const cur = openedByRef.get(ref);
+      if (cur === undefined || p.ts < cur) openedByRef.set(ref, p.ts);
+    }
+  }
+  // resolvedAt: первый memory.resolved с payload.memory_id === ref и timestamp >= openedAt
+  const resolvedTsById = new Map<string, string[]>();
+  for (const ev of events) {
+    if (ev.type !== 'memory.resolved') continue;
+    const mid = (ev.payload as Record<string, unknown> | undefined)?.memory_id;
+    if (typeof mid !== 'string') continue;
+    const arr = resolvedTsById.get(mid) ?? [];
+    arr.push(ev.timestamp);
+    resolvedTsById.set(mid, arr);
+  }
+  const blockers = [...openedByRef.entries()]
+    .map(([ref, openedAt]) => {
+      const resolvedAt = (resolvedTsById.get(ref) ?? []).filter((ts) => ts >= openedAt).sort()[0];
+      return { ref, openedAt, resolvedAt: resolvedAt ?? null };
+    })
+    .sort((a, b) => a.ref.localeCompare(b.ref));
+
+  return { counts, recent, blockers };
 }
 
 /** Agent ledger Q11: строки по run-агентам ∪ complaint-акторам `agent:<имя>`; три уровня —
@@ -972,7 +1181,12 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
     signals.push(s);
   }
 
-  const memory = buildMemoryLedger(allObjects, events, signals, now, thresholds);
+  const memory = {
+    ...buildMemoryLedger(allObjects, events, signals, now, thresholds),
+    // P2 D4: воронка added→applied + атрибуция accepted-вердиктов к инъекциям
+    funnel: buildLifecycleFunnel(allObjects.length, signals),
+    attribution: buildAttribution(signals),
+  };
   // P1 D4: канонический источник run-метрик — сигналы + compat-мерж legacy run-log
   const runEntries = mergeRunEntries(signals, input.runLogText);
   const tools = buildToolLedger(
@@ -992,6 +1206,7 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
   const steward = buildSteward(events, signals, allObjects, now, weeks);
   const readiness = buildReadiness(signals);
   const councils = await buildCouncils(allObjects, deps.relations, now, weeks);
+  const coordination = buildCoordination(signals, events); // P2 D5
   const coverage = buildCoverage(signals);
   // D6: unknown-model и pricing-coverage по дедуплицированным run-сигналам
   const runSignals = signals.filter((s) => s.event === 'run');
@@ -1030,6 +1245,7 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
     steward,
     readiness,
     councils,
+    coordination,
     acceptance: { accepted: acceptance.accepted, costPerAcceptedTask: acceptance.costPerAcceptedTask },
     coverage,
     dataQuality,
@@ -1051,6 +1267,7 @@ export interface AnalyticsViewFilter {
     | 'outliers'
     | 'readiness'
     | 'councils'
+    | 'coordination'
     | 'all';
   class?: 'new' | 'sleeper' | 'workhorse' | 'dead';
   type?: string;
@@ -1061,7 +1278,13 @@ export interface AnalyticsViewFilter {
 }
 
 export type AnalyticsViewPayload =
-  | { view: 'memory'; rows: MemoryLedgerRow[]; garbage: GarbageStats }
+  | {
+      view: 'memory';
+      rows: MemoryLedgerRow[];
+      garbage: GarbageStats;
+      funnel: MemoryLifecycleFunnel;
+      attribution: AttributionCoverage;
+    }
   | { view: 'tools'; rows: ToolLedgerRow[] }
   | { view: 'rules'; rows: RuleRankingRow[] }
   | { view: 'weeklyActivity'; weeks: WeeklyActivityWeek[] }
@@ -1070,6 +1293,7 @@ export type AnalyticsViewPayload =
   | { view: 'outliers'; runs: OutlierRun[] }
   | { view: 'readiness'; readiness: ExperimentReadiness }
   | { view: 'councils'; councils: CouncilsView }
+  | { view: 'coordination'; coordination: CoordinationView }
   | { view: 'all'; report: AnalyticsReport };
 
 /** Срез отчёта по view-фильтру (§6.2); top ограничивает строки, дефолт 20. */
@@ -1080,7 +1304,13 @@ export function filterAnalytics(report: AnalyticsReport, filter: AnalyticsViewFi
       let rows = report.memory.rows;
       if (filter.class !== undefined) rows = rows.filter((r) => r.lifecycle === filter.class);
       if (filter.type !== undefined) rows = rows.filter((r) => r.type === filter.type);
-      return { view: 'memory', rows: rows.slice(0, top), garbage: report.memory.garbage };
+      return {
+        view: 'memory',
+        rows: rows.slice(0, top),
+        garbage: report.memory.garbage,
+        funnel: report.memory.funnel,
+        attribution: report.memory.attribution,
+      };
     }
     case 'tools': {
       let rows = report.tools;
@@ -1107,6 +1337,8 @@ export function filterAnalytics(report: AnalyticsReport, filter: AnalyticsViewFi
       return { view: 'readiness', readiness: report.readiness };
     case 'councils':
       return { view: 'councils', councils: report.councils };
+    case 'coordination':
+      return { view: 'coordination', coordination: report.coordination };
     case 'all':
       return { view: 'all', report };
   }

@@ -31,6 +31,7 @@ type AnalyticsView =
   | 'outliers'
   | 'readiness'
   | 'councils'
+  | 'coordination'
   | 'all';
 type SectionView = Exclude<AnalyticsView, 'all'>;
 
@@ -44,6 +45,7 @@ const SECTION_VIEWS: SectionView[] = [
   'outliers',
   'readiness',
   'councils',
+  'coordination',
 ];
 
 /** null/undefined → '-', остальное — строкой (колонки с nullable-полей). */
@@ -78,10 +80,26 @@ export function renderSection(report: AnalyticsReport, filter: SectionViewFilter
         cell(r.last_used),
       ]);
       const garbage = payload.garbage.ratioPct === null ? 'n/a' : `${payload.garbage.ratioPct.toFixed(1)}%`;
+      // P2 D4: воронка added→applied (added — объекты store, events '-') + атрибуция
+      const funnelRows = [
+        ['added', '-', cell(payload.funnel.added)] as string[],
+        ...(['retrieved', 'injected', 'cited', 'applied'] as const).map((stage) => [
+          stage,
+          cell(payload.funnel[stage].events),
+          cell(payload.funnel[stage].uniqueIds),
+        ]),
+      ];
+      const a = payload.attribution;
+      const attribution =
+        a.attributionCoveragePct === null
+          ? `attribution: n/a (${a.reason})`
+          : `attribution: accepted ${a.acceptedWithInjection}/${a.acceptedTotal} (${a.attributionCoveragePct.toFixed(1)}%)`;
       return [
         header,
         renderTable(['id', 'type', 'lifecycle', 'age_days', 'deliveries', 'triggers', 'complaints', 'last_used'], rows),
         `garbage: dead/base = ${payload.garbage.dead}/${payload.garbage.base} = ${garbage}`,
+        renderTable(['stage', 'events', 'unique_ids'], funnelRows),
+        attribution,
       ].join('\n');
     }
     case 'tools': {
@@ -223,6 +241,28 @@ export function renderSection(report: AnalyticsReport, filter: SectionViewFilter
         ),
       ].join('\n');
     }
+    case 'coordination': {
+      // P2 D5: counts (kind × from), последние 20 событий, blocker-пары ref → resolved
+      const cd = payload.coordination;
+      return [
+        header,
+        'counts:',
+        renderTable(
+          ['kind', 'from', 'count'],
+          cd.counts.map((c) => [c.kind, c.actorFrom, cell(c.count)])
+        ),
+        'recent:',
+        renderTable(
+          ['ts', 'kind', 'from->to', 'refs'],
+          cd.recent.map((e) => [e.ts, e.kind, e.to === null ? e.from : `${e.from}->${e.to}`, e.refs.join(',')])
+        ),
+        'blockers:',
+        renderTable(
+          ['ref', 'opened', 'resolved'],
+          cd.blockers.map((b) => [b.ref, b.openedAt, cell(b.resolvedAt)])
+        ),
+      ].join('\n');
+    }
     default:
       // 'all' обрабатывается вызывающим кодом до renderSection; ветка закрывает switch (TS2366)
       throw new Error(`renderSection: unexpected view ${String((payload as { view: string }).view)}`);
@@ -258,7 +298,7 @@ export function renderAllSections(report: AnalyticsReport, filter: AnalyticsView
 
 export function analyticsCommand(baseDir: string = safeCwd()): Command {
   const cmd = new Command('analytics').description(
-    'Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness'
+    'Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness, memory lifecycle & coordination'
   );
 
   cmd
@@ -274,6 +314,7 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
           'outliers',
           'readiness',
           'councils',
+          'coordination',
           'all',
         ])
         .default('all')

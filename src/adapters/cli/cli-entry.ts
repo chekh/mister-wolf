@@ -1,8 +1,6 @@
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 import { Command } from 'commander';
 import { ensureCurrentSchema } from '../../adapters/fs/schema-guard.js';
+import { getWolfVersion } from '../version.js';
 import { memoryInitCommand as initCommand } from './commands/memory-init.js';
 import { memorySyncCommand as syncCommand } from './commands/memory-sync.js';
 import { memoryDoctorCommand as doctorCommand } from './commands/memory-doctor.js';
@@ -45,20 +43,16 @@ import { memoryEffectivenessCommand as effectivenessCommand } from './commands/m
 import { analyticsCommand } from './commands/analytics.js';
 import { dashboardCommand } from './commands/dashboard.js';
 import { taskEvalCommand } from './commands/task-eval.js';
+import { memoryStageCommand } from './commands/memory-stage.js';
+import { coordCommand } from './commands/coord.js';
 import { memoryRunCommand as runCommand } from './commands/memory-run.js';
 import { memoryBootstrapCommand as bootstrapCommand } from './commands/memory-bootstrap.js';
 import { memoryUpgradeCommand as upgradeCommand } from './commands/memory-upgrade.js';
 import { UserFacingError } from '../../domain/errors.js';
 
-function readPackageVersion(): string {
-  const baseDir = dirname(fileURLToPath(import.meta.url));
-  const pkg = JSON.parse(readFileSync(join(baseDir, '../../../package.json'), 'utf-8')) as { version: string };
-  return pkg.version;
-}
-
 export function createCli(): Command {
   const program = new Command('wolf');
-  program.version(readPackageVersion());
+  program.version(getWolfVersion());
 
   program.addCommand(initCommand());
   program.addCommand(syncCommand());
@@ -99,6 +93,8 @@ export function createCli(): Command {
   program.addCommand(analyticsCommand());
   program.addCommand(dashboardCommand());
   program.addCommand(taskEvalCommand());
+  program.addCommand(memoryStageCommand());
+  program.addCommand(coordCommand());
   program.addCommand(runCommand());
   program.addCommand(bootstrapCommand());
   program.addCommand(upgradeCommand());

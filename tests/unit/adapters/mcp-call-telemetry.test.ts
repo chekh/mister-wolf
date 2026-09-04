@@ -1,9 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync } from 'fs';
+import { mkdtempSync, rmSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
+import { fileURLToPath } from 'url';
 import { join } from 'path';
 import { buildMcpServer } from '../../../src/adapters/mcp/mcp-server.js';
 import { readSignals } from '../../../src/adapters/fs/session-metrics-log.js';
+import { getWolfVersion } from '../../../src/adapters/version.js';
+
+// версия из package.json корня ворктри (не из кэша getWolfVersion) — источник истины теста
+const rootVersion = JSON.parse(
+  readFileSync(fileURLToPath(new URL('../../../package.json', import.meta.url)), 'utf-8')
+) as { version: string };
 
 type Tools = Record<string, { handler: (args: unknown) => Promise<unknown> }>;
 
@@ -37,6 +44,9 @@ describe('mcp_call telemetry', () => {
     expect(typeof ev.duration_ms).toBe('number');
     expect(ev.duration_ms).toBeGreaterThanOrEqual(0);
     expect(ev.detail?.method).toBe('list');
+    // P2 D2: detail несёт runtime-версию Wolf из package.json
+    expect(ev.detail?.wolf_version).toBe(rootVersion.version);
+    expect(ev.detail?.wolf_version).toBe(getWolfVersion());
     expect(ev.orchestration.actor).toBe('system:wolf');
     expect(ev.session_id).toBeNull();
     expect(ev.gen_ai.modelID).toBeNull();
@@ -56,6 +66,8 @@ describe('mcp_call telemetry', () => {
     expect(ev.outcome).toBe('error');
     expect(typeof ev.duration_ms).toBe('number');
     expect(ev.detail?.method).toBe('add');
+    // P2 D2: wolf_version пишется и в error-ветке (единый record)
+    expect(ev.detail?.wolf_version).toBe(rootVersion.version);
     expect(ev.orchestration.actor).toBe('system:wolf');
   });
 });

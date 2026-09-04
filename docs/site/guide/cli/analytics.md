@@ -10,12 +10,14 @@ Sample queries for the Steward: ledgers, weekly activity, agent and steward view
 Usage: wolf analytics [options]
 
 Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents,
-steward view, councils, outliers, experiment readiness
+steward view, councils, outliers, experiment readiness, memory lifecycle &
+coordination
 
 Options:
   --view <view>      Analytics view (choices: "memory", "tools", "rules",
                      "weeklyActivity", "agents", "steward", "outliers",
-                     "readiness", "councils", "all", default: "all")
+                     "readiness", "councils", "coordination", "all", default:
+                     "all")
   --class <class>    Memory lifecycle filter (choices: "new", "sleeper",
                      "workhorse", "dead")
   --type <type>      Memory type filter
@@ -30,7 +32,7 @@ Options:
 
 Options:
 
-- `--view <view>` — analytics view (choices: `memory`, `tools`, `rules`, `weeklyActivity`, `agents`, `steward`, `outliers`, `readiness`, `councils`, `all`; default: `all`)
+- `--view <view>` — analytics view (choices: `memory`, `tools`, `rules`, `weeklyActivity`, `agents`, `steward`, `outliers`, `readiness`, `councils`, `coordination`, `all`; default: `all`)
 - `--class <class>` — memory lifecycle filter (choices: `new`, `sleeper`, `workhorse`, `dead`)
 - `--type <type>` — memory type filter
 - `--origin <origin>` — tool origin filter (choices: `script`, `native`)
@@ -44,13 +46,14 @@ Views:
 
 | View             | What it returns                                                                                                                                                                                            |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `memory`         | Memory ledger: per-object age, deliveries, triggers, complaints, last_used, lifecycle class; garbage ratio (DEAD / active)                                                                                 |
+| `memory`         | Memory ledger: per-object age, deliveries, triggers, complaints, last_used, lifecycle class; garbage ratio (DEAD / active); lifecycle funnel added→retrieved→injected→cited→applied; attribution share     |
 | `tools`          | Tool ledger: usage, error rate, lifecycle (script tools); signal-log `tools` attributions (model-native); promotion candidates                                                                             |
 | `rules`          | Rule ranking by `holdout_prevented`; silent rules list                                                                                                                                                     |
 | `weeklyActivity` | Weekly write / deliver / trigger activity per week                                                                                                                                                         |
 | `agents`         | Per-agent runs, weighted cost, duration, process-failure rate, completed and accepted tasks, complaints (filed and received), prevented                                                                    |
 | `steward`        | Steward mutations by kind, complaint funnel, SLA escalations, recurrences, churn, share of auto-mutations                                                                                                  |
 | `councils`       | Councils: questions called (total / window / open), opinions per question, per-agent participation, vote distribution, synthesis share and median question→synthesis time, weekly activity, open questions |
+| `coordination`   | Coordination events: counts by kind × source actor, 20 most recent events, blocker open→resolve pairs by ref                                                                                               |
 | `outliers`       | Most expensive runs (weighted; `$` with pricing)                                                                                                                                                           |
 | `readiness`      | Experiment readiness: share of runs with an arm, sample sizes per group                                                                                                                                    |
 | `all`            | All sections in sequence (default)                                                                                                                                                                         |
@@ -80,6 +83,37 @@ wolf analytics --view memory --class dead --top 3
 │ mem_20260630__c0acde                     │ info-request │ dead      │ 65       │ 0          │ 0        │ 0          │ -         │
 └──────────────────────────────────────────┴──────────────┴───────────┴──────────┴────────────┴──────────┴────────────┴───────────┘
 garbage: dead/base = 27/465 = 5.8%
+```
+
+### Memory lifecycle funnel
+
+The `memory` view ends with a stage funnel `added → retrieved → injected → cited → applied` built from `memory_stage` signal events (see the signal-log guide): which share of the store ever gets retrieved, lands in an agent's context, gets cited in an answer, and actually changes the code. `added` counts all store objects (`events` = `-`: births live in the memory event log, not the signal log); each stage reports `events` plus `unique_ids` (distinct memory ids that reached the stage). The JSON payload adds `appliedUniqueIds` — the sorted list of ids that reached `applied`.
+
+`attribution: accepted X/Y (Z%)` — the share of `accepted` `task_evaluated` verdicts preceded by an injection in the same `session_id` (an `injected` stage with `ts` ≤ the verdict's `ts`). Injections without a `session_id` do not participate. Honest nulls: with no data the line reads `attribution: n/a (<reason>)` — `no task_evaluated`, `no injected` or `no accepted verdicts`.
+
+```bash
+wolf analytics --view memory --top 3
+```
+
+```text
+== memory ==
+┌──────────────────────────────────────────┬──────────┬───────────┬──────────┬────────────┬──────────┬────────────┬──────────────────────────┐
+│ id                                       │ type     │ lifecycle │ age_days │ deliveries │ triggers │ complaints │ last_used                │
+├──────────────────────────────────────────┼──────────┼───────────┼──────────┼────────────┼──────────┼────────────┼──────────────────────────┤
+│ mem_20260904_docs_example_blocker_416c08 │ blocker  │ sleeper   │ 0        │ 0          │ 1        │ 0          │ 2026-09-04T19:44:50.567Z │
+│ ...                                      │          │           │          │            │          │            │                          │
+└──────────────────────────────────────────┴──────────┴───────────┴──────────┴────────────┴──────────┴────────────┴──────────────────────────┘
+garbage: dead/base = 0/13 = 0.0%
+┌───────────┬────────┬────────────┐
+│ stage     │ events │ unique_ids │
+├───────────┼────────┼────────────┤
+│ added     │ -      │ 13         │
+│ retrieved │ 1      │ 1          │
+│ injected  │ 1      │ 2          │
+│ cited     │ 1      │ 1          │
+│ applied   │ 1      │ 1          │
+└───────────┴────────┴────────────┘
+attribution: accepted 1/1 (100.0%)
 ```
 
 ### Tool origin
@@ -150,6 +184,45 @@ open questions:
 ```
 
 (The weeks table shows all 8 week buckets; trimmed here. Vote strings are whatever the council actually used — including plain-language votes.)
+
+### Coordination
+
+`--view coordination` aggregates `coord_event` signals written by `wolf coord` (who writes which kind — see the harness-integration guide):
+
+- **counts** — events per `kind × actor_from` pair (who initiated what);
+- **recent** — the 20 most recent events: ts, kind, `from->to`, refs;
+- **blockers** — open→resolve pairs by ref: `opened` is the earliest `coord --kind blocker` naming that ref, `resolved` is the first `memory.resolved` event (`wolf blocker resolve <id>`) at or after it; `-` means still open. A pair is closed by resolving the blocker object, not by a second coord event.
+
+```bash
+wolf analytics --view coordination
+```
+
+```text
+== coordination ==
+counts:
+┌────────────┬─────────────┬───────┐
+│ kind       │ from        │ count │
+├────────────┼─────────────┼───────┤
+│ blocker    │ L1:lead     │ 3     │
+│ acceptance │ L1:reviewer │ 1     │
+│ handoff    │ L0:wolf     │ 1     │
+│ review     │ L1:reviewer │ 1     │
+└────────────┴─────────────┴───────┘
+recent:
+┌──────────────────────────┬────────────┬──────────────────────┬──────────────────────────────────────────┐
+│ ts                       │ kind       │ from->to             │ refs                                     │
+├──────────────────────────┼────────────┼──────────────────────┼──────────────────────────────────────────┤
+│ 2026-09-04T19:45:14.265Z │ blocker    │ L1:lead              │ mem_20260904_docs_resolved_blocker_a28f… │
+│ ...                      │            │                      │                                          │
+└──────────────────────────┴────────────┴──────────────────────┴──────────────────────────────────────────┘
+blockers:
+┌──────────────────────────────────────────┬──────────────────────────┬──────────────────────────┐
+│ ref                                      │ opened                   │ resolved                 │
+├──────────────────────────────────────────┼──────────────────────────┼──────────────────────────┤
+│ mem_20260904_docs_resolved_blocker_a28f… │ 2026-09-04T19:45:14.265Z │ 2026-09-04T19:45:14.575Z │
+│ ...                                      │                          │                          │
+└──────────────────────────────────────────┴──────────────────────────┴──────────────────────────┘
+```
 
 ### Examples
 

@@ -8,20 +8,21 @@
 
 ### `wolf analytics` — выборки для Стюарда
 
-| Вызов                                     | Ответ                                                           |
-| ----------------------------------------- | --------------------------------------------------------------- |
-| `--view memory --class dead --json`       | DEAD-объекты: id, тип, возраст, last_used, счётчики             |
-| `--view memory --class sleeper [--top N]` | редко используемые объекты                                      |
-| `--view memory [--type <тип>] [--top N]`  | полный memory ledger + garbage ratio                            |
-| `--view rules [--silent]`                 | ranking по holdout_prevented; `--silent` — только молчащие      |
-| `--view tools [--origin script\|native]`  | tool ledger: usage, ошибки, lifecycle, promotion-кандидаты      |
-| `--view weeklyActivity [--weeks N]`       | недельная активность: writes/delivers/triggers по неделям       |
-| `--view agents [--agent <имя>] [--top N]` | per-agent объём, стоимость, process-провалы, completed/accepted |
-| `--view steward [--weeks N]`              | мутации, жалобная воронка, рецидивы, churn, доля авто-мутаций   |
-| `--view councils [--weeks N]`             | консилиумы: созывы, участие, голоса, синтезы, открытые вопросы  |
-| `--view outliers [--top N]`               | самые дорогие прогоны (weighted; $ при pricing)                 |
-| `--view readiness`                        | готовность к экспериментам (доля прогонов с arm)                |
-| `--view all`                              | все секции подряд                                               |
+| Вызов                                     | Ответ                                                                    |
+| ----------------------------------------- | ------------------------------------------------------------------------ |
+| `--view memory --class dead --json`       | DEAD-объекты: id, тип, возраст, last_used, счётчики                      |
+| `--view memory --class sleeper [--top N]` | редко используемые объекты                                               |
+| `--view memory [--type <тип>] [--top N]`  | полный memory ledger + garbage ratio + воронка стадий + attribution (P2) |
+| `--view rules [--silent]`                 | ranking по holdout_prevented; `--silent` — только молчащие               |
+| `--view tools [--origin script\|native]`  | tool ledger: usage, ошибки, lifecycle, promotion-кандидаты               |
+| `--view weeklyActivity [--weeks N]`       | недельная активность: writes/delivers/triggers по неделям                |
+| `--view agents [--agent <имя>] [--top N]` | per-agent объём, стоимость, process-провалы, completed/accepted          |
+| `--view steward [--weeks N]`              | мутации, жалобная воронка, рецидивы, churn, доля авто-мутаций            |
+| `--view councils [--weeks N]`             | консилиумы: созывы, участие, голоса, синтезы, открытые вопросы           |
+| `--view coordination`                     | координация: counts kind×from, последние события, blocker-пары (P2)      |
+| `--view outliers [--top N]`               | самые дорогие прогоны (weighted; $ при pricing)                          |
+| `--view readiness`                        | готовность к экспериментам (доля прогонов с arm)                         |
+| `--view all`                              | все секции подряд                                                        |
 
 Общие флаги: `--json` (машинный вывод — дефолт для агентского потребления),
 `--top N` (лимит строк, дефолт 20), `--weeks N` (окно недельной активности, дефолт 8).
@@ -122,6 +123,90 @@ open questions:
 ```
 
 (weeks-таблица показана сокращённо — реально все 8 недель.)
+
+### Воронка жизненного цикла памяти (P2)
+
+`--view memory` (текст и JSON) дополняет ledger воронкой стадий
+`added → retrieved → injected → cited → applied` (события `memory_stage`,
+см. [signal-log.md](./signal-log.md)):
+
+- `added` — все объекты store (уникальные id; `events` = `-`, рождения это
+  event log памяти, не сигнальный лог);
+- `retrieved`/`injected`/`cited`/`applied` — события + `unique_ids` (уникальные
+  `memory_ids` на стадии): сколько объектов дошло до стадии, а не сколько
+  событий записано;
+- `appliedUniqueIds` (JSON) — отсортированный список id, дошедших до `applied`.
+
+`attribution: accepted X/Y (Z%)` — доля accepted-вердиктов `task_evaluated`,
+перед которыми в той же `session_id` была инъекция (`memory_stage injected`,
+`ts` инъекции ≤ `ts` вердикта). Честные null: если данных нет, печатается
+`attribution: n/a (<reason>)` — `no task_evaluated` / `no injected` /
+`no accepted verdicts`; injected без `session_id` в атрибуции не участвуют.
+
+Живой вывод (сокращён до релевантных строк):
+
+```text
+== memory ==
+┌──────────────────────────────────────────┬──────────┬───────────┬──────────┬────────────┬──────────┬────────────┬──────────────────────────┐
+│ id                                       │ type     │ lifecycle │ age_days │ deliveries │ triggers │ complaints │ last_used                │
+├──────────────────────────────────────────┼──────────┼───────────┼──────────┼────────────┼──────────┼────────────┼──────────────────────────┤
+│ mem_20260904_docs_example_blocker_416c08 │ blocker  │ sleeper   │ 0        │ 0          │ 1        │ 0          │ 2026-09-04T19:44:50.567Z │
+│ ...                                      │          │           │          │            │          │            │                          │
+└──────────────────────────────────────────┴──────────┴───────────┴──────────┴────────────┴──────────┴────────────┴──────────────────────────┘
+garbage: dead/base = 0/13 = 0.0%
+┌───────────┬────────┬────────────┐
+│ stage     │ events │ unique_ids │
+├───────────┼────────┼────────────┤
+│ added     │ -      │ 13         │
+│ retrieved │ 1      │ 1          │
+│ injected  │ 1      │ 2          │
+│ cited     │ 1      │ 1          │
+│ applied   │ 1      │ 1          │
+└───────────┴────────┴────────────┘
+attribution: accepted 1/1 (100.0%)
+```
+
+### Координационная аналитика (P2)
+
+`--view coordination` агрегирует события `coord_event` (writer — `wolf coord`,
+см. [signal-log.md](./signal-log.md) и [harness-integration.md](./harness-integration.md)):
+
+- **counts** — события по парам `kind × actor_from` (кто и что инициировал);
+- **recent** — последние 20 событий: ts, kind, `from->to`, refs;
+- **blockers** — пары «открыт → закрыт» по ref: `opened` — самый ранний
+  `coord --kind blocker` с этим ref; `resolved` — первый `memory.resolved`
+  из event log памяти (`wolf blocker resolve <id>`) не раньше opened;
+  `-` — блокер ещё открыт. Резолвится пара именно резолвом блокера, а не
+  вторым coord-событием.
+
+Живой вывод (сокращён до релевантных строк):
+
+```text
+== coordination ==
+counts:
+┌────────────┬─────────────┬───────┐
+│ kind       │ from        │ count │
+├────────────┼─────────────┼───────┤
+│ blocker    │ L1:lead     │ 3     │
+│ acceptance │ L1:reviewer │ 1     │
+│ handoff    │ L0:wolf     │ 1     │
+│ review     │ L1:reviewer │ 1     │
+└────────────┴─────────────┴───────┘
+recent:
+┌──────────────────────────┬────────────┬──────────────────────┬──────────────────────────────────────────┐
+│ ts                       │ kind       │ from->to             │ refs                                     │
+├──────────────────────────┼────────────┼──────────────────────┼──────────────────────────────────────────┤
+│ 2026-09-04T19:45:14.265Z │ blocker    │ L1:lead              │ mem_20260904_docs_resolved_blocker_a28f… │
+│ ...                      │            │                      │                                          │
+└──────────────────────────┴────────────┴──────────────────────┴──────────────────────────────────────────┘
+blockers:
+┌──────────────────────────────────────────┬──────────────────────────┬──────────────────────────┐
+│ ref                                      │ opened                   │ resolved                 │
+├──────────────────────────────────────────┼──────────────────────────┼──────────────────────────┤
+│ mem_20260904_docs_resolved_blocker_a28f… │ 2026-09-04T19:45:14.265Z │ 2026-09-04T19:45:14.575Z │
+│ ...                                      │                          │                          │
+└──────────────────────────────────────────┴──────────────────────────┴──────────────────────────┘
+```
 
 MCP-инструмент `analytics` принимает те же параметры (`view/class/type/origin/
 agent/top/weeks/silent`) и возвращает тот же JSON, что `--json`.
@@ -232,10 +317,13 @@ analytics:
 ## JSON-формат
 
 `wolf analytics --view <v> --json` возвращает payload секции: `{view, rows, ...}`
-(например, memory — `rows` per-object + `garbage {dead, base, ratioPct}`),
+(например, memory — `rows` per-object + `garbage {dead, base, ratioPct}` +
+`funnel {added, retrieved, injected, cited, applied, appliedUniqueIds}` +
+`attribution {acceptedTotal, acceptedWithInjection, attributionCoveragePct,
+reason?}`),
 `--view all` — полный `AnalyticsReport`: ledgers (memory/tools/rules),
 weeklyActivity, agents, steward, councils, outliers, readiness, acceptance,
-coverage, dataQuality. Секция councils — объект
+coverage, dataQuality, coordination. Секция councils — объект
 `CouncilsView`: `questions {total, inWindow, open}`, `opinions {total,
 perQuestionMin/Avg/Max}`, `participation [{agent, opinions}]`, `votes`
 (Record: значение голоса → число), `synthesis {questionsWithSynthesis,
@@ -253,15 +341,16 @@ sharePct, medianHours}`, `weeks [{week, questions, opinions, syntheses}]`,
 
 ## Сбор данных
 
-| Данные                                                   | Источник                                                                                                                                                        |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| run-события (объём, токены, duration, tools, experiment) | run-сигналы `.wolf/metrics/session-metrics.jsonl` (канон, P1 D4) + compat-мерж исторического `.wolf/run-log.jsonl` (архируется командой `wolf migrate run-log`) |
-| доставки/жалобы/tool_error                               | сигнальный лог `.wolf/metrics/session-metrics.jsonl`                                                                                                            |
-| вердикты задач (`task_evaluated`)                        | `wolf task-eval` → сигнальный лог `.wolf/metrics/session-metrics.jsonl`                                                                                         |
-| рождения/мутации/срабатывания                            | event log `.wolf/memory/events.jsonl` (actor, memory_id)                                                                                                        |
-| связи консилиумов (вопрос↔мнение↔синтез)                 | relation log `.wolf/memory/relations.jsonl` (`answers`, `based_on`)                                                                                             |
-| объекты памяти                                           | markdown-стор `.wolf/memory/`                                                                                                                                   |
-| снапшоты для трендов                                     | `.wolf/metrics/effectiveness-snapshots.jsonl`                                                                                                                   |
+| Данные                                                                       | Источник                                                                                                                                                        |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| run-события (объём, токены, duration, tools, experiment)                     | run-сигналы `.wolf/metrics/session-metrics.jsonl` (канон, P1 D4) + compat-мерж исторического `.wolf/run-log.jsonl` (архируется командой `wolf migrate run-log`) |
+| доставки/жалобы/tool_error                                                   | сигнальный лог `.wolf/metrics/session-metrics.jsonl`                                                                                                            |
+| вердикты задач (`task_evaluated`)                                            | `wolf task-eval` → сигнальный лог `.wolf/metrics/session-metrics.jsonl`                                                                                         |
+| стадии жизненного цикла памяти (`memory_stage`), координация (`coord_event`) | авто-писатели + `wolf memory-stage` / `wolf coord` → сигнальный лог `.wolf/metrics/session-metrics.jsonl`                                                       |
+| рождения/мутации/срабатывания                                                | event log `.wolf/memory/events.jsonl` (actor, memory_id)                                                                                                        |
+| связи консилиумов (вопрос↔мнение↔синтез)                                     | relation log `.wolf/memory/relations.jsonl` (`answers`, `based_on`)                                                                                             |
+| объекты памяти                                                               | markdown-стор `.wolf/memory/`                                                                                                                                   |
+| снапшоты для трендов                                                         | `.wolf/metrics/effectiveness-snapshots.jsonl`                                                                                                                   |
 
 Всё уже пишется штатными командами (`run`, `complain`, `task-eval`,
 `scaffold`, `tool expose`) — аналитика только агрегирует, новых сборщиков нет.
