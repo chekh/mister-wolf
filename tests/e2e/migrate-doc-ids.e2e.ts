@@ -123,7 +123,11 @@ function isService(rel: string): boolean {
 
 /** Все старые id (doc_*) из frontmatter объектов памяти. */
 function collectDocIds(project: string): string[] {
-  const mem = join(project, '.wolf', 'memory');
+  return collectDocIdsFromMem(join(project, '.wolf', 'memory'));
+}
+
+/** doc_*-id из произвольной директории памяти (fixture-гард + основной проход). */
+function collectDocIdsFromMem(mem: string): string[] {
   const ids: string[] = [];
   for (const f of walkMdSync(mem)) {
     if (isService(f.slice(mem.length + 1))) continue;
@@ -161,7 +165,9 @@ describe('wolf migrate doc-ids (спека 2.1.0 §2.6, AC6: копия памя
     project = mkdtempSync(join(tmpdir(), 'wolf-migrate-docids-'));
     writeFileSync(join(project, 'package.json'), '{ "name": "migrate-docids-e2e" }');
     xdg = mkdtempSync(join(tmpdir(), 'wolf-migrate-docids-xdg-'));
-    if (existsSync(join(playgroundWolf, 'memory'))) {
+    // Fixture-детерминизм: живой playground без doc_* (миграция уже прошла) — не
+    // fixture для ЭТОГО теста; копируем только если doc_* реально есть, иначе синтетика.
+    if (existsSync(join(playgroundWolf, 'memory')) && collectDocIdsFromMem(join(playgroundWolf, 'memory')).length > 0) {
       // весь .wolf целиком (config.yaml тоже) — schema-guard пройдёт; playground не трогаем
       cpSync(playgroundWolf, join(project, '.wolf'), { recursive: true });
     } else {

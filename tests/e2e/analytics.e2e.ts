@@ -25,16 +25,7 @@ describe('analytics + dashboard golden scenarios (spec 2026-09-03)', () => {
     chmodSync(join(dir, 'bin', 'opencode'), 0o755);
   }
 
-  /** Последняя непустая JSONL-строка файла как объект. */
-  function lastJsonLine(text: string): Record<string, unknown> {
-    const lines = text
-      .trim()
-      .split('\n')
-      .filter((l) => l !== '');
-    return JSON.parse(lines[lines.length - 1] ?? '{}') as Record<string, unknown>;
-  }
-
-  it('run flags -> run-log/run-signal; snapshot -> delta; analytics views (acceptance 1,2,4,5,6)', () => {
+  it('run flags -> run-signal; snapshot -> delta; analytics views (acceptance 1,2,4,5,6)', () => {
     const dir = tmpProject();
     dirs.push(dir);
     expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir).status).toBe(0);
@@ -64,22 +55,20 @@ describe('analytics + dashboard golden scenarios (spec 2026-09-03)', () => {
     );
     expect(run.status).toBe(0);
 
-    const entry = lastJsonLine(readFileSync(join(dir, '.wolf', 'run-log.jsonl'), 'utf-8'));
-    expect(entry.session).toBe('s-e2e');
-    expect((entry.tokens as { input: number }).input).toBe(100);
-    expect(typeof entry.duration_ms).toBe('number');
-    expect((entry.experiment as { arm: string }).arm).toBe('wolf');
-    expect((entry.experiment as { task_id: string }).task_id).toBe('t-1');
-
+    // P1 D3: .wolf/run-log.jsonl больше не пишется — канонический источник run-метрик
+    // это сигнальный лог (assert ниже); legacy-мерж покрыт юнит-тестами через fixtures.
     const signals = readFileSync(join(dir, '.wolf', 'metrics', 'session-metrics.jsonl'), 'utf-8')
       .trim()
       .split('\n')
       .map((l) => JSON.parse(l) as Record<string, unknown>);
     const runSignal = signals.find((e) => e.event === 'run');
     expect(runSignal).toBeDefined();
+    expect(runSignal?.session_id).toBe('s-e2e');
     expect(typeof runSignal?.duration_ms).toBe('number');
     expect((runSignal?.tokens as { input: number }).input).toBe(100);
     expect((runSignal?.experiment as { id: string }).id).toBe('exp1');
+    expect((runSignal?.experiment as { arm: string }).arm).toBe('wolf');
+    expect((runSignal?.experiment as { task_id: string }).task_id).toBe('t-1');
 
     // --- сценарий 2: снапшот + дельта (критерий 2), тот же dir
     const snap = runCli(['effectiveness', '--snapshot'], dir);
