@@ -16,7 +16,7 @@ import { metricsDir } from './project-paths.js';
 import { classifyError } from '../../domain/error-class.js';
 import { loadWolfConfigSync } from './config-file.js';
 
-export type SignalEventName = 'run' | 'complaint' | 'delivery' | 'tool_error';
+export type SignalEventName = 'run' | 'complaint' | 'delivery' | 'tool_error' | 'task_evaluated';
 
 /**
  * Схема сигнального лога (P0 D6): чтение лога валидируется Zod, неизвестные поля
@@ -25,7 +25,7 @@ export type SignalEventName = 'run' | 'complaint' | 'delivery' | 'tool_error';
 export const SignalEventSchema = z.object({
   /** ISO8601. */
   ts: z.string(),
-  event: z.enum(['run', 'complaint', 'delivery', 'tool_error']),
+  event: z.enum(['run', 'complaint', 'delivery', 'tool_error', 'task_evaluated']),
   session_id: z.string().nullable(),
   /** gen_ai-неймспейс OTEL; modelID — обязательное поле записи (null = неизвестна). */
   gen_ai: z.object({ modelID: z.string().nullable(), agent: z.string().nullable() }),
@@ -85,7 +85,7 @@ export function patternThreshold(baseDir: string): number {
 /**
  * Ключ кластеризации Ф21 (детерминированный, O(n)-группировка):
  * tool_error → `tool_name:error_class_id`; complaint/delivery → `тип:цель`;
- * run → null (контекст-событие, не кластеризуется).
+ * run/task_evaluated → null (контекст-событие, не кластеризуется).
  */
 export function signalKey(ev: SignalEvent): string | null {
   if (ev.event === 'tool_error') return `${ev.tool_name ?? 'unknown'}:${ev.error_class_id ?? 'uncategorized'}`;
@@ -320,4 +320,41 @@ export function recordToolError(
     count: result.count,
     patternFixed: result.patternFixed,
   };
+}
+
+/**
+ * Writer (д): task_evaluated (P0 D2) — вердикт по задаче от скорера. Контекст-событие:
+ * signalKey → null (как run), пороги Ф21 не считаются. Дефолт scorer='human'
+ * задаётся на уровне CLI-команды `wolf task-eval` (P0 D3).
+ */
+export function appendTaskEvaluatedSignal(
+  baseDir: string,
+  input: {
+    verdict: 'accepted' | 'rejected' | 'partial' | 'inconclusive';
+    scorer: 'human' | 'deterministic' | 'llm_judge' | 'hidden_tests';
+    sessionId?: string | null;
+    taskId?: string;
+    criteriaPassed?: number;
+    criteriaTotal?: number;
+    criticalFailure?: boolean;
+    note?: string;
+  }
+): { key: string | null; count: number; patternFixed: boolean } {
+  return appendSignal(baseDir, {
+    ts: nowIso(),
+    event: 'task_evaluated',
+    session_id: input.sessionId ?? null,
+    gen_ai: { modelID: null, agent: null },
+    orchestration: { task: null, actor: 'user:cli' },
+    outcome: 'evaluated',
+    detail: {
+      verdict: input.verdict,
+      scorer: input.scorer,
+      ...(input.taskId !== undefined ? { task_id: input.taskId } : {}),
+      ...(input.criteriaPassed !== undefined ? { criteria_passed: input.criteriaPassed } : {}),
+      ...(input.criteriaTotal !== undefined ? { criteria_total: input.criteriaTotal } : {}),
+      ...(input.criticalFailure ? { critical_failure: true } : {}),
+      ...(input.note ? { note: input.note } : {}),
+    },
+  });
 }
