@@ -1,6 +1,6 @@
 # Analytics
 
-Effectiveness analytics aggregates the logs the harness already writes — run-log, signal log, memory event log — with no LLM calls and no new collectors. The mental model is a value funnel: write → deliver → trigger; every report localizes where the funnel leaks (capture grows but effect doesn't → delivery problem; delivery grows but holdout is empty → memory doesn't change behavior). Analytics serves data, not decisions: archiving, superseding and repairs stay with the Steward under governance rules.
+Effectiveness analytics aggregates the logs the harness already writes — the signal log (the canonical run-metrics source since P1), the memory event log, the legacy run-log during its transition window — with no LLM calls and no new collectors. The mental model is a value funnel: write → deliver → trigger; every report localizes where the funnel leaks (capture grows but effect doesn't → delivery problem; delivery grows but holdout is empty → memory doesn't change behavior). Analytics serves data, not decisions: archiving, superseding and repairs stay with the Steward under governance rules.
 
 ## wolf analytics
 
@@ -45,7 +45,7 @@ Views:
 | View             | What it returns                                                                                                                                                                                            |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `memory`         | Memory ledger: per-object age, deliveries, triggers, complaints, last_used, lifecycle class; garbage ratio (DEAD / active)                                                                                 |
-| `tools`          | Tool ledger: usage, error rate, lifecycle (script tools); run-log attributions (model-native); promotion candidates                                                                                        |
+| `tools`          | Tool ledger: usage, error rate, lifecycle (script tools); signal-log `tools` attributions (model-native); promotion candidates                                                                             |
 | `rules`          | Rule ranking by `holdout_prevented`; silent rules list                                                                                                                                                     |
 | `weeklyActivity` | Weekly write / deliver / trigger activity per week                                                                                                                                                         |
 | `agents`         | Per-agent runs, weighted cost, duration, process-failure rate, completed and accepted tasks, complaints (filed and received), prevented                                                                    |
@@ -87,7 +87,7 @@ garbage: dead/base = 27/465 = 5.8%
 The tool ledger separates two origins with different economics:
 
 - `script` — objects registered in the tool registry (custom scripts in `.wolf/tools/`, full register → use → expose → deprecate lifecycle). Reuse of a script saves re-creation effort.
-- `model-native` — the model's own tools (MCP, built-in), which are not in the registry and are visible only through run-log `--tool` attributions and `tool_error` events. Creation economy doesn't apply; they are outside Wolf's jurisdiction.
+- `model-native` — the model's own tools (MCP, built-in), which are not in the registry and are visible only through signal-log `tools` attributions and `tool_error` events. Creation economy doesn't apply; they are outside Wolf's jurisdiction. Every `mr-wolf_*` MCP tool call is itself instrumented (`mcp_call` event with duration and outcome).
 
 Promotion candidates: a script candidate whose `usage_count` reaches the pattern threshold is an expose candidate; a native name appearing repeatedly in the logs without registration is a register candidate (precedent: the search-before-write rule).
 
@@ -264,16 +264,19 @@ thresholds: noise ok<20 warn<=40 bad | silent ok<30
 
 ## wolf run enrichment
 
-`wolf run` itself is documented on the [Platform page](/guide/cli/platform#wolf-run); these are the enrichment flags for comparative methodologies (RCT, golden tasks):
+`wolf run` itself is documented on the [Platform page](/guide/cli/platform#wolf-run); these are the enrichment flags for comparative methodologies (RCT, golden tasks) and telemetry identity:
 
+- `--tool <name>` — mark the run as using tool(s) (repeatable); feeds tool-run economy from the signal log
 - `--experiment <id>` — experiment id (comparative methodologies, e.g. RCT)
 - `--arm <choice>` — experiment arm (choices: `wolf`, `baseline`)
-- `--task-id <id>` — task id within the experiment (golden tasks)
+- `--task-id <id>` — task id (written top-level whenever passed, experiment or not)
+- `--trace-id <id>` — trace id grouping runs of one task (defaults to a fresh uuid)
+- `--attempt <n>` — attempt number within the task
 
-Every run now writes raw tokens (`input`, `output`, `cache_read`) and `duration_ms` into the run-log and the signal log, with the experiment fields riding along. Runs without the new flags keep the old record format — the enrichment is backward-compatible.
+Every run writes raw tokens (`input`, `output`, `cache_read`), `duration_ms` and the v2 identity fields (`event_id`, `run_id`, `trace_id`, `config_hash`, `prompt_hash`, `tools`, `schema_version: 2`) into the signal log — since P1 the signal log is the single canonical source of run metrics, and `.wolf/run-log.jsonl` is no longer written (existing history is still read for the economy transition window). Runs without the new flags keep the old record format — the enrichment is backward-compatible.
 
 ```bash
-wolf run "Fix the failing test" --experiment exp-20260904-x1 --arm wolf --task-id t3
+wolf run "Fix the failing test" --experiment exp-20260904-x1 --arm wolf --task-id t3 --tool wolf-search --trace-id 7f3a2b1c-9d4e-4f6a-8b2c-1e5d7a9f0b3e
 ```
 
 ## wolf task-eval
@@ -303,11 +306,37 @@ task verdict recorded: verdict=accepted scorer=human
 ```text
 coverage: partial — scored 1/2 (50.0%)
 dataQuality: valid 100.0% (malformed lines: 0)
+duplicateEventRatePct: n/a
+unknownModelRatePct: n/a
+pricingCoveragePct: n/a
+completeTraceRatePct: n/a (span model planned P2)
 ```
 
 - `coverage: partial — scored X/Y (Z%)` — share of runs with a verdict (`task_evaluated` signals / run signals); `partial` means not every run has been scored, so treat per-run metrics with caution
 - `acceptance` (JSON block) — `accepted` count and `costPerAcceptedTask` (`$` with pricing): how many tasks were actually accepted and what an accepted task costs
-- `dataQuality` — share of valid lines in the signal log (`validEventRatePct`, `malformedLines`)
+- `dataQuality` — data honesty (v2): `validEventRatePct` / `malformedLines` (valid share of lines), `duplicateEventRatePct` (share of duplicate events by `event_id`; the second copy never reaches analytics), `unknownModelRatePct` (runs with modelID null/'unknown'), `pricingCoveragePct` (runs with tokens whose model is priced), and `completeTraceRatePct: null` with the reason — the span model is planned for P2. `n/a` means no data for the metric yet (v1 records without `event_id`, no pricing configured).
+
+## Harness integration
+
+Wrapper and plugin authors can write v2 events into the signal log (`.wolf/metrics/session-metrics.jsonl`) and get first-class analytics. The full format lives in the signal-log guide; the essentials:
+
+**Required fields** (minimum — without them the line counts as malformed):
+
+```ts
+{
+  ts: new Date().toISOString(),          // ISO8601
+  event: 'run',                          // event type
+  session_id: null,                      // session id or null
+  gen_ai: { modelID: null, agent: null },
+  orchestration: { task: null, actor: 'system:my-wrapper' },
+}
+```
+
+**v2 identity fields** (optional, but the fuller the richer the cross-run analytics): generate an `event_id` (uuid) per event and set `schema_version: 2`; thread `run_id`/`trace_id` through the chain (one trace per task, one run per invocation); `attempt` for retries; `config_hash`/`prompt_hash` as input signatures (sha256, first 12 chars).
+
+**role_level follows the actor convention**: L0 — human/owner, L1 — executor (worker/CLI run), L2 — coordinator/orchestrator. Default: omit the field.
+
+Mechanics: append via `appendSignal(baseDir, event)` (or append a JSON line + `\n`); unknown fields are stripped by the Zod schema on read, records without `schema_version` are read as v1. Duplicate `event_id`s are deduplicated by analytics (first copy wins, repeats surface as `duplicateEventRatePct`). A telemetry failure must never break the wrapped call — keep it in try/catch.
 
 ## wolf insights --type activity
 
