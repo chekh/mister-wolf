@@ -205,6 +205,30 @@ describe('buildEffectivenessReport (E1.2: панель эффективност�
     ]);
   });
 
+  it('P1 D4 routing: run-сигналы (weighted, model) дают routing-строки; legacy run-log мержится', async () => {
+    const mk = (model: string, weighted: number): SignalEvent => ({
+      ts: T(0),
+      event: 'run',
+      session_id: 's',
+      gen_ai: { modelID: model, agent: 'a' },
+      orchestration: { task: 't', actor: 'user:cli' },
+      weighted,
+    });
+    const runLog = JSON.stringify({ model: 'legacy-model', weighted: 5 });
+    const report = await buildEffectivenessReport(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]) },
+      {
+        signals: [mk('sig-model', 10), mk('sig-model', 30)],
+        runLogText: runLog,
+        thresholds: DEFAULT_EFFECTIVENESS_THRESHOLDS,
+      }
+    );
+    expect(report.routing).toEqual([
+      { model: 'sig-model', tasks: 2, medianWeighted: 20 },
+      { model: 'legacy-model', tasks: 1, medianWeighted: 5 },
+    ]);
+  });
+
   it('R2: scan-обновление считается использованием — объект со scan-событием не шум', async () => {
     // x1 подтверждён повторным сканом (memory.scan.updated) → не шум;
     // y1 без событий кроме memory.added → шум; dr1 (document-ref) исключён из метрики

@@ -10,11 +10,12 @@ import type { Clock } from '../../ports/clock.port.js';
 import type { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import type { MemoryEvent } from '../../domain/schemas/memory-event-schema.js';
 import { DEFAULT_PATTERN_THRESHOLD, type SignalEvent } from '../../adapters/fs/session-metrics-log.js';
-import { parseRunLog } from '../../domain/tool-economy.js';
+import type { RunLogEntry } from '../../domain/tool-economy.js';
 import { UNCATEGORIZED_ERROR_CLASS } from '../../domain/error-class.js';
 import { runCostUsd } from '../../domain/pricing.js';
 import type { PricingTable } from '../../domain/pricing.js';
 import { silentRuleIds } from './learn-decay.js';
+import { mergeRunEntries } from './run-source.js';
 import { mondayOf } from './generate-insights.js';
 import { extractVote } from './tally-council-votes.js';
 
@@ -138,6 +139,15 @@ export interface CoverageStats {
 export interface DataQualityStats {
   validEventRatePct: number | null;
   malformedLines: number;
+  /** D6: повторы event_id в логе (вторая копия в аналитику не попадает); null — нет событий с event_id. */
+  duplicateEventRatePct: number | null;
+  /** D6: run-события с modelID null/'unknown' / все run-события; null — нет run-событий. */
+  unknownModelRatePct: number | null;
+  /** D6: run с tokens, чья модель есть в pricing / все run с tokens; null — pricing нет или нет run с tokens. */
+  pricingCoveragePct: number | null;
+  /** D6: всегда null до span-модели (P2). */
+  completeTraceRatePct: null;
+  completeTraceRateReason: string;
 }
 
 export interface StewardView {
@@ -323,7 +333,7 @@ function toolNameOf(o: MemoryObject): string | null {
 function buildToolLedger(
   toolObjects: MemoryObject[],
   signals: SignalEvent[],
-  runLogText: string | null,
+  runEntries: RunLogEntry[],
   patternThreshold: number
 ): ToolLedgerRow[] {
   // ошибки по имени тула: tool_error-сигналы, группа по error_class_id
@@ -368,7 +378,8 @@ function buildToolLedger(
     });
   }
 
-  // model-native: имена из tool_error-сигналов ∪ run-log tools[], минус зарегистрированные script
+  // model-native: имена из tool_error-сигналов ∪ run-entries tools[] (P1 D4: сигналы + legacy),
+  // минус зарегистрированные script
   const nativeCounts = new Map<string, number>();
   const bumpNative = (name: string): void => {
     nativeCounts.set(name, (nativeCounts.get(name) ?? 0) + 1);
@@ -376,7 +387,7 @@ function buildToolLedger(
   for (const ev of signals) {
     if (ev.event === 'tool_error' && typeof ev.tool_name === 'string') bumpNative(ev.tool_name);
   }
-  for (const entry of parseRunLog(runLogText ?? '')) {
+  for (const entry of runEntries) {
     for (const name of entry.tools ?? []) bumpNative(name);
   }
   for (const [name, usageCount] of nativeCounts) {
@@ -462,9 +473,10 @@ function buildWeeklyActivity(
   }));
 }
 
-/** Outliers Q8: top-N прогонов по finite weighted; $ при pricing (D9 — без данных null). */
-function buildOutliers(runLogText: string | null, pricing: PricingTable | undefined, top: number): OutlierRun[] {
-  return parseRunLog(runLogText ?? '')
+/** Outliers Q8: top-N прогонов по finite weighted (P1 D4: сигналы + legacy run-log);
+ * $ при pricing (D9 — без данных null). */
+function buildOutliers(runEntries: RunLogEntry[], pricing: PricingTable | undefined, top: number): OutlierRun[] {
+  return runEntries
     .filter((e) => finiteNumber(e.weighted) !== null)
     .sort((a, b) => (b.weighted ?? 0) - (a.weighted ?? 0))
     .slice(0, top)
@@ -942,38 +954,70 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
   const events = await deps.log.readAll();
   const weeks = input.weeks ?? 8;
 
-  const memory = buildMemoryLedger(allObjects, events, input.signals, now, thresholds);
+  // P1 D7: дедуп signals по event_id (остаётся первая копия по порядку) — повтор не
+  // попадает ни в один построитель отчёта; считается метрикой duplicateEventRatePct.
+  const seenEventIds = new Set<string>();
+  let duplicateLines = 0;
+  const signals: SignalEvent[] = [];
+  for (const s of input.signals) {
+    if (s.event_id === undefined) {
+      signals.push(s);
+      continue;
+    }
+    if (seenEventIds.has(s.event_id)) {
+      duplicateLines += 1;
+      continue;
+    }
+    seenEventIds.add(s.event_id);
+    signals.push(s);
+  }
+
+  const memory = buildMemoryLedger(allObjects, events, signals, now, thresholds);
+  // P1 D4: канонический источник run-метрик — сигналы + compat-мерж legacy run-log
+  const runEntries = mergeRunEntries(signals, input.runLogText);
   const tools = buildToolLedger(
     allObjects.filter((o) => o.type === 'tool'),
-    input.signals,
-    input.runLogText,
+    signals,
+    runEntries,
     input.patternThreshold ?? DEFAULT_PATTERN_THRESHOLD
   );
   const rules = buildRuleRanking(
     allObjects.filter((o) => o.type === 'rule'),
-    input.signals
+    signals
   );
-  const weeklyActivity = buildWeeklyActivity(events, input.signals, now, weeks);
-  const outliers = buildOutliers(input.runLogText, input.pricing, input.topOutliers ?? 10);
-  const acceptance = buildAcceptance(input.signals);
-  const agents = buildAgents(input.signals, allObjects, input.pricing, acceptance.acceptedByAgent);
-  const steward = buildSteward(events, input.signals, allObjects, now, weeks);
-  const readiness = buildReadiness(input.signals);
+  const weeklyActivity = buildWeeklyActivity(events, signals, now, weeks);
+  const outliers = buildOutliers(runEntries, input.pricing, input.topOutliers ?? 10);
+  const acceptance = buildAcceptance(signals);
+  const agents = buildAgents(signals, allObjects, input.pricing, acceptance.acceptedByAgent);
+  const steward = buildSteward(events, signals, allObjects, now, weeks);
+  const readiness = buildReadiness(signals);
   const councils = await buildCouncils(allObjects, deps.relations, now, weeks);
-  const coverage = buildCoverage(input.signals);
+  const coverage = buildCoverage(signals);
+  // D6: unknown-model и pricing-coverage по дедуплицированным run-сигналам
+  const runSignals = signals.filter((s) => s.event === 'run');
+  const unknownModels = runSignals.filter((s) => s.gen_ai.modelID === null || s.gen_ai.modelID === 'unknown').length;
+  const runsWithTokens = runSignals.filter((s) => s.tokens !== undefined);
+  const pricedRuns =
+    input.pricing === undefined
+      ? 0
+      : runsWithTokens.filter((s) => runCostUsd(s.tokens, input.pricing, s.gen_ai.modelID) !== null).length;
   // D7: без signalLogStats (старые вызывающие) → n/a; totalLines=0 → null-процент
-  const dataQuality: DataQualityStats =
-    input.signalLogStats === undefined
-      ? { validEventRatePct: null, malformedLines: 0 }
-      : {
-          validEventRatePct:
-            input.signalLogStats.totalLines > 0
-              ? ((input.signalLogStats.totalLines - input.signalLogStats.malformedLines) /
-                  input.signalLogStats.totalLines) *
-                100
-              : null,
-          malformedLines: input.signalLogStats.malformedLines,
-        };
+  const dataQuality: DataQualityStats = {
+    validEventRatePct:
+      input.signalLogStats === undefined || input.signalLogStats.totalLines <= 0
+        ? null
+        : ((input.signalLogStats.totalLines - input.signalLogStats.malformedLines) / input.signalLogStats.totalLines) *
+          100,
+    malformedLines: input.signalLogStats?.malformedLines ?? 0,
+    // доля событий-дубликатов среди всех событий с event_id (v1-записи без id не учитываются)
+    duplicateEventRatePct:
+      seenEventIds.size + duplicateLines > 0 ? (duplicateLines / (seenEventIds.size + duplicateLines)) * 100 : null,
+    unknownModelRatePct: runSignals.length > 0 ? (unknownModels / runSignals.length) * 100 : null,
+    pricingCoveragePct:
+      input.pricing === undefined || runsWithTokens.length === 0 ? null : (pricedRuns / runsWithTokens.length) * 100,
+    completeTraceRatePct: null,
+    completeTraceRateReason: 'span model planned P2',
+  };
   return {
     generatedAt: now.toISOString(),
     thresholds,

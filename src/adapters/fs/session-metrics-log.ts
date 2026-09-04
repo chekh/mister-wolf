@@ -8,6 +8,12 @@
  *
  * Writer-матрица D1 (M20-07, решение Q3): writer'ы — сами CLI-команды (run, complain,
  * scaffold, tool expose, recordToolError); `wolf metrics emit` не вводится.
+ *
+ * P1 D1: identity-поля v2 (event_id, schema_version, run_id, trace_id, parent_span_id,
+ * role_level, attempt, task_id, config_hash, prompt_hash, tools) — все опциональные,
+ * записи v1 валидны без изменений. Upcast-совместимость (P1 D2): записи без
+ * schema_version = v1, поля остаются undefined; писатели переходят на v2 отдельно.
+ * Спека: docs/superpowers/specs/2026-09-04-p1-telemetry-identity-design.md.
  */
 import { appendFileSync, mkdirSync, readFileSync } from 'fs';
 import { join } from 'path';
@@ -16,7 +22,7 @@ import { metricsDir } from './project-paths.js';
 import { classifyError } from '../../domain/error-class.js';
 import { loadWolfConfigSync } from './config-file.js';
 
-export type SignalEventName = 'run' | 'complaint' | 'delivery' | 'tool_error' | 'task_evaluated';
+export type SignalEventName = 'run' | 'complaint' | 'delivery' | 'tool_error' | 'task_evaluated' | 'mcp_call';
 
 /**
  * Схема сигнального лога (P0 D6): чтение лога валидируется Zod, неизвестные поля
@@ -25,7 +31,7 @@ export type SignalEventName = 'run' | 'complaint' | 'delivery' | 'tool_error' | 
 export const SignalEventSchema = z.object({
   /** ISO8601. */
   ts: z.string(),
-  event: z.enum(['run', 'complaint', 'delivery', 'tool_error', 'task_evaluated']),
+  event: z.enum(['run', 'complaint', 'delivery', 'tool_error', 'task_evaluated', 'mcp_call']),
   session_id: z.string().nullable(),
   /** gen_ai-неймспейс OTEL; modelID — обязательное поле записи (null = неизвестна). */
   gen_ai: z.object({ modelID: z.string().nullable(), agent: z.string().nullable() }),
@@ -46,6 +52,29 @@ export const SignalEventSchema = z.object({
   tool_name: z.string().optional(),
   /** tool_error: id из classifyError. */
   error_class_id: z.string().optional(),
+  // --- P1 D1: identity-поля v2 (все опциональные → записи v1 валидны) ---
+  /** Уникальный id события (uuid). Отсутствует в v1-записях. */
+  event_id: z.string().optional(),
+  /** 2 = схема v2 (identity-поля). Отсутствует = v1 (D2 upcast: поля остаются undefined). */
+  schema_version: z.literal(2).optional(),
+  /** Идентификатор прогона `wolf run` (uuid) — сквозная цепочка задачи. */
+  run_id: z.string().optional(),
+  /** Трасса (uuid; `--trace-id` в wolf run) — объединяет раны одной задачи. */
+  trace_id: z.string().optional(),
+  /** Родительский span (span-модель — P2; поле зарезервировано). */
+  parent_span_id: z.string().optional(),
+  /** Уровень роли писателя по actor-конвенции; дефолт — поле не пишется. */
+  role_level: z.enum(['L0', 'L1', 'L2']).optional(),
+  /** Попытка (retry-номер) в рамках run. */
+  attempt: z.number().optional(),
+  /** Общий id задачи (не только эксперименты; пишется всегда при передаче). */
+  task_id: z.string().optional(),
+  /** sha256(.wolf/config.yaml).slice(0,12) — конфиг-подпись. */
+  config_hash: z.string().optional(),
+  /** sha256(prompt).slice(0,12) — подпись промпта. */
+  prompt_hash: z.string().optional(),
+  /** Инструменты прогона (из --tool wolf run). */
+  tools: z.array(z.string()).optional(),
   /** Факты события: about/text у жалобы, name/mechanism/target у доставки, message у ошибки. */
   detail: z.record(z.string(), z.unknown()).optional(),
 });
@@ -199,7 +228,10 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-/** Writer (а): `wolf run` — метрики сессии (модель из routing, weighted, outcome; M1: duration/tokens/experiment). */
+/**
+ * Writer (а): `wolf run` — метрики сессии (модель из routing, weighted, outcome; M1: duration/tokens/experiment).
+ * P1 D3: writer перешёл на v2 — schema_version: 2 всегда, identity-поля опциональны.
+ */
 export function appendRunSignal(
   baseDir: string,
   input: {
@@ -214,16 +246,34 @@ export function appendRunSignal(
     durationMs?: number;
     tokens?: { input: number; output: number; cache_read: number };
     experiment?: { id: string; arm: 'wolf' | 'baseline'; taskId?: string };
+    /** P1 D3: identity-поля v2 (event_id/run_id/trace_id/attempt/task_id/config_hash/prompt_hash/tools). */
+    eventId?: string;
+    runId?: string;
+    traceId?: string;
+    attempt?: number;
+    taskId?: string;
+    configHash?: string;
+    promptHash?: string;
+    tools?: string[];
   }
 ): { key: string | null; count: number; patternFixed: boolean } {
   return appendSignal(baseDir, {
     ts: nowIso(),
     event: 'run',
+    schema_version: 2,
     session_id: input.session,
     gen_ai: { modelID: input.model, agent: input.agent },
     orchestration: { task: input.title, actor: input.actor },
     weighted: input.weighted,
     outcome: input.outcome,
+    ...(input.eventId !== undefined ? { event_id: input.eventId } : {}),
+    ...(input.runId !== undefined ? { run_id: input.runId } : {}),
+    ...(input.traceId !== undefined ? { trace_id: input.traceId } : {}),
+    ...(input.attempt !== undefined ? { attempt: input.attempt } : {}),
+    ...(input.taskId !== undefined ? { task_id: input.taskId } : {}),
+    ...(input.configHash !== undefined ? { config_hash: input.configHash } : {}),
+    ...(input.promptHash !== undefined ? { prompt_hash: input.promptHash } : {}),
+    ...(input.tools !== undefined ? { tools: input.tools } : {}),
     ...(input.task !== undefined ? { detail: { task: input.task } } : {}),
     ...(input.durationMs !== undefined ? { duration_ms: input.durationMs } : {}),
     ...(input.tokens !== undefined ? { tokens: input.tokens } : {}),

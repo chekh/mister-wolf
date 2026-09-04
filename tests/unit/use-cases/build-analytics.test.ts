@@ -14,6 +14,7 @@ import type { Clock } from '../../../src/ports/clock.port.js';
 import type { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
 import type { MemoryEvent } from '../../../src/domain/schemas/memory-event-schema.js';
 import type { SignalEvent } from '../../../src/adapters/fs/session-metrics-log.js';
+import type { PricingTable } from '../../../src/domain/pricing.js';
 
 type Extra = Record<string, unknown>;
 
@@ -110,6 +111,8 @@ function runSignal(opts: {
   weighted?: number;
   outcome?: string;
   durationMs?: number;
+  tools?: string[];
+  task?: string;
   experiment?: { id: string; arm: 'wolf' | 'baseline'; task_id?: string };
 }): SignalEvent {
   return {
@@ -117,10 +120,11 @@ function runSignal(opts: {
     event: 'run',
     session_id: opts.session ?? null,
     gen_ai: { modelID: opts.model ?? null, agent: opts.agent ?? null },
-    orchestration: { task: null, actor: 'user:cli' },
+    orchestration: { task: opts.task ?? null, actor: 'user:cli' },
     ...(opts.weighted !== undefined ? { weighted: opts.weighted } : {}),
     ...(opts.outcome !== undefined ? { outcome: opts.outcome } : {}),
     ...(opts.durationMs !== undefined ? { duration_ms: opts.durationMs } : {}),
+    ...(opts.tools !== undefined ? { tools: opts.tools } : {}),
     ...(opts.experiment !== undefined ? { experiment: opts.experiment } : {}),
   };
 }
@@ -367,6 +371,23 @@ describe('buildAnalyticsReport: tool ledger (Q3, D11)', () => {
     expect(byName.get('fetch-helper')!.promotion).toBeNull(); // 3 < 5
     expect(byName.get('webfetch')!.promotion).toBeNull(); // 4 < 5
   });
+
+  it('P1 D4: model-native tools из run-сигналов (v2 tools); legacy run-log продолжает мержиться', async () => {
+    const signals: SignalEvent[] = [
+      runSignal({ model: 'glm', weighted: 100, tools: ['wolf-search'] }),
+      runSignal({ model: 'glm', weighted: 100, tools: ['wolf-search'] }),
+      runSignal({ model: 'glm', weighted: 100, tools: ['wolf-search'] }),
+    ];
+    const legacyRunLog = JSON.stringify({ weighted: 100, tools: ['webfetch'] });
+    const report = await buildAnalyticsReport(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
+      { signals, runLogText: legacyRunLog }
+    );
+    expect(report.tools.filter((r) => r.origin === 'model-native').map((r) => [r.name, r.usageCount])).toEqual([
+      ['wolf-search', 3],
+      ['webfetch', 1],
+    ]);
+  });
 });
 
 describe('buildAnalyticsReport: rule ranking (Q4)', () => {
@@ -498,6 +519,28 @@ describe('buildAnalyticsReport: outliers (Q8)', () => {
     });
     expect(report.outliers[1]!.weighted).toBe(200);
     expect(report.outliers[1]!.costUsd).toBeNull(); // нет raw-токенов — стоимости нет
+  });
+
+  it('P1 D4: outliers из run-сигналов (weighted/tools); legacy run-log мержится', async () => {
+    const signals: SignalEvent[] = [
+      runSignal({ model: 'glm', agent: 'worker', task: 'sig-big', weighted: 300, tools: ['wolf-search'] }),
+      runSignal({ model: 'kimi', agent: 'steward', task: 'sig-mid', weighted: 200 }),
+    ];
+    const legacy = JSON.stringify({
+      ts: '2026-09-01T02:00:00Z',
+      model: 'glm',
+      agent: 'worker',
+      title: 'legacy-small',
+      weighted: 100,
+    });
+    const report = await buildAnalyticsReport(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
+      { signals, runLogText: legacy, topOutliers: 3 }
+    );
+    expect(report.outliers).toHaveLength(3);
+    expect(report.outliers[0]).toMatchObject({ model: 'glm', title: 'sig-big', weighted: 300, tools: ['wolf-search'] });
+    expect(report.outliers[1]).toMatchObject({ model: 'kimi', title: 'sig-mid', weighted: 200 });
+    expect(report.outliers[2]).toMatchObject({ title: 'legacy-small', weighted: 100 });
   });
 });
 
@@ -771,13 +814,84 @@ describe('buildAnalyticsReport: dataQuality (D7, критерий №6 — би�
       { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
       { signals: [], runLogText: null, signalLogStats: { malformedLines: 1, totalLines: 4 } }
     );
-    expect(report.dataQuality).toEqual({ validEventRatePct: 75, malformedLines: 1 });
+    expect(report.dataQuality).toEqual({
+      validEventRatePct: 75,
+      malformedLines: 1,
+      duplicateEventRatePct: null,
+      unknownModelRatePct: null,
+      pricingCoveragePct: null,
+      completeTraceRatePct: null,
+      completeTraceRateReason: 'span model planned P2',
+    });
 
     const noStats = await buildAnalyticsReport(
       { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
       { signals: [], runLogText: null }
     );
-    expect(noStats.dataQuality).toEqual({ validEventRatePct: null, malformedLines: 0 });
+    expect(noStats.dataQuality).toEqual({
+      validEventRatePct: null,
+      malformedLines: 0,
+      duplicateEventRatePct: null,
+      unknownModelRatePct: null,
+      pricingCoveragePct: null,
+      completeTraceRatePct: null,
+      completeTraceRateReason: 'span model planned P2',
+    });
+  });
+});
+
+describe('P1 D6+D7 data-quality v2', () => {
+  const deps = { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock };
+
+  it('дубль event_id: duplicateEventRatePct=50 (1 дубль / 2 события с id); дубль не попадает в аналитику (runs=1)', async () => {
+    const signals: SignalEvent[] = [
+      { ...runSignal({ agent: 'w', outcome: 'ok', ts: T(1) }), event_id: 'ev-1' },
+      { ...runSignal({ agent: 'w', outcome: 'ok', ts: T(2) }), event_id: 'ev-1' },
+    ];
+    const report = await buildAnalyticsReport(deps, { signals, runLogText: null });
+    expect(report.dataQuality.duplicateEventRatePct).toBe(50);
+    expect(report.coverage.runs).toBe(1);
+    expect(report.readiness.totalRuns).toBe(1);
+  });
+
+  it('unknownModelRatePct: null-модель + обычная → 50; сигналы без run → null', async () => {
+    const mixed = await buildAnalyticsReport(deps, {
+      signals: [runSignal({ model: null }), runSignal({ model: 'm1' })],
+      runLogText: null,
+    });
+    expect(mixed.dataQuality.unknownModelRatePct).toBe(50);
+
+    const noRuns = await buildAnalyticsReport(deps, { signals: [deliveryEvent('mem-1', T(1))], runLogText: null });
+    expect(noRuns.dataQuality.unknownModelRatePct).toBe(null);
+  });
+
+  it('pricingCoveragePct: 1 из 2 run с tokens покрыт → 50; без pricing → null', async () => {
+    const pricing: PricingTable = { m1: { input: 0.6, output: 2.2, cache_read: 0.06 } };
+    const tokens = { input: 1000, output: 200, cache_read: 500 };
+    const signals: SignalEvent[] = [
+      { ...runSignal({ model: 'm1' }), tokens },
+      { ...runSignal({ model: 'm-unpriced' }), tokens },
+    ];
+    const withPricing = await buildAnalyticsReport(deps, { signals, runLogText: null, pricing });
+    expect(withPricing.dataQuality.pricingCoveragePct).toBe(50);
+
+    const noPricing = await buildAnalyticsReport(deps, { signals, runLogText: null });
+    expect(noPricing.dataQuality.pricingCoveragePct).toBe(null);
+  });
+
+  it('completeTraceRatePct === null; completeTraceRateReason — span model planned P2', async () => {
+    const report = await buildAnalyticsReport(deps, { signals: [], runLogText: null });
+    expect(report.dataQuality.completeTraceRatePct).toBe(null);
+    expect(report.dataQuality.completeTraceRateReason).toBe('span model planned P2');
+  });
+
+  it('смесь v1 (без event_id) + v2: v1 не влияет на знаменатель duplicate-метрики', async () => {
+    const signals: SignalEvent[] = [
+      runSignal({ agent: 'w', outcome: 'ok' }), // v1: без event_id
+      { ...runSignal({ agent: 'w', outcome: 'ok' }), event_id: 'ev-1' },
+    ];
+    const report = await buildAnalyticsReport(deps, { signals, runLogText: null });
+    expect(report.dataQuality.duplicateEventRatePct).toBe(0); // 0 дублей / 1 событие с event_id
   });
 });
 

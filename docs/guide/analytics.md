@@ -177,6 +177,10 @@ task verdict recorded: verdict=accepted scorer=human
 ```text
 coverage: partial — scored 1/2 (50.0%)
 dataQuality: valid 100.0% (malformed lines: 0)
+duplicateEventRatePct: n/a
+unknownModelRatePct: n/a
+pricingCoveragePct: n/a
+completeTraceRatePct: n/a (span model planned P2)
 ```
 
 - `coverage: partial — scored X/Y (Z%)` — доля прогонов с вердиктом
@@ -184,8 +188,13 @@ dataQuality: valid 100.0% (malformed lines: 0)
   прогоны, к per-run метрикам — осторожность;
 - `acceptance` (JSON-блок) — `accepted` и `costPerAcceptedTask` (`$` при
   pricing): сколько задач реально принято и сколько стоит принятая задача;
-- `dataQuality` — доля валидных строк сигнального лога
-  (`validEventRatePct`, `malformedLines`).
+- `dataQuality` — честность данных (v2, P1 D6): `validEventRatePct` /
+  `malformedLines` (валидность строк), `duplicateEventRatePct` (доля
+  событий-дубликатов по `event_id`; вторая копия в аналитику не попадает),
+  `unknownModelRatePct` (run с modelID null/'unknown'),
+  `pricingCoveragePct` (run с tokens, чья модель в pricing), и
+  `completeTraceRatePct: null` с `reason` — span-модель запланирована в P2.
+  `n/a` = данных для метрики пока нет (v1-записи без `event_id`, нет pricing).
 
 ### `wolf insights --type activity` — недельная динамика мутаций (M4)
 
@@ -244,15 +253,50 @@ sharePct, medianHours}`, `weeks [{week, questions, opinions, syntheses}]`,
 
 ## Сбор данных
 
-| Данные                                            | Источник                                                                  |
-| ------------------------------------------------- | ------------------------------------------------------------------------- |
-| run-события (объём, токены, duration, experiment) | `.wolf/run-log.jsonl` + run-сигналы `.wolf/metrics/session-metrics.jsonl` |
-| доставки/жалобы/tool_error                        | сигнальный лог `.wolf/metrics/session-metrics.jsonl`                      |
-| вердикты задач (`task_evaluated`)                 | `wolf task-eval` → сигнальный лог `.wolf/metrics/session-metrics.jsonl`   |
-| рождения/мутации/срабатывания                     | event log `.wolf/memory/events.jsonl` (actor, memory_id)                  |
-| связи консилиумов (вопрос↔мнение↔синтез)          | relation log `.wolf/memory/relations.jsonl` (`answers`, `based_on`)       |
-| объекты памяти                                    | markdown-стор `.wolf/memory/`                                             |
-| снапшоты для трендов                              | `.wolf/metrics/effectiveness-snapshots.jsonl`                             |
+| Данные                                                   | Источник                                                                                                           |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| run-события (объём, токены, duration, tools, experiment) | run-сигналы `.wolf/metrics/session-metrics.jsonl` (канон, P1 D4) + compat-мерж исторического `.wolf/run-log.jsonl` |
+| доставки/жалобы/tool_error                               | сигнальный лог `.wolf/metrics/session-metrics.jsonl`                                                               |
+| вердикты задач (`task_evaluated`)                        | `wolf task-eval` → сигнальный лог `.wolf/metrics/session-metrics.jsonl`                                            |
+| рождения/мутации/срабатывания                            | event log `.wolf/memory/events.jsonl` (actor, memory_id)                                                           |
+| связи консилиумов (вопрос↔мнение↔синтез)                 | relation log `.wolf/memory/relations.jsonl` (`answers`, `based_on`)                                                |
+| объекты памяти                                           | markdown-стор `.wolf/memory/`                                                                                      |
+| снапшоты для трендов                                     | `.wolf/metrics/effectiveness-snapshots.jsonl`                                                                      |
 
 Всё уже пишется штатными командами (`run`, `complain`, `task-eval`,
 `scaffold`, `tool expose`) — аналитика только агрегирует, новых сборщиков нет.
+
+## Harness integration (P1)
+
+Как авторам обёрток/плагинов писать события v2 в сигнальный лог
+(формат целиком — [signal-log.md](./signal-log.md)):
+
+**Обязательные поля** (минимум, без них строка станет malformed):
+
+```ts
+{
+  ts: new Date().toISOString(),          // ISO8601
+  event: 'run',                          // тип события
+  session_id: null,                      // id сессии или null
+  gen_ai: { modelID: null, agent: null },
+  orchestration: { task: null, actor: 'system:my-wrapper' },
+}
+```
+
+**Identity-поля v2** (опциональны, но чем полнее — тем сквознее аналитика):
+генерируй `event_id` (uuid) на каждое событие и пиши `schema_version: 2`;
+для сквозной цепочки «задача → прогон» передавай `run_id`/`trace_id`
+(один trace_id на задачу, run_id на прогон); `attempt` — при ретраях;
+`config_hash`/`prompt_hash` — подписи входа (sha256, 12 символов).
+
+**role_level по actor-конвенции**: L0 — человек/владелец, L1 — исполнитель
+(worker/CLI-прогон), L2 — координатор/оркестратор. Дефолт — поле не писать.
+
+Механика: аппендь через `appendSignal(baseDir, event)` (или `appendFileSync`
+строки JSON + `\n` в `.wolf/metrics/session-metrics.jsonl`); неизвестные поля
+будут отброшены Zod-схемой при чтении (strip), записи без `schema_version`
+читаются как v1. Дубликаты `event_id` дедупятся аналитикой (первая копия
+остаётся, повтор считается `duplicateEventRatePct`). Ошибка обёртки не должна
+ломать сам вызов — телеметрия всегда в try/catch.
+
+Живые примеры v2-строк (run и mcp_call) — в [signal-log.md](./signal-log.md).

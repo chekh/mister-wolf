@@ -18,9 +18,10 @@ import type { EventLog } from '../../ports/event-log.port.js';
 import type { RelationLog } from '../../ports/relation-log.port.js';
 import type { SignalEvent } from '../../adapters/fs/session-metrics-log.js';
 import type { EconomyResult } from '../../domain/tool-economy.js';
-import { median, parseRunLog } from '../../domain/tool-economy.js';
+import { median } from '../../domain/tool-economy.js';
 import { runCostUsd, type PricingTable, type RawTokens } from '../../domain/pricing.js';
 import { toolStats } from './tool-stats.js';
+import { mergeRunEntries } from './run-source.js';
 import {
   countSessions,
   silentRuleIds,
@@ -209,9 +210,12 @@ export async function buildEffectivenessReport(
     }
   }
 
-  // Блок 2 «Инструменты»: реестр + экономика (переиспользуем toolStats, включая
-  // honest-fallback при runLogText === null)
-  const { tools: toolRows, economy } = await toolStats({ store: deps.store }, { runLogText: input.runLogText });
+  // Блок 2 «Инструменты»: реестр + экономика (переиспользуем toolStats —
+  // P1 D4: сигнальный источник + legacy run-log, insufficient от analyzeEconomy)
+  const { tools: toolRows, economy } = await toolStats(
+    { store: deps.store },
+    { signals: input.signals, runLogText: input.runLogText }
+  );
 
   // Блок 3 «Доставка→срабатывание»: сигнальный лог + окно молчания из learn-decay
   const deliveries = input.signals.filter((s) => s.event === 'delivery');
@@ -258,9 +262,10 @@ export async function buildEffectivenessReport(
   const writeOnly = noiseBase.filter((o) => !linked.has(o.id) && !readIds.has(o.id)).length;
   const noiseShare = noiseBase.length > 0 ? (writeOnly / noiseBase.length) * 100 : null;
 
-  // Блок 5 «Роутинг»: группировка run-log по model, медиана weighted (медианы переиспользуем)
+  // Блок 5 «Роутинг»: группировка run-метрик (P1 D4: сигнальный источник + legacy
+  // run-log) по model, медиана weighted (медианы переиспользуем)
   const weightedByModel = new Map<string, number[]>();
-  for (const entry of parseRunLog(input.runLogText ?? '')) {
+  for (const entry of mergeRunEntries(input.signals, input.runLogText)) {
     const w = finiteNumber(entry.weighted);
     if (w === null) continue;
     const model = typeof entry.model === 'string' && entry.model !== '' ? entry.model : 'unknown';

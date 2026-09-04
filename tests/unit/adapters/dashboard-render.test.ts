@@ -101,7 +101,15 @@ function dashboardFixture(): DashboardData {
       },
       acceptance: { accepted: 1, costPerAcceptedTask: 10 },
       coverage: { scored: 1, runs: 3, scoredTaskRatePct: 100 / 3 },
-      dataQuality: { validEventRatePct: 75, malformedLines: 1 },
+      dataQuality: {
+        validEventRatePct: 75,
+        malformedLines: 1,
+        duplicateEventRatePct: 50,
+        unknownModelRatePct: 25,
+        pricingCoveragePct: 100,
+        completeTraceRatePct: null,
+        completeTraceRateReason: 'span model planned P2',
+      },
     },
     effectiveness: { totals: { sumTokens: null } },
   } as unknown as DashboardData;
@@ -135,7 +143,15 @@ describe('councils в дашборде: ledgers-таблица открытых 
   it('renderTrends: coverage 100% не печатается; dataQuality null → n/a (no signal log)', () => {
     const d = dashboardFixture();
     d.analytics.coverage = { scored: 3, runs: 3, scoredTaskRatePct: 100 };
-    d.analytics.dataQuality = { validEventRatePct: null, malformedLines: 0 };
+    d.analytics.dataQuality = {
+      validEventRatePct: null,
+      malformedLines: 0,
+      duplicateEventRatePct: null,
+      unknownModelRatePct: null,
+      pricingCoveragePct: null,
+      completeTraceRatePct: null,
+      completeTraceRateReason: 'span model planned P2',
+    };
     const out = renderTrends('/nonexistent-wolf-dashboard-test', d);
     expect(out).not.toContain('coverage: partial');
     expect(out).toContain('dataQuality: n/a (no signal log)');
