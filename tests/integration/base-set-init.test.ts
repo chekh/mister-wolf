@@ -110,4 +110,22 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
     const using = readFileSync(join(dir, '.opencode/skills/using-skills/SKILL.md'), 'utf-8');
     for (const marker of ['1%', 'пассивн', 'лестниц', 'rigid', 'flexible']) expect(using).toContain(marker);
   });
+
+  it('worker-*: wolf_* MCP-тулы запрещены в rendered permission (изоляция памяти воркеров)', () => {
+    expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir).status).toBe(0);
+
+    // воркеры: deny обоих MCP-алиасов wolf (серверы «wolf» и «mr-wolf») внутри frontmatter
+    for (const a of ['worker-implementer', 'worker-researcher', 'worker-reviewer']) {
+      const body = readFileSync(join(dir, '.opencode/agents', `${a}.md`), 'utf-8');
+      const frontmatter = body.split('---')[1] ?? '';
+      for (const pat of ['wolf_\\*', 'mr-wolf_\\*']) {
+        expect(frontmatter, `${a}: ${pat}`).toMatch(new RegExp(`["']?${pat}["']?:\\s*deny`));
+      }
+    }
+    // не-воркеры запрета не получают
+    for (const a of ['mr-wolf', 'executor-lead', 'steward']) {
+      const body = readFileSync(join(dir, '.opencode/agents', `${a}.md`), 'utf-8');
+      expect(body, a).not.toMatch(/["']?(wolf|mr-wolf)_\*["']?:\s*deny/);
+    }
+  });
 });

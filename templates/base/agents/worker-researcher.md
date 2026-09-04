@@ -4,6 +4,8 @@ model: {{model.primary}}
 temperature: 0.2
 permission:
   task: deny
+  "wolf_*": deny
+  "mr-wolf_*": deny
 ---
 
 # Роль: Worker Researcher — уровень 2
