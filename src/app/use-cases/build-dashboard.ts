@@ -42,7 +42,7 @@ export async function buildDashboard(
     }
   );
   const analytics = await buildAnalyticsReport(
-    { store: deps.store, log: deps.log, clock: deps.clock },
+    { store: deps.store, log: deps.log, relations: deps.relations, clock: deps.clock },
     {
       signals: input.signals,
       runLogText: input.runLogText,

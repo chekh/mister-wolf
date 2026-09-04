@@ -34,7 +34,7 @@ export async function tallyCouncilVotes(
   };
 }
 
-function extractVote(op: MemoryObject): string {
+export function extractVote(op: MemoryObject): string {
   const raw = (op as Record<string, unknown>).vote;
   if (typeof raw === 'string' && raw.trim()) return raw.trim();
   const m = op.body.match(/^VOTE:\s*(\S+)/m);

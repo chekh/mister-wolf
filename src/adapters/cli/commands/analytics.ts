@@ -21,7 +21,17 @@ import { renderTable, formatFunnelRatio } from './table-render.js';
  * baseDir инъектится для тестов (прецедент: memory-effectiveness.ts).
  */
 
-type AnalyticsView = 'memory' | 'tools' | 'rules' | 'funnel' | 'agents' | 'steward' | 'outliers' | 'readiness' | 'all';
+type AnalyticsView =
+  | 'memory'
+  | 'tools'
+  | 'rules'
+  | 'funnel'
+  | 'agents'
+  | 'steward'
+  | 'outliers'
+  | 'readiness'
+  | 'councils'
+  | 'all';
 type SectionView = Exclude<AnalyticsView, 'all'>;
 
 const SECTION_VIEWS: SectionView[] = [
@@ -33,11 +43,17 @@ const SECTION_VIEWS: SectionView[] = [
   'steward',
   'outliers',
   'readiness',
+  'councils',
 ];
 
 /** null/undefined → '-', остальное — строкой (колонки с nullable-полей). */
 function cell(v: unknown): string {
   return v === null || v === undefined ? '-' : String(v);
+}
+
+/** Записи голосов Record<string,number>: count убыв., затем ключ по алфавиту. */
+function voteEntries(v: Record<string, number>): [string, number][] {
+  return Object.entries(v).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 }
 
 /** Фильтр секции: AnalyticsViewFilter с view конкретной секции (без 'all'). */
@@ -166,6 +182,46 @@ export function renderSection(report: AnalyticsReport, filter: SectionViewFilter
         `arms: ${arms || '-'} | experiments: ${experiments || '-'}`,
       ].join('\n');
     }
+    case 'councils': {
+      const c = payload.councils;
+      // per-question статистика: null (0 вопросов) → n/a; avg — одна десятичная
+      const pq = (v: number | null): string => (v === null ? 'n/a' : String(v));
+      const avg = c.opinions.perQuestionAvg;
+      const perQuestion = `${pq(c.opinions.perQuestionMin)}/${avg === null ? 'n/a' : avg.toFixed(1)}/${pq(c.opinions.perQuestionMax)}`;
+      const share = c.synthesis.sharePct === null ? 'n/a' : `${c.synthesis.sharePct.toFixed(1)}%`;
+      const median = c.synthesis.medianHours === null ? '-' : `${c.synthesis.medianHours.toFixed(1)}h`;
+      // компактный расклад голосов вопроса: `за=2, нет=1`; пустой → '-'
+      const compactVotes = (v: Record<string, number>): string =>
+        voteEntries(v)
+          .map(([k, n]) => `${k}=${n}`)
+          .join(', ') || '-';
+      return [
+        header,
+        `questions: total=${c.questions.total} inWindow=${c.questions.inWindow} open=${c.questions.open}`,
+        `opinions: total=${c.opinions.total} per-question min/avg/max = ${perQuestion}`,
+        'participation:',
+        renderTable(
+          ['agent', 'opinions'],
+          c.participation.map((p) => [p.agent, cell(p.opinions)])
+        ),
+        'votes:',
+        renderTable(
+          ['vote', 'count'],
+          voteEntries(c.votes).map(([vote, count]) => [vote, cell(count)])
+        ),
+        `synthesis: questions=${c.synthesis.questionsWithSynthesis}/${c.questions.total} (${share}) median question->synthesis=${median}`,
+        'weeks:',
+        renderTable(
+          ['week', 'questions', 'opinions', 'syntheses'],
+          c.weeks.map((w) => [w.week, cell(w.questions), cell(w.opinions), cell(w.syntheses)])
+        ),
+        'open questions:',
+        renderTable(
+          ['id', 'days_open', 'opinions', 'votes'],
+          c.openQuestions.map((q) => [q.id, cell(q.daysOpen), cell(q.opinions), compactVotes(q.votes)])
+        ),
+      ].join('\n');
+    }
     default:
       // 'all' обрабатывается вызывающим кодом до renderSection; ветка закрывает switch (TS2366)
       throw new Error(`renderSection: unexpected view ${String((payload as { view: string }).view)}`);
@@ -179,13 +235,24 @@ export function renderAllSections(report: AnalyticsReport, filter: AnalyticsView
 
 export function analyticsCommand(baseDir: string = safeCwd()): Command {
   const cmd = new Command('analytics').description(
-    'Effectiveness analytics: ledgers (memory/tools/rules), funnel, agents, steward view, outliers, experiment readiness'
+    'Effectiveness analytics: ledgers (memory/tools/rules), funnel, agents, steward view, councils, outliers, experiment readiness'
   );
 
   cmd
     .addOption(
       new Option('--view <view>', 'Analytics view')
-        .choices(['memory', 'tools', 'rules', 'funnel', 'agents', 'steward', 'outliers', 'readiness', 'all'])
+        .choices([
+          'memory',
+          'tools',
+          'rules',
+          'funnel',
+          'agents',
+          'steward',
+          'outliers',
+          'readiness',
+          'councils',
+          'all',
+        ])
         .default('all')
     )
     .addOption(
@@ -217,9 +284,9 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
       runLogText = null; // ENOENT — run-log ещё не пишется
     }
 
-    const { store, log, clock } = createCliContainer(baseDir);
+    const { store, log, relations, clock } = createCliContainer(baseDir);
     const report = await buildAnalyticsReport(
-      { store, log, clock },
+      { store, log, relations, clock },
       {
         signals: readSignals(baseDir),
         runLogText,

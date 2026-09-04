@@ -8,19 +8,20 @@
 
 ### `wolf analytics` — выборки для Стюарда
 
-| Вызов                                     | Ответ                                                         |
-| ----------------------------------------- | ------------------------------------------------------------- |
-| `--view memory --class dead --json`       | DEAD-объекты: id, тип, возраст, last_used, счётчики           |
-| `--view memory --class sleeper [--top N]` | редко используемые объекты                                    |
-| `--view memory [--type <тип>] [--top N]`  | полный memory ledger + garbage ratio                          |
-| `--view rules [--silent]`                 | ranking по holdout_prevented; `--silent` — только молчащие    |
-| `--view tools [--origin script\|native]`  | tool ledger: usage, ошибки, lifecycle, promotion-кандидаты    |
-| `--view funnel [--weeks N]`               | конверсия write→deliver→trigger по неделям                    |
-| `--view agents [--agent <имя>] [--top N]` | per-agent объём, стоимость, ошибки, жалобы, достижения        |
-| `--view steward [--weeks N]`              | мутации, жалобная воронка, рецидивы, churn, доля авто-мутаций |
-| `--view outliers [--top N]`               | самые дорогие прогоны (weighted; $ при pricing)               |
-| `--view readiness`                        | готовность к экспериментам (доля прогонов с arm)              |
-| `--view all`                              | все секции подряд                                             |
+| Вызов                                     | Ответ                                                          |
+| ----------------------------------------- | -------------------------------------------------------------- |
+| `--view memory --class dead --json`       | DEAD-объекты: id, тип, возраст, last_used, счётчики            |
+| `--view memory --class sleeper [--top N]` | редко используемые объекты                                     |
+| `--view memory [--type <тип>] [--top N]`  | полный memory ledger + garbage ratio                           |
+| `--view rules [--silent]`                 | ranking по holdout_prevented; `--silent` — только молчащие     |
+| `--view tools [--origin script\|native]`  | tool ledger: usage, ошибки, lifecycle, promotion-кандидаты     |
+| `--view funnel [--weeks N]`               | конверсия write→deliver→trigger по неделям                     |
+| `--view agents [--agent <имя>] [--top N]` | per-agent объём, стоимость, ошибки, жалобы, достижения         |
+| `--view steward [--weeks N]`              | мутации, жалобная воронка, рецидивы, churn, доля авто-мутаций  |
+| `--view councils [--weeks N]`             | консилиумы: созывы, участие, голоса, синтезы, открытые вопросы |
+| `--view outliers [--top N]`               | самые дорогие прогоны (weighted; $ при pricing)                |
+| `--view readiness`                        | готовность к экспериментам (доля прогонов с arm)               |
+| `--view all`                              | все секции подряд                                              |
 
 Общие флаги: `--json` (машинный вывод — дефолт для агентского потребления),
 `--top N` (лимит строк, дефолт 20), `--weeks N` (окно воронки, дефолт 8).
@@ -60,13 +61,78 @@ wolf analytics --view funnel --weeks 4
 └────────────┴────────┴──────────┴──────────┴───────┴──────┘
 ```
 
+### `--view councils` — консилиумы
+
+Агрегация council-объектов (`council-question` / `council-opinion` / `synthesis`)
+и relations между ними (`answers`, `based_on`):
+
+- **Созывы** — всего вопросов, за окно `--weeks`, открытых сейчас (статус `open`);
+- **Участие** — мнений на вопрос (min/avg/max по всем вопросам) и per-agent
+  счётчик мнений (`created_by` = голосующий);
+- **Голоса** — распределение значений `vote` (парсер общий с подсчётом голосов
+  `tally`: поле `vote` → строка `VOTE:` в теле → `TIMEOUT`); значения свободные
+  строки, набор не хардкодится;
+- **Результативность** — доля вопросов с синтезом (синтез связан `based_on`
+  с мнениями вопроса) и медианное время вопрос → синтез;
+- **Недельная активность** — те же 8 бакетов, что воронка;
+- **Открытые вопросы** — id, дней открыт, мнений, сводка голосов.
+
+Пример реального вывода:
+
+```bash
+wolf analytics --view councils
+```
+
+```text
+== councils ==
+questions: total=2 inWindow=2 open=1
+opinions: total=5 per-question min/avg/max = 2/2.5/3
+participation:
+┌────────────────────────────┬──────────┐
+│ agent                      │ opinions │
+├────────────────────────────┼──────────┤
+│ user:cli                   │ 2        │
+│ agent:pragmatist-dev       │ 1        │
+│ agent:researcher-architect │ 1        │
+│ agent:skeptic-reviewer     │ 1        │
+└────────────────────────────┴──────────┘
+votes:
+┌────────────────────┬───────┐
+│ vote               │ count │
+├────────────────────┼───────┤
+│ decision-audit     │ 1     │
+│ session-resume     │ 1     │
+│ solve-pack-anatomy │ 1     │
+│ нет                │ 1     │
+│ только измерив     │ 1     │
+└────────────────────┴───────┘
+synthesis: questions=1/2 (50.0%) median question->synthesis=0.0h
+weeks:
+┌────────────┬───────────┬──────────┬───────────┐
+│ week       │ questions │ opinions │ syntheses │
+├────────────┼───────────┼──────────┼───────────┤
+│ 2026-08-24 │ 2         │ 5        │ 1         │
+│ 2026-08-31 │ 0         │ 0        │ 0         │
+└────────────┴───────────┴──────────┴───────────┘
+open questions:
+┌──────────────────────────┬───────────┬──────────┬──────────────────────────────────────────┐
+│ id                       │ days_open │ opinions │ votes                                    │
+├──────────────────────────┼───────────┼──────────┼──────────────────────────────────────────┤
+│ mem_20260824_wolf_fd1b83 │ 10        │ 3        │ decision-audit=1, session-resume=1, sol… │
+└──────────────────────────┴───────────┴──────────┴──────────────────────────────────────────┘
+```
+
+(weeks-таблица показана сокращённо — реально все 8 недель.)
+
 MCP-инструмент `analytics` принимает те же параметры (`view/class/type/origin/
 agent/top/weeks/silent`) и возвращает тот же JSON, что `--json`.
 
 ### `wolf dashboard` — консольный дашборд
 
-- без флагов — три секции в stdout: `health` (L1-статусы), `ledgers` (L2-таблицы),
-  `trends` (L3-спарклайны `▁▂▃▄▅▆▇█` по снапшотам);
+- без флагов — три секции в stdout: `health` (L1-статусы), `ledgers` (L2-таблицы:
+  memory, tools, rules, agents, открытые council-вопросы, outliers),
+  `trends` (L3-спарклайны `▁▂▃▄▅▆▇█` по снапшотам + недельная активность
+  консилиумов);
 - `--tab health|ledgers|trends` — одна секция;
 - `--json` — единый JSON-документ `DashboardData`;
 - Unicode-таблицы и спарклайны рендерятся прямо в терминал, файлы НЕ пишутся
@@ -117,7 +183,12 @@ analytics:
 `wolf analytics --view <v> --json` возвращает payload секции: `{view, rows, ...}`
 (например, memory — `rows` per-object + `garbage {dead, base, ratioPct}`),
 `--view all` — полный `AnalyticsReport`: ledgers (memory/tools/rules), funnel,
-agents, steward, outliers, readiness.
+agents, steward, councils, outliers, readiness. Секция councils — объект
+`CouncilsView`: `questions {total, inWindow, open}`, `opinions {total,
+perQuestionMin/Avg/Max}`, `participation [{agent, opinions}]`, `votes`
+(Record: значение голоса → число), `synthesis {questionsWithSynthesis,
+sharePct, medianHours}`, `weeks [{week, questions, opinions, syntheses}]`,
+`openQuestions [{id, title, daysOpen, opinions, votes}]`.
 
 `wolf dashboard --json` возвращает `DashboardData`:
 
@@ -135,6 +206,7 @@ agents, steward, outliers, readiness.
 | run-события (объём, токены, duration, experiment) | `.wolf/run-log.jsonl` + run-сигналы `.wolf/metrics/session-metrics.jsonl` |
 | deliveries/жалобы/tool_error                      | сигнальный лог `.wolf/metrics/session-metrics.jsonl`                      |
 | рождения/мутации/срабатывания                     | event log `.wolf/memory/events.jsonl` (actor, memory_id)                  |
+| связи консилиумов (вопрос↔мнение↔синтез)          | relation log `.wolf/memory/relations.jsonl` (`answers`, `based_on`)       |
 | объекты памяти                                    | markdown-стор `.wolf/memory/`                                             |
 | снапшоты для трендов                              | `.wolf/metrics/effectiveness-snapshots.jsonl`                             |
 

@@ -5,6 +5,7 @@
  */
 import type { MemoryStore } from '../../ports/memory-store.port.js';
 import type { EventLog } from '../../ports/event-log.port.js';
+import type { RelationLog } from '../../ports/relation-log.port.js';
 import type { Clock } from '../../ports/clock.port.js';
 import type { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import type { MemoryEvent } from '../../domain/schemas/memory-event-schema.js';
@@ -15,6 +16,7 @@ import { runCostUsd } from '../../domain/pricing.js';
 import type { PricingTable } from '../../domain/pricing.js';
 import { silentRuleIds } from './learn-decay.js';
 import { mondayOf } from './generate-insights.js';
+import { extractVote } from './tally-council-votes.js';
 
 // ---------------------------------------------------------------------------
 // Контракт отчёта (сквозной для задач 6–11: меняется ТОЛЬКО в задаче 6)
@@ -141,6 +143,36 @@ export interface ExperimentReadiness {
   byExperiment: { experiment: string; runs: number }[];
 }
 
+export interface CouncilWeekActivity {
+  week: string;
+  questions: number;
+  opinions: number;
+  syntheses: number;
+}
+
+export interface CouncilOpenQuestion {
+  id: string;
+  title: string;
+  daysOpen: number;
+  opinions: number;
+  votes: Record<string, number>;
+}
+
+export interface CouncilsView {
+  questions: { total: number; inWindow: number; open: number };
+  opinions: {
+    total: number;
+    perQuestionMin: number | null;
+    perQuestionAvg: number | null;
+    perQuestionMax: number | null;
+  };
+  participation: { agent: string; opinions: number }[];
+  votes: Record<string, number>;
+  synthesis: { questionsWithSynthesis: number; sharePct: number | null; medianHours: number | null };
+  weeks: CouncilWeekActivity[];
+  openQuestions: CouncilOpenQuestion[];
+}
+
 export interface AnalyticsReport {
   generatedAt: string;
   thresholds: LifecycleThresholds;
@@ -152,11 +184,13 @@ export interface AnalyticsReport {
   agents: AgentLedgerRow[];
   steward: StewardView;
   readiness: ExperimentReadiness;
+  councils: CouncilsView;
 }
 
 export interface AnalyticsDeps {
   store: MemoryStore;
   log: EventLog;
+  relations: RelationLog;
   clock: Clock;
 }
 
@@ -689,6 +723,133 @@ function buildReadiness(signals: SignalEvent[]): ExperimentReadiness {
 // Use-case
 // ---------------------------------------------------------------------------
 
+/** Консилиумы: вопросы/мнения/синтезы из councils-subdir + relations answers/based_on.
+ * Чистая агрегация по уже выгруженным объектам; ровно два вызова relations.list
+ * (predicate answers и based_on — без N+1 по вопросам). Голоса — extractVote
+ * из tally-council-votes (единственный парсер). */
+async function buildCouncils(
+  objects: MemoryObject[],
+  relations: RelationLog,
+  now: Date,
+  weeks: number
+): Promise<CouncilsView> {
+  const byId = new Map(objects.map((o) => [o.id, o]));
+  const questions = objects.filter((o) => o.type === 'council-question');
+  const opinions = objects.filter((o) => o.type === 'council-opinion');
+  const syntheses = objects.filter((o) => o.type === 'synthesis');
+
+  // вопрос → id его мнений; субъект-реляция засчитывается только если это
+  // существующее в store мнение (прецедент tallyCouncilVotes)
+  const answersByQuestion = new Map<string, string[]>();
+  for (const r of await relations.list({ predicate: 'answers' })) {
+    const op = byId.get(r.subject);
+    if (op === undefined || op.type !== 'council-opinion') continue;
+    const arr = answersByQuestion.get(r.object) ?? [];
+    arr.push(op.id);
+    answersByQuestion.set(r.object, arr);
+  }
+
+  // недельные бакеты (те же ключи, что воронка) по mondayOf(created_at)
+  const buckets = new Map<string, CouncilWeekActivity>(
+    weekBuckets(now, weeks).map((week) => [week, { week, questions: 0, opinions: 0, syntheses: 0 }])
+  );
+  const bump = (o: MemoryObject, key: 'questions' | 'opinions' | 'syntheses'): void => {
+    const b = buckets.get(mondayOf(o.created_at));
+    if (b !== undefined) b[key] += 1;
+  };
+  for (const q of questions) bump(q, 'questions');
+  for (const op of opinions) bump(op, 'opinions');
+  for (const s of syntheses) bump(s, 'syntheses');
+  const weeksOut = [...buckets.values()];
+  const inWindow = weeksOut.reduce((sum, w) => sum + w.questions, 0);
+
+  // per-question статистика по ВСЕМ вопросам (вопрос без мнений — 0)
+  const counts = questions.map((q) => (answersByQuestion.get(q.id) ?? []).length);
+
+  // участие: мнения по created_by (voter = created_by, прецедент CouncilTally)
+  const partAcc = new Map<string, number>();
+  for (const op of opinions) partAcc.set(op.created_by, (partAcc.get(op.created_by) ?? 0) + 1);
+  const participation = [...partAcc.entries()]
+    .map(([agent, n]) => ({ agent, opinions: n }))
+    .sort((a, b) => b.opinions - a.opinions || a.agent.localeCompare(b.agent));
+
+  // голоса: единый парсер extractVote (поле vote → body VOTE: → TIMEOUT)
+  const tally = (ops: string[]): Record<string, number> => {
+    const v: Record<string, number> = {};
+    for (const opId of ops) {
+      const vote = extractVote(byId.get(opId)!);
+      v[vote] = (v[vote] ?? 0) + 1;
+    }
+    return v;
+  };
+  const votes = tally(opinions.map((o) => o.id));
+
+  // синтез: вопрос «с синтезом» = ∃ синтез с based_on → мнение этого вопроса;
+  // берём самый ранний подходящий синтез (медиана времени до синтеза)
+  const questionByOpinionId = new Map<string, string>();
+  for (const [qid, opIds] of answersByQuestion) {
+    for (const opId of opIds) questionByOpinionId.set(opId, qid);
+  }
+  const earliestSynByQuestion = new Map<string, string>();
+  for (const r of await relations.list({ predicate: 'based_on' })) {
+    const syn = byId.get(r.subject);
+    if (syn === undefined || syn.type !== 'synthesis') continue;
+    const qid = questionByOpinionId.get(r.object);
+    if (qid === undefined) continue;
+    const cur = earliestSynByQuestion.get(qid);
+    if (cur === undefined || syn.created_at < cur) earliestSynByQuestion.set(qid, syn.created_at);
+  }
+  const questionsWithSynthesis = earliestSynByQuestion.size;
+  const hours = [...earliestSynByQuestion].map(
+    ([qid, synTs]) => (Date.parse(synTs) - Date.parse(byId.get(qid)!.created_at)) / 3_600_000
+  );
+  hours.sort((a, b) => a - b);
+  const medianHours =
+    hours.length === 0
+      ? null
+      : hours.length % 2 === 1
+        ? hours[(hours.length - 1) / 2]!
+        : (hours[hours.length / 2 - 1]! + hours[hours.length / 2]!) / 2;
+
+  // открытые вопросы: возраст, число мнений, расклад голосов
+  const openQuestions: CouncilOpenQuestion[] = questions
+    .filter((q) => q.status === 'open')
+    .map((q) => {
+      const opIds = answersByQuestion.get(q.id) ?? [];
+      return {
+        id: q.id,
+        title: q.title,
+        daysOpen: Math.floor((now.getTime() - Date.parse(q.created_at)) / 86_400_000),
+        opinions: opIds.length,
+        votes: tally(opIds),
+      };
+    })
+    .sort((a, b) => b.daysOpen - a.daysOpen || a.id.localeCompare(b.id));
+
+  return {
+    questions: {
+      total: questions.length,
+      inWindow,
+      open: questions.filter((q) => q.status === 'open').length,
+    },
+    opinions: {
+      total: opinions.length,
+      perQuestionMin: questions.length > 0 ? Math.min(...counts) : null,
+      perQuestionAvg: questions.length > 0 ? counts.reduce((s, v) => s + v, 0) / counts.length : null,
+      perQuestionMax: questions.length > 0 ? Math.max(...counts) : null,
+    },
+    participation,
+    votes,
+    synthesis: {
+      questionsWithSynthesis,
+      sharePct: questions.length > 0 ? (questionsWithSynthesis / questions.length) * 100 : null,
+      medianHours,
+    },
+    weeks: weeksOut,
+    openQuestions,
+  };
+}
+
 /**
  * Полный аналитический отчёт M5 из трёх портов: чистая агрегация, детерминированная.
  * Не падает на пустой памяти — все блоки возвращают нули/null/пустые массивы.
@@ -717,6 +878,7 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
   const agents = buildAgents(input.signals, allObjects, input.pricing);
   const steward = buildSteward(events, input.signals, allObjects, now, weeks);
   const readiness = buildReadiness(input.signals);
+  const councils = await buildCouncils(allObjects, deps.relations, now, weeks);
 
   return {
     generatedAt: now.toISOString(),
@@ -729,6 +891,7 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
     agents,
     steward,
     readiness,
+    councils,
   };
 }
 
@@ -737,7 +900,7 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
 // ---------------------------------------------------------------------------
 
 export interface AnalyticsViewFilter {
-  view: 'memory' | 'tools' | 'rules' | 'funnel' | 'agents' | 'steward' | 'outliers' | 'readiness' | 'all';
+  view: 'memory' | 'tools' | 'rules' | 'funnel' | 'agents' | 'steward' | 'outliers' | 'readiness' | 'councils' | 'all';
   class?: 'new' | 'sleeper' | 'workhorse' | 'dead';
   type?: string;
   origin?: 'script' | 'model-native';
@@ -755,6 +918,7 @@ export type AnalyticsViewPayload =
   | { view: 'steward'; steward: StewardView }
   | { view: 'outliers'; runs: OutlierRun[] }
   | { view: 'readiness'; readiness: ExperimentReadiness }
+  | { view: 'councils'; councils: CouncilsView }
   | { view: 'all'; report: AnalyticsReport };
 
 /** Срез отчёта по view-фильтру (§6.2); top ограничивает строки, дефолт 20. */
@@ -790,6 +954,8 @@ export function filterAnalytics(report: AnalyticsReport, filter: AnalyticsViewFi
       return { view: 'outliers', runs: report.outliers.slice(0, top) };
     case 'readiness':
       return { view: 'readiness', readiness: report.readiness };
+    case 'councils':
+      return { view: 'councils', councils: report.councils };
     case 'all':
       return { view: 'all', report };
   }

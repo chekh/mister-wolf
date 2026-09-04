@@ -324,12 +324,22 @@ export function registerMemoryTools(
     'analytics',
     {
       description:
-        'Effectiveness analytics: ledgers (memory/tools/rules), funnel, agents, steward view, outliers, experiment readiness — same JSON as `wolf analytics --json`',
+        'Effectiveness analytics: ledgers (memory/tools/rules), funnel, agents, steward view, councils, outliers, experiment readiness — same JSON as `wolf analytics --json`',
       inputSchema: AnalyticsInputSchema,
     },
     async (input: unknown) => {
       const args = input as {
-        view?: 'memory' | 'tools' | 'rules' | 'funnel' | 'agents' | 'steward' | 'outliers' | 'readiness' | 'all';
+        view?:
+          | 'memory'
+          | 'tools'
+          | 'rules'
+          | 'funnel'
+          | 'agents'
+          | 'steward'
+          | 'outliers'
+          | 'readiness'
+          | 'councils'
+          | 'all';
         class?: 'new' | 'sleeper' | 'workhorse' | 'dead';
         type?: string;
         origin?: 'script' | 'native';
@@ -354,7 +364,7 @@ export function registerMemoryTools(
       }
 
       const report = await buildAnalyticsReport(
-        { store: deps.store, log: deps.log, clock: deps.clock },
+        { store: deps.store, log: deps.log, relations: deps.relations, clock: deps.clock },
         {
           signals: readSignals(baseDir),
           runLogText,

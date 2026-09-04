@@ -95,6 +95,21 @@ function fixtureReport(): AnalyticsReport {
       autoMutationSharePct: null,
     },
     readiness: { totalRuns: 0, withArm: 0, withArmPct: null, byArm: [], byExperiment: [] },
+    councils: {
+      questions: { total: 2, inWindow: 1, open: 1 },
+      opinions: { total: 5, perQuestionMin: 0, perQuestionAvg: 2.5, perQuestionMax: 5 },
+      participation: [
+        { agent: 'agent:y', opinions: 3 },
+        { agent: 'agent:x', opinions: 2 },
+      ],
+      votes: { yes: 2, no: 1, timeout: 2 },
+      synthesis: { questionsWithSynthesis: 1, sharePct: 50, medianHours: 25.3 },
+      weeks: [{ week: '2026-09-01', questions: 1, opinions: 5, syntheses: 1 }],
+      openQuestions: [
+        { id: 'q-2', title: 't-q-2', daysOpen: 3, opinions: 0, votes: {} },
+        { id: 'q-1', title: 't-q-1', daysOpen: 1, opinions: 5, votes: { yes: 2, no: 1, timeout: 2 } },
+      ],
+    },
   };
 }
 
@@ -111,6 +126,28 @@ function dataRows(out: string): string[][] {
         .map((c) => c.trim())
     );
   return cells.slice(1); // первая │-строка — заголовки колонок
+}
+
+/** Строки данных таблицы, стоящей ПОСЛЕ строки-метки (label: 'votes:' и т.п.);
+ * в секции councils таблиц несколько — dataRows их бы склеил. */
+function tableAfter(out: string, label: string): string[][] {
+  const lines = out.split('\n');
+  const start = lines.indexOf(label);
+  if (start === -1) throw new Error(`label not found: ${label}`);
+  const isBorder = (l: string): boolean => l.startsWith('┌') || l.startsWith('├') || l.startsWith('└');
+  const block: string[] = [];
+  for (let i = start + 1; i < lines.length && (lines[i].startsWith('│') || isBorder(lines[i])); i++) {
+    block.push(lines[i]);
+  }
+  return block
+    .filter((l) => l.startsWith('│'))
+    .slice(1) // первая │-строка — заголовки колонок
+    .map((l) =>
+      l
+        .slice(1, -1)
+        .split('│')
+        .map((c) => c.trim())
+    );
 }
 
 describe('analytics renderSection: фильтры текстового вывода (дефект потери class/type/origin/agent/silent)', () => {
@@ -159,6 +196,52 @@ describe('analytics renderSection: фильтры текстового выво�
     const memoryBlock = lines.slice(start, end);
     expect(memoryBlock.some((l) => l.includes('sleeper') || l.includes('workhorse') || l.includes('new'))).toBe(false);
     expect(memoryBlock.some((l) => l.includes('mem-dead-1'))).toBe(true);
+  });
+});
+
+describe('analytics renderSection: councils (вопросы/мнения/голоса/синтезы)', () => {
+  it('полный рендер: строки-метрики + четыре таблицы, votes отсортированы count убыв.', () => {
+    const out = renderSection(fixtureReport(), { view: 'councils', top: 20 });
+    expect(out.split('\n')[0]).toBe('== councils ==');
+    expect(out).toContain('questions: total=2 inWindow=1 open=1');
+    expect(out).toContain('opinions: total=5 per-question min/avg/max = 0/2.5/5');
+    expect(out).toContain('synthesis: questions=1/2 (50.0%) median question->synthesis=25.3h');
+
+    expect(tableAfter(out, 'participation:')).toEqual([
+      ['agent:y', '3'],
+      ['agent:x', '2'],
+    ]);
+    // count убыв., при равенстве — ключ по алфавиту: timeout=2, yes=2, no=1
+    expect(tableAfter(out, 'votes:')).toEqual([
+      ['timeout', '2'],
+      ['yes', '2'],
+      ['no', '1'],
+    ]);
+    expect(tableAfter(out, 'weeks:')).toEqual([['2026-09-01', '1', '5', '1']]);
+    // порядок openQuestions — как в фикстуре (сортирует use-case); пустой votes → '-'
+    expect(tableAfter(out, 'open questions:')).toEqual([
+      ['q-2', '3', '0', '-'],
+      ['q-1', '1', '5', 'timeout=2, yes=2, no=1'],
+    ]);
+  });
+
+  it('пустой councils (0 вопросов): n/a в per-question и share, пустые таблицы не падают', () => {
+    const report = fixtureReport();
+    report.councils = {
+      questions: { total: 0, inWindow: 0, open: 0 },
+      opinions: { total: 0, perQuestionMin: null, perQuestionAvg: null, perQuestionMax: null },
+      participation: [],
+      votes: {},
+      synthesis: { questionsWithSynthesis: 0, sharePct: null, medianHours: null },
+      weeks: [],
+      openQuestions: [],
+    };
+    const out = renderSection(report, { view: 'councils', top: 20 });
+    expect(out).toContain('per-question min/avg/max = n/a/n/a/n/a');
+    expect(out).toContain('synthesis: questions=0/0 (n/a) median question->synthesis=-');
+    // пустые таблицы рендерятся рамками (renderTable не падает на [])
+    expect(out).toContain('┌');
+    expect(out).toContain('└');
   });
 });
 

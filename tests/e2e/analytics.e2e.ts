@@ -137,6 +137,15 @@ describe('analytics + dashboard golden scenarios (spec 2026-09-03)', () => {
       steward: { complaintFunnel: { filed: number } };
     };
     expect(stewardPayload.steward.complaintFunnel.filed).toBeGreaterThanOrEqual(3);
+
+    const councils = runCli(['analytics', '--view', 'councils', '--json'], dir);
+    expect(councils.status).toBe(0);
+    const councilsPayload = JSON.parse(councils.stdout) as {
+      view: string;
+      councils: { questions: { total: number } };
+    };
+    expect(councilsPayload.view).toBe('councils');
+    expect(typeof councilsPayload.councils.questions.total).toBe('number');
   });
 
   it('dashboard renders three sections, --tab selects one, no files written (acceptance 7)', () => {

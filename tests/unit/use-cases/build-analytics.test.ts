@@ -8,6 +8,8 @@ import {
 } from '../../../src/app/use-cases/build-analytics.js';
 import type { MemoryStore } from '../../../src/ports/memory-store.port.js';
 import type { EventLog } from '../../../src/ports/event-log.port.js';
+import type { RelationLog } from '../../../src/ports/relation-log.port.js';
+import type { Relation } from '../../../src/domain/schemas/relation-schema.js';
 import type { Clock } from '../../../src/ports/clock.port.js';
 import type { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
 import type { MemoryEvent } from '../../../src/domain/schemas/memory-event-schema.js';
@@ -41,6 +43,22 @@ function mockLog(events: MemoryEvent[]): EventLog {
     },
     async append() {
       throw new Error('not implemented');
+    },
+  };
+}
+
+function mockRelations(rels: Extra[]): RelationLog {
+  return {
+    async append() {
+      throw new Error('not implemented');
+    },
+    async list(filters) {
+      return rels.filter(
+        (r) =>
+          (!filters?.subject || r.subject === filters.subject) &&
+          (!filters?.object || r.object === filters.object) &&
+          (!filters?.predicate || r.predicate === filters.predicate)
+      ) as Relation[];
     },
   };
 }
@@ -185,7 +203,7 @@ describe('buildAnalyticsReport: memory ledger (Q1/Q2)', () => {
 
   it('rows: base без archived/document-ref; deliveries/triggers/complaints/holdout/last_used → lifecycle', async () => {
     const report = await buildAnalyticsReport(
-      { store: mockStore(objects), log: mockLog(events), clock: fixedClock },
+      { store: mockStore(objects), log: mockLog(events), relations: mockRelations([]), clock: fixedClock },
       { signals, runLogText: null }
     );
     expect(report.thresholds).toEqual(DEFAULT_LIFECYCLE_THRESHOLDS);
@@ -222,7 +240,7 @@ describe('buildAnalyticsReport: memory ledger (Q1/Q2)', () => {
 
   it('garbage: dead/base/ratioPct + инвариант dead === числу dead-строк', async () => {
     const report = await buildAnalyticsReport(
-      { store: mockStore(objects), log: mockLog(events), clock: fixedClock },
+      { store: mockStore(objects), log: mockLog(events), relations: mockRelations([]), clock: fixedClock },
       { signals, runLogText: null }
     );
     expect(report.memory.garbage).toEqual({ dead: 1, base: 4, ratioPct: 25 });
@@ -231,7 +249,7 @@ describe('buildAnalyticsReport: memory ledger (Q1/Q2)', () => {
 
   it('filterAnalytics: view-срезы, class/type-фильтр, top-лимит, view=all', async () => {
     const report = await buildAnalyticsReport(
-      { store: mockStore(objects), log: mockLog(events), clock: fixedClock },
+      { store: mockStore(objects), log: mockLog(events), relations: mockRelations([]), clock: fixedClock },
       { signals, runLogText: null }
     );
     const dead = filterAnalytics(report, { view: 'memory', class: 'dead' });
@@ -300,7 +318,7 @@ describe('buildAnalyticsReport: tool ledger (Q3, D11)', () => {
 
   it('script первым, usageCount убыв.; candidate+порог → expose; native без регистрации → register; ошибки по классам', async () => {
     const report = await buildAnalyticsReport(
-      { store: mockStore(objects), log: mockLog([]), clock: fixedClock },
+      { store: mockStore(objects), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
       { signals, runLogText: runLog }
     );
     expect(report.tools.map((r) => [r.name, r.origin, r.usageCount])).toEqual([
@@ -330,7 +348,7 @@ describe('buildAnalyticsReport: tool ledger (Q3, D11)', () => {
 
   it('patternThreshold из input повышает планку promotion', async () => {
     const report = await buildAnalyticsReport(
-      { store: mockStore(objects), log: mockLog([]), clock: fixedClock },
+      { store: mockStore(objects), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
       { signals, runLogText: runLog, patternThreshold: 5 }
     );
     const byName = new Map(report.tools.map((r) => [r.name, r]));
@@ -377,7 +395,7 @@ describe('buildAnalyticsReport: rule ranking (Q4)', () => {
 
   it('все статусы; prevented убыв., silent false первым, потом id; silent от silentRuleIds', async () => {
     const report = await buildAnalyticsReport(
-      { store: mockStore(objects), log: mockLog([]), clock: fixedClock },
+      { store: mockStore(objects), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
       { signals, runLogText: null }
     );
     expect(report.rules.map((r) => r.id)).toEqual(['rule-a', 'rule-c', 'rule-b']);
@@ -399,7 +417,7 @@ describe('buildAnalyticsReport: funnel (Q6)', () => {
       deliveryEvent('r2', '2026-09-02T12:00:00Z'),
     ];
     const report = await buildAnalyticsReport(
-      { store: mockStore([]), log: mockLog(events), clock: fixedClock },
+      { store: mockStore([]), log: mockLog(events), relations: mockRelations([]), clock: fixedClock },
       { signals, runLogText: null, weeks: 2 }
     );
     // текущий понедельник 2026-08-31 (ср. часы 2026-09-03 — четверг); бакеты от старой к новой
@@ -448,7 +466,7 @@ describe('buildAnalyticsReport: outliers (Q8)', () => {
       weighted: 100,
     });
     const report = await buildAnalyticsReport(
-      { store: mockStore([]), log: mockLog([]), clock: fixedClock },
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
       {
         signals: [],
         runLogText: [big, mid, small].join('\n'),
@@ -491,7 +509,7 @@ describe('buildAnalyticsReport: agent ledger (Q11)', () => {
       complaintEvent('x1', '2026-09-01T00:00:00Z', 'worker flooded logs', 'agent:steward'),
     ];
     const report = await buildAnalyticsReport(
-      { store: mockStore(objects), log: mockLog([]), clock: fixedClock },
+      { store: mockStore(objects), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
       { signals, runLogText: null }
     );
     expect(report.agents.map((a) => a.agent)).toEqual(['worker', 'steward']); // сортировка runs убыв.
@@ -540,7 +558,7 @@ describe('buildAnalyticsReport: steward view (Q12)', () => {
       complaintEvent('c1', '2026-09-01T00:20:00Z'),
     ];
     const report = await buildAnalyticsReport(
-      { store: mockStore(objects), log: mockLog(events), clock: fixedClock },
+      { store: mockStore(objects), log: mockLog(events), relations: mockRelations([]), clock: fixedClock },
       { signals, runLogText: null, weeks: 2 }
     );
     const st = report.steward;
@@ -564,6 +582,101 @@ describe('buildAnalyticsReport: steward view (Q12)', () => {
   });
 });
 
+describe('buildAnalyticsReport: councils', () => {
+  // Неделя fixedClock (2026-09-03, чт): текущий понедельник 2026-08-31; weeks:2 → бакеты 2026-08-24 / 2026-08-31
+  const objects: Extra[] = [
+    { id: 'q-open', title: 'q-open', type: 'council-question', status: 'open', created_at: '2026-08-25T00:00:00Z' },
+    {
+      id: 'q-done',
+      title: 'q-done',
+      type: 'council-question',
+      status: 'answered',
+      created_at: '2026-09-01T00:00:00Z',
+    },
+    {
+      id: 'op1',
+      title: 'op1',
+      type: 'council-opinion',
+      status: 'accepted',
+      created_at: '2026-08-25T01:00:00Z',
+      created_by: 'agent:alpha',
+      vote: 'за',
+    },
+    {
+      id: 'op2',
+      title: 'op2',
+      type: 'council-opinion',
+      status: 'accepted',
+      created_at: '2026-09-01T01:00:00Z',
+      created_by: 'agent:beta',
+      vote: 'нет',
+    },
+    {
+      // без поля vote → fallback на body-парсер extractVote
+      id: 'op3',
+      title: 'op3',
+      type: 'council-opinion',
+      status: 'accepted',
+      created_at: '2026-09-01T02:00:00Z',
+      created_by: 'agent:alpha',
+      body: 'VOTE: за\nобоснование',
+    },
+    { id: 'syn1', title: 'syn1', type: 'synthesis', status: 'accepted', created_at: '2026-09-01T06:00:00Z' },
+  ];
+  const rels: Extra[] = [
+    { id: 'rel1', subject: 'op1', predicate: 'answers', object: 'q-open' },
+    { id: 'rel2', subject: 'op2', predicate: 'answers', object: 'q-done' },
+    { id: 'rel3', subject: 'op3', predicate: 'answers', object: 'q-done' },
+    { id: 'rel4', subject: 'ghost', predicate: 'answers', object: 'q-open' }, // субъекта нет в store → пропуск
+    { id: 'rel5', subject: 'syn1', predicate: 'based_on', object: 'op2' },
+    { id: 'rel6', subject: 'syn1', predicate: 'based_on', object: 'op3' },
+  ];
+
+  it('questions/opinions/participation/votes/synthesis/weeks/openQuestions; fallback-голос из body', async () => {
+    const report = await buildAnalyticsReport(
+      { store: mockStore(objects), log: mockLog([]), relations: mockRelations(rels), clock: fixedClock },
+      { signals: [], runLogText: null, weeks: 2 }
+    );
+    const c = report.councils;
+    expect(c.questions).toEqual({ total: 2, inWindow: 2, open: 1 });
+    expect(c.opinions).toEqual({ total: 3, perQuestionMin: 1, perQuestionAvg: 1.5, perQuestionMax: 2 }); // q-open 1, q-done 2
+    expect(c.participation).toEqual([
+      { agent: 'agent:alpha', opinions: 2 },
+      { agent: 'agent:beta', opinions: 1 },
+    ]);
+    expect(c.votes).toEqual({ за: 2, нет: 1 }); // op3 — fallback 'за' из body
+    expect(c.synthesis).toEqual({ questionsWithSynthesis: 1, sharePct: 50, medianHours: 6 }); // syn1 06:00 − q-done 00:00
+    expect(c.weeks).toEqual([
+      { week: '2026-08-24', questions: 1, opinions: 1, syntheses: 0 },
+      { week: '2026-08-31', questions: 1, opinions: 2, syntheses: 1 },
+    ]);
+    expect(c.openQuestions).toEqual([{ id: 'q-open', title: 'q-open', daysOpen: 9, opinions: 1, votes: { за: 1 } }]);
+
+    const view = filterAnalytics(report, { view: 'councils' });
+    if (view.view !== 'councils') throw new Error('expected councils view');
+    expect(view.councils).toBe(c);
+  });
+
+  it('пустая память → нули/null/пустые коллекции без падений', async () => {
+    const report = await buildAnalyticsReport(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
+      { signals: [], runLogText: null, weeks: 2 }
+    );
+    expect(report.councils).toEqual({
+      questions: { total: 0, inWindow: 0, open: 0 },
+      opinions: { total: 0, perQuestionMin: null, perQuestionAvg: null, perQuestionMax: null },
+      participation: [],
+      votes: {},
+      synthesis: { questionsWithSynthesis: 0, sharePct: null, medianHours: null },
+      weeks: [
+        { week: '2026-08-24', questions: 0, opinions: 0, syntheses: 0 },
+        { week: '2026-08-31', questions: 0, opinions: 0, syntheses: 0 },
+      ],
+      openQuestions: [],
+    });
+  });
+});
+
 describe('buildAnalyticsReport: experiment readiness (Q10)', () => {
   it('доля прогонов с arm; выборки по группам и экспериментам', async () => {
     const signals: SignalEvent[] = [
@@ -573,7 +686,7 @@ describe('buildAnalyticsReport: experiment readiness (Q10)', () => {
       runSignal({ agent: 'w', outcome: 'ok' }),
     ];
     const report = await buildAnalyticsReport(
-      { store: mockStore([]), log: mockLog([]), clock: fixedClock },
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
       { signals, runLogText: null }
     );
     expect(report.readiness).toEqual({

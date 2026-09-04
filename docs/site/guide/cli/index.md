@@ -56,10 +56,10 @@ Quick index of all 39 `wolf` commands. Each row links to the command's reference
 
 ## Analytics
 
-| Command                                                 | What it does                                                                                   | Page                              |
-| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------- |
-| [`wolf analytics`](/guide/cli/analytics#wolf-analytics) | Effectiveness analytics: ledgers, funnel, agents, steward view, outliers, experiment readiness | [Analytics](/guide/cli/analytics) |
-| [`wolf dashboard`](/guide/cli/analytics#wolf-dashboard) | Console dashboard: health, ledgers, trends                                                     | [Analytics](/guide/cli/analytics) |
+| Command                                                 | What it does                                                                                             | Page                              |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| [`wolf analytics`](/guide/cli/analytics#wolf-analytics) | Effectiveness analytics: ledgers, funnel, agents, steward view, councils, outliers, experiment readiness | [Analytics](/guide/cli/analytics) |
+| [`wolf dashboard`](/guide/cli/analytics#wolf-dashboard) | Console dashboard: health, ledgers, trends                                                               | [Analytics](/guide/cli/analytics) |
 
 ## Platform & Maintenance
 

@@ -82,8 +82,8 @@ function renderHealth(d: DashboardData): string {
   ].join('\n');
 }
 
-/** Секция ledgers (L2): таблицы memory/tools/rules/agents/outliers. */
-function renderLedgers(d: DashboardData): string {
+/** Секция ledgers (L2): таблицы memory/tools/rules/agents/councils/outliers. */
+export function renderLedgers(d: DashboardData): string {
   const parts: string[] = ['== ledgers =='];
 
   const memory = filterAnalytics(d.analytics, { view: 'memory', top: 20 });
@@ -150,6 +150,23 @@ function renderLedgers(d: DashboardData): string {
     );
   }
 
+  const councils = filterAnalytics(d.analytics, { view: 'councils', top: 20 });
+  if (councils.view === 'councils') {
+    parts.push(
+      renderTable(
+        ['open council', 'days_open', 'opinions', 'votes'],
+        councils.councils.openQuestions.map((q) => [
+          q.id,
+          cell(q.daysOpen),
+          cell(q.opinions),
+          Object.entries(q.votes)
+            .map(([option, n]) => `${option}=${n}`)
+            .join(', ') || '-',
+        ])
+      )
+    );
+  }
+
   const outliers = filterAnalytics(d.analytics, { view: 'outliers', top: 10 });
   if (outliers.view === 'outliers') {
     parts.push(
@@ -169,8 +186,8 @@ function renderLedgers(d: DashboardData): string {
   return parts.join('\n');
 }
 
-/** Секция trends (L3): спарклайны по снапшотам, недельная воронка, cache-hit, readiness, steward. */
-function renderTrends(baseDir: string, d: DashboardData): string {
+/** Секция trends (L3): спарклайны по снапшотам, недельная воронка, cache-hit, readiness, steward, councils. */
+export function renderTrends(baseDir: string, d: DashboardData): string {
   const parts: string[] = ['== trends =='];
 
   const snaps = readSnapshots(baseDir);
@@ -208,6 +225,12 @@ function renderTrends(baseDir: string, d: DashboardData): string {
   const steward = filterAnalytics(d.analytics, { view: 'steward', top: 20 });
   if (steward.view === 'steward') {
     parts.push(`steward mutations/week: ${sparkline(steward.steward.mutationsByWeek.map((w) => w.total))}`);
+  }
+
+  const councilTrend = filterAnalytics(d.analytics, { view: 'councils', top: 20 });
+  if (councilTrend.view === 'councils') {
+    parts.push(`council questions/week: ${sparkline(councilTrend.councils.weeks.map((w) => w.questions))}`);
+    parts.push(`council opinions/week: ${sparkline(councilTrend.councils.weeks.map((w) => w.opinions))}`);
   }
 
   return parts.join('\n');

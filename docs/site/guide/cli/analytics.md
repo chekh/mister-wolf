@@ -10,12 +10,12 @@ Sample queries for the Steward: ledgers, funnel, agent and steward views.
 Usage: wolf analytics [options]
 
 Effectiveness analytics: ledgers (memory/tools/rules), funnel, agents, steward
-view, outliers, experiment readiness
+view, councils, outliers, experiment readiness
 
 Options:
   --view <view>      Analytics view (choices: "memory", "tools", "rules",
-                     "funnel", "agents", "steward", "outliers", "readiness",
-                     "all", default: "all")
+                     "funnel", "agents", "steward", "councils", "outliers",
+                     "readiness", "all", default: "all")
   --class <class>    Memory lifecycle filter (choices: "new", "sleeper",
                      "workhorse", "dead")
   --type <type>      Memory type filter
@@ -30,7 +30,7 @@ Options:
 
 Options:
 
-- `--view <view>` — analytics view (choices: `memory`, `tools`, `rules`, `funnel`, `agents`, `steward`, `outliers`, `readiness`, `all`; default: `all`)
+- `--view <view>` — analytics view (choices: `memory`, `tools`, `rules`, `funnel`, `agents`, `steward`, `councils`, `outliers`, `readiness`, `all`; default: `all`)
 - `--class <class>` — memory lifecycle filter (choices: `new`, `sleeper`, `workhorse`, `dead`)
 - `--type <type>` — memory type filter
 - `--origin <origin>` — tool origin filter (choices: `script`, `native`)
@@ -42,17 +42,18 @@ Options:
 
 Views:
 
-| View        | What it returns                                                                                                            |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `memory`    | Memory ledger: per-object age, deliveries, triggers, complaints, last_used, lifecycle class; garbage ratio (DEAD / active) |
-| `tools`     | Tool ledger: usage, error rate, lifecycle (script tools); run-log attributions (model-native); promotion candidates        |
-| `rules`     | Rule ranking by `holdout_prevented`; silent rules list                                                                     |
-| `funnel`    | Weekly write → deliver → trigger conversion                                                                                |
-| `agents`    | Per-agent runs, weighted cost, duration, failure rate, tool errors, complaints (filed and received), achievements          |
-| `steward`   | Steward mutations by kind, complaint funnel, SLA escalations, recurrences, churn, share of auto-mutations                  |
-| `outliers`  | Most expensive runs (weighted; `$` with pricing)                                                                           |
-| `readiness` | Experiment readiness: share of runs with an arm, sample sizes per group                                                    |
-| `all`       | All sections in sequence (default)                                                                                         |
+| View        | What it returns                                                                                                                                                                                            |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `memory`    | Memory ledger: per-object age, deliveries, triggers, complaints, last_used, lifecycle class; garbage ratio (DEAD / active)                                                                                 |
+| `tools`     | Tool ledger: usage, error rate, lifecycle (script tools); run-log attributions (model-native); promotion candidates                                                                                        |
+| `rules`     | Rule ranking by `holdout_prevented`; silent rules list                                                                                                                                                     |
+| `funnel`    | Weekly write → deliver → trigger conversion                                                                                                                                                                |
+| `agents`    | Per-agent runs, weighted cost, duration, failure rate, tool errors, complaints (filed and received), achievements                                                                                          |
+| `steward`   | Steward mutations by kind, complaint funnel, SLA escalations, recurrences, churn, share of auto-mutations                                                                                                  |
+| `councils`  | Councils: questions called (total / window / open), opinions per question, per-agent participation, vote distribution, synthesis share and median question→synthesis time, weekly activity, open questions |
+| `outliers`  | Most expensive runs (weighted; `$` with pricing)                                                                                                                                                           |
+| `readiness` | Experiment readiness: share of runs with an arm, sample sizes per group                                                                                                                                    |
+| `all`       | All sections in sequence (default)                                                                                                                                                                         |
 
 ### Lifecycle classes
 
@@ -93,6 +94,62 @@ Promotion candidates: a script candidate whose `usage_count` reaches the pattern
 ### Steward view
 
 `--view steward [--weeks N]` reports what the Steward does and how well it copes: mutations by kind (update / supersede / resolve / transition / tool mutation), the complaint funnel (filed → resolved / rejected), SLA violations (dispatch ages), recurrences (a repeat complaint on the same object), churn (objects with ≥ 2 mutations in the window), and the share of auto-mutations.
+
+### Councils
+
+`--view councils [--weeks N]` aggregates council objects (`council-question` / `council-opinion` / `synthesis`) and their relations (`answers`, `based_on`) — no new collectors, store-only aggregation:
+
+- **Questions** — total, within the `--weeks` window, and currently open (status `open`);
+- **Participation** — opinions per question (min/avg/max over all questions) and a per-agent opinion count (`created_by` is the voter);
+- **Votes** — distribution of `vote` values; the parser is shared with council vote tallying (the `vote` field → a `VOTE:` line in the body → `TIMEOUT`). Values are free-form strings — the set is not hardcoded;
+- **Effectiveness** — share of questions that got a synthesis (a synthesis links to the question's opinions via `based_on`) and the median question→synthesis time;
+- **Weekly activity** — the same 8 week buckets as the funnel;
+- **Open questions** — id, days open, opinion count, vote summary.
+
+```bash
+wolf analytics --view councils
+```
+
+```text
+== councils ==
+questions: total=2 inWindow=2 open=1
+opinions: total=5 per-question min/avg/max = 2/2.5/3
+participation:
+┌────────────────────────────┬──────────┐
+│ agent                      │ opinions │
+├────────────────────────────┼──────────┤
+│ user:cli                   │ 2        │
+│ agent:pragmatist-dev       │ 1        │
+│ agent:researcher-architect │ 1        │
+│ agent:skeptic-reviewer     │ 1        │
+└────────────────────────────┴──────────┘
+votes:
+┌────────────────────┬───────┐
+│ vote               │ count │
+├────────────────────┼───────┤
+│ decision-audit     │ 1     │
+│ session-resume     │ 1     │
+│ solve-pack-anatomy │ 1     │
+│ нет                │ 1     │
+│ только измерив     │ 1     │
+└────────────────────┴───────┘
+synthesis: questions=1/2 (50.0%) median question->synthesis=0.0h
+weeks:
+┌────────────┬───────────┬──────────┬───────────┐
+│ week       │ questions │ opinions │ syntheses │
+├────────────┼───────────┼──────────┼───────────┤
+│ 2026-08-24 │ 2         │ 5        │ 1         │
+│ 2026-08-31 │ 0         │ 0        │ 0         │
+└────────────┴───────────┴──────────┴───────────┘
+open questions:
+┌──────────────────────────┬───────────┬──────────┬──────────────────────────────────────────┐
+│ id                       │ days_open │ opinions │ votes                                    │
+├──────────────────────────┼───────────┼──────────┼──────────────────────────────────────────┤
+│ mem_20260824_wolf_fd1b83 │ 10        │ 3        │ decision-audit=1, session-resume=1, sol… │
+└──────────────────────────┴───────────┴──────────┴──────────────────────────────────────────┘
+```
+
+(The weeks table shows all 8 week buckets; trimmed here. Vote strings are whatever the council actually used — including plain-language votes.)
 
 ### Examples
 
@@ -148,7 +205,7 @@ Options:
 
 Options:
 
-- `--tab <tab>` — render a single section: `health` (L1 statuses, absolutes, current-period funnel), `ledgers` (L2 tables: memory, tools, rules, agents, top-N), `trends` (L3 sparklines over snapshots, weekly funnel, cache-hit ratio, experiment readiness)
+- `--tab <tab>` — render a single section: `health` (L1 statuses, absolutes, current-period funnel), `ledgers` (L2 tables: memory, tools, rules, agents, open council questions, top-N), `trends` (L3 sparklines over snapshots, weekly funnel, cache-hit ratio, experiment readiness, council activity per week)
 - `--json` — machine-readable JSON output of the whole dashboard (`DashboardData`)
 
 ```bash
