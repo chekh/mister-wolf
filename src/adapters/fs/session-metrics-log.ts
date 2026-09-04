@@ -22,7 +22,15 @@ import { metricsDir } from './project-paths.js';
 import { classifyError } from '../../domain/error-class.js';
 import { loadWolfConfigSync } from './config-file.js';
 
-export type SignalEventName = 'run' | 'complaint' | 'delivery' | 'tool_error' | 'task_evaluated' | 'mcp_call';
+export type SignalEventName =
+  | 'run'
+  | 'complaint'
+  | 'delivery'
+  | 'tool_error'
+  | 'task_evaluated'
+  | 'mcp_call'
+  | 'memory_stage'
+  | 'coord_event';
 
 /**
  * Схема сигнального лога (P0 D6): чтение лога валидируется Zod, неизвестные поля
@@ -31,7 +39,16 @@ export type SignalEventName = 'run' | 'complaint' | 'delivery' | 'tool_error' | 
 export const SignalEventSchema = z.object({
   /** ISO8601. */
   ts: z.string(),
-  event: z.enum(['run', 'complaint', 'delivery', 'tool_error', 'task_evaluated', 'mcp_call']),
+  event: z.enum([
+    'run',
+    'complaint',
+    'delivery',
+    'tool_error',
+    'task_evaluated',
+    'mcp_call',
+    'memory_stage',
+    'coord_event',
+  ]),
   session_id: z.string().nullable(),
   /** gen_ai-неймспейс OTEL; modelID — обязательное поле записи (null = неизвестна). */
   gen_ai: z.object({ modelID: z.string().nullable(), agent: z.string().nullable() }),
@@ -409,5 +426,81 @@ export function appendTaskEvaluatedSignal(
       ...(input.criticalFailure ? { critical_failure: true } : {}),
       ...(input.note ? { note: input.note } : {}),
     },
+  });
+}
+
+// --- P2 D1: memory lifecycle + координационные события ---
+
+/** Detail memory_stage: стадия жизненного цикла памяти + затронутые объекты. */
+export const MemoryStageDetailSchema = z.object({
+  stage: z.enum(['retrieved', 'injected', 'cited', 'applied']),
+  memory_ids: z.array(z.string()).min(1),
+});
+
+/** Detail coord_event: факт координации между агентами (handoff/review/...). */
+export const CoordEventDetailSchema = z.object({
+  kind: z.enum(['handoff', 'review', 'acceptance', 'blocker', 'escalation']),
+  actor_from: z.string(),
+  actor_to: z.string().optional(),
+  refs: z.array(z.string()),
+  note: z.string().optional(),
+});
+
+/**
+ * Writer (е): memory_stage (P2 D1) — стадия жизненного цикла памяти. Контекст-событие:
+ * signalKey → null (как run/task_evaluated), пороги Ф21 не считаются. Detail
+ * валидируется схемой — parse-ошибка = программная ошибка писателя (бросаем).
+ */
+export function appendMemoryStageSignal(
+  baseDir: string,
+  input: {
+    stage: 'retrieved' | 'injected' | 'cited' | 'applied';
+    memoryIds: string[];
+    actor: string;
+    sessionId?: string | null;
+  }
+): { key: string | null; count: number; patternFixed: boolean } {
+  const detail = MemoryStageDetailSchema.parse({ stage: input.stage, memory_ids: input.memoryIds });
+  return appendSignal(baseDir, {
+    ts: nowIso(),
+    event: 'memory_stage',
+    session_id: input.sessionId ?? null,
+    gen_ai: { modelID: null, agent: null },
+    orchestration: { task: null, actor: input.actor },
+    outcome: input.stage,
+    detail,
+  });
+}
+
+/**
+ * Writer (ж): coord_event (P2 D3) — факт координации агентов (handoff, review,
+ * acceptance, blocker, escalation). Контекст-событие: signalKey → null.
+ */
+export function appendCoordEventSignal(
+  baseDir: string,
+  input: {
+    kind: 'handoff' | 'review' | 'acceptance' | 'blocker' | 'escalation';
+    actorFrom: string;
+    actorTo?: string;
+    refs: string[];
+    note?: string;
+    actor: string;
+  }
+): { key: string | null; count: number; patternFixed: boolean } {
+  const detail = CoordEventDetailSchema.parse({
+    kind: input.kind,
+    actor_from: input.actorFrom,
+    ...(input.actorTo !== undefined ? { actor_to: input.actorTo } : {}),
+    refs: input.refs,
+    ...(input.note !== undefined ? { note: input.note } : {}),
+  });
+  return appendSignal(baseDir, {
+    ts: nowIso(),
+    event: 'coord_event',
+    session_id: null,
+    gen_ai: { modelID: null, agent: null },
+    orchestration: { task: null, actor: input.actor },
+    outcome: input.kind,
+    detail,
   });
 }

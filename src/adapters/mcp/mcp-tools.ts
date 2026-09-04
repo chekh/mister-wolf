@@ -39,8 +39,9 @@ import { createRule } from '../../app/use-cases/create-rule.js';
 import { startThinking, addThought, concludeThinking, abandonThinking } from '../../app/use-cases/thinking.js';
 import { createCliContainer } from '../../bootstrap/container.js';
 import { buildAnalyticsReport, filterAnalytics } from '../../app/use-cases/build-analytics.js';
-import { appendSignal, readSignalLog } from '../../adapters/fs/session-metrics-log.js';
+import { appendSignal, appendMemoryStageSignal, readSignalLog } from '../../adapters/fs/session-metrics-log.js';
 import { loadWolfConfigSync } from '../../adapters/fs/config-file.js';
+import { getWolfVersion } from '../version.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -66,7 +67,7 @@ export function registerMemoryTools(
           outcome,
           tool_name: name,
           duration_ms: Date.now() - startedAt,
-          detail: { method: name },
+          detail: { method: name, wolf_version: getWolfVersion() },
         });
       } catch {
         // телеметрия не должна ломать вызов
@@ -120,6 +121,18 @@ export function registerMemoryTools(
         includeSuperseded?: boolean;
       };
       const results = await searchMemory({ index: deps.index }, args);
+      // P2 D1: авто-писатель memory_stage(retrieved); сбой телеметрии не ломает вызов
+      if (results.length > 0) {
+        try {
+          appendMemoryStageSignal(baseDir, {
+            stage: 'retrieved',
+            memoryIds: results.map((r) => r.object.id),
+            actor: 'system:wolf',
+          });
+        } catch {
+          // телеметрия не должна ломать вызов
+        }
+      }
       const text = results.map((r) => `${r.object.id} [${r.object.type}] ${r.object.title}`).join('\n');
       return { content: [{ type: 'text' as const, text: text || 'No results.' }] };
     }
@@ -136,6 +149,12 @@ export function registerMemoryTools(
       const object = await getMemoryObject(deps.store, args.id);
       if (!object) {
         return { content: [{ type: 'text' as const, text: `Memory object not found: ${args.id}` }] };
+      }
+      // P2 D1: объект найден → retrieved; not found → событие НЕ пишется
+      try {
+        appendMemoryStageSignal(baseDir, { stage: 'retrieved', memoryIds: [object.id], actor: 'system:wolf' });
+      } catch {
+        // телеметрия не должна ломать вызов
       }
       return { content: [{ type: 'text' as const, text: JSON.stringify(object, null, 2) }] };
     }
@@ -343,6 +362,18 @@ export function registerMemoryTools(
     async () => {
       const scanResult = await scanProject(deps, baseDir);
       const brief = await generateAgentBrief(deps, baseDir, scanResult.snapshot);
+      // P2 D1: бриф реально инъекцировал объекты → injected
+      if (brief.injectedIds.length > 0) {
+        try {
+          appendMemoryStageSignal(baseDir, {
+            stage: 'injected',
+            memoryIds: brief.injectedIds,
+            actor: 'system:wolf',
+          });
+        } catch {
+          // телеметрия не должна ломать вызов
+        }
+      }
       return { content: [{ type: 'text' as const, text: brief.content }] };
     }
   );
