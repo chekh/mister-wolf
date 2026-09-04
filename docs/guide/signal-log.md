@@ -60,6 +60,23 @@ writer-путь run-метрик. Существующий историческ�
 медианы устойчивы к симметричному дублированию переходного окна, счётчики могут
 завышаться; см. `src/app/use-cases/run-source.ts`).
 
+Пример v1-записи (без identity-полей — валидна и после P1):
+
+```jsonc
+{
+  "ts": "2026-09-03T12:00:00.000Z",
+  "event": "run",
+  "session_id": "s-e2e",
+  "gen_ai": { "modelID": "zai-coding-plan/glm-5.3", "agent": "dev" },
+  "orchestration": { "task": "e2e", "actor": "user:cli" },
+  "weighted": 205,
+  "duration_ms": 1520,
+  "tokens": { "input": 100, "output": 20, "cache_read": 50 },
+  "experiment": { "id": "exp1", "arm": "wolf", "task_id": "t-1" },
+  "outcome": "ok",
+}
+```
+
 ## Схема v2: identity-поля (P1)
 
 Все поля опциональны → записи v1 валидны без изменений. Записи без
@@ -136,23 +153,6 @@ input-схемой SDK до dispatch, до обёртки не доходят и
   "tool_name": "list",
   "duration_ms": 2,
   "detail": { "method": "list" }
-}
-```
-
-Пример записи:
-
-```jsonc
-{
-  "ts": "2026-09-03T12:00:00.000Z",
-  "event": "run",
-  "session_id": "s-e2e",
-  "gen_ai": { "modelID": "zai-coding-plan/glm-5.3", "agent": "dev" },
-  "orchestration": { "task": "e2e", "actor": "user:cli" },
-  "weighted": 205,
-  "duration_ms": 1520,
-  "tokens": { "input": 100, "output": 20, "cache_read": 50 },
-  "experiment": { "id": "exp1", "arm": "wolf", "task_id": "t-1" },
-  "outcome": "ok",
 }
 ```
 
