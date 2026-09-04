@@ -110,6 +110,8 @@ function runSignal(opts: {
   weighted?: number;
   outcome?: string;
   durationMs?: number;
+  tools?: string[];
+  task?: string;
   experiment?: { id: string; arm: 'wolf' | 'baseline'; task_id?: string };
 }): SignalEvent {
   return {
@@ -117,10 +119,11 @@ function runSignal(opts: {
     event: 'run',
     session_id: opts.session ?? null,
     gen_ai: { modelID: opts.model ?? null, agent: opts.agent ?? null },
-    orchestration: { task: null, actor: 'user:cli' },
+    orchestration: { task: opts.task ?? null, actor: 'user:cli' },
     ...(opts.weighted !== undefined ? { weighted: opts.weighted } : {}),
     ...(opts.outcome !== undefined ? { outcome: opts.outcome } : {}),
     ...(opts.durationMs !== undefined ? { duration_ms: opts.durationMs } : {}),
+    ...(opts.tools !== undefined ? { tools: opts.tools } : {}),
     ...(opts.experiment !== undefined ? { experiment: opts.experiment } : {}),
   };
 }
@@ -367,6 +370,23 @@ describe('buildAnalyticsReport: tool ledger (Q3, D11)', () => {
     expect(byName.get('fetch-helper')!.promotion).toBeNull(); // 3 < 5
     expect(byName.get('webfetch')!.promotion).toBeNull(); // 4 < 5
   });
+
+  it('P1 D4: model-native tools из run-сигналов (v2 tools); legacy run-log продолжает мержиться', async () => {
+    const signals: SignalEvent[] = [
+      runSignal({ model: 'glm', weighted: 100, tools: ['wolf-search'] }),
+      runSignal({ model: 'glm', weighted: 100, tools: ['wolf-search'] }),
+      runSignal({ model: 'glm', weighted: 100, tools: ['wolf-search'] }),
+    ];
+    const legacyRunLog = JSON.stringify({ weighted: 100, tools: ['webfetch'] });
+    const report = await buildAnalyticsReport(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
+      { signals, runLogText: legacyRunLog }
+    );
+    expect(report.tools.filter((r) => r.origin === 'model-native').map((r) => [r.name, r.usageCount])).toEqual([
+      ['wolf-search', 3],
+      ['webfetch', 1],
+    ]);
+  });
 });
 
 describe('buildAnalyticsReport: rule ranking (Q4)', () => {
@@ -498,6 +518,28 @@ describe('buildAnalyticsReport: outliers (Q8)', () => {
     });
     expect(report.outliers[1]!.weighted).toBe(200);
     expect(report.outliers[1]!.costUsd).toBeNull(); // нет raw-токенов — стоимости нет
+  });
+
+  it('P1 D4: outliers из run-сигналов (weighted/tools); legacy run-log мержится', async () => {
+    const signals: SignalEvent[] = [
+      runSignal({ model: 'glm', agent: 'worker', task: 'sig-big', weighted: 300, tools: ['wolf-search'] }),
+      runSignal({ model: 'kimi', agent: 'steward', task: 'sig-mid', weighted: 200 }),
+    ];
+    const legacy = JSON.stringify({
+      ts: '2026-09-01T02:00:00Z',
+      model: 'glm',
+      agent: 'worker',
+      title: 'legacy-small',
+      weighted: 100,
+    });
+    const report = await buildAnalyticsReport(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
+      { signals, runLogText: legacy, topOutliers: 3 }
+    );
+    expect(report.outliers).toHaveLength(3);
+    expect(report.outliers[0]).toMatchObject({ model: 'glm', title: 'sig-big', weighted: 300, tools: ['wolf-search'] });
+    expect(report.outliers[1]).toMatchObject({ model: 'kimi', title: 'sig-mid', weighted: 200 });
+    expect(report.outliers[2]).toMatchObject({ title: 'legacy-small', weighted: 100 });
   });
 });
 

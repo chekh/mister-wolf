@@ -10,11 +10,12 @@ import type { Clock } from '../../ports/clock.port.js';
 import type { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import type { MemoryEvent } from '../../domain/schemas/memory-event-schema.js';
 import { DEFAULT_PATTERN_THRESHOLD, type SignalEvent } from '../../adapters/fs/session-metrics-log.js';
-import { parseRunLog } from '../../domain/tool-economy.js';
+import type { RunLogEntry } from '../../domain/tool-economy.js';
 import { UNCATEGORIZED_ERROR_CLASS } from '../../domain/error-class.js';
 import { runCostUsd } from '../../domain/pricing.js';
 import type { PricingTable } from '../../domain/pricing.js';
 import { silentRuleIds } from './learn-decay.js';
+import { mergeRunEntries } from './run-source.js';
 import { mondayOf } from './generate-insights.js';
 import { extractVote } from './tally-council-votes.js';
 
@@ -323,7 +324,7 @@ function toolNameOf(o: MemoryObject): string | null {
 function buildToolLedger(
   toolObjects: MemoryObject[],
   signals: SignalEvent[],
-  runLogText: string | null,
+  runEntries: RunLogEntry[],
   patternThreshold: number
 ): ToolLedgerRow[] {
   // ошибки по имени тула: tool_error-сигналы, группа по error_class_id
@@ -368,7 +369,8 @@ function buildToolLedger(
     });
   }
 
-  // model-native: имена из tool_error-сигналов ∪ run-log tools[], минус зарегистрированные script
+  // model-native: имена из tool_error-сигналов ∪ run-entries tools[] (P1 D4: сигналы + legacy),
+  // минус зарегистрированные script
   const nativeCounts = new Map<string, number>();
   const bumpNative = (name: string): void => {
     nativeCounts.set(name, (nativeCounts.get(name) ?? 0) + 1);
@@ -376,7 +378,7 @@ function buildToolLedger(
   for (const ev of signals) {
     if (ev.event === 'tool_error' && typeof ev.tool_name === 'string') bumpNative(ev.tool_name);
   }
-  for (const entry of parseRunLog(runLogText ?? '')) {
+  for (const entry of runEntries) {
     for (const name of entry.tools ?? []) bumpNative(name);
   }
   for (const [name, usageCount] of nativeCounts) {
@@ -462,9 +464,10 @@ function buildWeeklyActivity(
   }));
 }
 
-/** Outliers Q8: top-N прогонов по finite weighted; $ при pricing (D9 — без данных null). */
-function buildOutliers(runLogText: string | null, pricing: PricingTable | undefined, top: number): OutlierRun[] {
-  return parseRunLog(runLogText ?? '')
+/** Outliers Q8: top-N прогонов по finite weighted (P1 D4: сигналы + legacy run-log);
+ * $ при pricing (D9 — без данных null). */
+function buildOutliers(runEntries: RunLogEntry[], pricing: PricingTable | undefined, top: number): OutlierRun[] {
+  return runEntries
     .filter((e) => finiteNumber(e.weighted) !== null)
     .sort((a, b) => (b.weighted ?? 0) - (a.weighted ?? 0))
     .slice(0, top)
@@ -943,10 +946,12 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
   const weeks = input.weeks ?? 8;
 
   const memory = buildMemoryLedger(allObjects, events, input.signals, now, thresholds);
+  // P1 D4: канонический источник run-метрик — сигналы + compat-мерж legacy run-log
+  const runEntries = mergeRunEntries(input.signals, input.runLogText);
   const tools = buildToolLedger(
     allObjects.filter((o) => o.type === 'tool'),
     input.signals,
-    input.runLogText,
+    runEntries,
     input.patternThreshold ?? DEFAULT_PATTERN_THRESHOLD
   );
   const rules = buildRuleRanking(
@@ -954,7 +959,7 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
     input.signals
   );
   const weeklyActivity = buildWeeklyActivity(events, input.signals, now, weeks);
-  const outliers = buildOutliers(input.runLogText, input.pricing, input.topOutliers ?? 10);
+  const outliers = buildOutliers(runEntries, input.pricing, input.topOutliers ?? 10);
   const acceptance = buildAcceptance(input.signals);
   const agents = buildAgents(input.signals, allObjects, input.pricing, acceptance.acceptedByAgent);
   const steward = buildSteward(events, input.signals, allObjects, now, weeks);

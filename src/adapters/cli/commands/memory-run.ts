@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
-import { appendFileSync, mkdirSync } from 'node:fs';
+import { createHash, randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Command, Option } from 'commander';
 import { createCliContainer } from '../../../bootstrap/container.js';
@@ -40,11 +41,28 @@ export function memoryRunCommand(): Command {
     .option('--tool <name>', 'Mark this run as using tool(s) (repeatable)', collect, [])
     .option('--experiment <id>', 'Experiment id (comparative methodologies, e.g. RCT)')
     .addOption(new Option('--arm <choice>', 'Experiment arm').choices(['wolf', 'baseline']))
-    .option('--task-id <id>', 'Task id within the experiment (golden tasks)')
+    .option('--task-id <id>', 'Task id (written as top-level task_id; duplicated in experiment when --experiment)')
+    .option('--trace-id <id>', 'Trace id (defaults to a fresh uuid)')
+    .option('--attempt <n>', 'Attempt number within the task', (v: string) => parseInt(v, 10))
     .argument('<prompt>', 'Prompt passed to opencode')
     .action(async (prompt: string, options) => {
       const model = await resolveModel();
       const startedAt = Date.now();
+
+      // P1 D3: identity прогона — run_id/trace_id/config- и prompt-подпись (v2-поля сигнала)
+      const runId = randomUUID();
+      const traceId = options.traceId ?? randomUUID();
+      const configHash = (() => {
+        try {
+          return createHash('sha256')
+            .update(readFileSync(join(process.cwd(), '.wolf', 'config.yaml'), 'utf-8'))
+            .digest('hex')
+            .slice(0, 12);
+        } catch {
+          return undefined; // нет конфига — нет подписи
+        }
+      })();
+      const promptHash = createHash('sha256').update(prompt).digest('hex').slice(0, 12);
 
       const args = ['run', '--format', 'json', '--agent', options.agent, '--model', model];
       if (options.session) args.push('--session', options.session);
@@ -85,9 +103,10 @@ export function memoryRunCommand(): Command {
 
       // M1 (D5): experiment пишется только полным набором --experiment + --arm;
       // arm — union 'wolf' | 'baseline' (обязателен в типе сигнала), поэтому
-      // experiment без arm не записывается, как и arm/task-id без experiment
-      if (options.experiment === undefined && (options.arm !== undefined || options.taskId !== undefined)) {
-        console.error('[wolf-run] Warning: --arm/--task-id without --experiment are ignored');
+      // experiment без arm не записывается, как и arm без experiment.
+      // P1 D3: --task-id легален и без --experiment (топ-левел task_id).
+      if (options.experiment === undefined && options.arm !== undefined) {
+        console.error('[wolf-run] Warning: --arm without --experiment is ignored');
       }
       if (options.experiment !== undefined && options.arm === undefined) {
         console.error('[wolf-run] Warning: --experiment without --arm: experiment fields are not recorded');
@@ -101,28 +120,10 @@ export function memoryRunCommand(): Command {
             }
           : undefined;
 
-      const wolfDir = join(process.cwd(), '.wolf');
-      mkdirSync(wolfDir, { recursive: true });
-      const logPath = join(wolfDir, 'run-log.jsonl');
-      appendFileSync(
-        logPath,
-        JSON.stringify({
-          ts: new Date().toISOString(),
-          model,
-          agent: options.agent,
-          title: options.title,
-          session: metrics.session,
-          weighted: metrics.weighted,
-          verdict_pending: true,
-          duration_ms: durationMs,
-          tokens: { input: metrics.tokensIn, output: metrics.tokensOut, cache_read: metrics.cacheRead },
-          ...(experiment !== undefined ? { experiment } : {}),
-          ...(options.tool.length > 0 ? { tools: options.tool } : {}),
-        }) + '\n'
-      );
-
-      console.error(`[wolf-run] model=${model} weighted=${metrics.weighted} log=${logPath}`);
-      // Ф20 (а): событие metrics в сигнальный лог контура самообучения
+      // P1 D3: .wolf/run-log.jsonl больше не пишется — канонический источник run-метрик
+      // сигнальный лог (.wolf/metrics/session-metrics.jsonl), legacy-файл мержится на чтении.
+      console.error(`[wolf-run] model=${model} weighted=${metrics.weighted} run_id=${runId} trace_id=${traceId}`);
+      // Ф20 (а) + P1 D3: событие metrics в сигнальный лог контура самообучения, writer v2
       appendRunSignal(process.cwd(), {
         model,
         agent: options.agent,
@@ -133,6 +134,14 @@ export function memoryRunCommand(): Command {
         actor: resolveCreatedBy(undefined),
         durationMs,
         tokens: { input: metrics.tokensIn, output: metrics.tokensOut, cache_read: metrics.cacheRead },
+        eventId: randomUUID(),
+        runId,
+        traceId,
+        ...(options.attempt !== undefined && Number.isInteger(options.attempt) ? { attempt: options.attempt } : {}),
+        ...(options.taskId !== undefined ? { taskId: options.taskId } : {}),
+        ...(configHash !== undefined ? { configHash } : {}),
+        promptHash,
+        ...(options.tool.length > 0 ? { tools: options.tool } : {}),
         ...(experiment !== undefined
           ? {
               experiment: {

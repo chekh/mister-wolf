@@ -228,7 +228,10 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-/** Writer (а): `wolf run` — метрики сессии (модель из routing, weighted, outcome; M1: duration/tokens/experiment). */
+/**
+ * Writer (а): `wolf run` — метрики сессии (модель из routing, weighted, outcome; M1: duration/tokens/experiment).
+ * P1 D3: writer перешёл на v2 — schema_version: 2 всегда, identity-поля опциональны.
+ */
 export function appendRunSignal(
   baseDir: string,
   input: {
@@ -243,16 +246,34 @@ export function appendRunSignal(
     durationMs?: number;
     tokens?: { input: number; output: number; cache_read: number };
     experiment?: { id: string; arm: 'wolf' | 'baseline'; taskId?: string };
+    /** P1 D3: identity-поля v2 (event_id/run_id/trace_id/attempt/task_id/config_hash/prompt_hash/tools). */
+    eventId?: string;
+    runId?: string;
+    traceId?: string;
+    attempt?: number;
+    taskId?: string;
+    configHash?: string;
+    promptHash?: string;
+    tools?: string[];
   }
 ): { key: string | null; count: number; patternFixed: boolean } {
   return appendSignal(baseDir, {
     ts: nowIso(),
     event: 'run',
+    schema_version: 2,
     session_id: input.session,
     gen_ai: { modelID: input.model, agent: input.agent },
     orchestration: { task: input.title, actor: input.actor },
     weighted: input.weighted,
     outcome: input.outcome,
+    ...(input.eventId !== undefined ? { event_id: input.eventId } : {}),
+    ...(input.runId !== undefined ? { run_id: input.runId } : {}),
+    ...(input.traceId !== undefined ? { trace_id: input.traceId } : {}),
+    ...(input.attempt !== undefined ? { attempt: input.attempt } : {}),
+    ...(input.taskId !== undefined ? { task_id: input.taskId } : {}),
+    ...(input.configHash !== undefined ? { config_hash: input.configHash } : {}),
+    ...(input.promptHash !== undefined ? { prompt_hash: input.promptHash } : {}),
+    ...(input.tools !== undefined ? { tools: input.tools } : {}),
     ...(input.task !== undefined ? { detail: { task: input.task } } : {}),
     ...(input.durationMs !== undefined ? { duration_ms: input.durationMs } : {}),
     ...(input.tokens !== undefined ? { tokens: input.tokens } : {}),

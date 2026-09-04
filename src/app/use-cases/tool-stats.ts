@@ -1,5 +1,7 @@
 import { MemoryStore } from '../../ports/memory-store.port.js';
-import { analyzeEconomy, EconomyResult, parseRunLog } from '../../domain/tool-economy.js';
+import { analyzeEconomy, EconomyResult } from '../../domain/tool-economy.js';
+import type { SignalEvent } from '../../adapters/fs/session-metrics-log.js';
+import { mergeRunEntries } from './run-source.js';
 
 export interface ToolUsageRow {
   id: string;
@@ -14,10 +16,12 @@ export interface ToolStatsResult {
   economy: EconomyResult;
 }
 
-/** `wolf tool stats`: реестр tool-объектов + экономика переиспользования по run-log. */
+/** `wolf tool stats`: реестр tool-объектов + экономика переиспользования (P1 D4:
+ * сигнальный источник с compat-мержем legacy run-log; пустые данные → insufficient
+ * от analyzeEconomy, reason «not enough data»). */
 export async function toolStats(
   deps: { store: MemoryStore },
-  input: { runLogText: string | null }
+  input: { signals: SignalEvent[]; runLogText: string | null }
 ): Promise<ToolStatsResult> {
   const objects = await deps.store.list({ type: 'tool' });
   const tools: ToolUsageRow[] = objects
@@ -33,18 +37,7 @@ export async function toolStats(
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const economy: EconomyResult =
-    input.runLogText === null
-      ? {
-          sufficient: false,
-          reason: 'run-log missing (.wolf/run-log.jsonl not found)',
-          toolRuns: 0,
-          totalRuns: 0,
-          medianTool: null,
-          medianAll: null,
-          savingsPct: null,
-        }
-      : analyzeEconomy(parseRunLog(input.runLogText));
+  const economy: EconomyResult = analyzeEconomy(mergeRunEntries(input.signals, input.runLogText));
 
   return { tools, economy };
 }

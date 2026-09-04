@@ -13,7 +13,7 @@ import {
 import { toolStats } from '../../../app/use-cases/tool-stats.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { resolveCreatedBy } from '../../../domain/actor.js';
-import { appendDeliverySignal } from '../../../adapters/fs/session-metrics-log.js';
+import { appendDeliverySignal, readSignals } from '../../../adapters/fs/session-metrics-log.js';
 
 function printContractReminder(tool: ToolObject): void {
   console.log(`Input: ${tool.contract_input ?? '—'}`);
@@ -153,12 +153,13 @@ export function memoryToolCommand(): Command {
 
   cmd
     .command('stats')
-    .description('Usage counters per tool + reuse economy from .wolf/run-log.jsonl')
+    .description('Usage counters per tool + reuse economy (signal log + legacy run-log)')
     .action(async () => {
       const { store } = createCliContainer(process.cwd());
       const logPath = join(process.cwd(), '.wolf', 'run-log.jsonl');
       const runLogText = existsSync(logPath) ? readFileSync(logPath, 'utf-8') : null;
-      const result = await toolStats({ store }, { runLogText });
+      const signals = readSignals(process.cwd());
+      const result = await toolStats({ store }, { signals, runLogText });
 
       console.log(`tools: ${result.tools.length}`);
       for (const t of result.tools) {
