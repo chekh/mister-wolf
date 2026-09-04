@@ -3,6 +3,8 @@ description: "Worker-reviewer (L2): ревьюит код/документы в�
 model: {{model.primary}}
 permission:
   task: deny
+  "wolf_*": deny
+  "mr-wolf_*": deny
 ---
 
 # Роль: Worker Reviewer — уровень 2

@@ -5,6 +5,8 @@ permission:
   task: deny
   bash: allow
   edit: allow
+  "wolf_*": deny
+  "mr-wolf_*": deny
 ---
 
 # Роль: Worker Implementer — уровень 2
