@@ -204,6 +204,7 @@ export function renderTrends(baseDir: string, d: DashboardData): string {
   // D1: текст без колонок конверсии; проценты остаются только в JSON (WeeklyActivityWeek)
   const weeklyActivity = filterAnalytics(d.analytics, { view: 'weeklyActivity', top: 20 });
   if (weeklyActivity.view === 'weeklyActivity') {
+    parts.push('weekly activity:');
     parts.push(
       renderTable(
         ['week', 'writes', 'delivers', 'triggers'],
