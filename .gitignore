@@ -28,3 +28,4 @@ docs/site/.vitepress/cache/
 
 # playground: независимая площадка-снапшот (свой git, git init внутри)
 playground/
+node_modules
