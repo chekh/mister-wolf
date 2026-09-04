@@ -4,7 +4,7 @@ import { getLatestMemoryObject } from '../../../app/use-cases/get-latest-memory-
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { UserFacingError } from '../../../domain/errors.js';
 import { appendMemoryStageSignal } from '../../fs/session-metrics-log.js';
-import { resolveCreatedBy } from '../../../domain/actor.js';
+import { resolveCreatedBy, resolveSessionId } from '../../../domain/actor.js';
 
 /** P2 D1: объект найден → retrieved; сбой телеметрии не ломает вывод. */
 function recordRetrieved(objId: string): void {
@@ -13,6 +13,7 @@ function recordRetrieved(objId: string): void {
       stage: 'retrieved',
       memoryIds: [objId],
       actor: resolveCreatedBy(undefined),
+      sessionId: resolveSessionId(),
     });
   } catch {
     // телеметрия не должна ломать основной поток

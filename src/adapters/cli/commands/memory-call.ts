@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { getCallInjections } from '../../../app/use-cases/get-call-injections.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
-import { resolveCreatedBy } from '../../../domain/actor.js';
+import { resolveCreatedBy, resolveSessionId } from '../../../domain/actor.js';
 import { appendDeliverySignal, appendMemoryStageSignal } from '../../../adapters/fs/session-metrics-log.js';
 
 function parseCompact(v: string | undefined): number | true {
@@ -46,6 +46,7 @@ export function memoryCallCommand(): Command {
             stage: 'injected',
             memoryIds: result.deliveredIds,
             actor,
+            sessionId: resolveSessionId(),
           });
         } catch {
           // телеметрия не должна ломать основной поток

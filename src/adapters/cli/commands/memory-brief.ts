@@ -3,7 +3,7 @@ import { scanProject } from '../../../app/use-cases/scan-project.js';
 import { generateAgentBrief } from '../../../app/use-cases/generate-agent-brief.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { appendMemoryStageSignal } from '../../fs/session-metrics-log.js';
-import { resolveCreatedBy } from '../../../domain/actor.js';
+import { resolveCreatedBy, resolveSessionId } from '../../../domain/actor.js';
 
 export function memoryBriefCommand(): Command {
   return new Command('brief')
@@ -19,6 +19,7 @@ export function memoryBriefCommand(): Command {
             stage: 'injected',
             memoryIds: brief.injectedIds,
             actor: resolveCreatedBy(undefined),
+            sessionId: resolveSessionId(),
           });
         } catch {
           // телеметрия не должна ломать основной поток

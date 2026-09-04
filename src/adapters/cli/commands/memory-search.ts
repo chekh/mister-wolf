@@ -3,7 +3,7 @@ import { searchMemory } from '../../../app/use-cases/search-memory.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { FTS_COLUMNS } from '../../sqlite/sqlite-search-index.js';
 import { appendMemoryStageSignal } from '../../fs/session-metrics-log.js';
-import { resolveCreatedBy } from '../../../domain/actor.js';
+import { resolveCreatedBy, resolveSessionId } from '../../../domain/actor.js';
 
 export function memorySearchCommand(): Command {
   return new Command('search')
@@ -47,6 +47,7 @@ export function memorySearchCommand(): Command {
             stage: 'retrieved',
             memoryIds: results.map((r) => r.object.id),
             actor: resolveCreatedBy(undefined),
+            sessionId: resolveSessionId(),
           });
         } catch {
           // телеметрия не должна ломать основной поток

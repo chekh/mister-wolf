@@ -42,6 +42,7 @@ import { buildAnalyticsReport, filterAnalytics } from '../../app/use-cases/build
 import { appendSignal, appendMemoryStageSignal, readSignalLog } from '../../adapters/fs/session-metrics-log.js';
 import { loadWolfConfigSync } from '../../adapters/fs/config-file.js';
 import { getWolfVersion } from '../version.js';
+import { resolveSessionId } from '../../domain/actor.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -128,6 +129,7 @@ export function registerMemoryTools(
             stage: 'retrieved',
             memoryIds: results.map((r) => r.object.id),
             actor: 'system:wolf',
+            sessionId: resolveSessionId(),
           });
         } catch {
           // телеметрия не должна ломать вызов
@@ -152,7 +154,12 @@ export function registerMemoryTools(
       }
       // P2 D1: объект найден → retrieved; not found → событие НЕ пишется
       try {
-        appendMemoryStageSignal(baseDir, { stage: 'retrieved', memoryIds: [object.id], actor: 'system:wolf' });
+        appendMemoryStageSignal(baseDir, {
+          stage: 'retrieved',
+          memoryIds: [object.id],
+          actor: 'system:wolf',
+          sessionId: resolveSessionId(),
+        });
       } catch {
         // телеметрия не должна ломать вызов
       }
@@ -369,6 +376,7 @@ export function registerMemoryTools(
             stage: 'injected',
             memoryIds: brief.injectedIds,
             actor: 'system:wolf',
+            sessionId: resolveSessionId(),
           });
         } catch {
           // телеметрия не должна ломать вызов

@@ -1,7 +1,7 @@
 import { Command, Option } from 'commander';
 import { safeCwd } from '../cli-entry.js';
 import { appendMemoryStageSignal } from '../../fs/session-metrics-log.js';
-import { resolveCreatedBy } from '../../../domain/actor.js';
+import { resolveCreatedBy, resolveSessionId } from '../../../domain/actor.js';
 import { UserFacingError } from '../../../domain/errors.js';
 
 // P2 D1: `wolf memory-stage` — ручная фиксация стадии жизненного цикла памяти
@@ -30,7 +30,7 @@ export function memoryStageCommand(baseDir: string = safeCwd()): Command {
         stage: options.stage,
         memoryIds,
         actor: resolveCreatedBy(options.actor),
-        ...(options.session !== undefined ? { sessionId: options.session } : {}),
+        sessionId: options.session !== undefined ? options.session : resolveSessionId(),
       });
       console.log(`memory stage recorded: stage=${options.stage} ids=${memoryIds.length}`);
     });

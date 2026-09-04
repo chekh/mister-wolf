@@ -14,21 +14,25 @@ rebuildable, в git не коммитится); markdown-отчёты конту
 
 ## Writer-матрица
 
-| Событие          | Кто пишет                                       | Когда                                                           |
-| ---------------- | ----------------------------------------------- | --------------------------------------------------------------- |
-| `run`            | `wolf run`                                      | после каждого запуска (с P1 — единственный источник run-метрик) |
-| `complaint`      | `wolf complain`                                 | при каждой жалобе                                               |
-| `delivery`       | `wolf scaffold`, `wolf tool expose`             | доставка методики (рамка+playbook / SKILL.md)                   |
-| `tool_error`     | `wolf run` (ошибка spawn) + `recordToolError()` | ошибка тула, класс — через классификатор                        |
-| `task_evaluated` | `wolf task-eval`                                | вердикт по задаче (P0)                                          |
-| `mcp_call`       | MCP-сервер (обёртка в `registerMemoryTools`)    | каждый вызов mr-wolf-\* тулзы (P1 D5)                           |
+| Событие          | Кто пишет                                                                                          | Когда                                                                  |
+| ---------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `run`            | `wolf run`                                                                                         | после каждого запуска (с P1 — единственный источник run-метрик)        |
+| `complaint`      | `wolf complain`                                                                                    | при каждой жалобе                                                      |
+| `delivery`       | `wolf scaffold`, `wolf tool expose`                                                                | доставка методики (рамка+playbook / SKILL.md)                          |
+| `tool_error`     | `wolf run` (ошибка spawn) + `recordToolError()`                                                    | ошибка тула, класс — через классификатор                               |
+| `task_evaluated` | `wolf task-eval`                                                                                   | вердикт по задаче (P0)                                                 |
+| `mcp_call`       | MCP-сервер (обёртка в `registerMemoryTools`)                                                       | каждый вызов mr-wolf-\* тулзы (P1 D5)                                  |
+| `memory_stage`   | авто: `wolf search`/`get` (retrieved), `wolf brief`/`call` (injected); ручной: `wolf memory-stage` | стадия жизненного цикла памяти (P2 D1); cited/applied — внешние акторы |
+| `coord_event`    | `wolf coord`                                                                                       | факт координации между агентами (P2 D3)                                |
 
 ## Формат записи (OTEL GenAI-совместимый, Layer 1+2)
 
 ```jsonc
 {
   "ts": "2026-08-30T12:00:00.000Z", // ISO8601
-  "event": "run", // run | complaint | delivery | tool_error | task_evaluated | mcp_call
+  // run | complaint | delivery | tool_error | task_evaluated | mcp_call |
+  // memory_stage | coord_event
+  "event": "run",
   "session_id": "ses_...", // opencode session; null — вне сессии
   "gen_ai": { "modelID": "org/model", "agent": "worker" }, // modelID — ОБЯЗАТЕЛЬНОЕ поле
   // (спека §21 п.23); null — модель неизвестна
@@ -137,11 +141,13 @@ Zod-схемой (`strip`).
 Обёртка в `registerMemoryTools` пишет событие на КАЖДЫЙ вызов mr-wolf-\* тулзы:
 `tool_name` (имя тулзы), `duration_ms` (замер вокруг handler), `outcome:
 'ok'|'error'` (error — только throw; текстовые «not found» — это ok),
-`detail.method` (имя вызванного метода). Сборка дешёвая — append без IO-фанатизма,
+`detail.method` (имя вызванного метода) и `detail.wolf_version` (runtime-версия
+Wolf из package.json на момент вызова — с P2 позволяет отличить поведение
+версий в одном логе). Сборка дешёвая — append без IO-фанатизма,
 сбой телеметрии не ломает вызов. Граница измерения: вызовы, отброшенные
 input-схемой SDK до dispatch, до обёртки не доходят и не логируются.
 
-Живой пример (вызовы `list` и `search` через MCP stdio):
+Живой пример (вызов `list` через MCP stdio, wolf 2.6.1):
 
 ```json
 {
@@ -153,7 +159,87 @@ input-схемой SDK до dispatch, до обёртки не доходят и
   "outcome": "ok",
   "tool_name": "list",
   "duration_ms": 2,
-  "detail": { "method": "list" }
+  "detail": { "method": "list", "wolf_version": "2.6.1" }
+}
+```
+
+## Событие `memory_stage` (P2 D1)
+
+Стадия жизненного цикла памяти: `outcome` = стадия, `detail`:
+
+```jsonc
+{
+  "stage": "retrieved", // retrieved | injected | cited | applied
+  "memory_ids": ["mem_..."], // непустой массив id объектов
+}
+```
+
+Семантика стадий:
+
+- `retrieved` — объект достался из store (выдача поиска/чтения);
+- `injected` — объект попал в контекст агента (бриф, call-injections);
+- `cited` — агент процитировал объект в ответе/отчёте;
+- `applied` — содержимое объекта внедрено в код/решение.
+
+Кто какие пишет: `retrieved` — авто-писатели `wolf search`/`wolf get` и MCP-аналоги
+(actor `system:wolf`); `injected` — `wolf brief`/`wolf call` при непустых
+инъекциях; `cited`/`applied` — внешние акторы (агенты/харнессы) вручную:
+`wolf memory-stage --stage cited --ids <id,...> [--actor agent:<имя>]`
+(см. [harness-integration.md](./harness-integration.md)).
+
+Событие НЕ пишется, когда нечего фиксировать: пустая выдача поиска → нет
+`retrieved`; бриф без инъекций → нет `injected`; пустой `--ids` — ошибка CLI.
+Контекст-событие: `signalKey` → null, пороги Ф21 не считаются. Для атрибуции
+(см. [analytics.md](./analytics.md)) важно передавать `--session <id>` — атрибуция
+связывает `injected` с `task_evaluated` по `session_id`.
+
+Живые примеры (ручные cited/applied от агента-воркера и авто-retrieved от
+`wolf search`):
+
+```json
+{"ts":"2026-09-04T19:44:41.276Z","event":"memory_stage","session_id":null,"gen_ai":{"modelID":null,"agent":null},"orchestration":{"task":null,"actor":"agent:worker"},"outcome":"cited","detail":{"stage":"cited","memory_ids":["mem_20260904_validate_fts_queries_against_real_index_67b487"]}}
+{"ts":"2026-09-04T19:44:41.541Z","event":"memory_stage","session_id":null,"gen_ai":{"modelID":null,"agent":null},"orchestration":{"task":null,"actor":"agent:worker"},"outcome":"applied","detail":{"stage":"applied","memory_ids":["mem_20260904_use_append_only_jsonl_for_signal_log_03b132"]}}
+{"ts":"2026-09-04T19:44:43.482Z","event":"memory_stage","session_id":null,"gen_ai":{"modelID":null,"agent":null},"orchestration":{"task":null,"actor":"user:cli"},"outcome":"retrieved","detail":{"stage":"retrieved","memory_ids":["mem_20260904_use_append_only_jsonl_for_signal_log_03b132"]}}
+```
+
+## Событие `coord_event` (P2 D3)
+
+Факт координации между агентами: `outcome` = kind, `detail`:
+
+```jsonc
+{
+  "kind": "handoff", // handoff | review | acceptance | blocker | escalation
+  "actor_from": "L0:wolf", // источник
+  "actor_to": "L1:lead", // опц. адресат
+  "refs": ["mem_..."], // опц. id связанных объектов (отчёт, блокер, задача)
+  "note": "...", // опц. свободная заметка
+}
+```
+
+Пишется только вручную — `wolf coord --kind <k> [--from <актор>] [--to <актор>]
+[--ref <id,...>] [--note <текст>]` (кто какие kind пишет — в
+[harness-integration.md](./harness-integration.md)). `--from`/`--actor` дефолт —
+`WOLF_ACTOR` env или `user:cli`. Контекст-событие: `signalKey` → null.
+Аналитика пар вида «blocker открыт → закрыт» — в
+[analytics.md](./analytics.md) (`--view coordination`).
+
+Живой пример (handoff координатора лиду, ref — объект памяти):
+
+```json
+{
+  "ts": "2026-09-04T19:44:42.093Z",
+  "event": "coord_event",
+  "session_id": null,
+  "gen_ai": { "modelID": null, "agent": null },
+  "orchestration": { "task": null, "actor": "user:cli" },
+  "outcome": "handoff",
+  "detail": {
+    "kind": "handoff",
+    "actor_from": "L0:wolf",
+    "actor_to": "L1:lead",
+    "refs": ["mem_20260904_validate_fts_queries_against_real_index_67b487"],
+    "note": "P2 docs example"
+  }
 }
 ```
 

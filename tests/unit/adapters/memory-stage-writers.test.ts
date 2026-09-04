@@ -137,4 +137,28 @@ describe('memory_stage auto-writers (CLI call)', () => {
     await memoryCallCommand().parseAsync(['call', '--for', 'zzz-no-match-xyz'], { from: 'user' });
     expect(readSignals(dir).filter((e) => e.event === 'memory_stage').length).toBe(before);
   });
+
+  it('WOLF_SESSION: авто-писатель call связывает injected с session_id (P2 D4)', async () => {
+    const { createCliContainer } = await import('../../../src/bootstrap/container.js');
+    const { addMemoryObject } = await import('../../../src/app/use-cases/add-memory-object.js');
+    const deps = createCliContainer(dir);
+    await addMemoryObject(deps, {
+      type: 'call-injection',
+      title: 'Session probe',
+      body: 'probe content',
+      createdBy: 'user:unit-test',
+      reviewState: 'accepted',
+      extra: { trigger_keywords: ['sesprobe'] },
+    });
+    vi.stubEnv('WOLF_SESSION', 'ses_e2e');
+    try {
+      const { memoryCallCommand } = await import('../../../src/adapters/cli/commands/memory-call.js');
+      await memoryCallCommand().parseAsync(['call', '--for', 'sesprobe'], { from: 'user' });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    const injected = readSignals(dir).filter((e) => e.event === 'memory_stage' && e.detail?.stage === 'injected');
+    expect(injected).toHaveLength(1);
+    expect(injected[0]!.session_id).toBe('ses_e2e');
+  });
 });
