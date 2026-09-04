@@ -70,7 +70,23 @@ function dashboardFixture(): DashboardData {
       rules: [],
       weeklyActivity: [],
       outliers: [],
-      agents: [],
+      agents: [
+        {
+          agent: 'worker',
+          runs: 2,
+          processFailures: 0,
+          processFailureRatePct: 0,
+          weighted: 10,
+          avgDurationMs: 100,
+          costUsd: null,
+          toolErrors: 0,
+          complaintsBy: 0,
+          complaintsAbout: 0,
+          completedRuns: 2,
+          accepted: 1,
+          holdoutPrevented: null,
+        },
+      ],
       steward: { mutationsByWeek: [] },
       readiness: { totalRuns: 0, withArm: 0 },
       councils: {
@@ -83,6 +99,9 @@ function dashboardFixture(): DashboardData {
           { week: '2026-W33', questions: 2, opinions: 4, syntheses: 1 },
         ],
       },
+      acceptance: { accepted: 1, costPerAcceptedTask: 10 },
+      coverage: { scored: 1, runs: 3, scoredTaskRatePct: 100 / 3 },
+      dataQuality: { validEventRatePct: 75, malformedLines: 1 },
     },
     effectiveness: { totals: { sumTokens: null } },
   } as unknown as DashboardData;
@@ -105,5 +124,27 @@ describe('councils в дашборде: ledgers-таблица открытых 
     const opinions = lines.find((l) => l.startsWith('council opinions/week:'));
     expect(questions).toMatch(/: [▁▂▃▄▅▆▇█]{3}$/);
     expect(opinions).toMatch(/: [▁▂▃▄▅▆▇█]{3}$/);
+  });
+
+  it('renderTrends: coverage-partial и dataQuality строки (D5/D7)', () => {
+    const out = renderTrends('/nonexistent-wolf-dashboard-test', dashboardFixture());
+    expect(out).toContain('coverage: partial — scored 1/3 (33.3%)');
+    expect(out).toContain('dataQuality: valid 75.0% (malformed lines: 1)');
+  });
+
+  it('renderTrends: coverage 100% не печатается; dataQuality null → n/a (no signal log)', () => {
+    const d = dashboardFixture();
+    d.analytics.coverage = { scored: 3, runs: 3, scoredTaskRatePct: 100 };
+    d.analytics.dataQuality = { validEventRatePct: null, malformedLines: 0 };
+    const out = renderTrends('/nonexistent-wolf-dashboard-test', d);
+    expect(out).not.toContain('coverage: partial');
+    expect(out).toContain('dataQuality: n/a (no signal log)');
+  });
+
+  it('renderLedgers: agents-таблица содержит колонки completed/accepted', () => {
+    const out = renderLedgers(dashboardFixture());
+    const headerRow = out.split('\n').find((l) => l.startsWith('│') && l.includes('pfail_%')) ?? '';
+    const cols = headerRow.split('│').map((c) => c.trim()).filter(Boolean);
+    expect(cols).toEqual(['agent', 'runs', 'weighted', 'avg_ms', 'pfail_%', 'completed', 'accepted', 'compl by/about', 'prevented']);
   });
 });

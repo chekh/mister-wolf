@@ -2,12 +2,13 @@ import { Command, Option } from 'commander';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { safeCwd } from '../cli-entry.js';
-import { readSignals } from '../../fs/session-metrics-log.js';
+import { readSignalLog } from '../../fs/session-metrics-log.js';
 import { readSnapshots, type SnapshotEntry } from '../../fs/effectiveness-snapshots.js';
 import { loadWolfConfigSync } from '../../fs/config-file.js';
 import { resolveThresholds } from '../../../app/use-cases/effectiveness.js';
 import { buildDashboard, type DashboardData } from '../../../app/use-cases/build-dashboard.js';
 import { filterAnalytics } from '../../../app/use-cases/build-analytics.js';
+import { coverageLine, dataQualityLine } from './analytics.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { renderTable } from './table-render.js';
 
@@ -136,13 +137,15 @@ export function renderLedgers(d: DashboardData): string {
   if (agents.view === 'agents') {
     parts.push(
       renderTable(
-        ['agent', 'runs', 'weighted', 'avg_ms', 'pfail_%', 'compl by/about', 'prevented'],
+        ['agent', 'runs', 'weighted', 'avg_ms', 'pfail_%', 'completed', 'accepted', 'compl by/about', 'prevented'],
         agents.rows.map((r) => [
           r.agent,
           cell(r.runs),
           cell(r.weighted),
           cell(r.avgDurationMs),
           cell(r.processFailureRatePct === null ? null : r.processFailureRatePct.toFixed(1)),
+          cell(r.completedRuns),
+          cell(r.accepted),
           `${r.complaintsBy}/${r.complaintsAbout}`,
           cell(r.holdoutPrevented),
         ])
@@ -192,6 +195,11 @@ export function renderTrends(baseDir: string, d: DashboardData): string {
 
   const snaps = readSnapshots(baseDir);
   parts.push(...trendSparklineLines(snaps));
+
+  // D5/D7: честность метрик — частичный coverage и качество сигнального лога
+  const cov = coverageLine(d.analytics.coverage);
+  if (cov !== null) parts.push(cov);
+  parts.push(dataQualityLine(d.analytics.dataQuality, 'n/a (no signal log)'));
 
   // D1: текст без колонок конверсии; проценты остаются только в JSON (WeeklyActivityWeek)
   const weeklyActivity = filterAnalytics(d.analytics, { view: 'weeklyActivity', top: 20 });
@@ -257,10 +265,13 @@ export function dashboardCommand(baseDir: string = safeCwd()): Command {
     }
 
     const { store, log, relations, clock } = createCliContainer(baseDir);
+    // D7: readSignalLog — events + счётчики битых строк (dataQuality через passthrough)
+    const signalLog = readSignalLog(baseDir);
     const data = await buildDashboard(
       { store, log, relations, clock },
       {
-        signals: readSignals(baseDir),
+        signals: signalLog.events,
+        signalLogStats: { malformedLines: signalLog.malformedLines, totalLines: signalLog.totalLines },
         runLogText,
         thresholds,
         ...(config?.pricing !== undefined ? { pricing: config.pricing } : {}),

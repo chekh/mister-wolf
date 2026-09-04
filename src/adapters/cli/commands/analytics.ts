@@ -2,7 +2,7 @@ import { Command, Option } from 'commander';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { safeCwd } from '../cli-entry.js';
-import { readSignals } from '../../fs/session-metrics-log.js';
+import { readSignalLog } from '../../fs/session-metrics-log.js';
 import { loadWolfConfigSync } from '../../fs/config-file.js';
 import {
   buildAnalyticsReport,
@@ -122,12 +122,17 @@ export function renderSection(report: AnalyticsReport, filter: SectionViewFilter
         cell(r.weighted),
         cell(r.avgDurationMs),
         cell(r.processFailureRatePct === null ? null : r.processFailureRatePct.toFixed(1)),
+        cell(r.completedRuns),
+        cell(r.accepted),
         `${r.complaintsBy}/${r.complaintsAbout}`,
         cell(r.holdoutPrevented),
       ]);
       return [
         header,
-        renderTable(['agent', 'runs', 'weighted', 'avg_ms', 'pfail_%', 'compl by/about', 'prevented'], rows),
+        renderTable(
+          ['agent', 'runs', 'weighted', 'avg_ms', 'pfail_%', 'completed', 'accepted', 'compl by/about', 'prevented'],
+          rows
+        ),
       ].join('\n');
     }
     case 'steward': {
@@ -229,9 +234,25 @@ export function renderSection(report: AnalyticsReport, filter: SectionViewFilter
   }
 }
 
-/** `view: 'all'`: все секции подряд, каждая — с теми же фильтрами (прокидываются в filterAnalytics). */
+/** D5: строка coverage — только при runs>0 и <100% (полный/нулевой coverage не шумит). */
+export function coverageLine(c: AnalyticsReport['coverage']): string | null {
+  if (!(c.runs > 0 && c.scoredTaskRatePct !== null && c.scoredTaskRatePct < 100)) return null;
+  return `coverage: partial — scored ${c.scored}/${c.runs} (${c.scoredTaskRatePct.toFixed(1)}%)`;
+}
+
+/** D7: строка dataQuality; nullText — текст при отсутствии stats (контекст вызывающего). */
+export function dataQualityLine(q: AnalyticsReport['dataQuality'], nullText: string): string {
+  return q.validEventRatePct === null
+    ? `dataQuality: ${nullText}`
+    : `dataQuality: valid ${q.validEventRatePct.toFixed(1)}% (malformed lines: ${q.malformedLines})`;
+}
+
+/** `view: 'all'`: все секции подряд, каждая — с теми же фильтрами (прокидываются в filterAnalytics);
+ * в конец — coverage (при частичном) и dataQuality (D5/D7). */
 export function renderAllSections(report: AnalyticsReport, filter: AnalyticsViewFilter): string {
-  return SECTION_VIEWS.map((v) => renderSection(report, { ...filter, view: v })).join('\n\n');
+  const sections = SECTION_VIEWS.map((v) => renderSection(report, { ...filter, view: v }));
+  const cov = coverageLine(report.coverage);
+  return [...sections, ...(cov !== null ? [cov] : []), dataQualityLine(report.dataQuality, 'n/a')].join('\n\n');
 }
 
 export function analyticsCommand(baseDir: string = safeCwd()): Command {
@@ -286,10 +307,13 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
     }
 
     const { store, log, relations, clock } = createCliContainer(baseDir);
+    // D7: readSignalLog вместо readSignals — events + счётчики битых строк для dataQuality
+    const signalLog = readSignalLog(baseDir);
     const report = await buildAnalyticsReport(
       { store, log, relations, clock },
       {
-        signals: readSignals(baseDir),
+        signals: signalLog.events,
+        signalLogStats: { malformedLines: signalLog.malformedLines, totalLines: signalLog.totalLines },
         runLogText,
         ...(analyticsThresholds !== undefined ? { thresholds: analyticsThresholds } : {}),
         weeks: options.weeks,

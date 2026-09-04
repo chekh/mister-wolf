@@ -144,6 +144,18 @@ function toolErrorEvent(
   };
 }
 
+function taskEvaluatedSignal(verdict: string, session: string | null): SignalEvent {
+  return {
+    ts: '2026-09-02T00:00:00Z',
+    event: 'task_evaluated',
+    session_id: session,
+    gen_ai: { modelID: null, agent: null },
+    orchestration: { task: null, actor: 'user:cli' },
+    outcome: 'evaluated',
+    detail: { verdict, scorer: 'human' },
+  };
+}
+
 describe('classifyLifecycle (D7: newDays=14 / workhorseUses=3)', () => {
   const t = DEFAULT_LIFECYCLE_THRESHOLDS;
 
@@ -525,6 +537,7 @@ describe('buildAnalyticsReport: agent ledger (Q11)', () => {
       complaintsBy: 0,
       complaintsAbout: 1, // about содержит 'worker'
       completedRuns: 1,
+      accepted: 0, // вердиктов нет
       holdoutPrevented: 4, // lesson created_by agent:worker
     });
     const steward = report.agents[1]!;
@@ -674,6 +687,97 @@ describe('buildAnalyticsReport: councils', () => {
       ],
       openQuestions: [],
     });
+  });
+});
+
+describe('buildAnalyticsReport: acceptance (D4, strict session-link)', () => {
+  // 3 run-сигнала: s1 weighted 100; s2 weighted 50+50
+  const baseRuns: SignalEvent[] = [
+    runSignal({ agent: 'alpha', session: 's1', weighted: 100, outcome: 'ok' }),
+    runSignal({ agent: 'beta', session: 's2', weighted: 50, outcome: 'ok' }),
+    runSignal({ agent: 'beta', session: 's2', weighted: 50, outcome: 'ok' }),
+  ];
+
+  it('accepted-вердикт по s1: accepted=1, costPerAcceptedTask=100, агент s1-рана accepted=1', async () => {
+    const report = await buildAnalyticsReport(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
+      { signals: [...baseRuns, taskEvaluatedSignal('accepted', 's1')], runLogText: null }
+    );
+    expect(report.acceptance).toEqual({ accepted: 1, costPerAcceptedTask: 100 });
+    const alpha = report.agents.find((a) => a.agent === 'alpha');
+    expect(alpha?.accepted).toBe(1); // атрибуция агенту linked-рана
+    expect(report.agents.find((a) => a.agent === 'beta')?.accepted).toBe(0); // s2 не линкуется
+  });
+
+  it('accepted-вердикт БЕЗ session_id → не считается (strict-link)', async () => {
+    const report = await buildAnalyticsReport(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
+      { signals: [...baseRuns, taskEvaluatedSignal('accepted', null)], runLogText: null }
+    );
+    expect(report.acceptance).toEqual({ accepted: 0, costPerAcceptedTask: null });
+  });
+
+  it('accepted-вердикт с session_id без run-связки → не считается', async () => {
+    const report = await buildAnalyticsReport(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
+      { signals: [...baseRuns, taskEvaluatedSignal('accepted', 'ghost')], runLogText: null }
+    );
+    expect(report.acceptance).toEqual({ accepted: 0, costPerAcceptedTask: null });
+  });
+
+  it('без verdict-сигналов вовсе → accepted=0, costPerAcceptedTask=null (критерий №3)', async () => {
+    const report = await buildAnalyticsReport(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
+      { signals: baseRuns, runLogText: null }
+    );
+    expect(report.acceptance).toEqual({ accepted: 0, costPerAcceptedTask: null });
+  });
+
+  it('rejected-вердикт по s1 → accepted=0', async () => {
+    const report = await buildAnalyticsReport(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
+      { signals: [...baseRuns, taskEvaluatedSignal('rejected', 's1')], runLogText: null }
+    );
+    expect(report.acceptance).toEqual({ accepted: 0, costPerAcceptedTask: null });
+  });
+});
+
+describe('buildAnalyticsReport: coverage (D5)', () => {
+  it('2 run + 1 task_evaluated → scoredTaskRatePct=50; 0 runs → null', async () => {
+    const report = await buildAnalyticsReport(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
+      {
+        signals: [
+          runSignal({ session: 's1', outcome: 'ok' }),
+          runSignal({ session: 's2', outcome: 'ok' }),
+          taskEvaluatedSignal('accepted', 's1'),
+        ],
+        runLogText: null,
+      }
+    );
+    expect(report.coverage).toEqual({ scored: 1, runs: 2, scoredTaskRatePct: 50 });
+
+    const empty = await buildAnalyticsReport(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
+      { signals: [], runLogText: null }
+    );
+    expect(empty.coverage).toEqual({ scored: 0, runs: 0, scoredTaskRatePct: null });
+  });
+});
+
+describe('buildAnalyticsReport: dataQuality (D7, критерий №6 — битые строки не роняют отчёт)', () => {
+  it('signalLogStats {malformed:1,total:4} → validEventRatePct=75; без stats → null/0', async () => {
+    const report = await buildAnalyticsReport(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
+      { signals: [], runLogText: null, signalLogStats: { malformedLines: 1, totalLines: 4 } }
+    );
+    expect(report.dataQuality).toEqual({ validEventRatePct: 75, malformedLines: 1 });
+
+    const noStats = await buildAnalyticsReport(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
+      { signals: [], runLogText: null }
+    );
+    expect(noStats.dataQuality).toEqual({ validEventRatePct: null, malformedLines: 0 });
   });
 });
 

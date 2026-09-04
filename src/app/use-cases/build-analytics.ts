@@ -117,7 +117,27 @@ export interface AgentLedgerRow {
   complaintsBy: number;
   complaintsAbout: number;
   completedRuns: number;
+  accepted: number;
   holdoutPrevented: number | null;
+}
+
+/** D4: accepted-вердикты по строгой session-связке (link ненадёжен до P1). */
+export interface AcceptanceStats {
+  accepted: number;
+  costPerAcceptedTask: number | null;
+}
+
+/** D5: coverage — scored-вердикты / run-сигналы (интерим-знаменатель, честный — P1). */
+export interface CoverageStats {
+  scored: number;
+  runs: number;
+  scoredTaskRatePct: number | null;
+}
+
+/** D7: data-quality сигнального лога (битые строки не роняют контур — только метрика). */
+export interface DataQualityStats {
+  validEventRatePct: number | null;
+  malformedLines: number;
 }
 
 export interface StewardView {
@@ -185,6 +205,9 @@ export interface AnalyticsReport {
   steward: StewardView;
   readiness: ExperimentReadiness;
   councils: CouncilsView;
+  acceptance: AcceptanceStats;
+  coverage: CoverageStats;
+  dataQuality: DataQualityStats;
 }
 
 export interface AnalyticsDeps {
@@ -202,6 +225,8 @@ export interface AnalyticsInput {
   weeks?: number;
   topOutliers?: number;
   pricing?: PricingTable;
+  /** D7: счётчики readSignalLog — источник dataQuality (undefined → n/a). */
+  signalLogStats?: { malformedLines: number; totalLines: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -454,19 +479,66 @@ function buildOutliers(runLogText: string | null, pricing: PricingTable | undefi
     }));
 }
 
+/** Acceptance D4: accepted-вердикт считается ТОЛЬКО при строгой session-связке —
+ * session_id !== null и существует ≥1 run-сигнал с тем же session_id (без связки
+ * вердикт не атрибутируется: link ненадёжен до P1). costPerAcceptedTask = сумма
+ * weighted linked-ранов / число вердиктов. Атрибуция: каждому агенту множества
+ * gen_ai.agent linked-ранов вердикта +1 (дедуп внутри одного вердикта). */
+function buildAcceptance(
+  signals: SignalEvent[]
+): AcceptanceStats & { acceptedByAgent: Map<string, number> } {
+  const runsBySession = new Map<string, SignalEvent[]>();
+  for (const s of signals) {
+    if (s.event !== 'run' || s.session_id === null) continue;
+    const arr = runsBySession.get(s.session_id) ?? [];
+    arr.push(s);
+    runsBySession.set(s.session_id, arr);
+  }
+  const acceptedByAgent = new Map<string, number>();
+  const acceptedSessions = new Set<string>();
+  let accepted = 0;
+  for (const s of signals) {
+    if (s.event !== 'task_evaluated' || s.detail?.verdict !== 'accepted') continue;
+    // strict-link: без session_id или без run-связки вердикт НЕ считается
+    if (s.session_id === null || !runsBySession.has(s.session_id)) continue;
+    accepted += 1;
+    acceptedSessions.add(s.session_id);
+    const agents = new Set<string>();
+    for (const r of runsBySession.get(s.session_id)!) {
+      if (typeof r.gen_ai.agent === 'string' && r.gen_ai.agent !== '') agents.add(r.gen_ai.agent);
+    }
+    for (const a of agents) acceptedByAgent.set(a, (acceptedByAgent.get(a) ?? 0) + 1);
+  }
+  let linkedWeighted = 0;
+  for (const [session, runs] of runsBySession) {
+    if (!acceptedSessions.has(session)) continue;
+    for (const r of runs) linkedWeighted += finiteNumber(r.weighted) ?? 0;
+  }
+  return { accepted, costPerAcceptedTask: accepted > 0 ? linkedWeighted / accepted : null, acceptedByAgent };
+}
+
+/** Coverage D5: scored = task_evaluated (любой verdict), runs = run-сигналы. */
+function buildCoverage(signals: SignalEvent[]): CoverageStats {
+  const scored = signals.filter((s) => s.event === 'task_evaluated').length;
+  const runs = signals.filter((s) => s.event === 'run').length;
+  return { scored, runs, scoredTaskRatePct: runs > 0 ? (scored / runs) * 100 : null };
+}
+
 /** Agent ledger Q11: строки по run-агентам ∪ complaint-акторам `agent:<имя>`; три уровня —
  * объём (runs/weighted/duration/cost), проблемы (processFailures/toolErrors/жалобы), достижения
- * (completedRuns/holdout_prevented его rule/lesson). */
+ * (completedRuns/accepted/holdout_prevented его rule/lesson). */
 function buildAgents(
   signals: SignalEvent[],
   objects: MemoryObject[],
-  pricing: PricingTable | undefined
+  pricing: PricingTable | undefined,
+  acceptedByAgent: Map<string, number>
 ): AgentLedgerRow[] {
   const AGENT_PREFIX = 'agent:';
   interface AgentAcc {
     runs: number;
     processFailures: number;
     completedRuns: number;
+    accepted: number;
     weighted: number;
     durations: number[];
     cost: number | null;
@@ -484,6 +556,7 @@ function buildAgents(
         runs: 0,
         processFailures: 0,
         completedRuns: 0,
+        accepted: 0,
         weighted: 0,
         durations: [],
         cost: null,
@@ -546,6 +619,8 @@ function buildAgents(
       acc.get(name)!.hasHoldout = true;
     }
   }
+  // D4: accepted-атрибуция — строки linked-ранов уже существуют (раны их создали)
+  for (const [name, n] of acceptedByAgent) rowOf(name).accepted += n;
 
   return [...acc.entries()]
     .map(([agent, r]) => ({
@@ -560,6 +635,7 @@ function buildAgents(
       complaintsBy: r.complaintsBy,
       complaintsAbout: r.complaintsAbout,
       completedRuns: r.completedRuns,
+      accepted: r.accepted,
       holdoutPrevented: r.hasHoldout ? r.holdoutSum : null,
     }))
     .sort((a, b) => b.runs - a.runs || a.agent.localeCompare(b.agent));
@@ -881,11 +957,25 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
   );
   const weeklyActivity = buildWeeklyActivity(events, input.signals, now, weeks);
   const outliers = buildOutliers(input.runLogText, input.pricing, input.topOutliers ?? 10);
-  const agents = buildAgents(input.signals, allObjects, input.pricing);
+  const acceptance = buildAcceptance(input.signals);
+  const agents = buildAgents(input.signals, allObjects, input.pricing, acceptance.acceptedByAgent);
   const steward = buildSteward(events, input.signals, allObjects, now, weeks);
   const readiness = buildReadiness(input.signals);
   const councils = await buildCouncils(allObjects, deps.relations, now, weeks);
-
+  const coverage = buildCoverage(input.signals);
+  // D7: без signalLogStats (старые вызывающие) → n/a; totalLines=0 → null-процент
+  const dataQuality: DataQualityStats =
+    input.signalLogStats === undefined
+      ? { validEventRatePct: null, malformedLines: 0 }
+      : {
+          validEventRatePct:
+            input.signalLogStats.totalLines > 0
+              ? ((input.signalLogStats.totalLines - input.signalLogStats.malformedLines) /
+                  input.signalLogStats.totalLines) *
+                100
+              : null,
+          malformedLines: input.signalLogStats.malformedLines,
+        };
   return {
     generatedAt: now.toISOString(),
     thresholds,
@@ -898,6 +988,9 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
     steward,
     readiness,
     councils,
+    acceptance: { accepted: acceptance.accepted, costPerAcceptedTask: acceptance.costPerAcceptedTask },
+    coverage,
+    dataQuality,
   };
 }
 
