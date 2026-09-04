@@ -22,7 +22,7 @@ import { metricsDir } from './project-paths.js';
 import { classifyError } from '../../domain/error-class.js';
 import { loadWolfConfigSync } from './config-file.js';
 
-export type SignalEventName = 'run' | 'complaint' | 'delivery' | 'tool_error' | 'task_evaluated';
+export type SignalEventName = 'run' | 'complaint' | 'delivery' | 'tool_error' | 'task_evaluated' | 'mcp_call';
 
 /**
  * Схема сигнального лога (P0 D6): чтение лога валидируется Zod, неизвестные поля
@@ -31,7 +31,7 @@ export type SignalEventName = 'run' | 'complaint' | 'delivery' | 'tool_error' | 
 export const SignalEventSchema = z.object({
   /** ISO8601. */
   ts: z.string(),
-  event: z.enum(['run', 'complaint', 'delivery', 'tool_error', 'task_evaluated']),
+  event: z.enum(['run', 'complaint', 'delivery', 'tool_error', 'task_evaluated', 'mcp_call']),
   session_id: z.string().nullable(),
   /** gen_ai-неймспейс OTEL; modelID — обязательное поле записи (null = неизвестна). */
   gen_ai: z.object({ modelID: z.string().nullable(), agent: z.string().nullable() }),
