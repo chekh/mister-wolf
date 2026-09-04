@@ -6,6 +6,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+## [2.4.0] — 2026-09-04
+
+### Added
+
+- Council analytics: `wolf analytics --view councils` (also included in `--view all`, `--json`, and the MCP `analytics` tool) — council questions (total / in-window / open), opinions per question, participation by author, vote distribution, synthesis rate with median question→synthesis time, and weekly activity. Zero new signal collectors: pure aggregation over the memory store and relation log.
+- `wolf dashboard`: open council questions table in Ledgers and council activity sparklines in Trends.
+- Docs: Councils section in the analytics guide (manual + site EN/RU).
+
+
 ## [2.3.2] — 2026-09-04
 
 ### Fixed
