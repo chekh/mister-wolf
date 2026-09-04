@@ -72,6 +72,15 @@ function fixtureReport(): AnalyticsReport {
         memRow('mem-new-1', 'decision', 'new'),
       ],
       garbage: { dead: 2, base: 5, ratioPct: 40 },
+      funnel: {
+        added: 5,
+        retrieved: { events: 2, uniqueIds: 3 },
+        injected: { events: 1, uniqueIds: 2 },
+        cited: { events: 1, uniqueIds: 1 },
+        applied: { events: 1, uniqueIds: 2 },
+        appliedUniqueIds: ['m-a', 'm-b'],
+      },
+      attribution: { acceptedTotal: 2, acceptedWithInjection: 1, attributionCoveragePct: 50 },
     },
     tools: [toolRow('tool-script', 'script'), toolRow('tool-native', 'model-native')],
     rules: [ruleRow('rule-silent', true), ruleRow('rule-loud', false)],
@@ -122,6 +131,17 @@ function fixtureReport(): AnalyticsReport {
         { id: 'q-1', title: 't-q-1', daysOpen: 1, opinions: 5, votes: { yes: 2, no: 1, timeout: 2 } },
       ],
     },
+    coordination: {
+      counts: [
+        { kind: 'handoff', actorFrom: 'lead', count: 3 },
+        { kind: 'review', actorFrom: 'lead', count: 2 },
+      ],
+      recent: [
+        { ts: '2026-09-01T00:00:00Z', kind: 'handoff', from: 'lead', to: 'w1', refs: ['ref-1'] },
+        { ts: '2026-08-31T00:00:00Z', kind: 'review', from: 'w1', to: null, refs: ['ref-2', 'ref-3'] },
+      ],
+      blockers: [{ ref: 'mem-blk', openedAt: '2026-09-01T00:00:00Z', resolvedAt: '2026-09-02T00:00:00Z' }],
+    },
   };
 }
 
@@ -166,14 +186,19 @@ describe('analytics renderSection: фильтры текстового выво�
   const report = fixtureReport();
 
   it('memory + class=dead: только lifecycle dead, нет sleeper/workhorse/new', () => {
-    const rows = dataRows(renderSection(report, { view: 'memory', class: 'dead', top: 20 }));
+    // 8 колонок — ledger-таблица (funnel ниже имеет 3 колонки: stage/events/unique_ids)
+    const rows = dataRows(renderSection(report, { view: 'memory', class: 'dead', top: 20 })).filter(
+      (r) => r.length === 8
+    );
     expect(rows.length).toBeGreaterThan(0);
     for (const r of rows) expect(r[2]).toBe('dead');
     expect(rows.some((r) => ['sleeper', 'workhorse', 'new'].includes(r[2]))).toBe(false);
   });
 
   it('memory + type=decision: только этот type', () => {
-    const rows = dataRows(renderSection(report, { view: 'memory', type: 'decision', top: 20 }));
+    const rows = dataRows(renderSection(report, { view: 'memory', type: 'decision', top: 20 })).filter(
+      (r) => r.length === 8
+    );
     expect(rows.length).toBeGreaterThan(0);
     for (const r of rows) expect(r[1]).toBe('decision');
     expect(rows.some((r) => r[0] === 'mem-dead-2')).toBe(false); // lesson
@@ -324,5 +349,52 @@ describe('analyticsCommand: числовые опции парсятся base-10
     expect(weeks!.parseArg('10', 8)).toBe(10);
     expect(top!.parseArg('20', 20)).toBe(20);
     expect(top!.parseArg('21', 20)).toBe(21);
+  });
+});
+
+describe('P2 D4/D5: memory funnel + attribution, coordination в текстовом рендере', () => {
+  it('memory: воронка после garbage (added events=-) + строка атрибуции с процентом', () => {
+    const out = renderSection(fixtureReport(), { view: 'memory', top: 20 });
+    // funnel-таблица стоит сразу после garbage-строки фикстуры
+    expect(tableAfter(out, 'garbage: dead/base = 2/5 = 40.0%')).toEqual([
+      ['added', '-', '5'],
+      ['retrieved', '2', '3'],
+      ['injected', '1', '2'],
+      ['cited', '1', '1'],
+      ['applied', '1', '2'],
+    ]);
+    expect(out).toContain('attribution: accepted 1/2 (50.0%)');
+  });
+
+  it('memory: null-атрибуция → n/a (reason)', () => {
+    const report = fixtureReport();
+    report.memory.attribution = {
+      acceptedTotal: 0,
+      acceptedWithInjection: 0,
+      attributionCoveragePct: null,
+      reason: 'no injected',
+    };
+    const out = renderSection(report, { view: 'memory', top: 20 });
+    expect(out).toContain('attribution: n/a (no injected)');
+  });
+
+  it('coordination: counts/recent/blockers; to null → from без стрелки и "-" в refs… from->to', () => {
+    const out = renderSection(fixtureReport(), { view: 'coordination', top: 20 });
+    expect(out.split('\n')[0]).toBe('== coordination ==');
+    expect(tableAfter(out, 'counts:')).toEqual([
+      ['handoff', 'lead', '3'],
+      ['review', 'lead', '2'],
+    ]);
+    expect(tableAfter(out, 'recent:')).toEqual([
+      ['2026-09-01T00:00:00Z', 'handoff', 'lead->w1', 'ref-1'],
+      ['2026-08-31T00:00:00Z', 'review', 'w1', 'ref-2,ref-3'],
+    ]);
+    expect(tableAfter(out, 'blockers:')).toEqual([['mem-blk', '2026-09-01T00:00:00Z', '2026-09-02T00:00:00Z']]);
+  });
+
+  it('renderAllSections: координация входит в полный вывод', () => {
+    const out = renderAllSections(fixtureReport(), { view: 'all' });
+    expect(out).toContain('== coordination ==');
+    expect(out).toContain('attribution: accepted 1/2 (50.0%)');
   });
 });
