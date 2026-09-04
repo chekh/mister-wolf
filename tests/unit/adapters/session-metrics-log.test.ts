@@ -8,12 +8,14 @@ import {
   appendDeliverySignal,
   recordToolError,
   readSignals,
+  readSignalLog,
   readPatterns,
   metricsLogPath,
   patternsLogPath,
   patternThreshold,
   signalKey,
   DEFAULT_PATTERN_THRESHOLD,
+  SignalEventSchema,
   type SignalEvent,
 } from '../../../src/adapters/fs/session-metrics-log.js';
 import { parseRunLog } from '../../../src/domain/tool-economy.js';
@@ -270,5 +272,95 @@ describe('Ф21 (D1.3): событийный триггер паттерна пр
     complain('y');
     expect(readPatterns(dir)).toHaveLength(0);
     expect(patternsLogPath(dir)).toContain('patterns.jsonl');
+  });
+});
+
+describe('P0 D6: Zod-валидация сигнального лога + malformed-счётчик', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'wolf-metrics-val-'));
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  const validEvent = {
+    ts: '2026-09-04T00:00:00.000Z',
+    event: 'run',
+    session_id: null,
+    gen_ai: { modelID: 'm', agent: 'a' },
+    orchestration: { task: null, actor: 'x' },
+  };
+
+  function writeRawLog(lines: string[]): void {
+    mkdirSync(join(dir, '.wolf', 'metrics'), { recursive: true });
+    writeFileSync(metricsLogPath(dir), lines.join('\n') + '\n');
+  }
+
+  it('garbage-строка: malformedLines+1, пропущена; валидные проходят', () => {
+    writeRawLog(['not-json{', JSON.stringify(validEvent)]);
+    const stats = readSignalLog(dir);
+    expect(stats.malformedLines).toBe(1);
+    expect(stats.events).toHaveLength(1);
+    expect(stats.events[0]?.event).toBe('run');
+    expect(stats.totalLines).toBe(2);
+  });
+
+  it('схемно-невалидный JSON: нет ts / event:bogus / orchestration не объект → malformedLines', () => {
+    const noTs: Record<string, unknown> = { ...validEvent };
+    delete noTs.ts;
+    writeRawLog([
+      JSON.stringify(noTs),
+      JSON.stringify({ ...validEvent, event: 'bogus' }),
+      JSON.stringify({ ...validEvent, orchestration: 'oops' }),
+      JSON.stringify(validEvent),
+    ]);
+    const stats = readSignalLog(dir);
+    expect(stats.malformedLines).toBe(3);
+    expect(stats.events).toHaveLength(1);
+    expect(stats.totalLines).toBe(4);
+  });
+
+  it('смешанный лог: readSignals возвращает только валидные, totalLines = валидные + malformed', () => {
+    writeRawLog([
+      JSON.stringify(validEvent),
+      '{broken',
+      JSON.stringify({ ...validEvent, ts: 42 }),
+      JSON.stringify({ ...validEvent, event: 'complaint' }),
+    ]);
+    const stats = readSignalLog(dir);
+    expect(stats.events.map((e) => e.event)).toEqual(['run', 'complaint']);
+    expect(stats.totalLines).toBe(stats.events.length + stats.malformedLines);
+    expect(readSignals(dir)).toHaveLength(2);
+  });
+
+  it('неизвестные поля отбрасываются (strip — дефолт zod-object)', () => {
+    writeRawLog([JSON.stringify({ ...validEvent, extra_junk: 'x' })]);
+    const stats = readSignalLog(dir);
+    expect(stats.events).toHaveLength(1);
+    expect(stats.events[0]).not.toHaveProperty('extra_junk');
+  });
+
+  it('roundtrip: события всех writer-форм (run/complaint/delivery/tool_error) проходят SignalEventSchema.safeParse', () => {
+    appendRunSignal(dir, {
+      model: 'm',
+      agent: 'a',
+      title: 't',
+      session: 'ses_1',
+      weighted: 5,
+      outcome: 'ok',
+      actor: 'x',
+      durationMs: 100,
+      tokens: { input: 1, output: 2, cache_read: 3 },
+      experiment: { id: 'exp-1', arm: 'wolf', taskId: 'task-1' },
+    });
+    appendComplaintSignal(dir, { about: 'a', text: 't', actor: 'x', objectId: 'o' });
+    appendDeliverySignal(dir, { name: 'n', mechanism: 'skill', target: 'tgt', actor: 'x' });
+    recordToolError(dir, { tool_name: 'opencode', message: 'spawn opencode ENOENT' });
+    const events = readSignals(dir);
+    expect(events).toHaveLength(4);
+    for (const ev of events) {
+      expect(SignalEventSchema.safeParse(ev).success).toBe(true);
+    }
+    expect(readSignalLog(dir)).toMatchObject({ malformedLines: 0, totalLines: 4 });
   });
 });

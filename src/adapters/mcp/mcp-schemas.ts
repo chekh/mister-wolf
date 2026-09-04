@@ -144,7 +144,18 @@ export const ThinkingAbandonInputSchema = z.object({
 
 export const AnalyticsInputSchema = z.object({
   view: z
-    .enum(['memory', 'tools', 'rules', 'funnel', 'agents', 'steward', 'outliers', 'readiness', 'councils', 'all'])
+    .enum([
+      'memory',
+      'tools',
+      'rules',
+      'weeklyActivity',
+      'agents',
+      'steward',
+      'outliers',
+      'readiness',
+      'councils',
+      'all',
+    ])
     .optional(),
   class: z.enum(['new', 'sleeper', 'workhorse', 'dead']).optional(),
   type: z.string().optional(),

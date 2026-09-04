@@ -30,6 +30,8 @@ export async function buildDashboard(
     pricing?: PricingTable;
     analyticsThresholds?: Partial<LifecycleThresholds>;
     prevSnapshot: SnapshotEntry | null;
+    /** D7: passthrough счётчиков readSignalLog в analytics.dataQuality. */
+    signalLogStats?: { malformedLines: number; totalLines: number };
   }
 ): Promise<DashboardData> {
   const effectiveness = await buildEffectivenessReport(
@@ -48,6 +50,7 @@ export async function buildDashboard(
       runLogText: input.runLogText,
       ...(input.analyticsThresholds !== undefined ? { thresholds: input.analyticsThresholds } : {}),
       ...(input.pricing !== undefined ? { pricing: input.pricing } : {}),
+      ...(input.signalLogStats !== undefined ? { signalLogStats: input.signalLogStats } : {}),
     }
   );
   return {

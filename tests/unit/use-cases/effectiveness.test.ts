@@ -358,7 +358,7 @@ describe('totals (M3: блок абсолютов из run-сигналов)', (
     );
 
     expect(report.totals.runs).toBe(3);
-    expect(report.totals.failures).toBe(1);
+    expect(report.totals.processFailures).toBe(1);
     expect(report.totals.sumWeighted).toBe(70); // 10+20+40
     expect(report.totals.sumTokens).toEqual({ input: 3000, output: 500, cache_read: 1500 });
     expect(report.totals.cacheHitRatio).toBeCloseTo(100 / 3, 5); // 1500/(3000+1500)×100
@@ -371,20 +371,20 @@ describe('totals (M3: блок абсолютов из run-сигналов)', (
     const m1 = report.totals.byModel[0];
     expect(m1.model).toBe('m1');
     expect(m1.runs).toBe(2);
-    expect(m1.failures).toBe(0);
+    expect(m1.processFailures).toBe(0);
     expect(m1.sumWeighted).toBe(30);
     expect(m1.avgDurationMs).toBe(2000);
     expect(m1.costUsd).toBeCloseTo(0.00299, 10); // 1070/1e6 + 1920/1e6
-    expect(m1.costPerSuccess).toBeCloseTo(0.001495, 10); // 0.00299/2
+    expect(m1.costPerCompletedRun).toBeCloseTo(0.001495, 10); // 0.00299/2
 
     expect(report.totals.byModel[1]).toEqual({
       model: 'm2',
       runs: 1,
-      failures: 1,
+      processFailures: 1,
       sumWeighted: 40,
       avgDurationMs: null, // ни одного duration_ms
       costUsd: null, // ни одного tokens
-      costPerSuccess: null, // costUsd null И успехов 0
+      costPerCompletedRun: null, // costUsd null И завершённых 0
     });
   });
 
@@ -395,14 +395,22 @@ describe('totals (M3: блок абсолютов из run-сигналов)', (
       { signals, runLogText: null, thresholds: DEFAULT_EFFECTIVENESS_THRESHOLDS, pricing }
     );
     expect(report.totals.runs).toBe(2);
-    expect(report.totals.failures).toBe(1);
+    expect(report.totals.processFailures).toBe(1);
     expect(report.totals.sumWeighted).toBe(12);
     expect(report.totals.sumTokens).toBeNull();
     expect(report.totals.cacheHitRatio).toBeNull();
     expect(report.totals.avgDurationMs).toBeNull();
     expect(report.totals.costUsd).toBeNull();
     expect(report.totals.byModel).toEqual([
-      { model: 'm1', runs: 2, failures: 1, sumWeighted: 12, avgDurationMs: null, costUsd: null, costPerSuccess: null },
+      {
+        model: 'm1',
+        runs: 2,
+        processFailures: 1,
+        sumWeighted: 12,
+        avgDurationMs: null,
+        costUsd: null,
+        costPerCompletedRun: null,
+      },
     ]);
   });
 
@@ -413,7 +421,7 @@ describe('totals (M3: блок абсолютов из run-сигналов)', (
     );
     expect(report.totals).toEqual({
       runs: 0,
-      failures: 0,
+      processFailures: 0,
       sumWeighted: 0,
       sumTokens: null,
       cacheHitRatio: null,

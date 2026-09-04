@@ -27,7 +27,7 @@ function report(activeRules: number): EffectivenessReport {
     routing: [],
     totals: {
       runs: 0,
-      failures: 0,
+      processFailures: 0,
       sumWeighted: 0,
       sumTokens: null,
       cacheHitRatio: null,

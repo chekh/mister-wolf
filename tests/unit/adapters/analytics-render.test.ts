@@ -48,15 +48,16 @@ function fixtureReport(): AnalyticsReport {
   const agentRow = (agent: string): AgentLedgerRow => ({
     agent,
     runs: 1,
-    failures: 0,
-    failureRatePct: 0,
+    processFailures: 0,
+    processFailureRatePct: 0,
     weighted: 1,
     avgDurationMs: 100,
     costUsd: null,
     toolErrors: 0,
     complaintsBy: 0,
     complaintsAbout: 0,
-    successes: 1,
+    completedRuns: 1,
+    accepted: 0,
     holdoutPrevented: null,
   });
   return {
@@ -74,7 +75,7 @@ function fixtureReport(): AnalyticsReport {
     },
     tools: [toolRow('tool-script', 'script'), toolRow('tool-native', 'model-native')],
     rules: [ruleRow('rule-silent', true), ruleRow('rule-loud', false)],
-    funnel: [
+    weeklyActivity: [
       {
         week: '2026-W36',
         writes: 1,
@@ -95,6 +96,9 @@ function fixtureReport(): AnalyticsReport {
       autoMutationSharePct: null,
     },
     readiness: { totalRuns: 0, withArm: 0, withArmPct: null, byArm: [], byExperiment: [] },
+    acceptance: { accepted: 0, costPerAcceptedTask: null },
+    coverage: { scored: 1, runs: 3, scoredTaskRatePct: 100 / 3 },
+    dataQuality: { validEventRatePct: 75, malformedLines: 1 },
     councils: {
       questions: { total: 2, inWindow: 1, open: 1 },
       opinions: { total: 5, perQuestionMin: 0, perQuestionAvg: 2.5, perQuestionMax: 5 },
@@ -242,6 +246,48 @@ describe('analytics renderSection: councils (вопросы/мнения/гол�
     // пустые таблицы рендерятся рамками (renderTable не падает на [])
     expect(out).toContain('┌');
     expect(out).toContain('└');
+  });
+});
+
+describe('renderAllSections: coverage/dataQuality строки честности (D5/D7)', () => {
+  it('coverage: partial при <100% и runs>0; dataQuality присутствует', () => {
+    const report = fixtureReport(); // scored 1/3 → 33.3%
+    const out = renderAllSections(report, { view: 'all' });
+    expect(out).toContain('coverage: partial — scored 1/3 (33.3%)');
+    expect(out).toContain('dataQuality: valid 75.0% (malformed lines: 1)');
+  });
+
+  it('coverage-строка НЕ появляется при 100% и при runs=0; dataQuality при null → n/a', () => {
+    const full = fixtureReport();
+    full.coverage = { scored: 3, runs: 3, scoredTaskRatePct: 100 };
+    expect(renderAllSections(full, { view: 'all' })).not.toContain('coverage: partial');
+
+    const noRuns = fixtureReport();
+    noRuns.coverage = { scored: 0, runs: 0, scoredTaskRatePct: null };
+    noRuns.dataQuality = { validEventRatePct: null, malformedLines: 0 };
+    const out = renderAllSections(noRuns, { view: 'all' });
+    expect(out).not.toContain('coverage: partial');
+    expect(out).toContain('dataQuality: n/a');
+  });
+
+  it('agents-таблица: колонки completed/accepted после pfail_%', () => {
+    const out = renderSection(fixtureReport(), { view: 'agents', top: 20 });
+    const headerRow = out.split('\n').find((l) => l.startsWith('│')) ?? '';
+    const cols = headerRow
+      .split('│')
+      .map((c) => c.trim())
+      .filter(Boolean);
+    expect(cols).toEqual([
+      'agent',
+      'runs',
+      'weighted',
+      'avg_ms',
+      'pfail_%',
+      'completed',
+      'accepted',
+      'compl by/about',
+      'prevented',
+    ]);
   });
 });
 

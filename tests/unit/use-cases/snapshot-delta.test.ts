@@ -27,7 +27,7 @@ function baseReport(): EffectivenessReport {
     ],
     totals: {
       runs: 0,
-      failures: 0,
+      processFailures: 0,
       sumWeighted: 0,
       sumTokens: null,
       cacheHitRatio: null,
@@ -102,7 +102,7 @@ describe('flattenReportNumbers + totals (M3)', () => {
     const r = baseReport();
     (r as { totals?: unknown }).totals = {
       runs: 5,
-      failures: 1,
+      processFailures: 1,
       sumWeighted: 500,
       sumTokens: { input: 3000, output: 500, cache_read: 1500 },
       cacheHitRatio: 33.3,
@@ -112,18 +112,18 @@ describe('flattenReportNumbers + totals (M3)', () => {
         {
           model: 'm1',
           runs: 2,
-          failures: 0,
+          processFailures: 0,
           sumWeighted: 30,
           avgDurationMs: 2000,
           costUsd: 0.00299,
-          costPerSuccess: 0.001495,
+          costPerCompletedRun: 0.001495,
         },
       ],
     };
     const flat = flattenReportNumbers(r);
     expect(flat.get('totals.runs')).toBe(5);
     expect(flat.get('totals.sumTokens.cache_read')).toBe(1500);
-    expect(flat.get('totals.byModel.m1.costPerSuccess')).toBeCloseTo(0.001495, 10);
+    expect(flat.get('totals.byModel.m1.costPerCompletedRun')).toBeCloseTo(0.001495, 10);
     expect(flat.has('totals.costUsd')).toBe(false); // null — не попадает
   });
 });

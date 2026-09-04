@@ -70,11 +70,3 @@ export function renderTable(headers: string[], rows: string[][]): string {
     border('└', '┴', '┘'),
   ].join('\n');
 }
-
-/** Отношение воронки: null → '-'; >100% — delivery-события кратны сессиям,
- * честнее показывать множитель ×N.N; иначе обычные проценты N.N%. */
-export function formatFunnelRatio(pct: number | null): string {
-  if (pct === null) return '-';
-  if (pct > 100) return `×${(pct / 100).toFixed(1)}`;
-  return `${pct.toFixed(1)}%`;
-}

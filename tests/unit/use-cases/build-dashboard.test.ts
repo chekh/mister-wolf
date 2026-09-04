@@ -85,6 +85,22 @@ describe('buildDashboard (композиция effectiveness + analytics + snaps
     expect(data.generatedAt).toBe(FIXED_TS);
     expect(data.effectiveness).toBeDefined();
     expect(data.analytics).toBeDefined();
+    // без signalLogStats (D7) → dataQuality n/a
+    expect(data.analytics.dataQuality).toEqual({ validEventRatePct: null, malformedLines: 0 });
+  });
+
+  it('signalLogStats passthrough -> analytics.dataQuality (D7)', async () => {
+    const data = await buildDashboard(
+      { store: mockStore([]), log: mockLog([]), relations: mockRelations(), clock },
+      {
+        signals: [],
+        runLogText: null,
+        thresholds: DEFAULT_EFFECTIVENESS_THRESHOLDS,
+        prevSnapshot: null,
+        signalLogStats: { malformedLines: 1, totalLines: 4 },
+      }
+    );
+    expect(data.analytics.dataQuality).toEqual({ validEventRatePct: 75, malformedLines: 1 });
   });
 
   it('prevSnapshot с другим отчётом -> delta содержит изменившийся path', async () => {

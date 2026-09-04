@@ -39,7 +39,7 @@ import { createRule } from '../../app/use-cases/create-rule.js';
 import { startThinking, addThought, concludeThinking, abandonThinking } from '../../app/use-cases/thinking.js';
 import { createCliContainer } from '../../bootstrap/container.js';
 import { buildAnalyticsReport, filterAnalytics } from '../../app/use-cases/build-analytics.js';
-import { readSignals } from '../../adapters/fs/session-metrics-log.js';
+import { readSignalLog } from '../../adapters/fs/session-metrics-log.js';
 import { loadWolfConfigSync } from '../../adapters/fs/config-file.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -324,7 +324,7 @@ export function registerMemoryTools(
     'analytics',
     {
       description:
-        'Effectiveness analytics: ledgers (memory/tools/rules), funnel, agents, steward view, councils, outliers, experiment readiness — same JSON as `wolf analytics --json`',
+        'Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness — same JSON as `wolf analytics --json`',
       inputSchema: AnalyticsInputSchema,
     },
     async (input: unknown) => {
@@ -333,7 +333,7 @@ export function registerMemoryTools(
           | 'memory'
           | 'tools'
           | 'rules'
-          | 'funnel'
+          | 'weeklyActivity'
           | 'agents'
           | 'steward'
           | 'outliers'
@@ -363,10 +363,13 @@ export function registerMemoryTools(
         runLogText = null; // ENOENT — run-log ещё не пишется
       }
 
+      // D7: readSignalLog — events + счётчики битых строк для dataQuality
+      const signalLog = readSignalLog(baseDir);
       const report = await buildAnalyticsReport(
         { store: deps.store, log: deps.log, relations: deps.relations, clock: deps.clock },
         {
-          signals: readSignals(baseDir),
+          signals: signalLog.events,
+          signalLogStats: { malformedLines: signalLog.malformedLines, totalLines: signalLog.totalLines },
           runLogText,
           ...(config?.analytics?.thresholds !== undefined ? { thresholds: config.analytics.thresholds } : {}),
           ...(args.weeks !== undefined ? { weeks: args.weeks } : {}),

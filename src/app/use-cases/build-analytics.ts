@@ -1,5 +1,5 @@
 /**
- * M5 (ядро L2): `wolf analytics` — реестры и воронка (Q1–Q4, Q6, Q8, Q10–Q12).
+ * M5 (ядро L2): `wolf analytics` — реестры и недельная активность (Q1–Q4, Q6, Q8, Q10–Q12).
  * Чистая детерминированная агрегация store + signals + event-log + run-log, без LLM.
  * Дизайн: docs/superpowers/specs/2026-09-03-analytics-metrics-dashboard-design.md §5 M5, §6.2.
  */
@@ -86,7 +86,7 @@ export interface RuleRankingRow {
   silent: boolean;
 }
 
-export interface FunnelWeek {
+export interface WeeklyActivityWeek {
   week: string;
   writes: number;
   delivers: number;
@@ -108,16 +108,36 @@ export interface OutlierRun {
 export interface AgentLedgerRow {
   agent: string;
   runs: number;
-  failures: number;
-  failureRatePct: number | null;
+  processFailures: number;
+  processFailureRatePct: number | null;
   weighted: number;
   avgDurationMs: number | null;
   costUsd: number | null;
   toolErrors: number;
   complaintsBy: number;
   complaintsAbout: number;
-  successes: number;
+  completedRuns: number;
+  accepted: number;
   holdoutPrevented: number | null;
+}
+
+/** D4: accepted-вердикты по строгой session-связке (link ненадёжен до P1). */
+export interface AcceptanceStats {
+  accepted: number;
+  costPerAcceptedTask: number | null;
+}
+
+/** D5: coverage — scored-вердикты / run-сигналы (интерим-знаменатель, честный — P1). */
+export interface CoverageStats {
+  scored: number;
+  runs: number;
+  scoredTaskRatePct: number | null;
+}
+
+/** D7: data-quality сигнального лога (битые строки не роняют контур — только метрика). */
+export interface DataQualityStats {
+  validEventRatePct: number | null;
+  malformedLines: number;
 }
 
 export interface StewardView {
@@ -179,12 +199,15 @@ export interface AnalyticsReport {
   memory: { rows: MemoryLedgerRow[]; garbage: GarbageStats };
   tools: ToolLedgerRow[];
   rules: RuleRankingRow[];
-  funnel: FunnelWeek[];
+  weeklyActivity: WeeklyActivityWeek[];
   outliers: OutlierRun[];
   agents: AgentLedgerRow[];
   steward: StewardView;
   readiness: ExperimentReadiness;
   councils: CouncilsView;
+  acceptance: AcceptanceStats;
+  coverage: CoverageStats;
+  dataQuality: DataQualityStats;
 }
 
 export interface AnalyticsDeps {
@@ -202,6 +225,8 @@ export interface AnalyticsInput {
   weeks?: number;
   topOutliers?: number;
   pricing?: PricingTable;
+  /** D7: счётчики readSignalLog — источник dataQuality (undefined → n/a). */
+  signalLogStats?: { malformedLines: number; totalLines: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -402,9 +427,15 @@ function weekBuckets(now: Date, weeks: number): string[] {
   return keys;
 }
 
-/** Воронка Q6: write (memory.added) → deliver (delivery-сигналы) → trigger (уникальные имена).
- * prevented НЕ входит: holdout-счётчики кумулятивны, без таймстампов (спека §5 M5, rev.4). */
-function buildFunnel(events: MemoryEvent[], signals: SignalEvent[], now: Date, weeks: number): FunnelWeek[] {
+/** Недельная активность Q6: write (memory.added) → deliver (delivery-сигналы) → trigger
+ * (уникальные имена). prevented НЕ входит: holdout-счётчики кумулятивны, без
+ * таймстампов (спека §5 M5, rev.4). */
+function buildWeeklyActivity(
+  events: MemoryEvent[],
+  signals: SignalEvent[],
+  now: Date,
+  weeks: number
+): WeeklyActivityWeek[] {
   const buckets = new Map<string, { week: string; writes: number; delivers: number; names: Set<string> }>();
   for (const week of weekBuckets(now, weeks)) {
     buckets.set(week, { week, writes: 0, delivers: 0, names: new Set<string>() });
@@ -448,19 +479,64 @@ function buildOutliers(runLogText: string | null, pricing: PricingTable | undefi
     }));
 }
 
+/** Acceptance D4: accepted-вердикт считается ТОЛЬКО при строгой session-связке —
+ * session_id !== null и существует ≥1 run-сигнал с тем же session_id (без связки
+ * вердикт не атрибутируется: link ненадёжен до P1). costPerAcceptedTask = сумма
+ * weighted linked-ранов / число вердиктов. Атрибуция: каждому агенту множества
+ * gen_ai.agent linked-ранов вердикта +1 (дедуп внутри одного вердикта). */
+function buildAcceptance(signals: SignalEvent[]): AcceptanceStats & { acceptedByAgent: Map<string, number> } {
+  const runsBySession = new Map<string, SignalEvent[]>();
+  for (const s of signals) {
+    if (s.event !== 'run' || s.session_id === null) continue;
+    const arr = runsBySession.get(s.session_id) ?? [];
+    arr.push(s);
+    runsBySession.set(s.session_id, arr);
+  }
+  const acceptedByAgent = new Map<string, number>();
+  const acceptedSessions = new Set<string>();
+  let accepted = 0;
+  for (const s of signals) {
+    if (s.event !== 'task_evaluated' || s.detail?.verdict !== 'accepted') continue;
+    // strict-link: без session_id или без run-связки вердикт НЕ считается
+    if (s.session_id === null || !runsBySession.has(s.session_id)) continue;
+    accepted += 1;
+    acceptedSessions.add(s.session_id);
+    const agents = new Set<string>();
+    for (const r of runsBySession.get(s.session_id)!) {
+      if (typeof r.gen_ai.agent === 'string' && r.gen_ai.agent !== '') agents.add(r.gen_ai.agent);
+    }
+    for (const a of agents) acceptedByAgent.set(a, (acceptedByAgent.get(a) ?? 0) + 1);
+  }
+  let linkedWeighted = 0;
+  for (const [session, runs] of runsBySession) {
+    if (!acceptedSessions.has(session)) continue;
+    for (const r of runs) linkedWeighted += finiteNumber(r.weighted) ?? 0;
+  }
+  return { accepted, costPerAcceptedTask: accepted > 0 ? linkedWeighted / accepted : null, acceptedByAgent };
+}
+
+/** Coverage D5: scored = task_evaluated (любой verdict), runs = run-сигналы. */
+function buildCoverage(signals: SignalEvent[]): CoverageStats {
+  const scored = signals.filter((s) => s.event === 'task_evaluated').length;
+  const runs = signals.filter((s) => s.event === 'run').length;
+  return { scored, runs, scoredTaskRatePct: runs > 0 ? (scored / runs) * 100 : null };
+}
+
 /** Agent ledger Q11: строки по run-агентам ∪ complaint-акторам `agent:<имя>`; три уровня —
- * объём (runs/weighted/duration/cost), проблемы (failures/toolErrors/жалобы), достижения
- * (successes/holdout_prevented его rule/lesson). */
+ * объём (runs/weighted/duration/cost), проблемы (processFailures/toolErrors/жалобы), достижения
+ * (completedRuns/accepted/holdout_prevented его rule/lesson). */
 function buildAgents(
   signals: SignalEvent[],
   objects: MemoryObject[],
-  pricing: PricingTable | undefined
+  pricing: PricingTable | undefined,
+  acceptedByAgent: Map<string, number>
 ): AgentLedgerRow[] {
   const AGENT_PREFIX = 'agent:';
   interface AgentAcc {
     runs: number;
-    failures: number;
-    successes: number;
+    processFailures: number;
+    completedRuns: number;
+    accepted: number;
     weighted: number;
     durations: number[];
     cost: number | null;
@@ -476,8 +552,9 @@ function buildAgents(
     if (r === undefined) {
       r = {
         runs: 0,
-        failures: 0,
-        successes: 0,
+        processFailures: 0,
+        completedRuns: 0,
+        accepted: 0,
         weighted: 0,
         durations: [],
         cost: null,
@@ -497,8 +574,8 @@ function buildAgents(
     if (ev.event === 'run' && typeof ev.gen_ai.agent === 'string' && ev.gen_ai.agent !== '') {
       const r = rowOf(ev.gen_ai.agent);
       r.runs += 1;
-      if (ev.outcome === 'ok') r.successes += 1;
-      else r.failures += 1;
+      if (ev.outcome === 'ok') r.completedRuns += 1;
+      else r.processFailures += 1;
       r.weighted += finiteNumber(ev.weighted) ?? 0;
       const d = finiteNumber(ev.duration_ms);
       if (d !== null) r.durations.push(d);
@@ -540,20 +617,23 @@ function buildAgents(
       acc.get(name)!.hasHoldout = true;
     }
   }
+  // D4: accepted-атрибуция — строки linked-ранов уже существуют (раны их создали)
+  for (const [name, n] of acceptedByAgent) rowOf(name).accepted += n;
 
   return [...acc.entries()]
     .map(([agent, r]) => ({
       agent,
       runs: r.runs,
-      failures: r.failures,
-      failureRatePct: r.runs > 0 ? (r.failures / r.runs) * 100 : null,
+      processFailures: r.processFailures,
+      processFailureRatePct: r.runs > 0 ? (r.processFailures / r.runs) * 100 : null,
       weighted: r.weighted,
       avgDurationMs: r.durations.length > 0 ? r.durations.reduce((s, v) => s + v, 0) / r.durations.length : null,
       costUsd: r.cost,
       toolErrors: r.toolErrors,
       complaintsBy: r.complaintsBy,
       complaintsAbout: r.complaintsAbout,
-      successes: r.successes,
+      completedRuns: r.completedRuns,
+      accepted: r.accepted,
       holdoutPrevented: r.hasHoldout ? r.holdoutSum : null,
     }))
     .sort((a, b) => b.runs - a.runs || a.agent.localeCompare(b.agent));
@@ -580,7 +660,7 @@ function mutationKindOf(ev: MemoryEvent): string | null {
 
 const MUTATION_KINDS = ['update', 'supersede', 'resolve', 'transition', 'tool-mutation'] as const;
 
-/** Steward view Q12: мутации за окно weeks (то же, что воронка), жалобная воронка,
+/** Steward view Q12: мутации за окно weeks (то же, что weekly activity), жалобная воронка,
  * SLA-эскалации (dispatch_ages >= 3), рецидивы, churn, доля авто-мутаций. */
 function buildSteward(
   events: MemoryEvent[],
@@ -749,7 +829,7 @@ async function buildCouncils(
     answersByQuestion.set(r.object, arr);
   }
 
-  // недельные бакеты (те же ключи, что воронка) по mondayOf(created_at)
+  // недельные бакеты (те же ключи, что weekly activity) по mondayOf(created_at)
   const buckets = new Map<string, CouncilWeekActivity>(
     weekBuckets(now, weeks).map((week) => [week, { week, questions: 0, opinions: 0, syntheses: 0 }])
   );
@@ -873,25 +953,42 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
     allObjects.filter((o) => o.type === 'rule'),
     input.signals
   );
-  const funnel = buildFunnel(events, input.signals, now, weeks);
+  const weeklyActivity = buildWeeklyActivity(events, input.signals, now, weeks);
   const outliers = buildOutliers(input.runLogText, input.pricing, input.topOutliers ?? 10);
-  const agents = buildAgents(input.signals, allObjects, input.pricing);
+  const acceptance = buildAcceptance(input.signals);
+  const agents = buildAgents(input.signals, allObjects, input.pricing, acceptance.acceptedByAgent);
   const steward = buildSteward(events, input.signals, allObjects, now, weeks);
   const readiness = buildReadiness(input.signals);
   const councils = await buildCouncils(allObjects, deps.relations, now, weeks);
-
+  const coverage = buildCoverage(input.signals);
+  // D7: без signalLogStats (старые вызывающие) → n/a; totalLines=0 → null-процент
+  const dataQuality: DataQualityStats =
+    input.signalLogStats === undefined
+      ? { validEventRatePct: null, malformedLines: 0 }
+      : {
+          validEventRatePct:
+            input.signalLogStats.totalLines > 0
+              ? ((input.signalLogStats.totalLines - input.signalLogStats.malformedLines) /
+                  input.signalLogStats.totalLines) *
+                100
+              : null,
+          malformedLines: input.signalLogStats.malformedLines,
+        };
   return {
     generatedAt: now.toISOString(),
     thresholds,
     memory,
     tools,
     rules,
-    funnel,
+    weeklyActivity,
     outliers,
     agents,
     steward,
     readiness,
     councils,
+    acceptance: { accepted: acceptance.accepted, costPerAcceptedTask: acceptance.costPerAcceptedTask },
+    coverage,
+    dataQuality,
   };
 }
 
@@ -900,7 +997,17 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
 // ---------------------------------------------------------------------------
 
 export interface AnalyticsViewFilter {
-  view: 'memory' | 'tools' | 'rules' | 'funnel' | 'agents' | 'steward' | 'outliers' | 'readiness' | 'councils' | 'all';
+  view:
+    | 'memory'
+    | 'tools'
+    | 'rules'
+    | 'weeklyActivity'
+    | 'agents'
+    | 'steward'
+    | 'outliers'
+    | 'readiness'
+    | 'councils'
+    | 'all';
   class?: 'new' | 'sleeper' | 'workhorse' | 'dead';
   type?: string;
   origin?: 'script' | 'model-native';
@@ -913,7 +1020,7 @@ export type AnalyticsViewPayload =
   | { view: 'memory'; rows: MemoryLedgerRow[]; garbage: GarbageStats }
   | { view: 'tools'; rows: ToolLedgerRow[] }
   | { view: 'rules'; rows: RuleRankingRow[] }
-  | { view: 'funnel'; weeks: FunnelWeek[] }
+  | { view: 'weeklyActivity'; weeks: WeeklyActivityWeek[] }
   | { view: 'agents'; rows: AgentLedgerRow[] }
   | { view: 'steward'; steward: StewardView }
   | { view: 'outliers'; runs: OutlierRun[] }
@@ -941,8 +1048,8 @@ export function filterAnalytics(report: AnalyticsReport, filter: AnalyticsViewFi
       if (filter.silent !== undefined) rows = rows.filter((r) => r.silent === filter.silent);
       return { view: 'rules', rows: rows.slice(0, top) };
     }
-    case 'funnel':
-      return { view: 'funnel', weeks: report.funnel };
+    case 'weeklyActivity':
+      return { view: 'weeklyActivity', weeks: report.weeklyActivity };
     case 'agents': {
       let rows = report.agents;
       if (filter.agent !== undefined) rows = rows.filter((r) => r.agent === filter.agent);

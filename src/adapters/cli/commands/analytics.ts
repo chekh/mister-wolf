@@ -2,7 +2,7 @@ import { Command, Option } from 'commander';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { safeCwd } from '../cli-entry.js';
-import { readSignals } from '../../fs/session-metrics-log.js';
+import { readSignalLog } from '../../fs/session-metrics-log.js';
 import { loadWolfConfigSync } from '../../fs/config-file.js';
 import {
   buildAnalyticsReport,
@@ -11,7 +11,7 @@ import {
   type AnalyticsViewFilter,
 } from '../../../app/use-cases/build-analytics.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
-import { renderTable, formatFunnelRatio } from './table-render.js';
+import { renderTable } from './table-render.js';
 
 /**
  * §6.2 спеки аналитики: `wolf analytics` — выборки для Стюарда с фильтрами.
@@ -25,7 +25,7 @@ type AnalyticsView =
   | 'memory'
   | 'tools'
   | 'rules'
-  | 'funnel'
+  | 'weeklyActivity'
   | 'agents'
   | 'steward'
   | 'outliers'
@@ -38,7 +38,7 @@ const SECTION_VIEWS: SectionView[] = [
   'memory',
   'tools',
   'rules',
-  'funnel',
+  'weeklyActivity',
   'agents',
   'steward',
   'outliers',
@@ -62,7 +62,9 @@ export type SectionViewFilter = AnalyticsViewFilter & { view: SectionView };
 /** Одна секция текстового рендера: `== <view> ==` + таблица/строки; фильтры применяет filterAnalytics. */
 export function renderSection(report: AnalyticsReport, filter: SectionViewFilter): string {
   const payload = filterAnalytics(report, filter);
-  const header = `== ${filter.view} ==`;
+  // D1/D8: единственный view с человекочитаемым заголовком (не camelCase-идентификатор)
+  const title = filter.view === 'weeklyActivity' ? 'Weekly activity' : filter.view;
+  const header = `== ${title} ==`;
   switch (payload.view) {
     case 'memory': {
       const rows = payload.rows.map((r) => [
@@ -103,16 +105,10 @@ export function renderSection(report: AnalyticsReport, filter: SectionViewFilter
       ]);
       return [header, renderTable(['id', 'prevented', 'checked', 'silent', 'title'], rows)].join('\n');
     }
-    case 'funnel': {
-      const rows = payload.weeks.map((r) => [
-        r.week,
-        cell(r.writes),
-        cell(r.delivers),
-        cell(r.triggers),
-        formatFunnelRatio(r.writeToDeliverPct),
-        formatFunnelRatio(r.deliverToTriggerPct),
-      ]);
-      return [header, renderTable(['week', 'writes', 'delivers', 'triggers', 'W->D', 'D->T'], rows)].join('\n');
+    case 'weeklyActivity': {
+      // D1: текст без колонок конверсии; проценты остаются только в JSON (WeeklyActivityWeek)
+      const rows = payload.weeks.map((r) => [r.week, cell(r.writes), cell(r.delivers), cell(r.triggers)]);
+      return [header, renderTable(['week', 'writes', 'delivers', 'triggers'], rows)].join('\n');
     }
     case 'agents': {
       const rows = payload.rows.map((r) => [
@@ -120,13 +116,18 @@ export function renderSection(report: AnalyticsReport, filter: SectionViewFilter
         cell(r.runs),
         cell(r.weighted),
         cell(r.avgDurationMs),
-        cell(r.failureRatePct === null ? null : r.failureRatePct.toFixed(1)),
+        cell(r.processFailureRatePct === null ? null : r.processFailureRatePct.toFixed(1)),
+        cell(r.completedRuns),
+        cell(r.accepted),
         `${r.complaintsBy}/${r.complaintsAbout}`,
         cell(r.holdoutPrevented),
       ]);
       return [
         header,
-        renderTable(['agent', 'runs', 'weighted', 'avg_ms', 'fail_%', 'compl by/about', 'prevented'], rows),
+        renderTable(
+          ['agent', 'runs', 'weighted', 'avg_ms', 'pfail_%', 'completed', 'accepted', 'compl by/about', 'prevented'],
+          rows
+        ),
       ].join('\n');
     }
     case 'steward': {
@@ -228,14 +229,30 @@ export function renderSection(report: AnalyticsReport, filter: SectionViewFilter
   }
 }
 
-/** `view: 'all'`: все секции подряд, каждая — с теми же фильтрами (прокидываются в filterAnalytics). */
+/** D5: строка coverage — только при runs>0 и <100% (полный/нулевой coverage не шумит). */
+export function coverageLine(c: AnalyticsReport['coverage']): string | null {
+  if (!(c.runs > 0 && c.scoredTaskRatePct !== null && c.scoredTaskRatePct < 100)) return null;
+  return `coverage: partial — scored ${c.scored}/${c.runs} (${c.scoredTaskRatePct.toFixed(1)}%)`;
+}
+
+/** D7: строка dataQuality; nullText — текст при отсутствии stats (контекст вызывающего). */
+export function dataQualityLine(q: AnalyticsReport['dataQuality'], nullText: string): string {
+  return q.validEventRatePct === null
+    ? `dataQuality: ${nullText}`
+    : `dataQuality: valid ${q.validEventRatePct.toFixed(1)}% (malformed lines: ${q.malformedLines})`;
+}
+
+/** `view: 'all'`: все секции подряд, каждая — с теми же фильтрами (прокидываются в filterAnalytics);
+ * в конец — coverage (при частичном) и dataQuality (D5/D7). */
 export function renderAllSections(report: AnalyticsReport, filter: AnalyticsViewFilter): string {
-  return SECTION_VIEWS.map((v) => renderSection(report, { ...filter, view: v })).join('\n\n');
+  const sections = SECTION_VIEWS.map((v) => renderSection(report, { ...filter, view: v }));
+  const cov = coverageLine(report.coverage);
+  return [...sections, ...(cov !== null ? [cov] : []), dataQualityLine(report.dataQuality, 'n/a')].join('\n\n');
 }
 
 export function analyticsCommand(baseDir: string = safeCwd()): Command {
   const cmd = new Command('analytics').description(
-    'Effectiveness analytics: ledgers (memory/tools/rules), funnel, agents, steward view, councils, outliers, experiment readiness'
+    'Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness'
   );
 
   cmd
@@ -245,7 +262,7 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
           'memory',
           'tools',
           'rules',
-          'funnel',
+          'weeklyActivity',
           'agents',
           'steward',
           'outliers',
@@ -264,7 +281,7 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
     .option('--silent', 'Rules view: only silent rules', false)
     // ponytail: явный radix 10 — commander передаёт дефолт как previous, bare parseInt принял бы его за radix
     .option('--top <n>', 'Row limit', (v: string) => parseInt(v, 10), 20)
-    .option('--weeks <n>', 'Funnel window in weeks', (v: string) => parseInt(v, 10), 8)
+    .option('--weeks <n>', 'Weekly activity window in weeks', (v: string) => parseInt(v, 10), 8)
     .option('--json', 'Machine-readable JSON output', false);
 
   cmd.action(async (options) => {
@@ -285,10 +302,13 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
     }
 
     const { store, log, relations, clock } = createCliContainer(baseDir);
+    // D7: readSignalLog вместо readSignals — events + счётчики битых строк для dataQuality
+    const signalLog = readSignalLog(baseDir);
     const report = await buildAnalyticsReport(
       { store, log, relations, clock },
       {
-        signals: readSignals(baseDir),
+        signals: signalLog.events,
+        signalLogStats: { malformedLines: signalLog.malformedLines, totalLines: signalLog.totalLines },
         runLogText,
         ...(analyticsThresholds !== undefined ? { thresholds: analyticsThresholds } : {}),
         weeks: options.weeks,
