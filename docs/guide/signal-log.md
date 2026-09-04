@@ -182,7 +182,8 @@ input-схемой SDK до dispatch, до обёртки не доходят и
 - `applied` — содержимое объекта внедрено в код/решение.
 
 Кто какие пишет: `retrieved` — авто-писатели `wolf search`/`wolf get` и MCP-аналоги
-(actor `system:wolf`); `injected` — `wolf brief`/`wolf call` при непустых
+(MCP — actor `system:wolf`; CLI — `WOLF_ACTOR` env или `user:cli`); `injected` —
+`wolf brief`/`wolf call` при непустых
 инъекциях; `cited`/`applied` — внешние акторы (агенты/харнессы) вручную:
 `wolf memory-stage --stage cited --ids <id,...> [--actor agent:<имя>]`
 (см. [harness-integration.md](./harness-integration.md)).

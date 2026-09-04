@@ -35,7 +35,9 @@ wolf memory-stage --stage applied --ids mem_20260904_use_append_only_jsonl_… -
 выставляет его на старте сессии агента — тогда `injected`-события связываются
 с `task_evaluated` по `session_id`, и атрибуция
 (`attributionCoveragePct`) видит инъекции авто-путей. Без env события пишутся
-с `session_id: null` и в атрибуции не участвуют.
+с `session_id: null` и в атрибуции не участвуют. `wolf memory-stage` без
+явного `--session` тоже подхватывает `WOLF_SESSION` — с выставленным env
+связка applied/cited с сессией получается бесплатно.
 
 Пиши честно и лениво: одно событие на пачку объектов, применённых одним
 действием (`--ids id1,id2,id3`) — не по событию на объект. Ничего не
