@@ -26,10 +26,9 @@ describe('D3: `wolf task-eval` — roundtrip в сигнальный лог', ()
   it('roundtrip: parseAsync → событие в логе, сырая строка проходит SignalEventSchema', async () => {
     await taskEvalCommand(dir)
       .exitOverride()
-      .parseAsync(
-        ['--verdict', 'accepted', '--session', 's1', '--criteria-passed', '2', '--criteria-total', '3'],
-        { from: 'user' }
-      );
+      .parseAsync(['--verdict', 'accepted', '--session', 's1', '--criteria-passed', '2', '--criteria-total', '3'], {
+        from: 'user',
+      });
     const events = readSignals(dir);
     expect(events).toHaveLength(1);
     expect(events[0].event).toBe('task_evaluated');
@@ -51,9 +50,7 @@ describe('D3: `wolf task-eval` — roundtrip в сигнальный лог', ()
 
   it('невалидный scorer — commander-ошибка со списком допустимых', async () => {
     await expect(
-      taskEvalCommand(dir)
-        .exitOverride()
-        .parseAsync(['--verdict', 'accepted', '--scorer', 'oracle'], { from: 'user' })
+      taskEvalCommand(dir).exitOverride().parseAsync(['--verdict', 'accepted', '--scorer', 'oracle'], { from: 'user' })
     ).rejects.toThrow(/is invalid\. allowed choices are human, deterministic, llm_judge, hidden_tests/i);
   });
 

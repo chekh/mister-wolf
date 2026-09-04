@@ -484,9 +484,7 @@ function buildOutliers(runLogText: string | null, pricing: PricingTable | undefi
  * вердикт не атрибутируется: link ненадёжен до P1). costPerAcceptedTask = сумма
  * weighted linked-ранов / число вердиктов. Атрибуция: каждому агенту множества
  * gen_ai.agent linked-ранов вердикта +1 (дедуп внутри одного вердикта). */
-function buildAcceptance(
-  signals: SignalEvent[]
-): AcceptanceStats & { acceptedByAgent: Map<string, number> } {
+function buildAcceptance(signals: SignalEvent[]): AcceptanceStats & { acceptedByAgent: Map<string, number> } {
   const runsBySession = new Map<string, SignalEvent[]>();
   for (const s of signals) {
     if (s.event !== 'run' || s.session_id === null) continue;

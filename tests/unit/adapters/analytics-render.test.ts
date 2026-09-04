@@ -273,8 +273,21 @@ describe('renderAllSections: coverage/dataQuality строки честност�
   it('agents-таблица: колонки completed/accepted после pfail_%', () => {
     const out = renderSection(fixtureReport(), { view: 'agents', top: 20 });
     const headerRow = out.split('\n').find((l) => l.startsWith('│')) ?? '';
-    const cols = headerRow.split('│').map((c) => c.trim()).filter(Boolean);
-    expect(cols).toEqual(['agent', 'runs', 'weighted', 'avg_ms', 'pfail_%', 'completed', 'accepted', 'compl by/about', 'prevented']);
+    const cols = headerRow
+      .split('│')
+      .map((c) => c.trim())
+      .filter(Boolean);
+    expect(cols).toEqual([
+      'agent',
+      'runs',
+      'weighted',
+      'avg_ms',
+      'pfail_%',
+      'completed',
+      'accepted',
+      'compl by/about',
+      'prevented',
+    ]);
   });
 });
 

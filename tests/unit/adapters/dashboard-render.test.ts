@@ -144,7 +144,20 @@ describe('councils в дашборде: ledgers-таблица открытых 
   it('renderLedgers: agents-таблица содержит колонки completed/accepted', () => {
     const out = renderLedgers(dashboardFixture());
     const headerRow = out.split('\n').find((l) => l.startsWith('│') && l.includes('pfail_%')) ?? '';
-    const cols = headerRow.split('│').map((c) => c.trim()).filter(Boolean);
-    expect(cols).toEqual(['agent', 'runs', 'weighted', 'avg_ms', 'pfail_%', 'completed', 'accepted', 'compl by/about', 'prevented']);
+    const cols = headerRow
+      .split('│')
+      .map((c) => c.trim())
+      .filter(Boolean);
+    expect(cols).toEqual([
+      'agent',
+      'runs',
+      'weighted',
+      'avg_ms',
+      'pfail_%',
+      'completed',
+      'accepted',
+      'compl by/about',
+      'prevented',
+    ]);
   });
 });

@@ -100,7 +100,10 @@ export function signalKey(ev: SignalEvent): string | null {
  * не прошедшие схему) считаются и пропускаются: лог append-only, битая строка
  * не должна ронять контур.
  */
-function readJsonl<T>(path: string, schema?: z.ZodType<T>): {
+function readJsonl<T>(
+  path: string,
+  schema?: z.ZodType<T>
+): {
   items: T[];
   malformedLines: number;
   totalLines: number;

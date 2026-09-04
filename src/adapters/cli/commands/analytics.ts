@@ -107,12 +107,7 @@ export function renderSection(report: AnalyticsReport, filter: SectionViewFilter
     }
     case 'weeklyActivity': {
       // D1: текст без колонок конверсии; проценты остаются только в JSON (WeeklyActivityWeek)
-      const rows = payload.weeks.map((r) => [
-        r.week,
-        cell(r.writes),
-        cell(r.delivers),
-        cell(r.triggers),
-      ]);
+      const rows = payload.weeks.map((r) => [r.week, cell(r.writes), cell(r.delivers), cell(r.triggers)]);
       return [header, renderTable(['week', 'writes', 'delivers', 'triggers'], rows)].join('\n');
     }
     case 'agents': {
