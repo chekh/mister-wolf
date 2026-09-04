@@ -1009,8 +1009,9 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
         : ((input.signalLogStats.totalLines - input.signalLogStats.malformedLines) / input.signalLogStats.totalLines) *
           100,
     malformedLines: input.signalLogStats?.malformedLines ?? 0,
-    // повторы относительно уникальных event_id (v1-записи без event_id в знаменатель не входят)
-    duplicateEventRatePct: seenEventIds.size > 0 ? (duplicateLines / seenEventIds.size) * 100 : null,
+    // доля событий-дубликатов среди всех событий с event_id (v1-записи без id не учитываются)
+    duplicateEventRatePct:
+      seenEventIds.size + duplicateLines > 0 ? (duplicateLines / (seenEventIds.size + duplicateLines)) * 100 : null,
     unknownModelRatePct: runSignals.length > 0 ? (unknownModels / runSignals.length) * 100 : null,
     pricingCoveragePct:
       input.pricing === undefined || runsWithTokens.length === 0 ? null : (pricedRuns / runsWithTokens.length) * 100,

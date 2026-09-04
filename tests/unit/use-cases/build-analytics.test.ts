@@ -843,13 +843,13 @@ describe('buildAnalyticsReport: dataQuality (D7, критерий №6 — би�
 describe('P1 D6+D7 data-quality v2', () => {
   const deps = { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock };
 
-  it('дубль event_id: duplicateEventRatePct=100; дубль не попадает в аналитику (runs=1)', async () => {
+  it('дубль event_id: duplicateEventRatePct=50 (1 дубль / 2 события с id); дубль не попадает в аналитику (runs=1)', async () => {
     const signals: SignalEvent[] = [
       { ...runSignal({ agent: 'w', outcome: 'ok', ts: T(1) }), event_id: 'ev-1' },
       { ...runSignal({ agent: 'w', outcome: 'ok', ts: T(2) }), event_id: 'ev-1' },
     ];
     const report = await buildAnalyticsReport(deps, { signals, runLogText: null });
-    expect(report.dataQuality.duplicateEventRatePct).toBe(100);
+    expect(report.dataQuality.duplicateEventRatePct).toBe(50);
     expect(report.coverage.runs).toBe(1);
     expect(report.readiness.totalRuns).toBe(1);
   });
@@ -891,7 +891,7 @@ describe('P1 D6+D7 data-quality v2', () => {
       { ...runSignal({ agent: 'w', outcome: 'ok' }), event_id: 'ev-1' },
     ];
     const report = await buildAnalyticsReport(deps, { signals, runLogText: null });
-    expect(report.dataQuality.duplicateEventRatePct).toBe(0); // 0 дублей / 1 уникальный event_id
+    expect(report.dataQuality.duplicateEventRatePct).toBe(0); // 0 дублей / 1 событие с event_id
   });
 });
 
