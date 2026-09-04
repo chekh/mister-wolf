@@ -364,3 +364,79 @@ describe('P0 D6: Zod-валидация сигнального лога + malfor
     expect(readSignalLog(dir)).toMatchObject({ malformedLines: 0, totalLines: 4 });
   });
 });
+
+describe('P1 D1+D2: SignalEventSchema v2 identity-поля + upcast-совместимость', () => {
+  const v1Event = {
+    ts: '2026-09-04T00:00:00.000Z',
+    event: 'run',
+    session_id: null,
+    gen_ai: { modelID: 'm', agent: 'a' },
+    orchestration: { task: 't', actor: 'x' },
+    weighted: 100,
+  };
+
+  it('v1-запись без новых полей: parse ok, новые поля undefined (D2 upcast)', () => {
+    const res = SignalEventSchema.safeParse(v1Event);
+    expect(res.success).toBe(true);
+    if (!res.success) return;
+    expect(res.data.event).toBe('run');
+    expect(res.data.event_id).toBeUndefined();
+    expect(res.data.schema_version).toBeUndefined();
+    expect(res.data.run_id).toBeUndefined();
+    expect(res.data.trace_id).toBeUndefined();
+    expect(res.data.parent_span_id).toBeUndefined();
+    expect(res.data.role_level).toBeUndefined();
+    expect(res.data.attempt).toBeUndefined();
+    expect(res.data.task_id).toBeUndefined();
+    expect(res.data.config_hash).toBeUndefined();
+    expect(res.data.prompt_hash).toBeUndefined();
+    expect(res.data.tools).toBeUndefined();
+  });
+
+  it('v2-запись со всеми identity-полями: parse ok, все поля на месте', () => {
+    const res = SignalEventSchema.safeParse({
+      ...v1Event,
+      event_id: '550e8400-e29b-41d4-a716-446655440000',
+      schema_version: 2,
+      run_id: '11111111-2222-3333-4444-555555555555',
+      trace_id: '99999999-8888-7777-6666-555555555555',
+      parent_span_id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+      role_level: 'L1',
+      attempt: 2,
+      task_id: 'task-42',
+      config_hash: 'a1b2c3d4e5f6',
+      prompt_hash: 'f6e5d4c3b2a1',
+      tools: ['wolf-search'],
+    });
+    expect(res.success).toBe(true);
+    if (!res.success) return;
+    expect(res.data).toMatchObject({
+      event_id: '550e8400-e29b-41d4-a716-446655440000',
+      schema_version: 2,
+      run_id: '11111111-2222-3333-4444-555555555555',
+      trace_id: '99999999-8888-7777-6666-555555555555',
+      parent_span_id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+      role_level: 'L1',
+      attempt: 2,
+      task_id: 'task-42',
+      config_hash: 'a1b2c3d4e5f6',
+      prompt_hash: 'f6e5d4c3b2a1',
+      tools: ['wolf-search'],
+    });
+  });
+
+  it('v1-запись с неизвестным полем: strip — поле в результате отсутствует', () => {
+    const res = SignalEventSchema.safeParse({ ...v1Event, foo: 1 });
+    expect(res.success).toBe(true);
+    if (!res.success) return;
+    expect(res.data).not.toHaveProperty('foo');
+  });
+
+  it('schema_version: 3 → parse не ok (literal(2))', () => {
+    expect(SignalEventSchema.safeParse({ ...v1Event, schema_version: 3 }).success).toBe(false);
+  });
+
+  it("role_level: 'L9' → parse не ok (enum L0/L1/L2)", () => {
+    expect(SignalEventSchema.safeParse({ ...v1Event, role_level: 'L9' }).success).toBe(false);
+  });
+});
