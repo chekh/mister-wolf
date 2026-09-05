@@ -160,7 +160,7 @@ describe('P3 D2: campaign view', () => {
     expect(row.noMemory.reason).toBeNull();
   });
 
-  it('когорта n<3: medianWeighted null + reason, acceptedSharePct по вердиктам считается; n=0 → no runs', async () => {
+  it('когорта n<3: вся строка метрик n/a + reason (спека D2); n=0 → no runs', async () => {
     const signals: SignalEvent[] = [
       runSignal({ session: 't1', campaign: 'small', weighted: 1, outcome: 'ok' }),
       runSignal({ session: 't2', campaign: 'small', weighted: 2, outcome: 'ok' }),
@@ -172,8 +172,8 @@ describe('P3 D2: campaign view', () => {
       cohort: 'no_memory',
       n: 2,
       medianWeighted: null,
-      acceptedSharePct: 100,
-      processFailureRatePct: 0,
+      acceptedSharePct: null,
+      processFailureRatePct: null,
       reason: 'n<3: min 3 runs',
     });
     expect(row.withMemory).toEqual({

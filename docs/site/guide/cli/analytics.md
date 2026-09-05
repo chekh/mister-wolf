@@ -230,7 +230,7 @@ blockers:
 `--view campaign` is the A/B storefront "same task, with and without memory": runs are grouped by `campaign_id` (a top-level run-signal field written by `wolf run --campaign <id>`) and split into two cohorts by whether the run's session had injected memory — a `session_id` join over `memory_stage injected`, the same pattern as attribution (P2); a run with `session_id: null` lands in `no_memory`:
 
 - **n** — cohort runs in the campaign;
-- **median_weighted** — median weighted of the cohort's runs; below 3 runs it is `n/a` with note `n<3: min 3 runs`; an empty cohort notes `no runs`;
+- **median_weighted** — median weighted of the cohort's runs; below 3 runs the whole cohort metric row is `n/a` with note `n<3: min 3 runs` (shares are not shown on tiny samples); an empty cohort notes `no runs`;
 - **accepted\_%** — share of accepted verdicts in the cohort: verdicts enter the campaign via `wolf task-eval --campaign <id>` (`detail.campaign_id`) and are cohorted by the same session join; a campaign with no verdicts at all → `n/a` with note `no verdicts`;
 - **pfail\_%** — runs with `outcome !== 'ok'` / n.
 
@@ -245,7 +245,7 @@ Real output (demo log: eval-01 — both cohorts at 3 runs with verdicts; eval-02
 ├──────────┼─────────────┼───┼─────────────────┼────────────┼─────────┼─────────────────┤
 │ eval-01  │ with_memory │ 3 │ 5210            │ 100.0      │ 0.0     │                 │
 │ eval-01  │ no_memory   │ 3 │ 8120            │ 0.0        │ 33.3    │                 │
-│ eval-02  │ with_memory │ 2 │ n/a             │ n/a        │ 0.0     │ n<3: min 3 runs │
+│ eval-02  │ with_memory │ 2 │ n/a             │ n/a        │ n/a     │ n<3: min 3 runs │
 │ eval-02  │ no_memory   │ 3 │ 9100            │ n/a        │ 0.0     │ no verdicts     │
 └──────────┴─────────────┴───┴─────────────────┴────────────┴─────────┴─────────────────┘
 ```

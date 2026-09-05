@@ -176,7 +176,7 @@ open questions:
 `--view campaign` — A/B-витрина «та же задача, с памятью и без»: прогоны группируются по `campaign_id` (топ-левел поле run-сигнала, флаг `wolf run --campaign <id>`) и разбиваются на две когорты по наличию injected-памяти в сессии прогона — join по `session_id` через `memory_stage injected`, тот же паттерн, что у attribution (P2); ран с `session_id: null` попадает в `no_memory`:
 
 - **n** — раны когорты в кампании;
-- **median_weighted** — медиана weighted ранов когорты; при n < 3 → `n/a` с note `n<3: min 3 runs`; пустая когорта → note `no runs`;
+- **median_weighted** — медиана weighted ранов когорты; при n < 3 вся строка метрик когорты → `n/a` с note `n<3: min 3 runs` (доли на малых выборках не показываем); пустая когорта → note `no runs`;
 - **accepted\_%** — доля accepted среди вердиктов когорты: вердикты входят в кампанию флагом `wolf task-eval --campaign <id>` (`detail.campaign_id`) и атрибутируются когорте той же связкой по сессии; кампания без вердиктов → `n/a` с note `no verdicts`;
 - **pfail\_%** — доля ранов с `outcome !== 'ok'`.
 
@@ -191,7 +191,7 @@ open questions:
 ├──────────┼─────────────┼───┼─────────────────┼────────────┼─────────┼─────────────────┤
 │ eval-01  │ with_memory │ 3 │ 5210            │ 100.0      │ 0.0     │                 │
 │ eval-01  │ no_memory   │ 3 │ 8120            │ 0.0        │ 33.3    │                 │
-│ eval-02  │ with_memory │ 2 │ n/a             │ n/a        │ 0.0     │ n<3: min 3 runs │
+│ eval-02  │ with_memory │ 2 │ n/a             │ n/a        │ n/a     │ n<3: min 3 runs │
 │ eval-02  │ no_memory   │ 3 │ 9100            │ n/a        │ 0.0     │ no verdicts     │
 └──────────┴─────────────┴───┴─────────────────┴────────────┴─────────┴─────────────────┘
 ```

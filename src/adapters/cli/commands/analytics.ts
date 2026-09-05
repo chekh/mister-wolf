@@ -96,8 +96,8 @@ export function renderSection(report: AnalyticsReport, filter: SectionViewFilter
         a.attributionCoveragePct === null
           ? `attribution: n/a (${a.reason})`
           : `attribution: accepted ${a.acceptedWithInjection}/${a.acceptedTotal} (${a.attributionCoveragePct.toFixed(1)}%)`;
-      // P3 D3: per-memory ROI — корреляционная витрина (дисклеймер обязателен)
-      const ROI_TOP = 20; // ponytail: ROI-топ 20 — mirror filterAnalytics default top
+      // P3 D3: per-memory ROI — корреляционная витрина (дисклеймер обязателен);
+      // срез по --top того же фильтра, дефолт 20 — как у строк реестра памяти
       const roiLines =
         payload.roi.rows.length === 0
           ? ['memory ROI (correlational, not causal): no data']
@@ -106,7 +106,7 @@ export function renderSection(report: AnalyticsReport, filter: SectionViewFilter
               renderTable(
                 ['id', 'assoc_accepted', 'assoc_applied', 'injected_total', 'last_activity'],
                 payload.roi.rows
-                  .slice(0, ROI_TOP)
+                  .slice(0, filter.top ?? 20)
                   .map((r) => [
                     r.id,
                     cell(r.associatedAccepted),

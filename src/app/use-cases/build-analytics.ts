@@ -751,23 +751,26 @@ function medianWeightedOf(runs: SignalEvent[]): number | null {
     : (values[values.length / 2 - 1]! + values[values.length / 2]!) / 2;
 }
 
-/** Когорта кампании: n/медиана (n < MIN_COHORT_N → null)/доля accepted/pfail + reason о малой выборке. */
+/** Когорта кампании: при n < MIN_COHORT_N вся строка метрик n/a + reason (спека D2:
+ * «когорта с n < 3 → строка n/a с reason» — доли на малых выборках не показываем). */
 function buildCohort(
   cohort: 'with_memory' | 'no_memory',
   runs: SignalEvent[],
   verdicts: SignalEvent[]
 ): CampaignCohort {
   const n = runs.length;
+  const small = n < MIN_COHORT_N;
   return {
     cohort,
     n,
-    medianWeighted: n >= MIN_COHORT_N ? medianWeightedOf(runs) : null,
-    acceptedSharePct:
-      verdicts.length > 0
+    medianWeighted: !small ? medianWeightedOf(runs) : null,
+    acceptedSharePct: !small
+      ? verdicts.length > 0
         ? (verdicts.filter((v) => v.detail?.verdict === 'accepted').length / verdicts.length) * 100
-        : null,
-    processFailureRatePct: n > 0 ? (runs.filter((r) => r.outcome !== 'ok').length / n) * 100 : null,
-    reason: n === 0 ? 'no runs' : n < MIN_COHORT_N ? 'n<3: min 3 runs' : null,
+        : null
+      : null,
+    processFailureRatePct: !small && n > 0 ? (runs.filter((r) => r.outcome !== 'ok').length / n) * 100 : null,
+    reason: n === 0 ? 'no runs' : small ? 'n<3: min 3 runs' : null,
   };
 }
 
