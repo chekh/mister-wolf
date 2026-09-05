@@ -1,0 +1,3 @@
+{"repeat": "aa", "arm": "A1", "episode": "e1", "log": "session-20260905-211602.log", "exit": 124, "reason": "F21-hang: exit 124 без planned_kill"}
+{"repeat": "aa", "arm": "A1", "episode": "e1", "log": "session-20260905-213939.log", "exit": 2, "reason": "F25: silent truncation (exit 2)"}
+{"repeat": "aa", "arm": "A1", "episode": "e1", "log": "session-20260905-214219.log", "exit": 124, "reason": "F21-hang: exit 124 без planned_kill"}

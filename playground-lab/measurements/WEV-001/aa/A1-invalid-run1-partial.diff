@@ -1,0 +1,256 @@
+diff --git a/src/adapters/platforms/opencode-adapter.ts b/src/adapters/platforms/opencode-adapter.ts
+index 9e0f87e..0ee5d24 100644
+--- a/src/adapters/platforms/opencode-adapter.ts
++++ b/src/adapters/platforms/opencode-adapter.ts
+@@ -11,6 +11,10 @@ import { UserFacingError } from '../../domain/errors.js';
+ export class OpencodeAdapter implements PlatformAdapter {
+   readonly id = 'opencode';
+ 
++  /** D2/F4: базовый набор opencode-only и рендерится в `.opencode/` — конфиг
++   * пишется фактом рендера, а не детекцией маркера, который сам рендер создаёт. */
++  readonly coveredByBaseSetRender = true;
++
+   detect(projectRoot: string): boolean {
+     return (
+       existsSync(join(projectRoot, 'opencode.json')) ||
+diff --git a/src/app/use-cases/init-project.ts b/src/app/use-cases/init-project.ts
+index 01eeab8..b113335 100644
+--- a/src/app/use-cases/init-project.ts
++++ b/src/app/use-cases/init-project.ts
+@@ -79,8 +79,9 @@ export async function initProject(
+   await deps.markSchemaCurrent(baseDir);
+   const scan = await scanProject(deps.scanDeps, baseDir);
+ 
+-  // Платформы детектируем ДО рендера базового набора: рендер создаёт .opencode/,
+-  // и детект после него принял бы свежесозданный каталог за маркер платформы (T14).
++  // Платформы обрабатываем ДО рендера базового набора: рендер создаёт .opencode/,
++  // и детект после него принял бы свежесозданный каталог за маркер платформы (T14);
++  // opencode поэтому покрывается фактом рендера, а не детекцией (D2/F4, см. ниже).
+   const platformOutcomes: PlatformInitOutcome[] = [];
+   if (deps.npx) {
+     // try-out: память создаём, конфиги — никогда (спека §3, npx-путь)
+@@ -101,17 +102,32 @@ export async function initProject(
+       }
+     }
+   } else {
+-    // авто-детект: объединение найденных; «платформа не детектирована» — warning + skip
+-    const detected = deps.adapters.filter((a) => a.detect(baseDir));
+-    if (detected.length === 0) {
++    // авто-детект. D2/F4 (onboarding-v2 §4.4 п.3): платформа, покрываемая фактом
++    // рендера базового набора (набор opencode-only и сам создаёт `.opencode/`),
++    // пишется БЕЗ детекции — детект первого прогона «не видит» маркер, который
++    // создаёт сам init ниже, и конфиг появлялся только вторым запуском (F4).
++    // Остальные платформы (claude) — маркерами, не зависящими от рендера.
++    const rendersBaseSet = deps.baseSet !== undefined;
++    const coveredByRender = (a: PlatformAdapter) => rendersBaseSet && a.coveredByBaseSetRender === true;
++    const selected = deps.adapters.filter((a) => coveredByRender(a) || a.detect(baseDir));
++    if (selected.length === 0) {
+       platformOutcomes.push({
+         platform: 'none',
+         action: 'skipped',
+         reason: 'no platform detected; use --platform opencode|claude',
+       });
+     } else {
+-      for (const adapter of detected) {
+-        platformOutcomes.push({ platform: adapter.id, action: await adapter.writeConfig(baseDir, deps.mcpCommand) });
++      for (const adapter of selected) {
++        // источник выбора виден пользователю: рендер покрыл платформу без маркеров
++        const reason =
++          coveredByRender(adapter) && !adapter.detect(baseDir)
++            ? 'covered by base set render (set is opencode-only)'
++            : undefined;
++        platformOutcomes.push({
++          platform: adapter.id,
++          action: await adapter.writeConfig(baseDir, deps.mcpCommand),
++          reason,
++        });
+       }
+     }
+   }
+diff --git a/src/ports/platform-adapter.port.ts b/src/ports/platform-adapter.port.ts
+index 5806a60..2131b13 100644
+--- a/src/ports/platform-adapter.port.ts
++++ b/src/ports/platform-adapter.port.ts
+@@ -14,6 +14,16 @@ export interface PlatformAdapter {
+   id: string; // 'opencode' | 'claude'
+   /** Детект платформы по файлам-маркерам в корне проекта. */
+   detect(projectRoot: string): boolean;
++  /**
++   * Платформа покрывается ФАКТОМ рендера базового набора init'ом, не детекцией
++   * (D2 спеки onboarding-v2, дефект F4): набор opencode-only и сам создаёт
++   * маркер платформы (`.opencode/`) — авто-детект первого прогона увидеть его
++   * не может, и конфиг появлялся только вторым init'ом. true — авто-ветка init
++   * пишет конфиг без детекции, когда рендерится набор. Детекция по маркерам
++   * остаётся для платформ с render-независимыми маркерами (claude) и для
++   * остальных потребителей (doctor).
++   */
++  readonly coveredByBaseSetRender?: boolean;
+   /** Текущий конфиг платформы; null — конфиг-файла нет. */
+   readConfig(projectRoot: string): Promise<PlatformConfig | null>;
+   /**
+diff --git a/tests/e2e/init-cli.e2e.ts b/tests/e2e/init-cli.e2e.ts
+index b722abd..4319aa0 100644
+--- a/tests/e2e/init-cli.e2e.ts
++++ b/tests/e2e/init-cli.e2e.ts
+@@ -14,9 +14,12 @@ const cli = join(REPO, 'dist', 'bootstrap', 'cli.js');
+ const legacyMd =
+   '---\nid: mem_legacy\ntype: decision\ntitle: Legacy decision\nstatus: active\nreview_state: accepted\nconfidence: medium\nimportance: 0.5\ncreated_at: 2026-06-29T14:00:00Z\nupdated_at: 2026-06-29T14:00:00Z\ncreated_by: user:test\nschema_version: 1\nsource:\n  kind: manual\nrelated:\n  files: []\n  docs: []\n  decisions: []\ntags: []\nsuperseded_by: null\n---\n\nBody.\n';
+ 
+-/** Изолированное окружение: tmp XDG, чтобы e2e не трогал реальный ~/.config/wolf. */
++/** Изолированное окружение: tmp XDG, чтобы e2e не трогал реальный ~/.config/wolf.
++ * Срез npm_command — как в base-set.e2e: запуск vitest через npx не должен
++ * выглядеть для CLI как npx try-out (isNpxRun). */
+ function env(xdg: string): NodeJS.ProcessEnv {
+-  return { ...process.env, XDG_CONFIG_HOME: xdg };
++  const { npm_command: _drop, ...rest } = process.env;
++  return { ...rest, XDG_CONFIG_HOME: xdg };
+ }
+ 
+ function newProject(markers: 'opencode' | 'none'): { project: string; xdg: string } {
+@@ -64,12 +67,30 @@ describe('wolf init CLI (спека §3 уровень 1)', () => {
+     expect(JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8')).mcp).toBeUndefined();
+   });
+ 
+-  it('no platform markers → skip with hint, exit 0 (память создана)', () => {
++  it('F4 regression: markerless project — FIRST init writes opencode config (render-covered, D2)', () => {
++    // Симптом: в свежем проекте без маркеров opencode первый `wolf init` выходил
++    // с exit 0, но конфиг платформы не писал (детекция «не видит» `.opencode/`,
++    // который создаёт сам init) — конфиг появлялся только вторым запуском.
+     const { project, xdg } = newProject('none');
+-    const res = spawnSync('node', [cli, 'init'], { cwd: project, env: env(xdg), encoding: 'utf-8', timeout: 60_000 });
+-    expect(res.status).toBe(0);
+-    expect(res.stdout).toContain('platform configs: skipped');
+-    expect(res.stdout).toContain('--platform');
++    const first = spawnSync('node', [cli, 'init'], { cwd: project, env: env(xdg), encoding: 'utf-8', timeout: 60_000 });
++    expect(first.status).toBe(0);
++    expect(first.stdout).toContain('platform opencode: written');
++    expect(first.stdout).toContain('Restart your agent platform');
++    expect(existsSync(join(project, 'opencode.json'))).toBe(true);
++    const cfg = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));
++    expect(cfg.mcp.wolf).toEqual({ type: 'local', command: ['wolf', 'mcp'], enabled: true });
++
++    // повторный init — идемпотентность: конфиг не меняется
++    const before = readFileSync(join(project, 'opencode.json'), 'utf-8');
++    const second = spawnSync('node', [cli, 'init'], {
++      cwd: project,
++      env: env(xdg),
++      encoding: 'utf-8',
++      timeout: 60_000,
++    });
++    expect(second.status).toBe(0);
++    expect(second.stdout).toContain('platform opencode: unchanged');
++    expect(readFileSync(join(project, 'opencode.json'), 'utf-8')).toBe(before);
+   });
+ 
+   it('init --recreate on a LEGACY project migrates properly (marker + layout v2, objects/ not orphaned)', () => {
+diff --git a/tests/unit/use-cases/init-project.test.ts b/tests/unit/use-cases/init-project.test.ts
+index 19ebc0a..c8c254b 100644
+--- a/tests/unit/use-cases/init-project.test.ts
++++ b/tests/unit/use-cases/init-project.test.ts
+@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, readdirSyn
+ import { tmpdir } from 'os';
+ import { join } from 'path';
+ import { initProject, looksLikeProjectRoot, recreateConfig } from '../../../src/app/use-cases/init-project.js';
++import type { BaseSetDeps } from '../../../src/app/use-cases/init-project.js';
+ import { ProjectInitializer } from '../../../src/ports/project-initializer.port.js';
+ import { PlatformAdapter, PlatformConfig, McpCommand } from '../../../src/ports/platform-adapter.port.js';
+ import { CURRENT_SCHEMA_VERSION } from '../../../src/adapters/fs/schema-version.js';
+@@ -23,7 +24,8 @@ class FakeAdapter implements PlatformAdapter {
+   removeCalls = 0;
+   constructor(
+     readonly id: string,
+-    private readonly detected: boolean
++    private readonly detected: boolean,
++    readonly coveredByBaseSetRender?: boolean
+   ) {}
+   detect(): boolean {
+     return this.detected;
+@@ -67,7 +69,7 @@ const emptySnapshot = {
+ 
+ const markSpy = { calls: 0 };
+ 
+-function makeDeps(adapters: FakeAdapter[], opts: { npx?: boolean } = {}) {
++function makeDeps(adapters: FakeAdapter[], opts: { npx?: boolean; baseSet?: BaseSetDeps } = {}) {
+   return {
+     initializer: new FakeInitializer(),
+     registry: new FakeRegistry(),
+@@ -89,9 +91,13 @@ function makeDeps(adapters: FakeAdapter[], opts: { npx?: boolean } = {}) {
+     markSchemaCurrent: async () => {
+       markSpy.calls += 1;
+     },
++    ...(opts.baseSet ? { baseSet: opts.baseSet } : {}),
+   };
+ }
+ 
++/** Пустой набор: рендер «происходит» (создаёт макет платформы), файлов не пишет. */
++const emptyBaseSet: BaseSetDeps = { render: async () => [], seed: async () => [] };
++
+ /* ---------- env ---------- */
+ 
+ let dir: string;
+@@ -149,6 +155,43 @@ describe('initProject', () => {
+     expect(deps.registry.registered).toHaveLength(1);
+   });
+ 
++  it('F4/D2 regression: render-covered platform written by FIRST init without markers (base set renders)', async () => {
++    writeFileSync(join(dir, 'package.json'), '{}');
++    // чистый проект: маркеров нет — детекция «не видит» `.opencode/`, который сама же создаст рендер
++    const oc = new FakeAdapter('opencode', false, true);
++    const claude = new FakeAdapter('claude', false);
++    const deps = makeDeps([oc, claude], { baseSet: emptyBaseSet });
++    const result = await initProject(deps, dir);
++    expect(result.platformOutcomes).toEqual([
++      { platform: 'opencode', action: 'written', reason: 'covered by base set render (set is opencode-only)' },
++    ]);
++    expect(oc.writeCalls).toBe(1);
++    expect(claude.writeCalls).toBe(0);
++  });
++
++  it('F4/D2: render coverage requires the base set — without baseSet falls back to marker detection', async () => {
++    writeFileSync(join(dir, 'package.json'), '{}');
++    const oc = new FakeAdapter('opencode', false, true);
++    const deps = makeDeps([oc]);
++    const result = await initProject(deps, dir);
++    expect(result.platformOutcomes).toEqual([
++      { platform: 'none', action: 'skipped', reason: 'no platform detected; use --platform opencode|claude' },
++    ]);
++    expect(oc.writeCalls).toBe(0);
++  });
++
++  it('F4/D2: render coverage + marker detection combine without double writes', async () => {
++    writeFileSync(join(dir, 'package.json'), '{}');
++    writeFileSync(join(dir, '.mcp.json'), '{}'); // маркер claude, не зависящий от рендера
++    const oc = new FakeAdapter('opencode', false, true);
++    const claude = new FakeAdapter('claude', true);
++    const deps = makeDeps([oc, claude], { baseSet: emptyBaseSet });
++    const result = await initProject(deps, dir);
++    expect(result.platformOutcomes.map((o) => o.platform)).toEqual(['opencode', 'claude']);
++    expect(oc.writeCalls).toBe(1); // ровно один write: покрытие рендером не дублирует детекцию
++    expect(claude.writeCalls).toBe(1);
++  });
++
+   it('explicit --platform list REPLACES the set: non-listed detected platform loses its wolf entry', async () => {
+     writeFileSync(join(dir, 'package.json'), '{}');
+     const oc = new FakeAdapter('opencode', true);
+diff --git a/tests/unit/wolf-session-start-plugin.test.ts b/tests/unit/wolf-session-start-plugin.test.ts
+index 1c5bfd9..6e793c5 100644
+--- a/tests/unit/wolf-session-start-plugin.test.ts
++++ b/tests/unit/wolf-session-start-plugin.test.ts
+@@ -31,7 +31,7 @@ describe('wolf-session-start plugin', () => {
+ 
+     const injected = output.messages[0].parts[0];
+     expect(injected.type).toBe('text');
+-    expect(String(injected.text)).toContain('Mr.Wolf session recap');
++    expect(String(injected.text)).toContain('Mr.Wolf session bootstrap');
+     // Раздел из fixture-вывода `wolf recap` (как в реальном выводе)
+     expect(String(injected.text)).toContain('Active rules');
+     expect(execFileMock).toHaveBeenCalled();
+@@ -45,7 +45,7 @@ describe('wolf-session-start plugin', () => {
+     await transform({}, output);
+ 
+     const markerParts = output.messages[0].parts.filter(
+-      (p) => p.type === 'text' && String(p.text ?? '').includes('Mr.Wolf session recap')
++      (p) => p.type === 'text' && String(p.text ?? '').includes('Mr.Wolf session bootstrap')
+     );
+     expect(markerParts).toHaveLength(1);
+   });

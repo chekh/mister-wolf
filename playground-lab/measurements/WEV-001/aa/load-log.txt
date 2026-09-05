@@ -1,0 +1,10 @@
+# Load-журнал A/A (uptime до/после каждого запуска лаунчера)
+# Прогон 1 (A1-E1 attempt1, 21:16-21:31): зафиксирован ретроспективно из сессии исполнителя (tee подключён со 2-го прогона)
+21:15  up 9 days, 1:57, load averages: 10.61 15.13 14.33   # до прогона 1
+21:31  up 9 days, 2:12, load averages: 29.16 33.22 24.33   # после прогона 1 (шторм чужих процессов: opencode/Tender 188% CPU, OrbStack)
+21:39  up 9 days,  2:21, 1 user, load averages: 10.96 21.18 23.39
+LAUNCHER_EXIT=2
+21:40  up 9 days,  2:22, 1 user, load averages: 11.13 20.10 22.91
+21:42  up 9 days,  2:24, 1 user, load averages: 12.39 16.74 21.13
+LAUNCHER_EXIT=124
+21:57  up 9 days,  2:39, 1 user, load averages: 12.83 15.31 16.59
