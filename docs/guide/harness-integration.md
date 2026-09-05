@@ -73,3 +73,37 @@ wolf coord --kind handoff --from "L0:wolf" --to "L1:lead" --ref mem_…_report -
 
 Агрегация: `wolf analytics --view coordination` (counts kind×from, последние
 события, blocker-пары) и `--view memory` (воронка стадий + attribution).
+
+## Кампании: прогоны с памятью и без (P3)
+
+Сценарий A/B «та же задача, с памятью и без»: одна задача, N прогонов в
+сессиях с injected-памятью (обычный поток `wolf call`/`brief` с выставленным
+`WOLF_SESSION`) и M прогонов без памяти; все раны и вердикты помечаются одним
+id кампании:
+
+```bash
+# arm «с памятью»: инъекции пишутся в сессию (WOLF_SESSION у авто-писателей)
+WOLF_SESSION=ses-ab-wolf wolf call
+wolf run --agent dev --title "fix-failing-test" --session ses-ab-wolf \
+  --campaign eval-01 --task-id fix-failing-test "Fix the failing test"
+# ... ещё N-1 прогонов той же кампании в этой сессии
+wolf task-eval --verdict accepted --session ses-ab-wolf \
+  --task-id fix-failing-test --campaign eval-01
+
+# arm «без памяти»: та же задача, отдельная сессия без инъекций
+wolf run --agent dev --title "fix-failing-test" --session ses-ab-base \
+  --campaign eval-01 --task-id fix-failing-test "Fix the failing test"
+# ... ещё M-1 прогонов
+wolf task-eval --verdict rejected --session ses-ab-base \
+  --task-id fix-failing-test --campaign eval-01
+
+# разбор: когорты with_memory/no_memory, медианы, accepted-доля, честные n/a
+wolf analytics --view campaign
+```
+
+Когорта рана определяется по его `session_id` — была ли в сессии
+`memory_stage injected` (тот же join, что у attribution), поэтому держи армы
+в разных сессиях, иначе сплит нечестный. Когорта с n < 3 и кампания без
+вердиктов дают `n/a` с reason — не подкручивай выборку, копи раны. Витрина
+корреляционная: `--view campaign` — повод для гипотезы, не доказательство
+(см. [analytics.md](./analytics.md), «Кампании и когорты (P3)»).

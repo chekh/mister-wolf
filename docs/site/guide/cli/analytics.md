@@ -16,8 +16,8 @@ coordination
 Options:
   --view <view>      Analytics view (choices: "memory", "tools", "rules",
                      "weeklyActivity", "agents", "steward", "outliers",
-                     "readiness", "councils", "coordination", "all", default:
-                     "all")
+                     "readiness", "councils", "coordination", "campaign",
+                     "all", default: "all")
   --class <class>    Memory lifecycle filter (choices: "new", "sleeper",
                      "workhorse", "dead")
   --type <type>      Memory type filter
@@ -32,7 +32,7 @@ Options:
 
 Options:
 
-- `--view <view>` — analytics view (choices: `memory`, `tools`, `rules`, `weeklyActivity`, `agents`, `steward`, `outliers`, `readiness`, `councils`, `coordination`, `all`; default: `all`)
+- `--view <view>` — analytics view (choices: `memory`, `tools`, `rules`, `weeklyActivity`, `agents`, `steward`, `outliers`, `readiness`, `councils`, `coordination`, `campaign`, `all`; default: `all`)
 - `--class <class>` — memory lifecycle filter (choices: `new`, `sleeper`, `workhorse`, `dead`)
 - `--type <type>` — memory type filter
 - `--origin <origin>` — tool origin filter (choices: `script`, `native`)
@@ -44,19 +44,20 @@ Options:
 
 Views:
 
-| View             | What it returns                                                                                                                                                                                            |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `memory`         | Memory ledger: per-object age, deliveries, triggers, complaints, last_used, lifecycle class; garbage ratio (DEAD / active); lifecycle funnel added→retrieved→injected→cited→applied; attribution share     |
-| `tools`          | Tool ledger: usage, error rate, lifecycle (script tools); signal-log `tools` attributions (model-native); promotion candidates                                                                             |
-| `rules`          | Rule ranking by `holdout_prevented`; silent rules list                                                                                                                                                     |
-| `weeklyActivity` | Weekly write / deliver / trigger activity per week                                                                                                                                                         |
-| `agents`         | Per-agent runs, weighted cost, duration, process-failure rate, completed and accepted tasks, complaints (filed and received), prevented                                                                    |
-| `steward`        | Steward mutations by kind, complaint funnel, SLA escalations, recurrences, churn, share of auto-mutations                                                                                                  |
-| `councils`       | Councils: questions called (total / window / open), opinions per question, per-agent participation, vote distribution, synthesis share and median question→synthesis time, weekly activity, open questions |
-| `coordination`   | Coordination events: counts by kind × source actor, 20 most recent events, blocker open→resolve pairs by ref                                                                                               |
-| `outliers`       | Most expensive runs (weighted; `$` with pricing)                                                                                                                                                           |
-| `readiness`      | Experiment readiness: share of runs with an arm, sample sizes per group                                                                                                                                    |
-| `all`            | All sections in sequence (default)                                                                                                                                                                         |
+| View             | What it returns                                                                                                                                                                                                             |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `memory`         | Memory ledger: per-object age, deliveries, triggers, complaints, last_used, lifecycle class; garbage ratio (DEAD / active); lifecycle funnel added→retrieved→injected→cited→applied; attribution share; per-memory ROI (P3) |
+| `tools`          | Tool ledger: usage, error rate, lifecycle (script tools); signal-log `tools` attributions (model-native); promotion candidates                                                                                              |
+| `rules`          | Rule ranking by `holdout_prevented`; silent rules list                                                                                                                                                                      |
+| `weeklyActivity` | Weekly write / deliver / trigger activity per week                                                                                                                                                                          |
+| `agents`         | Per-agent runs, weighted cost, duration, process-failure rate, completed and accepted tasks, complaints (filed and received), prevented                                                                                     |
+| `steward`        | Steward mutations by kind, complaint funnel, SLA escalations, recurrences, churn, share of auto-mutations                                                                                                                   |
+| `councils`       | Councils: questions called (total / window / open), opinions per question, per-agent participation, vote distribution, synthesis share and median question→synthesis time, weekly activity, open questions                  |
+| `coordination`   | Coordination events: counts by kind × source actor, 20 most recent events, blocker open→resolve pairs by ref                                                                                                                |
+| `campaign`       | Campaigns → cohorts with/without injected memory in the run's session: n, median weighted, accepted share, process-failure rate; honest n/a for small samples (P3)                                                          |
+| `outliers`       | Most expensive runs (weighted; `$` with pricing)                                                                                                                                                                            |
+| `readiness`      | Experiment readiness: share of runs with an arm, sample sizes per group                                                                                                                                                     |
+| `all`            | All sections in sequence (default)                                                                                                                                                                                          |
 
 ### Lifecycle classes
 
@@ -224,6 +225,54 @@ blockers:
 └──────────────────────────────────────────┴──────────────────────────┴──────────────────────────┘
 ```
 
+### Campaigns
+
+`--view campaign` is the A/B storefront "same task, with and without memory": runs are grouped by `campaign_id` (a top-level run-signal field written by `wolf run --campaign <id>`) and split into two cohorts by whether the run's session had injected memory — a `session_id` join over `memory_stage injected`, the same pattern as attribution (P2); a run with `session_id: null` lands in `no_memory`:
+
+- **n** — cohort runs in the campaign;
+- **median_weighted** — median weighted of the cohort's runs; below 3 runs it is `n/a` with note `n<3: min 3 runs`; an empty cohort notes `no runs`;
+- **accepted\_%** — share of accepted verdicts in the cohort: verdicts enter the campaign via `wolf task-eval --campaign <id>` (`detail.campaign_id`) and are cohorted by the same session join; a campaign with no verdicts at all → `n/a` with note `no verdicts`;
+- **pfail\_%** — runs with `outcome !== 'ok'` / n.
+
+The view is correlational: p-values and confidence intervals are wrong at these sample sizes — a deliberate P3 boundary. Read a cohort split as a hypothesis prompt, not a proof.
+
+Real output (demo log: eval-01 — both cohorts at 3 runs with verdicts; eval-02 — small samples and a campaign without verdicts):
+
+```text
+== campaign ==
+┌──────────┬─────────────┬───┬─────────────────┬────────────┬─────────┬─────────────────┐
+│ campaign │ cohort      │ n │ median_weighted │ accepted_% │ pfail_% │ note            │
+├──────────┼─────────────┼───┼─────────────────┼────────────┼─────────┼─────────────────┤
+│ eval-01  │ with_memory │ 3 │ 5210            │ 100.0      │ 0.0     │                 │
+│ eval-01  │ no_memory   │ 3 │ 8120            │ 0.0        │ 33.3    │                 │
+│ eval-02  │ with_memory │ 2 │ n/a             │ n/a        │ 0.0     │ n<3: min 3 runs │
+│ eval-02  │ no_memory   │ 3 │ 9100            │ n/a        │ 0.0     │ no verdicts     │
+└──────────┴─────────────┴───┴─────────────────┴────────────┴─────────┴─────────────────┘
+```
+
+### Memory ROI
+
+The tail of `--view memory` (P3): which memory objects are associated with accepted tasks, and which merely occupy context:
+
+- **assoc_accepted** — accepted verdicts in sessions where the id was injected no later than the verdict (`ts` of the injection ≤ `ts` of the verdict);
+- **assoc_applied** / **injected_total** — applied / injected events of the id;
+- **last_activity** — max `ts` over the id's injected/applied events.
+
+Sorted by assoc_accepted desc, then injectedTotal desc, then id; the text view shows the top 20 (`--top`), JSON carries the full list. The section header is the disclaimer `correlational, not causal`: association is by session (the object was in context when the task was accepted), which is not causation — an accepted task was not necessarily accepted thanks to the memory.
+
+Real output (tail of `--view memory` on the same demo log):
+
+```text
+memory ROI (correlational, not causal):
+┌──────────────────────────────────────────┬────────────────┬───────────────┬────────────────┬──────────────────────────┐
+│ id                                       │ assoc_accepted │ assoc_applied │ injected_total │ last_activity            │
+├──────────────────────────────────────────┼────────────────┼───────────────┼────────────────┼──────────────────────────┤
+│ mem_20260905_write_signals_schema_v2_e4… │ 1              │ 0             │ 2              │ 2026-09-05T10:20:11.774Z │
+│ mem_20260905_use_worktree_for_feature_b… │ 1              │ 1             │ 1              │ 2026-09-05T10:07:30.918Z │
+│ mem_20260905_prefer_vitest_run_over_wat… │ 0              │ 0             │ 1              │ 2026-09-05T09:30:00.480Z │
+└──────────────────────────────────────────┴────────────────┴───────────────┴────────────────┴──────────────────────────┘
+```
+
 ### Examples
 
 ```bash
@@ -343,6 +392,7 @@ thresholds: noise ok<20 warn<=40 bad | silent ok<30
 - `--experiment <id>` — experiment id (comparative methodologies, e.g. RCT)
 - `--arm <choice>` — experiment arm (choices: `wolf`, `baseline`)
 - `--task-id <id>` — task id (written top-level whenever passed, experiment or not)
+- `--campaign <id>` — campaign id (written top-level as `campaign_id`; groups runs for `--view campaign`)
 - `--trace-id <id>` — trace id grouping runs of one task (defaults to a fresh uuid)
 - `--attempt <n>` — attempt number within the task
 
@@ -359,6 +409,7 @@ Records a task verdict into the signal log (`task_evaluated` event) — the inpu
 - `--verdict <verdict>` — `accepted`, `rejected`, `partial`, `inconclusive`
 - `--scorer <scorer>` — who evaluated: `human` (default), `deterministic`, `llm_judge`, `hidden_tests`
 - `--session <id>` / `--task-id <id>` — link the verdict to a run/task (without a link it still counts toward coverage, but is not attributed to an agent)
+- `--campaign <id>` — campaign id (written as `detail.campaign_id`; groups verdicts for `--view campaign`)
 - `--criteria-passed <n>` / `--criteria-total <m>` — numeric criteria counts
 - `--critical-failure` — mark a critical failure; `--note <text>` — free-form note
 

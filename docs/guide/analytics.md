@@ -8,21 +8,22 @@
 
 ### `wolf analytics` — выборки для Стюарда
 
-| Вызов                                     | Ответ                                                                    |
-| ----------------------------------------- | ------------------------------------------------------------------------ |
-| `--view memory --class dead --json`       | DEAD-объекты: id, тип, возраст, last_used, счётчики                      |
-| `--view memory --class sleeper [--top N]` | редко используемые объекты                                               |
-| `--view memory [--type <тип>] [--top N]`  | полный memory ledger + garbage ratio + воронка стадий + attribution (P2) |
-| `--view rules [--silent]`                 | ranking по holdout_prevented; `--silent` — только молчащие               |
-| `--view tools [--origin script\|native]`  | tool ledger: usage, ошибки, lifecycle, promotion-кандидаты               |
-| `--view weeklyActivity [--weeks N]`       | недельная активность: writes/delivers/triggers по неделям                |
-| `--view agents [--agent <имя>] [--top N]` | per-agent объём, стоимость, process-провалы, completed/accepted          |
-| `--view steward [--weeks N]`              | мутации, жалобная воронка, рецидивы, churn, доля авто-мутаций            |
-| `--view councils [--weeks N]`             | консилиумы: созывы, участие, голоса, синтезы, открытые вопросы           |
-| `--view coordination`                     | координация: counts kind×from, последние события, blocker-пары (P2)      |
-| `--view outliers [--top N]`               | самые дорогие прогоны (weighted; $ при pricing)                          |
-| `--view readiness`                        | готовность к экспериментам (доля прогонов с arm)                         |
-| `--view all`                              | все секции подряд                                                        |
+| Вызов                                     | Ответ                                                                                          |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `--view memory --class dead --json`       | DEAD-объекты: id, тип, возраст, last_used, счётчики                                            |
+| `--view memory --class sleeper [--top N]` | редко используемые объекты                                                                     |
+| `--view memory [--type <тип>] [--top N]`  | полный memory ledger + garbage ratio + воронка стадий + attribution (P2) + per-memory ROI (P3) |
+| `--view rules [--silent]`                 | ranking по holdout_prevented; `--silent` — только молчащие                                     |
+| `--view tools [--origin script\|native]`  | tool ledger: usage, ошибки, lifecycle, promotion-кандидаты                                     |
+| `--view weeklyActivity [--weeks N]`       | недельная активность: writes/delivers/triggers по неделям                                      |
+| `--view agents [--agent <имя>] [--top N]` | per-agent объём, стоимость, process-провалы, completed/accepted                                |
+| `--view steward [--weeks N]`              | мутации, жалобная воронка, рецидивы, churn, доля авто-мутаций                                  |
+| `--view councils [--weeks N]`             | консилиумы: созывы, участие, голоса, синтезы, открытые вопросы                                 |
+| `--view coordination`                     | координация: counts kind×from, последние события, blocker-пары (P2)                            |
+| `--view campaign`                         | кампании → когорты with_memory/no_memory: n, медиана, accepted-%, pfail (P3)                   |
+| `--view outliers [--top N]`               | самые дорогие прогоны (weighted; $ при pricing)                                                |
+| `--view readiness`                        | готовность к экспериментам (доля прогонов с arm)                                               |
+| `--view all`                              | все секции подряд                                                                              |
 
 Общие флаги: `--json` (машинный вывод — дефолт для агентского потребления),
 `--top N` (лимит строк, дефолт 20), `--weeks N` (окно недельной активности, дефолт 8).
@@ -211,6 +212,72 @@ blockers:
 MCP-инструмент `analytics` принимает те же параметры (`view/class/type/origin/
 agent/top/weeks/silent`) и возвращает тот же JSON, что `--json`.
 
+### Кампании и когорты (P3)
+
+`--view campaign` — A/B-витрина «та же задача, с памятью и без»: прогоны
+группируются по `campaign_id` (топ-левел поле run-сигнала, флаг
+`wolf run --campaign <id>`) и разбиваются на две когорты по наличию
+injected-памяти в сессии прогона — join по `session_id` через
+`memory_stage injected`, тот же паттерн, что у attribution (P2); ран с
+`session_id: null` попадает в `no_memory`:
+
+- **n** — раны когорты в кампании;
+- **median_weighted** — медиана weighted ранов когорты; при n < 3 → `n/a`
+  с note `n<3: min 3 runs` (минимум 3 рана), пустая когорта → note `no runs`;
+- **accepted\_%** — доля accepted среди вердиктов когорты: вердикты входят в
+  кампанию флагом `wolf task-eval --campaign <id>` (`detail.campaign_id`) и
+  атрибутируются когорте той же связкой по сессии; кампания без вердиктов →
+  `n/a` с note `no verdicts`;
+- **pfail\_%** — доля ранов с `outcome !== 'ok'`.
+
+Витрина корреляционная: p-values и доверительные интервалы на малых n
+некорректны — это граница P3 (спека §3). Сравнение когорт — повод для
+гипотезы, не доказательство.
+
+Живой вывод (демо-лог: eval-01 — обе когорты по 3 рана с вердиктами;
+eval-02 — малые выборки и кампания без вердиктов):
+
+```text
+== campaign ==
+┌──────────┬─────────────┬───┬─────────────────┬────────────┬─────────┬─────────────────┐
+│ campaign │ cohort      │ n │ median_weighted │ accepted_% │ pfail_% │ note            │
+├──────────┼─────────────┼───┼─────────────────┼────────────┼─────────┼─────────────────┤
+│ eval-01  │ with_memory │ 3 │ 5210            │ 100.0      │ 0.0     │                 │
+│ eval-01  │ no_memory   │ 3 │ 8120            │ 0.0        │ 33.3    │                 │
+│ eval-02  │ with_memory │ 2 │ n/a             │ n/a        │ 0.0     │ n<3: min 3 runs │
+│ eval-02  │ no_memory   │ 3 │ 9100            │ n/a        │ 0.0     │ no verdicts     │
+└──────────┴─────────────┴───┴─────────────────┴────────────┴─────────┴─────────────────┘
+```
+
+### Per-memory ROI (P3)
+
+Хвост `--view memory` — какие объекты памяти ассоциированы с принятыми
+задачами, а какие только занимают контекст:
+
+- **assoc_accepted** — accepted-вердикты в сессиях, где id инъецировался не
+  позже вердикта (`ts` инъекции ≤ `ts` вердикта);
+- **assoc_applied** / **injected_total** — applied- / injected-события id;
+- **last_activity** — max `ts` среди injected/applied-событий id.
+
+Сортировка: `assoc_accepted` убыв., затем `injectedTotal` убыв., затем id по
+алфавиту; текст показывает топ-20 (`--top`), JSON — полный список. Заголовок
+секции — дисклеймер `correlational, not causal`: атрибуция идёт по сессии
+(объект был в контексте, когда задачу приняли) — это ассоциация, а не
+причинность; принятая задача не обязательно принята благодаря памяти.
+
+Живой вывод (хвост `--view memory` того же демо-лога):
+
+```text
+memory ROI (correlational, not causal):
+┌──────────────────────────────────────────┬────────────────┬───────────────┬────────────────┬──────────────────────────┐
+│ id                                       │ assoc_accepted │ assoc_applied │ injected_total │ last_activity            │
+├──────────────────────────────────────────┼────────────────┼───────────────┼────────────────┼──────────────────────────┤
+│ mem_20260905_write_signals_schema_v2_e4… │ 1              │ 0             │ 2              │ 2026-09-05T10:20:11.774Z │
+│ mem_20260905_use_worktree_for_feature_b… │ 1              │ 1             │ 1              │ 2026-09-05T10:07:30.918Z │
+│ mem_20260905_prefer_vitest_run_over_wat… │ 0              │ 0             │ 1              │ 2026-09-05T09:30:00.480Z │
+└──────────────────────────────────────────┴────────────────┴───────────────┴────────────────┴──────────────────────────┘
+```
+
 ### `wolf dashboard` — консольный дашборд
 
 - без флагов — три секции в stdout: `health` (L1-статусы), `ledgers` (L2-таблицы:
@@ -239,6 +306,8 @@ agent/top/weeks/silent`) и возвращает тот же JSON, что `--jso
   `hidden_tests`;
 - `--session <id>` / `--task-id <id>` — привязка вердикта к прогону/задаче
   (без привязки вердикт попадает в coverage, но не атрибутируется агенту);
+- `--campaign <id>` — id кампании (пишется в `detail.campaign_id`; группирует
+  вердикты для `--view campaign`, см. «Кампании и когорты (P3)»);
 - `--criteria-passed <n>` / `--criteria-total <m>` — численные критерии,
   `--critical-failure` — критический провал, `--note <text>` — заметка.
 
@@ -320,15 +389,20 @@ analytics:
 (например, memory — `rows` per-object + `garbage {dead, base, ratioPct}` +
 `funnel {added, retrieved, injected, cited, applied, appliedUniqueIds}` +
 `attribution {acceptedTotal, acceptedWithInjection, attributionCoveragePct,
-reason?}`),
+reason?}` + `roi {rows: [{id, associatedAccepted, associatedApplied,
+injectedTotal, lastActivity}]}`),
 `--view all` — полный `AnalyticsReport`: ledgers (memory/tools/rules),
 weeklyActivity, agents, steward, councils, outliers, readiness, acceptance,
-coverage, dataQuality, coordination. Секция councils — объект
+coverage, dataQuality, coordination, campaign. Секция councils — объект
 `CouncilsView`: `questions {total, inWindow, open}`, `opinions {total,
 perQuestionMin/Avg/Max}`, `participation [{agent, opinions}]`, `votes`
 (Record: значение голоса → число), `synthesis {questionsWithSynthesis,
 sharePct, medianHours}`, `weeks [{week, questions, opinions, syntheses}]`,
-`openQuestions [{id, title, daysOpen, opinions, votes}]`.
+`openQuestions [{id, title, daysOpen, opinions, votes}]`. Секция campaign —
+`CampaignView`: `rows [{campaign, runs, hasVerdicts, withMemory, noMemory}]`,
+когорта — `{cohort, n, medianWeighted, acceptedSharePct,
+processFailureRatePct, reason}` (`null`-метрики = честные n/a текстового
+рендера).
 
 `wolf dashboard --json` возвращает `DashboardData`:
 
