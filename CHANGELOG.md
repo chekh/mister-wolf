@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- docs: comprehensive revision after P0–P3 — analytics guide rebuilt as a coherent narrative, site EN/RU brought to parity, coverage gaps closed.
+
 ## [2.8.0] — 2026-09-05
 
 ### Added
