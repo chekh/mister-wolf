@@ -11,7 +11,7 @@ Usage: wolf analytics [options]
 
 Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents,
 steward view, councils, outliers, experiment readiness, memory lifecycle &
-coordination
+coordination, campaigns & per-memory ROI
 
 Options:
   --view <view>      Analytics view (choices: "memory", "tools", "rules",
@@ -44,20 +44,20 @@ Options:
 
 Views:
 
-| View             | What it returns                                                                                                                                                                                                             |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `memory`         | Memory ledger: per-object age, deliveries, triggers, complaints, last_used, lifecycle class; garbage ratio (DEAD / active); lifecycle funnel added→retrieved→injected→cited→applied; attribution share; per-memory ROI (P3) |
-| `tools`          | Tool ledger: usage, error rate, lifecycle (script tools); signal-log `tools` attributions (model-native); promotion candidates                                                                                              |
-| `rules`          | Rule ranking by `holdout_prevented`; silent rules list                                                                                                                                                                      |
-| `weeklyActivity` | Weekly write / deliver / trigger activity per week                                                                                                                                                                          |
-| `agents`         | Per-agent runs, weighted cost, duration, process-failure rate, completed and accepted tasks, complaints (filed and received), prevented                                                                                     |
-| `steward`        | Steward mutations by kind, complaint funnel, SLA escalations, recurrences, churn, share of auto-mutations                                                                                                                   |
-| `councils`       | Councils: questions called (total / window / open), opinions per question, per-agent participation, vote distribution, synthesis share and median question→synthesis time, weekly activity, open questions                  |
-| `coordination`   | Coordination events: counts by kind × source actor, 20 most recent events, blocker open→resolve pairs by ref                                                                                                                |
-| `campaign`       | Campaigns → cohorts with/without injected memory in the run's session: n, median weighted, accepted share, process-failure rate; honest n/a for small samples (P3)                                                          |
-| `outliers`       | Most expensive runs (weighted; `$` with pricing)                                                                                                                                                                            |
-| `readiness`      | Experiment readiness: share of runs with an arm, sample sizes per group                                                                                                                                                     |
-| `all`            | All sections in sequence (default)                                                                                                                                                                                          |
+| View             | What it returns                                                                                                                                                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `memory`         | Memory ledger: per-object age, deliveries, triggers, complaints, last_used, lifecycle class; garbage ratio (DEAD / active); lifecycle funnel added→retrieved→injected→cited→applied; attribution share; per-memory ROI (P3)                |
+| `tools`          | Tool ledger: usage, error rate, lifecycle (script tools); signal-log `tools` attributions (model-native); promotion candidates                                                                                                             |
+| `rules`          | Rule ranking by `holdout_prevented`; silent rules list                                                                                                                                                                                     |
+| `weeklyActivity` | Weekly write / deliver / trigger activity per week                                                                                                                                                                                         |
+| `agents`         | Per-agent runs, weighted cost, duration, process-failure rate, completed and accepted tasks, complaints (filed and received), prevented; JSON names them honestly: `completedRuns` (runs with `outcome: 'ok'`) and `processFailureRatePct` |
+| `steward`        | Steward mutations by kind, complaint funnel, SLA escalations, recurrences, churn, share of auto-mutations                                                                                                                                  |
+| `councils`       | Councils: questions called (total / window / open), opinions per question, per-agent participation, vote distribution, synthesis share and median question→synthesis time, weekly activity, open questions                                 |
+| `coordination`   | Coordination events: counts by kind × source actor, 20 most recent events, blocker open→resolve pairs by ref                                                                                                                               |
+| `campaign`       | Campaigns → cohorts with/without injected memory in the run's session: n, median weighted, accepted share, process-failure rate; honest n/a for small samples (P3)                                                                         |
+| `outliers`       | Most expensive runs (weighted; `$` with pricing)                                                                                                                                                                                           |
+| `readiness`      | Experiment readiness: share of runs with an arm, sample sizes per group                                                                                                                                                                    |
+| `all`            | All sections in sequence (default)                                                                                                                                                                                                         |
 
 ### Lifecycle classes
 
@@ -88,7 +88,16 @@ garbage: dead/base = 27/465 = 5.8%
 
 ### Memory lifecycle funnel
 
-The `memory` view ends with a stage funnel `added → retrieved → injected → cited → applied` built from `memory_stage` signal events (see the signal-log guide): which share of the store ever gets retrieved, lands in an agent's context, gets cited in an answer, and actually changes the code. `added` counts all store objects (`events` = `-`: births live in the memory event log, not the signal log); each stage reports `events` plus `unique_ids` (distinct memory ids that reached the stage). The JSON payload adds `appliedUniqueIds` — the sorted list of ids that reached `applied`.
+The `memory` view ends with a stage funnel `added → retrieved → injected → cited → applied` built from `memory_stage` signal events: which share of the store ever gets retrieved, lands in an agent's context, gets cited in an answer, and actually changes the code. `added` counts all store objects (`events` = `-`: births live in the memory event log, not the signal log); each stage reports `events` plus `unique_ids` (distinct memory ids that reached the stage). The JSON payload adds `appliedUniqueIds` — the sorted list of ids that reached `applied`.
+
+Stage events come from two kinds of writers (the command reference: [wolf memory-stage](#wolf-memory-stage)):
+
+- **automatic** — `wolf search` / `wolf get` write `retrieved` on a non-empty result set; `wolf brief` / `wolf call` write `injected` when injections are actually delivered. Nothing to record → no event: an empty search result writes no `retrieved`, a brief without injections writes no `injected`.
+- **manual** — the agent itself records `cited` (it referenced the object in its answer/report) and `applied` (the object's content made it into the code/decision):
+
+```bash
+wolf memory-stage --stage applied --ids mem_…_use_append_only_jsonl,mem_…_prefer_vitest --actor agent:worker
+```
 
 `attribution: accepted X/Y (Z%)` — the share of `accepted` `task_evaluated` verdicts preceded by an injection in the same `session_id` (an `injected` stage with `ts` ≤ the verdict's `ts`). Injections without a `session_id` do not participate. Honest nulls: with no data the line reads `attribution: n/a (<reason>)` — `no task_evaluated`, `no injected` or `no accepted verdicts`.
 
@@ -122,7 +131,7 @@ attribution: accepted 1/1 (100.0%)
 The tool ledger separates two origins with different economics:
 
 - `script` — objects registered in the tool registry (custom scripts in `.wolf/tools/`, full register → use → expose → deprecate lifecycle). Reuse of a script saves re-creation effort.
-- `model-native` — the model's own tools (MCP, built-in), which are not in the registry and are visible only through signal-log `tools` attributions and `tool_error` events. Creation economy doesn't apply; they are outside Wolf's jurisdiction. Every `mr-wolf_*` MCP tool call is itself instrumented (`mcp_call` event with duration and outcome).
+- `model-native` — the model's own tools (MCP, built-in), which are not in the registry and are visible only through signal-log `tools` attributions and `tool_error` events. Creation economy doesn't apply; they are outside Wolf's jurisdiction. Every `mr-wolf_*` MCP tool call is itself instrumented: an `mcp_call` event with `tool_name`, `duration_ms` and `outcome` (`ok` \| `error`; `error` only when the handler throws — a textual "not found" is `ok`), plus `detail.method` (the method invoked) and `detail.wolf_version` (the runtime version from package.json, so one log can distinguish behavior across Wolf versions).
 
 Promotion candidates: a script candidate whose `usage_count` reaches the pattern threshold is an expose candidate; a native name appearing repeatedly in the logs without registration is a register candidate (precedent: the search-before-write rule).
 
@@ -188,7 +197,7 @@ open questions:
 
 ### Coordination
 
-`--view coordination` aggregates `coord_event` signals written by `wolf coord` (who writes which kind — see the harness-integration guide):
+`--view coordination` aggregates `coord_event` signals written by [`wolf coord`](#wolf-coord) (the kinds table and who writes what is in that command's section):
 
 - **counts** — events per `kind × actor_from` pair (who initiated what);
 - **recent** — the 20 most recent events: ts, kind, `from->to`, refs;
@@ -232,7 +241,7 @@ blockers:
 - **n** — cohort runs in the campaign;
 - **median_weighted** — median weighted of the cohort's runs; below 3 runs the whole cohort metric row is `n/a` with note `n<3: min 3 runs` (shares are not shown on tiny samples); an empty cohort notes `no runs`;
 - **accepted\_%** — share of accepted verdicts in the cohort: verdicts enter the campaign via `wolf task-eval --campaign <id>` (`detail.campaign_id`) and are cohorted by the same session join; a campaign with no verdicts at all → `n/a` with note `no verdicts`;
-- **pfail\_%** — runs with `outcome !== 'ok'` / n.
+- **pfail\_%** — runs with `outcome !== 'ok'` / n (`processFailureRatePct` in the JSON cohort row).
 
 The view is correlational: p-values and confidence intervals are wrong at these sample sizes — a deliberate P3 boundary. Read a cohort split as a hypothesis prompt, not a proof.
 
@@ -366,7 +375,7 @@ Options:
 
 A plain call prints the panel; once at least one snapshot exists, it also prints a delta versus the latest snapshot (`delta vs <ts>` over the numeric fields of each block).
 
-The panel ends with an absolutes block: run and process-failure counts (`processFailures`), weighted and raw token sums, cache-hit ratio, average duration, and per-model `costPerCompletedRun`. `$` fields appear only when `pricing` is configured (see [Configuration](#configuration)).
+The panel ends with an absolutes block: run and process-failure counts (`processFailures`), weighted and raw token sums, cache-hit ratio, average duration, and per-model `costPerCompletedRun` (`$cost / completedRuns`). `$` fields appear only when `pricing` is configured (see [Configuration](#configuration)).
 
 ```bash
 wolf effectiveness
@@ -398,6 +407,8 @@ thresholds: noise ok<20 warn<=40 bad | silent ok<30
 
 Every run writes raw tokens (`input`, `output`, `cache_read`), `duration_ms` and the v2 identity fields (`event_id`, `run_id`, `trace_id`, `config_hash`, `prompt_hash`, `tools`, `schema_version: 2`) into the signal log — since P1 the signal log is the single canonical source of run metrics, and `.wolf/run-log.jsonl` is no longer written (existing history is still read for the economy transition window; run `wolf migrate run-log` to archive the legacy file and stop the double count). Runs without the new flags keep the old record format — the enrichment is backward-compatible.
 
+The `weighted` cost logged by `wolf run` is not a raw token sum but a fixed-formula blend: `weighted = input + 0.1 × cache_read + 5 × output` — cache reads are nearly free, generation costs five times the input. The same number feeds the medians of the agent ledger, campaigns, outliers and the tool economy, which is why `weighted` and raw token sums differ.
+
 ```bash
 wolf run "Fix the failing test" --experiment exp-20260904-x1 --arm wolf --task-id t3 --tool wolf-search --trace-id 7f3a2b1c-9d4e-4f6a-8b2c-1e5d7a9f0b3e
 ```
@@ -423,6 +434,62 @@ wolf task-eval --verdict accepted --task-id docs-v2.5.0-rename --scorer human --
 task verdict recorded: verdict=accepted scorer=human
 ```
 
+## wolf memory-stage
+
+Record a memory lifecycle stage into the signal log (`memory_stage` event) — the manual writer for the stages automation can't know about:
+
+```text
+Usage: wolf memory-stage [options]
+```
+
+Options:
+
+- `--stage <stage>` — memory lifecycle stage (choices: `retrieved`, `injected`, `cited`, `applied`)
+- `--ids <ids>` — comma-separated memory object ids (a non-empty list; one event per batch, not per object)
+- `--actor <actor>` — actor attribution (default: `WOLF_ACTOR` env or `user:cli`; agents pass `agent:<name>`)
+- `--session <id>` — session id; picks up `WOLF_SESSION` when omitted
+
+Semantics: `retrieved` (the object came out of the store) and `injected` (the object entered the agent's context) are written automatically by `wolf search`/`get` and `wolf brief`/`call` — but only when there is something to record (empty result → no event). `cited` (the object was referenced in an answer/report) and `applied` (the object's content reached the code/decision) are yours to write. Honest and lazy: nothing applied → write nothing.
+
+```bash
+wolf memory-stage --stage cited --ids mem_…_validate_fts_queries --actor agent:worker
+```
+
+Stages feed the [memory lifecycle funnel](#memory-lifecycle-funnel) and attribution; see also [Harness integration](#harness-integration) for the `WOLF_SESSION` binding.
+
+## wolf coord
+
+Record a coordination event into the signal log (`coord_event` event) — a fact of a task moving between roles: who, to whom, what.
+
+```text
+Usage: wolf coord [options]
+```
+
+Options:
+
+- `--kind <kind>` — coordination event kind (choices: `handoff`, `review`, `acceptance`, `blocker`, `escalation`)
+- `--from <actor>` — source actor (default: `WOLF_ACTOR` env or `user:cli`)
+- `--to <actor>` — target actor, if any
+- `--ref <ids>` — comma-separated referenced object ids (repeatable; default: `[]`)
+- `--note <text>` — free-form note
+- `--actor <actor>` — writer actor attribution (default: `WOLF_ACTOR` env or `user:cli`)
+
+Kinds and who writes them:
+
+| Kind         | When it is written                                              | Typical writer               |
+| ------------ | --------------------------------------------------------------- | ---------------------------- |
+| `handoff`    | the L0 coordinator dispatched a task/context to an executor     | coordinator (L0)             |
+| `review`     | a reviewer reviewed the result (`--from` = the reviewer)        | lead / reviewer              |
+| `acceptance` | the task/phase was accepted (`--from` = whoever accepted)       | lead / reviewer              |
+| `blocker`    | work is stuck on a blocker (`--ref` = the blocker object id)    | whoever hit it (lead/worker) |
+| `escalation` | a worker could not cope and escalates the question one level up | coordinator (L0), worker     |
+
+For `blocker`, `--ref` should be the id of a real blocker object (`wolf blocker add`) — then [coordination analytics](#coordination) closes the open→resolve pair on `wolf blocker resolve <id>`.
+
+```bash
+wolf coord --kind handoff --from "L0:wolf" --to "L1:lead" --ref mem_…_report --note "wave C"
+```
+
 ## Coverage, acceptance and data quality
 
 `wolf analytics` (end of `--view all`) and `wolf dashboard` (trends section) print data-honesty lines. Real output:
@@ -442,7 +509,7 @@ completeTraceRatePct: n/a (span model planned P2)
 
 ## Harness integration
 
-Wrapper and plugin authors can write v2 events into the signal log (`.wolf/metrics/session-metrics.jsonl`) and get first-class analytics. The full format lives in the signal-log guide; the essentials:
+Wrapper and plugin authors can write v2 events into the signal log (`.wolf/metrics/session-metrics.jsonl`) and get first-class analytics. The essentials:
 
 **Required fields** (minimum — without them the line counts as malformed):
 
@@ -456,9 +523,27 @@ Wrapper and plugin authors can write v2 events into the signal log (`.wolf/metri
 }
 ```
 
-**v2 identity fields** (optional, but the fuller the richer the cross-run analytics): generate an `event_id` (uuid) per event and set `schema_version: 2`; thread `run_id`/`trace_id` through the chain (one trace per task, one run per invocation); `attempt` for retries; `config_hash`/`prompt_hash` as input signatures (sha256, first 12 chars).
+**v2 identity fields** (all optional — but the fuller, the richer the cross-run analytics):
 
-**role_level follows the actor convention**: L0 — human/owner, L1 — executor (worker/CLI run), L2 — coordinator/orchestrator. Default: omit the field.
+| Field            | Type / form            | Semantics                                                   |
+| ---------------- | ---------------------- | ----------------------------------------------------------- |
+| `event_id`       | uuid                   | unique event id; duplicates are detected by data-quality v2 |
+| `schema_version` | `2` (literal)          | schema version; absent = read as v1                         |
+| `run_id`         | uuid                   | id of the `wolf run` invocation — the task's chain          |
+| `trace_id`       | uuid                   | trace: groups the runs of one task (`--trace-id` or a uuid) |
+| `parent_span_id` | string                 | parent span (reserved; the span model is planned for P2)    |
+| `role_level`     | `L0` \| `L1` \| `L2`   | writer's role level by the actor convention                 |
+| `attempt`        | number                 | retry number within the run                                 |
+| `task_id`        | string                 | shared task id (written whenever `--task-id` is passed)     |
+| `config_hash`    | sha256, first 12 chars | signature of `.wolf/config.yaml` at run time                |
+| `prompt_hash`    | sha256, first 12 chars | signature of the prompt text                                |
+| `tools`          | `string[]`             | tools of the run (from `--tool`) — feeds the tool economy   |
+
+`campaign_id` (from `--campaign`) is the campaigns' grouping key — see [Campaigns](#campaigns).
+
+**role_level follows the actor convention**: L0 — coordinator (dispatch and acceptance; the human owner sits here at acceptance), L1 — lead/reviewer, L2 — worker/executor. Default: omit the field.
+
+**`WOLF_SESSION` ties the auto-writers to the session**: the automatic `memory_stage` writers (`wolf search`/`get` → `retrieved`, `wolf brief`/`call` → `injected`) take the session id from the `WOLF_SESSION` env var — the symmetric twin of `WOLF_ACTOR`. A harness that exports `WOLF_SESSION` when an agent session starts gets its `injected` events joined with `task_evaluated` by `session_id`, so attribution sees auto-path injections; without the env the events are written with `session_id: null` and do not participate in attribution. `wolf memory-stage` without an explicit `--session` picks up `WOLF_SESSION` as well.
 
 Mechanics: append via `appendSignal(baseDir, event)` (or append a JSON line + `\n`); unknown fields are stripped by the Zod schema on read, records without `schema_version` are read as v1. Duplicate `event_id`s are deduplicated by analytics (first copy wins, repeats surface as `duplicateEventRatePct`). A telemetry failure must never break the wrapped call — keep it in try/catch.
 

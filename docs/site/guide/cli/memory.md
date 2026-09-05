@@ -10,7 +10,7 @@ Usage: wolf add [options]
 
 Options:
 
-- `--type <type>` — memory type. Choices: `decision`, `lesson`, `observation`, `session-summary`, `open-question`, `context`, `work-thread`, `info-request`, `article`, `blocker`, `session-checkpoint`, `rule`, `document-ref`, `document-native`, `task-brief`, `report`, `council-question`, `council-opinion`, `synthesis`, `escalation`, `decision-request`, `call-injection`, `playbook`, `tool`
+- `--type <type>` — memory type. Choices: `decision`, `lesson`, `observation`, `complaint`, `session-summary`, `open-question`, `context`, `work-thread`, `info-request`, `article`, `blocker`, `session-checkpoint`, `rule`, `document-ref`, `document-native`, `task-brief`, `report`, `council-question`, `council-opinion`, `synthesis`, `escalation`, `decision-request`, `call-injection`, `playbook`, `tool`
 - `--title <title>` — title
 - `--body <body>` — body text
 - `--tags <tags>` — comma-separated tags
@@ -88,6 +88,38 @@ Options:
 
 ```bash
 wolf search "supersede" --type rule --hide-superseded
+```
+
+### Colon queries
+
+The query string itself supports `field:value` prefixes over the indexed columns:
+
+- `type:lesson`, `status:active` — filter by the type / status column;
+- `title:checklist`, `body:redis`, `tags:deploy` — filter by the title / body / tags column;
+- prefixes can be combined with words: `type:lesson redis` narrows lessons mentioning redis.
+
+An unknown prefix is not an error: `tag:deployment` (no such column) drops the prefix and searches the value as a regular word. The rest is FTS word search: `AND`/`OR` work as operators, `NOT`/`NEAR` are treated as plain words, quoted phrases degrade to AND of their words, hyphenated tokens search both parts.
+
+The structured flags above (`--type`, `--status`, `--tag`, …) do the same filtering with exact matching and remain the recommended path for scripts; colon queries shine in interactive, one-off exploration.
+
+## wolf update
+
+Update triage fields of a memory object (the Steward's triage command for complaints).
+
+```text
+Usage: wolf update [options] <id>
+```
+
+Arguments: `id` — memory object id.
+
+Options:
+
+- `--set <k=v>` — set a triage field: `triage|resolution` (repeatable)
+- `--inc <field=n>` — increment a monotonic counter by integer n > 0: `dispatch_ages|corroborations` (repeatable)
+- `--tags <tags>` — append comma-separated tags
+
+```bash
+wolf update mem_…_complaint --set triage=duplicate --inc dispatch_ages=1
 ```
 
 ## wolf supersede

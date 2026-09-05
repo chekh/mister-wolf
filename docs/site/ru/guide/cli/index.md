@@ -1,6 +1,6 @@
 # Справочник CLI
 
-Быстрый индекс всех 39 команд `wolf`. Каждая строка ведёт на описание команды; заголовки разделов — на страницы разделов.
+Быстрый индекс всех 45 команд `wolf`. Каждая строка ведёт на описание команды; заголовки разделов — на страницы разделов.
 
 ## Память
 
@@ -13,6 +13,7 @@
 | [`wolf supersede`](/ru/guide/cli/memory#wolf-supersede)         | Заменить объект памяти другим           | [Память](/ru/guide/cli/memory) |
 | [`wolf transition`](/ru/guide/cli/memory#wolf-transition)       | Сменить статус жизненного цикла объекта | [Память](/ru/guide/cli/memory) |
 | [`wolf rebuild-index`](/ru/guide/cli/memory#wolf-rebuild-index) | Перестроить SQLite-индекс поиска        | [Память](/ru/guide/cli/memory) |
+| [`wolf update`](/ru/guide/cli/memory#wolf-update)               | Обновить triage-поля объекта памяти     | [Память](/ru/guide/cli/memory) |
 
 ## Сессии и контекст
 
@@ -56,10 +57,13 @@
 
 ## Аналитика
 
-| Команда                                                    | Что делает                                                                                                                                   | Страница                             |
-| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| [`wolf analytics`](/ru/guide/cli/analytics#wolf-analytics) | Аналитика эффективности: ledger'ы памяти/инструментов/правил, воронка, агенты, steward view, консилиумы, выбросы, готовность к экспериментам | [Аналитика](/ru/guide/cli/analytics) |
-| [`wolf dashboard`](/ru/guide/cli/analytics#wolf-dashboard) | Консольный дашборд: health, ledgers, trends                                                                                                  | [Аналитика](/ru/guide/cli/analytics) |
+| Команда                                                          | Что делает                                                                                                                 | Страница                             |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| [`wolf analytics`](/ru/guide/cli/analytics#wolf-analytics)       | Аналитика эффективности: ledger'ы памяти/инструментов/правил, воронка, агенты, steward view, консилиумы, выбросы, кампании | [Аналитика](/ru/guide/cli/analytics) |
+| [`wolf dashboard`](/ru/guide/cli/analytics#wolf-dashboard)       | Консольный дашборд: health, ledgers, trends                                                                                | [Аналитика](/ru/guide/cli/analytics) |
+| [`wolf task-eval`](/ru/guide/cli/analytics#wolf-task-eval)       | Записать вердикт по задаче в сигнальный лог (acceptance-метрики, coverage)                                                 | [Аналитика](/ru/guide/cli/analytics) |
+| [`wolf memory-stage`](/ru/guide/cli/analytics#wolf-memory-stage) | Записать стадию памяти (`cited`/`applied`) в сигнальный лог                                                                | [Аналитика](/ru/guide/cli/analytics) |
+| [`wolf coord`](/ru/guide/cli/analytics#wolf-coord)               | Записать координационное событие (handoff/review/acceptance/blocker/escalation) в сигнальный лог                           | [Аналитика](/ru/guide/cli/analytics) |
 
 ## Платформа и обслуживание
 
@@ -74,4 +78,6 @@
 | [`wolf migrate`](/ru/guide/cli/platform#wolf-migrate)     | Разовая миграция layout                                             | [Платформа и обслуживание](/ru/guide/cli/platform) |
 | [`wolf validate`](/ru/guide/cli/platform#wolf-validate)   | Проверить целостность хранилища                                     | [Платформа и обслуживание](/ru/guide/cli/platform) |
 | [`wolf doctor`](/ru/guide/cli/platform#wolf-doctor)       | Проверить все зарегистрированные проекты                            | [Платформа и обслуживание](/ru/guide/cli/platform) |
+| [`wolf sync`](/ru/guide/cli/platform#wolf-sync)           | Перерендерить базовый набор Wolf (память не трогается)              | [Платформа и обслуживание](/ru/guide/cli/platform) |
+| [`wolf upgrade`](/ru/guide/cli/platform#wolf-upgrade)     | Обновить глобальную установку wolf до последней npm-версии          | [Платформа и обслуживание](/ru/guide/cli/platform) |
 | [`wolf run`](/ru/guide/cli/platform#wolf-run)             | Запустить opencode с моделью из routing-объекта Wolf                | [Платформа и обслуживание](/ru/guide/cli/platform) |

@@ -1,6 +1,6 @@
 # Руководство пользователя Mr. Wolf
 
-**Версия CLI:** 0.1.0
+**Версия CLI:** 2.8.0
 **Статус:** активно развивается
 
 Связанные документы:
@@ -32,7 +32,7 @@ Mr. Wolf — локальный harness проекта для работы с AI
 - `.wolf/memory/relations.jsonl` — явные связи между артефактами;
 - SQLite-индекс — полнотекстовый поиск (перестраивается `rebuild-index`);
 - `.wolf/tools/` — зарегистрированные скрипты-инструменты;
-- `.wolf/run-log.jsonl` — журнал запусков с весовой стоимостью;
+- `.wolf/metrics/session-metrics.jsonl` — сигнальный лог: события сессий, run-метрики, жалобы (см. [signal-log](signal-log.md));
 - `.wolf/templates/` — шаблоны для эволюции (GEPA);
 - `.wolf/config.yaml` — конфигурация, включая таксономию типов.
 
@@ -70,7 +70,7 @@ wolf add --type lesson \
 
 Ключевые флаги:
 
-- `--type` — один из: `decision`, `lesson`, `observation`, `session-summary`, `open-question`, `context`, `work-thread`, `info-request`, `article`, `blocker`, `session-checkpoint`, `rule`, `document-ref`, `document-native`, `task-brief`, `report`, `council-question`, `council-opinion`, `synthesis`, `escalation`, `decision-request`, `call-injection`, `playbook`, `tool`.
+- `--type` — один из 25 активных типов: `decision`, `lesson`, `observation`, `complaint`, `session-summary`, `open-question`, `context`, `work-thread`, `info-request`, `article`, `blocker`, `session-checkpoint`, `rule`, `document-ref`, `document-native`, `task-brief`, `report`, `council-question`, `council-opinion`, `synthesis`, `escalation`, `decision-request`, `call-injection`, `playbook`, `tool`.
 - `--title`, `--body`, `--tags` (через запятую) — базовые поля.
 - `--confidence low|medium|high`, `--importance 0..1` — оценка достоверности и важности.
 - `--set k=v` — произвольное дополнительное поле (повторяемый; значение `[a,b]` — строковый массив).
@@ -98,6 +98,24 @@ wolf search "relations" \
 ```
 
 Фильтры `search`: `--type`, `--status`, `--tag` (повторяемый), `--confidence`, `--min-importance` / `--max-importance`, `--created-after` / `--created-before` (ISO-даты), `--limit`, `--file-path` (по связанному файлу), `--hide-superseded` (по умолчанию замещённые показываются с пометкой `[superseded]`).
+
+#### Синтаксис FTS-запроса
+
+Помимо обычных слов, поисковый запрос понимает синтаксис FTS5 (список колонок
+подскажет сам `search` при пустой выдаче):
+
+- `field:value` — колоночный фильтр для колонок индекса: `memory_id`, `type`,
+  `title`, `body`, `tags`, `status`, `review_state` (например,
+  `wolf search "type:lesson vitest"`); неизвестное поле отбрасывается,
+  значение ищется как обычное слово (`tag:deployment` → поиск слова
+  `deployment` — теговые фильтры делай флагом `--tag`);
+- `AND` — неявный (пробел = пересечение), заглавное `OR` — оператор объединения
+  (`deployment OR rollback`); `NOT`/`NEAR` операторами не являются — ищутся как
+  обычные слова;
+- слова ищутся по префиксу (`depl` найдёт `deployment`); кавычки вырезаются
+  (фразовая семантика деградирует до AND); дефис — разделитель:
+  `steward-наставник` = AND двух слов; регистр и алфавит (кириллица/латиница)
+  не важны.
 
 ### 3.3. supersede / transition — жизненный цикл
 
@@ -433,17 +451,23 @@ wolf run "Проверь контракт add --set" \
   --tool cli-dump
 ```
 
-Флаги: `--agent <name>`, `--title` (метка в журнале), `--session <sid>` (продолжить сессию), `--tool <name>` (повторяемый — отметить используемые инструменты).
+Флаги: `--agent <name>`, `--title` (метка в журнале), `--session <sid>` (продолжить сессию), `--tool <name>` (повторяемый — отметить используемые инструменты), `--experiment <id>` + `--arm wolf|baseline` (экспериментальная разметка), `--task-id <id>` (общий id задачи), `--campaign <id>` (id кампании для `analytics --view campaign`), `--trace-id <id>` (трасса задачи; дефолт — свежий uuid), `--attempt <n>` (номер попытки). Метрики прогона пишутся run-сигналом в сигнальный лог (схема — [signal-log](signal-log.md)).
 
-### 6.4. complain — жалоба на агента/методологию
+### 6.4. complain — жалоба на правило/агента/методику
 
-Жалоба — «горячий сигнал» для Стюарда: она запускает пересмотр playbook и может привести к его новой версии. Подробности — [протокол жалоб](complaint-protocol.md).
+Жалоба — «горячий сигнал» для Стюарда: структурированный объект типа `complaint` (status `open`), который запускает пересмотр правила/playbook. Подробности — [протокол жалоб](complaint-protocol.md).
 
 ```bash
-wolf complain --about skill:apprentice --text "Игнорирует --latest при get и читает устаревшую версию"
+wolf complain --about skill:apprentice \
+  --rule "Правило требует npx vitest run перед отчётом" \
+  --evidence "Воркер сдал задачу без прогона тестов (e2e red, лог-цитата)" \
+  --proposal "Добавить STOP-гейт в playbook перед шагом отчёта"
 ```
 
-`--about` — цель жалобы: id playbook, id агента или имя skill (например, `skill:apprentice`).
+- `--about` — цель: id базового агента (`worker-implementer`), `skill:<имя>` или существующий mem-id;
+- `--rule` — какое правило плохо (указатель + что требует);
+- `--evidence` — доказательство (дословная цитата + что произошло: файл/тест/числа); `--text` — deprecated-алиас;
+- `--proposal` — предлагаемое изменение правила.
 
 ---
 
@@ -475,7 +499,7 @@ wolf tool expose cli-dump
 wolf tool deprecate cli-dump --reason "Заменён на rtk"
 wolf tool revive cli-dump
 
-# Счётчики использования + экономика переиспользования (.wolf/run-log.jsonl)
+# Счётчики использования + экономика переиспользования (run-сигналы сигнального лога)
 wolf tool stats
 ```
 
@@ -732,8 +756,9 @@ wolf council synthesize --question-id <qid> --recommendation "..."
 # Процессы
 wolf bootstrap                     # скан + черновик стартовой памяти
 wolf scaffold agent|skill|command <name> [--persona "..."] [--model "..."] [--from-playbook <id>]
-wolf run "prompt" [--agent <name>] [--title "..."] [--session <sid>] [--tool <name>]
-wolf complain --about skill:apprentice --text "..."
+wolf run "prompt" [--agent <name>] [--title "..."] [--session <sid>] [--tool <name>] \
+           [--experiment <id> --arm wolf|baseline] [--task-id <id>] [--campaign <id>] [--trace-id <id>] [--attempt <n>]
+wolf complain --about <agent-id|skill:name|mem-id> --rule "..." --evidence "..." --proposal "..."
 
 # Инструменты (tool-экономика)
 wolf tool register <script-path> --name <name> [--language typescript] [--contract-in ...] [--contract-out ...] [--contract-env ...] [--notes ...] [--force]

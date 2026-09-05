@@ -2,7 +2,7 @@
 
 ## wolf init
 
-Initialize Mr. Wolf memory for this project (idempotent, non-interactive).
+Initialize Mr. Wolf memory for this project (interactive in TTY; non-interactive requires `--model`).
 
 ```text
 Usage: wolf init [options]
@@ -11,7 +11,10 @@ Usage: wolf init [options]
 Options:
 
 - `--platform <ids>` — explicit platform list (comma-separated: `opencode,claude`); replaces the current set
+- `--model <id>` — model for Mr. Wolf and its agents (`<providerID>/<modelID>`); required when non-interactive
 - `--recreate` — backup a corrupted `.wolf/config.yaml` and re-create it from defaults (default: false)
+
+In a TTY `wolf init` asks for the model interactively; in scripts and CI pass `--model` explicitly.
 
 ```bash
 wolf init --platform opencode,claude
@@ -165,7 +168,7 @@ Arguments: `name-or-id` — tool name or id.
 
 ### wolf tool stats
 
-Usage counters per tool + reuse economy from `.wolf/run-log.jsonl`.
+Usage counters per tool + reuse economy (signal log + legacy run-log). The canonical source is the signal log; a legacy `.wolf/run-log.jsonl` is still merged during the transition window — run `wolf migrate run-log` to archive it and stop the double count.
 
 ```text
 Usage: wolf tool stats [options]
@@ -245,6 +248,20 @@ Usage: wolf doctor [options]
 
 No options beyond `-h, --help`.
 
+## wolf sync
+
+Re-render the wolf base set (stamped files only; memory untouched).
+
+```text
+Usage: wolf sync [options]
+```
+
+No options beyond `-h, --help`.
+
+```bash
+wolf sync
+```
+
 ## wolf run
 
 Run opencode with the model from the Wolf routing object; log weighted token cost.
@@ -263,10 +280,29 @@ Options:
 - `--tool <name>` — mark this run as using tool(s) (repeatable; default: `[]`)
 - `--experiment <id>` — experiment id (comparative methodologies, e.g. RCT)
 - `--arm <choice>` — experiment arm (choices: `wolf`, `baseline`)
-- `--task-id <id>` — task id within the experiment (golden tasks)
+- `--task-id <id>` — task id (written top-level whenever passed; duplicated in the experiment when `--experiment`)
+- `--campaign <id>` — campaign id (written top-level `campaign_id`; groups runs for `--view campaign`)
+- `--trace-id <id>` — trace id (defaults to a fresh uuid)
+- `--attempt <n>` — attempt number within the task
 
 See [Analytics](/guide/cli/analytics#wolf-run-enrichment) for run enrichment: raw tokens, `duration_ms` and experiment fields in the logs.
 
 ```bash
 wolf run "Summarize the current blockers" --title "blocker-scan"
+```
+
+## wolf upgrade
+
+Upgrade the global `wolf` installation to the latest npm version (runs `npm install -g mister-wolf@latest`).
+
+```text
+Usage: wolf upgrade [options]
+```
+
+Options:
+
+- `--check` — only check for a newer version, do not install anything (default: false)
+
+```bash
+wolf upgrade --check
 ```

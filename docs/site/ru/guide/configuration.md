@@ -4,16 +4,18 @@
 
 YAML-файл, валидируется zod-схемой. Ключи и дефолты:
 
-| Ключ                                | Тип / дефолт                                                                                     |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `schema_version`                    | int; текущая **2** (легаси-проекты без маркера = 1)                                              |
-| `artifact_sources`                  | string[] — дефолт `[]`                                                                           |
-| `memory_types.core`                 | генерируемый блок из кода-канона (`wolf taxonomy sync`); ручные правки перезаписываются          |
-| `memory_types.project`              | свои типы: lifecycle, subdir_thread, subdir_shared, fields; не могут конфликтовать с core-типами |
-| `error_class_taxonomy`              | [{id, match[]}] — дефолт `[]`                                                                    |
-| `learning.pattern_threshold`        | int >= 1 — дефолт **3**                                                                          |
-| `learning.decay_ttl`                | map тип → число сессий без срабатывания                                                          |
-| `learning.effectiveness_thresholds` | {noise_ok, noise_warn, silent_ok} — проценты                                                     |
+| Ключ                                | Тип / дефолт                                                                                           |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `schema_version`                    | int; текущая **2** (легаси-проекты без маркера = 1)                                                    |
+| `artifact_sources`                  | string[] — дефолт `[]`                                                                                 |
+| `memory_types.core`                 | генерируемый блок из кода-канона (`wolf taxonomy sync`); ручные правки перезаписываются                |
+| `memory_types.project`              | свои типы: lifecycle, subdir_thread, subdir_shared, fields; не могут конфликтовать с core-типами       |
+| `error_class_taxonomy`              | [{id, match[]}] — дефолт `[]`                                                                          |
+| `learning.pattern_threshold`        | int >= 1 — дефолт **3**                                                                                |
+| `learning.decay_ttl`                | map тип → число сессий без срабатывания                                                                |
+| `learning.effectiveness_thresholds` | {noise_ok, noise_warn, silent_ok} — проценты                                                           |
+| `pricing`                           | map модель → `{input, output, cache_read}` в $/Mtok; без блока `$`-поля скрыты (числа не выдумываются) |
+| `analytics.thresholds`              | классификация lifecycle памяти: `{new_days, workhorse_uses}`; дефолт `{14, 3}`                         |
 
 Пример:
 
@@ -24,7 +26,19 @@ learning:
   pattern_threshold: 3
   decay_ttl: {} # map: тип -> число сессий без срабатывания
   effectiveness_thresholds: {} # noise_ok / noise_warn / silent_ok, проценты
+# $-конверсия: модель -> $/Mtok; без блока $-поля скрыты
+pricing:
+  zai-coding-plan/glm-5.2:
+    input: 0.6
+    output: 2.2
+    cache_read: 0.08
+analytics:
+  thresholds:
+    new_days: 14 # NEW до этого возраста
+    workhorse_uses: 3 # WORKHORSE от этого числа использований
 ```
+
+`pricing` и `analytics.thresholds` управляют [аналитикой эффективности](/ru/guide/cli/analytics#конфигурация) (`$`-поля и lifecycle-классы); там же — примеры использования.
 
 ## Свои типы памяти
 

@@ -25,8 +25,10 @@
 - [Протокол Стюарда: bootstrap](./guide/steward-bootstrap.md) — свёртка черновиков стартовой памяти после `wolf bootstrap`.
 - [Протокол обучения Стюарда](./guide/steward-learn.md) — полный цикл самообучения Ф20–26 (кто/что/когда).
 - [Сигнальный лог (Ф20/Ф21)](./guide/signal-log.md) — события сигнального лога, пороги, читатели.
-- [Экономика инструментов](./guide/tool-economy.md) — переиспользование tool-объектов, счётчики, run-log.
+- [Интеграция харнессов](./guide/harness-integration.md) — жизненный цикл памяти (cited/applied, `wolf memory-stage`), `WOLF_SESSION`, `wolf coord`, кампании «с памятью и без».
+- [Экономика инструментов](./guide/tool-economy.md) — переиспользование tool-объектов, счётчики, weighted-экономика.
 - [Панель эффективности и A/B-бенчмарки](./guide/effectiveness.md) — `wolf effectiveness`: пороги OK/WARN/BAD, действия при BAD; методика `scripts/bench/`.
+- [Аналитика эффективности](./guide/analytics.md) — `wolf analytics`/`dashboard`/`task-eval`: честные метрики, lifecycle памяти и атрибуция, кампании и per-memory ROI, data-quality.
 - [Master plan template](./templates/master-plan-template.md) — шаблон мастер-плана фичи (5 стадий).
 - [UX scenarios](./ux-scenarios/README.md) — 12 сценариев использования как requirements-материал.
 

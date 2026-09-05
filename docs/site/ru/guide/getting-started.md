@@ -16,7 +16,7 @@ cd my-project && wolf init   # 2) проект: скелет .wolf/ + MCP-кон
 wolf bootstrap               # 3) память: стартовое наполнение из документов проекта
 ```
 
-- `wolf init` идемпотентен и неинтерактивен: создаёт `.wolf/` и MCP-конфиги платформ (opencode, Claude Code — детект автоматический).
+- `wolf init` создаёт `.wolf/` и MCP-конфиги платформ (opencode, Claude Code — детект автоматический); в терминале спрашивает модель интерактивно, вне TTY требует `--model`.
 - После `wolf init` **перезапустите агентскую платформу** — MCP-сервер Wolf подключается при старте. Claude Code при первом старте попросит approve project-scope MCP-сервер — это штатно.
 - Явно задать платформы: `wolf init --platform opencode,claude` (список заменяет текущий набор).
 - `wolf bootstrap` сканирует проект и создаёт черновую стартовую память: proposed-правила, document-ref'ы, work-thread.
@@ -75,6 +75,6 @@ wolf recap       # сводка активной памяти: правила, �
 
 - [Основные концепции](/ru/guide/core-concepts) — типы памяти, lifecycle, governance, инъекции.
 - [Справочник CLI](/ru/guide/cli/) — все команды и подкоманды.
-- [Интеграция MCP](/ru/guide/mcp) — 21 инструмент для агентов.
+- [Интеграция MCP](/ru/guide/mcp) — 22 инструмента для агентов.
 - [Конфигурация](/ru/guide/configuration) — `.wolf/config.yaml` и свои типы памяти.
 - [Решение проблем](/ru/guide/troubleshooting) — частые кейсы и лечение.

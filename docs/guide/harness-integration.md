@@ -69,12 +69,12 @@ wolf coord --kind handoff --from "L0:wolf" --to "L1:lead" --ref mem_…_report -
 `review`/`acceptance`; `blocker` — тот, кто столкнулся (обычно lead/воркер),
 причём `--ref` должен быть id реального blocker-объекта (`wolf blocker add`),
 тогда аналитика закроет пару по `wolf blocker resolve` (см.
-[analytics.md](./analytics.md), «Координационная аналитика»).
+[analytics.md](./analytics.md), «`--view coordination` — координация»).
 
 Агрегация: `wolf analytics --view coordination` (counts kind×from, последние
 события, blocker-пары) и `--view memory` (воронка стадий + attribution).
 
-## Кампании: прогоны с памятью и без (P3)
+## Кампании: прогоны с памятью и без
 
 Сценарий A/B «та же задача, с памятью и без»: одна задача, N прогонов в
 сессиях с injected-памятью (обычный поток `wolf call`/`brief` с выставленным
@@ -102,8 +102,8 @@ wolf analytics --view campaign
 ```
 
 Когорта рана определяется по его `session_id` — была ли в сессии
-`memory_stage injected` (тот же join, что у attribution), поэтому держи армы
-в разных сессиях, иначе сплит нечестный. Когорта с n < 3 и кампания без
-вердиктов дают `n/a` с reason — не подкручивай выборку, копи раны. Витрина
-корреляционная: `--view campaign` — повод для гипотезы, не доказательство
-(см. [analytics.md](./analytics.md), «Кампании и когорты (P3)»).
+`memory_stage injected` (механика join — в [analytics.md](./analytics.md),
+«Кампании и ROI»), поэтому держи армы в разных сессиях, иначе сплит
+нечестный. Когорта с n < 3 и кампания без вердиктов дают `n/a` с reason —
+не подкручивай выборку, копи раны. Витрина корреляционная:
+`--view campaign` — повод для гипотезы, не доказательство.

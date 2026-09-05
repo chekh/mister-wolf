@@ -2,7 +2,7 @@
 
 Бинарник `wolf` глобального пакета `mister-wolf`. У каждой команды есть `-h, --help`; дословный вывод — `wolf <cmd> --help`.
 
-Команды сгруппированы по назначению: [Память](/ru/guide/cli/memory) · [Сессии и контекст](/ru/guide/cli/sessions-context) · [Управление работой](/ru/guide/cli/work-management) · [Мышление и совет](/ru/guide/cli/thinking-council) · [Самообучение](/ru/guide/cli/learning) · [Платформа и обслуживание](/ru/guide/cli/platform). [Индекс команд](/ru/guide/cli/) — все 37 команд со ссылками на одной странице.
+Команды сгруппированы по назначению: [Память](/ru/guide/cli/memory) · [Сессии и контекст](/ru/guide/cli/sessions-context) · [Управление работой](/ru/guide/cli/work-management) · [Мышление и совет](/ru/guide/cli/thinking-council) · [Самообучение](/ru/guide/cli/learning) · [Аналитика](/ru/guide/cli/analytics) · [Платформа и обслуживание](/ru/guide/cli/platform). [Индекс команд](/ru/guide/cli/) — все 45 команд со ссылками на одной странице.
 
 ## Общие конвенции
 

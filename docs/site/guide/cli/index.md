@@ -1,6 +1,6 @@
 # CLI Reference
 
-Quick index of all 39 `wolf` commands. Each row links to the command's reference entry; group headings link to the section pages.
+Quick index of all 45 `wolf` commands. Each row links to the command's reference entry; group headings link to the section pages.
 
 ## Memory
 
@@ -13,6 +13,7 @@ Quick index of all 39 `wolf` commands. Each row links to the command's reference
 | [`wolf supersede`](/guide/cli/memory#wolf-supersede)         | Supersede a memory object with another              | [Memory](/guide/cli/memory) |
 | [`wolf transition`](/guide/cli/memory#wolf-transition)       | Transition a memory object to a new status          | [Memory](/guide/cli/memory) |
 | [`wolf rebuild-index`](/guide/cli/memory#wolf-rebuild-index) | Rebuild the SQLite search index from memory objects | [Memory](/guide/cli/memory) |
+| [`wolf update`](/guide/cli/memory#wolf-update)               | Update triage fields of a memory object             | [Memory](/guide/cli/memory) |
 
 ## Sessions & Context
 
@@ -56,22 +57,27 @@ Quick index of all 39 `wolf` commands. Each row links to the command's reference
 
 ## Analytics
 
-| Command                                                 | What it does                                                                                             | Page                              |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| [`wolf analytics`](/guide/cli/analytics#wolf-analytics) | Effectiveness analytics: ledgers, funnel, agents, steward view, councils, outliers, experiment readiness | [Analytics](/guide/cli/analytics) |
-| [`wolf dashboard`](/guide/cli/analytics#wolf-dashboard) | Console dashboard: health, ledgers, trends                                                               | [Analytics](/guide/cli/analytics) |
+| Command                                                       | What it does                                                                                                        | Page                              |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| [`wolf analytics`](/guide/cli/analytics#wolf-analytics)       | Effectiveness analytics: ledgers, funnel, agents, steward view, councils, outliers, experiment readiness, campaigns | [Analytics](/guide/cli/analytics) |
+| [`wolf dashboard`](/guide/cli/analytics#wolf-dashboard)       | Console dashboard: health, ledgers, trends                                                                          | [Analytics](/guide/cli/analytics) |
+| [`wolf task-eval`](/guide/cli/analytics#wolf-task-eval)       | Record a task verdict into the signal log (acceptance metrics, coverage)                                            | [Analytics](/guide/cli/analytics) |
+| [`wolf memory-stage`](/guide/cli/analytics#wolf-memory-stage) | Record a memory lifecycle stage (`cited`/`applied`) into the signal log                                             | [Analytics](/guide/cli/analytics) |
+| [`wolf coord`](/guide/cli/analytics#wolf-coord)               | Record a coordination event (handoff/review/acceptance/blocker/escalation) into the signal log                      | [Analytics](/guide/cli/analytics) |
 
 ## Platform & Maintenance
 
-| Command                                                | What it does                                                                                  | Page                                          |
-| ------------------------------------------------------ | --------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| [`wolf init`](/guide/cli/platform#wolf-init)           | Initialize Mr. Wolf memory for this project (idempotent, non-interactive)                     | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf bootstrap`](/guide/cli/platform#wolf-bootstrap) | Scan the project and draft starting memory: proposed rules, document-refs, work thread        | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf mcp`](/guide/cli/platform#wolf-mcp)             | Start the MCP server (stdio)                                                                  | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf scaffold`](/guide/cli/platform#wolf-scaffold)   | Scaffold opencode frame (agent\|skill\|command) + playbook in Wolf memory                     | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf tool`](/guide/cli/platform#wolf-tool)           | Tool librarian: register/list/use/expose/deprecate/revive                                     | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf taxonomy`](/guide/cli/platform#wolf-taxonomy)   | Manage memory taxonomy                                                                        | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf migrate`](/guide/cli/platform#wolf-migrate)     | One-time migration: `objects/<type>/` → `threads/<tid>/<subdir>/` + `shared/`                 | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf validate`](/guide/cli/platform#wolf-validate)   | Validate memory store integrity                                                               | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf doctor`](/guide/cli/platform#wolf-doctor)       | Check all registered projects: binary vs schema version, platform configs, prune dead entries | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf run`](/guide/cli/platform#wolf-run)             | Run opencode with the model from the Wolf routing object; log weighted token cost             | [Platform & Maintenance](/guide/cli/platform) |
+| Command                                                | What it does                                                                                       | Page                                          |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| [`wolf init`](/guide/cli/platform#wolf-init)           | Initialize Mr. Wolf memory for this project (interactive in TTY; non-interactive requires --model) | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf bootstrap`](/guide/cli/platform#wolf-bootstrap) | Scan the project and draft starting memory: proposed rules, document-refs, work thread             | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf mcp`](/guide/cli/platform#wolf-mcp)             | Start the MCP server (stdio)                                                                       | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf scaffold`](/guide/cli/platform#wolf-scaffold)   | Scaffold opencode frame (agent\|skill\|command) + playbook in Wolf memory                          | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf tool`](/guide/cli/platform#wolf-tool)           | Tool librarian: register/list/use/expose/deprecate/revive                                          | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf taxonomy`](/guide/cli/platform#wolf-taxonomy)   | Manage memory taxonomy                                                                             | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf migrate`](/guide/cli/platform#wolf-migrate)     | One-time migration: `objects/<type>/` → `threads/<tid>/<subdir>/` + `shared/`                      | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf validate`](/guide/cli/platform#wolf-validate)   | Validate memory store integrity                                                                    | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf doctor`](/guide/cli/platform#wolf-doctor)       | Check all registered projects: binary vs schema version, platform configs, prune dead entries      | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf sync`](/guide/cli/platform#wolf-sync)           | Re-render the wolf base set (stamped files only; memory untouched)                                 | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf upgrade`](/guide/cli/platform#wolf-upgrade)     | Upgrade the global wolf installation to the latest npm version                                     | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf run`](/guide/cli/platform#wolf-run)             | Run opencode with the model from the Wolf routing object; log weighted token cost                  | [Platform & Maintenance](/guide/cli/platform) |

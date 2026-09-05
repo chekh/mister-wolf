@@ -12,13 +12,14 @@ Because objects are files:
 
 ## Object types
 
-25 types total (24 active + 1 deprecated). The `wolf add --type` flag accepts the 24 active ones.
+25 types total, all active. The `wolf add --type` flag accepts all 25.
 
 | Type                 | Purpose                                                                                                                   |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `decision`           | Decisions; lifecycle active → superseded/rejected/obsolete; decay fields                                                  |
 | `lesson`             | Lessons; `trigger_keywords` + draft fields (pattern*key, evidence, holdout*\*)                                            |
-| `observation`        | Observations; complaint fields (about, complaint, semantic, trigger) — the `wolf complain` channel                        |
+| `observation`        | Observations; optional about/complaint/semantic/trigger fields                                                            |
+| `complaint`          | Complaints (v2): required `about`/`rule`/`evidence`/`proposal` + triage fields; written by `wolf complain`, status `open` |
 | `session-summary`    | Session outcomes; threads/sessions                                                                                        |
 | `open-question`      | Open questions; default status `open`                                                                                     |
 | `context`            | Context notes                                                                                                             |
@@ -40,7 +41,6 @@ Because objects are files:
 | `call-injection`     | Injections delivered by `wolf call`; fields: trigger_keywords, related_objects                                            |
 | `playbook`           | Playbook; steps, owner_skill, version (required)                                                                          |
 | `tool`               | "Tool as memory"; default status `candidate`; name, script_path, language (required); script body lives in `.wolf/tools/` |
-| `document`           | **Deprecated** legacy type                                                                                                |
 
 <WolfObject type="LESSON" status="accepted" id="mem_20260901_4b7c21" note="stored in .wolf/memory/">
 Integration tests need an isolated Redis instance — checked against a red/green run.
