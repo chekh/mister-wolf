@@ -1,0 +1,28 @@
+version: 1
+experiment: WEV-001
+seed: 20260905 # сид рандомизации порядка — зафиксирован до запуска
+budget:
+  session_cap: 40 # 38 плановых (A/A 6 + 2×2×8) + резерв ретраев ≤2
+  retry_reserve: 2 # ≤1 ретрай на невалидный прогон (спека §7.4), сверх резерва НЕ запускать
+repeats:
+  - id: r1
+    order: [BASE, WOLF] # интерливинг: повтор 1 = BASE → WOLF
+  - id: r2
+    order: [WOLF, BASE] # повтор 2 зеркально (спека §7.2)
+campaign:
+  episodes: [e1, e2, e3, e4, e5, e6a, e6b] # подряд внутри повтора, E1→E6b
+  episode_timeout_s: 900
+  fresh_fixture_per_repeat: true # пересборка обеих рук между повторами
+  e5_planned_kill:
+    marker: planned_kill # флаг в runs.jsonl; exit 124 с этим флагом — штатный обрыв
+    note: >-
+      обрыв лаунчером на фиксированной точке + восстановительная сессия в чистом
+      контексте (2 запуска = 1 эпизод); exit 124 БЕЗ флага = F21-hang → invalid
+invalid_run: # критерии невалидности (скорер cfr.sh → invalid-run.jsonl)
+  - exit 124 без planned_kill # F21-hang
+  - exit 2 # F25 silent truncation
+  - tokens нулевые во всех каналах # F22
+artifacts:
+  task_set_hash: bb3a09ba325f203939807df7295615a2d7679df6
+  scorer_hash: 05d56fac2087b25044d3e916c27490b59fc1edb4
+  environment_lock: playground-lab/measurements/WEV-001/environment-lock.json

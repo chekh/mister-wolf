@@ -1,0 +1,69 @@
+version: 1
+experiment_family: wolfeval
+source: docs/concept/coverage.md@2026-08-31
+claims:
+  - claim_id: PIL-004
+    product: true
+    verification: longitudinal-ab
+    target: WEV-001
+    note: >-
+      Целевые пользовательские эффекты §8 concept («продолжи без повторного
+      исследования») — прямой предмет WEV-001; соответствует CLM-003/CLM-004
+      из evidence.md.
+  - claim_id: PIL-003
+    product: true
+    verification: longitudinal-ab + ablation
+    target: "WEV-001 (частично: интеграция памяти и лиц)"
+    note: >-
+      Полная проверка опор ценности — абляции после v1 (roadmap);
+      соответствует CLM-004.
+  - claim_id: MEM-001
+    product: false
+    verification: longitudinal-ab
+    target: WEV-001
+    note: >-
+      Типизированная память как компенсация failure modes — эпизоды E2/E3/E6b
+      (reuse) и E4 (актуализация).
+  - claim_id: MEM-006
+    product: false
+    verification: longitudinal-ab
+    target: WEV-001
+    note: >-
+      Классы данных и семейство lifecycles (не write-once) — смена правила в
+      E4: supersede/актуализация против write-once-накопления.
+  - claim_id: EVD-002
+    product: false
+    verification: deterministic-conformance
+    target: сам протокол WolfEval (гейт E4)
+    note: >-
+      Наблюдение = воспроизводимый запуск с зафиксированными входами и средой
+      — WolfEval операционализирует тезис для собственных результатов
+      (environment-lock, хэши, публикация всех прогонов).
+  - claim_id: GOV-008
+    product: false
+    verification: pre-post-holdout
+    target: WEV-002 (roadmap)
+    note: >-
+      Самообучение как изменение будущего поведения — вне v1 (мутации
+      отключены), назначено WEV-002.
+  - claim_id: PIL-005
+    product: true
+    verification: pre-post-holdout
+    target: WEV-002 (roadmap)
+    note: >-
+      «Исправь агента один раз» возвращается после E1d — формулировка
+      держится до WEV-002 (соответствует CLM-002).
+  - claim_id: ORG-007
+    product: false
+    verification: ablation
+    target: roadmap (E1a-класс)
+    note: >-
+      Иерархия создаёт риски, память/консилиум/checkpoint — компенсации:
+      причинный тезис требует абляций, не одной A/B.
+  - claim_id: MEM-008
+    product: false
+    verification: longitudinal-ab + negative-controls
+    target: roadmap
+    note: >-
+      Decay/scope — реализация I1/E0 (maturity): проверять нечем, пока
+      механики нет; после реализации — шум-семья (NoiseTax).
