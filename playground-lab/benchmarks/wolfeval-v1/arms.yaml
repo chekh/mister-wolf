@@ -1,0 +1,28 @@
+version: 1
+experiment: WEV-001
+common:
+  instance: fixtures/wolf-pre-2.0.0.md # рецепт сборки + verify-fixtures
+  model: zai-coding-plan/glm-5.2 # pinned; см. environment-lock
+  launcher: playground-lab/scripts/wolf-session.sh
+  episode_timeout_s: 900
+  start_instruction: >-
+    Ты работаешь над проектом последовательно, несколькими сессиями.
+    Разрешено и поощряется накапливать знания о проекте любым удобным
+    способом: создавай файлы, заметки, документацию. История прошлых
+    разговоров недоступна.
+  self_learning_mutation: off # WEV-001 без Стюард-мутаций
+arms: # обе руки — один агент без спавна субагентов (§5.1)
+  BASE:
+    kind: strong-baseline
+    setup: снапшот инстанса без волчьих артефактов (.wolf/.opencode/ нет)
+    agent: default opencode (build), флаг --agent не передаётся
+    notes: >-
+      Никаких pre-seeded заметок/док, написанных человеком под baseline
+      (запрет П2). Единственный ввод — start_instruction (идентична в WOLF).
+  WOLF:
+    kind: full-wolf
+    setup: >-
+      снапшот + wolf init (pinned release): память .wolf (seeded),
+      MCP mr-wolf-*, плагины wolf-router/wolf-session-start, AGENTS.md,
+      opencode.json (mcp.wolf, subagent_depth=2)
+    agent: worker-implementer (лицо из памяти — часть исследуемого механизма)

@@ -1,0 +1,5 @@
+[2026-09-04T17:55:43Z] wolf-session: cwd=/tmp/demo agent=default model=zai-coding-plan/glm-5.2 timeout=480s
+{"type":"step_start","timestamp":1788533780000,"sessionID":"ses_fixtrunc1","part":{"id":"prt_fix1","type":"step-start","sessionID":"ses_fixtrunc1"}}
+{"type":"text","timestamp":1788533781000,"sessionID":"ses_fixtrunc1","part":{"id":"prt_fix2","type":"text","text":"Смотрю задачу, сначала прочитаю файлы."}}
+{"type":"step_finish","timestamp":1788533782000,"sessionID":"ses_fixtrunc1","part":{"id":"prt_fix3","type":"step-finish","reason":"tool-calls","sessionID":"ses_fixtrunc1"}}
+{"type":"step_start","timestamp":1788533783000,"sessionID":"ses_fixtrunc1","part":{"id":"prt_fix4","type":"step-start","sessionID":"ses_fixtrunc1"}}
