@@ -73,6 +73,39 @@ describe('wolf run v2 (P1 D3): сигнальный writer v2, run-log прек�
       expect(rec.prompt_hash).toMatch(/^[0-9a-f]{12}$/);
       expect(rec.tools).toEqual(['wolf-search', 'bash']);
       expect(rec.experiment).toBeUndefined();
+      // P3 D1: без --campaign поле campaign_id не пишется (backward-compat)
+      expect(rec.campaign_id).toBeUndefined();
+    } finally {
+      process.env.PATH = prevPath;
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it('P3 D1: --campaign eval-01 → campaign_id в run-сигнале (roundtrip)', async () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'wolf-run-campaign-'));
+    const prevPath = process.env.PATH;
+    try {
+      mkdirSync(join(tmp, '.wolf'), { recursive: true });
+      writeFileSync(join(tmp, '.wolf', 'config.yaml'), 'learning:\n  patternThreshold: 3\n');
+
+      const binDir = join(tmp, 'bin');
+      mkdirSync(binDir);
+      writeFileSync(
+        join(binDir, 'opencode'),
+        '#!/bin/sh\necho \'{"sessionID":"ses_camp","part":{"type":"step-finish","tokens":{"input":10,"output":1,"cache":{"read":5}}}}\'\n'
+      );
+      chmodSync(join(binDir, 'opencode'), 0o755);
+      process.env.PATH = `${binDir}:${process.env.PATH ?? ''}`;
+      vi.spyOn(process, 'cwd').mockReturnValue(tmp);
+
+      await memoryRunCommand().parseAsync(
+        ['--agent', 'build', '--title', 'camp', '--campaign', 'eval-01', '--', 'prompt'],
+        { from: 'user' }
+      );
+
+      const runs = readSignals(tmp).filter((s) => s.event === 'run');
+      expect(runs).toHaveLength(1);
+      expect(runs[0]!.campaign_id).toBe('eval-01');
     } finally {
       process.env.PATH = prevPath;
       rmSync(tmp, { recursive: true, force: true });

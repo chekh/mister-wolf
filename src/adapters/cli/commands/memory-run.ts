@@ -42,6 +42,7 @@ export function memoryRunCommand(): Command {
     .option('--experiment <id>', 'Experiment id (comparative methodologies, e.g. RCT)')
     .addOption(new Option('--arm <choice>', 'Experiment arm').choices(['wolf', 'baseline']))
     .option('--task-id <id>', 'Task id (written as top-level task_id; duplicated in experiment when --experiment)')
+    .option('--campaign <id>', 'Campaign id (written as top-level campaign_id; groups runs for --view campaign)')
     .option('--trace-id <id>', 'Trace id (defaults to a fresh uuid)')
     .option('--attempt <n>', 'Attempt number within the task', (v: string) => parseInt(v, 10))
     .argument('<prompt>', 'Prompt passed to opencode')
@@ -139,6 +140,7 @@ export function memoryRunCommand(): Command {
         traceId,
         ...(options.attempt !== undefined && Number.isInteger(options.attempt) ? { attempt: options.attempt } : {}),
         ...(options.taskId !== undefined ? { taskId: options.taskId } : {}),
+        ...(options.campaign !== undefined ? { campaignId: options.campaign } : {}),
         ...(configHash !== undefined ? { configHash } : {}),
         promptHash,
         ...(options.tool.length > 0 ? { tools: options.tool } : {}),
