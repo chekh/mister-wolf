@@ -1,0 +1,3 @@
+{"ts":"2026-09-05T18:16:02Z","cwd":"/tmp/wolfeval-v1/aa/A1","agent":"worker-implementer","model":"zai-coding-plan/glm-5.2","exit":124,"secs":903,"tokens":{"input":79168,"cache_read":2522432,"output":8460,"weight":373711.2},"log":"session-20260905-211602.log"}
+{"ts":"2026-09-05T18:39:39Z","cwd":"/tmp/wolfeval-v1/aa/A1","agent":"worker-implementer","model":"zai-coding-plan/glm-5.2","exit":2,"secs":34,"tokens":{"input":10005,"cache_read":8384,"output":69,"weight":11188.4},"log":"session-20260905-213939.log"}
+{"ts":"2026-09-05T18:42:19Z","cwd":"/tmp/wolfeval-v1/aa/A1","agent":"worker-implementer","model":"zai-coding-plan/glm-5.2","exit":124,"secs":903,"tokens":{"input":60821,"cache_read":2174336,"output":8309,"weight":319799.6},"log":"session-20260905-214219.log"}
