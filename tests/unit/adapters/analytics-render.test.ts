@@ -81,6 +81,7 @@ function fixtureReport(): AnalyticsReport {
         appliedUniqueIds: ['m-a', 'm-b'],
       },
       attribution: { acceptedTotal: 2, acceptedWithInjection: 1, attributionCoveragePct: 50 },
+      roi: { rows: [] },
     },
     tools: [toolRow('tool-script', 'script'), toolRow('tool-native', 'model-native')],
     rules: [ruleRow('rule-silent', true), ruleRow('rule-loud', false)],
@@ -142,6 +143,7 @@ function fixtureReport(): AnalyticsReport {
       ],
       blockers: [{ ref: 'mem-blk', openedAt: '2026-09-01T00:00:00Z', resolvedAt: '2026-09-02T00:00:00Z' }],
     },
+    campaign: { rows: [] },
   };
 }
 
