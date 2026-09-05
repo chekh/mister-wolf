@@ -6,12 +6,16 @@
 # логом сессии и метриками токенов из SQLite opencode. Каждая сессия
 # дописывается одной JSON-строкой в <out>/sessions.jsonl независимо от
 # исхода (ok / timeout / error). Exit-код скрипта отражает сессию:
-#   0 — ok, 124 — timeout, 1 — error.
+#   0 — ok, 124 — timeout, 1 — error,
+#   2 — silent truncation (RC=0, но лог структурно бит — F25).
 #
 # Использование:
 #   wolf-session.sh --cwd <dir> [--agent <имя>] [--model <id>]
 #                   --prompt-file <файл> [--timeout <сек, дефолт 480>]
-#                   --out <dir> [--no-global]
+#   --out <dir> [--no-global]
+#   wolf-session.sh --selftest — валидатор на синтетических фикстурах
+#     (playground-lab/benchmarks/wolfeval-v1/task-families/TF-1-infra-hardening/
+#      fixtures/log-fixtures/; ожидание по префиксу имени: truncated*→2, valid*→0)
 #   --model по умолчанию: zai-coding-plan/glm-5.2
 #   --agent по умолчанию: не передаётся (default-агент opencode)
 #
@@ -30,6 +34,78 @@
 # weight = input + 0.1*cache_read + 5*output.
 set -uo pipefail
 
+# Структурная валидация лога сессии (F25: silent truncation — RC=0 при
+# оборванном логе). $1 = файл лога; echo 0 (валиден) | 2 (битый).
+# Правило (зафиксировано): лог валиден ⟺ (а) есть ≥1 событие step-finish
+# и ПОСЛЕДНЕЕ из них имеет reason="stop", и (б) существует непустой
+# ассистентский text ПОСЛЕ последнего step-finish с reason≠"stop"
+# (в реальном формате opencode 1.18.x финальный text-part идёт непо-
+# средственно ПЕРЕД завершающим step-finish(stop) — поэтому «после
+# последнего не-stop step-finish», а не «после последнего step-finish»;
+# также принимается формат {"type":"message","info":{"role":"assistant",
+# "content":[{"type":"text","text":…}]}}). Не-JSON строки (заголовок,
+# артефакты stderr) пропускаются, парсер не роняется.
+validate_log_structure() {
+  command -v python3 >/dev/null 2>&1 || {
+    echo "wolf-session.sh: python3 недоступен — валидация пропущена" >&2; echo 0; return; }
+  python3 - "$1" <<'PYEOF'
+import json, sys
+last_sf = (0, None)  # (lineno, reason) последнего step-finish
+last_nonstop = 0     # lineno последнего step-finish с reason != "stop"
+last_text = 0        # lineno последнего непустого ассистентского text
+with open(sys.argv[1], encoding='utf-8', errors='replace') as f:
+    for i, raw in enumerate(f, 1):
+        line = raw.strip()
+        if not line.startswith('{'):
+            continue
+        try:
+            ev = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(ev, dict):
+            continue
+        part = ev.get('part') if isinstance(ev.get('part'), dict) else {}
+        t = ev.get('type')
+        if t in ('step-finish', 'step_finish') or part.get('type') == 'step-finish':
+            reason = ev['reason'] if isinstance(ev.get('reason'), str) else part.get('reason')
+            last_sf = (i, reason)
+            if reason != 'stop':
+                last_nonstop = i
+        if part.get('type') == 'text' and isinstance(part.get('text'), str) and part['text'].strip():
+            last_text = i
+        elif t == 'message':
+            info = ev.get('info') if isinstance(ev.get('info'), dict) else {}
+            if info.get('role') == 'assistant' and isinstance(info.get('content'), list) \
+                    and any(isinstance(c, dict) and c.get('type') == 'text'
+                            and str(c.get('text', '')).strip() for c in info['content']):
+                last_text = i
+ok = last_sf[0] > 0 and last_sf[1] == 'stop' and last_text > last_nonstop
+print(0 if ok else 2)
+PYEOF
+}
+
+# Прогон валидатора на синтетических фикстурах без запуска сессий.
+run_selftest() {
+  local dir f expect got fails=0 n=0
+  dir=$(cd "$(dirname "$0")" && pwd)/../benchmarks/wolfeval-v1/task-families/TF-1-infra-hardening/fixtures/log-fixtures
+  [ -d "$dir" ] || { echo "selftest: нет каталога фикстур: $dir" >&2; exit 1; }
+  for f in "$dir"/*.jsonl; do
+    [ -f "$f" ] || { echo "selftest: фикстуры не найдены: $dir" >&2; exit 1; }
+    case "$(basename "$f")" in
+      truncated*) expect=2 ;;
+      valid*)     expect=0 ;;
+      *) echo "$(basename "$f") → неизвестно → skip (нужен префикс truncated*/valid*)"; continue ;;
+    esac
+    got=$(validate_log_structure "$f")
+    n=$((n + 1))
+    if [ "$got" = "$expect" ]; then echo "$(basename "$f") → expect=$expect got=$got PASS"
+    else echo "$(basename "$f") → expect=$expect got=$got FAIL"; fails=$((fails + 1)); fi
+  done
+  [ "$n" -gt 0 ] || { echo "selftest: фикстуры не найдены: $dir" >&2; exit 1; }
+  [ "$fails" -eq 0 ] || { echo "selftest: FAIL ($fails из $n)"; exit 1; }
+  echo "selftest: OK ($n/$n)"
+}
+
 MODEL_DEFAULT="zai-coding-plan/glm-5.2"
 DB_DEFAULT="$HOME/.local/share/opencode/opencode.db"
 
@@ -43,7 +119,8 @@ while [ $# -gt 0 ]; do
     --timeout) TIMEOUT="${2:?--timeout требует значение}"; shift 2 ;;
     --out) OUT="${2:?--out требует значение}"; shift 2 ;;
     --no-global) NO_GLOBAL=1; shift ;;
-    -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
+    --selftest) run_selftest; exit $? ;;
+    -h|--help) sed -n '2,36p' "$0"; exit 0 ;;
     *) echo "wolf-session.sh: неизвестный аргумент: $1" >&2; exit 1 ;;
   esac
 done
@@ -141,6 +218,15 @@ fi
 EXIT_CODE=$RC
 [ "$TIMEOUT_HIT" -eq 1 ] && EXIT_CODE=124
 
+# F25: RC=0 не гарантирует завершённость сессии — проверяем структуру лога.
+# Таймаут-ветку не трогаем; коды 0/124/1 сохраняют смысл, добавляется 2.
+if [ "$RC" -eq 0 ] && [ "$TIMEOUT_HIT" -eq 0 ]; then
+  if [ "$(validate_log_structure "$LOG")" != "0" ]; then
+    EXIT_CODE=2
+    echo "wolf-session.sh: silent truncation — лог структурно бит (последний step-finish не stop / нет финального text): $LOG" >&2
+  fi
+fi
+
 json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
 LOG_REL=${LOG#"$OUT"/}
 
@@ -149,5 +235,6 @@ printf '{"ts":"%s","cwd":"%s","agent":"%s","model":"%s","exit":%s,"secs":%s,"tok
   "$EXIT_CODE" "$SECS" "$TI" "$TCR" "$TO" "$WEIGHT" "$(json_escape "${LOG_REL:-$LOG}")" >> "$OUT/sessions.jsonl"
 
 [ "$TIMEOUT_HIT" -eq 1 ] && exit 124
+[ "$EXIT_CODE" -eq 2 ] && exit 2
 [ "$RC" -eq 0 ] && exit 0
 exit 1
