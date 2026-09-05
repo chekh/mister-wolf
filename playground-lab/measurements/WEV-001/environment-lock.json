@@ -1,6 +1,6 @@
 {
   "wolf_release": "v2.5.0",
-  "instance_base_commit": "fa57bb3bd20d0987b77fbd2c78f2d1c64d46f2ad",
+  "instance_base_commit": "963750676909622d3d38b23b05d737be6ce80fef",
   "model": "zai-coding-plan/glm-5.2",
   "opencode_version": "1.18.27",
   "tools": ["bash", "read", "write", "edit", "glob", "grep"],
