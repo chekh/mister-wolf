@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Campaigns, cohorts and per-memory ROI analytics (P3, spec `docs/superpowers/specs/2026-09-04-p3-campaigns-roi-design.md`):
+  - `wolf run --campaign <id>` writes a top-level `campaign_id` into the run signal; `wolf task-eval --campaign <id>` propagates it into `task_evaluated` (`detail.campaign_id`); without the flag nothing is written (backward-compatible optional schema field, `task_id` pattern from P1).
+  - `wolf analytics --view campaign` (CLI and MCP): runs grouped by `campaign_id`, split into `with_memory`/`no_memory` cohorts by injected-memory presence in the run session (`session_id` join over `memory_stage injected`, attribution pattern from P2); per cohort — n, median weighted, accepted-verdict share, process-failure rate; cohorts below 3 runs report honest `n/a` with reason, campaigns without verdicts report `n/a` verdict columns.
+  - `wolf analytics --view memory`: per-memory ROI section — `associatedAccepted` / `associatedApplied` / `injectedTotal` / last activity per memory id, sorted by `associatedAccepted` desc, under a "correlational, not causal" disclaimer.
+  - Docs: analytics guide + site (EN/RU) cover the new view and ROI section with live examples; signal-log guide documents `campaign_id`; harness-integration guide adds the "with/without memory" campaign scenario.
+
 ## [2.7.0] — 2026-09-05
 
 ### Added
