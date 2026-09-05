@@ -1,6 +1,6 @@
 {
   "name": "mister-wolf",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "description": "Local-first project memory for AI coding agents: decisions, lessons, tools and processes that outlive the session",
   "keywords": [
     "ai-agents",
