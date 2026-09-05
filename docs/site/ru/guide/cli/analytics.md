@@ -16,8 +16,8 @@ coordination
 Options:
   --view <view>      Analytics view (choices: "memory", "tools", "rules",
                      "weeklyActivity", "agents", "steward", "outliers",
-                     "readiness", "councils", "coordination", "all", default:
-                     "all")
+                     "readiness", "councils", "coordination", "campaign",
+                     "all", default: "all")
   --class <class>    Memory lifecycle filter (choices: "new", "sleeper",
                      "workhorse", "dead")
   --type <type>      Memory type filter
@@ -32,33 +32,34 @@ Options:
 
 Опции:
 
-| Опция               | Описание                                                                                                                                               |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--view <view>`     | Выборка: `memory`, `tools`, `rules`, `weeklyActivity`, `agents`, `steward`, `outliers`, `readiness`, `councils`, `coordination`, `all` (дефолт: `all`) |
-| `--class <class>`   | Фильтр по lifecycle-классу памяти: `new`, `sleeper`, `workhorse`, `dead`                                                                               |
-| `--type <type>`     | Фильтр по типу памяти                                                                                                                                  |
-| `--origin <origin>` | Фильтр по tool origin: `script`, `native`                                                                                                              |
-| `--agent <agent>`   | Фильтр по имени агента                                                                                                                                 |
-| `--silent`          | Rules view: только молчащие правила (дефолт: false)                                                                                                    |
-| `--top <n>`         | Лимит строк (дефолт: 20)                                                                                                                               |
-| `--weeks <n>`       | Окно недельной активности в неделях (дефолт: 8)                                                                                                        |
-| `--json`            | Машинный JSON-вывод (дефолт: false)                                                                                                                    |
+| Опция               | Описание                                                                                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--view <view>`     | Выборка: `memory`, `tools`, `rules`, `weeklyActivity`, `agents`, `steward`, `outliers`, `readiness`, `councils`, `coordination`, `campaign`, `all` (дефолт: `all`) |
+| `--class <class>`   | Фильтр по lifecycle-классу памяти: `new`, `sleeper`, `workhorse`, `dead`                                                                                           |
+| `--type <type>`     | Фильтр по типу памяти                                                                                                                                              |
+| `--origin <origin>` | Фильтр по tool origin: `script`, `native`                                                                                                                          |
+| `--agent <agent>`   | Фильтр по имени агента                                                                                                                                             |
+| `--silent`          | Rules view: только молчащие правила (дефолт: false)                                                                                                                |
+| `--top <n>`         | Лимит строк (дефолт: 20)                                                                                                                                           |
+| `--weeks <n>`       | Окно недельной активности в неделях (дефолт: 8)                                                                                                                    |
+| `--json`            | Машинный JSON-вывод (дефолт: false)                                                                                                                                |
 
 Выборки:
 
-| Выборка          | Что возвращает                                                                                                                                                                                      |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `memory`         | Memory ledger: возраст, доставки, срабатывания, жалобы, last_used, lifecycle-класс на объект; garbage ratio (DEAD / active); воронка стадий added→retrieved→injected→cited→applied; attribution     |
-| `tools`          | Tool ledger: usage, доля ошибок, lifecycle (script-инструменты); атрибуции `tools` из сигнального лога (model-native); promotion-кандидаты                                                          |
-| `rules`          | Ранжирование правил по `holdout_prevented`; список молчащих правил                                                                                                                                  |
-| `weeklyActivity` | Недельная активность: writes / delivers / triggers по неделям                                                                                                                                       |
-| `agents`         | Прогоны по агентам: weighted-стоимость, длительность, доля process-провалов, завершённые и принятые задачи, жалобы, prevented                                                                       |
-| `steward`        | Мутации Стюарда по видам, жалобная воронка, нарушения SLA (dispatch ages), рецидивы, churn, доля авто-мутаций                                                                                       |
-| `councils`       | Консилиумы: созывы (всего / за окно / открытые), мнений на вопрос, участие по агентам, распределение голосов, доля синтезов и медианное время вопрос→синтез, недельная активность, открытые вопросы |
-| `coordination`   | Координационные события: counts по парам kind × источник, последние 20 событий, пары blocker открыт→закрыт по ref                                                                                   |
-| `outliers`       | Самые дорогие прогоны (weighted; `$` при pricing)                                                                                                                                                   |
-| `readiness`      | Готовность к экспериментам: доля прогонов с arm, размер выборки по группам                                                                                                                          |
-| `all`            | Все секции подряд (дефолт)                                                                                                                                                                          |
+| Выборка          | Что возвращает                                                                                                                                                                                                       |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `memory`         | Memory ledger: возраст, доставки, срабатывания, жалобы, last_used, lifecycle-класс на объект; garbage ratio (DEAD / active); воронка стадий added→retrieved→injected→cited→applied; attribution; per-memory ROI (P3) |
+| `tools`          | Tool ledger: usage, доля ошибок, lifecycle (script-инструменты); атрибуции `tools` из сигнального лога (model-native); promotion-кандидаты                                                                           |
+| `rules`          | Ранжирование правил по `holdout_prevented`; список молчащих правил                                                                                                                                                   |
+| `weeklyActivity` | Недельная активность: writes / delivers / triggers по неделям                                                                                                                                                        |
+| `agents`         | Прогоны по агентам: weighted-стоимость, длительность, доля process-провалов, завершённые и принятые задачи, жалобы, prevented                                                                                        |
+| `steward`        | Мутации Стюарда по видам, жалобная воронка, нарушения SLA (dispatch ages), рецидивы, churn, доля авто-мутаций                                                                                                        |
+| `councils`       | Консилиумы: созывы (всего / за окно / открытые), мнений на вопрос, участие по агентам, распределение голосов, доля синтезов и медианное время вопрос→синтез, недельная активность, открытые вопросы                  |
+| `coordination`   | Координационные события: counts по парам kind × источник, последние 20 событий, пары blocker открыт→закрыт по ref                                                                                                    |
+| `campaign`       | Кампании → когорты с/без injected-памяти в сессии прогона: n, медиана weighted, доля accepted, pfail; честные n/a на малых выборках (P3)                                                                             |
+| `outliers`       | Самые дорогие прогоны (weighted; `$` при pricing)                                                                                                                                                                    |
+| `readiness`      | Готовность к экспериментам: доля прогонов с arm, размер выборки по группам                                                                                                                                           |
+| `all`            | Все секции подряд (дефолт)                                                                                                                                                                                           |
 
 ### Lifecycle-классы
 
@@ -169,6 +170,54 @@ open questions:
 - **counts** — события по парам `kind × actor_from` (кто что инициировал);
 - **recent** — последние 20 событий: ts, kind, `from->to`, refs;
 - **blockers** — пары «открыт → закрыт» по ref: `opened` — самый ранний `coord --kind blocker` с этим ref, `resolved` — первый `memory.resolved` из event log (`wolf blocker resolve <id>`) не раньше opened; `-` — блокер ещё открыт. Пара закрывается резолвом блокера, а не вторым coord-событием.
+
+### Кампании
+
+`--view campaign` — A/B-витрина «та же задача, с памятью и без»: прогоны группируются по `campaign_id` (топ-левел поле run-сигнала, флаг `wolf run --campaign <id>`) и разбиваются на две когорты по наличию injected-памяти в сессии прогона — join по `session_id` через `memory_stage injected`, тот же паттерн, что у attribution (P2); ран с `session_id: null` попадает в `no_memory`:
+
+- **n** — раны когорты в кампании;
+- **median_weighted** — медиана weighted ранов когорты; при n < 3 вся строка метрик когорты → `n/a` с note `n<3: min 3 runs` (доли на малых выборках не показываем); пустая когорта → note `no runs`;
+- **accepted\_%** — доля accepted среди вердиктов когорты: вердикты входят в кампанию флагом `wolf task-eval --campaign <id>` (`detail.campaign_id`) и атрибутируются когорте той же связкой по сессии; кампания без вердиктов → `n/a` с note `no verdicts`;
+- **pfail\_%** — доля ранов с `outcome !== 'ok'`.
+
+Витрина корреляционная: p-values и доверительные интервалы на малых n некорректны — это осознанная граница P3. Сравнение когорт — повод для гипотезы, не доказательство.
+
+Реальный вывод (демо-лог: eval-01 — обе когорты по 3 рана с вердиктами; eval-02 — малые выборки и кампания без вердиктов):
+
+```text
+== campaign ==
+┌──────────┬─────────────┬───┬─────────────────┬────────────┬─────────┬─────────────────┐
+│ campaign │ cohort      │ n │ median_weighted │ accepted_% │ pfail_% │ note            │
+├──────────┼─────────────┼───┼─────────────────┼────────────┼─────────┼─────────────────┤
+│ eval-01  │ with_memory │ 3 │ 5210            │ 100.0      │ 0.0     │                 │
+│ eval-01  │ no_memory   │ 3 │ 8120            │ 0.0        │ 33.3    │                 │
+│ eval-02  │ with_memory │ 2 │ n/a             │ n/a        │ n/a     │ n<3: min 3 runs │
+│ eval-02  │ no_memory   │ 3 │ 9100            │ n/a        │ 0.0     │ no verdicts     │
+└──────────┴─────────────┴───┴─────────────────┴────────────┴─────────┴─────────────────┘
+```
+
+### Per-memory ROI
+
+Хвост `--view memory` (P3): какие объекты памяти ассоциированы с принятыми задачами, а какие только занимают контекст:
+
+- **assoc_accepted** — accepted-вердикты в сессиях, где id инъецировался не позже вердикта (`ts` инъекции ≤ `ts` вердикта);
+- **assoc_applied** / **injected_total** — applied- / injected-события id;
+- **last_activity** — max `ts` среди injected/applied-событий id.
+
+Сортировка: `assoc_accepted` убыв., затем `injectedTotal` убыв., затем id по алфавиту; текст показывает топ-20 (`--top`), JSON — полный список. Заголовок секции — дисклеймер `correlational, not causal`: атрибуция идёт по сессии (объект был в контексте, когда задачу приняли) — это ассоциация, а не причинность.
+
+Реальный вывод (хвост `--view memory` того же демо-лога):
+
+```text
+memory ROI (correlational, not causal):
+┌──────────────────────────────────────────┬────────────────┬───────────────┬────────────────┬──────────────────────────┐
+│ id                                       │ assoc_accepted │ assoc_applied │ injected_total │ last_activity            │
+├──────────────────────────────────────────┼────────────────┼───────────────┼────────────────┼──────────────────────────┤
+│ mem_20260905_write_signals_schema_v2_e4… │ 1              │ 0             │ 2              │ 2026-09-05T10:20:11.774Z │
+│ mem_20260905_use_worktree_for_feature_b… │ 1              │ 1             │ 1              │ 2026-09-05T10:07:30.918Z │
+│ mem_20260905_prefer_vitest_run_over_wat… │ 0              │ 0             │ 1              │ 2026-09-05T09:30:00.480Z │
+└──────────────────────────────────────────┴────────────────┴───────────────┴────────────────┴──────────────────────────┘
+```
 
 ### Примеры
 
@@ -293,6 +342,7 @@ thresholds: noise ok<20 warn<=40 bad | silent ok<30
 - `--experiment <id>` — id эксперимента (сравнительные методики, например RCT)
 - `--arm <choice>` — arm эксперимента (`wolf` \| `baseline`)
 - `--task-id <id>` — id задачи (пишется топ-левел всегда, когда передан — и вне эксперимента)
+- `--campaign <id>` — id кампании (пишется топ-левел как `campaign_id`; группирует раны для `--view campaign`)
 - `--trace-id <id>` — id трассы, объединяющий раны одной задачи (дефолт — свежий uuid)
 - `--attempt <n>` — номер попытки в рамках задачи
 
@@ -309,6 +359,7 @@ wolf run "Fix the failing test" --experiment exp-20260904-x1 --arm wolf --task-i
 - `--verdict <verdict>` — `accepted`, `rejected`, `partial`, `inconclusive`
 - `--scorer <scorer>` — кто оценил: `human` (дефолт), `deterministic`, `llm_judge`, `hidden_tests`
 - `--session <id>` / `--task-id <id>` — привязка вердикта к прогону/задаче (без привязки вердикт считается в coverage, но не атрибутируется агенту)
+- `--campaign <id>` — id кампании (пишется в `detail.campaign_id`; группирует вердикты для `--view campaign`)
 - `--criteria-passed <n>` / `--criteria-total <m>` — численные критерии
 - `--critical-failure` — критический провал; `--note <text>` — свободная заметка
 

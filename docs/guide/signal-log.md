@@ -20,7 +20,7 @@ rebuildable, в git не коммитится); markdown-отчёты конту
 | `complaint`      | `wolf complain`                                                                                    | при каждой жалобе                                                      |
 | `delivery`       | `wolf scaffold`, `wolf tool expose`                                                                | доставка методики (рамка+playbook / SKILL.md)                          |
 | `tool_error`     | `wolf run` (ошибка spawn) + `recordToolError()`                                                    | ошибка тула, класс — через классификатор                               |
-| `task_evaluated` | `wolf task-eval`                                                                                   | вердикт по задаче (P0)                                                 |
+| `task_evaluated` | `wolf task-eval`                                                                                   | вердикт по задаче (P0); `--campaign` → `detail.campaign_id` (P3)       |
 | `mcp_call`       | MCP-сервер (обёртка в `registerMemoryTools`)                                                       | каждый вызов mr-wolf-\* тулзы (P1 D5)                                  |
 | `memory_stage`   | авто: `wolf search`/`get` (retrieved), `wolf brief`/`call` (injected); ручной: `wolf memory-stage` | стадия жизненного цикла памяти (P2 D1); cited/applied — внешние акторы |
 | `coord_event`    | `wolf coord`                                                                                       | факт координации между агентами (P2 D3)                                |
@@ -99,6 +99,7 @@ Zod-схемой (`strip`).
 | `role_level`     | `'L0'\|'L1'\|'L2'`         | уровень роли писателя по actor-конвенции; дефолт — не писать     |
 | `attempt`        | number                     | попытка (retry-номер) в рамках run                               |
 | `task_id`        | string                     | общий id задачи (пишется всегда при передаче `--task-id`)        |
+| `campaign_id`    | string                     | id кампании: `wolf run --campaign` / `task-eval --campaign` (P3) |
 | `config_hash`    | sha256, первые 12 символов | подпись `.wolf/config.yaml` на момент прогона                    |
 | `prompt_hash`    | sha256, первые 12 символов | подпись текста промпта                                           |
 | `tools`          | `string[]`                 | инструменты прогона (из `--tool`) — источник tool-runs экономики |
@@ -111,7 +112,7 @@ Zod-схемой (`strip`).
 пишутся в `trace_id`/`attempt`.
 
 Живой пример v2-записи (реальный прогон `wolf run --tool wolf-search --tool bash
---trace-id 7f3a… --attempt 1 --task-id docs-p1`):
+--trace-id 7f3a… --attempt 1 --task-id docs-p1 --campaign eval-01`):
 
 ```json
 {
@@ -128,6 +129,7 @@ Zod-схемой (`strip`).
   "trace_id": "7f3a2b1c-9d4e-4f6a-8b2c-1e5d7a9f0b3e",
   "attempt": 1,
   "task_id": "docs-p1",
+  "campaign_id": "eval-01",
   "config_hash": "9e01d7617ab3",
   "prompt_hash": "83ba47079adb",
   "tools": ["wolf-search", "bash"],

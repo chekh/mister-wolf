@@ -81,6 +81,18 @@ function fixtureReport(): AnalyticsReport {
         appliedUniqueIds: ['m-a', 'm-b'],
       },
       attribution: { acceptedTotal: 2, acceptedWithInjection: 1, attributionCoveragePct: 50 },
+      roi: {
+        rows: [
+          {
+            id: 'm-roi-a',
+            associatedAccepted: 2,
+            associatedApplied: 1,
+            injectedTotal: 3,
+            lastActivity: '2026-09-01T00:00:00Z',
+          },
+          { id: 'm-roi-b', associatedAccepted: 1, associatedApplied: 0, injectedTotal: 2, lastActivity: null },
+        ],
+      },
     },
     tools: [toolRow('tool-script', 'script'), toolRow('tool-native', 'model-native')],
     rules: [ruleRow('rule-silent', true), ruleRow('rule-loud', false)],
@@ -141,6 +153,52 @@ function fixtureReport(): AnalyticsReport {
         { ts: '2026-08-31T00:00:00Z', kind: 'review', from: 'w1', to: null, refs: ['ref-2', 'ref-3'] },
       ],
       blockers: [{ ref: 'mem-blk', openedAt: '2026-09-01T00:00:00Z', resolvedAt: '2026-09-02T00:00:00Z' }],
+    },
+    campaign: {
+      rows: [
+        {
+          campaign: 'camp-full',
+          runs: 6,
+          hasVerdicts: true,
+          withMemory: {
+            cohort: 'with_memory',
+            n: 3,
+            medianWeighted: 20,
+            acceptedSharePct: 66.7,
+            processFailureRatePct: 33.3,
+            reason: null,
+          },
+          noMemory: {
+            cohort: 'no_memory',
+            n: 3,
+            medianWeighted: 15,
+            acceptedSharePct: 100,
+            processFailureRatePct: 0,
+            reason: null,
+          },
+        },
+        {
+          campaign: 'camp-small',
+          runs: 5,
+          hasVerdicts: false,
+          withMemory: {
+            cohort: 'with_memory',
+            n: 2,
+            medianWeighted: null,
+            acceptedSharePct: null,
+            processFailureRatePct: 0,
+            reason: 'n<3: min 3 runs',
+          },
+          noMemory: {
+            cohort: 'no_memory',
+            n: 3,
+            medianWeighted: 10,
+            acceptedSharePct: null,
+            processFailureRatePct: 0,
+            reason: null,
+          },
+        },
+      ],
     },
   };
 }
@@ -396,5 +454,61 @@ describe('P2 D4/D5: memory funnel + attribution, coordination в текстов�
     const out = renderAllSections(fixtureReport(), { view: 'all' });
     expect(out).toContain('== coordination ==');
     expect(out).toContain('attribution: accepted 1/2 (50.0%)');
+  });
+});
+
+describe('P3 D2/D3/D4: campaign-витрина + memory ROI в текстовом рендере', () => {
+  it('campaign: две строки на кампанию (когорты), n/a и честные note-причины', () => {
+    const out = renderSection(fixtureReport(), { view: 'campaign', top: 20 });
+    expect(out.split('\n')[0]).toBe('== campaign ==');
+    const rows = dataRows(out);
+    expect(rows).toHaveLength(4); // 2 кампании × 2 когорты
+    expect(rows.filter((r) => r[0] === 'camp-full')).toHaveLength(2);
+    expect(rows.find((r) => r[0] === 'camp-full' && r[1] === 'with_memory')).toEqual([
+      'camp-full',
+      'with_memory',
+      '3',
+      '20',
+      '66.7',
+      '33.3',
+      '',
+    ]);
+    // малая когорта: метрики n/a + reason; нет вердиктов → note
+    const small = rows.find((r) => r[0] === 'camp-small' && r[1] === 'with_memory');
+    expect(small?.slice(3, 7)).toEqual(['n/a', 'n/a', '0.0', 'n<3: min 3 runs']);
+    const noVerdicts = rows.find((r) => r[0] === 'camp-small' && r[1] === 'no_memory');
+    expect(noVerdicts?.[4]).toBe('n/a');
+    expect(noVerdicts?.[6]).toBe('no verdicts');
+  });
+
+  it('campaign: пустые rows → заголовок + no campaigns yet', () => {
+    const report = fixtureReport();
+    report.campaign.rows = [];
+    const out = renderSection(report, { view: 'campaign', top: 20 });
+    expect(out.split('\n')).toEqual(['== campaign ==', 'no campaigns yet']);
+  });
+
+  it('memory: ROI-блок после атрибуции — дисклеймер + таблица (сортировка по accepted)', () => {
+    const out = renderSection(fixtureReport(), { view: 'memory', top: 20 });
+    expect(out.indexOf('attribution: accepted 1/2 (50.0%)')).toBeLessThan(
+      out.indexOf('memory ROI (correlational, not causal):')
+    );
+    expect(tableAfter(out, 'memory ROI (correlational, not causal):')).toEqual([
+      ['m-roi-a', '2', '1', '3', '2026-09-01T00:00:00Z'],
+      ['m-roi-b', '1', '0', '2', '-'],
+    ]);
+  });
+
+  it('memory: пустой ROI → no data', () => {
+    const report = fixtureReport();
+    report.memory.roi.rows = [];
+    const out = renderSection(report, { view: 'memory', top: 20 });
+    expect(out).toContain('memory ROI (correlational, not causal): no data');
+  });
+
+  it('renderAllSections: секция campaign входит в полный вывод', () => {
+    const out = renderAllSections(fixtureReport(), { view: 'all' });
+    expect(out).toContain('== campaign ==');
+    expect(out).not.toContain('no campaigns yet');
   });
 });

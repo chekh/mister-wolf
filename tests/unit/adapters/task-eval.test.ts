@@ -64,6 +64,17 @@ describe('D3: `wolf task-eval` — roundtrip в сигнальный лог', ()
       .parseAsync(['--verdict', 'rejected', '--critical-failure'], { from: 'user' });
     expect(readSignals(dir)[1].detail?.critical_failure).toBe(true);
   });
+
+  // P3 D1: --campaign → detail.campaign_id; без флага поля нет
+  it('P3 D1: --campaign eval-01 → detail.campaign_id; без флага поля нет', async () => {
+    await taskEvalCommand(dir)
+      .exitOverride()
+      .parseAsync(['--verdict', 'accepted', '--session', 's1', '--campaign', 'eval-01'], { from: 'user' });
+    expect(readSignals(dir)[0].detail?.campaign_id).toBe('eval-01');
+
+    await taskEvalCommand(dir).exitOverride().parseAsync(['--verdict', 'accepted'], { from: 'user' });
+    expect('campaign_id' in (readSignals(dir)[1].detail ?? {})).toBe(false);
+  });
 });
 
 describe('D2: appendTaskEvaluatedSignal (writer)', () => {

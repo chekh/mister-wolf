@@ -86,6 +86,8 @@ export const SignalEventSchema = z.object({
   attempt: z.number().optional(),
   /** Общий id задачи (не только эксперименты; пишется всегда при передаче). */
   task_id: z.string().optional(),
+  /** P3 D1: id кампании (`wolf run --campaign` / `task-eval --campaign`); без флага не пишется. */
+  campaign_id: z.string().optional(),
   /** sha256(.wolf/config.yaml).slice(0,12) — конфиг-подпись. */
   config_hash: z.string().optional(),
   /** sha256(prompt).slice(0,12) — подпись промпта. */
@@ -269,6 +271,8 @@ export function appendRunSignal(
     traceId?: string;
     attempt?: number;
     taskId?: string;
+    /** P3 D1: id кампании (топ-левел campaign_id run-сигнала). */
+    campaignId?: string;
     configHash?: string;
     promptHash?: string;
     tools?: string[];
@@ -288,6 +292,7 @@ export function appendRunSignal(
     ...(input.traceId !== undefined ? { trace_id: input.traceId } : {}),
     ...(input.attempt !== undefined ? { attempt: input.attempt } : {}),
     ...(input.taskId !== undefined ? { task_id: input.taskId } : {}),
+    ...(input.campaignId !== undefined ? { campaign_id: input.campaignId } : {}),
     ...(input.configHash !== undefined ? { config_hash: input.configHash } : {}),
     ...(input.promptHash !== undefined ? { prompt_hash: input.promptHash } : {}),
     ...(input.tools !== undefined ? { tools: input.tools } : {}),
@@ -404,6 +409,8 @@ export function appendTaskEvaluatedSignal(
     scorer: 'human' | 'deterministic' | 'llm_judge' | 'hidden_tests';
     sessionId?: string | null;
     taskId?: string;
+    /** P3 D1: id кампании (detail.campaign_id); без флага не пишется. */
+    campaignId?: string;
     criteriaPassed?: number;
     criteriaTotal?: number;
     criticalFailure?: boolean;
@@ -421,6 +428,7 @@ export function appendTaskEvaluatedSignal(
       verdict: input.verdict,
       scorer: input.scorer,
       ...(input.taskId !== undefined ? { task_id: input.taskId } : {}),
+      ...(input.campaignId !== undefined ? { campaign_id: input.campaignId } : {}),
       ...(input.criteriaPassed !== undefined ? { criteria_passed: input.criteriaPassed } : {}),
       ...(input.criteriaTotal !== undefined ? { criteria_total: input.criteriaTotal } : {}),
       ...(input.criticalFailure ? { critical_failure: true } : {}),

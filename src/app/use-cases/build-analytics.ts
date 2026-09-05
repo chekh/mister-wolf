@@ -161,6 +161,56 @@ export interface AttributionCoverage {
   reason?: string;
 }
 
+// --- P3 D2/D3: кампании (когорты с памятью/без) и per-memory ROI ---
+
+/** P3 D2: порог когорты — n < MIN_COHORT_N → метрики n/a с reason (паттерн честных null). */
+export const MIN_COHORT_N = 3;
+
+export interface CampaignCohort {
+  cohort: 'with_memory' | 'no_memory';
+  n: number;
+  /** Медиана weighted ранов когорты; null при n < MIN_COHORT_N или n = 0. */
+  medianWeighted: number | null;
+  /** Доля accepted среди вердиктов когорты, %; null — вердиктов в когорте нет. */
+  acceptedSharePct: number | null;
+  /** (раны с outcome !== 'ok') / n, %; null при n = 0. */
+  processFailureRatePct: number | null;
+  /** 'n<3: min 3 runs' | 'no runs' | null (n>=3 и раны есть). */
+  reason: string | null;
+}
+
+export interface CampaignRow {
+  campaign: string;
+  runs: number;
+  /** false → у кампании нет ни одного task_evaluated с detail.campaign_id === C (вердикт-колонки n/a). */
+  hasVerdicts: boolean;
+  withMemory: CampaignCohort;
+  noMemory: CampaignCohort;
+}
+
+export interface CampaignView {
+  /** sort: runs убыв., затем campaign по алфавиту. */
+  rows: CampaignRow[];
+}
+
+/** P3 D3: per-memory ROI — корреляционная витрина (не причинность). */
+export interface MemoryRoiRow {
+  id: string;
+  /** accepted task_evaluated в сессиях, где этот id инъецировался не позже вердикта (ts injected <= ts verdict). */
+  associatedAccepted: number;
+  /** applied-события этого id (число событий). */
+  associatedApplied: number;
+  /** injected-события этого id (число событий). */
+  injectedTotal: number;
+  /** max ts среди injected/applied-событий id; нет событий — null (практически не бывает: строка создаётся по injected). */
+  lastActivity: string | null;
+}
+
+export interface MemoryRoi {
+  /** sort: associatedAccepted убыв., затем injectedTotal убыв., затем id по алфавиту. */
+  rows: MemoryRoiRow[];
+}
+
 /** P2 D5: координационное view. */
 export interface CoordinationCount {
   kind: string;
@@ -267,6 +317,8 @@ export interface AnalyticsReport {
     garbage: GarbageStats;
     funnel: MemoryLifecycleFunnel;
     attribution: AttributionCoverage;
+    /** P3 D3: per-memory ROI (расширение memory-блока). */
+    roi: MemoryRoi;
   };
   tools: ToolLedgerRow[];
   rules: RuleRankingRow[];
@@ -277,6 +329,8 @@ export interface AnalyticsReport {
   readiness: ExperimentReadiness;
   councils: CouncilsView;
   coordination: CoordinationView;
+  /** P3 D2: витрина кампаний (когорты with/no memory). */
+  campaign: CampaignView;
   acceptance: AcceptanceStats;
   coverage: CoverageStats;
   dataQuality: DataQualityStats;
@@ -676,6 +730,163 @@ function buildAttribution(signals: SignalEvent[]): AttributionCoverage {
     acceptedWithInjection,
     attributionCoveragePct: (acceptedWithInjection / acceptedTotal) * 100,
   };
+}
+
+// --- P3 D2/D3 ---
+
+/** Валидный campaign_id run-сигнала (guard как experiment в buildReadiness). */
+function runCampaignOf(s: SignalEvent): string | null {
+  return s.event === 'run' && typeof s.campaign_id === 'string' && s.campaign_id !== '' ? s.campaign_id : null;
+}
+
+/** Медиана finite weighted ранов когорты (паттерн medianHours); значений нет → null. */
+function medianWeightedOf(runs: SignalEvent[]): number | null {
+  const values = runs
+    .map((r) => finiteNumber(r.weighted))
+    .filter((v): v is number => v !== null)
+    .sort((a, b) => a - b);
+  if (values.length === 0) return null;
+  return values.length % 2 === 1
+    ? values[(values.length - 1) / 2]!
+    : (values[values.length / 2 - 1]! + values[values.length / 2]!) / 2;
+}
+
+/** Когорта кампании: при n < MIN_COHORT_N вся строка метрик n/a + reason (спека D2:
+ * «когорта с n < 3 → строка n/a с reason» — доли на малых выборках не показываем). */
+function buildCohort(
+  cohort: 'with_memory' | 'no_memory',
+  runs: SignalEvent[],
+  verdicts: SignalEvent[]
+): CampaignCohort {
+  const n = runs.length;
+  const small = n < MIN_COHORT_N;
+  return {
+    cohort,
+    n,
+    medianWeighted: !small ? medianWeightedOf(runs) : null,
+    acceptedSharePct: !small
+      ? verdicts.length > 0
+        ? (verdicts.filter((v) => v.detail?.verdict === 'accepted').length / verdicts.length) * 100
+        : null
+      : null,
+    processFailureRatePct: !small && n > 0 ? (runs.filter((r) => r.outcome !== 'ok').length / n) * 100 : null,
+    reason: n === 0 ? 'no runs' : small ? 'n<3: min 3 runs' : null,
+  };
+}
+
+/** Кампании D2: источник — run-сигналы с топ-левел campaign_id; когорта рана — по принадлежности его
+ * session_id к глобальному набору injected-сессий (паттерн buildAttribution), session_id null → no_memory.
+ * Вердикты кампании (detail.campaign_id === C) атрибутируются той же упрощённой когортой: session_id
+ * вердикта ∈ injected-сессий ⟺ with_memory — независимо от наличия ранов в когорте (решение спеки §2 D2). */
+function buildCampaignView(signals: SignalEvent[]): CampaignView {
+  const injectedSessions = new Set<string>();
+  for (const s of signals) {
+    const st = memoryStageOf(s);
+    if (st !== null && st.stage === 'injected' && s.session_id !== null) injectedSessions.add(s.session_id);
+  }
+  const inWithMemory = (s: SignalEvent): boolean => s.session_id !== null && injectedSessions.has(s.session_id);
+
+  // campaign → [with_memory, no_memory]
+  const runsBy = new Map<string, [SignalEvent[], SignalEvent[]]>();
+  for (const s of signals) {
+    const c = runCampaignOf(s);
+    if (c === null) continue;
+    const pair = runsBy.get(c) ?? [[], []];
+    pair[inWithMemory(s) ? 0 : 1].push(s);
+    runsBy.set(c, pair);
+  }
+  const verdictsBy = new Map<string, [SignalEvent[], SignalEvent[]]>();
+  for (const s of signals) {
+    if (s.event !== 'task_evaluated') continue;
+    const c = s.detail?.campaign_id;
+    if (typeof c !== 'string' || c === '') continue;
+    const pair = verdictsBy.get(c) ?? [[], []];
+    pair[inWithMemory(s) ? 0 : 1].push(s);
+    verdictsBy.set(c, pair);
+  }
+  const rows = [...runsBy.entries()]
+    .map(([campaign, [withRuns, noRuns]]) => {
+      const [withVerdicts, noVerdicts] = verdictsBy.get(campaign) ?? [[], []];
+      return {
+        campaign,
+        runs: withRuns.length + noRuns.length,
+        hasVerdicts: withVerdicts.length + noVerdicts.length > 0,
+        withMemory: buildCohort('with_memory', withRuns, withVerdicts),
+        noMemory: buildCohort('no_memory', noRuns, noVerdicts),
+      };
+    })
+    .sort((a, b) => b.runs - a.runs || a.campaign.localeCompare(b.campaign));
+  return { rows };
+}
+
+/** Per-memory ROI D3: строки создают валидные injected-события (≥1); associatedAccepted — accepted-вердикты
+ * сессий, где id инъецировался не позже вердикта (каждый вердикт — один раз на id); applied чужих id
+ * (без injected-строки) не учитывается. Корреляционная витрина, не причинность. */
+function buildMemoryRoi(signals: SignalEvent[]): MemoryRoi {
+  interface RoiAcc {
+    injectedEvents: number;
+    appliedEvents: number;
+    lastActivity: string | null;
+  }
+  const acc = new Map<string, RoiAcc>();
+  const rowOf = (id: string): RoiAcc => {
+    let r = acc.get(id);
+    if (r === undefined) {
+      r = { injectedEvents: 0, appliedEvents: 0, lastActivity: null };
+      acc.set(id, r);
+    }
+    return r;
+  };
+  const bump = (r: RoiAcc, ts: string): void => {
+    if (r.lastActivity === null || ts > r.lastActivity) r.lastActivity = ts;
+  };
+  // инъекции id по сессии (session_id !== null) — база associatedAccepted
+  const injectionsBySession = new Map<string, { id: string; ts: string }[]>();
+  for (const s of signals) {
+    const st = memoryStageOf(s);
+    if (st === null) continue;
+    if (st.stage === 'injected') {
+      for (const id of st.ids) {
+        const r = rowOf(id);
+        r.injectedEvents += 1;
+        bump(r, s.ts);
+        if (s.session_id !== null) {
+          const arr = injectionsBySession.get(s.session_id) ?? [];
+          arr.push({ id, ts: s.ts });
+          injectionsBySession.set(s.session_id, arr);
+        }
+      }
+    } else if (st.stage === 'applied') {
+      for (const id of st.ids) {
+        const r = acc.get(id);
+        if (r === undefined) continue;
+        r.appliedEvents += 1;
+        bump(r, s.ts);
+      }
+    }
+  }
+  const associated = new Map<string, number>();
+  for (const s of signals) {
+    if (s.event !== 'task_evaluated' || s.detail?.verdict !== 'accepted' || s.session_id === null) continue;
+    const ids = new Set<string>();
+    for (const inj of injectionsBySession.get(s.session_id) ?? []) {
+      if (inj.ts <= s.ts) ids.add(inj.id);
+    }
+    for (const id of ids) associated.set(id, (associated.get(id) ?? 0) + 1);
+  }
+  const rows = [...acc.entries()]
+    .map(([id, r]) => ({
+      id,
+      associatedAccepted: associated.get(id) ?? 0,
+      associatedApplied: r.appliedEvents,
+      injectedTotal: r.injectedEvents,
+      lastActivity: r.lastActivity,
+    }))
+    .sort(
+      (a, b) =>
+        b.associatedAccepted - a.associatedAccepted || b.injectedTotal - a.injectedTotal || a.id.localeCompare(b.id)
+    );
+  return { rows };
 }
 
 /** Валидный coord_event-сигнал (D5 guard): kind/actor_from — строки, refs — массив строк. */
@@ -1186,6 +1397,8 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
     // P2 D4: воронка added→applied + атрибуция accepted-вердиктов к инъекциям
     funnel: buildLifecycleFunnel(allObjects.length, signals),
     attribution: buildAttribution(signals),
+    // P3 D3: per-memory ROI (корреляционная витрина)
+    roi: buildMemoryRoi(signals),
   };
   // P1 D4: канонический источник run-метрик — сигналы + compat-мерж legacy run-log
   const runEntries = mergeRunEntries(signals, input.runLogText);
@@ -1207,6 +1420,7 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
   const readiness = buildReadiness(signals);
   const councils = await buildCouncils(allObjects, deps.relations, now, weeks);
   const coordination = buildCoordination(signals, events); // P2 D5
+  const campaign = buildCampaignView(signals); // P3 D2
   const coverage = buildCoverage(signals);
   // D6: unknown-model и pricing-coverage по дедуплицированным run-сигналам
   const runSignals = signals.filter((s) => s.event === 'run');
@@ -1246,6 +1460,7 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
     readiness,
     councils,
     coordination,
+    campaign,
     acceptance: { accepted: acceptance.accepted, costPerAcceptedTask: acceptance.costPerAcceptedTask },
     coverage,
     dataQuality,
@@ -1268,6 +1483,7 @@ export interface AnalyticsViewFilter {
     | 'readiness'
     | 'councils'
     | 'coordination'
+    | 'campaign'
     | 'all';
   class?: 'new' | 'sleeper' | 'workhorse' | 'dead';
   type?: string;
@@ -1284,6 +1500,7 @@ export type AnalyticsViewPayload =
       garbage: GarbageStats;
       funnel: MemoryLifecycleFunnel;
       attribution: AttributionCoverage;
+      roi: MemoryRoi;
     }
   | { view: 'tools'; rows: ToolLedgerRow[] }
   | { view: 'rules'; rows: RuleRankingRow[] }
@@ -1294,6 +1511,7 @@ export type AnalyticsViewPayload =
   | { view: 'readiness'; readiness: ExperimentReadiness }
   | { view: 'councils'; councils: CouncilsView }
   | { view: 'coordination'; coordination: CoordinationView }
+  | { view: 'campaign'; campaign: CampaignView }
   | { view: 'all'; report: AnalyticsReport };
 
 /** Срез отчёта по view-фильтру (§6.2); top ограничивает строки, дефолт 20. */
@@ -1310,6 +1528,8 @@ export function filterAnalytics(report: AnalyticsReport, filter: AnalyticsViewFi
         garbage: report.memory.garbage,
         funnel: report.memory.funnel,
         attribution: report.memory.attribution,
+        // P3 D3: roi без top-лимита (срез делает render-слой); строки уже отсортированы
+        roi: report.memory.roi,
       };
     }
     case 'tools': {
@@ -1339,6 +1559,8 @@ export function filterAnalytics(report: AnalyticsReport, filter: AnalyticsViewFi
       return { view: 'councils', councils: report.councils };
     case 'coordination':
       return { view: 'coordination', coordination: report.coordination };
+    case 'campaign':
+      return { view: 'campaign', campaign: report.campaign };
     case 'all':
       return { view: 'all', report };
   }

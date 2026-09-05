@@ -21,6 +21,7 @@ export function taskEvalCommand(baseDir: string = safeCwd()): Command {
       )
       .option('--session <id>', 'Session id')
       .option('--task-id <id>', 'Task id')
+      .option('--campaign <id>', 'Campaign id (written as detail.campaign_id)')
       .option('--note <text>', 'Free-form note')
       // ponytail: явный radix 10 — commander передаёт дефолт как previous, bare parseInt принял бы его за radix
       .option('--criteria-passed <n>', 'Criteria passed count', (v: string) => parseInt(v, 10))
@@ -32,6 +33,7 @@ export function taskEvalCommand(baseDir: string = safeCwd()): Command {
           scorer: options.scorer,
           ...(options.session !== undefined ? { sessionId: options.session } : {}),
           ...(options.taskId !== undefined ? { taskId: options.taskId } : {}),
+          ...(options.campaign !== undefined ? { campaignId: options.campaign } : {}),
           ...(options.criteriaPassed !== undefined ? { criteriaPassed: options.criteriaPassed } : {}),
           ...(options.criteriaTotal !== undefined ? { criteriaTotal: options.criteriaTotal } : {}),
           ...(options.criticalFailure ? { criticalFailure: true } : {}),

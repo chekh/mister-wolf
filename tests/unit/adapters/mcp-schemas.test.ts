@@ -107,4 +107,10 @@ describe('AnalyticsInputSchema (analytics MCP tool)', () => {
       expect(parsed.error.issues.some((i) => i.path.includes('view'))).toBe(true);
     }
   });
+
+  it("parses view 'campaign' (P3 D4: campaigns & per-memory ROI wire-through)", () => {
+    const parsed = AnalyticsInputSchema.safeParse({ view: 'campaign' });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.view).toBe('campaign');
+  });
 });
