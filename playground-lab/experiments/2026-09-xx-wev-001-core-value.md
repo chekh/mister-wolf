@@ -27,7 +27,7 @@
   в первое расширение; то же решение сокращает A/A до 1 пары)
 - stopping_rule: fixed (досрочных остановок и добавлений нет)
 - task_set_hash: bb3a09ba325f203939807df7295615a2d7679df6
-- scorer_hash: 02246ecb59b016da4f7422ccf31e5e58e9c2028d
+- scorer_hash: 05d56fac2087b25044d3e916c27490b59fc1edb4
 - environment-lock:
   playground-lab/measurements/WEV-001/environment-lock.json
   (sha1 ec3f81573ed3b91cfcf7e0accb3b01efeab536bb)

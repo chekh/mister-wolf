@@ -163,7 +163,7 @@ usage: cfr.sh <sessions.jsonl> <runs.tsv> <audit-verdicts.jsonl> [логи…]
 | `protected_damage`   | В audit_log строка «protected suite … — FAIL» (npm run check инстанса красный; семантика — protected-suite.md).                                                                                                                                                                                                                                                                                |
 | `superseded_rule_e4` | В audit_log строки инвариантов памяти E4 с вердиктом FAIL («правило E4 … — FAIL», «активный объект … — FAIL») — активный объект памяти противоречит правилу E4 без superseded.                                                                                                                                                                                                                 |
 | `scope_violation`    | В audit_log строки «scope violation … — FAIL» (правки вне разрешённых путей).                                                                                                                                                                                                                                                                                                                  |
-| `data_loss`          | Консервативно: в audit*log зафиксировано отсутствие накопленного состояния (WOLF: «.wolf отсутствует»; BASE: строка про отсутствующий NOTES.md), при том что в логах кампании есть контакты с этим состоянием (WOLF: tool-вызовы `mr[-*]wolf\*`; BASE: tool-обращения к NOTES.md/notes/). Признаков нет — класс не эмитируется.                                                                |
+| `data_loss`          | Консервативно: в audit_log зафиксировано отсутствие накопленного состояния (WOLF: «.wolf отсутствует»; BASE: строка про отсутствующий NOTES.md), при том что в логах кампании есть контакты с этим состоянием (WOLF: tool-вызовы `mr[-*]wolf\*`; BASE: tool-обращения к NOTES.md/notes/). Признаков нет — класс не эмитируется.                                                                |
 
 ### Механика invalid_run (выбытие)
 
@@ -211,7 +211,7 @@ cat analysis/*.sh task-families/TF-1-infra-hardening/hidden-oracles/*.sh | shasu
 `hidden-oracles/{campaign-audit.sh,oracle-e1.sh…oracle-e6b.sh}`.
 
 ```text
-scorer_hash: 02246ecb59b016da4f7422ccf31e5e58e9c2028d
+scorer_hash: 05d56fac2087b25044d3e916c27490b59fc1edb4
 ```
 
 Хэш переходит в карту эксперимента WA8 (pre-launch freeze).
@@ -330,6 +330,29 @@ e5 НЕ флагована — штатно):
 audit-мини-лога). Отрицательные контроли сошлись: e5-восстановление содержит
 маркер «завершено», но вердикт WOLF r1 PASS → события НЕТ; superseded_rule_e4 и
 data_loss на чистых audit-логах не эмитированы.
+
+Живая цепочка data_loss (ревью-фикс: campaign-audit эмитирует
+data_loss-кандидат для BASE при отсутствии NOTES.md/notes; cfr подхватывает
+строку при контактах с заметками в логах). В `audits/r1-base.log` добавлена
+строка аудита, прогон с r1-only вердиктами:
+
+```text
+$ bash analysis/cfr.sh …/sessions.jsonl …/runs.tsv …/audit-verdicts-r1only.jsonl …/logs/*.jsonl
+cfr-events.jsonl: 4 (data_loss=1, false_acceptance=1, protected_damage=1, scope_violation=1)
+invalid-run.jsonl: 2 (F21-hang=1, F22=1)
+```
+
+Событие data_loss дословно (контактов с NOTES.md в логах — 2):
+
+```jsonl
+{
+  "class": "data_loss",
+  "repeat": "r1",
+  "arm": "BASE",
+  "episode": "*",
+  "evidence": "audit_log=/tmp/wolfeval-v1/wa7-synth/audits/r1-base.log; NOTES.md (заметки BASE) отсутствует на аудите; контактов с состоянием в логах кампании: 2"
+}
+```
 
 ### secondary.sh
 

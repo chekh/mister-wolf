@@ -24,5 +24,5 @@ invalid_run: # критерии невалидности (скорер cfr.sh �
   - tokens нулевые во всех каналах # F22
 artifacts:
   task_set_hash: bb3a09ba325f203939807df7295615a2d7679df6
-  scorer_hash: 02246ecb59b016da4f7422ccf31e5e58e9c2028d
+  scorer_hash: 05d56fac2087b25044d3e916c27490b59fc1edb4
   environment_lock: playground-lab/measurements/WEV-001/environment-lock.json

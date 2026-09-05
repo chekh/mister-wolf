@@ -63,6 +63,8 @@ ORACLE E5: FAIL
 ORACLE E6a: FAIL
 ORACLE E6b: FAIL
 AUDIT: границы diff (изменённые пути внутри разрешённых) — PASS
+AUDIT: инварианты памяти (правило E4) — SKIP (arm=BASE)
+AUDIT: data_loss-кандидат (BASE): NOTES.md/notes отсутствуют — сверить контакты с заметками в логах эпизодов (триаж за человеком)
 CAMPAIGN AUDIT: FAIL
 
 # 2) мок-фиксы F4+F15: пункты кода зеленеют, итоги оракулов остаются FAIL,

@@ -60,7 +60,7 @@ REPO="${REPO:-$(cd "$SCRIPT_DIR/../../../../../../" && pwd)}"
 git -C "$REPO" rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "репо-источник не найден: $REPO"
 git -C "$REPO" cat-file -e "${SOURCE_COMMIT}^{commit}" 2>/dev/null || die "коммит среза ${SOURCE_COMMIT} отсутствует в $REPO (нужен чекаут с историей main)"
 
-# target: не внутри репо-источника, не системный каталог; если существует — только пустой
+# target: не внутри репо-источника; если существует — только пустой
 case "$(cd "$TARGET" 2>/dev/null && pwd)" in
   "$REPO"|"$REPO"/*) die "target внутри репо-источника — инстанс-расходник живёт вне git (tmp)" ;;
 esac
