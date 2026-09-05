@@ -12,14 +12,14 @@
 
 ## Типы объектов
 
-Каноническая таксономия — 25 типов (24 активных + 1 deprecated):
+Каноническая таксономия — 25 типов, все активные (все принимает `wolf add --type`):
 
 | Тип                  | Назначение                                                                                                          |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `document`           | deprecated (легаси-документ)                                                                                        |
 | `decision`           | решения; lifecycle active→superseded/rejected/obsolete                                                              |
 | `lesson`             | уроки; поля trigger*keywords + draft-поля (pattern_key, evidence, holdout*\*)                                       |
-| `observation`        | наблюдения; поля жалобы (about, complaint, semantic, trigger) — канал `wolf complain`                               |
+| `observation`        | наблюдения; опциональные поля about/complaint/semantic/trigger                                                      |
+| `complaint`          | жалобы (v2): обязательные `about`/`rule`/`evidence`/`proposal` + triage-поля; пишет `wolf complain`, статус `open`  |
 | `session-summary`    | итоги сессий; threads/sessions                                                                                      |
 | `open-question`      | открытые вопросы; defaultStatus: open                                                                               |
 | `context`            | контекст-заметки; notes                                                                                             |

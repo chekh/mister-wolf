@@ -8,17 +8,17 @@
 wolf add --type <type> --title <title> [options]
 ```
 
-| Опция                       | Описание                                                                                                                                                                                                                                                                                                                 |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--type <type>`             | Тип памяти: decision, lesson, observation, session-summary, open-question, context, work-thread, info-request, article, blocker, session-checkpoint, rule, document-ref, document-native, task-brief, report, council-question, council-opinion, synthesis, escalation, decision-request, call-injection, playbook, tool |
-| `--title <title>`           | Заголовок                                                                                                                                                                                                                                                                                                                |
-| `--body <body>`             | Текст                                                                                                                                                                                                                                                                                                                    |
-| `--tags <tags>`             | Теги через запятую                                                                                                                                                                                                                                                                                                       |
-| `--confidence <confidence>` | Уверенность (low\|medium\|high)                                                                                                                                                                                                                                                                                          |
-| `--importance <n>`          | Важность от 0 до 1                                                                                                                                                                                                                                                                                                       |
-| `--set <k=v>`               | Доп. поле key=value (повторяемый; значение «[a,b]» — строковый массив)                                                                                                                                                                                                                                                   |
-| `--scope <scope>`           | Поле scope для типов с ним (rule: project\|global)                                                                                                                                                                                                                                                                       |
-| `--created-by <actor>`      | Автор (дефолт: env WOLF_ACTOR, иначе user:cli)                                                                                                                                                                                                                                                                           |
+| Опция                       | Описание                                                                                                                                                                                                                                                                                                                            |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--type <type>`             | Тип памяти: decision, lesson, observation, complaint, session-summary, open-question, context, work-thread, info-request, article, blocker, session-checkpoint, rule, document-ref, document-native, task-brief, report, council-question, council-opinion, synthesis, escalation, decision-request, call-injection, playbook, tool |
+| `--title <title>`           | Заголовок                                                                                                                                                                                                                                                                                                                           |
+| `--body <body>`             | Текст                                                                                                                                                                                                                                                                                                                               |
+| `--tags <tags>`             | Теги через запятую                                                                                                                                                                                                                                                                                                                  |
+| `--confidence <confidence>` | Уверенность (low\|medium\|high)                                                                                                                                                                                                                                                                                                     |
+| `--importance <n>`          | Важность от 0 до 1                                                                                                                                                                                                                                                                                                                  |
+| `--set <k=v>`               | Доп. поле key=value (повторяемый; значение «[a,b]» — строковый массив)                                                                                                                                                                                                                                                              |
+| `--scope <scope>`           | Поле scope для типов с ним (rule: project\|global)                                                                                                                                                                                                                                                                                  |
+| `--created-by <actor>`      | Автор (дефолт: env WOLF_ACTOR, иначе user:cli)                                                                                                                                                                                                                                                                                      |
 
 ```bash
 wolf add --type lesson --title "Вит-тесты падают от кэша" --body "В CI — флаг --no-cache" --tags "vitest,ci" --confidence medium
@@ -74,6 +74,36 @@ wolf search <query> [options]
 
 ```bash
 wolf search "supersede" --type rule --hide-superseded
+```
+
+### Colon-запросы
+
+Сама строка запроса поддерживает префиксы `поле:значение` по индексируемым колонкам:
+
+- `type:lesson`, `status:active` — фильтр по колонке type / status;
+- `title:checklist`, `body:redis`, `tags:deploy` — фильтр по колонке title / body / tags;
+- префиксы комбинируются со словами: `type:lesson redis` — уроки, в которых встречается redis.
+
+Неизвестный префикс — не ошибка: `tag:deployment` (такой колонки нет) отбрасывает префикс и ищет значение как обычное слово. Остальное — FTS-поиск по словам: `AND`/`OR` работают как операторы, `NOT`/`NEAR` — обычные слова, фразы в кавычках деградируют до AND своих слов, дефисные токены ищут обе части.
+
+Структурные флаги выше (`--type`, `--status`, `--tag`, …) делают ту же фильтрацию с точным матчингом и остаются рекомендованным путём для скриптов; colon-запросы хороши в интерактивной разовой разведке.
+
+## `wolf update`
+
+Обновить triage-поля объекта памяти (команда триажа Стюарда для жалоб).
+
+```bash
+wolf update <id> [options]
+```
+
+| Опция             | Описание                                                                                     |
+| ----------------- | -------------------------------------------------------------------------------------------- |
+| `--set <k=v>`     | Установить triage-поле: `triage\|resolution` (повторяемая)                                   |
+| `--inc <field=n>` | Инкремент монотонного счётчика на целое n > 0: `dispatch_ages\|corroborations` (повторяемая) |
+| `--tags <tags>`   | Дописать теги через запятую                                                                  |
+
+```bash
+wolf update mem_…_complaint --set triage=duplicate --inc dispatch_ages=1
 ```
 
 ## `wolf supersede`

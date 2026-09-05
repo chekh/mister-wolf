@@ -79,14 +79,20 @@ wolf effectiveness
 
 ## `wolf complain`
 
-Записать жалобу на поведение агента/методики (hot-signal для Стюарда).
+Записать жалобу на правило/playbook/агента как объект памяти (тип `complaint`, статус `open`) — hot-signal для Стюарда.
 
-| Опция                  | Описание                                                                  |
-| ---------------------- | ------------------------------------------------------------------------- |
-| `--about <about>`      | Адресат: playbook id, agent id или имя skill (например, skill:apprentice) |
-| `--text <text>`        | Текст жалобы                                                              |
-| `--created-by <actor>` | Автор (дефолт: env WOLF_ACTOR, иначе user:cli)                            |
+| Опция                   | Описание                                                                                        |
+| ----------------------- | ----------------------------------------------------------------------------------------------- |
+| `--about <about>`       | Адресат: agent id, `skill:<имя>` или существующий mem-id                                        |
+| `--rule <rule>`         | Какое правило плохо (указатель + что оно требует)                                               |
+| `--evidence <evidence>` | Доказательство: дословная цитата + что произошло (файл/тест/числа); `--text` — deprecated-алиас |
+| `--proposal <proposal>` | Предлагаемое изменение правила                                                                  |
+| `--created-by <actor>`  | Автор (дефолт: env WOLF_ACTOR, иначе user:cli)                                                  |
+
+Жалоба ложится в store полноправным объектом с обязательными полями `about`/`rule`/`evidence`/`proposal` и triage-полями для Стюарда (`wolf update --set triage|resolution`); жизненный цикл — `open → resolved | rejected | archived`.
 
 ```bash
-wolf complain --about skill:apprentice --text "Игнорирует теги"
+wolf complain --about skill:apprentice --rule "шаг 2 требует ревью плана" \
+  --evidence "Прогон 2026-09-04 пропустил ревью плана (в диффе нет заметок ревью)" \
+  --proposal "Сделать гейт блокирующим в CI, а не рекомендательным"
 ```

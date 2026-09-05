@@ -94,7 +94,7 @@ Claude Code при первом старте попросит approve project-sc
 
 ### Память
 
-Всё есть память: 25 типов объектов (24 активных + 1 deprecated), версии, связи, атрибуция.
+Всё есть память: 25 типов объектов (включая `complaint`), версии, связи, атрибуция.
 
 ```bash
 wolf add --type lesson --title "..." --body "..." --tags "vitest,ci" --confidence medium
@@ -118,7 +118,7 @@ wolf relation add mem_001 supports mem_002
 wolf bootstrap                                    # подключение к проекту: скан → черновики правил, document-ref'ы, work-thread
 wolf call                                         # cold-start: активные injections для сессии (--for <topic> — по теме)
 wolf brief                                        # сводка состояния по последнему scan + памяти
-wolf complain --about skill:apprentice --text "…" # жалоба на поведение агента → hot-signal Стюарду
+wolf complain --about skill:apprentice --rule "…" --evidence "…" --proposal "…" # жалоба на правило/агента → объект complaint → hot-signal Стюарду
 wolf session checkpoint --thread <id>             # точка свёртки прогресса
 wolf session wrap-up --title "…"                  # session-summary завершения
 wolf solve "битые relation-ссылки" --save         # solve pack для проблемы памяти
@@ -139,7 +139,7 @@ Tool-библиотекарь: удачный скрипт кристаллиз�
 wolf tool register scripts/check.sh --name check --contract-in "нет" --contract-out "exit 0/1"
 wolf tool list --status active
 wolf tool use check          # +1 к usage_count, напоминание контракта
-wolf tool stats              # счётчики + экономика переиспользования из run-log
+wolf tool stats              # счётчики + экономика переиспользования из сигнального лога
 wolf tool expose check       # (пере)генерировать .opencode/skills/check/SKILL.md
 wolf tool deprecate check --reason "заменён линтером"
 wolf tool revive check       # deprecated → active
@@ -161,7 +161,10 @@ wolf learn status                    # здоровье сигнального �
 
 ### Эффективность
 
-- `wolf effectiveness` — панель: rules holdout, tool economy, доставка, шум, роутинг (агрегация, без LLM).
+- `wolf effectiveness` — панель: rules holdout, tool economy, доставка, шум, роутинг (агрегация, без LLM); `--snapshot` — append-only история для трендов.
+- `wolf analytics` — ledger'ы (memory/tools/rules/agents), жизненный цикл памяти и атрибуция, кампании «с памятью/без» + per-memory ROI, координация, data-quality; честные метрики (`n/a` + причина, числа не выдумываются).
+- `wolf dashboard` — консольный дашборд: health, ledgers, trends (unicode-таблицы, спарклайны).
+- `wolf task-eval --verdict accepted|rejected|partial|inconclusive` — вердикты по задачам: acceptance, coverage, стоимость принятой задачи; `--campaign` группирует раны в A/B-когорты.
 - `wolf insights [--type lessons|decisions|technical_debt|…] [--topic <t>]` — эвристический анализ памяти (Level 1, без LLM).
 - Бенчмарки: `scripts/bench/` (b1-repeat-debug, b2-bootstrap, b3-retrospective).
 
@@ -169,16 +172,16 @@ wolf learn status                    # здоровье сигнального �
 
 Самопроверяющиеся сценарии: `bash scripts/demo/scenario-N.sh`.
 
-| №   | Сценарий                                                                                               |
-| --- | ------------------------------------------------------------------------------------------------------ |
-| 1   | Подключение Wolf к новому проекту (self-checking, PASS/FAIL-точки)                                     |
-| 2   | Жизнь знания: рождение, устаревание (supersede), чтение актуального                                    |
-| 3   | Новый агент = одна команда (scaffold: playbook + рамка + связь)                                        |
-| 4   | Жалоба владельца — hot-signal контура самообучения                                                     |
-| 5   | Скрипт становится ресурсом — tool-цикл Библиотекаря                                                    |
-| 6   | Самообучение: 3 ошибки → паттерн → draft → Sandbox Replay → активация                                  |
-| 7   | Гигиена контура: learn status, целостность памяти, decay по пробегу                                    |
-| 8   | wolf run: модель из routing-объекта памяти, расход в run-log (**один реальный LLM-вызов, ~30–60 сек**) |
+| №   | Сценарий                                                                                                      |
+| --- | ------------------------------------------------------------------------------------------------------------- |
+| 1   | Подключение Wolf к новому проекту (self-checking, PASS/FAIL-точки)                                            |
+| 2   | Жизнь знания: рождение, устаревание (supersede), чтение актуального                                           |
+| 3   | Новый агент = одна команда (scaffold: playbook + рамка + связь)                                               |
+| 4   | Жалоба владельца — hot-signal контура самообучения                                                            |
+| 5   | Скрипт становится ресурсом — tool-цикл Библиотекаря                                                           |
+| 6   | Самообучение: 3 ошибки → паттерн → draft → Sandbox Replay → активация                                         |
+| 7   | Гигиена контура: learn status, целостность памяти, decay по пробегу                                           |
+| 8   | wolf run: модель из routing-объекта памяти, расход в сигнальный лог (**один реальный LLM-вызов, ~30–60 сек**) |
 
 ## Интеграции
 

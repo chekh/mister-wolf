@@ -4,16 +4,18 @@
 
 Each project's configuration lives in `.wolf/config.yaml` (YAML validated by a zod schema). Keys and defaults:
 
-| Key                                 | Type / default                                                                                              |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `schema_version`                    | int; current **2**. Legacy projects without the marker are treated as 1                                     |
-| `artifact_sources`                  | string[]; default `[]`                                                                                      |
-| `memory_types.core`                 | generated block from the code canon (`wolf taxonomy sync`); manual edits are overwritten                    |
-| `memory_types.project`              | your custom types: `lifecycle`, `subdir_thread`, `subdir_shared`, `fields`; cannot conflict with core types |
-| `error_class_taxonomy`              | `[{id, match[]}]`; default `[]`                                                                             |
-| `learning.pattern_threshold`        | int >= 1; default **3**                                                                                     |
-| `learning.decay_ttl`                | map of type → number of sessions without a hit                                                              |
-| `learning.effectiveness_thresholds` | `{noise_ok, noise_warn, silent_ok}` — percentages                                                           |
+| Key                                 | Type / default                                                                                                            |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `schema_version`                    | int; current **2**. Legacy projects without the marker are treated as 1                                                   |
+| `artifact_sources`                  | string[]; default `[]`                                                                                                    |
+| `memory_types.core`                 | generated block from the code canon (`wolf taxonomy sync`); manual edits are overwritten                                  |
+| `memory_types.project`              | your custom types: `lifecycle`, `subdir_thread`, `subdir_shared`, `fields`; cannot conflict with core types               |
+| `error_class_taxonomy`              | `[{id, match[]}]`; default `[]`                                                                                           |
+| `learning.pattern_threshold`        | int >= 1; default **3**                                                                                                   |
+| `learning.decay_ttl`                | map of type → number of sessions without a hit                                                                            |
+| `learning.effectiveness_thresholds` | `{noise_ok, noise_warn, silent_ok}` — percentages                                                                         |
+| `pricing`                           | map model → `{input, output, cache_read}` in $/Mtok; without the block `$` fields are hidden (numbers are never invented) |
+| `analytics.thresholds`              | memory lifecycle classification: `{new_days, workhorse_uses}`; default `{14, 3}`                                          |
 
 Example (defaults shape):
 
@@ -28,7 +30,19 @@ learning:
   pattern_threshold: 3
   decay_ttl: {} # type -> sessions without a hit
   # effectiveness_thresholds: { noise_ok, noise_warn, silent_ok } — percentages
+# $ conversion: model -> $/Mtok; without the block, $ fields are hidden
+pricing:
+  zai-coding-plan/glm-5.2:
+    input: 0.6
+    output: 2.2
+    cache_read: 0.08
+analytics:
+  thresholds:
+    new_days: 14 # NEW until this age
+    workhorse_uses: 3 # WORKHORSE from this many uses
 ```
+
+`pricing` and `analytics.thresholds` drive the [effectiveness analytics](/guide/cli/analytics#configuration) (`$` fields and lifecycle classes); the same keys are documented there with examples.
 
 A broken YAML is only repaired by `wolf init --recreate`: the corrupted file is backed up to `.wolf/backup/<ts>/` and a default config is rendered.
 

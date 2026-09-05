@@ -2,7 +2,7 @@
 
 The `wolf` binary is the human/script surface of Mr. Wolf. Check your installation with `wolf --version`; every command and subcommand also supports `-h, --help`.
 
-Commands are grouped by purpose: [Memory](/guide/cli/memory) · [Sessions & Context](/guide/cli/sessions-context) · [Work Management](/guide/cli/work-management) · [Thinking & Council](/guide/cli/thinking-council) · [Learning](/guide/cli/learning) · [Platform & Maintenance](/guide/cli/platform). The [command index](/guide/cli/) lists all 37 commands with links on one page.
+Commands are grouped by purpose: [Memory](/guide/cli/memory) · [Sessions & Context](/guide/cli/sessions-context) · [Work Management](/guide/cli/work-management) · [Thinking & Council](/guide/cli/thinking-council) · [Learning](/guide/cli/learning) · [Analytics](/guide/cli/analytics) · [Platform & Maintenance](/guide/cli/platform). The [command index](/guide/cli/) lists all 45 commands with links on one page.
 
 ## Conventions
 

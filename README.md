@@ -77,7 +77,7 @@ Details: [architecture guide (RU)](docs/guide/architecture.md) · [concept v3 (R
 
 ### Memory
 
-Everything is memory: 25 object types (24 active + 1 deprecated), versions, relations, attribution.
+Everything is memory: 25 object types (including `complaint`), versions, relations, attribution.
 
 ```bash
 wolf add --type lesson --title "..." --body "..." --tags "vitest,ci" --confidence medium
@@ -101,7 +101,7 @@ Agent working protocols as a product.
 wolf bootstrap                                    # подключение к проекту: скан → черновики правил, document-ref'ы, work-thread
 wolf call                                         # cold-start: активные injections для сессии (--for <topic> — по теме)
 wolf brief                                        # сводка состояния по последнему scan + памяти
-wolf complain --about skill:apprentice --text "…" # жалоба на поведение агента → hot-signal Стюарду
+wolf complain --about skill:apprentice --rule "…" --evidence "…" --proposal "…" # жалоба на правило/агента → объект complaint → hot-signal Стюарду
 wolf session checkpoint --thread <id>             # точка свёртки прогресса
 wolf session wrap-up --title "…"                  # session-summary завершения
 wolf solve "битые relation-ссылки" --save         # solve pack для проблемы памяти
@@ -122,7 +122,7 @@ Tool librarian: a successful script crystallizes into a permanent project resour
 wolf tool register scripts/check.sh --name check --contract-in "нет" --contract-out "exit 0/1"
 wolf tool list --status active
 wolf tool use check          # +1 к usage_count, напоминание контракта
-wolf tool stats              # счётчики + экономика переиспользования из run-log
+wolf tool stats              # счётчики + экономика переиспользования из сигнального лога
 wolf tool expose check       # (пере)генерировать .opencode/skills/check/SKILL.md
 wolf tool deprecate check --reason "заменён линтером"
 wolf tool revive check       # deprecated → active
@@ -144,7 +144,10 @@ wolf learn status                    # здоровье сигнального �
 
 ### Effectiveness
 
-- `wolf effectiveness` — dashboard: rules holdout, tool economy, delivery, noise, routing (aggregation, no LLM).
+- `wolf effectiveness` — dashboard: rules holdout, tool economy, delivery, noise, routing (aggregation, no LLM); `--snapshot` — append-only history for trends.
+- `wolf analytics` — ledgers (memory/tools/rules/agents), memory lifecycle & attribution, campaigns with/without memory + per-memory ROI, coordination, data-quality; honest metrics (`n/a` + reason, never invented numbers).
+- `wolf dashboard` — console dashboard: health, ledgers, trends (unicode tables, sparklines).
+- `wolf task-eval --verdict accepted|rejected|partial|inconclusive` — task verdicts: acceptance, coverage, cost per accepted task; `--campaign` groups runs into A/B cohorts.
 - `wolf insights [--type lessons|decisions|technical_debt|…] [--topic <t>]` — heuristic analysis of memory (Level 1, no LLM).
 - Benchmarks: `scripts/bench/` (b1-repeat-debug, b2-bootstrap, b3-retrospective).
 
@@ -152,16 +155,16 @@ wolf learn status                    # здоровье сигнального �
 
 Self-checking scenarios: `bash scripts/demo/scenario-N.sh`.
 
-| #   | Scenario                                                                                                       |
-| --- | -------------------------------------------------------------------------------------------------------------- |
-| 1   | Connecting Wolf to a new project (self-checking, PASS/FAIL points)                                             |
-| 2   | The life of a knowledge item: birth, aging (supersede), reading the current one                                |
-| 3   | A new agent = one command (scaffold: playbook + frame + relation)                                              |
-| 4   | An owner complaint — a hot-signal into the self-learning loop                                                  |
-| 5   | A script becomes a resource — the Librarian's tool cycle                                                       |
-| 6   | Self-learning: 3 mistakes → pattern → draft → Sandbox Replay → activation                                      |
-| 7   | Loop hygiene: learn status, memory integrity, mileage-based decay                                              |
-| 8   | wolf run: model from a routing memory object, spend written to the run-log (**one real LLM call, ~30–60 sec**) |
+| #   | Scenario                                                                                                          |
+| --- | ----------------------------------------------------------------------------------------------------------------- |
+| 1   | Connecting Wolf to a new project (self-checking, PASS/FAIL points)                                                |
+| 2   | The life of a knowledge item: birth, aging (supersede), reading the current one                                   |
+| 3   | A new agent = one command (scaffold: playbook + frame + relation)                                                 |
+| 4   | An owner complaint — a hot-signal into the self-learning loop                                                     |
+| 5   | A script becomes a resource — the Librarian's tool cycle                                                          |
+| 6   | Self-learning: 3 mistakes → pattern → draft → Sandbox Replay → activation                                         |
+| 7   | Loop hygiene: learn status, memory integrity, mileage-based decay                                                 |
+| 8   | wolf run: model from a routing memory object, spend written to the signal log (**one real LLM call, ~30–60 sec**) |
 
 ## Integrations
 

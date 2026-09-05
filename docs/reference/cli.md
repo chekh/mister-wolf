@@ -1,6 +1,6 @@
-# Справочник CLI Mr. Wolf (v0.1.0)
+# Справочник CLI Mr. Wolf (v2.8.0)
 
-Полный reference командного интерфейса Mr. Wolf. Все команды, флаги и описания сняты с фактического вывода help CLI версии 0.1.0 (`wolf --version`) и сохранены в дампе `.wolf/orchestration/help/`.
+Полный reference командного интерфейса Mr. Wolf. Все команды, флаги и описания сняты с фактического вывода help CLI версии 2.8.0 (`wolf --version`).
 
 > Актуальность проверяй локально: `wolf help <command>` (или `wolf <command> --help`).
 
@@ -17,14 +17,34 @@
 
 ### wolf init
 
-Initialize Mr. Wolf memory for this project — инициализирует память Mr. Wolf в проекте.
+Initialize Mr. Wolf memory for this project (interactive in TTY; non-interactive requires --model) — инициализирует память Mr. Wolf в проекте (интерактивно в TTY; неинтерактивный режим требует --model).
 
 `Usage: wolf init [options]`
 
-Без опций.
+| Флаг         | Аргумент | Описание                                                                                   |
+| ------------ | -------- | ------------------------------------------------------------------------------------------ |
+| `--platform` | `<ids>`  | explicit platform list (comma-separated: opencode,claude); replaces the current set        |
+| `--model`    | `<id>`   | model for Mr.Wolf and its agents (`<providerID>/<modelID>`); required when non-interactive |
+| `--recreate` | —        | backup a corrupted .wolf/config.yaml and re-create it from defaults (default: false)       |
 
 ```bash
 wolf init
+wolf init --platform opencode,claude --model zai-coding-plan/glm-5.2
+```
+
+### wolf upgrade
+
+Upgrade the global wolf installation to the latest npm version (runs npm install -g mister-wolf@latest); --check only compares versions, no install — обновляет глобальную установку wolf до последней npm-версии (`--check` — только сравнить версии, без установки).
+
+`Usage: wolf upgrade [options]`
+
+| Флаг      | Аргумент | Описание                                                |
+| --------- | -------- | ------------------------------------------------------- |
+| `--check` | —        | Only check for a newer version, do not install anything |
+
+```bash
+wolf upgrade --check
+wolf upgrade
 ```
 
 ## Память
@@ -35,17 +55,17 @@ Add a memory object — добавляет объект памяти.
 
 `Usage: wolf add [options]`
 
-| Флаг           | Аргумент       | Описание                                                                                                                                                                                                                                                                                                                                                                            |
-| -------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--type`       | `<type>`       | Memory type (choices: "decision", "lesson", "observation", "session-summary", "open-question", "context", "work-thread", "info-request", "article", "blocker", "session-checkpoint", "rule", "document-ref", "document-native", "task-brief", "report", "council-question", "council-opinion", "synthesis", "escalation", "decision-request", "call-injection", "playbook", "tool") |
-| `--title`      | `<title>`      | Title                                                                                                                                                                                                                                                                                                                                                                               |
-| `--body`       | `<body>`       | Body text                                                                                                                                                                                                                                                                                                                                                                           |
-| `--tags`       | `<tags>`       | Comma-separated tags                                                                                                                                                                                                                                                                                                                                                                |
-| `--confidence` | `<confidence>` | Confidence level (low\|medium\|high)                                                                                                                                                                                                                                                                                                                                                |
-| `--importance` | `<n>`          | Importance from 0 to 1                                                                                                                                                                                                                                                                                                                                                              |
-| `--set`        | `<k=v>`        | Extra field key=value (repeatable; "[a,b]" value is a string array) (default: [])                                                                                                                                                                                                                                                                                                   |
-| `--scope`      | `<scope>`      | Scope field for types that declare one (rule: project\|global)                                                                                                                                                                                                                                                                                                                      |
-| `--created-by` | `<actor>`      | Creator actor (default: env WOLF_ACTOR, else user:cli)                                                                                                                                                                                                                                                                                                                              |
+| Флаг           | Аргумент       | Описание                                                                                                                                                                                                                                                                                                                                                                                         |
+| -------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--type`       | `<type>`       | Memory type (choices: "decision", "lesson", "observation", "complaint", "session-summary", "open-question", "context", "work-thread", "info-request", "article", "blocker", "session-checkpoint", "rule", "document-ref", "document-native", "task-brief", "report", "council-question", "council-opinion", "synthesis", "escalation", "decision-request", "call-injection", "playbook", "tool") |
+| `--title`      | `<title>`      | Title                                                                                                                                                                                                                                                                                                                                                                                            |
+| `--body`       | `<body>`       | Body text                                                                                                                                                                                                                                                                                                                                                                                        |
+| `--tags`       | `<tags>`       | Comma-separated tags                                                                                                                                                                                                                                                                                                                                                                             |
+| `--confidence` | `<confidence>` | Confidence level (low\|medium\|high)                                                                                                                                                                                                                                                                                                                                                             |
+| `--importance` | `<n>`          | Importance from 0 to 1                                                                                                                                                                                                                                                                                                                                                                           |
+| `--set`        | `<k=v>`        | Extra field key=value (repeatable; "[a,b]" value is a string array) (default: [])                                                                                                                                                                                                                                                                                                                |
+| `--scope`      | `<scope>`      | Scope field for types that declare one (rule: project\|global)                                                                                                                                                                                                                                                                                                                                   |
+| `--created-by` | `<actor>`      | Creator actor (default: env WOLF_ACTOR, else user:cli)                                                                                                                                                                                                                                                                                                                                           |
 
 ```bash
 wolf add --type lesson --title "RTK и пайпы" --body "Составные команды гонять через нативный bash" --tags cli,rtk --confidence high --importance 0.8
@@ -110,6 +130,13 @@ Search memory objects — поиск по объектам памяти с фи�
 wolf search "инкрементальная индексация" --type decision --limit 5
 ```
 
+Синтаксис FTS-запроса: слова (поиск по префиксу, регистр и алфавит не важны);
+неявный `AND` через пробел, заглавный `OR` — оператор (`NOT`/`NEAR` — обычные
+слова); `field:value` — колоночный фильтр для колонок индекса `memory_id`,
+`type`, `title`, `body`, `tags`, `status`, `review_state` (неизвестное поле
+отбрасывается, значение ищется как слово); кавычки вырезаются, дефис —
+разделитель (AND частей). При пустой выдаче CLI сам печатает hint с колонками.
+
 ### wolf supersede
 
 Supersede a memory object with another — заменяет устаревший объект новым.
@@ -138,6 +165,25 @@ Transition a memory object to a new status — переводит объект �
 
 ```bash
 wolf transition mem_20260830_a1b2c3 superseded --actor agent:steward
+```
+
+### wolf update
+
+Update triage fields of a memory object (whitelist: --set triage|resolution, --inc dispatch_ages|corroborations, --tags append) — обновляет триажные поля объекта памяти по белому списку.
+
+`Usage: wolf update [options] <id>`
+
+Аргументы: `id` — Memory object id.
+
+| Флаг      | Аргумент    | Описание                                                                                               |
+| --------- | ----------- | ------------------------------------------------------------------------------------------------------ |
+| `--set`   | `<k=v>`     | Set a triage field: triage\|resolution (repeatable) (default: [])                                      |
+| `--inc`   | `<field=n>` | Increment monotonic counter by integer n > 0: dispatch_ages\|corroborations (repeatable) (default: []) |
+| `--tags`  | `<tags>`    | Append comma-separated tags                                                                            |
+| `--actor` | `<actor>`   | Actor performing the update (default: "user:cli")                                                      |
+
+```bash
+wolf update mem_20260830_a1b2c3 --set triage=accepted --inc corroborations=1 --tags "audited,phase-b"
 ```
 
 ### wolf rebuild-index
@@ -796,37 +842,53 @@ wolf scaffold agent triager --persona "Триаж входящих вопрос�
 
 ### wolf run
 
-Run opencode with the model from the Wolf routing object; log weighted token cost — запускает opencode с моделью из routing-объекта Wolf и логирует взвешенную стоимость токенов.
+Run opencode with the model from the Wolf routing object; log weighted token cost — запускает opencode с моделью из routing-объекта Wolf и логирует взвешенную стоимость токенов (run-сигнал в сигнальный лог).
 
 `Usage: wolf run [options] <prompt>`
 
 Аргументы: `prompt` — Prompt passed to opencode.
 
-| Флаг        | Аргумент  | Описание                                                  |
-| ----------- | --------- | --------------------------------------------------------- |
-| `--agent`   | `<name>`  | opencode agent name                                       |
-| `--title`   | `<title>` | Run label written to the log                              |
-| `--session` | `<sid>`   | opencode session id to continue                           |
-| `--tool`    | `<name>`  | Mark this run as using tool(s) (repeatable) (default: []) |
+| Флаг           | Аргумент   | Описание                                                                           |
+| -------------- | ---------- | ---------------------------------------------------------------------------------- |
+| `--agent`      | `<name>`   | opencode agent name                                                                |
+| `--title`      | `<title>`  | Run label written to the log                                                       |
+| `--session`    | `<sid>`    | opencode session id to continue                                                    |
+| `--tool`       | `<name>`   | Mark this run as using tool(s) (repeatable) (default: [])                          |
+| `--experiment` | `<id>`     | Experiment id (comparative methodologies, e.g. RCT)                                |
+| `--arm`        | `<choice>` | Experiment arm (choices: "wolf", "baseline")                                       |
+| `--task-id`    | `<id>`     | Task id (written as top-level task_id; duplicated in experiment when --experiment) |
+| `--campaign`   | `<id>`     | Campaign id (written as top-level campaign_id; groups runs for --view campaign)    |
+| `--trace-id`   | `<id>`     | Trace id (defaults to a fresh uuid)                                                |
+| `--attempt`    | `<n>`      | Attempt number within the task                                                     |
+
+Семантика экспериментальных флагов и identity-поля v2 (`event_id`, `run_id`,
+`config_hash` и др.) — [signal-log.md](../guide/signal-log.md).
 
 ```bash
 wolf run "Обнови roadmap-v2 по итогам фазы" --agent build --title "docs: roadmap" --tool read --tool write
+wolf run "Fix the failing test" --session ses-ab-wolf --campaign eval-01 --task-id fix-failing-test --trace-id 7f3a… --attempt 1
 ```
 
 ### wolf complain
 
-Record a complaint about agent/methodology behavior (hot-signal for the Steward) — фиксирует жалобу на поведение агента/методологии (горячий сигнал для Steward).
+File a complaint about a rule/playbook/agent as a memory object (type complaint, status open) — подаёт жалобу на правило/playbook/агента как объект памяти (тип complaint, статус open).
 
 `Usage: wolf complain [options]`
 
-| Флаг           | Аргумент  | Описание                                                                      |
-| -------------- | --------- | ----------------------------------------------------------------------------- |
-| `--about`      | `<about>` | Complaint target: playbook id, agent id or skill name (e.g. skill:apprentice) |
-| `--text`       | `<text>`  | Complaint text                                                                |
-| `--created-by` | `<actor>` | Creator actor (default: env WOLF_ACTOR, else user:cli)                        |
+| Флаг           | Аргумент     | Описание                                                      |
+| -------------- | ------------ | ------------------------------------------------------------- |
+| `--about`      | `<about>`    | Complaint target: agent id, skill:\<name\> or existing mem-id |
+| `--rule`       | `<rule>`     | Which rule is bad (pointer + what it requires)                |
+| `--evidence`   | `<evidence>` | Proof: verbatim quote + what happened (file/test/numbers)     |
+| `--text`       | `<text>`     | Deprecated alias for --evidence                               |
+| `--proposal`   | `<proposal>` | Proposed change to the rule                                   |
+| `--created-by` | `<actor>`    | Creator actor (default: env WOLF_ACTOR, else user:cli)        |
+
+Обязательны `--about`, `--rule`, `--proposal` и `--evidence` (или deprecated
+`--text`). Протокол обработки — [complaint-protocol.md](../guide/complaint-protocol.md).
 
 ```bash
-wolf complain --about skill:apprentice --text "Не прогнал тесты перед отчётом"
+wolf complain --about skill:apprentice --rule "Правило требует vitest перед отчётом" --evidence "e2e red, лог-цитата" --proposal "STOP-гейт в playbook"
 ```
 
 ### wolf bootstrap
@@ -859,7 +921,7 @@ Tool librarian: register/list/use/expose/deprecate/revive — библиотек
 - `expose <name-or-id>` — (Re)generate .opencode/skills/\<name\>/SKILL.md from tool object (idempotent)
 - `deprecate [options] <name-or-id>` — Deprecate a tool (requires reason)
 - `revive <name-or-id>` — Revive a deprecated tool (deprecated → active)
-- `stats` — Usage counters per tool + reuse economy from .wolf/run-log.jsonl
+- `stats` — Usage counters per tool + reuse economy (signal log + legacy run-log)
 
 #### wolf tool register
 
@@ -958,7 +1020,7 @@ wolf tool revive old-scan
 
 #### wolf tool stats
 
-Usage counters per tool + reuse economy from .wolf/run-log.jsonl — счётчики использования по инструментам и экономика переиспользования.
+Usage counters per tool + reuse economy (signal log + legacy run-log) — счётчики использования по инструментам и экономика переиспользования (канон — сигнальный лог; legacy run-log читается compat-мержем до архивации `wolf migrate run-log`).
 
 `Usage: wolf tool stats [options]`
 
@@ -1128,10 +1190,13 @@ Memory effectiveness panel: rules holdout, tool economy, delivery, noise, routin
 
 `Usage: wolf effectiveness [options]`
 
-Без опций.
+| Флаг         | Аргумент | Описание                                                              |
+| ------------ | -------- | --------------------------------------------------------------------- |
+| `--snapshot` | —        | Append the full report to .wolf/metrics/effectiveness-snapshots.jsonl |
 
 ```bash
 wolf effectiveness
+wolf effectiveness --snapshot
 ```
 
 ### wolf insights
@@ -1149,6 +1214,103 @@ Heuristic pattern analysis over project memory (Level 1, no LLM) — эврис�
 wolf insights --topic rtk --type lessons
 ```
 
+### wolf analytics
+
+Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness, memory lifecycle & coordination, campaigns & per-memory ROI — выборки аналитики эффективности (агрегация, без LLM). Подробности: [analytics.md](../guide/analytics.md).
+
+`Usage: wolf analytics [options]`
+
+| Флаг       | Аргумент   | Описание                                                                                                                                                                            |
+| ---------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--view`   | `<view>`   | Analytics view (choices: "memory", "tools", "rules", "weeklyActivity", "agents", "steward", "outliers", "readiness", "councils", "coordination", "campaign", "all", default: "all") |
+| `--class`  | `<class>`  | Memory lifecycle filter (choices: "new", "sleeper", "workhorse", "dead")                                                                                                            |
+| `--type`   | `<type>`   | Memory type filter                                                                                                                                                                  |
+| `--origin` | `<origin>` | Tool origin filter (choices: "script", "native")                                                                                                                                    |
+| `--agent`  | `<agent>`  | Agent name filter                                                                                                                                                                   |
+| `--silent` | —          | Rules view: only silent rules (default: false)                                                                                                                                      |
+| `--top`    | `<n>`      | Row limit (default: 20)                                                                                                                                                             |
+| `--weeks`  | `<n>`      | Weekly activity window in weeks (default: 8)                                                                                                                                        |
+| `--json`   | —          | Machine-readable JSON output (default: false)                                                                                                                                       |
+
+```bash
+wolf analytics --view memory --top 5
+wolf analytics --view campaign --json
+```
+
+### wolf dashboard
+
+Console dashboard: health, ledgers, trends (unicode tables and sparklines; no files written) — консольный дашборд: health/ledgers/trends (unicode-таблицы и спарклайны, без записи файлов).
+
+`Usage: wolf dashboard [options]`
+
+| Флаг     | Аргумент | Описание                                                             |
+| -------- | -------- | -------------------------------------------------------------------- |
+| `--tab`  | `<tab>`  | Render a single section (choices: "health", "ledgers", "trends")     |
+| `--json` | —        | Machine-readable JSON output of the whole dashboard (default: false) |
+
+```bash
+wolf dashboard
+wolf dashboard --tab trends
+```
+
+### wolf task-eval
+
+Record a task verdict into the signal log (event task_evaluated) — записывает вердикт по задаче в сигнальный лог (событие task_evaluated).
+
+`Usage: wolf task-eval [options]`
+
+| Флаг                 | Аргумент    | Описание                                                                                                  |
+| -------------------- | ----------- | --------------------------------------------------------------------------------------------------------- |
+| `--verdict`          | `<verdict>` | Task verdict (choices: "accepted", "rejected", "partial", "inconclusive")                                 |
+| `--scorer`           | `<scorer>`  | Who evaluated the task (choices: "human", "deterministic", "llm_judge", "hidden_tests", default: "human") |
+| `--session`          | `<id>`      | Session id                                                                                                |
+| `--task-id`          | `<id>`      | Task id                                                                                                   |
+| `--campaign`         | `<id>`      | Campaign id (written as detail.campaign_id)                                                               |
+| `--note`             | `<text>`    | Free-form note                                                                                            |
+| `--criteria-passed`  | `<n>`       | Criteria passed count                                                                                     |
+| `--criteria-total`   | `<m>`       | Criteria total count                                                                                      |
+| `--critical-failure` | —           | Mark a critical failure (default: false)                                                                  |
+
+```bash
+wolf task-eval --verdict accepted --task-id docs-v2.5.0-rename --scorer human --note "v2.5.0 docs sync"
+```
+
+### wolf memory-stage
+
+Record a memory lifecycle stage into the signal log (event memory_stage) — фиксирует стадию жизненного цикла памяти в сигнальном логе.
+
+`Usage: wolf memory-stage [options]`
+
+| Флаг        | Аргумент  | Описание                                                                      |
+| ----------- | --------- | ----------------------------------------------------------------------------- |
+| `--stage`   | `<stage>` | Memory lifecycle stage (choices: "retrieved", "injected", "cited", "applied") |
+| `--ids`     | `<ids>`   | Comma-separated memory object ids                                             |
+| `--actor`   | `<actor>` | Actor attribution (default: WOLF_ACTOR env or user:cli)                       |
+| `--session` | `<id>`    | Session id                                                                    |
+
+```bash
+wolf memory-stage --stage applied --ids mem_20260904_a1b2c3 --actor agent:worker
+```
+
+### wolf coord
+
+Record a coordination event into the signal log (event coord_event) — фиксирует факт координации между агентами в сигнальном логе.
+
+`Usage: wolf coord [options]`
+
+| Флаг      | Аргумент  | Описание                                                                                      |
+| --------- | --------- | --------------------------------------------------------------------------------------------- |
+| `--kind`  | `<kind>`  | Coordination event kind (choices: "handoff", "review", "acceptance", "blocker", "escalation") |
+| `--from`  | `<actor>` | Source actor (default: WOLF_ACTOR env or user:cli)                                            |
+| `--to`    | `<actor>` | Target actor                                                                                  |
+| `--ref`   | `<ids>`   | Comma-separated referenced object ids (default: [])                                           |
+| `--note`  | `<text>`  | Free-form note                                                                                |
+| `--actor` | `<actor>` | Writer actor attribution (default: WOLF_ACTOR env or user:cli)                                |
+
+```bash
+wolf coord --kind handoff --from "L0:wolf" --to "L1:lead" --ref mem_20260904_report --note "phase B dispatch"
+```
+
 ## Инфраструктура
 
 ### wolf mcp
@@ -1161,6 +1323,30 @@ Start the MCP server (stdio) — запускает MCP-сервер (stdio).
 
 ```bash
 wolf mcp
+```
+
+### wolf sync
+
+Re-render the wolf base set (stamped files only; memory untouched) — перегенерирует базовый набор агентов/скиллов/плагинов (только штампованные `wolf:rendered` файлы; память не трогает).
+
+`Usage: wolf sync [options]`
+
+Без опций.
+
+```bash
+wolf sync
+```
+
+### wolf doctor
+
+Check all registered projects: binary vs schema version, platform configs, prune dead entries — проверяет все зарегистрированные проекты: версия бинаря против схемы, конфиги платформ, чистит мёртвые записи.
+
+`Usage: wolf doctor [options]`
+
+Без опций.
+
+```bash
+wolf doctor
 ```
 
 ### wolf migrate
@@ -1181,7 +1367,22 @@ wolf migrate --apply
 
 Подкоманды:
 
+- `doc-ids [options]` — One-time migration of document-ref ids to canonical format (spec 2.1.0 §2.6); --apply to perform
 - `run-log` — Archive legacy .wolf/run-log.jsonl to .wolf/metrics/archive (idempotent)
+
+#### wolf migrate doc-ids
+
+One-time migration of document-ref ids to canonical format (spec 2.1.0 §2.6); --apply to perform — разовая миграция id document-ref'ов к каноническому формату.
+
+`Usage: wolf migrate doc-ids [options]`
+
+| Флаг      | Аргумент | Описание                                                  |
+| --------- | -------- | --------------------------------------------------------- |
+| `--apply` | —        | perform the migration (default: dry-run) (default: false) |
+
+```bash
+wolf migrate doc-ids --apply
+```
 
 #### wolf migrate run-log
 

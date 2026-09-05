@@ -23,7 +23,7 @@ wolf bootstrap               # 3) memory: starting content drafted from project 
 What each step does:
 
 1. `npm install -g mister-wolf` installs the global `wolf` binary.
-2. `wolf init` creates the `.wolf/` skeleton in the project and writes MCP configs for detected platforms (opencode, Claude Code). Detection is automatic; explicit: `wolf init --platform opencode,claude` (the list replaces the current set).
+2. `wolf init` creates the `.wolf/` skeleton in the project and writes MCP configs for detected platforms (opencode, Claude Code). Detection is automatic; explicit: `wolf init --platform opencode,claude` (the list replaces the current set). In a TTY init asks for the model interactively; outside a TTY pass `--model`.
 3. `wolf bootstrap` scans the project and drafts starting memory: proposed rules, `document-ref`s and a work thread.
 
 After `wolf init` **restart your agent platform** — the Wolf MCP server connects at startup. Claude Code will ask you to approve the project-scope MCP server on first start; that is expected.
@@ -57,7 +57,7 @@ wolf recap               # summary: rules, work threads, blockers, questions, de
 
 Key flags of `wolf add` (see the [CLI reference](/guide/cli/memory#wolf-add) for the full list):
 
-- `--type <type>` — one of 24 active memory types (`decision`, `lesson`, `rule`, `blocker`, …).
+- `--type <type>` — one of the 25 memory types (`decision`, `lesson`, `rule`, `blocker`, …).
 - `--title`, `--body` — the object's content.
 - `--tags <tags>` — comma-separated tags.
 - `--confidence <level>` — `low|medium|high`.
