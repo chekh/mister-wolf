@@ -10,6 +10,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 - docs: comprehensive revision after P0–P3 — analytics guide rebuilt as a coherent narrative, site EN/RU brought to parity, coverage gaps closed.
 
+### Fixed
+
+- MCP server reported hardcoded 0.1.0 version; now reads package.json via getWolfVersion().
+
 ## [2.8.0] — 2026-09-05
 
 ### Added

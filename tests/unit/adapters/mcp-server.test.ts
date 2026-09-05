@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { buildMcpServer } from '../../../src/adapters/mcp/mcp-server.js';
+import { getWolfVersion } from '../../../src/adapters/version.js';
 import {
   MemoryAddInputSchema,
   MemorySearchInputSchema,
@@ -26,6 +27,12 @@ describe('buildMcpServer', () => {
     const server = buildMcpServer(dir);
     const tools = (server as unknown as { _registeredTools: Record<string, unknown> })._registeredTools;
     expect(Object.keys(tools).length).toBeGreaterThan(0);
+  });
+
+  it('reports version from package.json, not a hardcoded literal', () => {
+    const server = buildMcpServer(dir);
+    const info = (server as unknown as { server: { _serverInfo: { version: string } } }).server._serverInfo;
+    expect(info.version).toBe(getWolfVersion());
   });
 
   it('searches memory objects', async () => {

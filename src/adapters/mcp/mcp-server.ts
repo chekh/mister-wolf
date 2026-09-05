@@ -1,10 +1,11 @@
 import { fromJsonSchema, McpServer } from '@modelcontextprotocol/server';
 import { createCliContainer } from '../../bootstrap/container.js';
+import { getWolfVersion } from '../version.js';
 import { registerMemoryTools } from './mcp-tools.js';
 
 export function buildMcpServer(baseDir: string): McpServer {
   const deps = createCliContainer(baseDir);
-  const server = new McpServer({ name: 'mr-wolf', version: '0.1.0' });
+  const server = new McpServer({ name: 'mr-wolf', version: getWolfVersion() });
 
   registerMemoryTools(server, deps, baseDir);
 
