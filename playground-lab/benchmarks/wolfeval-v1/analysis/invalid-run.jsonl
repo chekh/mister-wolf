@@ -1,2 +1,0 @@
-{"repeat": "r1", "arm": "WOLF", "episode": "e2", "log": "/tmp/wolfeval-v1/wa7-synth/logs/e2-wolf-r1.jsonl", "exit": 124, "reason": "F21-hang: exit 124 без planned_kill"}
-{"repeat": "r2", "arm": "WOLF", "episode": "e3", "log": "/tmp/wolfeval-v1/wa7-synth/logs/e3-wolf-r2.jsonl", "exit": 0, "reason": "F22: нулевые токены во всех каналах"}
