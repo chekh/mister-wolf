@@ -43,9 +43,12 @@
 | 7 | e6a    | 2    | 158  | 54516.6    | **invalid F25**: auto-reject `/Users/chekh/.config/wolf/*` → смерть без финального text |
 | 8 | e6b    | 2    | 53   | 31497.2    | **invalid F25**: тот же путь `/Users/chekh/.config/wolf/*`, 53s |
 
-Oracle-вердикты всех 8 эпизодов — `r1/audit-verdicts.jsonl` (+ полные выводы
-`r1/oracle-base-e*.txt`); costs.csv — `r1/costs.csv` (CPSC n/a: кампания не
-завершена, assume_all_success).
+Oracle-вердикты: **7 строк на 8 запусков** — E5 = пара planned_kill+recovery
+на одном финальном состоянии инстанса, оракул прогнан один раз после пары
+(дедупликация по смыслу оракула: проверяет итог эпизода, а не каждый запуск);
+вердикты — `r1/audit-verdicts.jsonl` (+ полные выводы `r1/oracle-base-e*.txt`);
+costs.csv — `r1/costs.csv` (CPSC n/a: кампания не завершена,
+assume_all_success).
 
 ## Стоп-решение (по стоп-правилу брифа WC1)
 
