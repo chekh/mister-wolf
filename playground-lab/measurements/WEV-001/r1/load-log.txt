@@ -1,0 +1,28 @@
+# Load-журнал WEV-001 r1 (uptime до/после каждого запуска лаунчера)
+# Порядок повтора 1: BASE → WOLF (run-configs/wev-001.yaml)
+# Timeout эпизода: 1800s (amendment v1.1); E5 planned_kill: 300s (фиксированная точка обрыва, обе руки)
+22:21  load: 5.23 5.87 8.92
+22:21  load: 4.71 5.73 8.82
+22:45  load: 62.52 72.89 48.70
+LAUNCHER_EXIT=0 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1/playground-lab/measurements/WEV-001/r1/base e1 normal)
+22:45  load: 46.40 67.72 47.79
+22:46  load: 34.41 62.02 46.62
+LAUNCHER_EXIT=2 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1/playground-lab/measurements/WEV-001/r1/base e2 normal)
+22:47  load: 24.78 53.01 44.49
+23:14  load: 12.16 18.07 32.34
+LAUNCHER_EXIT=0 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1/playground-lab/measurements/WEV-001/r1/base e3 normal)
+23:15  load: 10.56 17.43 31.86
+23:35  load: 34.01 43.40 43.89
+LAUNCHER_EXIT=0 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1/playground-lab/measurements/WEV-001/r1/base e4 normal)
+23:36  load: 41.86 44.40 44.24
+23:41  load: 27.71 40.66 43.38
+LAUNCHER_EXIT=124 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1/playground-lab/measurements/WEV-001/r1/base e5 kill)
+23:41  load: 33.19 41.38 43.61
+00:11  load: 19.19 49.76 55.01
+LAUNCHER_EXIT=124 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1/playground-lab/measurements/WEV-001/r1/base e5 recovery)
+00:12  load: 15.35 46.90 53.86
+00:14  load: 12.79 33.00 46.94
+LAUNCHER_EXIT=2 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1/playground-lab/measurements/WEV-001/r1/base e6a normal)
+00:15  load: 9.49 29.22 44.82
+00:16  load: 10.17 26.24 42.74
+LAUNCHER_EXIT=2 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1/playground-lab/measurements/WEV-001/r1/base e6b normal)

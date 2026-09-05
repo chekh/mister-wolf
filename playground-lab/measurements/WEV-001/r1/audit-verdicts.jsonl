@@ -1,0 +1,7 @@
+{"repeat":"r1","arm":"base","episode":"e1","verdict":"FAIL","oracle_exit":1,"oracle_log":"r1/oracle-base-e1.txt"}
+{"repeat":"r1","arm":"base","episode":"e2","verdict":"FAIL","oracle_exit":1,"oracle_log":"r1/oracle-base-e2.txt"}
+{"repeat":"r1","arm":"base","episode":"e3","verdict":"FAIL","oracle_exit":1,"oracle_log":"r1/oracle-base-e3.txt"}
+{"repeat":"r1","arm":"base","episode":"e4","verdict":"FAIL","oracle_exit":1,"oracle_log":"r1/oracle-base-e4.txt"}
+{"repeat":"r1","arm":"base","episode":"e5","verdict":"FAIL","oracle_exit":1,"oracle_log":"r1/oracle-base-e5.txt"}
+{"repeat":"r1","arm":"base","episode":"e6a","verdict":"FAIL","oracle_exit":1,"oracle_log":"r1/oracle-base-e6a.txt"}
+{"repeat":"r1","arm":"base","episode":"e6b","verdict":"FAIL","oracle_exit":1,"oracle_log":"r1/oracle-base-e6b.txt"}

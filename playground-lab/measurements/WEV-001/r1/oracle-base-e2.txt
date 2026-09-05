@@ -1,0 +1,3 @@
+E2: (a) opencode-adapter.ts содержит subagent_depth (мердж 2) [8a077f7] — FAIL
+E2: (б) регрессионный тест на subagent_depth в tests/ [8a077f7] — FAIL
+ORACLE E2: FAIL
