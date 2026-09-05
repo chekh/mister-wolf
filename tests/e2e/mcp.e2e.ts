@@ -78,4 +78,20 @@ describe('MCP stdio: tools/list exposes phase 8 tools', () => {
     // at least 14 tools registered
     expect(names.length).toBeGreaterThanOrEqual(14);
   });
+
+  it('tools/call analytics with view=campaign returns campaign payload (P3 D4)', async () => {
+    // initialize выполнен предыдущим it — сразу вызов тула
+    const res = (await sendAndReceive(child, {
+      jsonrpc: '2.0',
+      id: 3,
+      method: 'tools/call',
+      params: { name: 'analytics', arguments: { view: 'campaign' } },
+    })) as { result?: { content?: { type: string; text?: string }[] } };
+    const text = res.result?.content?.[0]?.text ?? '';
+    expect(text).not.toBe('');
+    const payload = JSON.parse(text) as { view: string; campaign?: { rows: unknown[] } };
+    expect(payload.view).toBe('campaign');
+    expect(payload.campaign).toBeDefined();
+    expect(Array.isArray(payload.campaign?.rows)).toBe(true);
+  });
 });

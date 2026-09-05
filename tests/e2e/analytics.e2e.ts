@@ -137,6 +137,55 @@ describe('analytics + dashboard golden scenarios (spec 2026-09-03)', () => {
     expect(typeof councilsPayload.councils.questions.total).toBe('number');
   });
 
+  it('campaign end-to-end: run --campaign + memory-stage injected + task-eval → views campaign/memory (P3 D1–D4)', () => {
+    const dir = tmpProject();
+    dirs.push(dir);
+    expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir).status).toBe(0);
+
+    // ран с campaign_id (стаб-сессия s-e2e); routing-warning в stderr — ок, статус 0
+    installOpencodeStub(dir);
+    const run = runCli(['run', '--agent', 'dev', '--title', 'camp', '--campaign', 'c-e2e', '--', 'hi'], dir, {
+      PATH: `${join(dir, 'bin')}:${process.env.PATH ?? ''}`,
+    });
+    expect(run.status).toBe(0);
+
+    // injected-сигнал в сессии рана → когорта with_memory + ROI-строка m-roi
+    const stage = runCli(['memory-stage', '--stage', 'injected', '--ids', 'm-roi', '--session', 's-e2e'], dir);
+    expect(stage.status).toBe(0);
+
+    const verdict = runCli(['task-eval', '--verdict', 'accepted', '--session', 's-e2e', '--campaign', 'c-e2e'], dir);
+    expect(verdict.status).toBe(0);
+
+    const campaign = runCli(['analytics', '--view', 'campaign', '--json'], dir);
+    expect(campaign.status).toBe(0);
+    const campaignPayload = JSON.parse(campaign.stdout) as {
+      view: string;
+      campaign: {
+        rows: Array<{
+          campaign: string;
+          hasVerdicts: boolean;
+          withMemory: { n: number };
+          noMemory: { n: number };
+        }>;
+      };
+    };
+    expect(campaignPayload.view).toBe('campaign');
+    const row = campaignPayload.campaign.rows.find((r) => r.campaign === 'c-e2e');
+    expect(row).toBeDefined();
+    expect(row?.withMemory.n).toBe(1);
+    expect(row?.noMemory.n).toBe(0);
+    expect(row?.hasVerdicts).toBe(true);
+
+    const memory = runCli(['analytics', '--view', 'memory', '--json'], dir);
+    expect(memory.status).toBe(0);
+    const memoryPayload = JSON.parse(memory.stdout) as {
+      roi: { rows: Array<{ id: string; associatedAccepted: number }> };
+    };
+    const roiRow = memoryPayload.roi.rows.find((r) => r.id === 'm-roi');
+    expect(roiRow).toBeDefined();
+    expect(roiRow?.associatedAccepted).toBe(1);
+  });
+
   it('dashboard renders three sections, --tab selects one, no files written (acceptance 7)', () => {
     const dir = tmpProject();
     dirs.push(dir);

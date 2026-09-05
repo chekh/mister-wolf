@@ -32,6 +32,7 @@ type AnalyticsView =
   | 'readiness'
   | 'councils'
   | 'coordination'
+  | 'campaign'
   | 'all';
 type SectionView = Exclude<AnalyticsView, 'all'>;
 
@@ -46,6 +47,7 @@ const SECTION_VIEWS: SectionView[] = [
   'readiness',
   'councils',
   'coordination',
+  'campaign',
 ];
 
 /** null/undefined → '-', остальное — строкой (колонки с nullable-полей). */
@@ -94,12 +96,33 @@ export function renderSection(report: AnalyticsReport, filter: SectionViewFilter
         a.attributionCoveragePct === null
           ? `attribution: n/a (${a.reason})`
           : `attribution: accepted ${a.acceptedWithInjection}/${a.acceptedTotal} (${a.attributionCoveragePct.toFixed(1)}%)`;
+      // P3 D3: per-memory ROI — корреляционная витрина (дисклеймер обязателен)
+      const ROI_TOP = 20; // ponytail: ROI-топ 20 — mirror filterAnalytics default top
+      const roiLines =
+        payload.roi.rows.length === 0
+          ? ['memory ROI (correlational, not causal): no data']
+          : [
+              'memory ROI (correlational, not causal):',
+              renderTable(
+                ['id', 'assoc_accepted', 'assoc_applied', 'injected_total', 'last_activity'],
+                payload.roi.rows
+                  .slice(0, ROI_TOP)
+                  .map((r) => [
+                    r.id,
+                    cell(r.associatedAccepted),
+                    cell(r.associatedApplied),
+                    cell(r.injectedTotal),
+                    cell(r.lastActivity),
+                  ])
+              ),
+            ];
       return [
         header,
         renderTable(['id', 'type', 'lifecycle', 'age_days', 'deliveries', 'triggers', 'complaints', 'last_used'], rows),
         `garbage: dead/base = ${payload.garbage.dead}/${payload.garbage.base} = ${garbage}`,
         renderTable(['stage', 'events', 'unique_ids'], funnelRows),
         attribution,
+        ...roiLines,
       ].join('\n');
     }
     case 'tools': {
@@ -263,6 +286,28 @@ export function renderSection(report: AnalyticsReport, filter: SectionViewFilter
         ),
       ].join('\n');
     }
+    case 'campaign': {
+      // P3 D2: кампания — ДВЕ строки (когорты with/no memory); null-метрики → n/a,
+      // note — честные причины (малая выборка / нет вердиктов)
+      if (payload.campaign.rows.length === 0) return [header, 'no campaigns yet'].join('\n');
+      const na = (v: number | null): string => (v === null ? 'n/a' : String(v));
+      const pct = (v: number | null): string => (v === null ? 'n/a' : v.toFixed(1));
+      const rows = payload.campaign.rows.flatMap((r) =>
+        [r.withMemory, r.noMemory].map((c) => [
+          r.campaign,
+          c.cohort,
+          cell(c.n),
+          na(c.medianWeighted),
+          pct(c.acceptedSharePct),
+          pct(c.processFailureRatePct),
+          c.reason ?? (r.hasVerdicts ? '' : 'no verdicts'),
+        ])
+      );
+      return [
+        header,
+        renderTable(['campaign', 'cohort', 'n', 'median_weighted', 'accepted_%', 'pfail_%', 'note'], rows),
+      ].join('\n');
+    }
     default:
       // 'all' обрабатывается вызывающим кодом до renderSection; ветка закрывает switch (TS2366)
       throw new Error(`renderSection: unexpected view ${String((payload as { view: string }).view)}`);
@@ -298,7 +343,7 @@ export function renderAllSections(report: AnalyticsReport, filter: AnalyticsView
 
 export function analyticsCommand(baseDir: string = safeCwd()): Command {
   const cmd = new Command('analytics').description(
-    'Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness, memory lifecycle & coordination'
+    'Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness, memory lifecycle & coordination, campaigns & per-memory ROI'
   );
 
   cmd
@@ -315,6 +360,7 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
           'readiness',
           'councils',
           'coordination',
+          'campaign',
           'all',
         ])
         .default('all')
