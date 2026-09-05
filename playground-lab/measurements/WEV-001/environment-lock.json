@@ -5,6 +5,6 @@
   "opencode_version": "1.18.27",
   "tools": ["bash", "read", "write", "edit", "glob", "grep"],
   "os": "darwin",
-  "launcher": "playground-lab/scripts/wolf-session.sh @f115808",
+  "launcher": "playground-lab/scripts/wolf-session.sh @0d8de2b",
   "locked_at": "2026-09-05T10:48:27Z"
 }
