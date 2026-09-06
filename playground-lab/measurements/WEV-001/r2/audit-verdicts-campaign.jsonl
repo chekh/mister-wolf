@@ -1,0 +1,2 @@
+{"repeat":"r2","arm":"wolf","verdict":"FAIL","audit_log":"r2/audit-wolf.log"}
+{"repeat":"r2","arm":"base","verdict":"FAIL","audit_log":"r2/audit-base.log"}

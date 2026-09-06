@@ -1,0 +1,68 @@
+18:07 PREFLIGHT r2/wolf e1: OK (instr=/tmp/wolfeval-v1/r2-instr/wolf-opencode.json)
+18:07  load: 15.21 17.33 17.70
+18:28  load: 12.37 15.26 16.38
+LAUNCHER_EXIT=0 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1r/playground-lab/measurements/WEV-001/r2/wolf e1 normal)
+18:28 PREFLIGHT r2/wolf e2: OK (instr=/tmp/wolfeval-v1/r2-instr/wolf-opencode.json)
+18:28  load: 11.92 14.97 16.25
+18:50  load: 42.79 29.21 22.01
+LAUNCHER_EXIT=0 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1r/playground-lab/measurements/WEV-001/r2/wolf e2 normal)
+18:50 PREFLIGHT r2/wolf e3: OK (instr=/tmp/wolfeval-v1/r2-instr/wolf-opencode.json)
+18:50  load: 34.56 28.06 21.72
+19:20  load: 15.18 24.37 22.10
+LAUNCHER_EXIT=124 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1r/playground-lab/measurements/WEV-001/r2/wolf e3 normal)
+19:20 PREFLIGHT r2/wolf e3: OK (instr=/tmp/wolfeval-v1/r2-instr/wolf-opencode.json)
+19:20  load: 13.44 23.36 21.79
+19:50  load: 14.86 18.11 19.75
+LAUNCHER_EXIT=0 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1r/playground-lab/measurements/WEV-001/r2/wolf e3 retry)
+19:50 PREFLIGHT r2/wolf e4: OK (instr=/tmp/wolfeval-v1/r2-instr/wolf-opencode.json)
+19:50  load: 14.31 17.87 19.64
+20:12  load: 17.17 21.23 19.75
+LAUNCHER_EXIT=0 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1r/playground-lab/measurements/WEV-001/r2/wolf e4 normal)
+20:12 PREFLIGHT r2/wolf e5: OK (instr=/tmp/wolfeval-v1/r2-instr/wolf-opencode.json)
+20:12  load: 18.19 21.12 19.75
+20:17  load: 28.35 22.54 20.50
+LAUNCHER_EXIT=124 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1r/playground-lab/measurements/WEV-001/r2/wolf e5 kill)
+20:18 PREFLIGHT r2/wolf e5: OK (instr=/tmp/wolfeval-v1/r2-instr/wolf-opencode.json)
+20:18  load: 34.03 24.02 21.07
+20:24  load: 46.24 47.34 32.81
+LAUNCHER_EXIT=0 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1r/playground-lab/measurements/WEV-001/r2/wolf e5 recovery)
+20:24 PREFLIGHT r2/wolf e6a: OK (instr=/tmp/wolfeval-v1/r2-instr/wolf-opencode.json)
+20:24  load: 37.78 45.43 32.38
+20:54  load: 13.64 26.86 30.03
+LAUNCHER_EXIT=124 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1r/playground-lab/measurements/WEV-001/r2/wolf e6a normal)
+20:55 PREFLIGHT r2/wolf e6b: OK (instr=/tmp/wolfeval-v1/r2-instr/wolf-opencode.json)
+20:55  load: 13.22 26.13 29.72
+21:10  load: 28.13 21.94 23.34
+LAUNCHER_EXIT=0 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1r/playground-lab/measurements/WEV-001/r2/wolf e6b normal)
+23:47 PREFLIGHT r2/base e1: OK (instr=/tmp/wolfeval-v1/r2-instr/base-opencode.json)
+23:47  load: 8.85 7.27 6.73
+00:17  load: 41.79 39.60 34.25
+LAUNCHER_EXIT=124 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1r/playground-lab/measurements/WEV-001/r2/base e1 normal)
+00:18 PREFLIGHT r2/base e2: OK (instr=/tmp/wolfeval-v1/r2-instr/base-opencode.json)
+00:18  load: 66.63 47.75 37.60
+00:34  load: 9.48 18.27 27.22
+LAUNCHER_EXIT=0 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1r/playground-lab/measurements/WEV-001/r2/base e2 normal)
+00:34 PREFLIGHT r2/base e3: OK (instr=/tmp/wolfeval-v1/r2-instr/base-opencode.json)
+00:34  load: 8.87 17.85 26.97
+00:49  load: 12.23 14.08 18.87
+LAUNCHER_EXIT=0 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1r/playground-lab/measurements/WEV-001/r2/base e3 normal)
+00:49 PREFLIGHT r2/base e4: OK (instr=/tmp/wolfeval-v1/r2-instr/base-opencode.json)
+00:49  load: 10.89 13.69 18.65
+01:02  load: 9.16 13.93 16.16
+LAUNCHER_EXIT=0 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1r/playground-lab/measurements/WEV-001/r2/base e4 normal)
+01:03 PREFLIGHT r2/base e5: OK (instr=/tmp/wolfeval-v1/r2-instr/base-opencode.json)
+01:03  load: 9.17 13.62 16.00
+01:08  load: 80.13 28.07 20.31
+LAUNCHER_EXIT=124 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1r/playground-lab/measurements/WEV-001/r2/base e5 kill)
+01:08 PREFLIGHT r2/base e5: OK (instr=/tmp/wolfeval-v1/r2-instr/base-opencode.json)
+01:08  load: 64.13 27.09 20.10
+01:16  load: 9.70 19.62 20.31
+LAUNCHER_EXIT=0 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1r/playground-lab/measurements/WEV-001/r2/base e5 recovery)
+01:16 PREFLIGHT r2/base e6a: OK (instr=/tmp/wolfeval-v1/r2-instr/base-opencode.json)
+01:16  load: 8.90 19.12 20.12
+01:29  load: 9.70 14.72 16.89
+LAUNCHER_EXIT=0 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1r/playground-lab/measurements/WEV-001/r2/base e6a normal)
+01:29 PREFLIGHT r2/base e6b: OK (instr=/tmp/wolfeval-v1/r2-instr/base-opencode.json)
+01:29  load: 9.55 14.46 16.75
+01:33  load: 31.27 17.49 16.97
+LAUNCHER_EXIT=0 (/Users/chekh/Development/mister-wolf/.worktrees/wolfeval-phase-c1r/playground-lab/measurements/WEV-001/r2/base e6b normal)
