@@ -5,7 +5,6 @@
 {"repeat":"r1","arm":"base","episode":"e5","verdict":"FAIL","oracle_exit":1,"oracle_log":"r1/oracle-base-e5.txt"}
 {"repeat":"r1","arm":"base","episode":"e6a","verdict":"PASS","oracle_exit":0,"oracle_log":"r1/oracle-base-e6a.txt"}
 {"repeat":"r1","arm":"base","episode":"e6b","verdict":"FAIL","oracle_exit":1,"oracle_log":"r1/oracle-base-e6b.txt"}
-{"repeat":"r1","arm":"base","episode":"e6b","verdict":"FAIL","oracle_exit":1,"oracle_log":"r1/oracle-base-e6b.txt"}
 {"repeat":"r1","arm":"base","verdict":"FAIL","audit_log":"r1/audit-base.log"}
 {"repeat":"r1","arm":"wolf","episode":"e1","verdict":"FAIL","oracle_exit":1,"oracle_log":"r1/oracle-wolf-e1.txt"}
 {"repeat":"r1","arm":"wolf","episode":"e2","verdict":"PASS","oracle_exit":0,"oracle_log":"r1/oracle-wolf-e2.txt"}
