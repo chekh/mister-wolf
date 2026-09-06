@@ -1,0 +1,2 @@
+prompt e6b sha (byte-identical to r1 composition): 0c189d488c3618a515718ff3cb2448281027bd77
+registry sha after diag: see real-registry-sha-after.txt

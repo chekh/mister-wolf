@@ -1,0 +1,1 @@
+{"ts":"2026-09-06T10:20:27Z","cwd":"/tmp/wolfeval-v1/diag/base","agent":"default","model":"zai-coding-plan/glm-5.2","exit":0,"secs":789,"tokens":{"input":67316,"cache_read":1719872,"output":9129,"weight":284948.2},"log":"session-20260906-132027.log"}
