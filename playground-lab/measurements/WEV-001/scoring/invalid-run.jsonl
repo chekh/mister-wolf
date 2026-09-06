@@ -1,0 +1,4 @@
+{"repeat": "r1", "arm": "base", "episode": "e6b", "log": "session-20260906-154227.log", "exit": 2, "reason": "F25: silent truncation (exit 2)"}
+{"repeat": "r2", "arm": "base", "episode": "e1", "log": "session-20260906-234717.log", "exit": 124, "reason": "F21-hang: exit 124 без planned_kill"}
+{"repeat": "r2", "arm": "wolf", "episode": "e3", "log": "session-20260906-185020.log", "exit": 124, "reason": "F21-hang: exit 124 без planned_kill"}
+{"repeat": "r2", "arm": "wolf", "episode": "e6a", "log": "session-20260906-202452.log", "exit": 124, "reason": "F21-hang: exit 124 без planned_kill"}
