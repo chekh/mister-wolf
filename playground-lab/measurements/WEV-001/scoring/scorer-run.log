@@ -1,0 +1,29 @@
+$ bash ../../../benchmarks/wolfeval-v1/analysis/csr.sh audit-verdicts.jsonl
+CSR base: 0/2
+CSR wolf: 0/2
+csr.jsonl: 4 строк -> csr.jsonl
+
+$ bash ../../../benchmarks/wolfeval-v1/analysis/cost.sh sessions.jsonl runs.tsv audit-verdicts.jsonl costs.csv
+cost.sh: runs.tsv: без заголовка — колонки по порядку log,repeat,arm,episode,planned_kill
+cost.sh: CPSC base: 0 успешных кампаний — деление на ноль, вывод n/a
+cost.sh: CPSC wolf: 0 успешных кампаний — деление на ноль, вывод n/a
+costs.csv: 28 эпизодов -> costs.csv
+CPSC base: n/a (0 успешных кампаний)
+CPSC wolf: n/a (0 успешных кампаний)
+
+$ bash ../../../benchmarks/wolfeval-v1/analysis/cfr.sh sessions.jsonl runs.tsv audit-verdicts.jsonl
+cfr.sh: runs.tsv: без заголовка — колонки по порядку log,repeat,arm,episode,planned_kill
+cfr.sh: audit_log не читается (r1/base): r1/audit-base.log — построчные проверки пропущены
+cfr.sh: audit_log не читается (r1/wolf): r1/audit-wolf.log — построчные проверки пропущены
+cfr.sh: audit_log не читается (r2/base): r2/audit-base.log — построчные проверки пропущены
+cfr.sh: audit_log не читается (r2/wolf): r2/audit-wolf.log — построчные проверки пропущены
+cfr-events.jsonl: 0 (событий нет)
+invalid-run.jsonl: 4 (F21-hang=3, F25=1)
+
+$ bash ../../../benchmarks/wolfeval-v1/analysis/secondary.sh sessions.jsonl runs.tsv
+secondary.sh: runs.tsv: без заголовка — колонки по порядку log,repeat,arm,episode,planned_kill
+secondary.jsonl: 28 эпизодов
+SYM E6 r1/base: 0
+SYM E6 r1/wolf: 0
+SYM E6 r2/base: 0
+SYM E6 r2/wolf: 0
