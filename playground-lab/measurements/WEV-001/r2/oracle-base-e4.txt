@@ -1,0 +1,5 @@
+E4: (a) init-project.ts не вызывает scanProject в дефолтном флоу [bf63fab] — PASS
+E4: (б) отдельная scan-команда доступна в CLI (--help; rc=0) — PASS
+E4: (в) песочница: init без флагов — 0 doc-файлов в памяти (rc=0) — PASS
+E4: (г) доки (README*, docs/guide) не утверждают, что init сканирует [bf63fab] — FAIL
+ORACLE E4: FAIL

@@ -1,0 +1,4 @@
+E3: (a) memory-init.ts содержит formatBaseSetLine + formatPlatformLine [190ff6a] — FAIL
+E3: (б) имена скиллов в логе init — шаблон '[skill] … → …' [190ff6a] — FAIL
+E3: (в) безусловный 'Restart your agent platform' отсутствует [190ff6a] — FAIL
+ORACLE E3: FAIL

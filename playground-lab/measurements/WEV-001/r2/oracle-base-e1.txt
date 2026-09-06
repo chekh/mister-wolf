@@ -1,0 +1,4 @@
+E1: (a) init-project.ts не содержит skipped-ветку 'no platform detected' [bf63fab] — FAIL
+E1: (b) песочница: первый init пишет opencode.json (валидный JSON, mcp.wolf; rc=0) — PASS
+E1: (в) регрессионный тест в tests/ (init + config/opencode.json/platform) — PASS
+ORACLE E1: FAIL

@@ -1,0 +1,4 @@
+E6b: (a) tests/setup.ts с XDG_CONFIG_HOME-изоляцией [190ff6a] — FAIL
+E6b: (б) vitest.config.ts подключает tests/setup.ts (setupFiles) [190ff6a] — PASS
+E6b: (в) tests/e2e/vitest.config.ts тоже изолирован (setupFiles) [190ff6a] — FAIL
+ORACLE E6b: FAIL

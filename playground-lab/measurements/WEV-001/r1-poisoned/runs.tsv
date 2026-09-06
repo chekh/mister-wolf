@@ -1,0 +1,9 @@
+log	repeat	arm	episode	planned_kill
+session-20260905-222123.log	r1	base	e1	0
+session-20260905-224540.log	r1	base	e2	0
+session-20260905-224738.log	r1	base	e3	0
+session-20260905-231501.log	r1	base	e4	0
+session-20260905-233627.log	r1	base	e5	1
+session-20260905-234140.log	r1	base	e5	0
+session-20260906-001205.log	r1	base	e6a	0
+session-20260906-001532.log	r1	base	e6b	0
