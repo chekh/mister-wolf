@@ -148,6 +148,8 @@ if [ "$NO_GLOBAL" -eq 1 ]; then
   TMP_CONF=$(mktemp -d) || exit 1
   printf '{}' > "$TMP_CONF/opencode.json"
   export OPENCODE_CONFIG="$TMP_CONF/opencode.json" OPENCODE_CONFIG_DIR="$TMP_CONF"
+  # F26: маркер песочницы — wolf-CLI (в т.ч. дочерние) резолвит глобальный конфиг только сюда.
+  export WOLF_SANDBOX="$TMP_CONF"
 fi
 
 ARGS=(run --format json -m "$MODEL")
