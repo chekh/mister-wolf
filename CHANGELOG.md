@@ -8,6 +8,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ### Added
 
+- Router fallback playbook: any agent-id without a canonical playbook now receives a generic fallback injection (router.log marks canonical/fallback); `executor-lead` gets a dedicated playbook in the default base set and its agent frame no longer declines injections (T012).
+- `wolf sync` mutated-skip: stamped files modified locally (differing from both the installed and the fresh render) are skipped with a warning instead of silent overwrite — local mutations of AGENTS.md/agents/plugins are safe (T010).
+- Base set documentation page (site, EN+RU): full composition (6 agents, 13 skills, 3 commands, 2 plugins, 6 playbooks) and the wx/sync stamping policy (C3).
+- Router/playbook injections guide page (site, EN+RU).
+
+### Changed
+
+- `add` validation errors fixed at the root: camelCase/`.strict()` mismatches now report the expected snake_case field, unknown-field errors list valid fields and available types, plain Errors carry type hints; schema-level errors are now visible in telemetry (previously a blind spot) (T011).
+- `brief` is fast: incremental scan cache (tree signature + store parse cache) and a single bounded `store.list()` — p90 ≈ 19 ms on 260 objects (was full FS scan + full list per call) (T013).
+- Docs: `migrate doc-ids [--apply]` documented on the site (C4); `update --actor` documented (C5); troubleshooting page gains add error classes (`error_class_id`).
+
 - `wolf analytics --view acceptance`: machine-readable acceptance metrics — router miss-rate per agent-id, delivery burst stats (gap >60s per session), per-tool error-rate/p50/p90, malformed lines, search→get follow-rate, 72h vitality, error-class breakdown (JSON + human summary).
 - Telemetry: `mcp_call.detail` gains `error.message`/`error.code`/`error_class_id`, `args_summary` (add), `memory_id`/`memory_ids` (get/search), CLI command name for `user:cli`; `delivery.detail` gains `injection_bytes`; `router.log` logs playbook name with canonical/fallback variant on hit.
 - CLI sessions emit per-invocation `WOLF_SESSION` (session key, CLI channel only; MCP is intentionally excluded); stamped templates pass the session id on agent spawn.
