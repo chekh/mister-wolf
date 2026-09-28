@@ -1,8 +1,17 @@
 import { defineConfig } from 'vitepress'
+import pkg from '../../../package.json' with { type: 'json' }
 
 // Site URL — head links need the absolute base (VitePress does not apply
 // `base` to head entries, lesson mem_20260831_..._0d17a7).
 const SITE_URL = 'https://chekh.github.io/mister-wolf/'
+
+// Version badge in the navbar — single source of truth: package.json
+// (rule: ведение версий). Updates automatically on every release.
+const VERSION_NAV = {
+  text: `v${pkg.version}`,
+  link: 'https://github.com/chekh/mister-wolf/releases',
+  activeMatch: 'x-nomatch-x',
+}
 
 const cliItems = [
   { text: 'Command Index', link: '/guide/cli/' },
@@ -61,6 +70,7 @@ export default defineConfig({
           { text: 'CLI', link: '/guide/cli/' },
           { text: 'MCP', link: '/guide/mcp' },
           { text: 'Config', link: '/guide/configuration' },
+          VERSION_NAV,
         ],
         sidebar: [
           {
@@ -100,6 +110,7 @@ export default defineConfig({
           { text: 'CLI', link: '/ru/guide/cli/' },
           { text: 'MCP', link: '/ru/guide/mcp' },
           { text: 'Конфигурация', link: '/ru/guide/configuration' },
+          VERSION_NAV,
         ],
         sidebar: [
           {
