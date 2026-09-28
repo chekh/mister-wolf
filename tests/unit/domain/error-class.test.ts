@@ -27,6 +27,15 @@ describe('Ф20 (D1.2): error_class классификатор — детерми
     expect(classifyError({ message: 'error: unknown option --foo' })).toBe('invalid_input');
     expect(classifyError({ message: 'EEXIST: file already exists' })).toBe('conflict');
     expect(classifyError({ message: 'Unexpected server error' })).toBe('llm_error');
+    // T011: рантайм-валидация add (схема/тип/поле) — invalid_input, не uncategorized
+    expect(classifyError({ message: 'Unrecognized key: "x"' })).toBe('invalid_input');
+    expect(classifyError({ message: 'No taxonomy declaration for type: note' })).toBe('invalid_input');
+    expect(classifyError({ message: 'Unknown memory type "note". Valid types: decision, lesson' })).toBe(
+      'invalid_input'
+    );
+    expect(classifyError({ message: 'Unknown field "scope" for type "lesson" (valid fields: …)' })).toBe(
+      'invalid_input'
+    );
   });
 
   it('порядок правил значим: файловый ENOENT ≠ spawn ENOENT', () => {

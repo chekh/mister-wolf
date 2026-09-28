@@ -31,7 +31,8 @@ import { createArticle } from '../../app/use-cases/create-article.js';
 import { createDecision } from '../../app/use-cases/create-decision.js';
 import { createBlocker } from '../../app/use-cases/create-blocker.js';
 import { resolveBlocker } from '../../app/use-cases/resolve-blocker.js';
-import { scanProject } from '../../app/use-cases/scan-project.js';
+import { scanProject, scanProjectCached } from '../../app/use-cases/scan-project.js';
+import { projectTreeSignature } from '../fs/heuristic-project-scanner.js';
 import { generateAgentBrief } from '../../app/use-cases/generate-agent-brief.js';
 import { generateInsights, renderInsights } from '../../app/use-cases/generate-insights.js';
 import { generateRecap, renderRecap } from '../../app/use-cases/generate-recap.js';
@@ -45,12 +46,86 @@ import {
   readSignalLog,
   addArgsSummary,
 } from '../../adapters/fs/session-metrics-log.js';
+import { normalizeAddInputKeys } from './mcp-schemas.js';
 import { loadWolfConfigSync } from '../../adapters/fs/config-file.js';
 import { getWolfVersion } from '../version.js';
 import { resolveSessionId } from '../../domain/actor.js';
 import { parseRouterLog } from '../../domain/router-log.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+
+/** Detail mcp_call по инструменту (args_summary/memory_id; body в телеметрию не попадает). */
+const enrichDetail = (name: string, input: unknown): Record<string, unknown> => {
+  const detail: Record<string, unknown> = { method: name, wolf_version: getWolfVersion() };
+  if (name === 'add') {
+    // то же деструктурирование, что в handler'е add: extra = per-type поля, body не нужен
+    const { type, title, body, tags, confidence, importance, createdBy, ...extra } = input as {
+      type: string;
+      title: string;
+      body?: string;
+      tags?: string[];
+      confidence?: 'low' | 'medium' | 'high';
+      importance?: number;
+      createdBy: string;
+    } & Record<string, unknown>;
+    detail.args_summary = addArgsSummary({ type, title, extra });
+  } else if (name === 'get') {
+    const id = (input as { id?: unknown }).id;
+    if (typeof id === 'string') detail.memory_id = id;
+  }
+  return detail;
+};
+
+/**
+ * T011: Standard Schema v1-обёртка над inputSchema. SDK валидирует input ДО вызова
+ * handler'а — schema-фейлы не доходили до withMcpCall (error-rate add недоизмерался).
+ * Обёртка: (а) нормализует camelCase-ключи add → snake_case (агенты путаются с
+ * соседним create_info_request); (б) пишет mcp_call outcome=error при issues.
+ * Дублей с withMcpCall нет: schema-failure → handler не вызывается.
+ * jsonSchema делегируется zod-схеме — tools/list не меняется.
+ */
+const wrapInputSchema = (name: string, inner: unknown, baseDir: string): unknown => {
+  const std = (
+    inner as {
+      readonly '~standard'?: {
+        readonly validate: (value: unknown) => unknown;
+        readonly jsonSchema?: unknown;
+      };
+    }
+  )['~standard'];
+  if (!std) return inner; // не-zod схема (fromJsonSchema и т.п.) — как есть
+  return {
+    ['~standard']: {
+      version: 1,
+      vendor: 'mister-wolf',
+      validate: async (value: unknown): Promise<unknown> => {
+        const normalized = name === 'add' ? normalizeAddInputKeys(value) : value;
+        const result = await std.validate(normalized);
+        const issues = (result as { issues?: unknown[] } | null | undefined)?.issues;
+        if (Array.isArray(issues) && issues.length > 0) {
+          try {
+            appendMcpCallSignal(baseDir, {
+              tool: name,
+              outcome: 'error',
+              durationMs: 0,
+              detail: enrichDetail(name, normalized),
+              error: {
+                message: issues
+                  .map((i) => String((i as { message?: unknown }).message ?? ''))
+                  .join('; ')
+                  .slice(0, 200),
+              },
+            });
+          } catch {
+            // телеметрия не должна ломать валидацию
+          }
+        }
+        return result;
+      },
+      jsonSchema: std.jsonSchema,
+    },
+  };
+};
 
 export function registerMemoryTools(
   server: McpServer,
@@ -65,26 +140,6 @@ export function registerMemoryTools(
     name: string,
     handler: (input: unknown) => Promise<unknown>
   ): ((input: unknown) => Promise<unknown>) => {
-    const enrichDetail = (input: unknown): Record<string, unknown> => {
-      const detail: Record<string, unknown> = { method: name, wolf_version: getWolfVersion() };
-      if (name === 'add') {
-        // то же деструктурирование, что в handler'е add: extra = per-type поля, body не нужен
-        const { type, title, body, tags, confidence, importance, createdBy, ...extra } = input as {
-          type: string;
-          title: string;
-          body?: string;
-          tags?: string[];
-          confidence?: 'low' | 'medium' | 'high';
-          importance?: number;
-          createdBy: string;
-        } & Record<string, unknown>;
-        detail.args_summary = addArgsSummary({ type, title, extra });
-      } else if (name === 'get') {
-        const id = (input as { id?: unknown }).id;
-        if (typeof id === 'string') detail.memory_id = id;
-      }
-      return detail;
-    };
     const record = (
       outcome: 'ok' | 'error',
       startedAt: number,
@@ -97,7 +152,7 @@ export function registerMemoryTools(
           tool: name,
           outcome,
           durationMs: Date.now() - startedAt,
-          detail: { ...enrichDetail(input), ...extraDetail },
+          detail: { ...enrichDetail(name, input), ...extraDetail },
           ...(error !== undefined
             ? {
                 error: {
@@ -148,8 +203,13 @@ export function registerMemoryTools(
     handler: (input: unknown) => Promise<unknown>
   ): void => {
     // as never: registerTool перегружен (standard-schema + deprecated raw-shape),
-    // Parameters<> берёт последний оверлоад и требует ZodRawShape — наши ZodObject туда не входят
-    server.registerTool(name, config as never, withMcpCall(name, handler) as never);
+    // Parameters<> берёт последний оверлоад и требует ZodRawShape — наши ZodObject туда не входят.
+    // T011: inputSchema оборачивается (нормализация ключей add + телеметрия schema-фейлов).
+    server.registerTool(
+      name,
+      { ...config, inputSchema: wrapInputSchema(name, config.inputSchema, baseDir) } as never,
+      withMcpCall(name, handler) as never
+    );
   };
 
   register(
@@ -422,7 +482,9 @@ export function registerMemoryTools(
       inputSchema: EmptyInputSchema,
     },
     async () => {
-      const scanResult = await scanProject(deps, baseDir);
+      // T013: инкрементальный скан — полный scanProject только при изменении
+      // дерева (сигнатура каталогов/package.json/.git/HEAD), иначе кэш снапшота
+      const scanResult = await scanProjectCached({ ...deps, treeSignature: projectTreeSignature }, baseDir);
       const brief = await generateAgentBrief(deps, baseDir, scanResult.snapshot);
       // P2 D1: бриф реально инъекцировал объекты → injected
       if (brief.injectedIds.length > 0) {

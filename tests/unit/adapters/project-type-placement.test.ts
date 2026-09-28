@@ -119,7 +119,7 @@ describe('project type placement (config.yaml → FS)', () => {
   it('addMemoryObject still throws for type missing from taxonomy (write gate intact)', async () => {
     await expect(
       addMemoryObject(makeDeps(), { type: 'nope' as never, title: 'X', createdBy: 'user:test' })
-    ).rejects.toThrow(/No taxonomy declaration/);
+    ).rejects.toThrow(/Unknown memory type "nope"\. Valid types: /);
   });
 
   it('transitionMemoryObject transitions project-typed object with declarations', async () => {

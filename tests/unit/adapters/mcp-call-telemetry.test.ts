@@ -19,6 +19,15 @@ function toolsOf(dir: string): Tools {
   return (server as unknown as { _registeredTools: Tools })._registeredTools;
 }
 
+/** T011: обёрнутая inputSchema тула (Standard Schema v1 с нормализацией add). */
+function schemaOf(tools: Tools, name: string): { '~standard': { validate: (v: unknown) => Promise<unknown> } } {
+  const entry = tools[name] as unknown as Record<
+    string,
+    { '~standard': { validate: (v: unknown) => Promise<unknown> } }
+  >;
+  return entry.inputSchema;
+}
+
 /** P1 D5: каждый вызов mr-wolf-* тула пишет mcp_call-сигнал в session-metrics.jsonl. */
 describe('mcp_call telemetry', () => {
   let dir: string;
@@ -142,5 +151,46 @@ describe('mcp_call telemetry', () => {
     expect((ev?.detail?.error as { message: string }).message).toContain('Type validation failed');
     expect(typeof ev?.detail?.error_class_id).toBe('string');
     expect(ev?.detail?.error_class_id).toBe('invalid_input');
+  });
+
+  // T011: SDK валидирует input ДО handler'а — schema-фейлы пишутся обёрткой схемы
+  it('T011 schema-failure: add с неизвестным ключом пишет mcp_call outcome=error до handler’а', async () => {
+    const tools = toolsOf(dir);
+    const result = (await schemaOf(tools, 'add')['~standard'].validate({
+      type: 'lesson',
+      title: 'x',
+      createdBy: 'u',
+      no_such_key: 1,
+    })) as { issues?: Array<{ message?: string }> };
+    expect(result.issues?.[0]?.message).toContain('Unrecognized key');
+
+    const ev = readSignals(dir)
+      .filter((e) => e.event === 'mcp_call')
+      .at(-1);
+    expect(ev?.tool_name).toBe('add');
+    expect(ev?.outcome).toBe('error');
+    expect((ev?.detail?.error as { message: string }).message).toContain('Unrecognized key');
+    expect(ev?.detail?.error_class_id).toBe('invalid_input');
+    expect(ev?.detail?.method).toBe('add');
+    expect(ev?.detail?.wolf_version).toBe(rootVersion.version);
+    const summary = ev?.detail?.args_summary as Record<string, unknown>;
+    expect(summary?.type).toBe('lesson');
+    expect(summary?.extra_keys).toEqual(['no_such_key']);
+  });
+
+  it('T011 normalisation: camelCase-ключи add проходят валидацию схемы; успех не пишет mcp_call', async () => {
+    const tools = toolsOf(dir);
+    const result = (await schemaOf(tools, 'add')['~standard'].validate({
+      type: 'info-request',
+      title: 't',
+      createdBy: 'u',
+      question: 'q',
+      detourReason: 'r',
+      expectedAnswer: ['a'],
+    })) as { value?: Record<string, unknown>; issues?: unknown[] };
+    expect(result.issues).toBeUndefined();
+    expect(result.value?.expected_answer).toEqual(['a']);
+    // schema-success: телеметрию пишет только withMcpCall вокруг handler'а
+    expect(readSignals(dir).filter((e) => e.event === 'mcp_call')).toHaveLength(0);
   });
 });

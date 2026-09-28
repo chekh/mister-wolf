@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { MemoryAddInputSchema, AnalyticsInputSchema } from '../../../src/adapters/mcp/mcp-schemas.js';
+import {
+  MemoryAddInputSchema,
+  AnalyticsInputSchema,
+  normalizeAddInputKeys,
+} from '../../../src/adapters/mcp/mcp-schemas.js';
 import { CORE_TAXONOMY } from '../../../src/domain/memory-types.js';
 
 describe('MemoryAddInputSchema (derived from taxonomy)', () => {
@@ -70,6 +74,58 @@ describe('MemoryAddInputSchema (derived from taxonomy)', () => {
     };
     expect(json.additionalProperties).toBe(false);
     expect(json.properties?.scope?.enum).toEqual(['project', 'global']);
+  });
+});
+
+// T011: агентские camelCase-ключи → snake_case per-type поля тула add
+describe('normalizeAddInputKeys', () => {
+  it('renames camelCase key to its known snake_case field', () => {
+    expect(normalizeAddInputKeys({ expectedAnswer: ['a'] })).toEqual({ expected_answer: ['a'] });
+    expect(
+      normalizeAddInputKeys({ type: 'info-request', detourReason: 'r', currentState: 's', nextSteps: ['a'] })
+    ).toEqual({
+      type: 'info-request',
+      detour_reason: 'r',
+      current_state: 's',
+      next_steps: ['a'],
+    });
+  });
+
+  it('leaves unknown keys untouched (strict() then reports Unrecognized key)', () => {
+    expect(normalizeAddInputKeys({ fooBar: 1 })).toEqual({ fooBar: 1 }); // foo_bar — не поле таксономии
+    expect(normalizeAddInputKeys({ totally_unknown: 2 })).toEqual({ totally_unknown: 2 });
+  });
+
+  it('returns non-objects as-is', () => {
+    expect(normalizeAddInputKeys(null)).toBeNull();
+    expect(normalizeAddInputKeys('str')).toBe('str');
+    expect(normalizeAddInputKeys(42)).toBe(42);
+    expect(normalizeAddInputKeys([1, 2])).toEqual([1, 2]);
+  });
+
+  it('does not rename base camelCase fields (createdBy is part of the contract)', () => {
+    const out = normalizeAddInputKeys({ createdBy: 'u', type: 'lesson', title: 't' }) as Record<string, unknown>;
+    expect(out.createdBy).toBe('u');
+    expect(out.created_by).toBeUndefined();
+  });
+
+  it('full add input validates after normalization; value carries snake_case fields', async () => {
+    const raw = {
+      type: 'info-request',
+      title: 't',
+      createdBy: 'user:x',
+      question: 'q',
+      detourReason: 'r',
+      expectedAnswer: ['a'],
+    };
+    const result = (await MemoryAddInputSchema['~standard'].validate(normalizeAddInputKeys(raw))) as {
+      value?: Record<string, unknown>;
+      issues?: unknown[];
+    };
+    expect(result.issues).toBeUndefined();
+    expect(result.value?.expected_answer).toEqual(['a']);
+    expect(result.value?.detour_reason).toBe('r');
+    expect(result.value?.createdBy).toBe('user:x');
   });
 });
 
