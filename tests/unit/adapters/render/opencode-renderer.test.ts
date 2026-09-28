@@ -187,7 +187,10 @@ describe('sync mutated-skip (T010)', () => {
 
   it('updated: смена шаблона в base → updated новым рендером; повтор → skipped', async () => {
     await renderer().syncBaseSet(proj);
-    writeFileSync(join(base, 'agents', 'mr-wolf.md'), '---\ndescription: d\nmodel: {{model.primary}}\n---\n# NEW CANON\n');
+    writeFileSync(
+      join(base, 'agents', 'mr-wolf.md'),
+      '---\ndescription: d\nmodel: {{model.primary}}\n---\n# NEW CANON\n'
+    );
     const res = await renderer().syncBaseSet(proj);
     expect(res.outcomes.find((o) => o.file === AGENT)?.action).toBe('updated');
     expect(readFileSync(join(proj, AGENT), 'utf-8')).toContain('# NEW CANON');

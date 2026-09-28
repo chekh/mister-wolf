@@ -31,7 +31,7 @@ describe('wolf-session-start plugin', () => {
 
     const injected = output.messages[0].parts[0];
     expect(injected.type).toBe('text');
-    expect(String(injected.text)).toContain('Mr.Wolf session recap');
+    expect(String(injected.text)).toContain('Mr.Wolf session bootstrap');
     // Раздел из fixture-вывода `wolf recap` (как в реальном выводе)
     expect(String(injected.text)).toContain('Active rules');
     expect(execFileMock).toHaveBeenCalled();
@@ -45,7 +45,7 @@ describe('wolf-session-start plugin', () => {
     await transform({}, output);
 
     const markerParts = output.messages[0].parts.filter(
-      (p) => p.type === 'text' && String(p.text ?? '').includes('Mr.Wolf session recap')
+      (p) => p.type === 'text' && String(p.text ?? '').includes('Mr.Wolf session bootstrap')
     );
     expect(markerParts).toHaveLength(1);
   });

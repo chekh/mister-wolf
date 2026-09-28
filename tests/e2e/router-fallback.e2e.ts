@@ -86,7 +86,11 @@ describe('wolf-router fallback (T012): canonical приоритетен, miss �
     }
   };
   const lastLineFor = (agentId: string): string =>
-    (routerLogLines().filter((l) => l.includes(`agent-id=${agentId} `)).at(-1) ?? '').replace(/^\S+ /, '');
+    (
+      routerLogLines()
+        .filter((l) => l.includes(`agent-id=${agentId} `))
+        .at(-1) ?? ''
+    ).replace(/^\S+ /, '');
 
   it('executor-lead: canonical hit (посев executor-lead-playbook из base set)', () => {
     const r = drive('executor-lead');

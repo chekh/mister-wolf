@@ -43,8 +43,7 @@ const { execFileMock } = vi.hoisted(() => {
       return done(null, { stdout });
     }
     if (sub === 'get' && args[2] === PLAYBOOK_ID) return done(null, { stdout: JSON.stringify(PLAYBOOK) });
-    if (sub === 'get' && args[2] === WORKER_PLAYBOOK_ID)
-      return done(null, { stdout: JSON.stringify(WORKER_PLAYBOOK) });
+    if (sub === 'get' && args[2] === WORKER_PLAYBOOK_ID) return done(null, { stdout: JSON.stringify(WORKER_PLAYBOOK) });
     return done(new Error(`unexpected CLI call: ${JSON.stringify(args)}`));
   });
   return { execFileMock };
