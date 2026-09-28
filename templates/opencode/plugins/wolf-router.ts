@@ -21,6 +21,7 @@
 import path from 'path';
 import fs from 'fs';
 import { execFile } from 'child_process';
+import { randomUUID } from 'crypto';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
 
@@ -36,8 +37,14 @@ const CACHE_TTL_MS = 2500;
 const run = promisify(execFile);
 // execFile: args array, no shell. Целевой проект — глобальный `wolf`;
 // догфуд в репо Wolf — локальный dist. Ошибка обоих → исключение наверх (fail-safe).
+// Волна 0 (0.2): свежий WOLF_SESSION на каждый spawn — унаследованный из long-lived
+// opencode-процесса env дал бы одну фальшивую сессию на все доставки.
 const runWolf = (args: string[]): Promise<{ stdout: string }> => {
-  const opts = { cwd: PROJECT_ROOT, timeout: 5000 };
+  const opts = {
+    cwd: PROJECT_ROOT,
+    timeout: 5000,
+    env: { ...process.env, WOLF_SESSION: 'opc-' + randomUUID() },
+  };
   return run('wolf', args, opts).catch(() => run('node', [LOCAL_CLI, ...args], opts));
 };
 

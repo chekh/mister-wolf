@@ -13,6 +13,7 @@
 
 import path from 'path';
 import { execFile } from 'child_process';
+import { randomUUID } from 'crypto';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
 
@@ -24,8 +25,14 @@ const TIMEOUT_MS = 10_000;
 
 const run = promisify(execFile);
 // execFile: args array, no shell — user text can't break out into a command.
+// Волна 0 (0.2): свежий WOLF_SESSION на каждый spawn — унаследованный из long-lived
+// opencode-процесса env дал бы одну фальшивую сессию на все доставки.
 const runWolf = (args) =>
-  run('node', [CLI, ...args], { cwd: PROJECT_ROOT, timeout: TIMEOUT_MS }).then((r) => r.stdout);
+  run('node', [CLI, ...args], {
+    cwd: PROJECT_ROOT,
+    timeout: TIMEOUT_MS,
+    env: { ...process.env, WOLF_SESSION: 'opc-' + randomUUID() },
+  }).then((r) => r.stdout);
 
 // ponytail: one recap spawn per opencode process; transform fires per message,
 // cache the promise instead of re-running.

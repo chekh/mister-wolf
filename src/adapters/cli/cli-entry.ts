@@ -49,6 +49,7 @@ import { memoryRunCommand as runCommand } from './commands/memory-run.js';
 import { memoryBootstrapCommand as bootstrapCommand } from './commands/memory-bootstrap.js';
 import { memoryUpgradeCommand as upgradeCommand } from './commands/memory-upgrade.js';
 import { UserFacingError } from '../../domain/errors.js';
+import { ensureCliSessionId } from '../../domain/actor.js';
 
 export function createCli(): Command {
   const program = new Command('wolf');
@@ -130,6 +131,10 @@ export async function runCli(argv: string[]): Promise<void> {
     if (!isRecoveryInit) {
       await ensureCurrentSchema(safeCwd());
     }
+    // Волна 0 (0.2): per-invocation session-ключ CLI-канала (все writers процесса
+    // получают один id). `mcp` — исключение: long-lived сервер, один env на все
+    // запросы = фальшивая сессия, канал не сессионируется.
+    if (argv[2] !== 'mcp') ensureCliSessionId();
     await createCli().parseAsync(argv);
   } catch (err: unknown) {
     if (err instanceof UserFacingError) {

@@ -12,7 +12,7 @@ import {
 } from '../../../app/use-cases/tool-librarian.js';
 import { toolStats } from '../../../app/use-cases/tool-stats.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
-import { resolveCreatedBy } from '../../../domain/actor.js';
+import { resolveCreatedBy, resolveSessionId } from '../../../domain/actor.js';
 import { appendDeliverySignal, readSignals } from '../../../adapters/fs/session-metrics-log.js';
 
 function printContractReminder(tool: ToolObject): void {
@@ -122,6 +122,8 @@ export function memoryToolCommand(): Command {
         mechanism: 'skill',
         target: result.path,
         actor: resolveCreatedBy(undefined),
+        // волна 0 0.2: session-ключ CLI-канала (продюсер — runCli)
+        sessionId: resolveSessionId(),
       });
       console.log(`Exposed skill: ${result.path}`);
     });

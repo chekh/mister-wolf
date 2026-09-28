@@ -62,6 +62,8 @@ export function memoryCallCommand(): Command {
             mechanism: 'call',
             target: options.for ?? '',
             actor,
+            // волна 0 0.2: session-ключ CLI-канала (продюсер — runCli)
+            sessionId: resolveSessionId(),
             // волна 0 0.1: байты инъекции (detail.injection_bytes)
             injectionBytes: Buffer.byteLength(result.blocks[i] ?? '', 'utf8'),
           });

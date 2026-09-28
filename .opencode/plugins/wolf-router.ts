@@ -18,6 +18,7 @@
 import path from 'path';
 import fs from 'fs';
 import { execFile } from 'child_process';
+import { randomUUID } from 'crypto';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
 
@@ -31,6 +32,9 @@ const AGENT_ID_RE = /^agent-id:[ \t]*([\w-]+)[ \t]*$/m;
 const CACHE_TTL_MS = 2500;
 
 const run = promisify(execFile);
+// Волна 0 (0.2): свежий WOLF_SESSION на каждый spawn — унаследованный из long-lived
+// opencode-процесса env дал бы одну фальшивую сессию на все доставки.
+const cliEnv = () => ({ ...process.env, WOLF_SESSION: 'opc-' + randomUUID() });
 
 function logRoute(line) {
   try {
@@ -52,12 +56,17 @@ async function resolvePlaybook(agentId) {
     const { stdout } = await run('node', [CLI, 'search', agentId, '--type', 'playbook', '--hide-superseded'], {
       cwd: PROJECT_ROOT,
       timeout: 5000,
+      env: cliEnv(),
     });
     const ids = [...stdout.matchAll(/^([\w-]+) \[playbook\]/gm)].map((m) => m[1]);
     let best = null;
     let bestVersion = -1;
     for (const id of ids) {
-      const { stdout: json } = await run('node', [CLI, 'get', id], { cwd: PROJECT_ROOT, timeout: 5000 });
+      const { stdout: json } = await run('node', [CLI, 'get', id], {
+        cwd: PROJECT_ROOT,
+        timeout: 5000,
+        env: cliEnv(),
+      });
       const obj = JSON.parse(json);
       const owner = obj.owner_skill ?? obj.extra?.owner_skill;
       if (owner !== agentId && owner !== `skill:${agentId}`) continue; // гвард владельца

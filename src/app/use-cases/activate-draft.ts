@@ -17,6 +17,7 @@ import { UserFacingError } from '../../domain/errors.js';
 import { transitionMemoryObject } from './transition-memory-object.js';
 import { recordRelation } from './record-relation.js';
 import { appendDeliverySignal } from '../../adapters/fs/session-metrics-log.js';
+import { resolveSessionId } from '../../domain/actor.js';
 import { buildScenarioFromDraft, runStopGate } from '../../domain/gates/stop-gate.js';
 import { getCallInjections } from './get-call-injections.js';
 import { tokenize } from '../../domain/solve/scenarios.js';
@@ -87,12 +88,14 @@ export async function activateDraft(
   await transitionMemoryObject(deps, input.draftId, 'accepted', input.actor);
   await transitionMemoryObject(deps, input.draftId, 'active', input.actor);
 
-  // delivery_event Ф20: факт доставки через wolf call (trigger_keywords)
+  // delivery_event Ф20: факт доставки через wolf call (trigger_keywords);
+  // волна 0 0.2: session-ключ CLI-канала (env WOLF_SESSION, продюсер — runCli)
   appendDeliverySignal(deps.baseDir, {
     name: input.draftId,
     mechanism: 'call',
     target: patternKey,
     actor: input.actor,
+    sessionId: resolveSessionId(),
     detail: { polarity: rec.polarity ?? 'positive', mechanical: rec.mechanical ?? false },
   });
 
