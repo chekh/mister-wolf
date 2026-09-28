@@ -6,6 +6,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+### Added
+
+- `wolf analytics --view acceptance`: machine-readable acceptance metrics — router miss-rate per agent-id, delivery burst stats (gap >60s per session), per-tool error-rate/p50/p90, malformed lines, search→get follow-rate, 72h vitality, error-class breakdown (JSON + human summary).
+- Telemetry: `mcp_call.detail` gains `error.message`/`error.code`/`error_class_id`, `args_summary` (add), `memory_id`/`memory_ids` (get/search), CLI command name for `user:cli`; `delivery.detail` gains `injection_bytes`; `router.log` logs playbook name with canonical/fallback variant on hit.
+- CLI sessions emit per-invocation `WOLF_SESSION` (session key, CLI channel only; MCP is intentionally excluded); stamped templates pass the session id on agent spawn.
+
+### Changed
+
+- `wolf call` telemetry: `target` truncated to 200 chars (prompt content no longer leaks into metrics).
+
+## [2.10.0] — 2026-09-28
+
 ### Security
 
 - F26: sandbox escape via child processes closed. Global user-config resolution (`wolfUserConfigDir`, `src/adapters/fs/user-config.ts`) is now env-only: `WOLF_SANDBOX` (sandbox root; overrides `XDG_CONFIG_HOME`/`HOME`, makes isolation transitive for child processes; a non-existent root is an explicit refusal) → `XDG_CONFIG_HOME` → `HOME` → explicit `UserFacingError`. The silent fallback to `os.homedir()` — a `getpwuid`-backed, environment-independent escape channel — is removed. `wolf-session.sh --no-global` exports the `WOLF_SANDBOX` marker (ae7f500).
