@@ -54,15 +54,27 @@ describe('wolf base set: init + sync (спека §7, §11.1, §11.6)', () => {
     expect(plugin).toContain('// wolf:rendered base=wolf-session-start.js');
   });
 
-  it('sync: правка штампованного файла (штамп сохранён) → updated, контент перезаписан из шаблона (§11.6)', () => {
+  it('sync: правка штампованного файла (штамп сохранён) → mutated-skip, правка цела (T010, §11.6)', () => {
     const p = join(project, '.opencode/command/analyze-doc.md');
     const stamped = readFileSync(p, 'utf-8');
     writeFileSync(p, `${stamped}\nE2E-EDIT-LINE\n`); // правка внутри, штамп не тронут
     const res = run(['sync'], project, xdg);
     expect(res.status).toBe(0);
-    expect(res.stdout).toContain('analyze-doc.md: updated');
-    expect(readFileSync(p, 'utf-8')).not.toContain('E2E-EDIT-LINE');
+    expect(res.stdout).toContain('analyze-doc.md: skipped');
+    expect(res.stdout).toContain('mutated');
+    expect(readFileSync(p, 'utf-8')).toContain('E2E-EDIT-LINE');
     expect(res.stdout).toContain('Memory (.wolf/) untouched'); // sync память не трогает
+  });
+
+  it('sync bootstrap: state-файла нет + правка → updated, правка затёрта (T010)', () => {
+    rmSync(join(project, '.opencode', 'wolf-sync-state.json'));
+    const p = join(project, '.opencode/command/analyze-doc.md');
+    writeFileSync(p, `${readFileSync(p, 'utf-8')}\nE2E-EDIT-LINE-2\n`);
+    const res = run(['sync'], project, xdg);
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain('analyze-doc.md: updated');
+    expect(readFileSync(p, 'utf-8')).not.toContain('E2E-EDIT-LINE'); // затёрта со старой правкой
+    expect(existsSync(join(project, '.opencode/wolf-sync-state.json'))).toBe(true); // state пересоздан
   });
 
   it('sync: unstamped файл на месте шаблонного → conflict, файл не тронут (§11.6)', () => {

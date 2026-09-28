@@ -11,6 +11,7 @@ import {
 } from '../../../ports/base-set-renderer.port.js';
 import { OPENCODE_MANIFEST, substitute } from '../manifest.js';
 import { insertStamp, parseStamp } from '../stamp.js';
+import { loadSyncState, saveSyncState, sha256, type SyncState } from '../sync-state.js';
 import { wolfVersion } from '../templates-root.js';
 
 const NEUTRAL_DIRS = ['agents', 'skills', 'commands'] as const;
@@ -73,6 +74,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
 
   async renderBaseSet(baseDir: string, opts?: RenderBaseSetOptions): Promise<RenderOutcome[]> {
     const outcomes: RenderOutcome[] = [];
+    const state = loadSyncState(baseDir);
     for (const f of this.templateFiles(baseDir)) {
       const rel = relative(baseDir, f.target);
       if (existsSync(f.target)) {
@@ -84,17 +86,20 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
         }
         const fresh = this.renderContent(f, opts?.bake, opts?.models);
         if (fresh === current) {
+          state.files[rel] = sha256(fresh);
           outcomes.push({ file: rel, action: 'skipped', reason: 'content identical' });
         } else {
           await writeFile(f.target, fresh, 'utf-8');
+          state.files[rel] = sha256(fresh);
           outcomes.push({ file: rel, action: 'updated', reason: 'content differs (diff branch, §4.5)' });
         }
         continue;
       }
-      await this.writeRendered(f, opts?.bake, opts?.models);
+      state.files[rel] = sha256(await this.writeRendered(f, opts?.bake, opts?.models));
       outcomes.push({ file: rel, action: 'created' });
     }
-    outcomes.push(...(await this.renderAgentsMd(baseDir, opts?.models)));
+    outcomes.push(...(await this.renderAgentsMd(baseDir, opts?.models, state)));
+    saveSyncState(baseDir, state);
     return outcomes;
   }
 
@@ -105,11 +110,12 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
     const ctx = models ?? 'omit'; // легаси без routing-объекта — omit (§4.5)
     const outcomes: RenderOutcome[] = [];
     const seen = new Set<string>();
+    const state = loadSyncState(baseDir);
     for (const f of this.templateFiles(baseDir)) {
       seen.add(f.target);
       const rel = relative(baseDir, f.target);
       if (!existsSync(f.target)) {
-        await this.writeRendered(f, undefined, ctx);
+        state.files[rel] = sha256(await this.writeRendered(f, undefined, ctx));
         outcomes.push({ file: rel, action: 'created' });
         continue;
       }
@@ -124,14 +130,27 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
       }
       const fresh = this.renderContent(f, undefined, ctx);
       if (fresh === current) {
+        state.files[rel] = sha256(fresh);
         outcomes.push({ file: rel, action: 'skipped', reason: 'content identical (M2)' });
+        continue;
+      }
+      // T010 mutated-skip: контент отличается и от записанного рендера (свидетель) —
+      // это локальная правка, не сдвиг канона; файл не трогаем, хэш не меняем.
+      const recorded = state.files[rel];
+      if (recorded !== undefined && sha256(current) !== recorded) {
+        outcomes.push({
+          file: rel,
+          action: 'skipped',
+          reason: 'mutated after render — differs from recorded render and fresh render; left untouched',
+        });
         continue;
       }
       await mkdir(join(f.target, '..'), { recursive: true });
       await writeFile(f.target, fresh, 'utf-8');
+      state.files[rel] = sha256(fresh);
       outcomes.push({ file: rel, action: 'updated' });
     }
-    outcomes.push(...(await this.syncAgentsMd(baseDir, ctx)));
+    outcomes.push(...(await this.syncAgentsMd(baseDir, ctx, state)));
     const orphaned: string[] = [];
     const scanRoots = [
       join(baseDir, '.opencode/agents'),
@@ -145,6 +164,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
         if (!seen.has(f) && parseStamp(readFileSync(f, 'utf-8')) !== null) orphaned.push(relative(baseDir, f));
       }
     }
+    saveSyncState(baseDir, state);
     return { outcomes, orphaned };
   }
 
@@ -161,16 +181,18 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
   }
 
   /** Init-ветка AGENTS.md: create (wx + штамп) / marker-append / skip (D3). */
-  private async renderAgentsMd(baseDir: string, models?: ModelContext): Promise<RenderOutcome[]> {
+  private async renderAgentsMd(
+    baseDir: string,
+    models: ModelContext | undefined,
+    state: SyncState
+  ): Promise<RenderOutcome[]> {
     const paths = this.agentsMdPaths(baseDir);
     if (!paths) return [];
     const content = this.agentsMdContent(paths.tplPath, models);
     if (!existsSync(paths.target)) {
-      await writeFile(
-        paths.target,
-        insertStamp(content, { base: 'AGENTS.md', set: this.setVersion }, 'AGENTS.md'),
-        'utf-8'
-      );
+      const written = insertStamp(content, { base: 'AGENTS.md', set: this.setVersion }, 'AGENTS.md');
+      await writeFile(paths.target, written, 'utf-8');
+      state.files['AGENTS.md'] = sha256(written);
       return [{ file: 'AGENTS.md', action: 'created' }];
     }
     const current = readFileSync(paths.target, 'utf-8');
@@ -185,7 +207,11 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
   }
 
   /** Sync-ветка AGENTS.md: только штампованный цельный файл; append-блок синку не принадлежит. */
-  private async syncAgentsMd(baseDir: string, models?: ModelContext | 'omit'): Promise<RenderOutcome[]> {
+  private async syncAgentsMd(
+    baseDir: string,
+    models: ModelContext | 'omit',
+    state: SyncState
+  ): Promise<RenderOutcome[]> {
     const paths = this.agentsMdPaths(baseDir);
     if (!paths) return [];
     const fresh = insertStamp(
@@ -195,6 +221,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
     );
     if (!existsSync(paths.target)) {
       await writeFile(paths.target, fresh, 'utf-8');
+      state.files['AGENTS.md'] = sha256(fresh);
       return [{ file: 'AGENTS.md', action: 'created' }];
     }
     const current = readFileSync(paths.target, 'utf-8');
@@ -204,9 +231,22 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
       ];
     }
     if (fresh === current) {
+      state.files['AGENTS.md'] = sha256(fresh);
       return [{ file: 'AGENTS.md', action: 'skipped', reason: 'content identical (M2)' }];
     }
+    // T010 mutated-skip — то же правило, что и для файлов набора
+    const recorded = state.files['AGENTS.md'];
+    if (recorded !== undefined && sha256(current) !== recorded) {
+      return [
+        {
+          file: 'AGENTS.md',
+          action: 'skipped',
+          reason: 'mutated after render — differs from recorded render and fresh render; left untouched',
+        },
+      ];
+    }
     await writeFile(paths.target, fresh, 'utf-8');
+    state.files['AGENTS.md'] = sha256(fresh);
     return [{ file: 'AGENTS.md', action: 'updated' }];
   }
 
@@ -219,8 +259,11 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
     return insertStamp(rendered, { base: f.baseName, set: this.setVersion }, f.baseName);
   }
 
-  private async writeRendered(f: TemplateFile, bake?: BakeResolver, models?: ModelContext | 'omit'): Promise<void> {
+  /** Пишет рендер и возвращает записанный контент (T010: хэш для sync-state). */
+  private async writeRendered(f: TemplateFile, bake?: BakeResolver, models?: ModelContext | 'omit'): Promise<string> {
     await mkdir(join(f.target, '..'), { recursive: true });
-    await writeFile(f.target, this.renderContent(f, bake, models), 'utf-8');
+    const content = this.renderContent(f, bake, models);
+    await writeFile(f.target, content, 'utf-8');
+    return content;
   }
 }
