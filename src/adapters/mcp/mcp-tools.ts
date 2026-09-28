@@ -48,6 +48,7 @@ import {
 import { loadWolfConfigSync } from '../../adapters/fs/config-file.js';
 import { getWolfVersion } from '../version.js';
 import { resolveSessionId } from '../../domain/actor.js';
+import { parseRouterLog } from '../../domain/router-log.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -463,7 +464,7 @@ export function registerMemoryTools(
     'analytics',
     {
       description:
-        'Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness, memory lifecycle & coordination, campaigns & per-memory ROI — same JSON as `wolf analytics --json`',
+        'Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness, memory lifecycle & coordination, campaigns & per-memory ROI, machine acceptance — same JSON as `wolf analytics --json`',
       inputSchema: AnalyticsInputSchema,
     },
     async (input: unknown) => {
@@ -480,6 +481,7 @@ export function registerMemoryTools(
           | 'councils'
           | 'coordination'
           | 'campaign'
+          | 'acceptance'
           | 'all';
         class?: 'new' | 'sleeper' | 'workhorse' | 'dead';
         type?: string;
@@ -503,6 +505,14 @@ export function registerMemoryTools(
       } catch {
         runLogText = null; // ENOENT — run-log ещё не пишется
       }
+      // T003: router.log плагина wolf-router (нет файла → пустая структура)
+      let routerLogText: string | null = null;
+      try {
+        routerLogText = readFileSync(join(baseDir, '.wolf', 'router.log'), 'utf-8');
+      } catch {
+        routerLogText = null;
+      }
+      const parsedRouterLog = parseRouterLog(routerLogText ?? '');
 
       // D7: readSignalLog — events + счётчики битых строк для dataQuality
       const signalLog = readSignalLog(baseDir);
@@ -512,6 +522,11 @@ export function registerMemoryTools(
           signals: signalLog.events,
           signalLogStats: { malformedLines: signalLog.malformedLines, totalLines: signalLog.totalLines },
           runLogText,
+          routerLog: {
+            rows: parsedRouterLog.rows,
+            lines: parsedRouterLog.rows.length + parsedRouterLog.malformedLines,
+            malformedLines: parsedRouterLog.malformedLines,
+          },
           ...(config?.analytics?.thresholds !== undefined ? { thresholds: config.analytics.thresholds } : {}),
           ...(args.weeks !== undefined ? { weeks: args.weeks } : {}),
           ...(config?.pricing !== undefined ? { pricing: config.pricing } : {}),

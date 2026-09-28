@@ -156,6 +156,7 @@ export const AnalyticsInputSchema = z.object({
       'councils',
       'coordination',
       'campaign',
+      'acceptance',
       'all',
     ])
     .optional(),
