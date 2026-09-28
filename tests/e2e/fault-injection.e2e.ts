@@ -42,7 +42,7 @@ describe('fault-injection: mcp_call error-поля + старые jsonl-стро
   it('add с кривым полем (rule без scope) → error-поля заполнены, exit != 0', () => {
     const dir = tmpProject();
     dirs.push(dir);
-    expect(runCli(['init'], dir).status).toBe(0);
+    expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir).status).toBe(0);
 
     // rule без обязательного scope: input-схему проходит, домен бросает
     // UserFacingError «Type validation failed: scope ...» внутри action
@@ -68,7 +68,7 @@ describe('fault-injection: mcp_call error-поля + старые jsonl-стро
   it('старые jsonl-строки (v1, без новых полей) читаются без ошибок', () => {
     const dir = tmpProject();
     dirs.push(dir);
-    expect(runCli(['init'], dir).status).toBe(0);
+    expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir).status).toBe(0);
 
     // до-волновая v1-строка mcp_call: только поля ранних версий
     const metricsDir = join(dir, '.wolf', 'metrics');
