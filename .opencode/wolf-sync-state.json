@@ -1,0 +1,28 @@
+{
+  "files": {
+    ".opencode/skills/finishing-a-development-branch/SKILL.md": "cd3ff1e2e75ba83591c9caeab96601456e89fd9cc2b2ee9c7424328c46613c16",
+    ".opencode/skills/requesting-code-review/SKILL.md": "1249d8904e7fb15c8b8bfcd95b9379e18d75a54069dbbbd9d4a9000f4db278b8",
+    ".opencode/skills/test-driven-development/SKILL.md": "0b9ae1eb50fdf192597fa49f054e39899eb52f1811ecb76d5443a87e5b05fcd6",
+    ".opencode/skills/using-git-worktrees/SKILL.md": "94a558f8cfe344d9f2a111b0ad153af9c9e4e1cf127d7d472d0fb619cfb90530",
+    ".opencode/skills/using-skills/SKILL.md": "33f9757c83d75f6d6c435ca9c76f905ea474ec1e69622282d0feb59751698c95",
+    ".opencode/skills/verification-before-completion/SKILL.md": "c3a72c499f868e2bfc1027db927d48ffce20b99da742781906f05c9325e93678",
+    ".opencode/skills/wolf-brainstorm/SKILL.md": "3657706e7699d967249df868ee383ff0b0a8744154bc06f12dbf26006d8e48f2",
+    ".opencode/skills/wolf-debug/SKILL.md": "858515eefb2c853a6a31685fd0d5547034705f238557e4a2f27a7232f9c567fe",
+    ".opencode/skills/wolf-execute/SKILL.md": "7fdcd0e5fbb3aea3a945b3c5d3b6c0ec9f2eeeeb8f43f83b36970e73158d994f",
+    ".opencode/skills/wolf-handoff/SKILL.md": "ae8fba2e9ac6b6274bc28d70966712fc88bf06fc98dfc860fb34d18b0ad1b704",
+    ".opencode/skills/wolf-plan/SKILL.md": "551dd0054e54f1fc6b2eabf1f799cd7f554a257a195f0aec1950a661ec11a191",
+    ".opencode/skills/wolf-review/SKILL.md": "3bc2c896c3daa9df438552a3da28b96efe645fa06edc92a003a0c94ceb4c4b72",
+    ".opencode/skills/wolf-sdd/SKILL.md": "9716250d6eaa883cbc3b785d93cf5f5f863bc2bdeb2bb1856817dfaa983276ed",
+    ".opencode/command/complain.md": "fde53a443134c2999ab65d317b611a1d268ed97f62de6f00ae0bdf0a825a8c5c",
+    ".opencode/command/doc-review.md": "38a1f3bc6bcf3660e5955e7a42403717c808c9862b62b4819333944abac3f94b",
+    ".opencode/agents/executor-lead.md": "538879054841b04003676c20126276d1e4614d4d69a4786d6ff68fe756a65fee",
+    ".opencode/agents/mr-wolf.md": "ff10b778f6b8583bb2c44978b94280fecf03526709d16a92f54dc0f426dc2419",
+    ".opencode/agents/steward.md": "2e1542ca8d4ffe5e90cc00becff841e233a9dc155a79eb07670446782e2d7130",
+    ".opencode/agents/worker-implementer.md": "eaa97148de159549193322d77c0db1f1927529b4b112454fd4387fc8a5345cbb",
+    ".opencode/agents/worker-researcher.md": "e8fb4557256ce145ffbdbda0263eb94ea36de9398feb8d2789d1157a0212b38e",
+    ".opencode/agents/worker-reviewer.md": "4a66addeb060f30761a93d8f4e7881653734b7c13feafdc799094c2d625d5845",
+    ".opencode/command/analyze-doc.md": "25fefa415809296e82f781010acd03e0ccbbd2ff4bf88731a1568172ece8fb96",
+    ".opencode/plugins/wolf-router.ts": "340840f8c072948a6663fe0e39e77cc94674f9dc6ab75c746c176cb9da069027",
+    ".opencode/plugins/wolf-session-start.js": "64479d8d36546ecbd75a65598860266ab708fd353ffb8d532208beb2422e53ff"
+  }
+}

@@ -1,10 +1,12 @@
 ---
-description: Анализ документа по методике из памяти Wolf (рамочная команда PoC). Использование: /analyze-doc <путь-к-файлу>
-agent: apprentice
+description: Анализ документа по методике из памяти Wolf (playbook worker-researcher). Использование: /analyze-doc <путь-к-файлу>
+agent: worker-researcher
 ---
+<!-- wolf:rendered base=analyze-doc.md set=2.10.0 -->
 Проанализируй документ: $ARGUMENTS
 
-Протокол (рамка команды — содержимое в памяти Wolf):
-1. Перед ответом получи актуальный playbook: `mr-wolf_search` (query: `apprentice playbook`) или bash `node dist/bootstrap/cli.js search "apprentice playbook"` — наибольшая версия.
-2. Выполняй строго по разделам «МЕТОДИКА» и «ФОРМАТ ОТЧЁТА» playbook.
-3. Фидбек о формате/методике → сначала зафиксируй новую версию playbook (wolf add), потом отвечай по ней.
+Протокол (рамочная команда — методика в памяти Wolf):
+
+1. ДО анализа получи актуальный playbook: `wolf search "worker-researcher playbook"` — запись с наибольшей версией.
+2. Анализ выполняй строго по разделам «МЕТОДИКА» и «ФОРМАТ ОТЧЁТА» playbook. Формат отчёта (шапка с версией, структура, футер) — из playbook, не отсюда.
+3. Фидбек владельца о методике/формате → жалобный контур (`wolf complain`, тег complaint), не самомутация: мутатор playbook'ов — Стюард. Без фидбека версию не меняй.
