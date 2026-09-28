@@ -143,15 +143,20 @@ describe('AGENTS.md (§4.2)', () => {
 });
 
 describe('sync', () => {
-  it('штампованный с изменённым контентом → updated; идентичный → skipped', async () => {
-    await renderer().renderBaseSet(proj);
+  it('штампованный с изменённым контентом → mutated-skip; идентичный → skipped (T010)', async () => {
+    const models = { primary: 'p/m1', worker: 'w/m1' };
+    await renderer().renderBaseSet(proj, { models });
     const p = join(proj, '.opencode/agents/mr-wolf.md');
-    writeFileSync(p, readFileSync(p, 'utf-8').replace('# task', '# task edited'));
-    let res = await renderer().syncBaseSet(proj);
-    expect(res.outcomes.find((o) => o.file.endsWith('mr-wolf.md'))?.action).toBe('updated');
-    expect(readFileSync(p, 'utf-8')).not.toContain('# edited'); // перезаписан из шаблона
-    res = await renderer().syncBaseSet(proj);
-    expect(res.outcomes.find((o) => o.file.endsWith('mr-wolf.md'))?.action).toBe('skipped'); // M2: контент-компаратор
+    const canon = readFileSync(p, 'utf-8');
+    writeFileSync(p, canon.replace('# task', '# task edited'));
+    const res = await renderer().syncBaseSet(proj, models);
+    const o = res.outcomes.find((x) => x.file.endsWith('mr-wolf.md'));
+    expect(o?.action).toBe('skipped'); // T010: локальная правка не затирается
+    expect(o?.reason).toContain('mutated');
+    expect(readFileSync(p, 'utf-8')).toContain('# task edited');
+    writeFileSync(p, canon); // возврат к канону (не мутация)
+    const res2 = await renderer().syncBaseSet(proj, models);
+    expect(res2.outcomes.find((x) => x.file.endsWith('mr-wolf.md'))?.action).toBe('skipped'); // M2: контент-компаратор
   });
   it('unstamped → conflict (файл не тронут, reason с опциями); orphaned при исчезновении шаблона', async () => {
     await renderer().renderBaseSet(proj);
@@ -164,6 +169,73 @@ describe('sync', () => {
     expect(c?.reason).toContain('rename'); // M10: опции разрешения
     expect(readFileSync(join(proj, '.opencode/agents/rogue.md'), 'utf-8')).toBe('no stamp\n');
     expect(orphaned.some((f) => f.includes('wolf-router.ts'))).toBe(true);
+  });
+});
+
+describe('sync mutated-skip (T010)', () => {
+  const AGENT = '.opencode/agents/mr-wolf.md';
+
+  it('created: sync на пустом проекте → created; повтор → skipped (identical)', async () => {
+    const res = await renderer().syncBaseSet(proj);
+    expect(res.outcomes.find((o) => o.file === AGENT)?.action).toBe('created');
+    expect(existsSync(join(proj, '.opencode/wolf-sync-state.json'))).toBe(true);
+    const res2 = await renderer().syncBaseSet(proj);
+    const o = res2.outcomes.find((x) => x.file === AGENT);
+    expect(o?.action).toBe('skipped');
+    expect(o?.reason).toContain('identical');
+  });
+
+  it('updated: смена шаблона в base → updated новым рендером; повтор → skipped', async () => {
+    await renderer().syncBaseSet(proj);
+    writeFileSync(
+      join(base, 'agents', 'mr-wolf.md'),
+      '---\ndescription: d\nmodel: {{model.primary}}\n---\n# NEW CANON\n'
+    );
+    const res = await renderer().syncBaseSet(proj);
+    expect(res.outcomes.find((o) => o.file === AGENT)?.action).toBe('updated');
+    expect(readFileSync(join(proj, AGENT), 'utf-8')).toContain('# NEW CANON');
+    const res2 = await renderer().syncBaseSet(proj);
+    expect(res2.outcomes.find((o) => o.file === AGENT)?.action).toBe('skipped');
+  });
+
+  it('mutated-skip: правка штампованного (штамп цел) → skipped + mutated, правка цела; смена шаблона не перебивает', async () => {
+    await renderer().syncBaseSet(proj);
+    const p = join(proj, AGENT);
+    writeFileSync(p, `${readFileSync(p, 'utf-8')}\nLOCAL EDIT\n`);
+    const res = await renderer().syncBaseSet(proj);
+    const o = res.outcomes.find((x) => x.file === AGENT);
+    expect(o?.action).toBe('skipped');
+    expect(o?.reason).toContain('mutated');
+    expect(readFileSync(p, 'utf-8')).toContain('LOCAL EDIT');
+    // даже при изменённом шаблоне (сдвиг канона) мутация важнее — файл не трогаем
+    writeFileSync(join(base, 'agents', 'mr-wolf.md'), '---\ndescription: d\n---\n# OTHER CANON\n');
+    const res2 = await renderer().syncBaseSet(proj);
+    const o2 = res2.outcomes.find((x) => x.file === AGENT);
+    expect(o2?.action).toBe('skipped');
+    expect(o2?.reason).toContain('mutated');
+    expect(readFileSync(p, 'utf-8')).toContain('LOCAL EDIT');
+  });
+
+  it('bootstrap: state-файла нет → правка затёрта (старое поведение), state пересоздан', async () => {
+    await renderer().syncBaseSet(proj);
+    rmSync(join(proj, '.opencode', 'wolf-sync-state.json'));
+    const p = join(proj, AGENT);
+    writeFileSync(p, `${readFileSync(p, 'utf-8')}\nLOCAL EDIT\n`);
+    const res = await renderer().syncBaseSet(proj);
+    expect(res.outcomes.find((o) => o.file === AGENT)?.action).toBe('updated');
+    expect(readFileSync(p, 'utf-8')).not.toContain('LOCAL EDIT');
+    expect(existsSync(join(proj, '.opencode/wolf-sync-state.json'))).toBe(true);
+  });
+
+  it('AGENTS.md: правка штампованного → mutated-skip, правка цела', async () => {
+    await renderer().renderBaseSet(proj);
+    const p = join(proj, 'AGENTS.md');
+    writeFileSync(p, `${readFileSync(p, 'utf-8')}\nLOCAL AGENTS EDIT\n`);
+    const res = await renderer().syncBaseSet(proj);
+    const o = res.outcomes.find((x) => x.file === 'AGENTS.md');
+    expect(o?.action).toBe('skipped');
+    expect(o?.reason).toContain('mutated');
+    expect(readFileSync(p, 'utf-8')).toContain('LOCAL AGENTS EDIT');
   });
 });
 

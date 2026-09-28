@@ -8,13 +8,15 @@
  * гвард owner_skill === agentId | `skill:${agentId}` (legacy) → максимальная
  * version → инжект в system-промпт на каждое сообщение.
  *
- * Fallback — слой доставки №2: если плагин ничего не нашёл, рамка сама зовёт
- * `wolf search` (см. рамки агентов базового набора). Реестр доставок = сами
- * playbook-объекты через owner_skill, отдельного конфига нет.
+ * Fallback (T012, волна 1.1): канон приоритетен; при miss для ЛЮБОГО
+ * agent-id инъецируется встроенный универсальный FALLBACK_PLAYBOOK —
+ * доставка не зависит от того, звала ли рамка wolf search (слой №2).
+ * В router.log: variant=canonical | variant=fallback. Реестр доставок =
+ * сами playbook-объекты через owner_skill, отдельного конфига нет.
  *
  * Ноль зависимостей (Node stdlib; ai-sdk НЕ используется). Fail-safe: всё в
  * try/catch — плагин не имеет права уронить сессию (лог: .wolf/router.log —
- * agent-id, hit/miss, injected). Через этот файл при рендере проходят
+ * agent-id, name, variant, injected). Через этот файл при рендере проходят
  * подстановка {{tool.*}} и штамп `// wolf:rendered` (ставит рендерер).
  */
 
@@ -31,6 +33,23 @@ const LOCAL_CLI = path.join(PROJECT_ROOT, 'dist', 'bootstrap', 'cli.js');
 // WOLF_ROUTER_LOG — тест-шов (юнит-тесты пишут в tmp, не в живой dogfood-лог)
 const LOG = process.env.WOLF_ROUTER_LOG ?? path.join(PROJECT_ROOT, '.wolf', 'router.log');
 const INJECT_HEADER = '# Актуальный playbook (источник: память Wolf, доставлен плагином; обязательный формат ответа)';
+// T012 (волна 1.1): встроенный универсальный playbook для agent-id без канона
+// в памяти. Role-агностичный базовый контур Wolf; канон всегда приоритетен.
+const FALLBACK_PLAYBOOK = `# Универсальный playbook (fallback)
+
+Канонического playbook для твоего agent-id в памяти Wolf нет — работай
+по этому универсальному контуру.
+
+1. Холодный старт сессии: \`wolf call\` → \`wolf brief\` — возвращённые
+   injections и brief — активное руководство проекта.
+2. Значимое фиксируй в память Wolf: решения — \`add --type decision\`,
+   уроки — \`--type lesson\`, блокеры — \`--type blocker\`.
+3. Состояние проекта спрашивай у Wolf (\`wolf search\`, \`wolf get\`,
+   \`wolf brief\`): статические списки в файлах устаревают.
+4. Правила и playbook'ы не мутируй сам — мутатор Стюард; систематически
+   плохое ПРАВИЛО → \`wolf complain\` (не тул и не разовый случай).
+5. Сбой тула — FRICTION-строка в отчёте (\`FRICTION: <n>× <тул> —
+   причина; обошёл через <что сработало>\`), не молча и не ретраи в стол.`;
 // [ \t] вместо \s: \s съедает переводы строк и вытаскивает id с чужой строки.
 const AGENT_ID_RE = /^agent-id:[ \t]*([\w-]+)[ \t]*$/m;
 const CACHE_TTL_MS = 2500;
@@ -98,13 +117,14 @@ export const WolfPlaybookPlugin = async () => ({
       if (joined.includes(INJECT_HEADER)) return; // идемпотентность: не вставляем дважды
       const agentId = m[1];
       const resolved = await resolvePlaybook(agentId);
-      if (!resolved) {
-        logRoute(`agent-id=${agentId} playbook=miss injected=no`);
-        return; // fail-safe: fallback на wolf search самой рамкой
+      if (resolved) {
+        output.system.push(`\n\n${INJECT_HEADER}\n\n${resolved.body}`);
+        logRoute(`agent-id=${agentId} playbook=hit name=${resolved.id} variant=canonical injected=yes`);
+      } else {
+        // T012: miss канона → универсальный fallback; инъекция для любого agent-id
+        output.system.push(`\n\n${INJECT_HEADER}\n\n${FALLBACK_PLAYBOOK}`);
+        logRoute(`agent-id=${agentId} playbook=hit name=fallback variant=fallback injected=yes`);
       }
-      output.system.push(`\n\n${INJECT_HEADER}\n\n${resolved.body}`);
-      // волна 0 0.1: имя playbook + вариант (fallback появится с T012 — пока всегда canonical)
-      logRoute(`agent-id=${agentId} playbook=hit name=${resolved.id} variant=canonical injected=yes`);
     } catch {
       /* fail-safe: не роняем сессию */
     }

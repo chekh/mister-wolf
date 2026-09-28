@@ -16,6 +16,15 @@ const { execFileMock } = vi.hoisted(() => {
     version: 'v4',
     body: '# Playbook apprentice v4 (lean-формат)\n1. Контекст → 2. План → 3. Проверка',
   };
+  // T012: второй канон в моке — worker-hit без fallback
+  const WORKER_PLAYBOOK_ID = 'mem_fixture_playbook_worker_v1';
+  const WORKER_PLAYBOOK = {
+    id: WORKER_PLAYBOOK_ID,
+    type: 'playbook',
+    owner_skill: 'worker-reviewer',
+    version: 'v1',
+    body: '# Playbook worker-reviewer v1\nreviewer-canonical-body: зоны обзора',
+  };
   // promisify(execFile) без custom-symbol → стандартный callback-контракт.
   const execFileMock = vi.fn((file: unknown, args: string[], opts: unknown, cb?: unknown) => {
     const done = (typeof opts === 'function' ? opts : cb) as
@@ -25,10 +34,16 @@ const { execFileMock } = vi.hoisted(() => {
     const sub = args?.[1];
     if (sub === 'search') {
       const agentId = args[2];
-      const stdout = agentId === 'apprentice' ? `${PLAYBOOK_ID} [playbook] # Apprentice playbook\n` : '';
+      const stdout =
+        agentId === 'apprentice'
+          ? `${PLAYBOOK_ID} [playbook] # Apprentice playbook\n`
+          : agentId === 'worker-reviewer'
+            ? `${WORKER_PLAYBOOK_ID} [playbook] # Worker reviewer playbook\n`
+            : '';
       return done(null, { stdout });
     }
     if (sub === 'get' && args[2] === PLAYBOOK_ID) return done(null, { stdout: JSON.stringify(PLAYBOOK) });
+    if (sub === 'get' && args[2] === WORKER_PLAYBOOK_ID) return done(null, { stdout: JSON.stringify(WORKER_PLAYBOOK) });
     return done(new Error(`unexpected CLI call: ${JSON.stringify(args)}`));
   });
   return { execFileMock };
@@ -66,13 +81,43 @@ describe('wolf-router plugin', () => {
     expect(execFileMock).not.toHaveBeenCalled();
   });
 
-  it('unknown agent-id → nothing injected, no throw (fallback-ветка)', async () => {
+  // T012: miss канона → инъекция универсального fallback, не пустота
+  it('unknown agent-id → fallback playbook injected (no throw)', async () => {
     const plugin = await WolfPlaybookPlugin({});
     const output = makeSystemOutput('agent-id: net-takogo-agenta-xyz\n\nТы — кто-то неизвестный.');
     await expect(plugin['experimental.chat.system.transform']({}, output)).resolves.toBeUndefined();
 
-    expect(playbookParts(output)).toHaveLength(0);
-    expect(output.system).toHaveLength(1);
+    expect(playbookParts(output)).toHaveLength(1);
+    expect(playbookParts(output)[0]).toContain('Универсальный playbook');
+    expect(playbookParts(output)[0]).not.toContain('lean'); // canonical-маркер не попал
+    expect(output.system).toHaveLength(2);
+  });
+
+  // T012: канон приоритетен — fallback не примешивается к canonical-инъекту
+  it('canonical (apprentice) → injected WITHOUT fallback body', async () => {
+    const plugin = await WolfPlaybookPlugin({});
+    const output = makeSystemOutput('agent-id: apprentice\n\nТы — аналитик-подмастерье.');
+    await plugin['experimental.chat.system.transform']({}, output);
+
+    expect(playbookParts(output)).toHaveLength(1);
+    expect(playbookParts(output)[0]).toContain('lean');
+    expect(playbookParts(output)[0]).not.toContain('Универсальный playbook');
+  });
+
+  // T012: worker-hit по второму канону в моке — variant=canonical, без fallback
+  it('worker-reviewer → canonical hit, no fallback injected', async () => {
+    const plugin = await WolfPlaybookPlugin({});
+    const output = makeSystemOutput('agent-id: worker-reviewer\n\nТы — рецензент.');
+    await plugin['experimental.chat.system.transform']({}, output);
+
+    expect(playbookParts(output)).toHaveLength(1);
+    expect(playbookParts(output)[0]).toContain('reviewer-canonical-body');
+    expect(playbookParts(output)[0]).not.toContain('Универсальный playbook');
+
+    const lastLine = (readRouterLog().trim().split('\n').at(-1) ?? '').replace(/^\S+ /, '');
+    expect(lastLine).toBe(
+      'agent-id=worker-reviewer playbook=hit name=mem_fixture_playbook_worker_v1 variant=canonical injected=yes'
+    );
   });
 
   it('two calls in a row → exactly one injected part (idempotent, no double insert)', async () => {
@@ -106,12 +151,13 @@ describe('wolf-router plugin', () => {
     );
   });
 
-  it('miss: router.log keeps the old format playbook=miss injected=no', async () => {
+  // T012: miss-ветки больше нет — fallback логируется как hit variant=fallback
+  it('fallback: router.log line playbook=hit name=fallback variant=fallback injected=yes', async () => {
     const plugin = await WolfPlaybookPlugin({});
     const output = makeSystemOutput('agent-id: net-takogo-2-xyz\n\nТы — неизвестный агент.');
     await plugin['experimental.chat.system.transform']({}, output);
 
     const lastLine = (readRouterLog().trim().split('\n').at(-1) ?? '').replace(/^\S+ /, '');
-    expect(lastLine).toBe('agent-id=net-takogo-2-xyz playbook=miss injected=no');
+    expect(lastLine).toBe('agent-id=net-takogo-2-xyz playbook=hit name=fallback variant=fallback injected=yes');
   });
 });

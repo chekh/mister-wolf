@@ -2,6 +2,8 @@
 
 Quick index of all 45 `wolf` commands. Each row links to the command's reference entry; group headings link to the section pages.
 
+Playbook delivery for opencode agents — the `wolf-router` plugin injecting the current playbook into the system prompt — is documented separately: [Router](/guide/router).
+
 ## Memory
 
 | Command                                                      | What it does                                        | Page                        |
