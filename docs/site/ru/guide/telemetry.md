@@ -25,7 +25,7 @@ Mr. Wolf измеряет собственное использование — 
 | `wolf_version`   | runtime-версия Wolf (из package.json)                                                 | оба        |
 | `args_summary`   | только `add`: `{type ≤40 симв, title ≤80 симв, extra_keys}` — body не пишется никогда | оба        |
 | `memory_id`      | только `get`: запрошенный id                                                          | оба        |
-| `memory_ids`     | только `search`: id результатов, первые 10                                            | оба        |
+| `memory_ids`     | только `search`: id результатов, первые 10 (MCP-канал; CLI `search` поле не пишет)    | MCP        |
 | `cli_command`    | имя команды                                                                           | только CLI |
 | `error.message`  | при ошибке: сообщение, обрезанное до 200 симв                                         | оба        |
 | `error.code`     | при ошибке: машинный код, если есть                                                   | оба        |

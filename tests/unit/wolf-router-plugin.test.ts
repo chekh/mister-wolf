@@ -1,10 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
 // Плагин — plain ESM TS вне tsconfig (tsc tests не компилирует); vitest/esbuild
 // импортирует без тайпчека. CLI-спавн замокан (fixture-playbook): тест не зависит
 // ни от .wolf/-памяти репо (gitignored, есть только на дев-машине), ни от dist.
+const ROUTER_LOG = '/tmp/wolf-router-plugin-test/router.log';
 const { execFileMock } = vi.hoisted(() => {
+  // WOLF_ROUTER_LOG-шов: лог пишется в tmp-файл, а не в живой .wolf/router.log
+  // репо (иначе тесты после мержа в main загрязняли бы dogfood-аналитику владельца).
+  process.env.WOLF_ROUTER_LOG = '/tmp/wolf-router-plugin-test/router.log';
   const PLAYBOOK_ID = 'mem_fixture_playbook_v4';
   const PLAYBOOK = {
     id: PLAYBOOK_ID,
@@ -85,7 +88,7 @@ describe('wolf-router plugin', () => {
   // Волна 0 0.1: router.log при hit различает playbook по имени + вариант canonical
   const readRouterLog = (): string => {
     try {
-      return readFileSync(fileURLToPath(new URL('../../.wolf/router.log', import.meta.url)), 'utf-8');
+      return readFileSync(ROUTER_LOG, 'utf-8');
     } catch {
       return '';
     }

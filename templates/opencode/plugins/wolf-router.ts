@@ -28,7 +28,8 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.join(__dirname, '..', '..');
 const LOCAL_CLI = path.join(PROJECT_ROOT, 'dist', 'bootstrap', 'cli.js');
-const LOG = path.join(PROJECT_ROOT, '.wolf', 'router.log');
+// WOLF_ROUTER_LOG — тест-шов (юнит-тесты пишут в tmp, не в живой dogfood-лог)
+const LOG = process.env.WOLF_ROUTER_LOG ?? path.join(PROJECT_ROOT, '.wolf', 'router.log');
 const INJECT_HEADER = '# Актуальный playbook (источник: память Wolf, доставлен плагином; обязательный формат ответа)';
 // [ \t] вместо \s: \s съедает переводы строк и вытаскивает id с чужой строки.
 const AGENT_ID_RE = /^agent-id:[ \t]*([\w-]+)[ \t]*$/m;

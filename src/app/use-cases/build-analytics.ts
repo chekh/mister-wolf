@@ -838,12 +838,16 @@ function buildAcceptance(
   };
 
   // --- T003: search -> get follow (get из результатов search за <=10 c) ---
-  const searchCalls = signals.filter((s) => s.event === 'mcp_call' && s.tool_name === 'search');
+  // знаменатель — только joinable search (с валидным detail.memory_ids): без id результатов
+  // джойн не определён (CLI search их не пишет), ложный ноль в знаменателе размывал бы метрику
+  let joinableSearches = 0;
   let followed = 0;
-  for (const sr of searchCalls) {
+  for (const sr of signals) {
+    if (sr.event !== 'mcp_call' || sr.tool_name !== 'search') continue;
     const ids = sr.detail?.memory_ids;
     const results = new Set(Array.isArray(ids) ? ids.filter((v): v is string => typeof v === 'string') : []);
     if (results.size === 0) continue;
+    joinableSearches += 1;
     const tSearch = Date.parse(sr.ts);
     const hit = signals.some((g) => {
       if (g.event !== 'mcp_call' || g.tool_name !== 'get') return false;
@@ -855,9 +859,9 @@ function buildAcceptance(
     if (hit) followed += 1;
   }
   const searchFollow: SearchFollowStats = {
-    searches: searchCalls.length,
+    searches: joinableSearches,
     followed,
-    followRatePct: searchCalls.length > 0 ? (followed / searchCalls.length) * 100 : null,
+    followRatePct: joinableSearches > 0 ? (followed / joinableSearches) * 100 : null,
   };
 
   // --- T003: vitality (core-инструменты за 72ч) ---

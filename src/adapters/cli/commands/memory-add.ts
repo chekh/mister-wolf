@@ -59,8 +59,15 @@ export function memoryAddCommand(): Command {
             }
           }
         },
-        // волна 0 0.1: args_summary в mcp_call-сигнал (body не попадает)
-        (options) => ({ args_summary: addArgsSummary({ type: options.type, title: options.title }) })
+        // волна 0 0.1: args_summary в mcp_call-сигнал (body не попадает);
+        // extra_keys — из --set пар (парсинг дублируется дёшево, телеметрия в try/catch обёртки)
+        (options) => ({
+          args_summary: addArgsSummary({
+            type: options.type,
+            title: options.title,
+            extra: parseSetPairs(options.set as string[], options.type),
+          }),
+        })
       )
     );
 }

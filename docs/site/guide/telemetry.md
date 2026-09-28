@@ -19,17 +19,17 @@ Written on every invocation of a `mr-wolf_*` MCP tool and of the instrumented CL
 
 `detail` fields:
 
-| Field            | Semantics                                                                    | Channel  |
-| ---------------- | ---------------------------------------------------------------------------- | -------- |
-| `method`         | invoked method / command name                                                | both     |
-| `wolf_version`   | runtime Wolf version (from package.json)                                     | both     |
-| `args_summary`   | `add` only: `{type ≤40 chars, title ≤80 chars, extra_keys}` — never the body | both     |
-| `memory_id`      | `get` only: the requested id                                                 | both     |
-| `memory_ids`     | `search` only: ids of the results, first 10                                  | both     |
-| `cli_command`    | command name                                                                 | CLI only |
-| `error.message`  | on error: the message, truncated to 200 chars                                | both     |
-| `error.code`     | on error: the machine code, when present                                     | both     |
-| `error_class_id` | on error: the deterministic error class (same classifier as `tool_error`)    | both     |
+| Field            | Semantics                                                                                | Channel  |
+| ---------------- | ---------------------------------------------------------------------------------------- | -------- |
+| `method`         | invoked method / command name                                                            | both     |
+| `wolf_version`   | runtime Wolf version (from package.json)                                                 | both     |
+| `args_summary`   | `add` only: `{type ≤40 chars, title ≤80 chars, extra_keys}` — never the body             | both     |
+| `memory_id`      | `get` only: the requested id                                                             | both     |
+| `memory_ids`     | `search` only: ids of the results, first 10 (MCP channel; CLI `search` does not emit it) | MCP      |
+| `cli_command`    | command name                                                                             | CLI only |
+| `error.message`  | on error: the message, truncated to 200 chars                                            | both     |
+| `error.code`     | on error: the machine code, when present                                                 | both     |
+| `error_class_id` | on error: the deterministic error class (same classifier as `tool_error`)                | both     |
 
 ## delivery
 
