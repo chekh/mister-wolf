@@ -39,7 +39,12 @@ import { createRule } from '../../app/use-cases/create-rule.js';
 import { startThinking, addThought, concludeThinking, abandonThinking } from '../../app/use-cases/thinking.js';
 import { createCliContainer } from '../../bootstrap/container.js';
 import { buildAnalyticsReport, filterAnalytics } from '../../app/use-cases/build-analytics.js';
-import { appendSignal, appendMemoryStageSignal, readSignalLog } from '../../adapters/fs/session-metrics-log.js';
+import {
+  appendMcpCallSignal,
+  appendMemoryStageSignal,
+  readSignalLog,
+  addArgsSummary,
+} from '../../adapters/fs/session-metrics-log.js';
 import { loadWolfConfigSync } from '../../adapters/fs/config-file.js';
 import { getWolfVersion } from '../version.js';
 import { resolveSessionId } from '../../domain/actor.js';
@@ -51,24 +56,58 @@ export function registerMemoryTools(
   deps: ReturnType<typeof createCliContainer>,
   baseDir: string
 ): void {
-  // P1 D5: телеметрия mcp_call вокруг каждого handler'а. Дешёвая: appendSignal с
-  // signalKey(mcp_call) = null → без reparse лога; сбой телеметрии не ломает вызов.
+  // P1 D5: телеметрия mcp_call вокруг каждого handler'а. Дешёвая: appendMcpCallSignal
+  // с signalKey(mcp_call) = null → без reparse лога; сбой телеметрии не ломает вызов.
+  // Волна 0 0.1: обогащение detail по инструменту (args_summary/memory_id/memory_ids,
+  // error.message/code + error_class_id — см. appendMcpCallSignal).
   const withMcpCall = (
     name: string,
     handler: (input: unknown) => Promise<unknown>
   ): ((input: unknown) => Promise<unknown>) => {
-    const record = (outcome: 'ok' | 'error', startedAt: number): void => {
+    const enrichDetail = (input: unknown): Record<string, unknown> => {
+      const detail: Record<string, unknown> = { method: name, wolf_version: getWolfVersion() };
+      if (name === 'add') {
+        // то же деструктурирование, что в handler'е add: extra = per-type поля, body не нужен
+        const { type, title, body, tags, confidence, importance, createdBy, ...extra } = input as {
+          type: string;
+          title: string;
+          body?: string;
+          tags?: string[];
+          confidence?: 'low' | 'medium' | 'high';
+          importance?: number;
+          createdBy: string;
+        } & Record<string, unknown>;
+        detail.args_summary = addArgsSummary({ type, title, extra });
+      } else if (name === 'get') {
+        const id = (input as { id?: unknown }).id;
+        if (typeof id === 'string') detail.memory_id = id;
+      }
+      return detail;
+    };
+    const record = (
+      outcome: 'ok' | 'error',
+      startedAt: number,
+      input: unknown,
+      error?: unknown,
+      extraDetail?: Record<string, unknown>
+    ): void => {
       try {
-        appendSignal(baseDir, {
-          ts: new Date().toISOString(),
-          event: 'mcp_call',
-          session_id: null,
-          gen_ai: { modelID: null, agent: null },
-          orchestration: { task: null, actor: 'system:wolf' },
+        appendMcpCallSignal(baseDir, {
+          tool: name,
           outcome,
-          tool_name: name,
-          duration_ms: Date.now() - startedAt,
-          detail: { method: name, wolf_version: getWolfVersion() },
+          durationMs: Date.now() - startedAt,
+          detail: { ...enrichDetail(input), ...extraDetail },
+          ...(error !== undefined
+            ? {
+                error: {
+                  message: error instanceof Error ? error.message : String(error),
+                  code:
+                    typeof (error as { code?: unknown })?.code === 'string'
+                      ? (error as { code: string }).code
+                      : undefined,
+                },
+              }
+            : {}),
         });
       } catch {
         // телеметрия не должна ломать вызов
@@ -78,10 +117,25 @@ export function registerMemoryTools(
       const startedAt = Date.now();
       try {
         const result = await handler(input);
-        record('ok', startedAt);
+        // search: id найденных объектов — из owned-формата текста `${id} [${type}] ${title}`;
+        // непарсящиеся строки молча пропускаются
+        let extra: Record<string, unknown> | undefined;
+        if (name === 'search') {
+          const text = (result as { content?: Array<{ text?: string }> })?.content?.[0]?.text;
+          if (typeof text === 'string') {
+            extra = {
+              memory_ids: text
+                .split('\n')
+                .map((l) => l.match(/^([\w-]+) \[/)?.[1])
+                .filter(Boolean)
+                .slice(0, 10),
+            };
+          }
+        }
+        record('ok', startedAt, input, undefined, extra);
         return result;
       } catch (err) {
-        record('error', startedAt);
+        record('error', startedAt, input, err);
         throw err;
       }
     };

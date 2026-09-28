@@ -1,4 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
 // Плагин — plain ESM TS вне tsconfig (tsc tests не компилирует); vitest/esbuild
 // импортирует без тайпчека. CLI-спавн замокан (fixture-playbook): тест не зависит
 // ни от .wolf/-памяти репо (gitignored, есть только на дев-машине), ни от dist.
@@ -78,5 +80,35 @@ describe('wolf-router plugin', () => {
     await transform({}, output);
 
     expect(playbookParts(output)).toHaveLength(1);
+  });
+
+  // Волна 0 0.1: router.log при hit различает playbook по имени + вариант canonical
+  const readRouterLog = (): string => {
+    try {
+      return readFileSync(fileURLToPath(new URL('../../.wolf/router.log', import.meta.url)), 'utf-8');
+    } catch {
+      return '';
+    }
+  };
+
+  it('hit: router.log line contains playbook=hit name=<id> variant=canonical injected=yes', async () => {
+    const plugin = await WolfPlaybookPlugin({});
+    const output = makeSystemOutput('agent-id: apprentice\n\nТы — аналитик-подмастерье.');
+    await plugin['experimental.chat.system.transform']({}, output);
+    expect(playbookParts(output)).toHaveLength(1);
+
+    const lastLine = (readRouterLog().trim().split('\n').at(-1) ?? '').replace(/^\S+ /, '');
+    expect(lastLine).toBe(
+      'agent-id=apprentice playbook=hit name=mem_fixture_playbook_v4 variant=canonical injected=yes'
+    );
+  });
+
+  it('miss: router.log keeps the old format playbook=miss injected=no', async () => {
+    const plugin = await WolfPlaybookPlugin({});
+    const output = makeSystemOutput('agent-id: net-takogo-2-xyz\n\nТы — неизвестный агент.');
+    await plugin['experimental.chat.system.transform']({}, output);
+
+    const lastLine = (readRouterLog().trim().split('\n').at(-1) ?? '').replace(/^\S+ /, '');
+    expect(lastLine).toBe('agent-id=net-takogo-2-xyz playbook=miss injected=no');
   });
 });

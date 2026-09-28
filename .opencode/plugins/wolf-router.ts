@@ -36,7 +36,9 @@ function logRoute(line) {
   try {
     fs.mkdirSync(path.dirname(LOG), { recursive: true });
     fs.appendFileSync(LOG, `${new Date().toISOString()} ${line}\n`);
-  } catch { /* fail-safe */ }
+  } catch {
+    /* fail-safe */
+  }
 }
 
 // ponytail: per-agent кэш 2.5с — свежесть между сообщениями, без CLI-спавна на каждый чих.
@@ -45,12 +47,12 @@ const cache = new Map();
 async function resolvePlaybook(agentId) {
   const hit = cache.get(agentId);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
-  let body = null;
+  let found = null;
   try {
-    const { stdout } = await run(
-      'node', [CLI, 'search', agentId, '--type', 'playbook', '--hide-superseded'],
-      { cwd: PROJECT_ROOT, timeout: 5000 }
-    );
+    const { stdout } = await run('node', [CLI, 'search', agentId, '--type', 'playbook', '--hide-superseded'], {
+      cwd: PROJECT_ROOT,
+      timeout: 5000,
+    });
     const ids = [...stdout.matchAll(/^([\w-]+) \[playbook\]/gm)].map((m) => m[1]);
     let best = null;
     let bestVersion = -1;
@@ -60,12 +62,17 @@ async function resolvePlaybook(agentId) {
       const owner = obj.owner_skill ?? obj.extra?.owner_skill;
       if (owner !== agentId && owner !== `skill:${agentId}`) continue; // гвард владельца
       const version = Number(String(obj.version ?? '').match(/\d+/)?.[0] ?? 0);
-      if (version > bestVersion) { bestVersion = version; best = obj; }
+      if (version > bestVersion) {
+        bestVersion = version;
+        best = obj;
+      }
     }
-    body = best?.body ?? null;
-  } catch { /* fail-safe: без playbook — рамка работает через wolf search */ }
-  cache.set(agentId, { value: body, at: Date.now() });
-  return body;
+    found = best?.body ? { id: String(best.id ?? ''), body: best.body } : null;
+  } catch {
+    /* fail-safe: без playbook — рамка работает через wolf search */
+  }
+  cache.set(agentId, { value: found, at: Date.now() });
+  return found;
 }
 
 export const WolfPlaybookPlugin = async () => ({
@@ -76,13 +83,16 @@ export const WolfPlaybookPlugin = async () => ({
       if (!m) return; // рамка без маркера — не наша забота
       if (joined.includes(INJECT_HEADER)) return; // идемпотентность: не вставляем дважды
       const agentId = m[1];
-      const body = await resolvePlaybook(agentId);
-      if (!body) {
+      const resolved = await resolvePlaybook(agentId);
+      if (!resolved) {
         logRoute(`agent-id=${agentId} playbook=miss injected=no`);
         return; // fail-safe: fallback на wolf search самой рамкой
       }
-      output.system.push(`\n\n${INJECT_HEADER}\n\n${body}`);
-      logRoute(`agent-id=${agentId} playbook=hit injected=yes`);
-    } catch { /* fail-safe: не роняем сессию */ }
+      output.system.push(`\n\n${INJECT_HEADER}\n\n${resolved.body}`);
+      // волна 0 0.1: имя playbook + вариант (fallback появится с T012 — пока всегда canonical)
+      logRoute(`agent-id=${agentId} playbook=hit name=${resolved.id} variant=canonical injected=yes`);
+    } catch {
+      /* fail-safe: не роняем сессию */
+    }
   },
 });

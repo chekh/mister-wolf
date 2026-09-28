@@ -337,20 +337,91 @@ export function appendDeliverySignal(
     target?: string;
     actor: string;
     detail?: Record<string, unknown>;
+    /** Волна 0 0.1: session_id доставки (CLI-канал); дефолт null — как раньше. */
+    sessionId?: string | null;
+    /** Волна 0 0.1: байты инъекции (detail.injection_bytes; токен-аппроксимация — не-цель). */
+    injectionBytes?: number;
   }
 ): { key: string | null; count: number; patternFixed: boolean } {
   return appendSignal(baseDir, {
     ts: nowIso(),
     event: 'delivery',
-    session_id: null,
+    session_id: input.sessionId ?? null,
     gen_ai: { modelID: null, agent: null },
     orchestration: { task: null, actor: input.actor },
     outcome: 'delivered',
     detail: {
       name: input.name,
       mechanism: input.mechanism,
-      ...(input.target ? { target: input.target } : {}),
+      // волна 0 0.1: target ≤200 симв — промпты не утекают в metrics целиком
+      ...(input.target ? { target: input.target.slice(0, 200) } : {}),
+      ...(input.injectionBytes !== undefined ? { injection_bytes: input.injectionBytes } : {}),
       ...input.detail,
+    },
+  });
+}
+
+/** Волна 0 0.1: args_summary для add (MCP и CLI каналы) — type≤40, title≤80, ключи
+ * extra; body в телеметрию никогда не попадает. */
+export function addArgsSummary(input: {
+  type?: unknown;
+  title?: unknown;
+  extra?: Record<string, unknown>;
+}): Record<string, unknown> {
+  return {
+    type: String(input.type ?? '').slice(0, 40),
+    title: String(input.title ?? '').slice(0, 80),
+    extra_keys: Object.keys(input.extra ?? {}),
+  };
+}
+
+/**
+ * Writer (з): mcp_call — вызов инструмента/команды через MCP или CLI-обёртку
+ * (волна 0 0.1). Контекст-событие: signalKey → null, пороги Ф21 не считаются.
+ * При input.error — classifyError (проектная таксономия, как в recordToolError)
+ * → detail.error_class_id + detail.error.{message ≤200, code}.
+ */
+export function appendMcpCallSignal(
+  baseDir: string,
+  input: {
+    tool: string;
+    outcome: 'ok' | 'error';
+    durationMs: number;
+    /** Дефолт 'system:wolf' (MCP); CLI-обёртка передаёт 'user:cli'. */
+    actor?: string;
+    /** Дефолт null: MCP-канал не сессионируется. */
+    sessionId?: string | null;
+    detail?: Record<string, unknown>;
+    /** При outcome='error': классификация → detail.error_class_id + detail.error. */
+    error?: { message: string; code?: string };
+  }
+): void {
+  let projectRules: readonly { id: string; match: string[] }[] = [];
+  try {
+    projectRules = loadWolfConfigSync(baseDir)?.errorClassTaxonomy ?? [];
+  } catch {
+    // битый конфиг — классифицируем дефолтной таблицей
+  }
+  appendSignal(baseDir, {
+    ts: nowIso(),
+    event: 'mcp_call',
+    session_id: input.sessionId ?? null,
+    gen_ai: { modelID: null, agent: null },
+    orchestration: { task: null, actor: input.actor ?? 'system:wolf' },
+    outcome: input.outcome,
+    tool_name: input.tool,
+    duration_ms: input.durationMs,
+    detail: {
+      ...input.detail,
+      ...(input.error
+        ? {
+            error: {
+              message: input.error.message.slice(0, 200),
+              ...(input.error.code ? { code: input.error.code } : {}),
+            },
+            error_class_id: classifyError({ message: input.error.message, code: input.error.code }, projectRules),
+          }
+        : {}),
     },
   });
 }

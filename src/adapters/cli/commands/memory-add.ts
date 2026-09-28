@@ -5,6 +5,8 @@ import { MEMORY_TYPES } from '../../../domain/memory-types.js';
 import { parseSetPairs } from '../../../domain/parse-set-pairs.js';
 import { resolveCreatedBy } from '../../../domain/actor.js';
 import { UserFacingError } from '../../../domain/errors.js';
+import { addArgsSummary } from '../../fs/session-metrics-log.js';
+import { withCliCall } from './with-cli-call.js';
 
 function collectSet(value: string, previous: string[]): string[] {
   return [...previous, value];
@@ -26,32 +28,39 @@ export function memoryAddCommand(): Command {
     .option('--set <k=v>', 'Extra field key=value (repeatable; "[a,b]" value is a string array)', collectSet, [])
     .option('--scope <scope>', 'Scope field for types that declare one (rule: project|global)')
     .option('--created-by <actor>', 'Creator actor (default: env WOLF_ACTOR, else user:cli)')
-    .action(async (options) => {
-      const { store, log, clock, idGen, index, declarations } = createCliContainer(process.cwd());
-      const extra = parseSetPairs(options.set as string[], options.type);
-      if (options.scope !== undefined) {
-        if ('scope' in extra)
-          throw new UserFacingError('Duplicate scope: use either --scope or --set scope=..., not both');
-        extra.scope = options.scope;
-      }
-      const result = await addMemoryObject(
-        { store, log, clock, idGen, index, declarations },
-        {
-          type: options.type,
-          title: options.title,
-          body: options.body,
-          createdBy: resolveCreatedBy(options.createdBy),
-          tags: options.tags ? options.tags.split(',').map((t: string) => t.trim()) : [],
-          confidence: options.confidence,
-          importance: options.importance,
-          extra,
-        }
-      );
-      console.log(`Created memory object: ${result.object.id}`);
-      if (result.warnings.length > 0) {
-        for (const warning of result.warnings) {
-          console.warn(`Warning: ${warning}`);
-        }
-      }
-    });
+    .action(
+      withCliCall(
+        'add',
+        async (options) => {
+          const { store, log, clock, idGen, index, declarations } = createCliContainer(process.cwd());
+          const extra = parseSetPairs(options.set as string[], options.type);
+          if (options.scope !== undefined) {
+            if ('scope' in extra)
+              throw new UserFacingError('Duplicate scope: use either --scope or --set scope=..., not both');
+            extra.scope = options.scope;
+          }
+          const result = await addMemoryObject(
+            { store, log, clock, idGen, index, declarations },
+            {
+              type: options.type,
+              title: options.title,
+              body: options.body,
+              createdBy: resolveCreatedBy(options.createdBy),
+              tags: options.tags ? options.tags.split(',').map((t: string) => t.trim()) : [],
+              confidence: options.confidence,
+              importance: options.importance,
+              extra,
+            }
+          );
+          console.log(`Created memory object: ${result.object.id}`);
+          if (result.warnings.length > 0) {
+            for (const warning of result.warnings) {
+              console.warn(`Warning: ${warning}`);
+            }
+          }
+        },
+        // волна 0 0.1: args_summary в mcp_call-сигнал (body не попадает)
+        (options) => ({ args_summary: addArgsSummary({ type: options.type, title: options.title }) })
+      )
+    );
 }
