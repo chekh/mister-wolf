@@ -51,6 +51,8 @@ describe('targetPathFor (layout v2)', () => {
   });
 
   it('unknown type still throws even with unrelated extraDeclarations', () => {
-    expect(() => targetPathFor('/base', { type: 'nope', id: 'mem_x' }, [incident])).toThrow(/No taxonomy declaration/);
+    expect(() => targetPathFor('/base', { type: 'nope', id: 'mem_x' }, [incident])).toThrow(
+      /Unknown memory type "nope"/
+    );
   });
 });

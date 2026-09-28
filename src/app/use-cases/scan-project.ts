@@ -16,6 +16,41 @@ export interface ScanProjectResult {
   documents: MemoryObject[];
 }
 
+/**
+ * Кэш скана по сигнатуре дерева (T013): sig совпал → кэшированный результат
+ * без обхода/побочных эффектов; не совпал → полный scanProject (со всеми
+ * эффектами — запись project-scan-latest, регистрация document-ref'ов) и
+ * обновление кэша. treeSignature отсутствует → всегда полный скан
+ * (обратная совместимость портов в тестах).
+ * Инвалидация — см. projectTreeSignature в heuristic-project-scanner.ts:
+ * dir mtime (добавление/удаление/переименование файлов), package.json, .git/HEAD;
+ * контентные правки существующих файлов НЕ инвалидируют (brief не зависит от
+ * содержимого файлов).
+ */
+const scanCache = new Map<string, { sig: string; result: ScanProjectResult }>();
+
+export async function scanProjectCached(
+  deps: {
+    store: MemoryStore;
+    log: EventLog;
+    clock: Clock;
+    idGen: IdGenerator;
+    scanner: ProjectScanner;
+    index?: SearchIndex;
+    lock?: MemoryLock;
+    treeSignature?: (root: string) => Promise<string>;
+  },
+  root: string
+): Promise<ScanProjectResult> {
+  if (!deps.treeSignature) return scanProject(deps, root);
+  const sig = await deps.treeSignature(root);
+  const cached = scanCache.get(root);
+  if (cached && cached.sig === sig) return cached.result;
+  const result = await scanProject(deps, root);
+  scanCache.set(root, { sig, result });
+  return result;
+}
+
 export async function scanProject(
   deps: {
     store: MemoryStore;

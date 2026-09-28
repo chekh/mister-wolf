@@ -72,6 +72,22 @@ describe('addMemoryObject', () => {
     ).rejects.toThrow(/nonsense/);
   });
 
+  // T011: читаемые сообщения об ошибках валидации
+  it('rejects unknown type with UserFacingError listing valid types', async () => {
+    await expect(
+      addMemoryObject({ store, log, clock, idGen }, { type: 'notaftype' as never, title: 'X', createdBy: 'u:test' })
+    ).rejects.toThrow(/Unknown memory type "notaftype"\. Valid types: /);
+  });
+
+  it('rejects unknown field with the type’s valid fields list', async () => {
+    await expect(
+      addMemoryObject(
+        { store, log, clock, idGen },
+        { type: 'lesson', title: 'Bad', createdBy: 'user:test', extra: { scope: 'x' } }
+      )
+    ).rejects.toThrow(/Unknown field "scope".*valid fields.*trigger_keywords/);
+  });
+
   it('rejects missing declared field at creation', async () => {
     await expect(
       addMemoryObject(

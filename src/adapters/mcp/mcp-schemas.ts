@@ -49,6 +49,36 @@ export const MemoryAddInputSchema = z
   })
   .strict();
 
+/** Известные ключи тула add: базовая форма + per-type поля таксономии. */
+const ADD_KNOWN_KEYS = new Set([
+  'type',
+  'title',
+  'body',
+  'tags',
+  'confidence',
+  'importance',
+  'createdBy',
+  ...Object.keys(perTypeExtraFields()),
+]);
+
+/**
+ * T011: camelCase-ключи агента → snake_case per-type поля (expectedAnswer →
+ * expected_answer, detourReason → detour_reason). Ренейм только если snake-версия
+ * входит в известное множество (createdBy — часть контракта, не переименовывается);
+ * неизвестные ключи не трогаются — их отсечёт .strict() с внятной ошибкой.
+ * Вызывается обёрткой схемы в mcp-tools (register), НЕ внутри zod-схемы:
+ * z.preprocess ломает JSON-Schema-генерацию для tools/list.
+ */
+export function normalizeAddInputKeys(raw: unknown): unknown {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    const snake = key.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase());
+    out[ADD_KNOWN_KEYS.has(key) || !ADD_KNOWN_KEYS.has(snake) ? key : snake] = value;
+  }
+  return out;
+}
+
 export const MemoryTransitionInputSchema = z.object({
   id: z.string(),
   status: z.string(),

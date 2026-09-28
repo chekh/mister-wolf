@@ -79,7 +79,12 @@ export async function addMemoryObject(
     const baseKeys = new Set(Object.keys(MemoryObjectSchema.shape));
     for (const key of Object.keys(input.extra ?? {})) {
       if (!baseKeys.has(key) && !(key in (decl.fields ?? {}))) {
-        throw new UserFacingError(`Unknown field "${key}" for type "${object.type}"`);
+        // T011: список валидных полей типа в сообщении; classifyError → invalid_input
+        throw new UserFacingError(
+          `Unknown field "${key}" for type "${object.type}" (valid fields: ${
+            Object.keys(decl.fields ?? {}).join(', ') || 'none'
+          })`
+        );
       }
     }
     const typeCheck = buildTypeSchema(decl).safeParse(object);

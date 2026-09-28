@@ -1,3 +1,5 @@
+import { UserFacingError } from './errors.js';
+
 export type MemoryStatus =
   | 'active'
   | 'open'
@@ -352,7 +354,12 @@ export const CORE_TAXONOMY: readonly MemoryTypeDeclaration[] = CORE_TAXONOMY_DEC
 /** Поиск декларации: сначала core-таксономия, потом extra (project-типы из config.yaml). */
 export function getDeclaration(type: string, extra?: readonly MemoryTypeDeclaration[]): MemoryTypeDeclaration {
   const decl = CORE_TAXONOMY.find((d) => d.name === type) ?? extra?.find((d) => d.name === type);
-  if (!decl) throw new Error(`No taxonomy declaration for type: ${type}`);
+  if (!decl) {
+    // T011: UserFacingError + список валидных типов (включая deprecated document) —
+    // агент получает читаемую ошибку, classifyError матчит 'unknown memory type' → invalid_input
+    const valid = [...CORE_TAXONOMY.map((d) => d.name), ...(extra ?? []).map((d) => d.name)].join(', ');
+    throw new UserFacingError(`Unknown memory type "${type}". Valid types: ${valid}`);
+  }
   return decl;
 }
 

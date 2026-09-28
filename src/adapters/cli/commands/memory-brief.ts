@@ -1,5 +1,6 @@
 import { Command } from 'commander';
-import { scanProject } from '../../../app/use-cases/scan-project.js';
+import { scanProjectCached } from '../../../app/use-cases/scan-project.js';
+import { projectTreeSignature } from '../../fs/heuristic-project-scanner.js';
 import { generateAgentBrief } from '../../../app/use-cases/generate-agent-brief.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { appendMemoryStageSignal } from '../../fs/session-metrics-log.js';
@@ -10,7 +11,12 @@ export function memoryBriefCommand(): Command {
   return new Command('brief').description('Generate the agent brief from the latest scan and memory').action(
     withCliCall('brief', async () => {
       const { store, log, clock, idGen, scanner, fs, index } = createCliContainer(process.cwd());
-      const scanResult = await scanProject({ store, log, clock, idGen, scanner, index }, process.cwd());
+      // T013: инкрементальный скан (кэш по сигнатуре дерева) — CLI-процесс
+      // одноразовый, кэш греть нечему, но код-путь единый с MCP brief
+      const scanResult = await scanProjectCached(
+        { store, log, clock, idGen, scanner, index, treeSignature: projectTreeSignature },
+        process.cwd()
+      );
       const brief = await generateAgentBrief({ store, fs, clock }, process.cwd(), scanResult.snapshot);
       // P2 D1: бриф инъекцировал объекты → injected; пусто → событие НЕ пишется
       if (brief.injectedIds.length > 0) {

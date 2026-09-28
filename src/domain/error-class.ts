@@ -63,6 +63,11 @@ export const DEFAULT_ERROR_CLASS_RULES: readonly ErrorClassRule[] = [
       'failed to parse',
       'invalid json',
       'invalid yaml',
+      // T011: рантайм-валидация add (тип/поле/ключ схемы) — не uncategorized
+      'unknown memory type',
+      'no taxonomy declaration',
+      'unknown field',
+      'unrecognized key',
     ],
   },
   { id: 'conflict', match: ['already exists', 'conflict', 'eexist'] },

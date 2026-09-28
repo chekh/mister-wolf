@@ -105,7 +105,10 @@ describe('getDeclaration with extra declarations', () => {
   });
 
   it('unknown type without extra still throws', () => {
-    expect(() => getDeclaration('postmortem' as MemoryType)).toThrow(/No taxonomy declaration/);
+    // T011: UserFacingError со списком валидных типов (включая deprecated document)
+    expect(() => getDeclaration('postmortem' as MemoryType)).toThrow(
+      /Unknown memory type "postmortem"\. Valid types: .*document/
+    );
   });
 });
 

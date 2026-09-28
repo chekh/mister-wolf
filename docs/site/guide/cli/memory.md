@@ -117,6 +117,7 @@ Options:
 - `--set <k=v>` — set a triage field: `triage|resolution` (repeatable)
 - `--inc <field=n>` — increment a monotonic counter by integer n > 0: `dispatch_ages|corroborations` (repeatable)
 - `--tags <tags>` — append comma-separated tags
+- `--actor <actor>` — actor performing the update; recorded as `actor` on the `memory.updated` event in the event log (default: `user:cli`)
 
 ```bash
 wolf update mem_…_complaint --set triage=duplicate --inc dispatch_ages=1

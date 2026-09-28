@@ -260,7 +260,7 @@ No options beyond `-h, --help`.
 
 ## wolf sync
 
-Re-render the wolf base set (stamped files only; memory untouched).
+Re-render the wolf base set (stamped files only; memory untouched). What the set contains and how stamping works: [Base Set](/guide/base-set).
 
 ```text
 Usage: wolf sync [options]

@@ -101,6 +101,10 @@ export default defineConfig({
             items: cliItems,
           },
           {
+            text: 'BASE SET',
+            items: [{ text: 'Base Set', link: '/guide/base-set' }],
+          },
+          {
             text: 'MCP',
             items: [{ text: 'MCP Integration', link: '/guide/mcp' }],
           },
@@ -142,6 +146,10 @@ export default defineConfig({
           {
             text: 'СПРАВОЧНИК CLI',
             items: ruCliItems,
+          },
+          {
+            text: 'БАЗОВЫЙ НАБОР',
+            items: [{ text: 'Базовый набор', link: '/ru/guide/base-set' }],
           },
           {
             text: 'MCP',

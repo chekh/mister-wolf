@@ -96,11 +96,12 @@ wolf search "supersede" --type rule --hide-superseded
 wolf update <id> [options]
 ```
 
-| Опция             | Описание                                                                                     |
-| ----------------- | -------------------------------------------------------------------------------------------- |
-| `--set <k=v>`     | Установить triage-поле: `triage\|resolution` (повторяемая)                                   |
-| `--inc <field=n>` | Инкремент монотонного счётчика на целое n > 0: `dispatch_ages\|corroborations` (повторяемая) |
-| `--tags <tags>`   | Дописать теги через запятую                                                                  |
+| Опция             | Описание                                                                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------------------------ |
+| `--set <k=v>`     | Установить triage-поле: `triage\|resolution` (повторяемая)                                                   |
+| `--inc <field=n>` | Инкремент монотонного счётчика на целое n > 0: `dispatch_ages\|corroborations` (повторяемая)                 |
+| `--tags <tags>`   | Дописать теги через запятую                                                                                  |
+| `--actor <actor>` | Исполнитель обновления; записывается в поле `actor` события `memory.updated` в event-log (дефолт `user:cli`) |
 
 ```bash
 wolf update mem_…_complaint --set triage=duplicate --inc dispatch_ages=1
