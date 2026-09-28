@@ -23,6 +23,7 @@ const cliItems = [
   { text: 'Learning', link: '/guide/cli/learning' },
   { text: 'Analytics', link: '/guide/cli/analytics' },
   { text: 'Platform & Maintenance', link: '/guide/cli/platform' },
+  { text: 'Router', link: '/guide/router' },
 ]
 
 const ruCliItems = [
@@ -35,6 +36,7 @@ const ruCliItems = [
   { text: 'Самообучение', link: '/ru/guide/cli/learning' },
   { text: 'Аналитика', link: '/ru/guide/cli/analytics' },
   { text: 'Платформа и обслуживание', link: '/ru/guide/cli/platform' },
+  { text: 'Роутер', link: '/ru/guide/router' },
 ]
 
 export default defineConfig({

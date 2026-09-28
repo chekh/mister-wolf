@@ -226,6 +226,16 @@ Archive the legacy `.wolf/run-log.jsonl` to `.wolf/metrics/archive/run-log-<date
 wolf migrate run-log
 ```
 
+### wolf migrate doc-ids
+
+One-time migration of `document-ref` ids to the canonical format: objects whose id is outside the canon get the id derived from `source.path` + `created_at`; a collision with an id of any memory object gets the next free `-2`, `-3` suffix. The apply pass renames each file, replaces the id in frontmatter, rewrites all references to the old id across memory `.md` files and `relations.jsonl` — matched on id boundaries, so `doc_X` is not torn where `doc_X2` exists — and rebuilds the search index. Service zones are never touched: `briefs/`, `quarantine/`, `events.jsonl`.
+
+Dry-run by default; `--apply` performs the migration (the flag is also honored on the parent: `wolf migrate --apply doc-ids`). The report lists `id → new id` per object plus the `renamed / refs rewritten / conflicts / problems` totals; a `document-ref` without `source.path` is reported as a problem (migration impossible), a taken target path is a conflict (the object is left untouched). Conflicts exit with code 2.
+
+```bash
+wolf migrate doc-ids --apply
+```
+
 ## wolf validate
 
 Validate memory store integrity.
@@ -261,6 +271,12 @@ No options beyond `-h, --help`.
 ```bash
 wolf sync
 ```
+
+### Mutated stamped files are not overwritten
+
+A stamped file that was edited locally — its content differs both from the last recorded render and from the new one — is never overwritten: sync writes `skipped — mutated ...` to the report and leaves the decision to the owner. To return to the canonical render, delete the file or revert the edit — the next sync re-creates (or updates) it.
+
+The witness of the last render's hashes is `.opencode/wolf-sync-state.json`. The first sync after upgrading from an older release (≤ 2.10.0) finds no witness, so files are updated the old way (a one-time bootstrap); from the second run on, the protection is active. Delete the witness file to force a full re-render.
 
 ## Sessions & environment
 
