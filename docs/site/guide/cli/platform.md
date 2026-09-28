@@ -262,6 +262,12 @@ No options beyond `-h, --help`.
 wolf sync
 ```
 
+## Sessions & environment
+
+`WOLF_SESSION` — the env var that ties telemetry to a session — is produced by the CLI itself: every invocation without an explicit `WOLF_SESSION` gets a fresh `cli-<uuid>`, stable for the whole process (all telemetry writers of one command share it). An explicitly exported `WOLF_SESSION` is never overwritten. The stamped opencode plugins (`wolf-router`, `wolf-session-start`) pass a fresh `opc-<uuid>` on every CLI spawn — the inherited env of a long-lived opencode process would otherwise collapse all deliveries into one fake session. Plugin templates are updated by re-rendering with `wolf sync`.
+
+`wolf mcp` is deliberately not sessioned: the MCP server is a long-lived process with a single environment, so one session id for all requests would be false attribution — its telemetry is written with `session_id: null` (see [Telemetry](/guide/telemetry)).
+
 ## wolf run
 
 Run opencode with the model from the Wolf routing object; log weighted token cost.

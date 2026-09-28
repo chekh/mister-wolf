@@ -1216,26 +1216,29 @@ wolf insights --topic rtk --type lessons
 
 ### wolf analytics
 
-Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness, memory lifecycle & coordination, campaigns & per-memory ROI — выборки аналитики эффективности (агрегация, без LLM). Подробности: [analytics.md](../guide/analytics.md).
+Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness, memory lifecycle & coordination, campaigns & per-memory ROI, machine acceptance (wave metrics) — выборки аналитики эффективности (агрегация, без LLM). Подробности: [analytics.md](../guide/analytics.md); про телеметрию — [Telemetry](../site/guide/telemetry.md).
 
 `Usage: wolf analytics [options]`
 
-| Флаг       | Аргумент   | Описание                                                                                                                                                                            |
-| ---------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--view`   | `<view>`   | Analytics view (choices: "memory", "tools", "rules", "weeklyActivity", "agents", "steward", "outliers", "readiness", "councils", "coordination", "campaign", "all", default: "all") |
-| `--class`  | `<class>`  | Memory lifecycle filter (choices: "new", "sleeper", "workhorse", "dead")                                                                                                            |
-| `--type`   | `<type>`   | Memory type filter                                                                                                                                                                  |
-| `--origin` | `<origin>` | Tool origin filter (choices: "script", "native")                                                                                                                                    |
-| `--agent`  | `<agent>`  | Agent name filter                                                                                                                                                                   |
-| `--silent` | —          | Rules view: only silent rules (default: false)                                                                                                                                      |
-| `--top`    | `<n>`      | Row limit (default: 20)                                                                                                                                                             |
-| `--weeks`  | `<n>`      | Weekly activity window in weeks (default: 8)                                                                                                                                        |
-| `--json`   | —          | Machine-readable JSON output (default: false)                                                                                                                                       |
+| Флаг       | Аргумент   | Описание                                                                                                                                                                                          |
+| ---------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--view`   | `<view>`   | Analytics view (choices: "memory", "tools", "rules", "weeklyActivity", "agents", "steward", "outliers", "readiness", "councils", "coordination", "campaign", "acceptance", "all", default: "all") |
+| `--class`  | `<class>`  | Memory lifecycle filter (choices: "new", "sleeper", "workhorse", "dead")                                                                                                                          |
+| `--type`   | `<type>`   | Memory type filter                                                                                                                                                                                |
+| `--origin` | `<origin>` | Tool origin filter (choices: "script", "native")                                                                                                                                                  |
+| `--agent`  | `<agent>`  | Agent name filter                                                                                                                                                                                 |
+| `--silent` | —          | Rules view: only silent rules (default: false)                                                                                                                                                    |
+| `--top`    | `<n>`      | Row limit (default: 20)                                                                                                                                                                           |
+| `--weeks`  | `<n>`      | Weekly activity window in weeks (default: 8)                                                                                                                                                      |
+| `--json`   | —          | Machine-readable JSON output (default: false)                                                                                                                                                     |
 
 ```bash
 wolf analytics --view memory --top 5
 wolf analytics --view campaign --json
+wolf analytics --view acceptance --json
 ```
+
+View `acceptance` (machine acceptance) — метрики машинной приёмки: router miss-rate по agent-id (`.wolf/router.log`); per-tool calls/errors/`err_%` + p50/p90 `duration_ms` (mcp_call, оба канала); классы ошибок (`error_class_id`); burst-статистика delivery по `session_id` (гэп ≤ 60 c, repeat-streak, доля streak ≤ 2); search→get follow-rate (окно ≤ 10 c); vitality — вызовы core-тулов за 72 ч; `dataQuality.malformedLines`.
 
 ### wolf dashboard
 
@@ -1320,6 +1323,8 @@ Start the MCP server (stdio) — запускает MCP-сервер (stdio).
 `Usage: wolf mcp [options]`
 
 Без опций.
+
+Env `WOLF_SESSION`: CLI сам продюцирует per-invocation session id (`cli-<uuid>`; явный env не перезаписывается) — не выставляйте вручную, если не понимаете последствий. `wolf mcp` не сессионируется: long-lived сервер, телеметрия MCP-канала пишется с `session_id: null`. Подробности: [Telemetry](../site/guide/telemetry.md).
 
 ```bash
 wolf mcp

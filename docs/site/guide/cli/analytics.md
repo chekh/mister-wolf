@@ -1,6 +1,6 @@
 # Analytics
 
-Effectiveness analytics aggregates the logs the harness already writes — the signal log (the canonical run-metrics source since P1), the memory event log, the legacy run-log during its transition window — with no LLM calls and no new collectors. The mental model is a value funnel: write → deliver → trigger; every report localizes where the funnel leaks (capture grows but effect doesn't → delivery problem; delivery grows but holdout is empty → memory doesn't change behavior). Analytics serves data, not decisions: archiving, superseding and repairs stay with the Steward under governance rules.
+Effectiveness analytics aggregates the logs the harness already writes — the signal log (the canonical run-metrics source since P1), the memory event log, the legacy run-log during its transition window, and the router plugin's `.wolf/router.log` — with no LLM calls and no new collectors. The mental model is a value funnel: write → deliver → trigger; every report localizes where the funnel leaks (capture grows but effect doesn't → delivery problem; delivery grows but holdout is empty → memory doesn't change behavior). Analytics serves data, not decisions: archiving, superseding and repairs stay with the Steward under governance rules.
 
 ## wolf analytics
 
@@ -11,13 +11,13 @@ Usage: wolf analytics [options]
 
 Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents,
 steward view, councils, outliers, experiment readiness, memory lifecycle &
-coordination, campaigns & per-memory ROI
+coordination, campaigns & per-memory ROI, machine acceptance (wave metrics)
 
 Options:
   --view <view>      Analytics view (choices: "memory", "tools", "rules",
                      "weeklyActivity", "agents", "steward", "outliers",
                      "readiness", "councils", "coordination", "campaign",
-                     "all", default: "all")
+                     "acceptance", "all", default: "all")
   --class <class>    Memory lifecycle filter (choices: "new", "sleeper",
                      "workhorse", "dead")
   --type <type>      Memory type filter
@@ -32,7 +32,7 @@ Options:
 
 Options:
 
-- `--view <view>` — analytics view (choices: `memory`, `tools`, `rules`, `weeklyActivity`, `agents`, `steward`, `outliers`, `readiness`, `councils`, `coordination`, `campaign`, `all`; default: `all`)
+- `--view <view>` — analytics view (choices: `memory`, `tools`, `rules`, `weeklyActivity`, `agents`, `steward`, `outliers`, `readiness`, `councils`, `coordination`, `campaign`, `acceptance`, `all`; default: `all`)
 - `--class <class>` — memory lifecycle filter (choices: `new`, `sleeper`, `workhorse`, `dead`)
 - `--type <type>` — memory type filter
 - `--origin <origin>` — tool origin filter (choices: `script`, `native`)
@@ -57,6 +57,7 @@ Views:
 | `campaign`       | Campaigns → cohorts with/without injected memory in the run's session: n, median weighted, accepted share, process-failure rate; honest n/a for small samples (P3)                                                                         |
 | `outliers`       | Most expensive runs (weighted; `$` with pricing)                                                                                                                                                                                           |
 | `readiness`      | Experiment readiness: share of runs with an arm, sample sizes per group                                                                                                                                                                    |
+| `acceptance`     | Machine acceptance (wave metrics): router miss-rate per agent, per-tool error rate + p50/p90 latency, error classes, delivery bursts, search→get follow, 72 h vitality, malformed lines (see [Machine acceptance](#machine-acceptance))    |
 | `all`            | All sections in sequence (default)                                                                                                                                                                                                         |
 
 ### Lifecycle classes
@@ -281,6 +282,52 @@ memory ROI (correlational, not causal):
 │ mem_20260905_prefer_vitest_run_over_wat… │ 0              │ 0             │ 1              │ 2026-09-05T09:30:00.480Z │
 └──────────────────────────────────────────┴────────────────┴───────────────┴────────────────┴──────────────────────────┘
 ```
+
+### Machine acceptance
+
+`--view acceptance` is the machine-facing acceptance report — the metrics waves and CI gates are checked against, from two sources: the signal log (`mcp_call`, `delivery`) and `.wolf/router.log` (see [Telemetry](/guide/telemetry) for the raw fields):
+
+- **router** — playbook miss-rate per agent-id from the router plugin's log: hits, misses, `miss_%`;
+- **tool calls** — per tool, both channels (MCP and CLI): calls, errors, `err_%`, latency `p50_ms`/`p90_ms` (linear interpolation);
+- **error classes** — error counts by `detail.error_class_id` (the deterministic classifier);
+- **bursts** — delivery series per session: a burst is a group of deliveries in one `session_id` with gaps ≤ 60 s; avg deliveries per burst, max repeat-streak (consecutive deliveries of the same `detail.name`), the share of bursts with streak ≤ 2, and a separate counter for deliveries without a session;
+- **search → get follow** — share of searches followed by a `get` of one of the found ids within 10 s (join by `detail.memory_id` / `detail.memory_ids`);
+- **vitality** — core tool calls (`search`, `get`, `list`, `add`, `transition`, `brief`, `recap`, `create_decision`, `create_blocker`, `resolve_blocker`) in the last 72 h;
+- **dataQuality** — malformed lines of the signal log.
+
+Null metrics print as `n/a` honestly.
+
+```bash
+wolf analytics --view acceptance
+```
+
+```text
+== acceptance ==
+router:
+┌──────────┬──────┬────────┬────────┐
+│ agent    │ hits │ misses │ miss_% │
+├──────────┼──────┼────────┼────────┤
+│ reviewer │ 2    │ 1      │ 33.3   │
+└──────────┴──────┴────────┴────────┘
+tool calls:
+┌───────┬───────┬────────┬───────┬────────┬────────┐
+│ tool  │ calls │ errors │ err_% │ p50_ms │ p90_ms │
+├───────┼───────┼────────┼───────┼────────┼────────┤
+│ get   │ 12    │ 0      │ 0.0   │ 3      │ 9      │
+│ …     │       │        │       │        │        │
+└───────┴───────┴────────┴───────┴────────┴────────┘
+error classes:
+┌────────────┬───────┐
+│ class      │ count │
+├────────────┼───────┤
+│ not_found  │ 2     │
+└────────────┴───────┘
+bursts: 4 (deliveries 9, avg/burst 2.3, max repeat-streak 1, streak<=2 100.0%, no-session 0)
+search->get follow: 3/7 (42.9%)
+vitality: core calls 72h = 18
+```
+
+`--json` returns the same sections machine-readable; the MCP `analytics` tool accepts `view: "acceptance"`.
 
 ### Examples
 
