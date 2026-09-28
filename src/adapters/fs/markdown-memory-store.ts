@@ -44,6 +44,9 @@ function getTypeSchemas(baseDir: string, onProblem?: (msg: string) => void): Map
 }
 
 export class MarkdownMemoryStore implements MemoryStore {
+  /** Parse-кэш (T013): mtimeMs+size совпали → отдаём объект мимо read+yaml+zod. */
+  private parseCache = new Map<string, { mtimeMs: number; size: number; obj: MemoryObject }>();
+
   constructor(
     private baseDir: string,
     private onProblem?: (message: string) => void
@@ -205,6 +208,25 @@ export class MarkdownMemoryStore implements MemoryStore {
   }
 
   private async parseFileSafe(path: string): Promise<MemoryObject | null> {
+    // T013: stat до чтения — кэш по mtimeMs+size. Внешний edit меняет mtime →
+    // перечитает; save() пишет новый mtime → перечитает; удалённый файл
+    // исчезает из walk → исчезает из list. ENOENT при stat → null как раньше.
+    let stat: { mtimeMs: number; size: number };
+    try {
+      stat = await fs.stat(path);
+    } catch (err) {
+      if (isEnoent(err)) {
+        this.parseCache.delete(path);
+        return null;
+      }
+      const msg = `Failed to read ${path}: ${formatError(err)}`;
+      this.onProblem?.(msg);
+      return null;
+    }
+    const cached = this.parseCache.get(path);
+    if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+      return cached.obj;
+    }
     let content: string;
     try {
       content = await fs.readFile(path, 'utf-8');
@@ -229,7 +251,9 @@ export class MarkdownMemoryStore implements MemoryStore {
       if (!result.success) {
         throw new Error(`Per-type validation: ${result.error.issues.map((i) => i.message).join(', ')}`);
       }
-      return result.data as MemoryObject;
+      const obj = result.data as MemoryObject;
+      this.parseCache.set(path, { mtimeMs: stat.mtimeMs, size: stat.size, obj });
+      return obj;
     } catch (err) {
       const msg = `Failed to parse ${path}: ${formatError(err)}`;
       this.onProblem?.(msg);

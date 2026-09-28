@@ -1,9 +1,11 @@
 import path from 'node:path';
+import * as fs from 'node:fs/promises';
 import type { FileSystem } from '../../ports/file-system.port.js';
 import type { ProjectScanner } from '../../ports/project-scanner.port.js';
 import type { ProjectSnapshot } from '../../domain/schemas/project-scan-schema.js';
 
-const IGNORED_DIRS = new Set([
+/** Каталоги, исключаемые из обхода сканером (и из сигнатуры дерева). */
+export const IGNORED_DIRS = new Set([
   'node_modules',
   '.git',
   'dist',
@@ -254,5 +256,61 @@ export class HeuristicProjectScanner implements ProjectScanner {
     } catch {
       return null;
     }
+  }
+}
+
+/**
+ * Сигнатура дерева проекта для кэша скана (T013).
+ * Инвалидация: mtime КАТАЛОГОВ меняется при добавлении/удалении/переименовании
+ * файлов; контентные правки существующих файлов НЕ инвалидируют — brief зависит
+ * только от множества путей, package.json-зависимостей и ветки/коммита.
+ * .git/HEAD ловит переключение ветки; package.json (mtime+size) — смену зависимостей.
+ */
+export async function projectTreeSignature(root: string): Promise<string> {
+  const parts: string[] = [];
+  await collectDirSignature(root, root, parts);
+  parts.sort();
+
+  const pkg = await statOf(path.join(root, 'package.json'));
+  if (pkg) parts.push(`package.json:${pkg.mtimeMs}:${pkg.size}`);
+
+  const head = await statOf(await resolveGitHeadPath(root));
+  if (head) parts.push(`git-HEAD:${head.mtimeMs}`);
+
+  return parts.join('\n');
+}
+
+async function collectDirSignature(root: string, current: string, parts: string[]): Promise<void> {
+  const entries = await fs.readdir(current, { withFileTypes: true });
+  const stat = await fs.stat(current);
+  parts.push(`${path.relative(root, current) || '.'}:${stat.mtimeMs}`);
+  for (const entry of entries) {
+    if (!entry.isDirectory() || IGNORED_DIRS.has(entry.name)) continue;
+    await collectDirSignature(root, path.join(current, entry.name), parts);
+  }
+}
+
+async function resolveGitHeadPath(root: string): Promise<string> {
+  const gitPath = path.join(root, '.git');
+  const gitStat = await statOf(gitPath);
+  if (gitStat?.isFile) {
+    // worktree: .git — файл с gitdir: <путь>
+    try {
+      const content = await fs.readFile(gitPath, 'utf-8');
+      const match = content.match(/^gitdir: (.+)$/m);
+      if (match) return path.join(path.resolve(root, match[1].trim()), 'HEAD');
+    } catch {
+      // fallthrough
+    }
+  }
+  return path.join(gitPath, 'HEAD');
+}
+
+async function statOf(p: string): Promise<{ mtimeMs: number; size: number; isFile: boolean } | null> {
+  try {
+    const st = await fs.stat(p);
+    return { mtimeMs: st.mtimeMs, size: st.size, isFile: st.isFile() };
+  } catch {
+    return null;
   }
 }

@@ -18,6 +18,9 @@ export async function generateAgentBrief(
   root: string,
   snapshot: ProjectSnapshot
 ): Promise<GenerateAgentBriefResult> {
+  // T013: ровно ОДИН store.list() — MarkdownMemoryStore.list() в любом случае
+  // обходит все файлы, type-фильтры не сокращают IO; три фильтрованных вызова
+  // дали бы три полных прохода. С parse-кэшем стора это одна walk+stat-проходка.
   const memoryObjects = await deps.store.list();
 
   const acceptedMemory = memoryObjects
