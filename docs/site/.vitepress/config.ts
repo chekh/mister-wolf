@@ -1,9 +1,9 @@
-import { defineConfig } from 'vitepress'
-import pkg from '../../../package.json' with { type: 'json' }
+import { defineConfig } from 'vitepress';
+import pkg from '../../../package.json' with { type: 'json' };
 
 // Site URL — head links need the absolute base (VitePress does not apply
 // `base` to head entries, lesson mem_20260831_..._0d17a7).
-const SITE_URL = 'https://chekh.github.io/mister-wolf/'
+const SITE_URL = 'https://chekh.github.io/mister-wolf/';
 
 // Version badge in the navbar — single source of truth: package.json
 // (rule: ведение версий). Updates automatically on every release.
@@ -11,7 +11,7 @@ const VERSION_NAV = {
   text: `v${pkg.version}`,
   link: 'https://github.com/chekh/mister-wolf/releases',
   activeMatch: 'x-nomatch-x',
-}
+};
 
 const cliItems = [
   { text: 'Command Index', link: '/guide/cli/' },
@@ -23,8 +23,7 @@ const cliItems = [
   { text: 'Learning', link: '/guide/cli/learning' },
   { text: 'Analytics', link: '/guide/cli/analytics' },
   { text: 'Platform & Maintenance', link: '/guide/cli/platform' },
-  { text: 'Router', link: '/guide/router' },
-]
+];
 
 const ruCliItems = [
   { text: 'Индекс команд', link: '/ru/guide/cli/' },
@@ -36,8 +35,7 @@ const ruCliItems = [
   { text: 'Самообучение', link: '/ru/guide/cli/learning' },
   { text: 'Аналитика', link: '/ru/guide/cli/analytics' },
   { text: 'Платформа и обслуживание', link: '/ru/guide/cli/platform' },
-  { text: 'Роутер', link: '/ru/guide/router' },
-]
+];
 
 export default defineConfig({
   title: 'Mr. Wolf',
@@ -53,12 +51,24 @@ export default defineConfig({
     ['meta', { property: 'og:site_name', content: 'Mr. Wolf' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'Mr. Wolf — Local-first project memory for AI coding agents' }],
-    ['meta', { property: 'og:description', content: 'Agents forget. Mr. Wolf doesn\'t. Local-first memory for continuous agent work — CLI + MCP.' }],
+    [
+      'meta',
+      {
+        property: 'og:description',
+        content: "Agents forget. Mr. Wolf doesn't. Local-first memory for continuous agent work — CLI + MCP.",
+      },
+    ],
     ['meta', { property: 'og:image', content: `${SITE_URL}mark/og-image.png` }],
     ['meta', { property: 'og:url', content: SITE_URL }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
     ['meta', { name: 'twitter:title', content: 'Mr. Wolf — Local-first project memory for AI coding agents' }],
-    ['meta', { name: 'twitter:description', content: 'Agents forget. Mr. Wolf doesn\'t. Local-first memory for continuous agent work — CLI + MCP.' }],
+    [
+      'meta',
+      {
+        name: 'twitter:description',
+        content: "Agents forget. Mr. Wolf doesn't. Local-first memory for continuous agent work — CLI + MCP.",
+      },
+    ],
     ['meta', { name: 'twitter:image', content: `${SITE_URL}mark/og-image.png` }],
     ['link', { rel: 'canonical', href: SITE_URL }],
   ],
@@ -81,7 +91,10 @@ export default defineConfig({
           },
           {
             text: 'CONCEPTS',
-            items: [{ text: 'Core Concepts', link: '/guide/core-concepts' }],
+            items: [
+              { text: 'Core Concepts', link: '/guide/core-concepts' },
+              { text: 'Router', link: '/guide/router' },
+            ],
           },
           {
             text: 'CLI REFERENCE',
@@ -121,7 +134,10 @@ export default defineConfig({
           },
           {
             text: 'КОНЦЕПЦИИ',
-            items: [{ text: 'Основные концепции', link: '/ru/guide/core-concepts' }],
+            items: [
+              { text: 'Основные концепции', link: '/ru/guide/core-concepts' },
+              { text: 'Роутер', link: '/ru/guide/router' },
+            ],
           },
           {
             text: 'СПРАВОЧНИК CLI',
@@ -148,4 +164,4 @@ export default defineConfig({
     logo: '/mark/trace-mark-a.svg',
     search: { provider: 'local' },
   },
-})
+});

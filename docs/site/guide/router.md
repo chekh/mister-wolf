@@ -31,7 +31,7 @@ Every routing decision is appended to `.wolf/router.log`:
 
 - `hit` + `name=<mem-id> variant=canonical` — the canonical playbook was injected.
 - `hit` + `name=fallback variant=fallback` — no canonical playbook; the built-in fallback was injected.
-- `miss` — nothing was injected: neither canonical nor fallback answered. Rare — a CLI refusal; the agent frame then falls back to calling `wolf search` itself.
+- `miss` — nothing was injected: neither canonical nor fallback answered. The current plugin version does not emit this line (a CLI failure resolves to the fallback playbook); the format is kept for compatibility with logs written by older versions.
 
 The miss-rate per agent-id is part of the acceptance metrics:
 
