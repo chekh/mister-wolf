@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Security
+
+- F26: sandbox escape via child processes closed. Global user-config resolution (`wolfUserConfigDir`, `src/adapters/fs/user-config.ts`) is now env-only: `WOLF_SANDBOX` (sandbox root; overrides `XDG_CONFIG_HOME`/`HOME`, makes isolation transitive for child processes; a non-existent root is an explicit refusal) → `XDG_CONFIG_HOME` → `HOME` → explicit `UserFacingError`. The silent fallback to `os.homedir()` — a `getpwuid`-backed, environment-independent escape channel — is removed. `wolf-session.sh --no-global` exports the `WOLF_SANDBOX` marker (ae7f500).
+
+### Added
+
+- WolfEval v1 evaluation harness and the WEV-001 core-value campaign under `playground-lab/`: environment lock (wolf/model/tool pins), hidden TF-1 oracles, BASE/WOLF arms — 28 valid episodes across two rounds, campaign audits, cost/CSR/CFR scorers with bootstrap CIs, and a findings registry extended with F21–F27. Internal research infrastructure — not shipped in the npm package (`files: dist, templates`); no user-facing surface changed.
+
 ## [2.9.0] — 2026-09-05
 
 ### Changed
@@ -223,7 +233,7 @@ First public release on npm.
 
 - Normalized the bin path in `package.json` — `npm publish` stripped the binary from the package (2cb1d05).
 
-[Unreleased]: https://github.com/chekh/mister-wolf/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/chekh/mister-wolf/compare/v2.9.0...HEAD
 [2.0.0]: https://github.com/chekh/mister-wolf/compare/v1.1.0...v2.0.0
 [1.1.0]: https://github.com/chekh/mister-wolf/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/chekh/mister-wolf/compare/v1.0.2...v1.0.3
