@@ -70,4 +70,77 @@ describe('mcp_call telemetry', () => {
     expect(ev.detail?.wolf_version).toBe(rootVersion.version);
     expect(ev.orchestration.actor).toBe('system:wolf');
   });
+
+  // Волна 0 0.1: обогащение detail по инструменту + error-поля
+  it('wave0 add: detail.args_summary с type/title/extra_keys, без body', async () => {
+    const tools = toolsOf(dir);
+    await tools.add.handler({
+      type: 'decision',
+      title: 'Заголовок объекта',
+      body: 'СЕКРЕТНОЕ-ТЕЛО-НЕ-В-ТЕЛЕМЕТРИЮ',
+      createdBy: 'user:mcp-test',
+      thread: 'thr_1',
+    });
+    const ev = readSignals(dir)
+      .filter((e) => e.event === 'mcp_call')
+      .at(-1);
+    const summary = ev?.detail?.args_summary as Record<string, unknown>;
+    expect(summary).toEqual({
+      type: 'decision',
+      title: 'Заголовок объекта',
+      extra_keys: ['thread'],
+    });
+    expect(JSON.stringify(ev?.detail)).not.toContain('СЕКРЕТНОЕ-ТЕЛО');
+  });
+
+  it('wave0 get: detail.memory_id = id вызванного объекта', async () => {
+    const tools = toolsOf(dir);
+    const created = (await tools.add.handler({ type: 'context', title: 'для get', createdBy: 'u' })) as {
+      content: Array<{ text: string }>;
+    };
+    const id = created.content[0]?.text?.match(/Created memory object: (\S+)/)?.[1];
+    expect(id).toBeTruthy();
+    await tools.get.handler({ id });
+    const ev = readSignals(dir)
+      .filter((e) => e.event === 'mcp_call')
+      .at(-1);
+    expect(ev?.tool_name).toBe('get');
+    expect(ev?.detail?.memory_id).toBe(id);
+  });
+
+  it('wave0 search: detail.memory_ids содержит id найденных; пустой поиск → пустой массив', async () => {
+    const tools = toolsOf(dir);
+    const created = (await tools.add.handler({
+      type: 'context',
+      title: 'уникальный-заголовок-qwerty',
+      createdBy: 'u',
+    })) as {
+      content: Array<{ text: string }>;
+    };
+    const id = created.content[0]?.text?.match(/Created memory object: (\S+)/)?.[1];
+    await tools.search.handler({ query: 'уникальный-заголовок-qwerty' });
+    const hit = readSignals(dir)
+      .filter((e) => e.event === 'mcp_call')
+      .at(-1);
+    expect(hit?.detail?.memory_ids).toContain(id);
+
+    await tools.search.handler({ query: 'такого-точно-нет-в-памяти-zzz999' });
+    const miss = readSignals(dir)
+      .filter((e) => e.event === 'mcp_call')
+      .at(-1);
+    expect(miss?.detail?.memory_ids).toEqual([]);
+  });
+
+  it('wave0 error: detail.error.message + detail.error_class_id (classifyError)', async () => {
+    const tools = toolsOf(dir);
+    await expect(tools.add.handler({ type: 'rule', title: 'x', createdBy: 'u' })).rejects.toThrow(
+      /Type validation failed: scope/
+    );
+    const ev = readSignals(dir)
+      .filter((e) => e.event === 'mcp_call')
+      .at(-1);
+    expect((ev?.detail?.error as { message: string }).message).toContain('Type validation failed');
+    expect(typeof ev?.detail?.error_class_id).toBe('string');
+    expect(ev?.detail?.error_class_id).toBe('invalid_input');
+  });
 });

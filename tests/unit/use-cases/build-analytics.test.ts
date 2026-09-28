@@ -746,7 +746,7 @@ describe('buildAnalyticsReport: acceptance (D4, strict session-link)', () => {
       { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
       { signals: [...baseRuns, taskEvaluatedSignal('accepted', 's1')], runLogText: null }
     );
-    expect(report.acceptance).toEqual({ accepted: 1, costPerAcceptedTask: 100 });
+    expect(report.acceptance).toMatchObject({ accepted: 1, costPerAcceptedTask: 100 });
     const alpha = report.agents.find((a) => a.agent === 'alpha');
     expect(alpha?.accepted).toBe(1); // атрибуция агенту linked-рана
     expect(report.agents.find((a) => a.agent === 'beta')?.accepted).toBe(0); // s2 не линкуется
@@ -757,7 +757,7 @@ describe('buildAnalyticsReport: acceptance (D4, strict session-link)', () => {
       { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
       { signals: [...baseRuns, taskEvaluatedSignal('accepted', null)], runLogText: null }
     );
-    expect(report.acceptance).toEqual({ accepted: 0, costPerAcceptedTask: null });
+    expect(report.acceptance).toMatchObject({ accepted: 0, costPerAcceptedTask: null });
   });
 
   it('accepted-вердикт с session_id без run-связки → не считается', async () => {
@@ -765,7 +765,7 @@ describe('buildAnalyticsReport: acceptance (D4, strict session-link)', () => {
       { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
       { signals: [...baseRuns, taskEvaluatedSignal('accepted', 'ghost')], runLogText: null }
     );
-    expect(report.acceptance).toEqual({ accepted: 0, costPerAcceptedTask: null });
+    expect(report.acceptance).toMatchObject({ accepted: 0, costPerAcceptedTask: null });
   });
 
   it('без verdict-сигналов вовсе → accepted=0, costPerAcceptedTask=null (критерий №3)', async () => {
@@ -773,7 +773,7 @@ describe('buildAnalyticsReport: acceptance (D4, strict session-link)', () => {
       { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
       { signals: baseRuns, runLogText: null }
     );
-    expect(report.acceptance).toEqual({ accepted: 0, costPerAcceptedTask: null });
+    expect(report.acceptance).toMatchObject({ accepted: 0, costPerAcceptedTask: null });
   });
 
   it('rejected-вердикт по s1 → accepted=0', async () => {
@@ -781,7 +781,7 @@ describe('buildAnalyticsReport: acceptance (D4, strict session-link)', () => {
       { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock },
       { signals: [...baseRuns, taskEvaluatedSignal('rejected', 's1')], runLogText: null }
     );
-    expect(report.acceptance).toEqual({ accepted: 0, costPerAcceptedTask: null });
+    expect(report.acceptance).toMatchObject({ accepted: 0, costPerAcceptedTask: null });
   });
 });
 

@@ -11,6 +11,7 @@ import {
   type AnalyticsViewFilter,
 } from '../../../app/use-cases/build-analytics.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
+import { parseRouterLog } from '../../../domain/router-log.js';
 import { renderTable } from './table-render.js';
 
 /**
@@ -33,6 +34,7 @@ type AnalyticsView =
   | 'councils'
   | 'coordination'
   | 'campaign'
+  | 'acceptance'
   | 'all';
 type SectionView = Exclude<AnalyticsView, 'all'>;
 
@@ -48,6 +50,7 @@ const SECTION_VIEWS: SectionView[] = [
   'councils',
   'coordination',
   'campaign',
+  'acceptance',
 ];
 
 /** null/undefined → '-', остальное — строкой (колонки с nullable-полей). */
@@ -308,6 +311,47 @@ export function renderSection(report: AnalyticsReport, filter: SectionViewFilter
         renderTable(['campaign', 'cohort', 'n', 'median_weighted', 'accepted_%', 'pfail_%', 'note'], rows),
       ].join('\n');
     }
+    case 'acceptance': {
+      // T003: машинная приёмка волн 1–3 — router miss-rate, mcp_call latency/errors,
+      // burst'ы delivery, search->get follow, vitality; null-метрики → n/a
+      const a = payload.acceptance;
+      const pct = (v: number | null): string => (v === null ? 'n/a' : v.toFixed(1));
+      const num = (v: number | null): string => (v === null ? 'n/a' : String(v));
+      return [
+        header,
+        'router:',
+        renderTable(
+          ['agent', 'hits', 'misses', 'miss_%'],
+          a.router.rows.map((r) => [r.agent, cell(r.hits), cell(r.misses), pct(r.missRatePct)])
+        ),
+        'tool calls:',
+        renderTable(
+          ['tool', 'calls', 'errors', 'err_%', 'p50_ms', 'p90_ms'],
+          a.toolCalls.map((r) => [
+            r.tool,
+            cell(r.calls),
+            cell(r.errors),
+            pct(r.errorRatePct),
+            cell(r.p50Ms),
+            cell(r.p90Ms),
+          ])
+        ),
+        'error classes:',
+        renderTable(
+          ['class', 'count'],
+          a.errorClasses.map((r) => [r.id, cell(r.count)])
+        ),
+        `bursts: ${a.bursts.bursts} (deliveries ${a.bursts.deliveries}, avg/burst ${num(
+          a.bursts.avgDeliveriesPerBurst
+        )}, max repeat-streak ${num(a.bursts.maxRepeatStreak)}, streak<=2 ${pct(
+          a.bursts.repeatStreakLe2SharePct
+        )}%, no-session ${a.bursts.withoutSession})`,
+        `search->get follow: ${a.searchFollow.followed}/${a.searchFollow.searches} (${pct(
+          a.searchFollow.followRatePct
+        )}%)`,
+        `vitality: core calls 72h = ${a.vitality.coreCalls72h}`,
+      ].join('\n');
+    }
     default:
       // 'all' обрабатывается вызывающим кодом до renderSection; ветка закрывает switch (TS2366)
       throw new Error(`renderSection: unexpected view ${String((payload as { view: string }).view)}`);
@@ -343,7 +387,7 @@ export function renderAllSections(report: AnalyticsReport, filter: AnalyticsView
 
 export function analyticsCommand(baseDir: string = safeCwd()): Command {
   const cmd = new Command('analytics').description(
-    'Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness, memory lifecycle & coordination, campaigns & per-memory ROI'
+    'Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness, memory lifecycle & coordination, campaigns & per-memory ROI, machine acceptance (wave metrics)'
   );
 
   cmd
@@ -361,6 +405,7 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
           'councils',
           'coordination',
           'campaign',
+          'acceptance',
           'all',
         ])
         .default('all')
@@ -394,6 +439,15 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
       runLogText = null; // ENOENT — run-log ещё не пишется
     }
 
+    // T003: router.log плагина wolf-router (нет файла → пустая структура)
+    let routerLogText: string | null = null;
+    try {
+      routerLogText = readFileSync(join(baseDir, '.wolf', 'router.log'), 'utf-8');
+    } catch {
+      routerLogText = null; // ENOENT — плагин ещё не писал
+    }
+    const parsedRouterLog = parseRouterLog(routerLogText ?? '');
+
     const { store, log, relations, clock } = createCliContainer(baseDir);
     // D7: readSignalLog вместо readSignals — events + счётчики битых строк для dataQuality
     const signalLog = readSignalLog(baseDir);
@@ -403,6 +457,11 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
         signals: signalLog.events,
         signalLogStats: { malformedLines: signalLog.malformedLines, totalLines: signalLog.totalLines },
         runLogText,
+        routerLog: {
+          rows: parsedRouterLog.rows,
+          lines: parsedRouterLog.rows.length + parsedRouterLog.malformedLines,
+          malformedLines: parsedRouterLog.malformedLines,
+        },
         ...(analyticsThresholds !== undefined ? { thresholds: analyticsThresholds } : {}),
         weeks: options.weeks,
         topOutliers: options.top,

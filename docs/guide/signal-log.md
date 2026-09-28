@@ -14,16 +14,16 @@ rebuildable, в git не коммитится); markdown-отчёты конту
 
 ## Writer-матрица
 
-| Событие          | Кто пишет                                                                                          | Когда                                                                  |
-| ---------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `run`            | `wolf run`                                                                                         | после каждого запуска (с P1 — единственный источник run-метрик)        |
-| `complaint`      | `wolf complain`                                                                                    | при каждой жалобе                                                      |
-| `delivery`       | `wolf scaffold`, `wolf tool expose`                                                                | доставка методики (рамка+playbook / SKILL.md)                          |
-| `tool_error`     | `wolf run` (ошибка spawn) + `recordToolError()`                                                    | ошибка тула, класс — через классификатор                               |
-| `task_evaluated` | `wolf task-eval`                                                                                   | вердикт по задаче (P0); `--campaign` → `detail.campaign_id` (P3)       |
-| `mcp_call`       | MCP-сервер (обёртка в `registerMemoryTools`)                                                       | каждый вызов mr-wolf-\* тулзы (P1 D5)                                  |
-| `memory_stage`   | авто: `wolf search`/`get` (retrieved), `wolf brief`/`call` (injected); ручной: `wolf memory-stage` | стадия жизненного цикла памяти (P2 D1); cited/applied — внешние акторы |
-| `coord_event`    | `wolf coord`                                                                                       | факт координации между агентами (P2 D3)                                |
+| Событие          | Кто пишет                                                                                          | Когда                                                                               |
+| ---------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `run`            | `wolf run`                                                                                         | после каждого запуска (с P1 — единственный источник run-метрик)                     |
+| `complaint`      | `wolf complain`                                                                                    | при каждой жалобе                                                                   |
+| `delivery`       | `wolf scaffold`, `wolf tool expose`                                                                | доставка методики (рамка+playbook / SKILL.md)                                       |
+| `tool_error`     | `wolf run` (ошибка spawn) + `recordToolError()`                                                    | ошибка тула, класс — через классификатор                                            |
+| `task_evaluated` | `wolf task-eval`                                                                                   | вердикт по задаче (P0); `--campaign` → `detail.campaign_id` (P3)                    |
+| `mcp_call`       | MCP-сервер (обёртка в `registerMemoryTools`); CLI-обёртка `withCliCall` (волна 0)                  | каждый вызов mr-wolf-\* тулзы (P1 D5); CLI add/get/list/search/call/brief (волна 0) |
+| `memory_stage`   | авто: `wolf search`/`get` (retrieved), `wolf brief`/`call` (injected); ручной: `wolf memory-stage` | стадия жизненного цикла памяти (P2 D1); cited/applied — внешние акторы              |
+| `coord_event`    | `wolf coord`                                                                                       | факт координации между агентами (P2 D3)                                             |
 
 ## Формат записи (OTEL GenAI-совместимый, Layer 1+2)
 
@@ -164,6 +164,55 @@ input-схемой SDK до dispatch, до обёртки не доходят и
   "detail": { "method": "list", "wolf_version": "2.6.1" }
 }
 ```
+
+## Волна 0 (T001/T002): обогащение detail и session-ключи
+
+Новые поля живут ТОЛЬКО в `detail` — top-level Zod-схема лога unknown-поля режет
+(strip), поэтому расширение обратно совместимо: старые ридеры читают лог как раньше.
+
+### mcp_call: новые поля detail
+
+| Поле             | Семантика                                                                                                                           |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `args_summary`   | только `add`: `{type ≤40 симв, title ≤80 симв, extra_keys}` — ключи extra-полей; body НЕ пишется никогда                            |
+| `memory_id`      | только `get`: запрошенный id                                                                                                        |
+| `memory_ids`     | только `search` (MCP-канал): id результатов, максимум 10; follow-rate в analytics считает знаменатель только по search с этим полем |
+| `cli_command`    | только CLI-канал (actor `user:cli`): имя команды                                                                                    |
+| `error.message`  | при outcome='error': сообщение, обрезается до 200 симв                                                                              |
+| `error.code`     | при ошибке и наличии машинного кода                                                                                                 |
+| `error_class_id` | при ошибке: classifyError (проектная таксономия матчится раньше дефолтной таблицы)                                                  |
+
+CLI-канал: обёртка `withCliCall` (src/adapters/cli/commands/with-cli-call.ts) пишет
+`mcp_call` для команд add/get/list/search/call/brief — actor `user:cli`, `session_id`
+из env `WOLF_SESSION`, `detail.cli_command` = имя команды, ошибки классифицируются
+тем же `classifyError`, что и в `recordToolError`.
+
+### delivery: новые поля
+
+- `session_id` — CLI-канал пишет id сессии (раньше всегда null);
+- `detail.injection_bytes` — размер инъекции в байтах;
+- `detail.target` обрезается до 200 символов — промпты не утекают в metrics целиком.
+
+### router.log
+
+Плагин wolf-router (шаблон `templates/opencode/plugins/wolf-router.ts`) пишет в
+`.wolf/router.log` решение о доставке playbook (k=v парсинг — см.
+src/domain/router-log.ts):
+
+```text
+<ISO> agent-id=<id> playbook=hit name=<mem-id> variant=canonical injected=yes
+<ISO> agent-id=<id> playbook=miss injected=no
+```
+
+### Session-ключи (T002)
+
+`ensureCliSessionId` (src/domain/actor.ts): CLI-процесс без `WOLF_SESSION` генерирует
+`cli-<uuid>` и запоминает в env — один вызов CLI = один стабильный session_id у всех
+writers процесса; явно выставленный env не перезаписывается. Команда `wolf mcp`
+исключена — MCP-сервер long-lived, один env на все запросы дал бы фальшивую сессию
+(телеметрия MCP-канала пишется с `session_id: null`). Штампованные плагины
+(wolf-router, wolf-session-start) передают свежий `WOLF_SESSION: 'opc-<uuid>'` при
+каждом spawn CLI — обновление шаблонов приезжает с `wolf sync`.
 
 ## Событие `memory_stage` (P2 D1)
 

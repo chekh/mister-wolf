@@ -117,7 +117,38 @@ function fixtureReport(): AnalyticsReport {
       autoMutationSharePct: null,
     },
     readiness: { totalRuns: 0, withArm: 0, withArmPct: null, byArm: [], byExperiment: [] },
-    acceptance: { accepted: 0, costPerAcceptedTask: null },
+    acceptance: {
+      accepted: 0,
+      costPerAcceptedTask: null,
+      router: {
+        rows: [
+          { agent: 'executor-lead', hits: 0, misses: 5, missRatePct: 100 },
+          { agent: 'worker-implementer', hits: 8, misses: 2, missRatePct: 20 },
+        ],
+        lines: 16,
+        malformedLines: 1,
+      },
+      toolCalls: [
+        { tool: 'add', calls: 6, errors: 3, errorRatePct: 50, p50Ms: 35, p90Ms: 125 },
+        { tool: 'get', calls: 4, errors: 0, errorRatePct: 0, p50Ms: 30, p90Ms: 42 },
+      ],
+      errorClasses: [
+        { id: 'schema-validation', count: 2 },
+        { id: 'timeout', count: 1 },
+      ],
+      bursts: {
+        bursts: 4,
+        deliveries: 7,
+        avgDeliveriesPerBurst: 1.75,
+        maxRepeatStreak: 3,
+        repeatStreakLe2SharePct: 75,
+        avgUniquePerBurst: 1.25,
+        withoutSession: 1,
+      },
+      searchFollow: { searches: 3, followed: 1, followRatePct: 100 / 3 },
+      vitality: { coreCalls72h: 11 },
+      dataQuality: { malformedLines: 2 },
+    },
     coverage: { scored: 1, runs: 3, scoredTaskRatePct: 100 / 3 },
     dataQuality: {
       validEventRatePct: 75,
@@ -510,5 +541,60 @@ describe('P3 D2/D3/D4: campaign-витрина + memory ROI в текстово�
     const out = renderAllSections(fixtureReport(), { view: 'all' });
     expect(out).toContain('== campaign ==');
     expect(out).not.toContain('no campaigns yet');
+  });
+});
+
+describe('T003: acceptance-секция (машинная приёмка волн 1–3)', () => {
+  it('router/toolCalls/errorClasses-таблицы + строки bursts/follow/vitality с ключевыми числами', () => {
+    const out = renderSection(fixtureReport(), { view: 'acceptance', top: 20 });
+    expect(out.split('\n')[0]).toBe('== acceptance ==');
+    // router: сорт misses убыв.; miss_% toFixed(1)
+    expect(tableAfter(out, 'router:')).toEqual([
+      ['executor-lead', '0', '5', '100.0'],
+      ['worker-implementer', '8', '2', '20.0'],
+    ]);
+    expect(tableAfter(out, 'tool calls:')).toEqual([
+      ['add', '6', '3', '50.0', '35', '125'],
+      ['get', '4', '0', '0.0', '30', '42'],
+    ]);
+    expect(tableAfter(out, 'error classes:')).toEqual([
+      ['schema-validation', '2'],
+      ['timeout', '1'],
+    ]);
+    expect(out).toContain(
+      'bursts: 4 (deliveries 7, avg/burst 1.75, max repeat-streak 3, streak<=2 75.0%, no-session 1)'
+    );
+    // followRatePct = (1/3)×100 → 33.3
+    expect(out).toContain('search->get follow: 1/3 (33.3%)');
+    expect(out).toContain('vitality: core calls 72h = 11');
+  });
+
+  it('пустые данные → n/a вместо null-метрик, секция не падает', () => {
+    const report = fixtureReport();
+    report.acceptance = {
+      ...report.acceptance,
+      router: { rows: [], lines: 0, malformedLines: 0 },
+      toolCalls: [],
+      bursts: {
+        bursts: 0,
+        deliveries: 0,
+        avgDeliveriesPerBurst: null,
+        maxRepeatStreak: null,
+        repeatStreakLe2SharePct: null,
+        avgUniquePerBurst: null,
+        withoutSession: 0,
+      },
+      searchFollow: { searches: 0, followed: 0, followRatePct: null },
+    };
+    const out = renderSection(report, { view: 'acceptance', top: 20 });
+    expect(out).toContain('== acceptance ==');
+    expect(out).toContain('avg/burst n/a, max repeat-streak n/a, streak<=2 n/a%');
+    expect(out).toContain('search->get follow: 0/0 (n/a%)');
+  });
+
+  it('renderAllSections: acceptance входит в полный вывод', () => {
+    const out = renderAllSections(fixtureReport(), { view: 'all' });
+    expect(out).toContain('== acceptance ==');
+    expect(out).toContain('vitality: core calls 72h = 11');
   });
 });

@@ -6,6 +6,8 @@ import {
   appendRunSignal,
   appendComplaintSignal,
   appendDeliverySignal,
+  appendMcpCallSignal,
+  addArgsSummary,
   recordToolError,
   readSignals,
   readSignalLog,
@@ -496,5 +498,103 @@ describe('P1 D1+D2: SignalEventSchema v2 identity-поля + upcast-совмес
 
   it("role_level: 'L9' → parse не ok (enum L0/L1/L2)", () => {
     expect(SignalEventSchema.safeParse({ ...v1Event, role_level: 'L9' }).success).toBe(false);
+  });
+});
+
+describe('волна 0: поля в detail (dogfooding-hardening §4 0.1)', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'wolf-metrics-w0-'));
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it('appendMcpCallSignal ok: tool_name/outcome/duration_ms/detail.method; дефолты session_id=null, actor=system:wolf', () => {
+    appendMcpCallSignal(dir, {
+      tool: 'search',
+      outcome: 'ok',
+      durationMs: 42,
+      detail: { method: 'search' },
+    });
+    const [rec] = readSignals(dir);
+    expect(rec.event).toBe('mcp_call');
+    expect(rec.tool_name).toBe('search');
+    expect(rec.outcome).toBe('ok');
+    expect(rec.duration_ms).toBe(42);
+    expect(rec.detail?.method).toBe('search');
+    expect(rec.detail).not.toHaveProperty('wolf_version'); // wolf_version кладёт вызывающий
+    expect(rec.session_id).toBeNull();
+    expect(rec.orchestration.actor).toBe('system:wolf');
+  });
+
+  it('appendMcpCallSignal ok: actor/sessionId переопределяют дефолты', () => {
+    appendMcpCallSignal(dir, {
+      tool: 'call',
+      outcome: 'ok',
+      durationMs: 1,
+      actor: 'user:cli',
+      sessionId: 'ses_1',
+      detail: { cli_command: 'call' },
+    });
+    const [rec] = readSignals(dir);
+    expect(rec.session_id).toBe('ses_1');
+    expect(rec.orchestration.actor).toBe('user:cli');
+    expect(rec.detail?.cli_command).toBe('call');
+  });
+
+  it('appendMcpCallSignal error: detail.error.message обрезан до 200, error_class_id классифицирован, code прокинут', () => {
+    appendMcpCallSignal(dir, {
+      tool: 'add',
+      outcome: 'error',
+      durationMs: 5,
+      error: { message: `${'x'.repeat(250)} Type validation failed: scope`, code: 'EINVAL' },
+    });
+    const [rec] = readSignals(dir);
+    expect(rec.outcome).toBe('error');
+    const err = rec.detail?.error as { message: string; code?: string };
+    expect(err.message).toHaveLength(200);
+    expect(err.message).toBe(`${'x'.repeat(200)}`);
+    expect(err.code).toBe('EINVAL');
+    expect(rec.detail?.error_class_id).toBe('invalid_input'); // 'validation' в DEFAULT_ERROR_CLASS_RULES
+  });
+
+  it('appendDeliverySignal: target обрезан до 200 симв, sessionId/injectionBytes пишутся', () => {
+    appendDeliverySignal(dir, {
+      name: 'mem_1',
+      mechanism: 'call',
+      target: 'т'.repeat(250),
+      actor: 'user:cli',
+      sessionId: 's1',
+      injectionBytes: 123,
+    });
+    const [rec] = readSignals(dir);
+    expect(rec.session_id).toBe('s1');
+    expect((rec.detail?.target as string).length).toBe(200);
+    expect(rec.detail?.injection_bytes).toBe(123);
+  });
+
+  it('appendDeliverySignal: без sessionId → null; без injectionBytes → ключа нет (backward-compat)', () => {
+    appendDeliverySignal(dir, { name: 'mem_2', mechanism: 'call', target: 't', actor: 'user:cli' });
+    const [rec] = readSignals(dir);
+    expect(rec.session_id).toBeNull();
+    expect(rec.detail).not.toHaveProperty('injection_bytes');
+  });
+
+  it('addArgsSummary: type≤40, title≤80, extra_keys — только ключи, body не попадает', () => {
+    const summary = addArgsSummary({
+      type: 't'.repeat(60),
+      title: 'j'.repeat(100),
+      extra: { scope: 'project', answer: ['a'] },
+    });
+    expect(summary).toEqual({
+      type: 't'.repeat(40),
+      title: 'j'.repeat(80),
+      extra_keys: ['scope', 'answer'],
+    });
+    expect(JSON.stringify(summary)).not.toContain('body');
+  });
+
+  it('addArgsSummary: undefined type/title → пустые строки', () => {
+    expect(addArgsSummary({})).toEqual({ type: '', title: '', extra_keys: [] });
   });
 });

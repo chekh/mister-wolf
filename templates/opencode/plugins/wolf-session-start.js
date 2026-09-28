@@ -15,6 +15,7 @@
 
 import path from 'path';
 import { execFile } from 'child_process';
+import { randomUUID } from 'crypto';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
 
@@ -77,8 +78,14 @@ function computeInjection(messages, agentId) {
 const run = promisify(execFile);
 // execFile: args array, no shell — текст пользователя не попадёт в команду.
 // Целевой проект — глобальный `wolf`; догфуд в репо Wolf — локальный dist.
+// Волна 0 (0.2): свежий WOLF_SESSION на каждый spawn — унаследованный из long-lived
+// opencode-процесса env дал бы одну фальшивую сессию на все доставки.
 const runWolf = (args) => {
-  const opts = { cwd: PROJECT_ROOT, timeout: TIMEOUT_MS };
+  const opts = {
+    cwd: PROJECT_ROOT,
+    timeout: TIMEOUT_MS,
+    env: { ...process.env, WOLF_SESSION: 'opc-' + randomUUID() },
+  };
   return run('wolf', args, opts)
     .then((r) => r.stdout)
     .catch(() => run('node', [LOCAL_CLI, ...args], opts).then((r) => r.stdout))

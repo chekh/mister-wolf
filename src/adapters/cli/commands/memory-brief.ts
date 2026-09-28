@@ -4,11 +4,11 @@ import { generateAgentBrief } from '../../../app/use-cases/generate-agent-brief.
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { appendMemoryStageSignal } from '../../fs/session-metrics-log.js';
 import { resolveCreatedBy, resolveSessionId } from '../../../domain/actor.js';
+import { withCliCall } from './with-cli-call.js';
 
 export function memoryBriefCommand(): Command {
-  return new Command('brief')
-    .description('Generate the agent brief from the latest scan and memory')
-    .action(async () => {
+  return new Command('brief').description('Generate the agent brief from the latest scan and memory').action(
+    withCliCall('brief', async () => {
       const { store, log, clock, idGen, scanner, fs, index } = createCliContainer(process.cwd());
       const scanResult = await scanProject({ store, log, clock, idGen, scanner, index }, process.cwd());
       const brief = await generateAgentBrief({ store, fs, clock }, process.cwd(), scanResult.snapshot);
@@ -27,5 +27,6 @@ export function memoryBriefCommand(): Command {
       }
       console.log(brief.content);
       console.error(`Brief saved to ${brief.path}`);
-    });
+    })
+  );
 }

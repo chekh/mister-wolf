@@ -1,7 +1,7 @@
 import { Command, Argument } from 'commander';
 import { scaffoldFrame, SCAFFOLD_KINDS, type ScaffoldKind } from '../../../app/use-cases/scaffold-agent.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
-import { resolveCreatedBy } from '../../../domain/actor.js';
+import { resolveCreatedBy, resolveSessionId } from '../../../domain/actor.js';
 import { UserFacingError } from '../../../domain/errors.js';
 import { appendDeliverySignal } from '../../../adapters/fs/session-metrics-log.js';
 
@@ -43,6 +43,8 @@ export function memoryScaffoldCommand(): Command {
           mechanism: 'frame',
           target: result.framePath,
           actor: resolveCreatedBy(options.createdBy),
+          // волна 0 0.2: session-ключ CLI-канала (продюсер — runCli)
+          sessionId: resolveSessionId(),
           detail: { playbook_id: result.playbookId, kind },
         });
         console.log(`Created playbook: ${result.playbookId}`);

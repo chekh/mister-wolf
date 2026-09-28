@@ -12,6 +12,7 @@ import type { MemoryEvent } from '../../domain/schemas/memory-event-schema.js';
 import { DEFAULT_PATTERN_THRESHOLD, type SignalEvent } from '../../adapters/fs/session-metrics-log.js';
 import type { RunLogEntry } from '../../domain/tool-economy.js';
 import { UNCATEGORIZED_ERROR_CLASS } from '../../domain/error-class.js';
+import type { RouterLogRow } from '../../domain/router-log.js';
 import { runCostUsd } from '../../domain/pricing.js';
 import type { PricingTable } from '../../domain/pricing.js';
 import { silentRuleIds } from './learn-decay.js';
@@ -133,6 +134,77 @@ export interface CoverageStats {
   scored: number;
   runs: number;
   scoredTaskRatePct: number | null;
+}
+
+// --- T003 (волна 0 dogfooding-hardening, спека §8): машинная приёмка волн 1--3 ---
+
+/** Core-инструменты контура (vitality: mcp_call ими за 72ч до now). */
+export const CORE_TOOLS: readonly string[] = [
+  'search',
+  'get',
+  'list',
+  'add',
+  'transition',
+  'brief',
+  'recap',
+  'create_decision',
+  'create_blocker',
+  'resolve_blocker',
+];
+
+/** Router-доставка playbook: miss-rate per agent-id (router.log плагина wolf-router). */
+export interface RouterAgentRow {
+  agent: string;
+  hits: number;
+  misses: number;
+  missRatePct: number | null;
+}
+
+/** mcp_call per-tool: объём, ошибки, латентность p50/p90 (линейная интерполяция). */
+export interface ToolCallRow {
+  tool: string;
+  calls: number;
+  errors: number;
+  errorRatePct: number | null;
+  p50Ms: number | null;
+  p90Ms: number | null;
+}
+
+/** Delivery-серии: burst = группа delivery в одном session_id с гэпом <=60 c. */
+export interface BurstStats {
+  bursts: number;
+  /** delivery-сигналов с session_id !== null (все попадают в burst'ы). */
+  deliveries: number;
+  avgDeliveriesPerBurst: number | null;
+  /** макс. подряд идущих доставок ОДНОГО detail.name внутри burst'а. */
+  maxRepeatStreak: number | null;
+  /** доля burst'ов с repeat-streak <= 2 (приёмка 1.3), %. */
+  repeatStreakLe2SharePct: number | null;
+  avgUniquePerBurst: number | null;
+  /** delivery с session_id null (до T002) — честный счётчик, в burst'ы не входит. */
+  withoutSession: number;
+}
+
+/** search -> get: get с detail.memory_id из результатов search той же пары за <=10 c. */
+export interface SearchFollowStats {
+  searches: number;
+  followed: number;
+  followRatePct: number | null;
+}
+
+export interface AcceptanceView {
+  /** miss-rate per agent-id; sort: misses убыв., потом agent. */
+  router: { rows: RouterAgentRow[]; lines: number; malformedLines: number };
+  /** по mcp_call.tool_name; sort: calls убыв., потом tool. */
+  toolCalls: ToolCallRow[];
+  /** mcp_call errors по detail.error_class_id; sort count убыв., id по алфавиту. */
+  errorClasses: { id: string; count: number }[];
+  bursts: BurstStats;
+  searchFollow: SearchFollowStats;
+  /** mcp_call core-тулом за 72ч до now. */
+  vitality: { coreCalls72h: number };
+  /** эхо input.signalLogStats (0 если не передан). */
+  dataQuality: { malformedLines: number };
 }
 
 /** P2 D4: счётчик стадии — события + уникальные memory_ids. */
@@ -331,7 +403,8 @@ export interface AnalyticsReport {
   coordination: CoordinationView;
   /** P3 D2: витрина кампаний (когорты with/no memory). */
   campaign: CampaignView;
-  acceptance: AcceptanceStats;
+  /** D4 accepted-вердикты + T003 машинная приёмка волн 1–3 (один JSON-блок). */
+  acceptance: AcceptanceStats & AcceptanceView;
   coverage: CoverageStats;
   dataQuality: DataQualityStats;
 }
@@ -353,6 +426,8 @@ export interface AnalyticsInput {
   pricing?: PricingTable;
   /** D7: счётчики readSignalLog — источник dataQuality (undefined → n/a). */
   signalLogStats?: { malformedLines: number; totalLines: number };
+  /** T003: распарсенный .wolf/router.log (undefined → пустая структура). */
+  routerLog?: { rows: RouterLogRow[]; lines: number; malformedLines: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -608,12 +683,32 @@ function buildOutliers(runEntries: RunLogEntry[], pricing: PricingTable | undefi
     }));
 }
 
+/** Перцентиль линейной интерполяцией по отсортированному массиву (p50/p90 mcp_call);
+ * пустой массив → null. Дробный индекс: rank = p/100 × (n−1). */
+function percentileInterp(sorted: number[], p: number): number | null {
+  if (sorted.length === 0) return null;
+  const idx = (p / 100) * (sorted.length - 1);
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) return sorted[lo]!;
+  return sorted[lo]! + (idx - lo) * (sorted[hi]! - sorted[lo]!);
+}
+
 /** Acceptance D4: accepted-вердикт считается ТОЛЬКО при строгой session-связке —
  * session_id !== null и существует ≥1 run-сигнал с тем же session_id (без связки
  * вердикт не атрибутируется: link ненадёжен до P1). costPerAcceptedTask = сумма
  * weighted linked-ранов / число вердиктов. Атрибуция: каждому агенту множества
- * gen_ai.agent linked-ранов вердикта +1 (дедуп внутри одного вердикта). */
-function buildAcceptance(signals: SignalEvent[]): AcceptanceStats & { acceptedByAgent: Map<string, number> } {
+ * gen_ai.agent linked-ранов вердикта +1 (дедуп внутри одного вердикта).
+ *
+ * T003 (спека §8): тот же блок несёт машинную приёмку волн 1–3 — чистая агрегация
+ * mcp_call/delivery-сигналов + router.log, без новых identity-полей (event_id/run_id
+ * уже в SignalEventSchema v2). */
+function buildAcceptance(
+  signals: SignalEvent[],
+  routerLog: AnalyticsInput['routerLog'],
+  now: Date,
+  signalLogMalformedLines = 0
+): AcceptanceStats & AcceptanceView & { acceptedByAgent: Map<string, number> } {
   const runsBySession = new Map<string, SignalEvent[]>();
   for (const s of signals) {
     if (s.event !== 'run' || s.session_id === null) continue;
@@ -641,7 +736,175 @@ function buildAcceptance(signals: SignalEvent[]): AcceptanceStats & { acceptedBy
     if (!acceptedSessions.has(session)) continue;
     for (const r of runs) linkedWeighted += finiteNumber(r.weighted) ?? 0;
   }
-  return { accepted, costPerAcceptedTask: accepted > 0 ? linkedWeighted / accepted : null, acceptedByAgent };
+
+  // --- T003: toolCalls + errorClasses (по mcp_call) ---
+  interface ToolAcc {
+    calls: number;
+    errors: number;
+    durations: number[];
+  }
+  const toolsAcc = new Map<string, ToolAcc>();
+  const errClasses = new Map<string, number>();
+  for (const s of signals) {
+    if (s.event !== 'mcp_call' || typeof s.tool_name !== 'string' || s.tool_name === '') continue;
+    const acc = toolsAcc.get(s.tool_name) ?? { calls: 0, errors: 0, durations: [] };
+    acc.calls += 1;
+    if (s.outcome === 'error') {
+      acc.errors += 1;
+      const cls = s.detail?.error_class_id;
+      const id = typeof cls === 'string' && cls !== '' ? cls : UNCATEGORIZED_ERROR_CLASS;
+      errClasses.set(id, (errClasses.get(id) ?? 0) + 1);
+    }
+    const d = finiteNumber(s.duration_ms);
+    if (d !== null) acc.durations.push(d);
+    toolsAcc.set(s.tool_name, acc);
+  }
+  const toolCalls: ToolCallRow[] = [...toolsAcc.entries()]
+    .map(([tool, a]) => ({
+      tool,
+      calls: a.calls,
+      errors: a.errors,
+      errorRatePct: a.calls > 0 ? (a.errors / a.calls) * 100 : null,
+      p50Ms: percentileInterp(
+        [...a.durations].sort((x, y) => x - y),
+        50
+      ),
+      p90Ms: percentileInterp(
+        [...a.durations].sort((x, y) => x - y),
+        90
+      ),
+    }))
+    .sort((a, b) => b.calls - a.calls || a.tool.localeCompare(b.tool));
+  const errorClasses = [...errClasses.entries()]
+    .map(([id, count]) => ({ id, count }))
+    .sort((a, b) => b.count - a.count || a.id.localeCompare(b.id));
+
+  // --- T003: burst'ы delivery по session_id (гэп > 60 c → новый burst) ---
+  const deliveryBySession = new Map<string, SignalEvent[]>();
+  let withoutSession = 0;
+  for (const s of signals) {
+    if (s.event !== 'delivery') continue;
+    if (s.session_id === null) {
+      withoutSession += 1;
+      continue;
+    }
+    const arr = deliveryBySession.get(s.session_id) ?? [];
+    arr.push(s);
+    deliveryBySession.set(s.session_id, arr);
+  }
+  interface BurstAcc {
+    count: number;
+    names: Set<string>;
+    streak: number;
+  }
+  const burstList: BurstAcc[] = [];
+  for (const sessionDeliveries of deliveryBySession.values()) {
+    const sorted = [...sessionDeliveries].sort((a, b) => Date.parse(a.ts) - Date.parse(b.ts));
+    let cur: BurstAcc | null = null;
+    let prevMs = 0;
+    let streakName: string | null = null;
+    let streak = 0;
+    for (const s of sorted) {
+      const ms = Date.parse(s.ts);
+      const name = typeof s.detail?.name === 'string' && s.detail.name !== '' ? s.detail.name : null;
+      if (cur === null || ms - prevMs > 60_000) {
+        if (cur !== null) burstList.push(cur);
+        cur = { count: 0, names: new Set<string>(), streak: 0 };
+        streakName = null;
+        streak = 0;
+      }
+      cur.count += 1;
+      if (name !== null) cur.names.add(name);
+      if (name !== null && name === streakName) streak += 1;
+      else {
+        streakName = name;
+        streak = name !== null ? 1 : 0;
+      }
+      if (streak > cur.streak) cur.streak = streak;
+      prevMs = ms;
+    }
+    if (cur !== null) burstList.push(cur);
+  }
+  const deliveriesTotal = burstList.reduce((n, b) => n + b.count, 0);
+  const bursts: BurstStats = {
+    bursts: burstList.length,
+    deliveries: deliveriesTotal,
+    avgDeliveriesPerBurst: burstList.length > 0 ? deliveriesTotal / burstList.length : null,
+    maxRepeatStreak: burstList.length > 0 ? Math.max(...burstList.map((b) => b.streak)) : null,
+    repeatStreakLe2SharePct:
+      burstList.length > 0 ? (burstList.filter((b) => b.streak <= 2).length / burstList.length) * 100 : null,
+    avgUniquePerBurst: burstList.length > 0 ? burstList.reduce((n, b) => n + b.names.size, 0) / burstList.length : null,
+    withoutSession,
+  };
+
+  // --- T003: search -> get follow (get из результатов search за <=10 c) ---
+  // знаменатель — только joinable search (с валидным detail.memory_ids): без id результатов
+  // джойн не определён (CLI search их не пишет), ложный ноль в знаменателе размывал бы метрику
+  let joinableSearches = 0;
+  let followed = 0;
+  for (const sr of signals) {
+    if (sr.event !== 'mcp_call' || sr.tool_name !== 'search') continue;
+    const ids = sr.detail?.memory_ids;
+    const results = new Set(Array.isArray(ids) ? ids.filter((v): v is string => typeof v === 'string') : []);
+    if (results.size === 0) continue;
+    joinableSearches += 1;
+    const tSearch = Date.parse(sr.ts);
+    const hit = signals.some((g) => {
+      if (g.event !== 'mcp_call' || g.tool_name !== 'get') return false;
+      const mid = g.detail?.memory_id;
+      if (typeof mid !== 'string' || !results.has(mid)) return false;
+      const dt = Date.parse(g.ts) - tSearch;
+      return dt >= 0 && dt <= 10_000;
+    });
+    if (hit) followed += 1;
+  }
+  const searchFollow: SearchFollowStats = {
+    searches: joinableSearches,
+    followed,
+    followRatePct: joinableSearches > 0 ? (followed / joinableSearches) * 100 : null,
+  };
+
+  // --- T003: vitality (core-инструменты за 72ч) ---
+  const cutoffMs = now.getTime() - 72 * 3_600_000;
+  let coreCalls72h = 0;
+  for (const s of signals) {
+    if (s.event !== 'mcp_call' || !CORE_TOOLS.includes(s.tool_name ?? '')) continue;
+    if (Date.parse(s.ts) >= cutoffMs) coreCalls72h += 1;
+  }
+
+  // --- T003: router.log miss-rate per agent ---
+  const routerAcc = new Map<string, { hits: number; misses: number }>();
+  for (const row of routerLog?.rows ?? []) {
+    const acc = routerAcc.get(row.agentId) ?? { hits: 0, misses: 0 };
+    if (row.hit) acc.hits += 1;
+    else acc.misses += 1;
+    routerAcc.set(row.agentId, acc);
+  }
+  const router = {
+    rows: [...routerAcc.entries()]
+      .map(([agent, a]) => ({
+        agent,
+        hits: a.hits,
+        misses: a.misses,
+        missRatePct: a.hits + a.misses > 0 ? (a.misses / (a.hits + a.misses)) * 100 : null,
+      }))
+      .sort((a, b) => b.misses - a.misses || a.agent.localeCompare(b.agent)),
+    lines: routerLog?.lines ?? 0,
+    malformedLines: routerLog?.malformedLines ?? 0,
+  };
+
+  return {
+    accepted,
+    costPerAcceptedTask: accepted > 0 ? linkedWeighted / accepted : null,
+    acceptedByAgent,
+    router,
+    toolCalls,
+    errorClasses,
+    bursts,
+    searchFollow,
+    vitality: { coreCalls72h },
+    dataQuality: { malformedLines: signalLogMalformedLines },
+  };
 }
 
 /** Coverage D5: scored = task_evaluated (любой verdict), runs = run-сигналы. */
@@ -1414,7 +1677,7 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
   );
   const weeklyActivity = buildWeeklyActivity(events, signals, now, weeks);
   const outliers = buildOutliers(runEntries, input.pricing, input.topOutliers ?? 10);
-  const acceptance = buildAcceptance(signals);
+  const acceptance = buildAcceptance(signals, input.routerLog, now, input.signalLogStats?.malformedLines ?? 0);
   const agents = buildAgents(signals, allObjects, input.pricing, acceptance.acceptedByAgent);
   const steward = buildSteward(events, signals, allObjects, now, weeks);
   const readiness = buildReadiness(signals);
@@ -1461,7 +1724,18 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
     councils,
     coordination,
     campaign,
-    acceptance: { accepted: acceptance.accepted, costPerAcceptedTask: acceptance.costPerAcceptedTask },
+    // acceptedByAgent (Map, не-JSON) остаётся внутренним — в отчёт идут публичные поля
+    acceptance: {
+      accepted: acceptance.accepted,
+      costPerAcceptedTask: acceptance.costPerAcceptedTask,
+      router: acceptance.router,
+      toolCalls: acceptance.toolCalls,
+      errorClasses: acceptance.errorClasses,
+      bursts: acceptance.bursts,
+      searchFollow: acceptance.searchFollow,
+      vitality: acceptance.vitality,
+      dataQuality: acceptance.dataQuality,
+    },
     coverage,
     dataQuality,
   };
@@ -1484,6 +1758,7 @@ export interface AnalyticsViewFilter {
     | 'councils'
     | 'coordination'
     | 'campaign'
+    | 'acceptance'
     | 'all';
   class?: 'new' | 'sleeper' | 'workhorse' | 'dead';
   type?: string;
@@ -1512,6 +1787,7 @@ export type AnalyticsViewPayload =
   | { view: 'councils'; councils: CouncilsView }
   | { view: 'coordination'; coordination: CoordinationView }
   | { view: 'campaign'; campaign: CampaignView }
+  | { view: 'acceptance'; acceptance: AcceptanceView }
   | { view: 'all'; report: AnalyticsReport };
 
 /** Срез отчёта по view-фильтру (§6.2); top ограничивает строки, дефолт 20. */
@@ -1561,6 +1837,9 @@ export function filterAnalytics(report: AnalyticsReport, filter: AnalyticsViewFi
       return { view: 'coordination', coordination: report.coordination };
     case 'campaign':
       return { view: 'campaign', campaign: report.campaign };
+    case 'acceptance':
+      // report.acceptance = AcceptanceStats & AcceptanceView — JSON несёт и D4-поля
+      return { view: 'acceptance', acceptance: report.acceptance };
     case 'all':
       return { view: 'all', report };
   }

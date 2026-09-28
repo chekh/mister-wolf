@@ -83,6 +83,7 @@ export default defineConfig({
             text: 'OPERATE',
             items: [
               { text: 'Configuration', link: '/guide/configuration' },
+              { text: 'Telemetry', link: '/guide/telemetry' },
               { text: 'Troubleshooting', link: '/guide/troubleshooting' },
             ],
           },
@@ -121,6 +122,7 @@ export default defineConfig({
             text: 'ЭКСПЛУАТАЦИЯ',
             items: [
               { text: 'Конфигурация', link: '/ru/guide/configuration' },
+              { text: 'Телеметрия', link: '/ru/guide/telemetry' },
               { text: 'Решение проблем', link: '/ru/guide/troubleshooting' },
             ],
           },
