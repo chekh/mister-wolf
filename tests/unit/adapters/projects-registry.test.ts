@@ -58,13 +58,6 @@ describe('ProjectsRegistry', () => {
     expect(readYaml().projects ?? []).toEqual([]);
   });
 
-  it('prune removes entries whose paths do not exist and returns them', async () => {
-    const registry = new ProjectsRegistry(configDir);
-    await registry.register('/definitely/missing', 2);
-    expect(await registry.prune()).toEqual(['/definitely/missing']);
-    expect(readYaml().projects ?? []).toEqual([]);
-  });
-
   it('works when config dir does not exist yet (creates it)', async () => {
     const nested = join(configDir, 'deep', 'wolf');
     await new ProjectsRegistry(nested).register('/projects/foo', 2);

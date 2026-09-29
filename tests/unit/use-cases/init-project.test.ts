@@ -219,7 +219,7 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     ]);
   });
 
-  it('§4.5: routing upsert ДО рендера, worker = primary; рендер получает models', async () => {
+  it('§4.5: рендер получает models (worker = primary); routing-объект не создаётся (волна 2.13)', async () => {
     writeFileSync(join(dir, 'package.json'), '{}');
     const { deps, store } = makeDeps([new FakeAdapter('opencode', false)]);
     const seenModels: (ModelContext | undefined)[] = [];
@@ -231,12 +231,8 @@ describe('initProject v2 (§4: без скана, платформы/модел�
       seed: async () => [],
     };
     const result = await initProject(deps, dir, { models: MODELS });
-    expect(result.routing.action).toBe('created');
-    expect(result.routing.id).toBeDefined();
-    const routing = store.objects.find((o) => o.type === 'rule');
-    expect(routing?.tags).toEqual(expect.arrayContaining(['wolf-routing', 'models']));
-    expect(routing?.body).toContain('primary: zai-coding-plan/glm-5.3');
-    expect(routing?.body).toContain('worker: zai-coding-plan/glm-5.3');
+    expect(result).not.toHaveProperty('routing');
+    expect(store.objects.filter((o) => o.type === 'rule')).toHaveLength(0);
     expect(seenModels).toEqual([MODELS]);
   });
 
@@ -280,12 +276,11 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     expect(await findInitReport(store as never)).not.toBeNull();
   });
 
-  it('§8 идемпотентность: повторный init — routing unchanged, отчёт skip', async () => {
+  it('§8 идемпотентность: повторный init — отчёт skip', async () => {
     writeFileSync(join(dir, 'package.json'), '{}');
     const { deps } = makeDeps([new FakeAdapter('opencode', false)]);
     await initProject(deps, dir, { models: MODELS });
     const second = await initProject(deps, dir, { models: MODELS });
-    expect(second.routing.action).toBe('unchanged');
     expect(second.initReport.action).toBe('skipped');
   });
 
@@ -302,7 +297,7 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     expect(needsFix).toContain('default_agent=other is taken');
   });
 
-  it('npx (§4 п.6): конфиги и набор не пишутся, отчёт и routing НЕ создаются', async () => {
+  it('npx (§4 п.6): конфиги и набор не пишутся, отчёт НЕ создаётся', async () => {
     writeFileSync(join(dir, 'package.json'), '{}');
     const oc = new FakeAdapter('opencode', true);
     const { deps, store } = makeDeps([oc], { npx: true });
@@ -319,7 +314,6 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     ]);
     expect(oc.writeCalls).toBe(0);
     expect(result.initReport.action).toBe('skipped');
-    expect(result.routing.action).toBe('skipped');
     expect(store.objects).toHaveLength(0); // пайплайн «молчит» до полноценной установки
   });
 });

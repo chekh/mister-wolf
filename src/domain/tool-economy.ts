@@ -1,7 +1,7 @@
 /**
  * Экономика переиспользования инструментов (C3, roadmap v3).
  * Чистые функции анализа run-log: без side-effects и импортов.
- * weighted = input + 0.1×cache.read + 5×output (считается в opencode-run-metrics).
+ * weighted = input + 0.1×cache.read + 5×output (формата писателя `wolf run`, удалён в волне 2.13).
  */
 
 export interface RunLogEntry {

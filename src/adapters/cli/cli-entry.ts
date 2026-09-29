@@ -1,7 +1,27 @@
-import { Command } from 'commander';
+import { Command, CommanderError } from 'commander';
 import { getWolfVersion } from '../version.js';
 import { UserFacingError } from '../../domain/errors.js';
 import { ensureCliSessionId } from '../../domain/actor.js';
+import { removedCommandHint } from './removed-commands.js';
+
+/**
+ * Спека 2.13 §10.4: удалённые команды (без синонимов) отвечают ошибкой с
+ * подсказкой. Commander уже напечатал свою строку (`error: unknown command
+ * 'run'`) к моменту _exit — допечатываем подсказку и выходим. Прочие коды
+ * выходят с родным exitCode (help/version = 0, ошибки = 1), т.е. дефолтное
+ * поведение (включая suggestions опечаток) не меняется.
+ */
+function exitWithRemovedHint(err: CommanderError): never {
+  const match = err.message.match(/unknown command '([^']+)'/);
+  if (match) {
+    const hint = removedCommandHint(match[1]);
+    if (hint) {
+      console.error(`Error: ${hint}`);
+      process.exit(1);
+    }
+  }
+  process.exit(err.exitCode);
+}
 
 /**
  * Спека A3 / план P101: ленивые команды. Статические импорты 45 командных
@@ -160,12 +180,6 @@ const COMMANDS: CommandSpec[] = [
     load: () => import('./commands/memory-migrate.js').then((m) => m.memoryMigrateCommand()),
   },
   {
-    name: 'council',
-    description: 'Council operations',
-    usage: '',
-    load: () => import('./commands/memory-council.js').then((m) => m.memoryCouncilCommand()),
-  },
-  {
     name: 'validate',
     description: 'Validate memory store integrity',
     usage: '[options]',
@@ -227,12 +241,6 @@ const COMMANDS: CommandSpec[] = [
     load: () => import('./commands/memory-update.js').then((m) => m.memoryUpdateCommand()),
   },
   {
-    name: 'learn',
-    description: 'Self-learning loop: pattern digest, signal-log health, draft propose/validate/activate',
-    usage: '',
-    load: () => import('./commands/memory-learn.js').then((m) => m.memoryLearnCommand()),
-  },
-  {
     name: 'effectiveness',
     description:
       'Memory effectiveness panel: rules holdout, tool economy, delivery, noise, routing (aggregation only, no LLM)',
@@ -259,24 +267,6 @@ const COMMANDS: CommandSpec[] = [
     load: () => import('./commands/task-eval.js').then((m) => m.taskEvalCommand()),
   },
   {
-    name: 'memory-stage',
-    description: 'Record a memory lifecycle stage into the signal log (event memory_stage)',
-    usage: '[options]',
-    load: () => import('./commands/memory-stage.js').then((m) => m.memoryStageCommand()),
-  },
-  {
-    name: 'coord',
-    description: 'Record a coordination event into the signal log (event coord_event)',
-    usage: '[options]',
-    load: () => import('./commands/coord.js').then((m) => m.coordCommand()),
-  },
-  {
-    name: 'run',
-    description: 'Run opencode with the model from the Wolf routing object; log weighted token cost',
-    usage: '[options] <prompt>',
-    load: () => import('./commands/memory-run.js').then((m) => m.memoryRunCommand()),
-  },
-  {
     name: 'bootstrap',
     description: 'Scan the project and draft starting memory: proposed rules, document-refs, work thread',
     usage: '[options]',
@@ -300,6 +290,8 @@ const COMMANDS: CommandSpec[] = [
 export function createCli(): Command {
   const program = new Command('wolf');
   program.version(getWolfVersion());
+  // 2.13 §10.4: удалённые имена — подсказка (механизм exitWithRemovedHint выше)
+  program.exitOverride(exitWithRemovedHint);
   // P101: стаб-команды несут usage-хинт списка команд в `.usage()` — дефолтный
   // subcommandTerm собирает терм из declared arguments/options (которых у стаба
   // нет) и кастомный usage игнорирует. Наш рендер: явный usage => `name usage`.
@@ -318,6 +310,9 @@ export function createCli(): Command {
         // Делегирование исходных токенов: process.argv = [node, cli.js, <cmd>, ...args],
         // slice(3) + from:'user' — реальная команда сама парсит опции/позиционные/сабкоманды.
         const real = await spec.load();
+        // addCommand не копирует exitOverride (наследует только .command()) —
+        // вешаем явно: unknown subcommand (`session checkpoint`) получает подсказку.
+        real.exitOverride(exitWithRemovedHint);
         // Префикс wolf в usage реального хелпа (`wolf get --help` → `Usage: wolf get ...`):
         // standalone-команда показывает usage без имени программы, поэтому вешаем на родителя.
         new Command('wolf').addCommand(real);
@@ -345,12 +340,19 @@ export function createCli(): Command {
           program.help();
           return;
         }
+        // 2.13 §10.4: help по удалённой команде — та же подсказка, что при вызове
+        const removedHint = removedCommandHint(topic);
+        if (removedHint) {
+          console.error(`Error: ${removedHint}`);
+          process.exit(1);
+        }
         const spec = COMMANDS.find((c) => c.name === topic);
         if (!spec) {
           process.stderr.write(program.helpInformation());
           process.exit(1);
         }
         const real = await spec.load();
+        real.exitOverride(exitWithRemovedHint);
         new Command('wolf').addCommand(real);
         real.help();
       })

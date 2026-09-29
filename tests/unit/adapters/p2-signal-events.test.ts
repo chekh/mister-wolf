@@ -1,5 +1,5 @@
 // tests/unit/adapters/p2-signal-events.test.ts
-// P2 D1/D3: memory_stage + coord_event — writer-ы, detail-схемы,
+// P2 D1: memory_stage — writer, detail-схема,
 // backward-compat расширенного enum.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'fs';
@@ -7,9 +7,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import {
   appendMemoryStageSignal,
-  appendCoordEventSignal,
   MemoryStageDetailSchema,
-  CoordEventDetailSchema,
   readSignals,
   readSignalLog,
   metricsLogPath,
@@ -54,77 +52,13 @@ describe('P2 D1: appendMemoryStageSignal (writer)', () => {
   });
 });
 
-describe('P2 D3: appendCoordEventSignal (writer)', () => {
-  let dir: string;
-
-  beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'wolf-p2-coord-'));
-  });
-  afterEach(() => rmSync(dir, { recursive: true, force: true }));
-
-  it('roundtrip: каждый kind (все 5) → detail с actor_from/actor_to/refs/note', () => {
-    const kinds = ['handoff', 'review', 'acceptance', 'blocker', 'escalation'] as const;
-    for (const kind of kinds) {
-      appendCoordEventSignal(dir, {
-        kind,
-        actorFrom: 'worker:impl',
-        actorTo: 'lead',
-        refs: ['mem_a', 'mem_b'],
-        note: 'task done',
-        actor: 'user:cli',
-      });
-    }
-    // минимальная форма: без actor_to/note
-    appendCoordEventSignal(dir, { kind: 'handoff', actorFrom: 'worker:impl', refs: [], actor: 'lead' });
-    const events = readSignals(dir).filter((e) => e.event === 'coord_event');
-    expect(events).toHaveLength(6);
-    expect(events.slice(0, 5).map((e) => e.outcome)).toEqual([...kinds]);
-    for (const ev of events) {
-      expect(ev.session_id).toBeNull();
-      expect(ev.gen_ai).toEqual({ modelID: null, agent: null });
-      expect(SignalEventSchema.safeParse(ev).success).toBe(true);
-      expect(signalKey(ev)).toBeNull();
-    }
-    const [full] = events;
-    expect(full?.detail).toEqual({
-      kind: 'handoff',
-      actor_from: 'worker:impl',
-      actor_to: 'lead',
-      refs: ['mem_a', 'mem_b'],
-      note: 'task done',
-    });
-    const minimal = events[5]?.detail as Record<string, unknown>;
-    expect(minimal.kind).toBe('handoff');
-    expect(minimal.actor_from).toBe('worker:impl');
-    expect(minimal.refs).toEqual([]);
-    expect('actor_to' in minimal).toBe(false);
-    expect('note' in minimal).toBe(false);
-  });
-
-  it('kind вне enum → ZodError (Error), событие НЕ пишется', () => {
-    expect(() =>
-      appendCoordEventSignal(dir, {
-        kind: 'bogus' as 'handoff',
-        actorFrom: 'a',
-        refs: [],
-        actor: 'b',
-      })
-    ).toThrow();
-    expect(readSignals(dir)).toHaveLength(0);
-  });
-});
-
-describe('P2: detail-схемы MemoryStageDetailSchema / CoordEventDetailSchema', () => {
+describe('P2: detail-схемы MemoryStageDetailSchema', () => {
   it('stage вне enum → safeParse не ok', () => {
     expect(MemoryStageDetailSchema.safeParse({ stage: 'forgotten', memory_ids: ['m1'] }).success).toBe(false);
   });
 
   it('пустые memory_ids → safeParse не ok', () => {
     expect(MemoryStageDetailSchema.safeParse({ stage: 'retrieved', memory_ids: [] }).success).toBe(false);
-  });
-
-  it('kind вне enum → safeParse не ok', () => {
-    expect(CoordEventDetailSchema.safeParse({ kind: 'merged', actor_from: 'a', refs: [] }).success).toBe(false);
   });
 });
 

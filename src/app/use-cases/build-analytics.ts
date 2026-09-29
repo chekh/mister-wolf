@@ -9,16 +9,18 @@ import type { RelationLog } from '../../ports/relation-log.port.js';
 import type { Clock } from '../../ports/clock.port.js';
 import type { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import type { MemoryEvent } from '../../domain/schemas/memory-event-schema.js';
-import { DEFAULT_PATTERN_THRESHOLD, type SignalEvent } from '../../adapters/fs/session-metrics-log.js';
+import {
+  DEFAULT_PATTERN_THRESHOLD,
+  mergeRunEntries,
+  silentRuleIds,
+  type SignalEvent,
+} from '../../adapters/fs/session-metrics-log.js';
 import type { RunLogEntry } from '../../domain/tool-economy.js';
 import { UNCATEGORIZED_ERROR_CLASS } from '../../domain/error-class.js';
 import type { RouterLogRow } from '../../domain/router-log.js';
 import { runCostUsd } from '../../domain/pricing.js';
 import type { PricingTable } from '../../domain/pricing.js';
-import { silentRuleIds } from './learn-decay.js';
-import { mergeRunEntries } from './run-source.js';
 import { mondayOf } from './generate-insights.js';
-import { extractVote } from './tally-council-votes.js';
 
 // ---------------------------------------------------------------------------
 // Контракт отчёта (сквозной для задач 6–11: меняется ТОЛЬКО в задаче 6)
@@ -1689,10 +1691,19 @@ function buildReadiness(signals: SignalEvent[]): ExperimentReadiness {
 // Use-case
 // ---------------------------------------------------------------------------
 
+/** Парсер голоса мнения (поле vote → body `VOTE:` → TIMEOUT).
+ * P203: перенесён из удалённого tally-use-case — чтение council-данных живое. */
+function extractVote(op: MemoryObject): string {
+  const raw = (op as Record<string, unknown>).vote;
+  if (typeof raw === 'string' && raw.trim()) return raw.trim();
+  const m = op.body.match(/^VOTE:\s*(\S+)/m);
+  return m ? m[1] : 'TIMEOUT';
+}
+
 /** Консилиумы: вопросы/мнения/синтезы из councils-subdir + relations answers/based_on.
  * Чистая агрегация по уже выгруженным объектам; ровно два вызова relations.list
  * (predicate answers и based_on — без N+1 по вопросам). Голоса — extractVote
- * из tally-council-votes (единственный парсер). */
+ * выше (единственный парсер). */
 async function buildCouncils(
   objects: MemoryObject[],
   relations: RelationLog,
@@ -1705,7 +1716,7 @@ async function buildCouncils(
   const syntheses = objects.filter((o) => o.type === 'synthesis');
 
   // вопрос → id его мнений; субъект-реляция засчитывается только если это
-  // существующее в store мнение (прецедент tallyCouncilVotes)
+  // существующее в store мнение (парсер council-голосов — локальный, ниже)
   const answersByQuestion = new Map<string, string[]>();
   for (const r of await relations.list({ predicate: 'answers' })) {
     const op = byId.get(r.subject);

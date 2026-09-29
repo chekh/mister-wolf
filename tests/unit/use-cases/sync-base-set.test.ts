@@ -6,10 +6,8 @@ import { join } from 'path';
 import { syncBaseSet } from '../../../src/app/use-cases/sync-base-set.js';
 import type { BaseSetRenderer, ModelContext } from '../../../src/ports/base-set-renderer.port.js';
 import { memorySyncCommand } from '../../../src/adapters/cli/commands/memory-sync.js';
-import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
 import { createCli } from '../../../src/adapters/cli/cli-entry.js';
 import { UserFacingError } from '../../../src/domain/errors.js';
-import type { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
 
 function fakeRenderer(calls: string[], modelsSeen: (ModelContext | 'omit' | undefined)[] = []) {
   return {
@@ -64,7 +62,7 @@ describe('wolf sync CLI (Task 7)', () => {
     await expect(cmd.parseAsync(['node', 'sync'])).rejects.toThrow(/npx try-out/);
   });
 
-  it('не-npx: печатает outcomes и orphaned; без routing-объекта — режим omit', async () => {
+  it('не-npx: печатает outcomes и orphaned; модели — режим omit (routing-объект удалён, волна 2.13)', async () => {
     const logs: string[] = [];
     const spy = vi.spyOn(console, 'log').mockImplementation((...a: unknown[]) => logs.push(a.map(String).join(' ')));
     // фаза B: templates/base наполнен — рендерим в реальный tmp-проект
@@ -80,50 +78,6 @@ describe('wolf sync CLI (Task 7)', () => {
       const agent = readFileSync(join(proj, '.opencode/agents/mr-wolf.md'), 'utf-8');
       expect(agent).not.toMatch(/^model:/m);
       expect(agent).not.toContain('zai-coding-plan');
-    } finally {
-      spy.mockRestore();
-      cwdSpy.mockRestore();
-      rmSync(proj, { recursive: true, force: true });
-    }
-  });
-
-  it('routing-объект в памяти → sync подставляет модели и печатает их', async () => {
-    const routing = {
-      id: 'mem_20260901_rt_aa0001',
-      type: 'rule',
-      title: 'Routing: модели агентов',
-      status: 'active',
-      review_state: 'accepted',
-      confidence: 'high',
-      importance: 0.9,
-      created_at: '2026-09-01T00:00:00.000Z',
-      updated_at: '2026-09-01T00:00:00.000Z',
-      created_by: 'wolf-init',
-      schema_version: 1,
-      source: { kind: 'manual' },
-      related: { files: [], docs: [], decisions: [] },
-      tags: ['wolf-routing', 'models'],
-      superseded_by: null,
-      body: 'primary: cli/p1\nworker: cli/w1\n',
-      memory_class: 'working',
-      truth_role: 'source_of_truth',
-      lifetime: 'long_term',
-      scope: 'project',
-    } as MemoryObject;
-    const logs: string[] = [];
-    const spy = vi.spyOn(console, 'log').mockImplementation((...a: unknown[]) => logs.push(a.map(String).join(' ')));
-    const proj = mkdtempSync(join(tmpdir(), 'wolf-sync-rt-'));
-    const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(proj);
-    try {
-      await new MarkdownMemoryStore(proj).save(routing);
-      const cmd = memorySyncCommand();
-      await cmd.parseAsync(['node', 'sync']);
-      expect(logs.some((l) => l.includes('primary=cli/p1') && l.includes('worker=cli/w1'))).toBe(true);
-      expect(logs.some((l) => l.includes('models: omit'))).toBe(false);
-      const mrWolf = readFileSync(join(proj, '.opencode/agents/mr-wolf.md'), 'utf-8');
-      expect(mrWolf).toContain('model: cli/p1');
-      const worker = readFileSync(join(proj, '.opencode/agents/worker-implementer.md'), 'utf-8');
-      expect(worker).toContain('model: cli/w1');
     } finally {
       spy.mockRestore();
       cwdSpy.mockRestore();

@@ -20,8 +20,6 @@ import {
 import { addMemoryObject } from '../../src/app/use-cases/add-memory-object.js';
 import { createWorkThread } from '../../src/app/use-cases/create-work-thread.js';
 import { recordRelation } from '../../src/app/use-cases/record-relation.js';
-import { tallyCouncilVotes } from '../../src/app/use-cases/tally-council-votes.js';
-import { createSynthesis } from '../../src/app/use-cases/create-synthesis.js';
 import { JsonlEventLog } from '../../src/adapters/fs/jsonl-event-log.js';
 import { JsonlRelationLog } from '../../src/adapters/fs/jsonl-relation-log.js';
 import { SystemClock } from '../../src/adapters/fs/system-clock.js';
@@ -169,57 +167,6 @@ describe('phase8 workflow', () => {
     const answerRels = await rels.list({ subject: brief.object.id, predicate: 'answers' });
     expect(answerRels).toHaveLength(1);
     expect(answerRels[0].object).toBe(thread.object.id);
-  });
-
-  it('council flow: question -> 2 opinions -> tally -> synthesis', async () => {
-    const store = new MarkdownMemoryStore(dir);
-    const log = new JsonlEventLog(eventsPath(dir));
-    const clock = new SystemClock();
-    const idGen = new HashIdGenerator();
-    const rels = new JsonlRelationLog(relationsPath(dir));
-
-    const q = await addMemoryObject(
-      { store, log, clock, idGen },
-      {
-        type: 'council-question',
-        title: 'Should we?',
-        body: 'Decide now',
-        createdBy: 'user:test',
-        status: 'open',
-        extra: { question: 'Should we proceed?' },
-      }
-    );
-
-    const op1 = await addMemoryObject(
-      { store, log, clock, idGen },
-      { type: 'council-opinion', title: 'Op A', createdBy: 'agent:A', status: 'proposed', extra: { vote: 'yes' } }
-    );
-    const op2 = await addMemoryObject(
-      { store, log, clock, idGen },
-      { type: 'council-opinion', title: 'Op B', createdBy: 'agent:B', status: 'proposed', extra: { vote: 'yes' } }
-    );
-
-    const now = clock.now();
-    await recordRelation({ relations: rels, idGen }, now, op1.object.id, 'answers', q.object.id);
-    await recordRelation({ relations: rels, idGen }, now, op2.object.id, 'answers', q.object.id);
-
-    const tally = await tallyCouncilVotes(
-      { store, relations: rels },
-      { questionId: q.object.id, quorum: 2, consensusThreshold: 0.5 }
-    );
-    expect(tally.quorumMet).toBe(true);
-    expect(tally.winner).toBe('yes');
-
-    const { object: synth, relatedOpinions } = await createSynthesis(
-      { store, log, clock, idGen, relations: rels },
-      { questionId: q.object.id, recommendation: 'Proceed with plan', createdBy: 'user:test' }
-    );
-    expect(synth.type).toBe('synthesis');
-    expect(synth.status).toBe('proposed');
-    expect(relatedOpinions).toHaveLength(2);
-
-    const basedOn = await rels.list({ subject: synth.id, predicate: 'based_on' });
-    expect(basedOn).toHaveLength(2);
   });
 
   it('validate reports problems and --fix quarantines them', async () => {

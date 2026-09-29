@@ -92,7 +92,7 @@ describe('D2: appendTaskEvaluatedSignal (writer)', () => {
       taskId: 't-42',
       note: 'spec mismatch',
     });
-    expect(res).toEqual({ key: null, count: 0, patternFixed: false });
+    expect(res).toEqual({ key: null, count: 0 });
     const [ev] = readSignals(dir);
     expect(ev.event).toBe('task_evaluated');
     expect(ev.session_id).toBeNull();

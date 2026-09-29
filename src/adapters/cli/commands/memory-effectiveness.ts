@@ -19,7 +19,7 @@ import { createCliContainer } from '../../../bootstrap/container.js';
  * E1.2: `wolf effectiveness` — сводная панель эффективности памяти по пробегу:
  * правила (holdout), инструменты (экономика), доставка→срабатывание, шум памяти,
  * роутинг. Только агрегация, без LLM; пустые данные — честное n/a.
- * baseDir инъектится для тестов (прецедент: memory-learn.ts).
+ * baseDir инъектится для тестов.
  */
 
 function fmtPct(v: number): string {

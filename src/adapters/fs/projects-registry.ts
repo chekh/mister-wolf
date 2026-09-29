@@ -1,5 +1,4 @@
 import * as fs from 'fs/promises';
-import { existsSync } from 'fs';
 import { join } from 'path';
 import yaml from 'js-yaml';
 import { writeFileAtomic } from './markdown-memory-store.js';
@@ -55,19 +54,6 @@ export class ProjectsRegistry {
     if (next.length === projects.length) return false;
     await this.persist(next);
     return true;
-  }
-
-  /** Удаляет записи с несуществующими путями; возвращает удалённые пути (для doctor). */
-  async prune(): Promise<string[]> {
-    const projects = await this.list();
-    const alive: RegisteredProject[] = [];
-    const dead: string[] = [];
-    for (const p of projects) {
-      if (existsSync(p.path)) alive.push(p);
-      else dead.push(p.path);
-    }
-    if (dead.length > 0) await this.persist(alive);
-    return dead;
   }
 
   private async persist(projects: RegisteredProject[]): Promise<void> {

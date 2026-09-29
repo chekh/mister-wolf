@@ -1,7 +1,17 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
-import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { ensureBuilt, runCli, tmpProject } from './helpers.js';
+
+// Волна 2.13 (диета C2/C5): `run` и `memory-stage` удалены — run-метрики сеются
+// в сигнальный лог напрямую (лог append-only, формат — SignalEventSchema),
+// аналитика читает исторические записи как есть.
+
+/** Посев строки сигнального лога (замена удалённых CLI-writer'ов). */
+function appendSignalLine(dir: string, event: Record<string, unknown>): void {
+  mkdirSync(join(dir, '.wolf', 'metrics'), { recursive: true });
+  appendFileSync(join(dir, '.wolf', 'metrics', 'session-metrics.jsonl'), JSON.stringify(event) + '\n');
+}
 
 describe('analytics + dashboard golden scenarios (spec 2026-09-03)', () => {
   const dirs: string[] = [];
@@ -15,48 +25,27 @@ describe('analytics + dashboard golden scenarios (spec 2026-09-03)', () => {
     if (dir) rmSync(dir, { recursive: true, force: true });
   });
 
-  /** PATH-stub opencode: одна NDJSON-строка — sessionID + step-finish с токенами (M1). */
-  function installOpencodeStub(dir: string): void {
-    mkdirSync(join(dir, 'bin'), { recursive: true });
-    writeFileSync(
-      join(dir, 'bin', 'opencode'),
-      '#!/bin/sh\nprintf \'%s\\n\' \'{"sessionID":"s-e2e","part":{"type":"step-finish","tokens":{"input":100,"output":20,"cache":{"read":50}}}}\'\n'
-    );
-    chmodSync(join(dir, 'bin', 'opencode'), 0o755);
-  }
-
-  it('run flags -> run-signal; snapshot -> delta; analytics views (acceptance 1,2,4,5,6)', () => {
+  it('run-signal from log -> snapshot -> delta; analytics views (acceptance 1,2,4,5,6)', () => {
     const dir = tmpProject();
     dirs.push(dir);
     expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir).status).toBe(0);
 
-    // --- сценарий 1: прогон с экспериментальными флагами (критерий 1).
-    // routing-объекта в свежем проекте нет -> memory-run напечатает warning в stderr
-    // и уйдёт на fallback-модель — это ок, статус 0.
-    installOpencodeStub(dir);
-    const run = runCli(
-      [
-        'run',
-        '--agent',
-        'dev',
-        '--title',
-        'e2e',
-        '--experiment',
-        'exp1',
-        '--arm',
-        'wolf',
-        '--task-id',
-        't-1',
-        '--',
-        'hi',
-      ],
-      dir,
-      { PATH: `${join(dir, 'bin')}:${process.env.PATH ?? ''}` }
-    );
-    expect(run.status).toBe(0);
+    // --- сценарий 1: run-запись с экспериментальными полями (критерий 1).
+    // weighted = input + 0.1×cache_read + 5×output = 100 + 5 + 100 = 205
+    appendSignalLine(dir, {
+      ts: new Date().toISOString(),
+      event: 'run',
+      schema_version: 2,
+      session_id: 's-e2e',
+      gen_ai: { modelID: 'stub-model', agent: 'dev' },
+      orchestration: { task: 'e2e', actor: 'user:e2e' },
+      weighted: 205,
+      outcome: 'ok',
+      duration_ms: 1500,
+      tokens: { input: 100, output: 20, cache_read: 50 },
+      experiment: { id: 'exp1', arm: 'wolf', task_id: 't-1' },
+    });
 
-    // P1 D3: .wolf/run-log.jsonl больше не пишется — канонический источник run-метрик
-    // это сигнальный лог (assert ниже); legacy-мерж покрыт юнит-тестами через fixtures.
     const signals = readFileSync(join(dir, '.wolf', 'metrics', 'session-metrics.jsonl'), 'utf-8')
       .trim()
       .split('\n')
@@ -147,21 +136,34 @@ describe('analytics + dashboard golden scenarios (spec 2026-09-03)', () => {
     expect(Array.isArray(deliveryPayload.delivery.topDelivered)).toBe(true);
   });
 
-  it('campaign end-to-end: run --campaign + memory-stage injected + task-eval → views campaign/memory (P3 D1–D4)', () => {
+  it('campaign end-to-end: seeded run/memory_stage signals + task-eval → views campaign/memory (P3 D1–D4)', () => {
     const dir = tmpProject();
     dirs.push(dir);
     expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir).status).toBe(0);
 
-    // ран с campaign_id (стаб-сессия s-e2e); routing-warning в stderr — ок, статус 0
-    installOpencodeStub(dir);
-    const run = runCli(['run', '--agent', 'dev', '--title', 'camp', '--campaign', 'c-e2e', '--', 'hi'], dir, {
-      PATH: `${join(dir, 'bin')}:${process.env.PATH ?? ''}`,
+    // ран с campaign_id (стаб-сессия s-e2e)
+    appendSignalLine(dir, {
+      ts: new Date().toISOString(),
+      event: 'run',
+      schema_version: 2,
+      session_id: 's-e2e',
+      gen_ai: { modelID: 'stub-model', agent: 'dev' },
+      orchestration: { task: 'camp', actor: 'user:e2e' },
+      weighted: 205,
+      outcome: 'ok',
+      campaign_id: 'c-e2e',
     });
-    expect(run.status).toBe(0);
 
     // injected-сигнал в сессии рана → когорта with_memory + ROI-строка m-roi
-    const stage = runCli(['memory-stage', '--stage', 'injected', '--ids', 'm-roi', '--session', 's-e2e'], dir);
-    expect(stage.status).toBe(0);
+    appendSignalLine(dir, {
+      ts: new Date().toISOString(),
+      event: 'memory_stage',
+      session_id: 's-e2e',
+      gen_ai: { modelID: null, agent: null },
+      orchestration: { task: null, actor: 'user:e2e' },
+      outcome: 'ok',
+      detail: { stage: 'injected', memory_ids: ['m-roi'] },
+    });
 
     const verdict = runCli(['task-eval', '--verdict', 'accepted', '--session', 's-e2e', '--campaign', 'c-e2e'], dir);
     expect(verdict.status).toBe(0);

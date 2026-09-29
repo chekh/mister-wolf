@@ -78,13 +78,16 @@ function computeInjection(messages, agentId) {
 const run = promisify(execFile);
 // execFile: args array, no shell — текст пользователя не попадёт в команду.
 // Целевой проект — глобальный `wolf`; догфуд в репо Wolf — локальный dist.
-// Волна 0 (0.2): свежий WOLF_SESSION на каждый spawn — унаследованный из long-lived
-// opencode-процесса env дал бы одну фальшивую сессию на все доставки.
+// P204 (волна 2.13): WOLF_SESSION наследуется между спавнами — ключ ставится
+// только при отсутствии (то же правило, что wolf-router.ts: один ключ на
+// процесс opencode). Сессионная дедупликация доставок работает между
+// спавнами одной логической сессии.
 const runWolf = (args) => {
+  if (!process.env.WOLF_SESSION) process.env.WOLF_SESSION = 'opc-' + randomUUID();
+  // env-поля нет: execFile наследует process.env целиком (с ключом сессии)
   const opts = {
     cwd: PROJECT_ROOT,
     timeout: TIMEOUT_MS,
-    env: { ...process.env, WOLF_SESSION: 'opc-' + randomUUID() },
   };
   return run('wolf', args, opts)
     .then((r) => r.stdout)

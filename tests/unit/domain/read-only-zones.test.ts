@@ -15,9 +15,8 @@ describe('read-only зоны контура (Ф23, спека §5)', () => {
     }
   });
 
-  it('append-signal разрешён только сигнальным логам', () => {
+  it('append-signal разрешён только сигнальному логу', () => {
     expect(() => assertLearnWriteAllowed('.wolf/metrics/session-metrics.jsonl', 'append-signal')).not.toThrow();
-    expect(() => assertLearnWriteAllowed('.wolf/metrics/patterns.jsonl', 'append-signal')).not.toThrow();
     // events/relations append идёт через штатные writer'ы вне guard'а — здесь запрещён
     expect(() => assertLearnWriteAllowed('.wolf/events.jsonl', 'append-signal')).toThrow(UserFacingError);
     expect(() => assertLearnWriteAllowed('.wolf/relations.jsonl', 'append-signal')).toThrow(UserFacingError);

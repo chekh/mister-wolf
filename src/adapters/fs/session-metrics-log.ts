@@ -6,8 +6,8 @@
  * Документация формата: docs/guide/signal-log.md. Спека:
  * docs/superpowers/specs/2026-08-26-self-learning-design.md §2.1, §2.2.
  *
- * Writer-матрица D1 (M20-07, решение Q3): writer'ы — сами CLI-команды (run, complain,
- * scaffold, tool expose, recordToolError); `wolf metrics emit` не вводится.
+ * Writer-матрица D1 (M20-07, решение Q3): writer'ы — сами CLI-команды (complain,
+ * scaffold, tool expose); `wolf metrics emit` не вводится.
  *
  * P1 D1: identity-поля v2 (event_id, schema_version, run_id, trace_id, parent_span_id,
  * role_level, attempt, task_id, config_hash, prompt_hash, tools) — все опциональные,
@@ -31,6 +31,7 @@ import { metricsDir } from './project-paths.js';
 import { LOCK_TIMING } from './memory-lock.js';
 import { classifyError } from '../../domain/error-class.js';
 import { loadWolfConfigSync } from './config-file.js';
+import { parseRunLog, type RunLogEntry } from '../../domain/tool-economy.js';
 
 export type SignalEventName =
   | 'run'
@@ -110,34 +111,11 @@ export const SignalEventSchema = z.object({
 
 export type SignalEvent = z.infer<typeof SignalEventSchema>;
 
-export interface PatternRecord {
-  ts: string;
-  event: 'pattern';
-  /** Ключ кластера Ф21. */
-  key: string;
-  count: number;
-  threshold: number;
-}
-
 /** Порог паттерна N≥3 — дефолт спеки §2.2/§16; параметр процесса (config.yaml). */
 export const DEFAULT_PATTERN_THRESHOLD = 3;
 
 export function metricsLogPath(baseDir: string): string {
   return join(metricsDir(baseDir), 'session-metrics.jsonl');
-}
-
-export function patternsLogPath(baseDir: string): string {
-  return join(metricsDir(baseDir), 'patterns.jsonl');
-}
-
-/** Эффективный порог: learning.pattern_threshold из .wolf/config.yaml, иначе дефолт. */
-export function patternThreshold(baseDir: string): number {
-  try {
-    const t = loadWolfConfigSync(baseDir)?.learning?.patternThreshold;
-    return typeof t === 'number' && Number.isInteger(t) && t >= 1 ? t : DEFAULT_PATTERN_THRESHOLD;
-  } catch {
-    return DEFAULT_PATTERN_THRESHOLD;
-  }
 }
 
 /**
@@ -153,8 +131,8 @@ export function signalKey(ev: SignalEvent): string | null {
 }
 
 /**
- * Мягкое чтение jsonl: без схемы — только JSON.parse (patterns.jsonl), со схемой —
- * Zod-валидация каждой строки (session-metrics.jsonl). Малформ-строки (не-JSON или
+ * Мягкое чтение jsonl: со схемой — Zod-валидация каждой строки
+ * (session-metrics.jsonl). Малформ-строки (не-JSON или
  * не прошедшие схему) считаются и пропускаются: лог append-only, битая строка
  * не должна ронять контур.
  */
@@ -216,23 +194,6 @@ export function readSignalLog(baseDir: string): SignalLogStats {
 /** Все сигналы лога (порядок записи); отсутствующий/битый лог → максимально читаемое. */
 export function readSignals(baseDir: string): SignalEvent[] {
   return readSignalLog(baseDir).events;
-}
-
-/** Зафиксированные паттерны (события пересечения порога). */
-const patternsMemo = new Map<string, PatternRecord[]>();
-
-/**
- * P104 (A1): мемо один раз на процесс — readPatterns не перечитывает patterns.jsonl
- * на каждой keyed-записи. appendSignal обновляет мемо при фиксации, читатели этого
- * же процесса видят свежие данные.
- */
-export function readPatterns(baseDir: string): PatternRecord[] {
-  let memo = patternsMemo.get(baseDir);
-  if (memo === undefined) {
-    memo = readJsonl<PatternRecord>(patternsLogPath(baseDir)).items;
-    patternsMemo.set(baseDir, memo);
-  }
-  return memo;
 }
 
 /** P104 (A1): сайдкар счётчиков Ф21 — derived-файл, отсутствующий/битый = rebuild-scan. */
@@ -326,26 +287,16 @@ function withSyncMemoryLock<T>(dir: string, fn: () => T): T {
 }
 
 /**
- * Append сигнала + событийный триггер Ф21: в момент записи, перевалившей порог,
- * паттерн фиксируется в patterns.jsonl (один раз на ключ — повторных фиксаций нет).
- * НЕ календарный (спека §7: event-driven пороги вместо расписания). Порог —
- * настраиваемый параметр (§2.2): при снижении порога уже накопленный кластер
- * фиксируется на следующей же записи, не ждёт нового пересечения.
- *
- * P104 (A1): keyed-счётчики — инкремент сайдкара signal-counts.json вместо O(n)-пересчёта
- * лога на каждой записи; вся секция под sync-локом metrics-каталога. Счётчик монотонный
- * по построению (считаем события, а не окна) — кластер, пересёкший порог в прошлом,
- * не фиксируется повторно.
+ * Append сигнала + keyed-счётчик Ф21.
+ * P104 (A1): инкремент сайдкара signal-counts.json вместо O(n)-пересчёта
+ * лога на каждой записи; вся секция под sync-локом metrics-каталога.
  */
-export function appendSignal(
-  baseDir: string,
-  ev: SignalEvent
-): { key: string | null; count: number; patternFixed: boolean } {
+export function appendSignal(baseDir: string, ev: SignalEvent): { key: string | null; count: number } {
   mkdirSync(metricsDir(baseDir), { recursive: true });
   const key = signalKey(ev);
   if (key === null) {
     appendFileSync(metricsLogPath(baseDir), JSON.stringify(ev) + '\n');
-    return { key: null, count: 0, patternFixed: false };
+    return { key: null, count: 0 };
   }
   // ponytail: crash между append строки и перезаписью сайдкара даёт недосчёт до
   // следующего rebuild-scan (сайдкар остаётся валидным JSON) — приемлемо для
@@ -355,16 +306,8 @@ export function appendSignal(
     appendFileSync(metricsLogPath(baseDir), JSON.stringify(ev) + '\n');
     const count = (counts.get(key) ?? 0) + 1;
     counts.set(key, count);
-    const threshold = patternThreshold(baseDir);
-    const alreadyFixed = readPatterns(baseDir).some((p) => p.key === key);
-    const patternFixed = count >= threshold && !alreadyFixed;
-    if (patternFixed) {
-      const record: PatternRecord = { ts: ev.ts, event: 'pattern', key, count, threshold };
-      appendFileSync(patternsLogPath(baseDir), JSON.stringify(record) + '\n');
-      patternsMemo.get(baseDir)?.push(record);
-    }
     writeSignalCountsAtomic(baseDir, counts);
-    return { key, count, patternFixed };
+    return { key, count };
   });
 }
 
@@ -372,75 +315,11 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-/**
- * Writer (а): `wolf run` — метрики сессии (модель из routing, weighted, outcome; M1: duration/tokens/experiment).
- * P1 D3: writer перешёл на v2 — schema_version: 2 всегда, identity-поля опциональны.
- */
-export function appendRunSignal(
-  baseDir: string,
-  input: {
-    model: string;
-    agent: string;
-    title: string;
-    session: string | null;
-    weighted: number;
-    outcome: string;
-    actor: string;
-    task?: string;
-    durationMs?: number;
-    tokens?: { input: number; output: number; cache_read: number };
-    experiment?: { id: string; arm: 'wolf' | 'baseline'; taskId?: string };
-    /** P1 D3: identity-поля v2 (event_id/run_id/trace_id/attempt/task_id/config_hash/prompt_hash/tools). */
-    eventId?: string;
-    runId?: string;
-    traceId?: string;
-    attempt?: number;
-    taskId?: string;
-    /** P3 D1: id кампании (топ-левел campaign_id run-сигнала). */
-    campaignId?: string;
-    configHash?: string;
-    promptHash?: string;
-    tools?: string[];
-  }
-): { key: string | null; count: number; patternFixed: boolean } {
-  return appendSignal(baseDir, {
-    ts: nowIso(),
-    event: 'run',
-    schema_version: 2,
-    session_id: input.session,
-    gen_ai: { modelID: input.model, agent: input.agent },
-    orchestration: { task: input.title, actor: input.actor },
-    weighted: input.weighted,
-    outcome: input.outcome,
-    ...(input.eventId !== undefined ? { event_id: input.eventId } : {}),
-    ...(input.runId !== undefined ? { run_id: input.runId } : {}),
-    ...(input.traceId !== undefined ? { trace_id: input.traceId } : {}),
-    ...(input.attempt !== undefined ? { attempt: input.attempt } : {}),
-    ...(input.taskId !== undefined ? { task_id: input.taskId } : {}),
-    ...(input.campaignId !== undefined ? { campaign_id: input.campaignId } : {}),
-    ...(input.configHash !== undefined ? { config_hash: input.configHash } : {}),
-    ...(input.promptHash !== undefined ? { prompt_hash: input.promptHash } : {}),
-    ...(input.tools !== undefined ? { tools: input.tools } : {}),
-    ...(input.task !== undefined ? { detail: { task: input.task } } : {}),
-    ...(input.durationMs !== undefined ? { duration_ms: input.durationMs } : {}),
-    ...(input.tokens !== undefined ? { tokens: input.tokens } : {}),
-    ...(input.experiment !== undefined
-      ? {
-          experiment: {
-            id: input.experiment.id,
-            arm: input.experiment.arm,
-            ...(input.experiment.taskId !== undefined ? { task_id: input.experiment.taskId } : {}),
-          },
-        }
-      : {}),
-  });
-}
-
 /** Writer (б): `wolf complain` — сигнал жалобы (hot-signal Стюарда). */
 export function appendComplaintSignal(
   baseDir: string,
   input: { about: string; text: string; actor: string; objectId: string }
-): { key: string | null; count: number; patternFixed: boolean } {
+): { key: string | null; count: number } {
   return appendSignal(baseDir, {
     ts: nowIso(),
     event: 'complaint',
@@ -467,7 +346,7 @@ export function appendDeliverySignal(
     /** Волна 0 0.1: байты инъекции (detail.injection_bytes; токен-аппроксимация — не-цель). */
     injectionBytes?: number;
   }
-): { key: string | null; count: number; patternFixed: boolean } {
+): { key: string | null; count: number } {
   return appendSignal(baseDir, {
     ts: nowIso(),
     event: 'delivery',
@@ -516,7 +395,7 @@ function projectErrorRules(baseDir: string): readonly { id: string; match: strin
 /**
  * Writer (з): mcp_call — вызов инструмента/команды через MCP или CLI-обёртку
  * (волна 0 0.1). Контекст-событие: signalKey → null, пороги Ф21 не считаются.
- * При input.error — classifyError (проектная таксономия, как в recordToolError)
+ * При input.error — classifyError (проектная таксономия из config.yaml)
  * → detail.error_class_id + detail.error.{message ≤200, code}. Конфиг читается
  * только в error-ветке (P104: sync-yaml-parse убран с горячего пути).
  */
@@ -563,42 +442,6 @@ export function appendMcpCallSignal(
 }
 
 /**
- * Writer (г): ошибка тула — через классификатор D1.2 (проектная таксономия из
- * config.yaml матчится раньше дефолтной таблицы).
- */
-export function recordToolError(
-  baseDir: string,
-  input: {
-    tool_name: string;
-    message: string;
-    code?: string;
-    session_id?: string | null;
-    task?: string | null;
-    agent?: string | null;
-    actor?: string;
-  }
-): { error_class_id: string; key: string; count: number; patternFixed: boolean } {
-  const error_class_id = classifyError({ message: input.message, code: input.code }, projectErrorRules(baseDir));
-  const result = appendSignal(baseDir, {
-    ts: nowIso(),
-    event: 'tool_error',
-    session_id: input.session_id ?? null,
-    gen_ai: { modelID: null, agent: input.agent ?? null },
-    orchestration: { task: input.task ?? null, actor: input.actor ?? 'user:cli' },
-    outcome: 'error',
-    tool_name: input.tool_name,
-    error_class_id,
-    detail: { message: input.message, ...(input.code ? { code: input.code } : {}) },
-  });
-  return {
-    error_class_id,
-    key: result.key ?? `${input.tool_name}:${error_class_id}`,
-    count: result.count,
-    patternFixed: result.patternFixed,
-  };
-}
-
-/**
  * Writer (д): task_evaluated (P0 D2) — вердикт по задаче от скорера. Контекст-событие:
  * signalKey → null (как run), пороги Ф21 не считаются. Дефолт scorer='human'
  * задаётся на уровне CLI-команды `wolf task-eval` (P0 D3).
@@ -617,7 +460,7 @@ export function appendTaskEvaluatedSignal(
     criticalFailure?: boolean;
     note?: string;
   }
-): { key: string | null; count: number; patternFixed: boolean } {
+): { key: string | null; count: number } {
   return appendSignal(baseDir, {
     ts: nowIso(),
     event: 'task_evaluated',
@@ -638,21 +481,12 @@ export function appendTaskEvaluatedSignal(
   });
 }
 
-// --- P2 D1: memory lifecycle + координационные события ---
+// --- P2 D1: memory lifecycle события ---
 
 /** Detail memory_stage: стадия жизненного цикла памяти + затронутые объекты. */
 export const MemoryStageDetailSchema = z.object({
   stage: z.enum(['retrieved', 'injected', 'cited', 'applied']),
   memory_ids: z.array(z.string()).min(1),
-});
-
-/** Detail coord_event: факт координации между агентами (handoff/review/...). */
-export const CoordEventDetailSchema = z.object({
-  kind: z.enum(['handoff', 'review', 'acceptance', 'blocker', 'escalation']),
-  actor_from: z.string(),
-  actor_to: z.string().optional(),
-  refs: z.array(z.string()),
-  note: z.string().optional(),
 });
 
 /**
@@ -668,7 +502,7 @@ export function appendMemoryStageSignal(
     actor: string;
     sessionId?: string | null;
   }
-): { key: string | null; count: number; patternFixed: boolean } {
+): { key: string | null; count: number } {
   const detail = MemoryStageDetailSchema.parse({ stage: input.stage, memory_ids: input.memoryIds });
   return appendSignal(baseDir, {
     ts: nowIso(),
@@ -681,35 +515,99 @@ export function appendMemoryStageSignal(
   });
 }
 
+// --- run-entries: аналитика исторических run-сигналов ---
+
 /**
- * Writer (ж): coord_event (P2 D3) — факт координации агентов (handoff, review,
- * acceptance, blocker, escalation). Контекст-событие: signalKey → null.
+ * P1 D4: канонический источник run-метрик — сигнальный лог; исторический
+ * .wolf/run-log.jsonl (deprecated) мержится на переходный период.
+ * Правило мержа: простая конкатенация [сигнальные run-entries, legacy run-log entries]
+ * без dedup: в переходном окне каждый run существует в обоих источниках, дублирование
+ * симметрично → медианы инвариантны; счётчики (toolRuns/totalRuns) могут завышаться
+ * до выхода из переходного периода (задокументировано в RISKS отчёта P1).
  */
-export function appendCoordEventSignal(
-  baseDir: string,
-  input: {
-    kind: 'handoff' | 'review' | 'acceptance' | 'blocker' | 'escalation';
-    actorFrom: string;
-    actorTo?: string;
-    refs: string[];
-    note?: string;
-    actor: string;
+/** run-сигналы → канонические run-entries (tools из v2-поля tools). */
+export function runEntriesFromSignals(signals: SignalEvent[]): RunLogEntry[] {
+  return signals.flatMap((s) => {
+    if (s.event !== 'run') return [];
+    return [
+      {
+        ts: s.ts,
+        model: s.gen_ai.modelID ?? undefined,
+        agent: s.gen_ai.agent ?? undefined,
+        title: s.orchestration.task ?? undefined,
+        session: s.session_id ?? undefined,
+        weighted: s.weighted,
+        tools: s.tools,
+        duration_ms: s.duration_ms,
+        tokens: s.tokens,
+      },
+    ];
+  });
+}
+
+/** Переходный мерж: сигнальный источник + исторический run-log (если файл существует). */
+export function mergeRunEntries(signals: SignalEvent[], runLogText: string | null): RunLogEntry[] {
+  return [...runEntriesFromSignals(signals), ...parseRunLog(runLogText ?? '')];
+}
+
+// --- silent-rules: аналитика доставки ---
+
+/** Окно молчания правила для rule_utilization-дрейфа [ВА] (§16). */
+export const SILENT_RULE_WINDOW_SESSIONS = 30;
+/** Минимум delivery-событий в логе, чтобы судить об утилизации правил [ВА] (§16). */
+export const SILENT_RULE_MIN_DELIVERIES = 20;
+
+/**
+ * Пробег = упорядоченные уникальные session_id из run-событий
+ * (порядок первого появления в логе = хронология).
+ */
+export function countSessions(signals: SignalEvent[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const ev of signals) {
+    if (ev.event !== 'run' || ev.session_id === null) continue;
+    if (!seen.has(ev.session_id)) {
+      seen.add(ev.session_id);
+      out.push(ev.session_id);
+    }
   }
-): { key: string | null; count: number; patternFixed: boolean } {
-  const detail = CoordEventDetailSchema.parse({
-    kind: input.kind,
-    actor_from: input.actorFrom,
-    ...(input.actorTo !== undefined ? { actor_to: input.actorTo } : {}),
-    refs: input.refs,
-    ...(input.note !== undefined ? { note: input.note } : {}),
-  });
-  return appendSignal(baseDir, {
-    ts: nowIso(),
-    event: 'coord_event',
-    session_id: null,
-    gen_ai: { modelID: null, agent: null },
-    orchestration: { task: null, actor: input.actor },
-    outcome: input.kind,
-    detail,
-  });
+  return out;
+}
+
+/** ts первого run-события каждой сессии (точка отсчёта «сессия началась»). */
+function sessionFirstRunTs(signals: SignalEvent[]): Map<string, string> {
+  const first = new Map<string, string>();
+  for (const ev of signals) {
+    if (ev.event !== 'run' || ev.session_id === null) continue;
+    if (!first.has(ev.session_id)) first.set(ev.session_id, ev.ts);
+  }
+  return first;
+}
+
+/** Молчащее правило: доставки были, но нет ни одной за последние 30 сессий
+ * (при ≥20 delivery-событий в логе). ponytail: [ВА]-порог rule_utilization
+ * <0.5 от baseline упрощён продукт-минимумом до «ноль доставок в окне» —
+ * честный апгрейд: baseline-утилизация по delivery-stats (S20-09).
+ * Экспортирована для effectiveness-панели (E1.2). */
+export function silentRuleIds(signals: SignalEvent[]): { ids: Set<string>; count: number } {
+  const deliveries = signals.filter((s) => s.event === 'delivery');
+  if (deliveries.length < SILENT_RULE_MIN_DELIVERIES) return { ids: new Set(), count: 0 };
+  const sessions = countSessions(signals);
+  if (sessions.length <= SILENT_RULE_WINDOW_SESSIONS) return { ids: new Set(), count: 0 };
+  // граница окна: первый run сессии, открывающей последние 30
+  const firstRun = sessionFirstRunTs(signals);
+  const boundarySession = sessions[sessions.length - SILENT_RULE_WINDOW_SESSIONS]!;
+  const boundaryTs = firstRun.get(boundarySession)!;
+  const lastByObject = new Map<string, string>();
+  for (const ev of deliveries) {
+    const name = ev.detail?.name;
+    if (typeof name !== 'string') continue;
+    const cur = lastByObject.get(name);
+    if (cur === undefined || ev.ts > cur) lastByObject.set(name, ev.ts);
+  }
+  const ids = new Set<string>();
+  for (const [name, ts] of lastByObject) {
+    if (ts < boundaryTs) ids.add(name);
+  }
+  return { ids, count: ids.size };
 }

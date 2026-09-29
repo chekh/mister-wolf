@@ -18,7 +18,7 @@ export function cacheDir(baseDir: string): string {
   return join(baseDir, '.wolf', 'cache');
 }
 
-/** Ф20: сигнальный лог контура самообучения (session-metrics.jsonl + patterns.jsonl). */
+/** Ф20: сигнальный лог контура самообучения (session-metrics.jsonl). */
 export function metricsDir(baseDir: string): string {
   return join(baseDir, '.wolf', 'metrics');
 }
