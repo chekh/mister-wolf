@@ -16,6 +16,8 @@ Each project's configuration lives in `.wolf/config.yaml` (YAML validated by a z
 | `learning.effectiveness_thresholds` | `{noise_ok, noise_warn, silent_ok}` — percentages                                                                         |
 | `pricing`                           | map model → `{input, output, cache_read}` in $/Mtok; without the block `$` fields are hidden (numbers are never invented) |
 | `analytics.thresholds`              | memory lifecycle classification: `{new_days, workhorse_uses}`; default `{14, 3}`                                          |
+| `delivery.context_budget_tokens`    | int > 0; session context budget for the injection warning, tokens; default **200000**                                     |
+| `delivery.context_warning_pct`      | number ≥ 0; warn when session injections exceed this share of the budget, %; default **20**, `0` disables                 |
 
 Example (defaults shape):
 
@@ -40,6 +42,11 @@ analytics:
   thresholds:
     new_days: 14 # NEW until this age
     workhorse_uses: 3 # WORKHORSE from this many uses
+# Soft context limit for `wolf call` injections (bytes/4 token approximation):
+# one stderr warning above the share, delivery is never cut; 0 disables
+delivery:
+  context_budget_tokens: 200000
+  context_warning_pct: 20
 ```
 
 `pricing` and `analytics.thresholds` drive the [effectiveness analytics](/guide/cli/analytics#configuration) (`$` fields and lifecycle classes); the same keys are documented there with examples.
@@ -77,8 +84,9 @@ What `wolf init` creates and what appears lazily:
 │   ├── relations.jsonl    # lazy
 │   └── quarantine/        # lazy; broken objects quarantined by wolf validate --fix
 ├── cache/
-│   └── index.sqlite       # lazy; SQLite FTS search index
-├── metrics/               # lazy; session-metrics.jsonl, patterns.jsonl
+│   ├── index.sqlite       # lazy; SQLite FTS search index
+│   └── sessions/          # lazy; per-session delivery registries (dedup), GC after 7 days
+├── metrics/               # lazy; session-metrics.jsonl, patterns.jsonl, signal-counts.json (derived counters)
 ├── thinking/              # lazy; structured thinking sequences
 ├── tools/                 # lazy; registered tool scripts
 └── backup/<ts>/           # lazy; config backups from wolf init --recreate

@@ -3,12 +3,16 @@ import { SearchIndex } from '../../ports/search-index.port.js';
 import { Clock } from '../../ports/clock.port.js';
 import { tokenize } from '../../domain/solve/scenarios.js';
 import { finalScore } from '../../domain/solve/relevance.js';
+import { checksumBlock } from '../../adapters/fs/session-delivery-registry.js';
 
 export interface CallInjectionResult {
   blocks: string[];
   truncated: number;
   /** Ф26: id объектов, реально попавших в вывод (срабатывание доставки → decay-пробег). */
   deliveredIds: string[];
+  /** P108 (4.C): сколько объектов отфильтровано сессионной дедупликацией
+   * (id уже в реестре сессии с той же checksum блока). */
+  deduplicated: number;
 }
 
 function formatBlock(obj: Record<string, unknown>): string {
@@ -22,14 +26,28 @@ function isMachineState(obj: Record<string, unknown>): boolean {
 
 export async function getCallInjections(
   deps: { store: MemoryStore; index?: SearchIndex; clock: Clock },
-  input: { topic?: string; thread?: boolean | string; compact?: number | true }
+  input: {
+    topic?: string;
+    thread?: boolean | string;
+    compact?: number | true;
+    /** P108 (4.C): мапа id→checksum уже доставленных в сессию блоков (готовит
+     * memory-call из loadSessionRegistry). Не передана (MCP-канал) — фильтр выключен. */
+    deliveredRegistry?: Record<string, string>;
+  }
 ): Promise<CallInjectionResult> {
   const now = deps.clock.now();
   const topicTokens = input.topic ? tokenize(input.topic) : [];
 
+  // P103 (волна 2.12 A4): ровно ОДИН store.list() — list() в любом случае
+  // обходит всё дерево, type/status-фильтры не сокращают IO (прецедент T013
+  // в generate-agent-brief.ts). Было 5 полных проходов, один — буквальный
+  // дубль rules-запроса; фильтрация по типу/статусу — в памяти.
+  const memoryObjects = (await deps.store.list()) as Record<string, unknown>[];
+  const activeOf = (type: string): Record<string, unknown>[] =>
+    memoryObjects.filter((o) => o.type === type && o.status === 'active');
+
   // 1. active call-injections
-  const allInjections = await deps.store.list({ type: 'call-injection', status: 'active' });
-  const injections = allInjections as Record<string, unknown>[];
+  const injections = activeOf('call-injection');
 
   // 2. topic matching
   let matched: Record<string, unknown>[];
@@ -56,11 +74,11 @@ export async function getCallInjections(
       const kw: string[] = (obj.trigger_keywords as string[]) ?? [];
       return kw.some((k) => topicTokens.includes(k));
     };
-    const lessons = (await deps.store.list({ type: 'lesson', status: 'active' })) as Record<string, unknown>[];
+    const lessons = activeOf('lesson') as Record<string, unknown>[];
     for (const l of lessons) {
       if (kwMatched(l) && !matched.some((m) => m.id === l.id)) matched.push(l);
     }
-    const rules = (await deps.store.list({ type: 'rule', status: 'active' })) as Record<string, unknown>[];
+    const rules = activeOf('rule') as Record<string, unknown>[];
     const keywordRules = rules.filter((r) => !isMachineState(r) && kwMatched(r));
     for (const r of keywordRules) {
       if (!matched.some((m) => m.id === r.id)) matched.push(r);
@@ -76,14 +94,14 @@ export async function getCallInjections(
   // 4. thread mode: append project rules + open blockers with matching thread
   if (input.thread !== undefined) {
     const threadId = typeof input.thread === 'string' ? input.thread : null;
-    const rules = (await deps.store.list({ type: 'rule', status: 'active' })) as Record<string, unknown>[];
+    const rules = activeOf('rule') as Record<string, unknown>[];
     for (const r of rules) {
       if (!isMachineState(r) && r.scope === 'project' && !matched.some((m) => m.id === r.id)) {
         matched.push(r);
       }
     }
     if (threadId) {
-      const blockers = (await deps.store.list({ type: 'blocker', status: 'active' })) as Record<string, unknown>[];
+      const blockers = activeOf('blocker') as Record<string, unknown>[];
       for (const b of blockers) {
         if (b.thread === threadId && !matched.some((m) => m.id === b.id)) {
           matched.push(b);
@@ -108,6 +126,18 @@ export async function getCallInjections(
     }))
     .sort((a, b) => b.score - a.score);
 
+  // P108 (4.C): сессионная дедупликация ДО бюджета — уже доставленные в этой
+  // сессии с той же checksum блока не занимают бюджет; изменившийся текст
+  // (иная checksum) доставляется повторно. Реестр не передан → фильтр выключен.
+  let deduplicated = 0;
+  const pending = input.deliveredRegistry
+    ? scored.filter(({ obj }) => {
+        if (input.deliveredRegistry![obj.id as string] !== checksumBlock(formatBlock(obj))) return true;
+        deduplicated++;
+        return false;
+      })
+    : scored;
+
   // 6. build blocks (deliveredIds — то, что прошло бюджет, включая fallback)
   const blocks: string[] = [];
   const deliveredIds: string[] = [];
@@ -115,7 +145,7 @@ export async function getCallInjections(
   const budget = input.compact === undefined ? Infinity : input.compact === true ? 1200 : input.compact;
   let used = 0;
 
-  for (const { obj } of scored) {
+  for (const { obj } of pending) {
     const block = formatBlock(obj);
     if (used + block.length <= budget) {
       blocks.push(block);
@@ -126,5 +156,5 @@ export async function getCallInjections(
     }
   }
 
-  return { blocks, truncated, deliveredIds };
+  return { blocks, truncated, deliveredIds, deduplicated };
 }

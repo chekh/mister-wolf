@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, appendFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import {
@@ -14,6 +14,7 @@ import {
   readPatterns,
   metricsLogPath,
   patternsLogPath,
+  signalCountsPath,
   patternThreshold,
   signalKey,
   DEFAULT_PATTERN_THRESHOLD,
@@ -21,6 +22,19 @@ import {
   type SignalEvent,
 } from '../../../src/adapters/fs/session-metrics-log.js';
 import { parseRunLog } from '../../../src/domain/tool-economy.js';
+
+// P104 (д): счётчик readFileSync — полная делегация реальному fs, поведение не меняется.
+const fsReadFiles = vi.hoisted(() => [] as string[]);
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs')>();
+  return {
+    ...actual,
+    readFileSync: ((...args: Parameters<typeof actual.readFileSync>) => {
+      fsReadFiles.push(String(args[0]));
+      return actual.readFileSync(...args);
+    }) as typeof actual.readFileSync,
+  };
+});
 
 describe("Ф20 (D1.1): session-metrics.jsonl — writer'ы и формат", () => {
   let dir: string;
@@ -596,5 +610,96 @@ describe('волна 0: поля в detail (dogfooding-hardening §4 0.1)', () =
 
   it('addArgsSummary: undefined type/title → пустые строки', () => {
     expect(addArgsSummary({})).toEqual({ type: '', title: '', extra_keys: [] });
+  });
+});
+
+describe('P104 (A1/A6): сайдкар signal-counts.json + конфиг только в error-ветке', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'wolf-p104-'));
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  function delivery(name: string): { count: number; patternFixed: boolean } {
+    return appendDeliverySignal(dir, { name, mechanism: 'skill', actor: 'user:cli' });
+  }
+
+  it('(а) производительность: t(10k строк) < 500 мс — запись не линейна по длине лога', () => {
+    // базовый замер на пустом логе
+    const baseStart = performance.now();
+    delivery('base');
+    const baseMs = performance.now() - baseStart;
+    // синтетика: +10k валидных delivery-строк другого ключа
+    const synth = JSON.stringify({
+      ts: '2026-09-29T00:00:00.000Z',
+      event: 'delivery',
+      session_id: null,
+      gen_ai: { modelID: null, agent: null },
+      orchestration: { task: null, actor: 'synth' },
+      outcome: 'delivered',
+      detail: { name: 'bulk', mechanism: 'skill' },
+    });
+    mkdirSync(join(dir, '.wolf', 'metrics'), { recursive: true });
+    writeFileSync(metricsLogPath(dir), Array.from({ length: 10_000 }, () => synth).join('\n') + '\n');
+    delivery('warm'); // холодный старт: один rebuild-scan лога (сайдкара нет)
+    const start = performance.now();
+    const res = delivery('fast');
+    const ms = performance.now() - start;
+    expect(res.count).toBe(1);
+    // старый O(n)-пересчёт с Zod-парсом на 10k строк уходил в секунды; новый — O(1)
+    expect(ms).toBeLessThan(500);
+    expect(ms).toBeLessThan(baseMs + 450); // в пределах шума от базового (пустой лог)
+  });
+
+  it('(б) битый/отсутствующий сайдкар → rebuild-scan восстанавливает счётчик', () => {
+    expect(delivery('r').count).toBe(1);
+    expect(delivery('r').count).toBe(2);
+    writeFileSync(signalCountsPath(dir), '{битый json');
+    expect(delivery('r').count).toBe(3); // мусор в сайдкаре → полный пересчёт лога
+    expect(JSON.parse(readFileSync(signalCountsPath(dir), 'utf-8'))).toEqual({ 'delivery:r': 3 });
+    rmSync(signalCountsPath(dir));
+    expect(delivery('r').count).toBe(4); // отсутствие сайдкара → rebuild-scan
+  });
+
+  it('(в) регресс Ф21: кластер уже фиксирован → снижение pattern_threshold не даёт повторной фиксации', () => {
+    mkdirSync(join(dir, '.wolf'), { recursive: true });
+    const cfg = (t: string) =>
+      writeFileSync(join(dir, '.wolf', 'config.yaml'), `learning:\n  pattern_threshold: ${t}\n`);
+    cfg('3');
+    expect(delivery('mono').patternFixed).toBe(false);
+    expect(delivery('mono').patternFixed).toBe(false);
+    expect(delivery('mono').patternFixed).toBe(true);
+    cfg('2\n# lowered'); // порог снижен; комментарий меняет размер файла — детерминированная инвалидация кэша
+    const res = delivery('mono');
+    expect(res.count).toBe(4);
+    expect(res.patternFixed).toBe(false); // счётчик монотонный — повторной фиксации нет
+    expect(readPatterns(dir)).toHaveLength(1);
+  });
+
+  it('(г) счётчик корректен: серия N записей одного ключа → count последовательно 1..N', () => {
+    for (let i = 1; i <= 5; i++) expect(delivery('serial').count).toBe(i);
+    expect(delivery('other').count).toBe(1); // другой ключ — независимый счёт
+  });
+
+  it('(д) ok-вызов appendMcpCallSignal не читает config.yaml; error-вызов применяет проектную таксономию', () => {
+    mkdirSync(join(dir, '.wolf'), { recursive: true });
+    writeFileSync(
+      join(dir, '.wolf', 'config.yaml'),
+      'error_class_taxonomy:\n  - id: custom_boom\n    match:\n      - boom_marker\n'
+    );
+    const configReads = () => fsReadFiles.filter((p) => p === join(dir, '.wolf', 'config.yaml')).length;
+    const before = configReads();
+    appendMcpCallSignal(dir, { tool: 'search', outcome: 'ok', durationMs: 1, detail: { method: 'search' } });
+    expect(configReads()).toBe(before); // ок-путь: ни одного чтения конфига
+    appendMcpCallSignal(dir, {
+      tool: 'add',
+      outcome: 'error',
+      durationMs: 1,
+      error: { message: 'boom_marker failure' }, // classifyError ловит haystack в lowercase
+    });
+    expect(configReads()).toBe(before + 1); // error-путь: конфиг прочитан (ровно один раз)
+    const errRec = readSignals(dir).find((e) => e.outcome === 'error');
+    expect(errRec?.detail?.error_class_id).toBe('custom_boom');
   });
 });

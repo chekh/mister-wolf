@@ -65,6 +65,26 @@ When you need a guaranteed fresh snapshot, `mr-wolf_scan` (or the CLI `wolf scan
 
 The brief also reads memory through an mtime-based parse cache, so repeated briefs are cheap: unchanged memory objects are served without re-reading and re-parsing the files.
 
+## Delivery: session deduplication and the context budget
+
+Injections of `wolf call` are deduplicated per session: a memory record is delivered to a session **once**, and again only when its text changes (block checksum). The session key comes from `WOLF_SESSION` — the wolf-router plugin sets one key per agent-platform process, so all `wolf call` spawns inside one session share it; a fresh session always gets the full delivery. When deduplication filters everything out, the call explains itself instead of an empty list: `[wolf] N инъекций уже доставлены в этой сессии (дедупликация; изменившиеся записи доставляются повторно)`. The delivery registry is a derived cache in `.wolf/cache/sessions/` and is garbage-collected after 7 days. Calls without a session key are not deduplicated — every new context gets its constitution.
+
+`wolf call` also tracks how many bytes of injections the session has accumulated (token approximation: bytes/4) and prints a single stderr warning when they exceed the configured share of the context budget (default 20% of 200 000 tokens):
+
+```text
+[wolf] инъекции сессии ~27% бюджета контекста (216000 bytes / 200000 tokens) — лимит предупреждения 20%
+```
+
+("session injections ~27% of the context budget — warning threshold 20%") The warning never blocks delivery and never changes the exit code. Tune or disable it in `.wolf/config.yaml` — see [Configuration](/guide/configuration):
+
+```yaml
+delivery:
+  context_budget_tokens: 200000 # session context budget, tokens
+  context_warning_pct: 20 # warn above this share, %; 0 disables the warning
+```
+
+For the delivery big picture — top delivered records, miss-rate by agent, average injection size — see `wolf recap` (delivery summary line) and `wolf analytics --view delivery` ([CLI analytics](/guide/cli/analytics)).
+
 ## Typical agent session
 
 A connected agent usually walks this loop:

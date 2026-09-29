@@ -1,8 +1,21 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { loadWolfConfigSync, renderConfigYaml } from '../../../src/adapters/fs/config-file.js';
+import { loadDeliverySettings, loadWolfConfigSync, renderConfigYaml } from '../../../src/adapters/fs/config-file.js';
+
+// P104 (е): счётчик readFileSync — полная делегация реальному fs, поведение не меняется.
+const fsReadFiles = vi.hoisted(() => [] as string[]);
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs')>();
+  return {
+    ...actual,
+    readFileSync: ((...args: Parameters<typeof actual.readFileSync>) => {
+      fsReadFiles.push(String(args[0]));
+      return actual.readFileSync(...args);
+    }) as typeof actual.readFileSync,
+  };
+});
 
 // Ф20/Ф21: taxonomy sync (renderConfigYaml) перегенерирует config.yaml —
 // ключи контура самообучения (error_class_taxonomy, learning) обязаны выживать
@@ -106,5 +119,79 @@ describe('config pricing + analytics.thresholds (M3)', () => {
     const loaded = loadWolfConfigSync(dir);
     expect(loaded?.pricing).toBeUndefined();
     expect(loaded?.analytics).toBeUndefined();
+  });
+});
+
+// P104 (A6): мемоизация loadWolfConfigSync по mtime+size — sync-yaml-parse уходит
+// с горячего пути телеметрии; изменение файла (stat) инвалидирует кэш.
+describe('P104 (A6): мемоизация loadWolfConfigSync по mtime+size', () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'wolf-config-memo-'));
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  function writeConfig(yaml: string): void {
+    mkdirSync(join(dir, '.wolf'), { recursive: true });
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), yaml);
+  }
+  const configReads = () => fsReadFiles.filter((p) => p === join(dir, '.wolf', 'config.yaml')).length;
+
+  it('(е) два вызова с одним baseDir → один readFileSync; изменение файла → перечитывает', () => {
+    writeConfig('learning:\n  pattern_threshold: 25\n');
+    const first = loadWolfConfigSync(dir);
+    const second = loadWolfConfigSync(dir);
+    expect(second?.learning?.patternThreshold).toBe(25);
+    expect(first).toBe(second); // мемо — тот же объект без re-parse
+    expect(configReads()).toBe(1);
+    writeConfig('learning:\n  pattern_threshold: 52\n'); // тот же размер, другое значение — инвалидация по mtime
+    expect(loadWolfConfigSync(dir)?.learning?.patternThreshold).toBe(52);
+    expect(configReads()).toBe(2);
+  });
+
+  it('отсутствующий конфиг → null (кэш «файла нет»); появление файла перечитывает', () => {
+    expect(loadWolfConfigSync(dir)).toBeNull();
+    expect(configReads()).toBe(0);
+    writeConfig('learning:\n  pattern_threshold: 7\n');
+    expect(loadWolfConfigSync(dir)?.learning?.patternThreshold).toBe(7);
+    expect(configReads()).toBe(1);
+  });
+});
+
+// P109 (4.D): delivery.* — мягкий лимит инъекций; отсутствующие/битые ключи = дефолты (§5.iii).
+describe('P109 (4.D): loadDeliverySettings — delivery.context_budget_tokens / context_warning_pct', () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'wolf-config-delivery-'));
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  function writeConfig(yaml: string): void {
+    mkdirSync(join(dir, '.wolf'), { recursive: true });
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), yaml);
+  }
+
+  it('конфиг без ключей delivery → дефолты 200000/20', () => {
+    writeConfig('learning:\n  pattern_threshold: 3\n');
+    expect(loadDeliverySettings(dir)).toEqual({ contextBudgetTokens: 200_000, contextWarningPct: 20 });
+  });
+
+  it('отсутствующий конфиг → дефолты', () => {
+    expect(loadDeliverySettings(dir)).toEqual({ contextBudgetTokens: 200_000, contextWarningPct: 20 });
+  });
+
+  it('ключи применяются', () => {
+    writeConfig('delivery:\n  context_budget_tokens: 50000\n  context_warning_pct: 5\n');
+    expect(loadDeliverySettings(dir)).toEqual({ contextBudgetTokens: 50_000, contextWarningPct: 5 });
+  });
+
+  it('битые значения → дефолты (zod catch, §5.iii)', () => {
+    writeConfig('delivery:\n  context_budget_tokens: -1\n  context_warning_pct: not-a-number\n');
+    expect(loadDeliverySettings(dir)).toEqual({ contextBudgetTokens: 200_000, contextWarningPct: 20 });
+  });
+
+  it('0 выключает предупреждение', () => {
+    writeConfig('delivery:\n  context_warning_pct: 0\n');
+    expect(loadDeliverySettings(dir).contextWarningPct).toBe(0);
   });
 });
