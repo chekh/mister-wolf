@@ -1,9 +1,15 @@
 import { Command } from 'commander';
 import { relative } from 'path';
+import { spawnSync } from 'child_process';
 import { safeCwd } from '../cli-entry.js';
 import { planLayoutMigration, applyLayoutMigration, type MigrationReport } from '../../fs/layout-migration.js';
 import { planDocIdMigration, applyDocIdMigration, type DocIdMigrationReport } from '../../fs/doc-id-migration.js';
 import { migrateRunLog, type RunLogMigrationReport } from '../../fs/run-log-migration.js';
+import {
+  planTaxonomyMigration,
+  applyTaxonomyMigration,
+  type TaxonomyMigrationReport,
+} from '../../fs/taxonomy-migration.js';
 
 export function memoryMigrateCommand(): Command {
   const migrate = new Command('migrate')
@@ -46,6 +52,43 @@ export function memoryMigrateCommand(): Command {
           console.error(`Error: wolf migrate run-log failed: ${err instanceof Error ? err.message : String(err)}`);
           process.exitCode = 1;
         }
+      })
+  );
+  // taxonomy (спека 2.13 §8.2): 26 старых типов → 7 + фасеты; dry-run по умолчанию.
+  // --apply читается и у родителя (прецедент doc-ids: commander скармливает
+  // конфликтующий по имени флаг родителю).
+  migrate.addCommand(
+    new Command('taxonomy')
+      .description('One-time migration to the 7-type taxonomy (spec 2.13 §8.2); --apply to perform')
+      .option('--apply', 'perform the migration (default: dry-run)', false)
+      .option('--force', 'apply even if .wolf/memory is not in a clean git state', false)
+      .action(async (opts, cmd) => {
+        const apply = Boolean(opts.apply) || Boolean(cmd.parent?.opts().apply);
+        const baseDir = safeCwd();
+        // §8.2.4: перед --apply — чистый git-статус .wolf/memory (не-git/грязный → --force)
+        if (apply && !opts.force) {
+          const git = spawnSync('git', ['status', '--porcelain', '--', '.wolf/memory'], {
+            cwd: baseDir,
+            encoding: 'utf-8',
+          });
+          const clean = git.status === 0 && git.stdout.trim() === '';
+          if (!clean) {
+            console.error(
+              'Refusing to apply: .wolf/memory must be in a clean git state (spec 2.13 §8.2.4).\n' +
+                '  Commit .wolf/memory first; rollback = git checkout .wolf/memory + wolf rebuild-index.\n' +
+                '  Or rerun with --force.'
+            );
+            process.exitCode = 1;
+            return;
+          }
+        }
+        const report: TaxonomyMigrationReport = apply
+          ? await applyTaxonomyMigration(baseDir)
+          : await planTaxonomyMigration(baseDir);
+        printTaxonomyReport(report, apply ? 'apply' : 'dry-run');
+        // §8.2: exit 2 при конфликтах (даже с --apply: конфликтные файлы не тронуты,
+        // остальной план выполняется)
+        process.exitCode = report.conflicts.length > 0 ? 2 : 0;
       })
   );
   return migrate;
@@ -119,4 +162,64 @@ function printRunLogReport(report: RunLogMigrationReport, baseDir: string): void
   console.log(`from: ${relative(baseDir, report.from)}`);
   console.log(`to: ${relative(baseDir, report.to)}`);
   console.log(`lines: ${report.lineCount}`);
+}
+
+function printTaxonomyReport(report: TaxonomyMigrationReport, mode: 'dry-run' | 'apply'): void {
+  const rel = (p: string) => p.replace(/^\.wolf\/memory\//, '');
+  console.log(`# wolf migrate taxonomy (mode: ${mode})`);
+  console.log();
+
+  console.log('| id | old type | new (facet/status) | from | to |');
+  console.log('|----|----------|--------------------|------|----|');
+  for (const e of report.entries) {
+    let detail = e.newType;
+    if (e.facet !== undefined) detail += ` / facet: ${e.facet}`;
+    if (e.threadStatusChange !== undefined) detail += ` / thread -> ${e.threadStatusChange}`;
+    console.log(`| ${e.id} | ${e.oldType} | ${detail} | ${rel(e.from)} | ${rel(e.to)} |`);
+  }
+
+  console.log();
+  const summary = Object.entries(report.summaryByType)
+    .map(([t, n]) => `${t}: ${n}`)
+    .join(', ');
+  console.log(`summary by type: ${summary || '(nothing to migrate)'}`);
+
+  if (report.threadStatusChanges.length > 0) {
+    console.log();
+    console.log('thread status changes:');
+    for (const t of report.threadStatusChanges) {
+      console.log(`  ${t.threadId}: ${t.from} -> ${t.to} (cause: ${t.causeType} ${t.causeId})`);
+    }
+  }
+
+  if (report.callInjections.length > 0) {
+    console.log();
+    console.log('active call-injections (WARNING):');
+    for (const c of report.callInjections) console.log(`  ${c.id}: ${rel(c.from)} -> ${rel(c.to)}`);
+    console.log('  after migration these stop being delivered by the call pool (spec 2.13 §5.4);');
+    console.log('  move trigger_keywords to a lesson/rule or archive them');
+  }
+
+  if (report.conflicts.length > 0) {
+    console.log();
+    console.log('conflicts (untouched):');
+    for (const c of report.conflicts) console.log(`  ${c.id}: ${c.reason}`);
+  }
+
+  if (report.unparsable.length > 0) {
+    console.log();
+    console.log('unparsable (untouched):');
+    for (const p of report.unparsable) console.log(`  ${rel(p.path)}: ${p.error}`);
+  }
+
+  console.log();
+  const migrated = mode === 'apply' ? report.entries.length : 0;
+  console.log(
+    `migrated: ${migrated}${mode === 'dry-run' ? ' (dry-run)' : ''}` +
+      ` | thread status changes: ${report.threadStatusChanges.length}` +
+      ` | conflicts: ${report.conflicts.length}` +
+      ` | unparsable: ${report.unparsable.length}`
+  );
+  console.log('rollback: git checkout .wolf/memory && wolf rebuild-index');
+  if (mode === 'apply') console.log('next: run wolf rebuild-index');
 }
