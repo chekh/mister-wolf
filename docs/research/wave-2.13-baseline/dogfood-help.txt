@@ -1,0 +1,94 @@
+Usage: wolf [options] [command]
+
+Options:
+  -V, --version                       output the version number
+  -h, --help                          display help for command
+
+Commands:
+  init [options]                      Initialize Mr. Wolf memory for this
+                                      project (interactive in TTY;
+                                      non-interactive requires --model)
+  sync                                Re-render the wolf base set (stamped
+                                      files only; memory untouched)
+  add [options]                       Add a memory object
+  list [options]                      List memory objects
+  get [options] <id>                  Get a memory object by id
+  search [options] <query>            Search memory objects
+  rebuild-index                       Rebuild the SQLite search index from
+                                      memory objects
+  supersede <old-id> <new-id>         Supersede a memory object with another
+  transition [options] <id> <status>  Transition a memory object to a new
+                                      status
+  scan                                Scan the project and save a context
+                                      snapshot
+  brief                               Generate the agent brief from the latest
+                                      scan and memory
+  thread                              Manage work threads
+  diff [options] <thread-id>          Show thread changes since a checkpoint
+  decision                            Manage decisions
+  blocker                             Manage blockers
+  info-request                        Manage info requests
+  article                             Manage articles
+  session                             Manage sessions and checkpoints
+  mcp                                 Start the MCP server (stdio)
+  rule                                Manage rules
+  relation                            Manage relations between memory objects
+  taxonomy                            Manage memory taxonomy
+  migrate [options]                   One-time migration: objects/<type>/ ->
+                                      threads/<tid>/<subdir>/ + shared/
+  council                             Council operations
+  validate [options]                  Validate memory store integrity
+  solve [options] <problem>           Build a solve pack for a memory problem
+  call [options]                      Get active call injections
+  insights [options]                  Heuristic pattern analysis over project
+                                      memory (Level 1, no LLM)
+  recap                               Summarize active project memory: rules,
+                                      threads, blockers, questions, decisions
+  think                               Structured thinking sequences (goal ->
+                                      thoughts -> conclusion)
+  scaffold [options] <kind> <name>    Scaffold opencode frame
+                                      (agent|skill|command) + playbook in Wolf
+                                      memory
+  tool                                Tool librarian:
+                                      register/list/use/expose/deprecate/revive
+  complain [options]                  File a complaint about a
+                                      rule/playbook/agent as a memory object
+                                      (type complaint, status open)
+  update [options] <id>               Update triage fields of a memory object
+                                      (whitelist: --set triage|resolution,
+                                      --inc dispatch_ages|corroborations,
+                                      --tags append)
+  learn                               Self-learning loop: pattern digest,
+                                      signal-log health, draft
+                                      propose/validate/activate
+  effectiveness [options]             Memory effectiveness panel: rules
+                                      holdout, tool economy, delivery, noise,
+                                      routing (aggregation only, no LLM)
+  analytics [options]                 Effectiveness analytics: ledgers
+                                      (memory/tools/rules), weekly activity,
+                                      agents, steward view, councils, outliers,
+                                      experiment readiness, memory lifecycle &
+                                      coordination, campaigns & per-memory ROI,
+                                      machine acceptance (wave metrics)
+  dashboard [options]                 Console dashboard: health, ledgers,
+                                      trends (unicode tables and sparklines; no
+                                      files written)
+  task-eval [options]                 Record a task verdict into the signal log
+                                      (event task_evaluated)
+  memory-stage [options]              Record a memory lifecycle stage into the
+                                      signal log (event memory_stage)
+  coord [options]                     Record a coordination event into the
+                                      signal log (event coord_event)
+  run [options] <prompt>              Run opencode with the model from the Wolf
+                                      routing object; log weighted token cost
+  bootstrap [options]                 Scan the project and draft starting
+                                      memory: proposed rules, document-refs,
+                                      work thread
+  upgrade [options]                   Upgrade the global wolf installation to
+                                      the latest npm version (runs npm install
+                                      -g mister-wolf@latest); --check only
+                                      compares versions, no install
+  doctor                              Check all registered projects: binary vs
+                                      schema version, platform configs, prune
+                                      dead entries
+  help [command]                      display help for command

@@ -1,0 +1,169 @@
+{
+  "view": "delivery",
+  "delivery": {
+    "topDelivered": [
+      {
+        "name": "mem_20260823_e2e_5459cc",
+        "deliveries": 12901,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260823__c93eac",
+        "deliveries": 12830,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260824__b29ad5",
+        "deliveries": 11387,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260823_git_flow_dev_6121f5",
+        "deliveries": 1558,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260826_nikogda_ne_vyzyvat_list_mcp_resources_re_6adb3f",
+        "deliveries": 132,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260825_dlya_shell_komand_ispolzuy_rtk_run_comma_43b771",
+        "deliveries": 108,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260825_codegraph_mcp_a3a1da",
+        "deliveries": 88,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260824__a8a883",
+        "deliveries": 87,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260824_git_flow_dev_7dc05e",
+        "deliveries": 43,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260904_edit_tul_vstavlyaet_nul_bayty_v_dlinnye_d05c4c",
+        "deliveries": 23,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260928_bash_tul_ne_sokhranyaet_cwd_mezhdu_vyzov_cbb2f4",
+        "deliveries": 6,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260904_e2e_testy_wolf_vitest_trebuet_tests_e2e_d31df1",
+        "deliveries": 2,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260929_edit_tul_tikho_sedaet_blizkie_stroki_poc_5e5dc8",
+        "deliveries": 2,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260824__d072b4",
+        "deliveries": 1,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260824_open_question_d92ca1",
+        "deliveries": 1,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260825__16322d",
+        "deliveries": 1,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260825_wolf_b11640",
+        "deliveries": 1,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260826_docs_only_zadachi_prettier_check_pokryva_4ff38d",
+        "deliveries": 1,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260827_worktree_vnutri_proekta_worktrees_imya_z_18f1d1",
+        "deliveries": 1,
+        "applied": 0,
+        "appliedPct": 0
+      },
+      {
+        "name": "mem_20260829_llm_routing_v2_wolf_router_auto_zai_codi_51652f",
+        "deliveries": 1,
+        "applied": 0,
+        "appliedPct": 0
+      }
+    ],
+    "underApplied": [
+      "mem_20260823_e2e_5459cc",
+      "mem_20260823__c93eac",
+      "mem_20260824__b29ad5",
+      "mem_20260823_git_flow_dev_6121f5",
+      "mem_20260826_nikogda_ne_vyzyvat_list_mcp_resources_re_6adb3f",
+      "mem_20260825_dlya_shell_komand_ispolzuy_rtk_run_comma_43b771",
+      "mem_20260825_codegraph_mcp_a3a1da",
+      "mem_20260824__a8a883",
+      "mem_20260824_git_flow_dev_7dc05e",
+      "mem_20260904_edit_tul_vstavlyaet_nul_bayty_v_dlinnye_d05c4c"
+    ],
+    "missRateByAgent": [
+      {
+        "agent": "apprentice",
+        "fallbacks": 0,
+        "total": 319,
+        "missRatePct": 0
+      },
+      {
+        "agent": "net-takogo-agenta-xyz",
+        "fallbacks": 0,
+        "total": 159,
+        "missRatePct": 0
+      },
+      {
+        "agent": "steward",
+        "fallbacks": 0,
+        "total": 53,
+        "missRatePct": 0
+      }
+    ],
+    "avgInjectionBytes": {
+      "deliverySignals": 193.28619340413638,
+      "routerLog": null
+    },
+    "routerMs": {
+      "p50": null,
+      "p90": null,
+      "count": 0
+    },
+    "skills": []
+  }
+}
