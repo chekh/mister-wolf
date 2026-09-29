@@ -27,9 +27,9 @@ describe('wolf scan/list: канон doc-id + резолв --type (спека 2.
     const first = runCli(['scan'], project, env(xdg));
     expect(first.status).toBe(0);
 
-    // файл носителя: .wolf/memory/shared/documents/mem_*_doc_architecture_<hash8>.md
-    const docsDir = join(project, '.wolf', 'memory', 'shared', 'documents');
-    const docFiles = readdirSync(docsDir).filter((f) => f.endsWith('.md'));
+    // 2.13: файл носителя — note facet legacy в shared/notes/mem_*_doc_architecture_<hash8>.md
+    const notesDir = join(project, '.wolf', 'memory', 'shared', 'notes');
+    const docFiles = readdirSync(notesDir).filter((f) => f.endsWith('.md') && f.includes('_doc_'));
     expect(docFiles).toHaveLength(1);
     expect(docFiles[0]).toMatch(/^mem_\d{8}_doc_architecture_[0-9a-f]{8}\.md$/);
     expect(first.stdout).toMatch(DOC_ID_RE);
@@ -38,24 +38,23 @@ describe('wolf scan/list: канон doc-id + резолв --type (спека 2.
     expect(second.status).toBe(0);
     // стабильность: тот же id в stdout и тот же файл на диске
     expect(second.stdout).toMatch(docFiles[0].replace(/\.md$/, ''));
-    expect(readdirSync(docsDir).filter((f) => f.endsWith('.md'))).toEqual(docFiles);
+    expect(readdirSync(notesDir).filter((f) => f.endsWith('.md') && f.includes('_doc_'))).toEqual(docFiles);
   });
 
-  it('AC2: list --type document → warning + document-ref, exit 0; --type documnt → exit 1 с ближайшим', () => {
+  it('AC2: list --type document → exit 0 + warning + [note] [legacy]; --type documnt → exit 1 с allowed-списком', () => {
     const { project, xdg } = newProject();
     expect(runCli(['scan'], project, env(xdg)).status).toBe(0);
 
-    // deprecated-алиас: фильтр по каноническому типу + warning в stderr
+    // deprecated-алиас: фильтр по каноническому типу note + warning в stderr
     const aliasList = runCli(['list', '--type', 'document'], project, env(xdg));
     expect(aliasList.status).toBe(0);
-    expect(aliasList.stdout).toContain('[document-ref]');
-    expect(aliasList.stderr).toContain("Warning: type 'document' is deprecated, use 'document-ref'");
+    expect(aliasList.stdout).toContain('[note] [legacy]');
+    expect(aliasList.stderr).toContain("Warning: type 'document' is deprecated, use 'note'");
 
-    // опечатка: однострочная ошибка с ближайшим типом, exit 1
+    // опечатка: однострочная ошибка с allowed-списком, exit 1
     const typoList = runCli(['list', '--type', 'documnt'], project, env(xdg));
     expect(typoList.status).toBe(1);
     expect(typoList.stderr).toContain("unknown type 'documnt'");
-    expect(typoList.stderr).toContain("closest: 'document-ref'");
     expect(typoList.stderr).toContain('allowed:');
   });
 });

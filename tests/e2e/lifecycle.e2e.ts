@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { rmSync } from 'fs';
 import { ensureBuilt, runCli, tmpProject } from './helpers.js';
 
-describe('task lifecycle: init -> thread -> task-brief -> report -> relation -> transition -> auto session-summary', () => {
+describe('task lifecycle: init -> thread -> brief -> report -> relation -> transition -> auto session-summary', () => {
   let cwd: string;
   beforeAll(() => {
     ensureBuilt();
@@ -19,15 +19,14 @@ describe('task lifecycle: init -> thread -> task-brief -> report -> relation -> 
     expect(thread.stdout).toContain('Created work thread:');
     const threadId = thread.stdout.match(/Created work thread: (\S+)/)?.[1]!;
 
-    const brief = runCli(
-      ['add', '--type', 'task-brief', '--title', 'Brief', '--set', 'executor=lead,priority=high'],
-      cwd
-    );
+    // 2.13: task-brief (project-тип) вне config.yaml — краткая сводка = note howto
+    const brief = runCli(['add', '--type', 'note', '--facet', 'howto', '--title', 'Brief'], cwd);
     expect(brief.status).toBe(0);
     expect(brief.stdout).toContain('Created memory object:');
     const briefId = brief.stdout.match(/Created memory object: (\S+)/)?.[1]!;
 
-    const report = runCli(['add', '--type', 'report', '--title', 'Report'], cwd);
+    // 2.13: report → note facet history
+    const report = runCli(['add', '--type', 'note', '--facet', 'history', '--title', 'Report'], cwd);
     expect(report.status).toBe(0);
 
     // relation: brief answers thread
@@ -39,8 +38,11 @@ describe('task lifecycle: init -> thread -> task-brief -> report -> relation -> 
     expect(tr.status).toBe(0);
     expect(tr.stdout).toContain('Transitioned');
 
+    // 2.13 P210(е): transition → completed авто-создаёт session-summary
+    // (note facet history, тег session-summary); в list — строка [history]
     const list = runCli(['list'], cwd);
     expect(list.status).toBe(0);
-    expect(list.stdout).toContain('session-summary');
+    expect(list.stdout).toContain('Session wrap-up');
+    expect(list.stdout).toContain('[history]');
   });
 });

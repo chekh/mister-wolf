@@ -33,9 +33,10 @@ describe('wolf bootstrap: starting project memory in one command', () => {
     expect(ruleText).toContain('proposed');
     expect(ruleText).toContain('scope: project');
 
-    // document-ref в shared/documents
-    const docsDir = join(cwd, '.wolf', 'memory', 'shared', 'documents');
-    expect(readdirSync(docsDir).length).toBeGreaterThanOrEqual(1);
+    // 2.13: document-ref = note facet legacy в shared/notes (id mem_*_doc_*)
+    const notesDir = join(cwd, '.wolf', 'memory', 'shared', 'notes');
+    const docFiles = readdirSync(notesDir).filter((f) => /^mem_\d{8}_doc_.*\.md$/.test(f));
+    expect(docFiles.length).toBeGreaterThanOrEqual(1);
 
     // work-thread в threads/<id>/WORK-THREAD.md
     const threadsDir = join(cwd, '.wolf', 'memory', 'threads');

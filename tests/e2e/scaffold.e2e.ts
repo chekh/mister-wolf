@@ -33,7 +33,9 @@ describe('wolf scaffold (B1)', () => {
 
     const got = runCli(['get', id!], cwd);
     expect(got.status).toBe(0);
-    expect(got.stdout).toContain('"type": "playbook"');
+    // 2.13: плейбуки base set — notes (type: note, facet: howto)
+    expect(got.stdout).toContain('"type": "note"');
+    expect(got.stdout).toContain('"facet": "howto"');
     expect(got.stdout).toContain('"owner_skill": "demo-agent"');
     expect(got.stdout).toContain('"version": "v1"');
 

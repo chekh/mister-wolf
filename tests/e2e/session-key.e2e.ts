@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
-import { rmSync, writeFileSync, readFileSync, existsSync } from 'fs';
+import { rmSync, readFileSync, existsSync } from 'fs';
 import { spawnSync } from 'child_process';
 import { join } from 'path';
-import { ensureBuilt, runCli, tmpProject, repoRoot, cliPath } from './helpers.js';
+import { ensureBuilt, runCli, tmpProject, cliPath, writeLegacyInjection } from './helpers.js';
 
 // Волна 0 (0.2): session-ключ CLI-канала — per-invocation продюсер WOLF_SESSION
 // (runCli → ensureCliSessionId). Свойство-доказательство механизма (DoD ≥100
@@ -57,26 +57,16 @@ describe('session-key CLI-канала (волна 0 0.2)', () => {
     const dir = tmpProject();
     dirs.push(dir);
     runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
-    // call-injection сеётся скрипт-фикстурой напрямую в dist-store
-    // (прецедент: call.e2e.ts — generic `add --set` не выражает string[] trigger_keywords).
-    const script = `
-import { MarkdownMemoryStore } from '${join(repoRoot, 'dist/adapters/fs/markdown-memory-store.js')}';
-const store = new MarkdownMemoryStore(process.cwd());
-const now = new Date().toISOString();
-await store.save({
-  id: 'mem_inj_session_e2e', type: 'call-injection', title: 'Session key fixture',
-  status: 'active', review_state: 'accepted', confidence: 'high', importance: 0.8,
-  created_at: now, updated_at: now, created_by: 'user:e2e', schema_version: 1,
-  source: { kind: 'manual' }, related: { files: [], docs: [], decisions: [] }, tags: [],
-  superseded_by: null, body: 'Fixture body for session-key e2e.',
-  trigger_keywords: ['get', 'session'], related_objects: [],
-});
-console.log('seeded');
-`;
-    writeFileSync(join(dir, 'seed-injection.mjs'), script);
-    const seedRun = spawnSync('node', ['seed-injection.mjs'], { cwd: dir, encoding: 'utf-8' });
-    expect(seedRun.stdout).toContain('seeded');
-    rmSync(join(dir, 'seed-injection.mjs'), { force: true });
+    // call-injection сеётся легаси-md файлом в shared/calls/ (2.13: тип удалён
+    // из store.save, старый frontmatter читается как note+alias_origin —
+    // прецедент: call.e2e.ts / writeLegacyInjection в helpers.ts)
+    writeLegacyInjection(dir, {
+      id: 'mem_inj_session_e2e',
+      title: 'Session key fixture',
+      body: 'Fixture body for session-key e2e.',
+      trigger_keywords: ['get', 'session'],
+      created_by: 'user:e2e',
+    });
     return dir;
   }
 

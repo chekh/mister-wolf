@@ -15,7 +15,8 @@ describe('reliability', () => {
     const init = runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], cwd);
     expect(init.status).toBe(0);
 
-    const a = runCli(['add', '--type', 'observation', '--title', 'ObsA'], cwd);
+    // 2.13: observation → note (+ обязательный facet); суть теста — битые файлы, тип не важен
+    const a = runCli(['add', '--type', 'note', '--facet', 'pitfall', '--title', 'ObsA'], cwd);
     expect(a.status).toBe(0);
     const idA = a.stdout.match(/Created memory object: (\S+)/)?.[1]!;
 
@@ -51,7 +52,7 @@ describe('reliability', () => {
     const init = runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], cwd);
     expect(init.status).toBe(0);
 
-    runCli(['add', '--type', 'observation', '--title', 'ObsRel'], cwd);
+    runCli(['add', '--type', 'note', '--facet', 'context', '--title', 'ObsRel'], cwd);
 
     // append garbage to relations.jsonl
     const relPath = join(cwd, '.wolf/memory/relations.jsonl');

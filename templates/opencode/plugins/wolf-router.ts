@@ -4,7 +4,8 @@
  * Слой доставки №1 playbook-контекста (канон §7.1): детерминированная
  * доставка вместо вероятностного wolf search агентом. Маркер
  * `agent-id: <id>` В ТЕЛЕ рамки агента (frontmatter в system-промпт не
- * попадает — известная грабля) → wolf search --type playbook → get +
+ * попадает — известная грабля) → wolf search `<agentId> playbook` (после
+ * таксономии 2.13 канон — note+facet howto, type-фильтр не применим) → get +
  * гвард owner_skill === agentId | `skill:${agentId}` (legacy) → первый
  * прошедший гвард кандидат (ранний стоп, A2-б) → инжект в system-промпт
  * на каждое сообщение.
@@ -90,8 +91,12 @@ async function resolvePlaybook(agentId: string): Promise<{ id: string; body: str
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
   let found: { id: string; body: string } | null = null;
   try {
-    const { stdout } = await runWolf(['search', agentId, '--type', 'playbook', '--hide-superseded']);
-    const ids = [...stdout.matchAll(/^([\w-]+) \[playbook\]/gm)].map((m) => m[1]);
+    // 2.13: плейбуки живут как note+facet howto (type 'playbook' — legacy),
+    // поэтому без --type; слово «playbook» (title/tags канона) сужает выборку.
+    // Формат строки search: `<id> [<type>] [<facet>] <title>`; тип в строке не
+    // фильтруем — каноничность решает гвард owner_skill ниже.
+    const { stdout } = await runWolf(['search', agentId, 'playbook', '--hide-superseded']);
+    const ids = [...stdout.matchAll(/^([\w-]+) \[\w+\]/gm)].map((m) => m[1]);
     // Ранний стоп (спека A2-б): релевантность поиска уже отсортировала,
     // --hide-superseded отсекает старые версии — первый кандидат, прошедший
     // гвард владельца, и есть результат (один get при miss вместо K подряд).

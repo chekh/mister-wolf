@@ -40,11 +40,15 @@ describe('recap golden scenarios', () => {
       dir
     );
     expect(decision.status).toBe(0);
+    // 2.13: open-question → note facet context; вопрос = note+context в статусе open
     const question = runCli(
-      ['add', '--type', 'open-question', '--title', 'Auth strategy', '--body', 'JWT or sessions?'],
+      ['add', '--type', 'note', '--facet', 'context', '--title', 'Auth strategy', '--body', 'JWT or sessions?'],
       dir
     );
     expect(question.status).toBe(0);
+    const questionId = question.stdout.match(/Created memory object: (\S+)/)?.[1]!;
+    const tr = runCli(['transition', questionId, 'open'], dir);
+    expect(tr.status).toBe(0);
 
     const recap = runCli(['recap'], dir);
     expect(recap.status).toBe(0);

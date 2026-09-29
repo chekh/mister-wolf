@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { readFileSync, rmSync, writeFileSync } from 'fs';
-import { spawnSync } from 'child_process';
 import { join } from 'path';
-import { ensureBuilt, runCli, tmpProject, repoRoot } from './helpers.js';
+import { ensureBuilt, runCli, tmpProject, writeLegacyInjection } from './helpers.js';
 
 describe('clean session repairs memory and call injects the fix', () => {
   const dirs: string[] = [];
@@ -60,46 +59,41 @@ describe('clean session repairs memory and call injects the fix', () => {
   }
 
   it('clean session repairs memory and call injects the fix', () => {
-    const { dir, oldId, newId, threadId } = seedWithConflict();
+    const { dir, oldId, newId } = seedWithConflict();
 
-    // Чистая сессия чинит память обычными CLI-командами:
+    // Чистая сессия чинит память обычными CLI-командами. Прежний `article add`
+    // (window-compat) умер в P222 — эквивалент: note+facet context; summary
+    // свёрнут в body. Привязка к треду через add в 2.13 не выражается
+    // (`--set thread=...` → "Unknown field thread for type note").
     runCli(
       [
-        'article',
         'add',
+        '--type',
+        'note',
+        '--facet',
+        'context',
         '--title',
         'Diagnosis: top-level get is deprecated',
-        '--thread',
-        threadId,
-        '--summary',
-        'Top-level get is deprecated',
         '--body',
-        'Entity-specific get commands replace top-level get.',
+        'Top-level get is deprecated. Entity-specific get commands replace top-level get.',
       ],
       dir
     );
     runCli(['supersede', oldId, newId], dir);
     runCli(['relation', 'add', newId, 'supersedes', oldId], dir);
 
-    // Call-injection сеётся скрипт-фикстурой: generic `add --set` не выражает
-    // string[] trigger_keywords (V15b), поэтому пишем через dist-store напрямую.
-    const script = `
-import { MarkdownMemoryStore } from '${join(repoRoot, 'dist/adapters/fs/markdown-memory-store.js')}';
-const store = new MarkdownMemoryStore(process.cwd());
-const now = new Date().toISOString();
-await store.save({
-  id: 'mem_inj_get_e2e', type: 'call-injection', title: 'Do not use top-level get',
-  status: 'active', review_state: 'accepted', confidence: 'high', importance: 0.8,
-  created_at: now, updated_at: now, created_by: 'user:clean-session', schema_version: 1,
-  source: { kind: 'manual' }, related: { files: [], docs: [], decisions: [] }, tags: [],
-  superseded_by: null, body: 'Do not use top-level get. Use entity-specific commands.',
-  trigger_keywords: ['get', 'deprecated'], related_objects: ['${newId}'],
-});
-console.log('seeded');
-`;
-    writeFileSync(join(dir, 'seed-injection.mjs'), script);
-    const seedRun = spawnSync('node', ['seed-injection.mjs'], { cwd: dir, encoding: 'utf-8' });
-    expect(seedRun.stdout).toContain('seeded');
+    // Call-injection сеётся легаси-md файлом в shared/calls/ (2.13: тип удалён
+    // из store.save, но старый frontmatter читается как note+alias_origin и
+    // доставляется call-пулом; generic `add --set` не выражает string[]
+    // trigger_keywords и не даёт alias_origin).
+    writeLegacyInjection(dir, {
+      id: 'mem_inj_get_e2e',
+      title: 'Do not use top-level get',
+      body: 'Do not use top-level get. Use entity-specific commands.',
+      trigger_keywords: ['get', 'deprecated'],
+      created_by: 'user:clean-session',
+      related_objects: [newId],
+    });
 
     const call = runCli(['call', '--for', 'get'], dir);
     expect(call.status).toBe(0);
@@ -107,8 +101,6 @@ console.log('seeded');
     expect(call.stdout).toContain('source: mem_inj_get_e2e');
     // Старое правило superseded — не звучит как активная инструкция:
     expect(call.stdout).not.toContain('Use top-level get');
-
-    rmSync(join(dir, 'seed-injection.mjs'), { force: true });
   });
 });
 
@@ -131,26 +123,15 @@ describe('P108: session delivery dedup (same WOLF_SESSION)', () => {
     const dir = tmpProject();
     dirs.push(dir);
     runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
-    // call-injection сеётся скрипт-фикстурой: generic `add --set` не выражает
-    // string[] trigger_keywords (V15b) — паттерн первого кейса этого файла.
-    const script = `
-import { MarkdownMemoryStore } from '${join(repoRoot, 'dist/adapters/fs/markdown-memory-store.js')}';
-const store = new MarkdownMemoryStore(process.cwd());
-const now = new Date().toISOString();
-await store.save({
-  id: '${INJ_ID}', type: 'call-injection', title: 'Dedup probe: do not use top-level get',
-  status: 'active', review_state: 'accepted', confidence: 'high', importance: 0.8,
-  created_at: now, updated_at: now, created_by: 'user:e2e-dedup', schema_version: 1,
-  source: { kind: 'manual' }, related: { files: [], docs: [], decisions: [] }, tags: [],
-  superseded_by: null, body: 'Do not use top-level get. Use entity-specific commands.',
-  trigger_keywords: ['get'],
-});
-console.log('seeded');
-`;
-    writeFileSync(join(dir, 'seed-dedup.mjs'), script);
-    const seedRun = spawnSync('node', ['seed-dedup.mjs'], { cwd: dir, encoding: 'utf-8' });
-    expect(seedRun.stdout).toContain('seeded');
-    rmSync(join(dir, 'seed-dedup.mjs'), { force: true });
+    // call-injection сеётся легаси-md файлом (2.13: store.save с удалённым
+    // типом падает; паттерн writeLegacyInjection — см. helpers.ts)
+    writeLegacyInjection(dir, {
+      id: INJ_ID,
+      title: 'Dedup probe: do not use top-level get',
+      body: 'Do not use top-level get. Use entity-specific commands.',
+      trigger_keywords: ['get'],
+      created_by: 'user:e2e-dedup',
+    });
     return dir;
   }
 
@@ -237,24 +218,14 @@ describe('P109: context budget warning (fault-injection)', () => {
     const dir = tmpProject();
     dirs.push(dir);
     runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
-    const script = `
-import { MarkdownMemoryStore } from '${join(repoRoot, 'dist/adapters/fs/markdown-memory-store.js')}';
-const store = new MarkdownMemoryStore(process.cwd());
-const now = new Date().toISOString();
-await store.save({
-  id: '${INJ_ID}', type: 'call-injection', title: 'Budget probe: do not use top-level get',
-  status: 'active', review_state: 'accepted', confidence: 'high', importance: 0.8,
-  created_at: now, updated_at: now, created_by: 'user:e2e-budget', schema_version: 1,
-  source: { kind: 'manual' }, related: { files: [], docs: [], decisions: [] }, tags: [],
-  superseded_by: null, body: 'Do not use top-level get. Use entity-specific commands.',
-  trigger_keywords: ['get'],
-});
-console.log('seeded');
-`;
-    writeFileSync(join(dir, 'seed-budget.mjs'), script);
-    const seedRun = spawnSync('node', ['seed-budget.mjs'], { cwd: dir, encoding: 'utf-8' });
-    expect(seedRun.stdout).toContain('seeded');
-    rmSync(join(dir, 'seed-budget.mjs'), { force: true });
+    // call-injection сеётся легаси-md файлом (2.13 — паттерн writeLegacyInjection)
+    writeLegacyInjection(dir, {
+      id: INJ_ID,
+      title: 'Budget probe: do not use top-level get',
+      body: 'Do not use top-level get. Use entity-specific commands.',
+      trigger_keywords: ['get'],
+      created_by: 'user:e2e-budget',
+    });
     return dir;
   }
 
