@@ -15,10 +15,11 @@
  * schema_version = v1, поля остаются undefined; писатели переходят на v2 отдельно.
  * Спека: docs/superpowers/specs/2026-09-04-p1-telemetry-identity-design.md.
  */
-import { appendFileSync, mkdirSync, readFileSync } from 'fs';
+import { appendFileSync, closeSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { z } from 'zod';
 import { metricsDir } from './project-paths.js';
+import { LOCK_TIMING } from './memory-lock.js';
 import { classifyError } from '../../domain/error-class.js';
 import { loadWolfConfigSync } from './config-file.js';
 
@@ -209,8 +210,110 @@ export function readSignals(baseDir: string): SignalEvent[] {
 }
 
 /** Зафиксированные паттерны (события пересечения порога). */
+const patternsMemo = new Map<string, PatternRecord[]>();
+
+/**
+ * P104 (A1): мемо один раз на процесс — readPatterns не перечитывает patterns.jsonl
+ * на каждой keyed-записи. appendSignal обновляет мемо при фиксации, читатели этого
+ * же процесса видят свежие данные.
+ */
 export function readPatterns(baseDir: string): PatternRecord[] {
-  return readJsonl<PatternRecord>(patternsLogPath(baseDir)).items;
+  let memo = patternsMemo.get(baseDir);
+  if (memo === undefined) {
+    memo = readJsonl<PatternRecord>(patternsLogPath(baseDir)).items;
+    patternsMemo.set(baseDir, memo);
+  }
+  return memo;
+}
+
+/** P104 (A1): сайдкар счётчиков Ф21 — derived-файл, отсутствующий/битый = rebuild-scan. */
+export function signalCountsPath(baseDir: string): string {
+  return join(metricsDir(baseDir), 'signal-counts.json');
+}
+
+/**
+ * Чтение сайдкар-счётчиков; отсутствующий/битый JSON → один полный rebuild-scan лога
+ * (единственный O(n)-проход, только на холодном старте). Счёт = валидные keyed-события
+ * лога — семантика прежнего O(n)-пересчёта сохранена.
+ */
+function readSignalCounts(baseDir: string): Map<string, number> {
+  try {
+    const raw: unknown = JSON.parse(readFileSync(signalCountsPath(baseDir), 'utf-8'));
+    if (typeof raw === 'object' && raw !== null && !Array.isArray(raw)) {
+      const counts = new Map<string, number>();
+      let valid = true;
+      for (const [k, v] of Object.entries(raw)) {
+        if (typeof v !== 'number' || !Number.isInteger(v) || v < 0) {
+          valid = false;
+          break;
+        }
+        counts.set(k, v);
+      }
+      if (valid) return counts;
+    }
+  } catch {
+    // отсутствует/битый → rebuild ниже
+  }
+  const counts = new Map<string, number>();
+  for (const s of readSignals(baseDir)) {
+    const k = signalKey(s);
+    if (k !== null) counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/** Атомарная перезапись сайдкара: tmp + rename (читатель не видит половину файла). */
+function writeSignalCountsAtomic(baseDir: string, counts: Map<string, number>): void {
+  const tmp = join(metricsDir(baseDir), '.signal-counts.json.tmp');
+  writeFileSync(tmp, JSON.stringify(Object.fromEntries(counts)));
+  renameSync(tmp, signalCountsPath(baseDir));
+}
+
+function tryAcquireLock(path: string): boolean {
+  try {
+    const fd = openSync(path, 'wx');
+    writeFileSync(fd, JSON.stringify({ pid: process.pid, ts: Date.now() }));
+    closeSync(fd);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function stealStaleLock(path: string, staleMs: number): boolean {
+  try {
+    const { ts } = JSON.parse(readFileSync(path, 'utf-8')) as { ts?: number };
+    const lockTs = Number(ts) || 0;
+    if (isNaN(lockTs) || lockTs === 0 || Date.now() - lockTs <= staleMs) return false;
+    unlinkSync(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * ponytail: sync-лок без очереди — appendSignal синхронный, async withMemoryLock
+ * (memory-lock.ts) сломал бы контракт writer'ов. Одна попытка acquire, одноразовый
+ * steal-stale + повтор, вторая неудача — fail-open: телеметрия не должна блокировать.
+ * Потолок: гонка параллельных процессов разрешается fail-open'ом (недосчёт ловит
+ * следующий rebuild-scan). Апгрейд: очередь ожидания/Atomics.wait в memory-lock.ts,
+ * если появятся реальные contention-сценарии.
+ */
+function withSyncMemoryLock<T>(dir: string, fn: () => T): T {
+  const path = join(dir, '.lock');
+  let acquired = tryAcquireLock(path);
+  if (!acquired && stealStaleLock(path, LOCK_TIMING.STALE_MS)) acquired = tryAcquireLock(path);
+  if (!acquired) return fn();
+  try {
+    return fn();
+  } finally {
+    try {
+      unlinkSync(path);
+    } catch {
+      /* already gone */
+    }
+  }
 }
 
 /**
@@ -219,28 +322,41 @@ export function readPatterns(baseDir: string): PatternRecord[] {
  * НЕ календарный (спека §7: event-driven пороги вместо расписания). Порог —
  * настраиваемый параметр (§2.2): при снижении порога уже накопленный кластер
  * фиксируется на следующей же записи, не ждёт нового пересечения.
+ *
+ * P104 (A1): keyed-счётчики — инкремент сайдкара signal-counts.json вместо O(n)-пересчёта
+ * лога на каждой записи; вся секция под sync-локом metrics-каталога. Счётчик монотонный
+ * по построению (считаем события, а не окна) — кластер, пересёкший порог в прошлом,
+ * не фиксируется повторно.
  */
 export function appendSignal(
   baseDir: string,
   ev: SignalEvent
 ): { key: string | null; count: number; patternFixed: boolean } {
   mkdirSync(metricsDir(baseDir), { recursive: true });
-  appendFileSync(metricsLogPath(baseDir), JSON.stringify(ev) + '\n');
   const key = signalKey(ev);
-  if (key === null) return { key: null, count: 0, patternFixed: false };
-  // ponytail: O(n)-пересчёт по файлу на запись — норм для local-first объёмов;
-  // инкрементальные счётчики если лог вырастет до десятков тысяч строк.
-  const count = readSignals(baseDir).filter((s) => signalKey(s) === key).length;
-  const threshold = patternThreshold(baseDir);
-  const alreadyFixed = readPatterns(baseDir).some((p) => p.key === key);
-  const patternFixed = count >= threshold && !alreadyFixed;
-  if (patternFixed) {
-    appendFileSync(
-      patternsLogPath(baseDir),
-      JSON.stringify({ ts: ev.ts, event: 'pattern', key, count, threshold } satisfies PatternRecord) + '\n'
-    );
+  if (key === null) {
+    appendFileSync(metricsLogPath(baseDir), JSON.stringify(ev) + '\n');
+    return { key: null, count: 0, patternFixed: false };
   }
-  return { key, count, patternFixed };
+  // ponytail: crash между append строки и перезаписью сайдкара даёт недосчёт до
+  // следующего rebuild-scan (сайдкар остаётся валидным JSON) — приемлемо для
+  // телеметрии local-first; fsync-журнал если счёт станет money-path.
+  return withSyncMemoryLock(metricsDir(baseDir), () => {
+    const counts = readSignalCounts(baseDir);
+    appendFileSync(metricsLogPath(baseDir), JSON.stringify(ev) + '\n');
+    const count = (counts.get(key) ?? 0) + 1;
+    counts.set(key, count);
+    const threshold = patternThreshold(baseDir);
+    const alreadyFixed = readPatterns(baseDir).some((p) => p.key === key);
+    const patternFixed = count >= threshold && !alreadyFixed;
+    if (patternFixed) {
+      const record: PatternRecord = { ts: ev.ts, event: 'pattern', key, count, threshold };
+      appendFileSync(patternsLogPath(baseDir), JSON.stringify(record) + '\n');
+      patternsMemo.get(baseDir)?.push(record);
+    }
+    writeSignalCountsAtomic(baseDir, counts);
+    return { key, count, patternFixed };
+  });
 }
 
 function nowIso(): string {
@@ -376,10 +492,24 @@ export function addArgsSummary(input: {
 }
 
 /**
+ * P104 (A6): проектная таксономия ошибок — только на error-путях (ок-вызовы телеметрии
+ * не платят yaml-parse). Мемоизация loadWolfConfigSync по mtime+size см. config-file.ts.
+ */
+function projectErrorRules(baseDir: string): readonly { id: string; match: string[] }[] {
+  try {
+    return loadWolfConfigSync(baseDir)?.errorClassTaxonomy ?? [];
+  } catch {
+    // битый конфиг — классифицируем дефолтной таблицей
+  }
+  return [];
+}
+
+/**
  * Writer (з): mcp_call — вызов инструмента/команды через MCP или CLI-обёртку
  * (волна 0 0.1). Контекст-событие: signalKey → null, пороги Ф21 не считаются.
  * При input.error — classifyError (проектная таксономия, как в recordToolError)
- * → detail.error_class_id + detail.error.{message ≤200, code}.
+ * → detail.error_class_id + detail.error.{message ≤200, code}. Конфиг читается
+ * только в error-ветке (P104: sync-yaml-parse убран с горячего пути).
  */
 export function appendMcpCallSignal(
   baseDir: string,
@@ -396,12 +526,6 @@ export function appendMcpCallSignal(
     error?: { message: string; code?: string };
   }
 ): void {
-  let projectRules: readonly { id: string; match: string[] }[] = [];
-  try {
-    projectRules = loadWolfConfigSync(baseDir)?.errorClassTaxonomy ?? [];
-  } catch {
-    // битый конфиг — классифицируем дефолтной таблицей
-  }
   appendSignal(baseDir, {
     ts: nowIso(),
     event: 'mcp_call',
@@ -419,7 +543,10 @@ export function appendMcpCallSignal(
               message: input.error.message.slice(0, 200),
               ...(input.error.code ? { code: input.error.code } : {}),
             },
-            error_class_id: classifyError({ message: input.error.message, code: input.error.code }, projectRules),
+            error_class_id: classifyError(
+              { message: input.error.message, code: input.error.code },
+              projectErrorRules(baseDir)
+            ),
           }
         : {}),
     },
@@ -442,13 +569,7 @@ export function recordToolError(
     actor?: string;
   }
 ): { error_class_id: string; key: string; count: number; patternFixed: boolean } {
-  let projectRules: readonly { id: string; match: string[] }[] = [];
-  try {
-    projectRules = loadWolfConfigSync(baseDir)?.errorClassTaxonomy ?? [];
-  } catch {
-    // битый конфиг — классифицируем дефолтной таблицей
-  }
-  const error_class_id = classifyError({ message: input.message, code: input.code }, projectRules);
+  const error_class_id = classifyError({ message: input.message, code: input.code }, projectErrorRules(baseDir));
   const result = appendSignal(baseDir, {
     ts: nowIso(),
     event: 'tool_error',

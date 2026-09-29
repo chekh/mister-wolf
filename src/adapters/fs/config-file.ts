@@ -138,10 +138,37 @@ export async function loadWolfConfig(baseDir: string): Promise<WolfConfig | null
   };
 }
 
+/**
+ * P104 (A6): процессная мемоизация sync-чтения по mtime+size — sync-yaml-parse уходит
+ * с горячего пути телеметрии (паттерн version.ts:5-16; конфиг живёт дольше процесса,
+ * поэтому ключ по stat, а не «одно чтение навсегда»). ENOENT кэшируется как stat
+ * «файла нет»: появление/изменение файла меняет stat → перечитывается. Ошибки парса
+ * (ConfigLoadError) НЕ кэшируются — бросаются как раньше.
+ */
+const syncConfigCache = new Map<string, { stat: string; value: WolfConfig | null }>();
+
 export function loadWolfConfigSync(baseDir: string): WolfConfig | null {
+  const path = configPath(baseDir);
+  let stat: string;
+  try {
+    const st = fsSync.statSync(path);
+    stat = `${st.mtimeMs}:${st.size}`;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') stat = 'ENOENT';
+    else throw err;
+  }
+  const hit = syncConfigCache.get(path);
+  if (hit !== undefined && hit.stat === stat) return hit.value;
+  // stat уже источник истины о существовании: ENOENT → null без повторного чтения
+  const value = stat === 'ENOENT' ? null : readWolfConfigSync(path);
+  syncConfigCache.set(path, { stat, value });
+  return value;
+}
+
+function readWolfConfigSync(path: string): WolfConfig | null {
   let raw: string;
   try {
-    raw = fsSync.readFileSync(configPath(baseDir), 'utf-8');
+    raw = fsSync.readFileSync(path, 'utf-8');
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
     throw err;
@@ -150,7 +177,7 @@ export function loadWolfConfigSync(baseDir: string): WolfConfig | null {
   try {
     parsed = yaml.load(raw);
   } catch (err) {
-    throw new ConfigLoadError(`Invalid YAML in ${configPath(baseDir)}: ${err instanceof Error ? err.message : err}`);
+    throw new ConfigLoadError(`Invalid YAML in ${path}: ${err instanceof Error ? err.message : err}`);
   }
   const cfg = ConfigFileSchema.parse(parsed);
   const mt = cfg.memory_types ?? {};
