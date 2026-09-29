@@ -5,6 +5,8 @@ export interface ListMemoryObjectsFilters {
   type?: string;
   status?: string;
   stale?: boolean;
+  /** P212 (2.13 §5.3б): постфильтр по frontmatter-facet */
+  facet?: string;
 }
 
 export async function listMemoryObjects(

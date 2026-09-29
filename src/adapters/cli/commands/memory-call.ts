@@ -10,6 +10,7 @@ import {
   recordDeliveries,
 } from '../../../adapters/fs/session-delivery-registry.js';
 import { loadDeliverySettings } from '../../../adapters/fs/config-file.js';
+import { colorsEnabled } from '../../../domain/facet-colors.js';
 import { withCliCall } from './with-cli-call.js';
 
 function parseCompact(v: string | undefined): number | true {
@@ -46,6 +47,8 @@ export function memoryCallCommand(): Command {
             thread: options.thread !== undefined ? options.thread : undefined,
             compact: options.compact,
             deliveredRegistry: registry?.delivered,
+            // P212 (2.13 §5.3в): подсветка фасета в блоках (pipe/NO_COLOR → плоско)
+            colors: colorsEnabled(process.stdout, process.env),
           }
         );
         if (result.blocks.length === 0) {

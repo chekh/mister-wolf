@@ -3,12 +3,12 @@
 // detail.injection_bytes и CLI-обёртка withCliCall (mcp_call, actor=user:cli).
 // vitest-воркеры не поддерживают process.chdir — мокаем cwd (паттерн D12/Q11).
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtempSync, rmSync } from 'fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import yaml from 'js-yaml';
 import { readSignals } from '../../../../src/adapters/fs/session-metrics-log.js';
 import { createCliContainer } from '../../../../src/bootstrap/container.js';
-import { addMemoryObject } from '../../../../src/app/use-cases/add-memory-object.js';
 
 describe('волна 0 0.1: `wolf call` — target≤200, injection_bytes, withCliCall', () => {
   let dir: string;
@@ -24,16 +24,33 @@ describe('волна 0 0.1: `wolf call` — target≤200, injection_bytes, withC
   });
 
   async function seedInjection(keyword: string): Promise<string> {
-    const deps = createCliContainer(dir);
-    const seeded = await addMemoryObject(deps, {
+    // wave13-a: call-injection поглощён note+howto — легаси-запись сеем сырым
+    // .md (alias-резолвер отдаст её пулу доставок по alias_origin, §3.4)
+    const fm = {
+      id: 'mem_20260929_call_seedprobe',
       type: 'call-injection',
       title: 'w0 probe injection',
-      body: 'probe content',
-      createdBy: 'user:unit-test',
-      reviewState: 'accepted',
-      extra: { trigger_keywords: [keyword] },
-    });
-    return seeded.object.id;
+      status: 'active',
+      review_state: 'accepted',
+      confidence: 'medium',
+      importance: 0.5,
+      created_at: '2026-09-29T00:00:00.000Z',
+      updated_at: '2026-09-29T00:00:00.000Z',
+      created_by: 'user:unit-test',
+      schema_version: 1,
+      source: { kind: 'manual' },
+      related: { files: [], docs: [], decisions: [] },
+      tags: [],
+      superseded_by: null,
+      memory_class: 'working',
+      truth_role: 'accepted_knowledge',
+      lifetime: 'long_term',
+      trigger_keywords: [keyword],
+    };
+    const path = join(dir, '.wolf', 'memory', 'shared', 'calls', `${fm.id}.md`);
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, `---\n${yaml.dump(fm)}---\n\nprobe content`);
+    return fm.id;
   }
 
   it('target длиннее 200 симв обрезается до 200; injection_bytes — число > 0', async () => {
@@ -49,6 +66,28 @@ describe('волна 0 0.1: `wolf call` — target≤200, injection_bytes, withC
       expect(typeof d.detail?.injection_bytes).toBe('number');
       expect(d.detail?.injection_bytes as number).toBeGreaterThan(0);
     }
+  });
+
+  it('P212 §5.3в: colors=true → ANSI-подсветка фасета в блоках; false/undefined → плоский текст', async () => {
+    const keyword = 'colorprobe';
+    await seedInjection(keyword);
+    const { getCallInjections } = await import('../../../../src/app/use-cases/get-call-injections.js');
+    const { MarkdownMemoryStore } = await import('../../../../src/adapters/fs/markdown-memory-store.js');
+    const store = new MarkdownMemoryStore(dir);
+    const clock = { now: () => new Date('2026-09-29T00:00:00.000Z') };
+
+    // alias call-injection → note с инжектированным facet 'howto' (§5.4)
+    const colored = await getCallInjections({ store, clock }, { topic: keyword, colors: true });
+    expect(colored.blocks.length).toBeGreaterThan(0);
+    expect(colored.blocks[0]).toContain('[\x1b[32mhowto\x1b[0m]');
+
+    const plain = await getCallInjections({ store, clock }, { topic: keyword, colors: false });
+    expect(plain.blocks[0]).toContain('[howto]');
+    expect(plain.blocks[0]).not.toContain('\x1b[');
+
+    const undef = await getCallInjections({ store, clock }, { topic: keyword });
+    expect(undef.blocks[0]).toContain('[howto]');
+    expect(undef.blocks[0]).not.toContain('\x1b[');
   });
 
   it('withCliCall: mcp_call с tool_name=call, actor=user:cli, detail.cli_command=call, outcome=ok', async () => {

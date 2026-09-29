@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { listMemoryObjects, resolveListType } from '../../../app/use-cases/list-memory-objects.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { DEPRECATED_TYPE_ALIASES } from '../../../domain/memory-types.js';
+import { colorsEnabled, highlightFacet } from '../../../domain/facet-colors.js';
 import { UserFacingError } from '../../../domain/errors.js';
 import { withCliCall } from './with-cli-call.js';
 
@@ -11,6 +12,10 @@ export function memoryListCommand(): Command {
     .option('--type <type>', 'Filter by type')
     .option('--status <status>', 'Filter by status')
     .option('--stale', 'List stale objects (not updated in 30 days)', false)
+    .option(
+      '--facet <facet>',
+      'Filter notes by character facet (howto|pitfall|context|metric|history|legacy|constraint)'
+    )
     .action(
       withCliCall('list', async (options) => {
         const { store, declarations } = createCliContainer(process.cwd());
@@ -31,9 +36,14 @@ export function memoryListCommand(): Command {
           type,
           status: options.status,
           stale: options.stale,
+          facet: options.facet,
         });
+        // P212 (2.13 §5.3в): решение о цвете — один раз на вывод (pipe/NO_COLOR → плоско)
+        const colored = colorsEnabled(process.stdout, process.env);
         for (const obj of objects) {
-          console.log(`${obj.id} [${obj.type}] [${obj.status}] ${obj.title}`);
+          const facet = typeof obj.facet === 'string' ? obj.facet : undefined;
+          const facetPart = facet ? ` [${highlightFacet(facet, colored)}]` : '';
+          console.log(`${obj.id} [${obj.type}]${facetPart} [${obj.status}] ${obj.title}`);
         }
       })
     );
