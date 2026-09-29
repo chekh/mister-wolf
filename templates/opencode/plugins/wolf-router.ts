@@ -5,8 +5,9 @@
  * доставка вместо вероятностного wolf search агентом. Маркер
  * `agent-id: <id>` В ТЕЛЕ рамки агента (frontmatter в system-промпт не
  * попадает — известная грабля) → wolf search --type playbook → get +
- * гвард owner_skill === agentId | `skill:${agentId}` (legacy) → максимальная
- * version → инжект в system-промпт на каждое сообщение.
+ * гвард owner_skill === agentId | `skill:${agentId}` (legacy) → первый
+ * прошедший гвард кандидат (ранний стоп, A2-б) → инжект в system-промпт
+ * на каждое сообщение.
  *
  * Fallback (T012, волна 1.1): канон приоритетен; при miss для ЛЮБОГО
  * agent-id инъецируется встроенный универсальный FALLBACK_PLAYBOOK —
@@ -16,8 +17,8 @@
  *
  * Ноль зависимостей (Node stdlib; ai-sdk НЕ используется). Fail-safe: всё в
  * try/catch — плагин не имеет права уронить сессию (лог: .wolf/router.log —
- * agent-id, name, variant, injected). Через этот файл при рендере проходят
- * подстановка {{tool.*}} и штамп `// wolf:rendered` (ставит рендерер).
+ * agent-id, name, variant, injected, ms, bytes). Через этот файл при рендере
+ * проходят подстановка {{tool.*}} и штамп `// wolf:rendered` (ставит рендерер).
  */
 
 import path from 'path';
@@ -52,19 +53,22 @@ const FALLBACK_PLAYBOOK = `# Универсальный playbook (fallback)
    причина; обошёл через <что сработало>\`), не молча и не ретраи в стол.`;
 // [ \t] вместо \s: \s съедает переводы строк и вытаскивает id с чужой строки.
 const AGENT_ID_RE = /^agent-id:[ \t]*([\w-]+)[ \t]*$/m;
-const CACHE_TTL_MS = 2500;
+// Спека A2: playbook — canonical-память, Стюард мутирует редко → TTL 5 минут.
+// Негативный кэш (null) живёт тем же TTL — повторный miss не спавнит CLI.
+const CACHE_TTL_MS = 300_000;
+
+// agent-id последней рамки, пропущенной через system.transform (для skill-метрики B3)
+let lastAgentId: string | null = null;
 
 const run = promisify(execFile);
 // execFile: args array, no shell. Целевой проект — глобальный `wolf`;
 // догфуд в репо Wolf — локальный dist. Ошибка обоих → исключение наверх (fail-safe).
-// Волна 0 (0.2): свежий WOLF_SESSION на каждый spawn — унаследованный из long-lived
-// opencode-процесса env дал бы одну фальшивую сессию на все доставки.
+// WOLF_SESSION (4.C): ключ ставится фабрикой ОДИН раз на процесс opencode —
+// спавны и bash-вызовы волка наследуют его из process.env (execFile без
+// env-поля наследует сам). Известный потолок: несколько чатов одного процесса
+// opencode шарят ключ — консервативная недо-дедупликация, не ошибка.
 const runWolf = (args: string[]): Promise<{ stdout: string }> => {
-  const opts = {
-    cwd: PROJECT_ROOT,
-    timeout: 5000,
-    env: { ...process.env, WOLF_SESSION: 'opc-' + randomUUID() },
-  };
+  const opts = { cwd: PROJECT_ROOT, timeout: 5000 };
   return run('wolf', args, opts).catch(() => run('node', [LOCAL_CLI, ...args], opts));
 };
 
@@ -77,7 +81,8 @@ function logRoute(line: string): void {
   }
 }
 
-// ponytail: per-agent кэш 2.5с — свежесть между сообщениями, без CLI-спавна на каждый чих.
+// ponytail: per-agent кэш на TTL 5 мин — canonical-память мутируется редко,
+// CLI-спавн не на каждое сообщение.
 const cache = new Map<string, { value: { id: string; body: string } | null; at: number }>();
 
 async function resolvePlaybook(agentId: string): Promise<{ id: string; body: string } | null> {
@@ -87,20 +92,17 @@ async function resolvePlaybook(agentId: string): Promise<{ id: string; body: str
   try {
     const { stdout } = await runWolf(['search', agentId, '--type', 'playbook', '--hide-superseded']);
     const ids = [...stdout.matchAll(/^([\w-]+) \[playbook\]/gm)].map((m) => m[1]);
-    let best: { id?: string; body?: string } | null = null;
-    let bestVersion = -1;
+    // Ранний стоп (спека A2-б): релевантность поиска уже отсортировала,
+    // --hide-superseded отсекает старые версии — первый кандидат, прошедший
+    // гвард владельца, и есть результат (один get при miss вместо K подряд).
     for (const id of ids) {
       const { stdout: json } = await runWolf(['get', id]);
       const obj = JSON.parse(json);
       const owner = obj.owner_skill ?? obj.extra?.owner_skill;
       if (owner !== agentId && owner !== `skill:${agentId}`) continue; // гвард владельца
-      const version = Number(String(obj.version ?? '').match(/\d+/)?.[0] ?? 0);
-      if (version > bestVersion) {
-        bestVersion = version;
-        best = obj;
-      }
+      if (obj.body) found = { id: String(obj.id ?? id), body: obj.body };
+      break;
     }
-    found = best?.body ? { id: String(best.id ?? ''), body: best.body } : null;
   } catch {
     /* fail-safe: без playbook — рамка работает через wolf search */
   }
@@ -108,25 +110,61 @@ async function resolvePlaybook(agentId: string): Promise<{ id: string; body: str
   return found;
 }
 
-export const WolfPlaybookPlugin = async () => ({
-  'experimental.chat.system.transform': async (_input, output) => {
-    try {
-      const joined = output.system.join('\n');
-      const m = joined.match(AGENT_ID_RE);
-      if (!m) return; // рамка без маркера — не наша забота
-      if (joined.includes(INJECT_HEADER)) return; // идемпотентность: не вставляем дважды
-      const agentId = m[1];
-      const resolved = await resolvePlaybook(agentId);
-      if (resolved) {
-        output.system.push(`\n\n${INJECT_HEADER}\n\n${resolved.body}`);
-        logRoute(`agent-id=${agentId} playbook=hit name=${resolved.id} variant=canonical injected=yes`);
-      } else {
-        // T012: miss канона → универсальный fallback; инъекция для любого agent-id
-        output.system.push(`\n\n${INJECT_HEADER}\n\n${FALLBACK_PLAYBOOK}`);
-        logRoute(`agent-id=${agentId} playbook=hit name=fallback variant=fallback injected=yes`);
+export const WolfPlaybookPlugin = async () => {
+  // 4.C: один WOLF_SESSION на процесс opencode — спавны волка и bash-вызовы
+  // наследуют ключ. Известный потолок: несколько чатов одного процесса
+  // opencode шарят ключ — консервативная недо-дедупликация.
+  if (!process.env.WOLF_SESSION) process.env.WOLF_SESSION = 'opc-' + randomUUID();
+  return {
+    'experimental.chat.system.transform': async (_input, output) => {
+      try {
+        const joined = output.system.join('\n');
+        const m = joined.match(AGENT_ID_RE);
+        if (!m) return; // рамка без маркера — не наша забота
+        if (joined.includes(INJECT_HEADER)) return; // идемпотентность: не вставляем дважды
+        const agentId = m[1];
+        lastAgentId = agentId; // агент известен хуку skill-метрики (B3)
+        const startedAt = Date.now();
+        const resolved = await resolvePlaybook(agentId);
+        const ms = Date.now() - startedAt;
+        if (resolved) {
+          output.system.push(`\n\n${INJECT_HEADER}\n\n${resolved.body}`);
+          logRoute(
+            `agent-id=${agentId} playbook=hit name=${resolved.id} variant=canonical injected=yes` +
+              ` ms=${ms} bytes=${Buffer.byteLength(resolved.body)}`
+          );
+        } else {
+          // T012: miss канона → универсальный fallback; инъекция для любого agent-id
+          output.system.push(`\n\n${INJECT_HEADER}\n\n${FALLBACK_PLAYBOOK}`);
+          logRoute(
+            `agent-id=${agentId} playbook=hit name=fallback variant=fallback injected=yes` +
+              ` ms=${ms} bytes=${Buffer.byteLength(FALLBACK_PLAYBOOK)}`
+          );
+        }
+      } catch {
+        /* fail-safe: не роняем сессию */
       }
-    } catch {
-      /* fail-safe: не роняем сессию */
-    }
-  },
-});
+    },
+    // B3: метрика вызовов скиллов. Форма входа по докам opencode: input.tool —
+    // имя тула, output.args — объект аргументов (name | skill — фолбэк).
+    // Отдельный JSONL-файл — инвариант: enum событий SignalEventSchema закрытый,
+    // в общий router.log эти события класть нельзя. WOLF_SKILL_LOG — тест-шов
+    // (читается на каждый вызов: env ставится тестами уже после импорта модуля).
+    'tool.execute.before': async (input: unknown, output: unknown) => {
+      try {
+        if ((input as { tool?: string } | null)?.tool !== 'skill') return;
+        const args = (output as { args?: { name?: string; skill?: string } } | null)?.args;
+        const skill = args?.name ?? args?.skill;
+        if (!skill) return;
+        const file =
+          process.env.WOLF_SKILL_LOG ?? path.join(PROJECT_ROOT, '.wolf', 'metrics', 'skill-invocations.jsonl');
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        const entry: { ts: string; skill: string; agent?: string } = { ts: new Date().toISOString(), skill };
+        if (lastAgentId) entry.agent = lastAgentId;
+        fs.appendFileSync(file, `${JSON.stringify(entry)}\n`);
+      } catch {
+        /* fail-safe: падение метрики не роняет сессию */
+      }
+    },
+  };
+};

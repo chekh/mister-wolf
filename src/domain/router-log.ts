@@ -3,8 +3,10 @@
  * Пишет плагин wolf-router (templates/opencode/plugins/wolf-router.ts):
  *   `<ISO> agent-id=<id> playbook=hit name=<mem-id> variant=canonical injected=yes`
  *   `<ISO> agent-id=<id> playbook=miss injected=no`
- * Старые файлы могут не иметь name/variant. Парсинг k=v парами (не позиционно),
- * чтобы пережить будущие поля; строка валидна ⇔ есть agent-id И playbook=hit|miss.
+ * P106 (волна 2.12): строка дополняется `ms=<resolve>` и `bytes=<playbook bytes>`
+ * (nullable — старые строки полей не имеют). Старые файлы могут не иметь
+ * name/variant. Парсинг k=v парами (не позиционно), чтобы пережить будущие
+ * поля; строка валидна ⇔ есть agent-id И playbook=hit|miss.
  * Битая строка не роняет аналитику — только malformedLines (прецедент readJsonl).
  */
 
@@ -14,6 +16,10 @@ export interface RouterLogRow {
   hit: boolean;
   playbookId: string | null;
   variant: string | null;
+  /** P106: длительность resolve, мс (нет в старых строках). */
+  ms: number | null;
+  /** P106: размер инъекции playbook, байты (нет в старых строках). */
+  bytes: number | null;
 }
 
 export function parseRouterLog(text: string): { rows: RouterLogRow[]; malformedLines: number } {
@@ -44,11 +50,20 @@ function parseLine(line: string): RouterLogRow | null {
   if (agentId === undefined || agentId === '' || (playbook !== 'hit' && playbook !== 'miss')) return null;
   const name = kv.get('name');
   const variant = kv.get('variant');
+  // P106: ms/bytes — целые числа; нечисловое/отсутствующее → null (толерантность)
+  const num = (key: string): number | null => {
+    const v = kv.get(key);
+    if (v === undefined || !/^\d+$/.test(v)) return null;
+    const n = Number(v);
+    return Number.isSafeInteger(n) ? n : null;
+  };
   return {
     ts,
     agentId,
     hit: playbook === 'hit',
     playbookId: name !== undefined && name !== '' ? name : null,
     variant: variant !== undefined && variant !== '' ? variant : null,
+    ms: num('ms'),
+    bytes: num('bytes'),
   };
 }
