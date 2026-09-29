@@ -1,10 +1,40 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { Command } from 'commander';
 import { ensureCurrentSchema } from '../../../src/adapters/fs/schema-guard.js';
+import { runCli } from '../../../src/adapters/cli/cli-entry.js';
 import { CURRENT_SCHEMA_VERSION } from '../../../src/adapters/fs/schema-version.js';
 import { UserFacingError } from '../../../src/domain/errors.js';
+
+/** Флаги side-effectов замоканных команд для P101-тестов runCli (ниже). */
+const cliSpy = vi.hoisted(() => ({
+  getActionRan: false,
+  initActionRan: false,
+}));
+
+vi.mock('../../../src/adapters/cli/commands/memory-get.js', () => ({
+  memoryGetCommand: () =>
+    new Command('get')
+      .description('Get a memory object by id')
+      .argument('<id>', 'Memory object id')
+      .allowUnknownOption()
+      .action(() => {
+        cliSpy.getActionRan = true;
+      }),
+}));
+
+vi.mock('../../../src/adapters/cli/commands/memory-init.js', () => ({
+  memoryInitCommand: () =>
+    new Command('init')
+      .description('Initialize Mr. Wolf memory for this project')
+      .option('--recreate', 'Recreate config')
+      .allowUnknownOption()
+      .action(() => {
+        cliSpy.initActionRan = true;
+      }),
+}));
 
 let dir: string;
 
@@ -97,5 +127,53 @@ describe('ensureCurrentSchema (спека §3 уровень 2)', () => {
     initLegacyProject();
     await ensureCurrentSchema(dir);
     expect(existsSync(join(dir, '.wolf', 'migrate.lock'))).toBe(false);
+  });
+});
+
+describe('P101: guard через runCli preAction-хук (спека §6)', () => {
+  let realArgv: string[];
+  let errors: string[];
+
+  beforeEach(() => {
+    realArgv = process.argv;
+    errors = [];
+    cliSpy.getActionRan = false;
+    cliSpy.initActionRan = false;
+    vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+    vi.spyOn(console, 'error').mockImplementation((msg: string) => {
+      errors.push(String(msg));
+    });
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    process.argv = realArgv;
+    vi.restoreAllMocks();
+  });
+
+  it('битый config.yaml: guard срабатывает ДО side-effectов команды, прежний хинт, exit 1', async () => {
+    mkdirSync(join(dir, '.wolf'), { recursive: true });
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), '{broken');
+    vi.spyOn(process, 'cwd').mockReturnValue(dir);
+
+    process.argv = ['node', 'cli.js', 'get', 'mem_x'];
+    // exit замокан (no-op): после console.error runCli доходит до throw err — ловим
+    await expect(runCli(process.argv)).rejects.toThrow(UserFacingError);
+
+    expect(cliSpy.getActionRan).toBe(false); // команда не выполнилась
+    expect(errors.some((e) => e.includes('wolf init --recreate'))).toBe(true); // прежний хинт
+    expect(process.exit).toHaveBeenCalledWith(1);
+  });
+
+  it('init --recreate на битом config.yaml обходит guard и выполняется', async () => {
+    mkdirSync(join(dir, '.wolf'), { recursive: true });
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), '{broken');
+    vi.spyOn(process, 'cwd').mockReturnValue(dir);
+
+    process.argv = ['node', 'cli.js', 'init', '--recreate'];
+    await runCli(process.argv);
+
+    expect(cliSpy.initActionRan).toBe(true);
+    expect(errors).toEqual([]); // guard не бросал
   });
 });

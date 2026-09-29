@@ -55,13 +55,22 @@ export function buildFtsQuery(query: string): string {
 }
 
 export class SQLiteSearchIndex implements SearchIndex {
-  private db: Database.Database;
+  private db: Database.Database | null = null;
 
-  constructor(dbPath: string) {
-    mkdirSync(dirname(dbPath), { recursive: true });
-    this.db = new Database(dbPath);
-    this.db.pragma('busy_timeout = 5000');
-    this.db.exec(SQLITE_SCHEMA);
+  constructor(private readonly dbPath: string) {}
+
+  /**
+   * A8 (lazy SQLite open): каталог + Database + DDL — при первом обращении;
+   * read-only команды (конструктор контейнера) не открывают SQLite и не платят DDL.
+   */
+  private getDb(): Database.Database {
+    if (!this.db) {
+      mkdirSync(dirname(this.dbPath), { recursive: true });
+      this.db = new Database(this.dbPath);
+      this.db.pragma('busy_timeout = 5000');
+      this.db.exec(SQLITE_SCHEMA);
+    }
+    return this.db;
   }
 
   async indexObject(object: MemoryObject): Promise<void> {
@@ -77,8 +86,8 @@ export class SQLiteSearchIndex implements SearchIndex {
 
   async rebuild(objects: MemoryObject[]): Promise<void> {
     runWithBusyRetry(() => {
-      const rebuild = this.db.transaction(() => {
-        this.db.exec('DELETE FROM memory_search; DELETE FROM memory_meta;');
+      const rebuild = this.getDb().transaction(() => {
+        this.getDb().exec('DELETE FROM memory_search; DELETE FROM memory_meta;');
         for (const obj of objects) {
           this.insertIntoIndex(obj);
         }
@@ -146,23 +155,42 @@ export class SQLiteSearchIndex implements SearchIndex {
       params.push(options.createdBefore);
     }
 
+    // A7: file_path-фильтр в SQL (до JS-маппинга); семантика эквивалентна
+    // matchesFilePath: source.path === filePath ИЛИ related.files содержит
+    // f === filePath / f.endsWith('/' + filePath). source/related всегда
+    // валидный JSON (insertIntoIndex пишет JSON.stringify); отсутствующий
+    // $.files → json_extract NULL → json_each(NULL) = 0 строк.
+    const filePath = options.file_path;
+    if (filePath) {
+      sql += ` AND (json_extract(m.source, '$.path') = ?
+        OR EXISTS (SELECT 1 FROM json_each(json_extract(m.related, '$.files')) fe
+                   WHERE fe.value = ? OR substr(fe.value, -(length(?) + 1)) = '/' || ?))`;
+      params.push(filePath, filePath, filePath, filePath);
+    }
+
     sql += ` ORDER BY ${bm25Expr}`;
 
-    const rows = this.db.prepare(sql).all(...params) as any[];
+    // A7: LIMIT в SQL, когда нет file_path-фильтра (с фильтром семантика
+    // «limit после фильтра» сохранена JS-slice'ом ниже).
+    if (options.limit && !filePath) {
+      sql += ` LIMIT ?`;
+      params.push(options.limit);
+    }
+
+    const rows = this.getDb()
+      .prepare(sql)
+      .all(...params) as any[];
     const results = rows.map((row) => this.rowToResult(row));
 
-    const filePath = options.file_path;
-    const filtered = filePath ? results.filter((r) => this.matchesFilePath(r.object, filePath)) : results;
-
-    if (options.limit) {
-      return filtered.slice(0, options.limit);
+    if (options.limit && filePath) {
+      return results.slice(0, options.limit);
     }
-    return filtered;
+    return results;
   }
 
   /** Все живые объекты индекса без MATCH; для проверки свежести индекса (validate). */
   async searchAll(): Promise<SearchResult[]> {
-    const rows = this.db
+    const rows = this.getDb()
       .prepare(
         `SELECT s.memory_id, s.type, s.title, s.body, s.status, s.review_state,
                 m.confidence, m.importance, m.created_at, m.updated_at, m.created_by,
@@ -199,26 +227,18 @@ export class SQLiteSearchIndex implements SearchIndex {
     };
   }
 
-  private matchesFilePath(object: MemoryObject, filePath: string): boolean {
-    if (object.source.path === filePath) {
-      return true;
-    }
-    const files = object.related?.files ?? [];
-    return files.some((f) => f === filePath || f.endsWith(`/${filePath}`));
-  }
-
   private computeScore(rawRank: number, importance: number, confidence: string): number {
     const confidenceWeight = confidence === 'high' ? 1.2 : confidence === 'medium' ? 1.0 : 0.8;
     return -rawRank * (1 + importance) * confidenceWeight;
   }
 
   private removeFromIndex(id: string): void {
-    this.db.prepare('DELETE FROM memory_search WHERE memory_id = ?').run(id);
-    this.db.prepare('DELETE FROM memory_meta WHERE memory_id = ?').run(id);
+    this.getDb().prepare('DELETE FROM memory_search WHERE memory_id = ?').run(id);
+    this.getDb().prepare('DELETE FROM memory_meta WHERE memory_id = ?').run(id);
   }
 
   private insertIntoIndex(object: MemoryObject): void {
-    this.db
+    this.getDb()
       .prepare(
         'INSERT INTO memory_search (memory_id, type, title, body, tags, status, review_state) VALUES (?, ?, ?, ?, ?, ?, ?)'
       )
@@ -231,7 +251,7 @@ export class SQLiteSearchIndex implements SearchIndex {
         object.status,
         object.review_state
       );
-    this.db
+    this.getDb()
       .prepare(
         'INSERT INTO memory_meta (memory_id, type, status, review_state, importance, created_at, confidence, created_by, updated_at, superseded_by, source, related, tags, schema_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
       )
