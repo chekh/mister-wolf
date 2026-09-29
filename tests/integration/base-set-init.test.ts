@@ -28,14 +28,14 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
   });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-  it("создаёт полный набор: 6 агентов, 13 скиллов, 3 команды, 2 плагина + 7 seeded playbook'ов (§11.1)", () => {
+  it("создаёт полный набор: 6 агентов, 13 скиллов, 3 команды, 2 плагина + 6 seeded playbook'ов (§11.1)", () => {
     const res = runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
     expect(res.status).toBe(0);
 
-    // 24 файла (6+13+3+2) + AGENTS.md в корне (onboarding v2 §4.2) созданы + 7 playbook'ов посеяны;
+    // 24 файла (6+13+3+2) + AGENTS.md в корне (onboarding v2 §4.2) созданы + 6 playbook'ов посеяны;
     // F5 (§2.3): 13 скиллов печатаются как `[skill] …` — в счётчике `- base set:` их больше нет
     const created = (res.stdout.match(/- base set: \S+ created/g) ?? []).length;
-    expect(created).toBe(19);
+    expect(created).toBe(18);
     expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(13);
     expect(res.stdout).toMatch(/- base set: AGENTS\.md created/);
 
@@ -59,12 +59,12 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
     const notes = readdirSync(join(dir, '.wolf/memory/shared/notes'))
       .filter((f) => f.endsWith('.md'))
       .filter((f) => readFileSync(join(dir, '.wolf/memory/shared/notes', f), 'utf-8').includes('owner_skill'));
-    expect(notes).toHaveLength(7);
+    expect(notes).toHaveLength(6);
     for (const f of notes) {
       expect(readFileSync(join(dir, '.wolf/memory/shared/notes', f), 'utf-8')).toContain('owner_skill');
     }
     const list = runCli(['list', '--type', 'note', '--facet', 'howto'], dir).stdout;
-    expect((list.match(/\[note\]/g) ?? []).length).toBe(7);
+    expect((list.match(/\[note\]/g) ?? []).length).toBe(6);
 
     // триггер жалобы в воркерских playbook'ах — процедурный, не декларативный
     // (дефект догфудинга фазы C: декларативное правило воркеры не исполняли)
@@ -90,7 +90,7 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
     expect(readFileSync(agentPath, 'utf-8')).toBe(before); // существующее не тронуто
 
     const list = runCli(['list', '--type', 'note', '--facet', 'howto'], dir).stdout;
-    expect((list.match(/\[note\]/g) ?? []).length).toBe(7); // снова 7, не 14
+    expect((list.match(/\[note\]/g) ?? []).length).toBe(6); // снова 6, не 12
   });
 
   it('контент отрендеренных агентов: agent-id ×6, тройка «рамка/лицо/доставка», wolf search у воркеров (§11.3, §11.8)', () => {
