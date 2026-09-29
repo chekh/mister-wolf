@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
   sparkline,
-  renderTable,
   trendSparklineLines,
   renderLedgers,
   renderTrends,
-} from '../../../src/adapters/cli/commands/dashboard.js';
+} from '../../../src/adapters/cli/commands/analytics.js';
+import { renderTable } from '../../../src/adapters/cli/commands/table-render.js';
 import type { SnapshotEntry } from '../../../src/adapters/fs/effectiveness-snapshots.js';
-import type { EffectivenessReport } from '../../../src/app/use-cases/effectiveness.js';
-import type { DashboardData } from '../../../src/app/use-cases/build-dashboard.js';
+import type { EffectivenessReport } from '../../../src/app/use-cases/build-analytics.js';
+import type { DashboardData } from '../../../src/adapters/cli/commands/analytics.js';
 
 describe('dashboard render helpers (D8: console unicode)', () => {
   it('sparkline: [] -> empty string, all zeros -> flat bars, proportional otherwise', () => {

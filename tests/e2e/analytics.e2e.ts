@@ -71,7 +71,8 @@ describe('analytics + dashboard golden scenarios (spec 2026-09-03)', () => {
     expect((runSignal?.experiment as { task_id: string }).task_id).toBe('t-1');
 
     // --- сценарий 2: снапшот + дельта (критерий 2), тот же dir
-    const snap = runCli(['effectiveness', '--snapshot'], dir);
+    // P221: effectiveness — теперь view команды analytics (старое имя — скрытый синоним)
+    const snap = runCli(['analytics', '--view', 'effectiveness', '--snapshot'], dir);
     expect(snap.status).toBe(0);
     expect(snap.stdout).toContain('snapshot appended');
 
@@ -81,7 +82,7 @@ describe('analytics + dashboard golden scenarios (spec 2026-09-03)', () => {
     );
     expect(added.status).toBe(0);
 
-    const eff = runCli(['effectiveness'], dir);
+    const eff = runCli(['analytics', '--view', 'effectiveness'], dir);
     expect(eff.status).toBe(0);
     expect(eff.stdout).toContain('delta vs');
 
@@ -196,23 +197,19 @@ describe('analytics + dashboard golden scenarios (spec 2026-09-03)', () => {
     expect(roiRow?.associatedAccepted).toBe(1);
   });
 
-  it('dashboard renders three sections, --tab selects one, no files written (acceptance 7)', () => {
+  it('dashboard view renders three sections, no files written (acceptance 7; P221: --view dashboard)', () => {
     const dir = tmpProject();
     dirs.push(dir);
     expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir).status).toBe(0);
 
-    const asJson = runCli(['dashboard', '--json'], dir);
+    const asJson = runCli(['analytics', '--view', 'dashboard', '--json'], dir);
     expect(asJson.status).toBe(0);
     const data = JSON.parse(asJson.stdout) as Record<string, unknown>;
     expect(data).toHaveProperty('effectiveness');
     expect(data).toHaveProperty('analytics');
     expect(data).toHaveProperty('snapshot');
 
-    const tab = runCli(['dashboard', '--tab', 'trends'], dir);
-    expect(tab.status).toBe(0);
-    expect(tab.stdout).toContain('trends');
-
-    const full = runCli(['dashboard'], dir);
+    const full = runCli(['analytics', '--view', 'dashboard'], dir);
     expect(full.status).toBe(0);
     expect(full.stdout).toContain('health');
     expect(full.stdout).toContain('ledgers');

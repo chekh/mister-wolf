@@ -5,7 +5,7 @@ import {
   classifySilent,
   resolveThresholds,
   DEFAULT_EFFECTIVENESS_THRESHOLDS,
-} from '../../../src/app/use-cases/effectiveness.js';
+} from '../../../src/app/use-cases/build-analytics.js';
 import type { MemoryStore } from '../../../src/ports/memory-store.port.js';
 import type { EventLog } from '../../../src/ports/event-log.port.js';
 import type { RelationLog } from '../../../src/ports/relation-log.port.js';

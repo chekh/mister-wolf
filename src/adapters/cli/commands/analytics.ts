@@ -6,21 +6,27 @@ import { readSignalLog } from '../../fs/session-metrics-log.js';
 import { loadWolfConfigSync } from '../../fs/config-file.js';
 import {
   buildAnalyticsReport,
+  buildEffectivenessReport,
   filterAnalytics,
   parseSkillInvocations,
+  resolveThresholds,
   type AnalyticsInput,
   type AnalyticsReport,
   type AnalyticsViewFilter,
+  type EffectivenessReport,
 } from '../../../app/use-cases/build-analytics.js';
+import { computeSnapshotDelta, type DeltaRow } from '../../../app/use-cases/snapshot-delta.js';
+import { appendSnapshot, readSnapshots, type SnapshotEntry } from '../../fs/effectiveness-snapshots.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { parseRouterLog } from '../../../domain/router-log.js';
 import { renderTable } from './table-render.js';
 
 /**
- * §6.2 спеки аналитики: `wolf analytics` — выборки для Стюарда с фильтрами.
+ * §6.2 спеки аналитики + §6.5 спеки CLI-diet (P221): `wolf analytics` — окно
+ * состояния «все числа»: выборки Стюарда с фильтрами + effectiveness/dashboard.
  * Фильтры class/type/origin/agent/silent/top применяются ВНУТРИ filterAnalytics —
  * CLI только парсит аргументы. `--json` — машинный вывод (дефолт для агентов),
- * иначе текстовые таблицы по секциям (общий Unicode-генератор с dashboard — DRY).
+ * иначе текстовые таблицы по секциям (общий Unicode-генератор — DRY).
  * baseDir инъектится для тестов (прецедент: memory-effectiveness.ts).
  */
 
@@ -38,8 +44,10 @@ type AnalyticsView =
   | 'campaign'
   | 'delivery'
   | 'acceptance'
+  | 'effectiveness'
+  | 'dashboard'
   | 'all';
-type SectionView = Exclude<AnalyticsView, 'all'>;
+type SectionView = Exclude<AnalyticsView, 'all' | 'effectiveness' | 'dashboard'>;
 
 const SECTION_VIEWS: SectionView[] = [
   'memory',
@@ -418,9 +426,300 @@ export function renderAllSections(report: AnalyticsReport, filter: AnalyticsView
   return [...sections, ...(cov !== null ? [cov] : []), dataQualityLine(report.dataQuality, 'n/a')].join('\n\n');
 }
 
+// ---------------------------------------------------------------------------
+// P221 §6.5: render-функции dashboard (перенесены из умершей dashboard-команды,
+// тестируются tests/unit/adapters/dashboard-render.test.ts)
+// ---------------------------------------------------------------------------
+
+/** Единый JSON-документ `analytics --view dashboard --json` (§6.1 спеки аналитики). */
+export interface DashboardData {
+  generatedAt: string;
+  effectiveness: EffectivenessReport;
+  analytics: AnalyticsReport;
+  snapshot: { prevTs: string | null; delta: DeltaRow[] };
+}
+
+const BARS = '▁▂▃▄▅▆▇█';
+
+/** Спарклайн: [] → '', все значения ≤ 0 → '▁'×n, иначе v/max → символ шкалы (max → '█'). */
+export function sparkline(values: number[]): string {
+  if (values.length === 0) return '';
+  const max = Math.max(...values);
+  if (max <= 0) return BARS[0].repeat(values.length);
+  return values.map((v) => BARS[Math.floor((v / max) * (BARS.length - 1))]).join('');
+}
+
+/** Строки трендов по снапшотам; <2 снапшотов → 'n/a' (спарклайн из 0–1 точки не информативен). */
+export function trendSparklineLines(snaps: SnapshotEntry[]): string[] {
+  if (snaps.length < 2) {
+    const na = 'n/a (need ≥2 snapshots)';
+    return [`noise.share: ${na}`, `silentShare: ${na}`, `totals.sumWeighted: ${na}`];
+  }
+  return [
+    `noise.share: ${sparkline(snaps.map((s) => s.report.noise.share ?? 0))}`,
+    `silentShare: ${sparkline(snaps.map((s) => s.report.delivery.silentShare ?? 0))}`,
+    `totals.sumWeighted: ${sparkline(snaps.map((s) => s.report.totals.sumWeighted))}`,
+  ];
+}
+
+/** Значок статуса L1-блока: OK/WARN/BAD/NO_DATA -> ✓/!/✗/· */
+export function statusMark(status: 'OK' | 'WARN' | 'BAD' | 'NO_DATA'): string {
+  if (status === 'OK') return '✓';
+  if (status === 'WARN') return '!';
+  if (status === 'BAD') return '✗';
+  return '·';
+}
+
+/** Секция health (L1): блоки effectiveness со статусами + totals. */
+export function renderHealth(d: DashboardData): string {
+  const r = d.effectiveness;
+  const holdout =
+    r.rules.prevented === null || r.rules.checked === null ? 'n/a' : `${r.rules.prevented}/${r.rules.checked}`;
+  const e = r.tools.economy;
+  const economy = e.sufficient
+    ? `medianTool=${e.medianTool} medianAll=${e.medianAll}`
+    : `n/a: ${e.reason ?? 'not enough data'}`;
+  const silent = r.delivery.silentShare === null ? 'n/a' : `${r.delivery.silentShare.toFixed(1)}%`;
+  const noise =
+    r.noise.share === null ? 'n/a' : `${r.noise.writeOnly}/${r.noise.totalObjects} = ${r.noise.share.toFixed(1)}%`;
+  const routing =
+    r.routing.length === 0
+      ? 'n/a'
+      : r.routing.map((row) => `${row.model}: tasks=${row.tasks} median=${row.medianWeighted}`).join(' | ');
+  return [
+    '== health ==',
+    `rules: ${statusMark(r.rules.prevented === null ? 'NO_DATA' : 'OK')} active=${r.rules.activeRules} prevented/checked: ${holdout}`,
+    `tools: ${statusMark(e.sufficient ? 'OK' : 'NO_DATA')} count=${r.tools.toolCount} usage=${r.tools.totalUsage} economy: ${economy}`,
+    `delivery: ${statusMark(r.silentStatus)} events=${r.delivery.deliveryEvents} triggered=${r.delivery.triggeredObjects} silentRules=${r.delivery.silentRules} (${silent})`,
+    `noise: ${statusMark(r.noiseStatus)} ${noise}`,
+    `routing: ${routing}`,
+    `totals: runs=${cell(r.totals.runs)} weighted=${cell(r.totals.sumWeighted)}`,
+  ].join('\n');
+}
+
+/** Секция ledgers (L2): таблицы memory/tools/rules/agents/councils/outliers. */
+export function renderLedgers(d: DashboardData): string {
+  const parts: string[] = ['== ledgers =='];
+
+  const memory = filterAnalytics(d.analytics, { view: 'memory', top: 20 });
+  if (memory.view === 'memory') {
+    parts.push(
+      renderTable(
+        ['id', 'type', 'lifecycle', 'age', 'deliveries', 'triggers', 'complaints', 'last_used'],
+        memory.rows.map((r) => [
+          r.id,
+          r.type,
+          r.lifecycle,
+          cell(r.age_days),
+          cell(r.deliveries),
+          cell(r.triggers),
+          cell(r.complaints),
+          cell(r.last_used),
+        ])
+      )
+    );
+  }
+
+  const tools = filterAnalytics(d.analytics, { view: 'tools', top: 20 });
+  if (tools.view === 'tools') {
+    parts.push(
+      renderTable(
+        ['name', 'origin', 'status', 'usage', 'errors', 'promotion'],
+        tools.rows.map((r) => [
+          r.name,
+          r.origin,
+          cell(r.status),
+          cell(r.usageCount),
+          cell(r.errorCount),
+          cell(r.promotion),
+        ])
+      )
+    );
+  }
+
+  const rules = filterAnalytics(d.analytics, { view: 'rules', top: 20 });
+  if (rules.view === 'rules') {
+    parts.push(
+      renderTable(
+        ['id', 'prevented', 'checked', 'silent', 'title'],
+        rules.rows.map((r) => [r.id, cell(r.prevented), cell(r.checked), r.silent ? 'yes' : 'no', r.title])
+      )
+    );
+  }
+
+  const agents = filterAnalytics(d.analytics, { view: 'agents', top: 20 });
+  if (agents.view === 'agents') {
+    parts.push(
+      renderTable(
+        ['agent', 'runs', 'weighted', 'avg_ms', 'pfail_%', 'completed', 'accepted', 'compl by/about', 'prevented'],
+        agents.rows.map((r) => [
+          r.agent,
+          cell(r.runs),
+          cell(r.weighted),
+          cell(r.avgDurationMs),
+          cell(r.processFailureRatePct === null ? null : r.processFailureRatePct.toFixed(1)),
+          cell(r.completedRuns),
+          cell(r.accepted),
+          `${r.complaintsBy}/${r.complaintsAbout}`,
+          cell(r.holdoutPrevented),
+        ])
+      )
+    );
+  }
+
+  const councils = filterAnalytics(d.analytics, { view: 'councils', top: 20 });
+  if (councils.view === 'councils') {
+    parts.push(
+      renderTable(
+        ['open council', 'days_open', 'opinions', 'votes'],
+        councils.councils.openQuestions.map((q) => [
+          q.id,
+          cell(q.daysOpen),
+          cell(q.opinions),
+          Object.entries(q.votes)
+            .map(([option, n]) => `${option}=${n}`)
+            .join(', ') || '-',
+        ])
+      )
+    );
+  }
+
+  const outliers = filterAnalytics(d.analytics, { view: 'outliers', top: 10 });
+  if (outliers.view === 'outliers') {
+    parts.push(
+      renderTable(
+        ['ts', 'model', 'weighted', 'cost', 'title'],
+        outliers.runs.map((r) => [
+          cell(r.ts),
+          cell(r.model),
+          cell(r.weighted),
+          cell(r.costUsd === null ? null : `$${r.costUsd}`),
+          cell(r.title),
+        ])
+      )
+    );
+  }
+
+  return parts.join('\n');
+}
+
+/** Секция trends (L3): спарклайны по снапшотам, недельная активность, cache-hit, readiness, steward, councils. */
+export function renderTrends(baseDir: string, d: DashboardData): string {
+  const parts: string[] = ['== trends =='];
+
+  const snaps = readSnapshots(baseDir);
+  parts.push(...trendSparklineLines(snaps));
+
+  // D5/D7: честность метрик — частичный coverage и качество сигнального лога
+  const cov = coverageLine(d.analytics.coverage);
+  if (cov !== null) parts.push(cov);
+  parts.push(dataQualityLine(d.analytics.dataQuality, 'n/a (no signal log)'));
+
+  // D1: текст без колонок конверсии; проценты остаются только в JSON (WeeklyActivityWeek)
+  const weeklyActivity = filterAnalytics(d.analytics, { view: 'weeklyActivity', top: 20 });
+  if (weeklyActivity.view === 'weeklyActivity') {
+    parts.push('weekly activity:');
+    parts.push(
+      renderTable(
+        ['week', 'writes', 'delivers', 'triggers'],
+        weeklyActivity.weeks.map((r) => [r.week, cell(r.writes), cell(r.delivers), cell(r.triggers)])
+      )
+    );
+  }
+
+  const tot = d.effectiveness.totals;
+  const cacheHit =
+    tot.sumTokens !== null && tot.sumTokens.input + tot.sumTokens.cache_read > 0
+      ? `${((tot.sumTokens.cache_read / (tot.sumTokens.input + tot.sumTokens.cache_read)) * 100).toFixed(1)}%`
+      : 'n/a (no raw token data yet)';
+  parts.push(`cache-hit ratio: ${cacheHit}`);
+
+  const readiness = filterAnalytics(d.analytics, { view: 'readiness', top: 20 });
+  if (readiness.view === 'readiness') {
+    parts.push(`experiment readiness: runs=${readiness.readiness.totalRuns} withArm=${readiness.readiness.withArm}`);
+  }
+
+  const steward = filterAnalytics(d.analytics, { view: 'steward', top: 20 });
+  if (steward.view === 'steward') {
+    parts.push(`steward mutations/week: ${sparkline(steward.steward.mutationsByWeek.map((w) => w.total))}`);
+  }
+
+  const councilTrend = filterAnalytics(d.analytics, { view: 'councils', top: 20 });
+  if (councilTrend.view === 'councils') {
+    parts.push(`council questions/week: ${sparkline(councilTrend.councils.weeks.map((w) => w.questions))}`);
+    parts.push(`council opinions/week: ${sparkline(councilTrend.councils.weeks.map((w) => w.opinions))}`);
+  }
+
+  return parts.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// P221 §6.5: печать панели effectiveness (перенесена из умершей effectiveness-команды)
+// ---------------------------------------------------------------------------
+
+function fmtPct(v: number): string {
+  return v.toFixed(1);
+}
+
+function printReport(r: EffectivenessReport): void {
+  const holdout =
+    r.rules.prevented === null || r.rules.checked === null
+      ? 'n/a (not enough mileage)'
+      : `${r.rules.prevented}/${r.rules.checked}`;
+  console.log(`rules: active=${r.rules.activeRules} | prevented/checked: ${holdout}`);
+
+  const e = r.tools.economy;
+  const economy = e.sufficient
+    ? `medianTool=${e.medianTool} medianAll=${e.medianAll} savings=${e.savingsPct !== null ? fmtPct(e.savingsPct) + '%' : 'n/a'}`
+    : `n/a: ${e.reason ?? 'not enough data'}`;
+  console.log(`tools: count=${r.tools.toolCount} | usage=${r.tools.totalUsage} | economy: ${economy} [INFO]`);
+
+  const silent =
+    r.delivery.silentShare === null
+      ? !r.delivery.enoughDeliveryData
+        ? 'not enough delivery data'
+        : 'no active rules'
+      : `${fmtPct(r.delivery.silentShare)}% [${r.silentStatus}]`;
+  console.log(
+    `delivery: events=${r.delivery.deliveryEvents} | triggered=${r.delivery.triggeredObjects}` +
+      ` | silentRules=${r.delivery.silentRules} (${silent})`
+  );
+
+  const noise =
+    r.noise.share === null
+      ? 'n/a (memory is empty)'
+      : `${r.noise.writeOnly}/${r.noise.totalObjects} = ${fmtPct(r.noise.share)}% [${r.noiseStatus}]`;
+  console.log(`noise: ${noise}`);
+  console.log(`documents: ${r.noise.documents} (registered refs, not part of the noise metric) [INFO]`);
+  console.log(`archived: ${r.noise.archived} (outside the noise metric) [INFO]`);
+
+  const routing =
+    r.routing.length === 0
+      ? 'n/a (run-log is empty)'
+      : r.routing.map((row) => `${row.model}: tasks=${row.tasks} median=${row.medianWeighted}`).join(' | ');
+  console.log(`routing: ${routing}`);
+
+  // M3: блок абсолютов из run-сигналов; null → честное n/a
+  const t = r.totals;
+  const cache = t.cacheHitRatio === null ? 'n/a' : `${fmtPct(t.cacheHitRatio)}%`;
+  const avg = t.avgDurationMs === null ? 'n/a' : `${t.avgDurationMs}ms`;
+  console.log(
+    `totals: runs=${t.runs} processFailures=${t.processFailures} weighted=${t.sumWeighted} cache=${cache} avg=${avg}`
+  );
+  const cost = t.costUsd === null ? 'n/a (no pricing configured)' : `$${t.costUsd} (pricing enabled)`;
+  console.log(`cost: ${cost}`);
+  for (const row of t.byModel) {
+    const c = row.costUsd === null ? 'n/a' : `$${row.costUsd}`;
+    const cpc = row.costPerCompletedRun === null ? 'n/a' : `$${row.costPerCompletedRun}`;
+    console.log(
+      `model ${row.model}: runs=${row.runs} processFailures=${row.processFailures} cost=${c} cost/completedRun=${cpc}`
+    );
+  }
+}
+
 export function analyticsCommand(baseDir: string = safeCwd()): Command {
   const cmd = new Command('analytics').description(
-    'Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness, memory lifecycle & coordination, campaigns & per-memory ROI, machine acceptance (wave metrics)'
+    'Analytics state window: ledgers (memory/tools/rules), weekly activity, agents, steward, councils, outliers, readiness, coordination, campaigns, delivery, acceptance, effectiveness, dashboard'
   );
 
   cmd
@@ -440,6 +739,8 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
           'campaign',
           'delivery',
           'acceptance',
+          'effectiveness',
+          'dashboard',
           'all',
         ])
         .default('all')
@@ -454,6 +755,7 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
     // ponytail: явный radix 10 — commander передаёт дефолт как previous, bare parseInt принял бы его за radix
     .option('--top <n>', 'Row limit', (v: string) => parseInt(v, 10), 20)
     .option('--weeks <n>', 'Weekly activity window in weeks', (v: string) => parseInt(v, 10), 8)
+    .option('--snapshot', 'Effectiveness view: append the report to .wolf/metrics/effectiveness-snapshots.jsonl', false)
     .option('--json', 'Machine-readable JSON output', false);
 
   cmd.action(async (options) => {
@@ -495,6 +797,53 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
     const { store, log, relations, clock } = createCliContainer(baseDir);
     // D7: readSignalLog вместо readSignals — events + счётчики битых строк для dataQuality
     const signalLog = readSignalLog(baseDir);
+
+    // P221 §6.5: окно состояния effectiveness — ранний путь (до общего filterAnalytics-пути);
+    // --top/--weeks и прочие фильтры для этого view игнорируются
+    if (options.view === 'effectiveness') {
+      const thresholds = resolveThresholds(config?.learning?.effectivenessThresholds);
+      const report = await buildEffectivenessReport(
+        { store, log, relations },
+        {
+          signals: signalLog.events,
+          runLogText,
+          thresholds,
+          ...(config?.pricing !== undefined ? { pricing: config.pricing } : {}),
+        }
+      );
+      if (options.json) {
+        console.log(JSON.stringify(report, null, 2));
+        return;
+      }
+      console.log('effectiveness panel (mileage aggregation, no LLM):');
+      printReport(report);
+      // M2: --snapshot аппендит полный отчёт; обычный вызов печатает дельту к последнему
+      if (options.snapshot) {
+        appendSnapshot(baseDir, report, new Date().toISOString());
+        console.log(`snapshot appended (total: ${readSnapshots(baseDir).length})`);
+      } else {
+        const snaps = readSnapshots(baseDir);
+        if (snaps.length > 0) {
+          const last = snaps[snaps.length - 1]!;
+          const changed = computeSnapshotDelta(last.report, report).filter((r) => r.diff !== null && r.diff !== 0);
+          console.log(`delta vs ${last.ts}:`);
+          if (changed.length === 0) {
+            console.log('  no changes');
+          } else {
+            for (const r of changed) {
+              const sign = r.diff! > 0 ? '+' : '';
+              console.log(`  ${r.path}: ${r.prev} -> ${r.curr} (${sign}${r.diff})`);
+            }
+          }
+        }
+      }
+      const note = config?.learning?.effectivenessThresholds !== undefined ? ' (config override)' : '';
+      console.log(
+        `thresholds: noise ok<${thresholds.noiseOk} warn<=${thresholds.noiseWarn} bad | silent ok<${thresholds.silentOk}${note}`
+      );
+      return;
+    }
+
     const report = await buildAnalyticsReport(
       { store, log, relations, clock },
       {
@@ -514,6 +863,39 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
       }
     );
 
+    // P221 §6.5: окно состояния dashboard — композиция effectiveness + analytics +
+    // snapshot delta (ранее build-dashboard.ts), рендер — перенесённые функции
+    if (options.view === 'dashboard') {
+      const thresholds = resolveThresholds(config?.learning?.effectivenessThresholds);
+      const effectiveness = await buildEffectivenessReport(
+        { store, log, relations },
+        {
+          signals: signalLog.events,
+          runLogText,
+          thresholds,
+          ...(config?.pricing !== undefined ? { pricing: config.pricing } : {}),
+        }
+      );
+      const prev = readSnapshots(baseDir).at(-1) ?? null;
+      const data: DashboardData = {
+        generatedAt: report.generatedAt,
+        effectiveness,
+        analytics: report,
+        snapshot: {
+          prevTs: prev !== null ? prev.ts : null,
+          delta: prev !== null ? computeSnapshotDelta(prev.report, effectiveness) : [],
+        },
+      };
+      if (options.json) {
+        console.log(JSON.stringify(data, null, 2));
+        return;
+      }
+      console.log(renderHealth(data));
+      console.log(renderLedgers(data));
+      console.log(renderTrends(baseDir, data));
+      return;
+    }
+
     // commander отдаёт строки — приводим к union контракта задачи 6; CLI-флаг по спеке
     // §6.2 называется `native`, а `ToolLedgerRow.origin` — 'model-native' (D11)
     const origin: 'script' | 'model-native' | undefined =
@@ -527,8 +909,10 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
         : undefined;
 
     // единая точка: фильтры строятся ОДИН раз и идут и в --json, и в текстовый рендер
+    // (effectiveness/dashboard сюда не доходят — ранние пути выше; каст сужает
+    // commander-строку к контракту filterAnalytics)
     const filter: AnalyticsViewFilter = {
-      view: options.view as AnalyticsView,
+      view: options.view as AnalyticsViewFilter['view'],
       ...(klass !== undefined ? { class: klass } : {}),
       ...(options.type !== undefined ? { type: options.type } : {}),
       ...(origin !== undefined ? { origin } : {}),

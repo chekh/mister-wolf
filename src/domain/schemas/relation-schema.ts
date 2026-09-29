@@ -31,6 +31,10 @@ export const RelationSchema = z.object({
   created_at: z.string().datetime(),
   source: z.enum(['manual', 'agent', 'system']),
   confidence: z.enum(['low', 'medium', 'high']),
+  // Компенсирующая запись relation remove (спека 2.13 §6.4): append-only,
+  // рёбра с removed: true не читаются; откат = убрать запись.
+  removed: z.boolean().optional(),
+  removed_at: z.string().datetime().optional(),
 });
 
 export type Relation = z.infer<typeof RelationSchema>;

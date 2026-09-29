@@ -17,6 +17,10 @@ interface CommandSpec {
   /** usage-хинт в списке команд program --help (`get [options] <id>`); '' — без хинта. */
   usage: string;
   load: () => Promise<Command>;
+  /** Скрытый синоним (спека 2.13 §6.5): работает, не показывается в help (до 2.15). */
+  hidden?: boolean;
+  /** Скрытый синоним переносит argv на `analytics --view <aliasView>` (+ stderr-предупреждение). */
+  aliasView?: string;
 }
 
 /** Порядок = порядок бывших addCommand: влияет на `--help` и unknown-command suggestions. */
@@ -58,6 +62,12 @@ const COMMANDS: CommandSpec[] = [
     load: () => import('./commands/memory-search.js').then((m) => m.memorySearchCommand()),
   },
   {
+    name: 'edit',
+    description: 'Edit title and/or body of a memory object (diff-audited in events.jsonl)',
+    usage: '[options] <id>',
+    load: () => import('./commands/memory-edit.js').then((m) => m.memoryEditCommand()),
+  },
+  {
     name: 'rebuild-index',
     description: 'Rebuild the SQLite search index from memory objects',
     usage: '',
@@ -74,6 +84,12 @@ const COMMANDS: CommandSpec[] = [
     description: 'Transition a memory object to a new status',
     usage: '[options] <id> <status>',
     load: () => import('./commands/memory-transition.js').then((m) => m.memoryTransitionCommand()),
+  },
+  {
+    name: 'archive',
+    description: 'Archive a memory object (sugar for transition to archived)',
+    usage: '[options] <id>',
+    load: () => import('./commands/memory-archive.js').then((m) => m.memoryArchiveCommand()),
   },
   {
     name: 'scan',
@@ -185,9 +201,11 @@ const COMMANDS: CommandSpec[] = [
   },
   {
     name: 'insights',
-    description: 'Heuristic pattern analysis over project memory (Level 1, no LLM)',
+    description: 'Deprecated hidden synonym: analytics --view readiness (removed in 2.15)',
     usage: '[options]',
-    load: () => import('./commands/memory-insights.js').then((m) => m.memoryInsightsCommand()),
+    hidden: true,
+    aliasView: 'readiness',
+    load: () => import('./commands/analytics.js').then((m) => m.analyticsCommand()),
   },
   {
     name: 'recap',
@@ -234,23 +252,26 @@ const COMMANDS: CommandSpec[] = [
   },
   {
     name: 'effectiveness',
-    description:
-      'Memory effectiveness panel: rules holdout, tool economy, delivery, noise, routing (aggregation only, no LLM)',
+    description: 'Deprecated hidden synonym: analytics --view effectiveness (removed in 2.15)',
     usage: '[options]',
-    load: () => import('./commands/memory-effectiveness.js').then((m) => m.memoryEffectivenessCommand()),
+    hidden: true,
+    aliasView: 'effectiveness',
+    load: () => import('./commands/analytics.js').then((m) => m.analyticsCommand()),
   },
   {
     name: 'analytics',
     description:
-      'Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness, memory lifecycle & coordination, campaigns & per-memory ROI, machine acceptance (wave metrics)',
+      'Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness, memory lifecycle & coordination, campaigns & per-memory ROI, machine acceptance (wave metrics), state windows (effectiveness, dashboard)',
     usage: '[options]',
     load: () => import('./commands/analytics.js').then((m) => m.analyticsCommand()),
   },
   {
     name: 'dashboard',
-    description: 'Console dashboard: health, ledgers, trends (unicode tables and sparklines; no files written)',
+    description: 'Deprecated hidden synonym: analytics --view dashboard (removed in 2.15)',
     usage: '[options]',
-    load: () => import('./commands/dashboard.js').then((m) => m.dashboardCommand()),
+    hidden: true,
+    aliasView: 'dashboard',
+    load: () => import('./commands/analytics.js').then((m) => m.analyticsCommand()),
   },
   {
     name: 'task-eval',
@@ -315,6 +336,17 @@ export function createCli(): Command {
       .allowUnknownOption()
       .helpOption(false)
       .action(async () => {
+        // Скрытый синоним (§6.5): deprecation-строка в stderr (stdout не шумит
+        // для машин) + перенос argv на analytics --view <aliasView>.
+        if (spec.aliasView !== undefined) {
+          process.stderr.write(
+            `[wolf] '${spec.name}' is deprecated since 2.13 and hidden: it now maps to "analytics --view ${spec.aliasView}"; it will be removed in 2.15\n`
+          );
+          const real = await import('./commands/analytics.js').then((m) => m.analyticsCommand());
+          new Command('wolf').addCommand(real);
+          await real.parseAsync(['--view', spec.aliasView, ...process.argv.slice(3)], { from: 'user' });
+          return;
+        }
         // Делегирование исходных токенов: process.argv = [node, cli.js, <cmd>, ...args],
         // slice(3) + from:'user' — реальная команда сама парсит опции/позиционные/сабкоманды.
         const real = await spec.load();
@@ -324,7 +356,7 @@ export function createCli(): Command {
         await real.parseAsync(process.argv.slice(3), { from: 'user' });
       });
     if (spec.usage !== '') stub.usage(spec.usage);
-    program.addCommand(stub);
+    program.addCommand(stub, spec.hidden === true ? { hidden: true } : undefined);
   }
 
   // `wolf help <cmd>` — хелп реальной команды: дефолтный help-обработчик commander

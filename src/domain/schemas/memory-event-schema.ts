@@ -4,6 +4,7 @@ export const MemoryEventSchema = z.object({
   id: z.string().min(1),
   type: z.enum([
     'memory.added',
+    'memory.edited',
     'memory.updated',
     'memory.scan.updated',
     'memory.superseded',

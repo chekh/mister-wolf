@@ -1,4 +1,5 @@
 import { Command, Option } from 'commander';
+import { safeCwd } from '../cli-entry.js';
 import { addMemoryObject } from '../../../app/use-cases/add-memory-object.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { MEMORY_TYPES } from '../../../domain/memory-types.js';
@@ -12,7 +13,8 @@ function collectSet(value: string, previous: string[]): string[] {
   return [...previous, value];
 }
 
-export function memoryAddCommand(): Command {
+// baseDir инъектится для тестов (прецедент: memory-update.ts).
+export function memoryAddCommand(baseDir: string = safeCwd()): Command {
   return new Command('add')
     .description('Add a memory object')
     .addOption(
@@ -32,7 +34,7 @@ export function memoryAddCommand(): Command {
       withCliCall(
         'add',
         async (options) => {
-          const { store, log, clock, idGen, index, declarations } = createCliContainer(process.cwd());
+          const { store, log, clock, idGen, index, declarations } = createCliContainer(baseDir);
           const extra = parseSetPairs(options.set as string[], options.type);
           if (options.scope !== undefined) {
             if ('scope' in extra)
