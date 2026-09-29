@@ -3,6 +3,7 @@ import { getCallInjections } from '../../../app/use-cases/get-call-injections.js
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { resolveCreatedBy, resolveSessionId } from '../../../domain/actor.js';
 import { appendDeliverySignal, appendMemoryStageSignal } from '../../../adapters/fs/session-metrics-log.js';
+import { checksumBlock, loadSessionRegistry, recordDeliveries } from '../../../adapters/fs/session-delivery-registry.js';
 import { withCliCall } from './with-cli-call.js';
 
 function parseCompact(v: string | undefined): number | true {
@@ -10,6 +11,12 @@ function parseCompact(v: string | undefined): number | true {
   const n = Number(v);
   return Number.isFinite(n) && n > 0 ? n : true;
 }
+
+// P108 (спека 4.C): пустая выдача после дедупликации объясняет себя — молчаливая
+// пустота читалась бы агентом как «память пуста». Кириллица через \u-эскейпы:
+// гейт english-surface запрещает кириллические литералы в src/adapters/**.
+const DEDUP_NOTICE = (n: number) =>
+  `[wolf] ${n} \u0438\u043d\u044a\u0435\u043a\u0446\u0438\u0439 \u0443\u0436\u0435 \u0434\u043e\u0441\u0442\u0430\u0432\u043b\u0435\u043d\u044b \u0432 \u044d\u0442\u043e\u0439 \u0441\u0435\u0441\u0441\u0438\u0438 (\u0434\u0435\u0434\u0443\u043f\u043b\u0438\u043a\u0430\u0446\u0438\u044f; \u0438\u0437\u043c\u0435\u043d\u0438\u0432\u0448\u0438\u0435\u0441\u044f \u0437\u0430\u043f\u0438\u0441\u0438 \u0434\u043e\u0441\u0442\u0430\u0432\u043b\u044f\u044e\u0442\u0441\u044f \u043f\u043e\u0432\u0442\u043e\u0440\u043d\u043e)`;
 
 export function memoryCallCommand(): Command {
   return new Command('call')
@@ -20,17 +27,27 @@ export function memoryCallCommand(): Command {
     .action(
       // снаружи от основного тела: delivery/memory_stage-писатели внутри остаются как есть
       withCliCall('call', async (options: { for?: string; thread?: string; compact?: number | true }) => {
-        const { store, index, clock } = createCliContainer(process.cwd());
+        const baseDir = process.cwd();
+        // P108 (4.C): sessionKey из env WOLF_SESSION (в CLI он всегда непустой —
+        // ensureCliSessionId в cli-entry); null → фильтр выключен (MCP-контур).
+        const sessionKey = resolveSessionId();
+        const registry = sessionKey ? loadSessionRegistry(baseDir, sessionKey) : null;
+        const { store, index, clock } = createCliContainer(baseDir);
         const result = await getCallInjections(
           { store, index, clock },
           {
             topic: options.for,
             thread: options.thread !== undefined ? options.thread : undefined,
             compact: options.compact,
+            deliveredRegistry: registry?.delivered,
           }
         );
         if (result.blocks.length === 0) {
-          console.log('No active call injections.');
+          if (result.deduplicated > 0) {
+            console.log(DEDUP_NOTICE(result.deduplicated));
+          } else {
+            console.log('No active call injections.');
+          }
         } else {
           console.log(result.blocks.join('\n'));
           if (result.truncated > 0) {
@@ -40,7 +57,6 @@ export function memoryCallCommand(): Command {
         // Ф26: доставка = срабатывание (decay-пробег сбрасывается по этим событиям,
         // спека §6). Объекты памяти НЕ обновляем (дорого) — last_triggered_at
         // вычисляет decay-прогон из лога.
-        const baseDir = process.cwd();
         const actor = resolveCreatedBy(undefined);
         // P2 D1: инъекцированные объекты → memory_stage(injected); пусто → НЕ пишется
         if (result.deliveredIds.length > 0) {
@@ -67,6 +83,24 @@ export function memoryCallCommand(): Command {
             // волна 0 0.1: байты инъекции (detail.injection_bytes)
             injectionBytes: Buffer.byteLength(result.blocks[i] ?? '', 'utf8'),
           });
+        }
+        // P108 (4.C): запись реестра доставок сессии — рядом с delivery-сигналами,
+        // только по факту реальной доставки. Телеметрия выше остаётся как была:
+        // сигналы пишутся лишь о реально доставленном (repeat-streak-метрика).
+        if (sessionKey && result.deliveredIds.length > 0) {
+          try {
+            recordDeliveries(
+              baseDir,
+              sessionKey,
+              result.deliveredIds.map((id, i) => ({
+                id,
+                checksum: checksumBlock(result.blocks[i] ?? ''),
+                bytes: Buffer.byteLength(result.blocks[i] ?? '', 'utf8'),
+              }))
+            );
+          } catch {
+            // derived-кэш: сбой реестра не ломает доставку
+          }
         }
       })
     );

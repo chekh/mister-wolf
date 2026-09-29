@@ -3,12 +3,16 @@ import { SearchIndex } from '../../ports/search-index.port.js';
 import { Clock } from '../../ports/clock.port.js';
 import { tokenize } from '../../domain/solve/scenarios.js';
 import { finalScore } from '../../domain/solve/relevance.js';
+import { checksumBlock } from '../../adapters/fs/session-delivery-registry.js';
 
 export interface CallInjectionResult {
   blocks: string[];
   truncated: number;
   /** Ф26: id объектов, реально попавших в вывод (срабатывание доставки → decay-пробег). */
   deliveredIds: string[];
+  /** P108 (4.C): сколько объектов отфильтровано сессионной дедупликацией
+   * (id уже в реестре сессии с той же checksum блока). */
+  deduplicated: number;
 }
 
 function formatBlock(obj: Record<string, unknown>): string {
@@ -22,7 +26,14 @@ function isMachineState(obj: Record<string, unknown>): boolean {
 
 export async function getCallInjections(
   deps: { store: MemoryStore; index?: SearchIndex; clock: Clock },
-  input: { topic?: string; thread?: boolean | string; compact?: number | true }
+  input: {
+    topic?: string;
+    thread?: boolean | string;
+    compact?: number | true;
+    /** P108 (4.C): мапа id→checksum уже доставленных в сессию блоков (готовит
+     * memory-call из loadSessionRegistry). Не передана (MCP-канал) — фильтр выключен. */
+    deliveredRegistry?: Record<string, string>;
+  }
 ): Promise<CallInjectionResult> {
   const now = deps.clock.now();
   const topicTokens = input.topic ? tokenize(input.topic) : [];
@@ -115,6 +126,18 @@ export async function getCallInjections(
     }))
     .sort((a, b) => b.score - a.score);
 
+  // P108 (4.C): сессионная дедупликация ДО бюджета — уже доставленные в этой
+  // сессии с той же checksum блока не занимают бюджет; изменившийся текст
+  // (иная checksum) доставляется повторно. Реестр не передан → фильтр выключен.
+  let deduplicated = 0;
+  const pending = input.deliveredRegistry
+    ? scored.filter(({ obj }) => {
+        if (input.deliveredRegistry![obj.id as string] !== checksumBlock(formatBlock(obj))) return true;
+        deduplicated++;
+        return false;
+      })
+    : scored;
+
   // 6. build blocks (deliveredIds — то, что прошло бюджет, включая fallback)
   const blocks: string[] = [];
   const deliveredIds: string[] = [];
@@ -122,7 +145,7 @@ export async function getCallInjections(
   const budget = input.compact === undefined ? Infinity : input.compact === true ? 1200 : input.compact;
   let used = 0;
 
-  for (const { obj } of scored) {
+  for (const { obj } of pending) {
     const block = formatBlock(obj);
     if (used + block.length <= budget) {
       blocks.push(block);
@@ -133,5 +156,5 @@ export async function getCallInjections(
     }
   }
 
-  return { blocks, truncated, deliveredIds };
+  return { blocks, truncated, deliveredIds, deduplicated };
 }

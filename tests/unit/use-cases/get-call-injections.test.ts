@@ -4,6 +4,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { getCallInjections } from '../../../src/app/use-cases/get-call-injections.js';
 import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
+import { checksumBlock } from '../../../src/adapters/fs/session-delivery-registry.js';
 
 const NOW = new Date('2026-08-24T00:00:00.000Z');
 const clock = { now: () => NOW };
@@ -435,5 +436,103 @@ describe('getCallInjections', () => {
       `- [blocker_1] Thread Blocker (low, ${daysAgo(1)})\n  source: blocker_1`,
     ]);
     expect(result.truncated).toBe(0);
+  });
+
+  // --- P108 (волна 2.12 4.C): сессионная дедупликация доставок ---
+
+  /** Реестр id→checksum, выведенный из фактического вывода первого вызова. */
+  function registryFrom(result: { blocks: string[]; deliveredIds: string[] }): Record<string, string> {
+    const reg: Record<string, string> = {};
+    result.deliveredIds.forEach((id, i) => {
+      reg[id] = checksumBlock(result.blocks[i] ?? '');
+    });
+    return reg;
+  }
+
+  it('P108: deliveredRegistry с текущей checksum → skip, deduplicated посчитан', async () => {
+    await seed(
+      makeObj({ id: 'inj_A', type: 'call-injection', status: 'active', trigger_keywords: ['a'], title: 'AAA' }),
+      makeObj({ id: 'inj_B', type: 'call-injection', status: 'active', trigger_keywords: ['b'], title: 'BBB' })
+    );
+
+    const first = await getCallInjections({ store, clock }, {});
+    expect(first.blocks).toHaveLength(2);
+
+    const second = await getCallInjections({ store, clock }, { deliveredRegistry: registryFrom(first) });
+    expect(second.blocks).toEqual([]);
+    expect(second.deliveredIds).toEqual([]);
+    expect(second.deduplicated).toBe(2);
+    expect(second.truncated).toBe(0);
+  });
+
+  it('P108: дедупликация ДО бюджета — освободившийся бюджет получает следующий блок', async () => {
+    const longTitle = 'A'.repeat(500);
+    await seed(
+      makeObj({
+        id: 'inj_A',
+        type: 'call-injection',
+        status: 'active',
+        trigger_keywords: ['a'],
+        title: longTitle,
+        importance: 0.9,
+        updated_at: daysAgo(1),
+      }),
+      makeObj({
+        id: 'inj_B',
+        type: 'call-injection',
+        status: 'active',
+        trigger_keywords: ['b'],
+        title: longTitle,
+        importance: 0.2,
+        updated_at: daysAgo(5),
+      }),
+      makeObj({
+        id: 'inj_C',
+        type: 'call-injection',
+        status: 'active',
+        trigger_keywords: ['c'],
+        title: longTitle,
+        importance: 0.1,
+        updated_at: daysAgo(5),
+      })
+    );
+
+    // компакт 1200: без дедупликации A+B влезают, C — truncated
+    const first = await getCallInjections({ store, clock }, { compact: true });
+    expect(first.deliveredIds).toEqual(['inj_A', 'inj_B']);
+    expect(first.truncated).toBe(1);
+
+    // A уже доставлен → не занимает бюджет, C занимает освободившееся место
+    const registry = registryFrom(first);
+    delete registry['inj_B'];
+    const second = await getCallInjections({ store, clock }, { compact: true, deliveredRegistry: registry });
+    expect(second.deliveredIds).toEqual(['inj_B', 'inj_C']);
+    expect(second.deduplicated).toBe(1);
+    expect(second.truncated).toBe(0);
+  });
+
+  it('P108: checksum отличается (текст изменился) → доставляется повторно', async () => {
+    await seed(
+      makeObj({ id: 'inj_A', type: 'call-injection', status: 'active', trigger_keywords: ['a'], title: 'AAA' })
+    );
+
+    const stale = await getCallInjections({ store, clock }, {});
+    const registry = registryFrom(stale);
+    registry['inj_A'] = 'deadbeefdeadbeef'; // текст блока изменился с момента доставки
+
+    const result = await getCallInjections({ store, clock }, { deliveredRegistry: registry });
+    expect(result.blocks).toHaveLength(1);
+    expect(result.deliveredIds).toEqual(['inj_A']);
+    expect(result.deduplicated).toBe(0);
+  });
+
+  it('P108: deliveredRegistry не передан (MCP-канал) → фильтр выключен, deduplicated = 0', async () => {
+    await seed(
+      makeObj({ id: 'inj_A', type: 'call-injection', status: 'active', trigger_keywords: ['a'], title: 'AAA' })
+    );
+
+    const result = await getCallInjections({ store, clock }, {});
+    expect(result.blocks).toHaveLength(1);
+    expect(result.deduplicated).toBe(0);
   });
 });
