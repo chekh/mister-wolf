@@ -134,4 +134,27 @@ console.log('seeded');
     expect(complaints.length).toBe(1);
     for (const c of complaints) expect(c.session_id).toBeNull();
   });
+
+  // P204 (волна 2.13): плагин wolf-session-start больше не перезаписывает
+  // WOLF_SESSION на каждый спавн — ключ наследуется, сессионная дедупликация
+  // доставок работает между спавнами одной логической сессии. Здесь ключ
+  // выставлен в env процесса-родителя (как его ставит плагин) и НЕ передаётся
+  // в spawn явно: оба CLI-вызова обязаны унаследовать его как есть.
+  it('t3 P204: унаследованный WOLF_SESSION не перезаписывается — дедуп между спавнами', () => {
+    const dir = seedProject();
+    const key = 'opc-e2e-inherited-p204';
+    process.env.WOLF_SESSION = key;
+    try {
+      for (let i = 0; i < 2; i++) {
+        const run = runCli(['call', '--for', 'get'], dir); // env наследуется из process
+        expect(run.status).toBe(0);
+      }
+      const deliveries = readSignals(dir).filter((s) => s.event === 'delivery');
+      // первый спавн доставил, второй — дедуплицировал (1 delivery-сигнал, тот же ключ)
+      expect(deliveries).toHaveLength(1);
+      expect(deliveries[0]!.session_id).toBe(key);
+    } finally {
+      delete process.env.WOLF_SESSION;
+    }
+  });
 });
