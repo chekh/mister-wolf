@@ -22,6 +22,8 @@ export interface WolfConfig {
   pricing?: PricingTable;
   /** M3: пороги lifecycle-классификации D7 (analytics.thresholds из config.yaml). */
   analytics?: { thresholds?: { newDays?: number; workhorseUses?: number } };
+  /** 2.13 §5.3: закрытые словари фасетов; character — словарь типа note (7–10 значений). */
+  facets?: { character: string[] };
 }
 
 export class ProjectTypeConflictError extends Error {}
@@ -46,6 +48,17 @@ export function mergeTaxonomy(config: WolfConfig | null): {
         }
       }
       types.set(p.name, p);
+    }
+    // 2.13 §5.3: кастомный словарь facets.character подменяет enum фасета note
+    // (по образцу projectTypes — вердикт линзы «исполнимость» спеки)
+    if (config.facets?.character) {
+      const noteDecl = types.get('note');
+      if (noteDecl) {
+        types.set('note', {
+          ...noteDecl,
+          fields: { ...noteDecl.fields, facet: { kind: 'enum', values: config.facets.character } },
+        });
+      }
     }
   }
   return { types };

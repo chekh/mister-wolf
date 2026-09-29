@@ -16,11 +16,12 @@ export function memoryListCommand(): Command {
         const { store, declarations } = createCliContainer(process.cwd());
         let type: string | undefined = options.type;
         if (type) {
-          // Резолв --type (спека 2.1.0 §2.2 F10): алиас → warning, неизвестный → error
+          // Резолв --type (спека 2.1.0 §2.2 F10 + карта §5.4 2.13): алиас → warning,
+          // неизвестный → error. DEPRECATED_TYPE_ALIASES теперь Record<string, TypeAliasSpec>.
           const resolved = resolveListType(
             type,
             declarations.map((d) => d.name),
-            DEPRECATED_TYPE_ALIASES
+            Object.fromEntries(Object.entries(DEPRECATED_TYPE_ALIASES).map(([k, spec]) => [k, spec.target]))
           );
           if (resolved.error) throw new UserFacingError(resolved.error);
           if (resolved.warning) console.error(`Warning: ${resolved.warning}`);

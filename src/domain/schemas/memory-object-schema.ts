@@ -25,6 +25,9 @@ export const MemoryObjectSchema = z
       'accepted',
       'candidate',
       'deprecated',
+      // волна 2.13 §5.2: статусы thread (зеркалит MemoryStatus)
+      'blocked',
+      'waiting_answer',
     ]),
     // Ф26: review_required — decay-очередь пересмотра Стюарда (спека §6):
     // значение review_state, lifecycle-статус объекта не меняется.

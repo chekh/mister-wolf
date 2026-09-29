@@ -16,7 +16,10 @@ export type MemoryStatus =
   | 'proposed'
   | 'accepted'
   | 'candidate'
-  | 'deprecated';
+  | 'deprecated'
+  // волна 2.13 §5.2: blocker/info_request/question — статусы thread
+  | 'blocked'
+  | 'waiting_answer';
 export type ReviewState = 'accepted' | 'proposed' | 'rejected' | 'review_required';
 export type Confidence = 'low' | 'medium' | 'high';
 export type SourceKind = 'manual' | 'session' | 'file' | 'scan';
@@ -67,51 +70,35 @@ const FULL: readonly MemoryStatus[] = [
   'accepted',
 ];
 
-// Ф22 (D2.1): поля draft-объектов propose→validate→activate; спека §2.3, §5, §6.
-// Одинаковый набор для lesson и rule — носитель зависит от характера паттерна.
-// polarity ('positive'|'negative'), risk_level (low|medium|high) и
-// holdout_verdict (pass|fail|needs_human_review) — свободные строки:
-// нормализация значений в коде propose/validate, enum не заводим.
-const DRAFT_FIELDS: Record<string, FieldSpec> = {
-  pattern_key: { kind: 'string', optional: true },
-  pattern_count: { kind: 'int', default: 0 },
-  evidence: { kind: 'string[]', default: [] },
-  mechanical: { kind: 'boolean', optional: true },
-  polarity: { kind: 'string', optional: true },
-  constraint_tool: { kind: 'string', optional: true },
-  constraint_class: { kind: 'string', optional: true },
-  predicted_effect: { kind: 'string', optional: true },
-  regression_risks: { kind: 'string[]', default: [] },
-  blast_radius: { kind: 'string', optional: true },
-  risk_level: { kind: 'string', optional: true },
-  holdout_verdict: { kind: 'string', optional: true },
-  holdout_prevented: { kind: 'int', default: 0 },
-  holdout_checked: { kind: 'int', default: 0 },
-  holdout_ts: { kind: 'string', optional: true },
-};
-
-// Ф26: decay по пробегу (TTL в СЕССИЯХ без срабатывания; спека §6, §16):
-// last_triggered_at — штамп последнего срабатывания доставки (derived-кэш из
-// сигнального лога), sessions_since_last_trigger — пробег с последнего
-// срабатывания, decay_reason — причина review_required ('ttl'|'rule_utilization').
-const DECAY_FIELDS: Record<string, FieldSpec> = {
-  last_triggered_at: { kind: 'string', optional: true },
-  sessions_since_last_trigger: { kind: 'int', default: 0 },
-  decay_reason: { kind: 'string', optional: true },
-};
+// Волна 2.13 §5.3: закрытый словарь фасетов «характер записи» для типа note.
+// Диапазон длины словаря 7–10 (config-file); кастомизация — facets.character в config.yaml.
+export const DEFAULT_CHARACTER_FACETS: readonly string[] = [
+  'howto',
+  'pitfall',
+  'context',
+  'metric',
+  'history',
+  'legacy',
+  'constraint',
+];
 
 // Единственный источник истины: типы (MemoryType, MEMORY_TYPES) выводятся
 // отсюда — новый core-тип добавляется ТОЛЬКО в этот массив.
+// Волна 2.13 §5.1: 7 выживших типов (дословно Т1); старые типы — карта
+// DEPRECATED_TYPE_ALIASES ниже (alias-чтение P211) и migrate taxonomy (P213).
 const CORE_TAXONOMY_DECLS = [
-  { name: 'document', lifecycle: FULL, subdirThread: 'documents', subdirShared: 'documents', deprecated: true },
   {
-    name: 'decision',
-    lifecycle: ['active', 'superseded', 'rejected', 'obsolete'],
-    subdirThread: 'decisions',
-    subdirShared: 'decisions',
+    name: 'rule',
+    // proposed/accepted/rejected/archived — bootstrap-черновики (§7.4):
+    // proposed → accepted (Стюард) → active; effective = ALLOWED_TRANSITIONS ∩ lifecycle
+    lifecycle: ['active', 'superseded', 'obsolete', 'proposed', 'accepted', 'rejected', 'archived'],
+    subdirThread: null,
+    subdirShared: 'rules',
     fields: {
-      thread: { kind: 'string', optional: true },
-      ...DECAY_FIELDS,
+      scope: { kind: 'enum', values: ['project', 'global'] },
+      applies_to: { kind: 'string[]', default: [] },
+      trigger: { kind: 'string', default: '' },
+      trigger_keywords: { kind: 'string[]', default: [] },
     },
   },
   {
@@ -119,25 +106,34 @@ const CORE_TAXONOMY_DECLS = [
     lifecycle: FULL,
     subdirThread: 'lessons',
     subdirShared: 'lessons',
-    fields: { trigger_keywords: { kind: 'string[]', default: [] }, ...DRAFT_FIELDS, ...DECAY_FIELDS },
+    fields: { trigger_keywords: { kind: 'string[]', default: [] } },
   },
   {
-    name: 'observation',
-    lifecycle: FULL,
-    subdirThread: 'lessons',
-    subdirShared: 'lessons',
-    // Поля жалобы (wolf complain, B3): обоснование выбора типа — в memory-complain.ts.
+    name: 'decision',
+    lifecycle: ['active', 'superseded', 'rejected', 'obsolete'],
+    subdirThread: 'decisions',
+    subdirShared: 'decisions',
+    fields: { thread: { kind: 'string', optional: true } },
+  },
+  {
+    // Волна 2.13 §5.2: переименование work-thread → thread; blocker/info_request/
+    // question поглощаются статусами blocked/waiting_answer/open.
+    name: 'thread',
+    lifecycle: ['active', 'paused', 'blocked', 'waiting_answer', 'open', 'completed', 'archived'],
+    subdirThread: null,
+    subdirShared: null,
+    layout: 'work-thread-file',
     fields: {
-      about: { kind: 'string', optional: true },
-      complaint: { kind: 'string', optional: true },
-      semantic: { kind: 'string', optional: true },
-      trigger: { kind: 'boolean', optional: true },
+      goal: { kind: 'string', required: true, min: 1 },
+      current_state: { kind: 'string', default: '' },
+      next_steps: { kind: 'string[]', default: [] },
     },
   },
   {
     // Жалобный контур v2 (спека 2026-09-01 §3.1): жалоба объектом памяти;
-    // «взял в работу» — поле triage, не статус (Q2); lifecycle — штатные
-    // переходы open→resolved|rejected, гигиена archived (D2: ноль правок governance).
+    // «взял в работу» — поле triage, не статус (Q2). Асимметрия подкаталогов
+    // (threads/<tid>/notes/ vs shared/complaints/) — сознательна (§5.1 спеки 2.13):
+    // жалобы вне треда образуют отдельную общую очередь триажа.
     name: 'complaint',
     lifecycle: ['open', 'resolved', 'rejected', 'archived'],
     defaultStatus: 'open',
@@ -152,171 +148,6 @@ const CORE_TAXONOMY_DECLS = [
       resolution: { kind: 'string', optional: true },
       dispatch_ages: { kind: 'int', default: 0 },
       corroborations: { kind: 'int', default: 1 },
-    },
-  },
-  // Ф26: DECAY_FIELDS — TTL-пробег, спека §6/§16
-  { name: 'session-summary', lifecycle: FULL, subdirThread: 'sessions', subdirShared: null, fields: DECAY_FIELDS },
-  {
-    name: 'open-question',
-    lifecycle: FULL,
-    defaultStatus: 'open',
-    subdirThread: 'notes',
-    subdirShared: 'notes',
-  },
-  { name: 'context', lifecycle: FULL, subdirThread: 'notes', subdirShared: 'notes' },
-  {
-    name: 'work-thread',
-    lifecycle: ['active', 'paused', 'completed', 'archived'],
-    subdirThread: null,
-    subdirShared: null,
-    layout: 'work-thread-file',
-    fields: {
-      goal: { kind: 'string', required: true, min: 1 },
-      current_state: { kind: 'string', default: '' },
-      next_steps: { kind: 'string[]', default: [] },
-    },
-  },
-  {
-    name: 'info-request',
-    lifecycle: ['open', 'answered', 'rejected', 'obsolete', 'archived'],
-    subdirThread: 'notes',
-    subdirShared: 'notes',
-    fields: {
-      thread: { kind: 'string', optional: true },
-      question: { kind: 'string', required: true, min: 1 },
-      detour_reason: { kind: 'string', required: true, min: 1 },
-      needed_for: { kind: 'string[]', default: [] },
-      expected_answer: { kind: 'string[]', required: true, minItems: 1 },
-      preliminary_answer: { kind: 'string', default: '' },
-    },
-  },
-  {
-    name: 'article',
-    lifecycle: ['proposed', 'accepted', 'stale', 'superseded', 'archived'],
-    subdirThread: 'notes',
-    subdirShared: 'notes',
-    fields: {
-      thread: { kind: 'string', required: true, min: 1 },
-      summary: { kind: 'string', required: true, min: 1 },
-      answers: { kind: 'string[]', default: [] },
-      supports: { kind: 'string[]', default: [] },
-      evidence: { kind: 'string[]', default: [] },
-    },
-  },
-  {
-    name: 'blocker',
-    lifecycle: ['active', 'resolved', 'obsolete'],
-    subdirThread: 'blockers',
-    subdirShared: 'blockers',
-    fields: {
-      thread: { kind: 'string', optional: true },
-      impact: { kind: 'string', required: true, min: 1 },
-      workaround: { kind: 'string', optional: true },
-    },
-  },
-  {
-    name: 'session-checkpoint',
-    lifecycle: FULL,
-    subdirThread: 'sessions',
-    subdirShared: null,
-    fields: { thread: { kind: 'string', required: true, min: 1 } },
-  },
-  {
-    name: 'rule',
-    // proposed/accepted/rejected/archived — bootstrap-черновики (§7.4):
-    // proposed → accepted (Стюард) → active; effective = ALLOWED_TRANSITIONS ∩ lifecycle
-    lifecycle: ['active', 'superseded', 'obsolete', 'proposed', 'accepted', 'rejected', 'archived'],
-    subdirThread: null,
-    subdirShared: 'rules',
-    fields: {
-      scope: { kind: 'enum', values: ['project', 'global'] },
-      applies_to: { kind: 'string[]', default: [] },
-      trigger: { kind: 'string', default: '' },
-      trigger_keywords: { kind: 'string[]', default: [] },
-      ...DRAFT_FIELDS,
-      ...DECAY_FIELDS,
-    },
-  },
-  {
-    name: 'document-ref',
-    lifecycle: ['active', 'stale', 'superseded'],
-    subdirThread: 'documents',
-    subdirShared: 'documents',
-    requireSourcePath: true,
-  },
-  {
-    name: 'document-native',
-    lifecycle: ['active', 'superseded', 'archived'],
-    subdirThread: 'documents',
-    subdirShared: 'documents',
-  },
-  {
-    name: 'task-brief',
-    lifecycle: ['active', 'completed', 'superseded'],
-    subdirThread: 'tasks',
-    subdirShared: null,
-    fields: {
-      executor: { kind: 'string', required: true, min: 1 },
-      priority: { kind: 'string', required: true, min: 1 },
-    },
-  },
-  { name: 'report', lifecycle: ['active', 'completed'], subdirThread: 'tasks', subdirShared: null },
-  {
-    name: 'council-question',
-    lifecycle: ['open', 'answered', 'archived'],
-    subdirThread: 'councils',
-    subdirShared: null,
-    fields: { question: { kind: 'string', required: true, min: 1 } },
-  },
-  {
-    name: 'council-opinion',
-    lifecycle: ['proposed', 'accepted'],
-    subdirThread: 'councils',
-    subdirShared: null,
-    fields: { vote: { kind: 'string', required: true, min: 1 } },
-  },
-  {
-    name: 'synthesis',
-    lifecycle: ['proposed', 'accepted'],
-    subdirThread: 'councils',
-    subdirShared: null,
-    fields: { recommendation: { kind: 'string', required: true, min: 1 } },
-  },
-  {
-    name: 'escalation',
-    lifecycle: ['open', 'resolved', 'archived'],
-    subdirThread: 'escalations',
-    subdirShared: null,
-    fields: { question: { kind: 'string', required: true, min: 1 } },
-  },
-  {
-    name: 'decision-request',
-    lifecycle: ['open', 'answered', 'archived'],
-    subdirThread: 'escalations',
-    subdirShared: null,
-    fields: { question: { kind: 'string', required: true, min: 1 } },
-  },
-  {
-    name: 'call-injection',
-    lifecycle: ['active', 'superseded', 'archived'],
-    subdirThread: null,
-    subdirShared: 'calls',
-    fields: {
-      trigger_keywords: { kind: 'string[]', default: [] },
-      related_objects: { kind: 'string[]', default: [] },
-    },
-  },
-  {
-    name: 'playbook',
-    lifecycle: ['active', 'stale', 'superseded', 'archived'],
-    subdirThread: null,
-    subdirShared: 'playbooks',
-    fields: {
-      trigger_keywords: { kind: 'string[]', default: [] },
-      steps: { kind: 'string[]', required: true, minItems: 1 },
-      owner_skill: { kind: 'string', required: true, min: 1 },
-      version: { kind: 'string', required: true, min: 1 },
-      ...DECAY_FIELDS,
     },
   },
   {
@@ -339,14 +170,59 @@ const CORE_TAXONOMY_DECLS = [
       deprecation_reason: { kind: 'string', optional: true },
     },
   },
+  {
+    // Волна 2.13 §5.1/§5.3: универсальный тип «запись» с обязательным фасетом
+    // «характер записи»; наследует нишу observation/context/open-question/…
+    name: 'note',
+    lifecycle: FULL,
+    subdirThread: 'notes',
+    subdirShared: 'notes',
+    fields: {
+      facet: { kind: 'enum', values: DEFAULT_CHARACTER_FACETS },
+    },
+  },
 ] as const;
 
 export type MemoryType = (typeof CORE_TAXONOMY_DECLS)[number]['name'];
 
 export const MEMORY_TYPES = CORE_TAXONOMY_DECLS.map((d) => d.name);
 
-/** Deprecated-алиасы типов (спека 2.1.0 §2.2 F10): единый источник для CLI/app. */
-export const DEPRECATED_TYPE_ALIASES: Readonly<Record<string, string>> = { document: 'document-ref' };
+/**
+ * Волна 2.13 §5.4: карта миграции старых типов (alias-чтение P211 + migrate P213).
+ * Identity-строки (rule→rule и т.п.) и task-brief (project-тип dogfood) НЕ входят —
+ * только поглощаемые типы. subdir* — каталоги СТАРОГО типа (резервные корни чтения
+ * и тип-предфильтрация list); facet инжектится при чтении, только если его нет
+ * в frontmatter.
+ */
+export interface TypeAliasSpec {
+  target: MemoryType;
+  facet?: string;
+  subdirThread: string | null;
+  subdirShared: string | null;
+}
+
+export const DEPRECATED_TYPE_ALIASES: Readonly<Record<string, TypeAliasSpec>> = {
+  'work-thread': { target: 'thread', subdirThread: null, subdirShared: null },
+  blocker: { target: 'note', facet: 'pitfall', subdirThread: 'blockers', subdirShared: 'blockers' },
+  'info-request': { target: 'note', facet: 'context', subdirThread: 'notes', subdirShared: 'notes' },
+  'open-question': { target: 'note', facet: 'context', subdirThread: 'notes', subdirShared: 'notes' },
+  observation: { target: 'note', facet: 'legacy', subdirThread: 'lessons', subdirShared: 'lessons' },
+  context: { target: 'note', facet: 'context', subdirThread: 'notes', subdirShared: 'notes' },
+  article: { target: 'note', facet: 'context', subdirThread: 'notes', subdirShared: 'notes' },
+  'session-summary': { target: 'note', facet: 'history', subdirThread: 'sessions', subdirShared: null },
+  'session-checkpoint': { target: 'note', facet: 'history', subdirThread: 'sessions', subdirShared: null },
+  report: { target: 'note', facet: 'history', subdirThread: 'tasks', subdirShared: null },
+  'council-question': { target: 'note', facet: 'context', subdirThread: 'councils', subdirShared: null },
+  'council-opinion': { target: 'note', facet: 'context', subdirThread: 'councils', subdirShared: null },
+  synthesis: { target: 'note', facet: 'context', subdirThread: 'councils', subdirShared: null },
+  document: { target: 'note', facet: 'legacy', subdirThread: 'documents', subdirShared: 'documents' },
+  'document-ref': { target: 'note', facet: 'legacy', subdirThread: 'documents', subdirShared: 'documents' },
+  'document-native': { target: 'note', facet: 'legacy', subdirThread: 'documents', subdirShared: 'documents' },
+  escalation: { target: 'note', facet: 'legacy', subdirThread: 'escalations', subdirShared: null },
+  'decision-request': { target: 'note', facet: 'legacy', subdirThread: 'escalations', subdirShared: null },
+  playbook: { target: 'note', facet: 'howto', subdirThread: null, subdirShared: 'playbooks' },
+  'call-injection': { target: 'note', facet: 'howto', subdirThread: null, subdirShared: 'calls' },
+};
 
 /** Типизированное представление канона (compile-time проверка полей деклараций). */
 export const CORE_TAXONOMY: readonly MemoryTypeDeclaration[] = CORE_TAXONOMY_DECLS;
@@ -354,13 +230,18 @@ export const CORE_TAXONOMY: readonly MemoryTypeDeclaration[] = CORE_TAXONOMY_DEC
 /** Поиск декларации: сначала core-таксономия, потом extra (project-типы из config.yaml). */
 export function getDeclaration(type: string, extra?: readonly MemoryTypeDeclaration[]): MemoryTypeDeclaration {
   const decl = CORE_TAXONOMY.find((d) => d.name === type) ?? extra?.find((d) => d.name === type);
-  if (!decl) {
-    // T011: UserFacingError + список валидных типов (включая deprecated document) —
-    // агент получает читаемую ошибку, classifyError матчит 'unknown memory type' → invalid_input
-    const valid = [...CORE_TAXONOMY.map((d) => d.name), ...(extra ?? []).map((d) => d.name)].join(', ');
-    throw new UserFacingError(`Unknown memory type "${type}". Valid types: ${valid}`);
+  if (decl) return decl;
+  // C12/2.13 §5.4: старый тип — читаемая ошибка с подсказкой нового типа+фасета
+  const alias = DEPRECATED_TYPE_ALIASES[type];
+  if (alias) {
+    throw new UserFacingError(
+      `Type "${type}" was removed in 2.13: use "${alias.target}"${alias.facet ? ` (facet: ${alias.facet})` : ''}`
+    );
   }
-  return decl;
+  // T011: UserFacingError + список валидных типов — агент получает читаемую
+  // ошибку, classifyError матчит 'unknown memory type' → invalid_input
+  const valid = [...CORE_TAXONOMY.map((d) => d.name), ...(extra ?? []).map((d) => d.name)].join(', ');
+  throw new UserFacingError(`Unknown memory type "${type}". Valid types: ${valid}`);
 }
 
 export function subdirectoryFor(type: MemoryType, scope: 'thread' | 'shared'): string | null {

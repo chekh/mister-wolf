@@ -15,11 +15,7 @@ function collectSet(value: string, previous: string[]): string[] {
 export function memoryAddCommand(): Command {
   return new Command('add')
     .description('Add a memory object')
-    .addOption(
-      new Option('--type <type>', 'Memory type')
-        .choices([...MEMORY_TYPES].filter((t) => t !== 'document'))
-        .makeOptionMandatory(true)
-    )
+    .addOption(new Option('--type <type>', 'Memory type').choices([...MEMORY_TYPES]).makeOptionMandatory(true))
     .requiredOption('--title <title>', 'Title')
     .option('--body <body>', 'Body text')
     .option('--tags <tags>', 'Comma-separated tags')
@@ -27,6 +23,7 @@ export function memoryAddCommand(): Command {
     .option('--importance <n>', 'Importance from 0 to 1', parseFloat)
     .option('--set <k=v>', 'Extra field key=value (repeatable; "[a,b]" value is a string array)', collectSet, [])
     .option('--scope <scope>', 'Scope field for types that declare one (rule: project|global)')
+    .option('--facet <facet>', 'Note facet (required for note; howto|pitfall|context|metric|history|legacy|constraint)')
     .option('--created-by <actor>', 'Creator actor (default: env WOLF_ACTOR, else user:cli)')
     .action(
       withCliCall(
@@ -39,6 +36,10 @@ export function memoryAddCommand(): Command {
               throw new UserFacingError('Duplicate scope: use either --scope or --set scope=..., not both');
             extra.scope = options.scope;
           }
+          if (options.facet !== undefined) {
+            if ('facet' in extra)
+              throw new UserFacingError('Duplicate facet: use either --facet or --set facet=..., not both');
+          }
           const result = await addMemoryObject(
             { store, log, clock, idGen, index, declarations },
             {
@@ -49,6 +50,7 @@ export function memoryAddCommand(): Command {
               tags: options.tags ? options.tags.split(',').map((t: string) => t.trim()) : [],
               confidence: options.confidence,
               importance: options.importance,
+              facet: options.facet,
               extra,
             }
           );

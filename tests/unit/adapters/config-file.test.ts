@@ -158,6 +158,49 @@ describe('P104 (A6): мемоизация loadWolfConfigSync по mtime+size', (
   });
 });
 
+// 2.13 §5.3: facets.character — закрытый словарь фасетов note (7–10 значений);
+// БЕЗ catch: битый блок = громкая ошибка конфига; старые конфиги без ключа читаются (iii).
+describe('config facets.character (2.13 §5.3)', () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'wolf-config-facets-'));
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  function writeConfig(yaml: string): void {
+    mkdirSync(join(dir, '.wolf'), { recursive: true });
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), yaml);
+  }
+
+  it('кастомный словарь 8 значений читается', () => {
+    writeConfig('facets:\n  character: [a, b, c, d, e, f, g, h]\n');
+    const loaded = loadWolfConfigSync(dir);
+    expect(loaded?.facets).toEqual({ character: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] });
+  });
+
+  it('словарь из 3 значений → ошибка конфига (диапазон 7–10)', () => {
+    writeConfig('facets:\n  character: [a, b, c]\n');
+    expect(() => loadWolfConfigSync(dir)).toThrow();
+  });
+
+  it('словарь из 11 значений → ошибка конфига', () => {
+    writeConfig('facets:\n  character: [a, b, c, d, e, f, g, h, i, j, k]\n');
+    expect(() => loadWolfConfigSync(dir)).toThrow();
+  });
+
+  it('пустые значения в словаре → ошибка конфига', () => {
+    writeConfig('facets:\n  character: [a, b, c, d, e, f, ""]\n');
+    expect(() => loadWolfConfigSync(dir)).toThrow();
+  });
+
+  it('старый конфиг без ключа facets читается без ошибок (инвариант iii)', () => {
+    writeConfig('learning:\n  pattern_threshold: 5\n');
+    const loaded = loadWolfConfigSync(dir);
+    expect(loaded?.facets).toBeUndefined();
+    expect(loaded?.learning?.patternThreshold).toBe(5);
+  });
+});
+
 // P109 (4.D): delivery.* — мягкий лимит инъекций; отсутствующие/битые ключи = дефолты (§5.iii).
 describe('P109 (4.D): loadDeliverySettings — delivery.context_budget_tokens / context_warning_pct', () => {
   let dir: string;

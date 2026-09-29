@@ -3,7 +3,7 @@ import { WorkThreadSchema } from '../../../src/domain/schemas/thread-schema.js';
 
 const baseThread = {
   id: 'mem_20260630_thread_a1b2',
-  type: 'work-thread',
+  type: 'thread', // 2.13 §5.4: work-thread → thread
   title: 'Refactor auth flow',
   status: 'active',
   review_state: 'accepted',

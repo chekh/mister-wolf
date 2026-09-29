@@ -40,7 +40,7 @@ export async function createSessionCheckpoint(
     const defaults = governanceDefaults(input.createdBy);
     const object: SessionCheckpoint = {
       id: deps.idGen.generateMemoryId(now, `checkpoint-${input.threadId}`),
-      type: 'session-checkpoint',
+      type: 'session-checkpoint' as unknown as SessionCheckpoint['type'], // wave13-a: window-compat (§5.4)
       title: `Checkpoint for ${thread.title}`,
       status: 'active',
       review_state: input.createdBy.startsWith('agent:') ? 'proposed' : 'accepted',

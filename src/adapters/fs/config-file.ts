@@ -78,6 +78,14 @@ const ConfigFileSchema = z.object({
     })
     .optional()
     .catch(undefined),
+  // 2.13 §5.3: словарь фасетов «характер записи» (7–10 значений). БЕЗ catch:
+  // битый блок — громкая ошибка конфига; отсутствие ключа — старые конфиги
+  // читаются без ошибок (инвариант iii).
+  facets: z
+    .object({
+      character: z.array(z.string().min(1)).min(7).max(10),
+    })
+    .optional(),
 });
 
 export class ConfigLoadError extends Error {}
@@ -144,6 +152,7 @@ export async function loadWolfConfig(baseDir: string): Promise<WolfConfig | null
       decayTtl: cfg.learning?.decay_ttl,
       effectivenessThresholds: mapEffectivenessThresholds(cfg.learning?.effectiveness_thresholds),
     },
+    facets: cfg.facets,
   };
 }
 
@@ -230,6 +239,7 @@ function readWolfConfigSync(path: string): WolfConfig | null {
       decayTtl: cfg.learning?.decay_ttl,
       effectivenessThresholds: mapEffectivenessThresholds(cfg.learning?.effectiveness_thresholds),
     },
+    facets: cfg.facets,
   };
 }
 

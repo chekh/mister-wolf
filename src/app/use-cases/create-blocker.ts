@@ -38,7 +38,7 @@ export async function createBlocker(
     const defaults = governanceDefaults(input.createdBy);
     const object: Blocker = {
       id: deps.idGen.generateMemoryId(now, input.title),
-      type: 'blocker',
+      type: 'blocker' as unknown as Blocker['type'], // wave13-a: window-compat (§5.4)
       title: input.title,
       status: 'active',
       review_state: input.createdBy.startsWith('agent:') ? 'proposed' : 'accepted',

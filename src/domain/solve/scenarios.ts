@@ -52,19 +52,19 @@ export const SOLVE_SCENARIOS: readonly SolveScenario[] = [
       'superseded',
       'obsolete',
     ],
-    includeTypes: ['rule', 'decision', 'session-checkpoint'],
+    includeTypes: ['rule', 'decision', 'note'], // wave13-a: window-compat (session-checkpoint → note, §5.4)
   },
   {
     id: 'missing-rule',
     title: 'Repeated correction without active rule',
     symptoms: ['repeats', 'repeated', 'correction', 'convention', 'missing', 'rule', 'instruction', 'durable'],
-    includeTypes: ['rule', 'decision', 'article'],
+    includeTypes: ['rule', 'decision', 'note'], // wave13-a: window-compat (article → note, §5.4)
   },
   {
     id: 'generic',
     title: 'Generic memory review',
     symptoms: [],
-    includeTypes: ['rule', 'decision', 'article', 'document-ref', 'session-checkpoint'],
+    includeTypes: ['rule', 'decision', 'note'], // wave13-a: window-compat (article/document-ref/session-checkpoint → note, §5.4)
   },
 ];
 
