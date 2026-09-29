@@ -4,18 +4,20 @@
 
 YAML-файл, валидируется zod-схемой. Ключи и дефолты:
 
-| Ключ                                | Тип / дефолт                                                                                           |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `schema_version`                    | int; текущая **2** (легаси-проекты без маркера = 1)                                                    |
-| `artifact_sources`                  | string[] — дефолт `[]`                                                                                 |
-| `memory_types.core`                 | генерируемый блок из кода-канона (`wolf taxonomy sync`); ручные правки перезаписываются                |
-| `memory_types.project`              | свои типы: lifecycle, subdir_thread, subdir_shared, fields; не могут конфликтовать с core-типами       |
-| `error_class_taxonomy`              | [{id, match[]}] — дефолт `[]`                                                                          |
-| `learning.pattern_threshold`        | int >= 1 — дефолт **3**                                                                                |
-| `learning.decay_ttl`                | map тип → число сессий без срабатывания                                                                |
-| `learning.effectiveness_thresholds` | {noise_ok, noise_warn, silent_ok} — проценты                                                           |
-| `pricing`                           | map модель → `{input, output, cache_read}` в $/Mtok; без блока `$`-поля скрыты (числа не выдумываются) |
-| `analytics.thresholds`              | классификация lifecycle памяти: `{new_days, workhorse_uses}`; дефолт `{14, 3}`                         |
+| Ключ                                | Тип / дефолт                                                                                                   |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `schema_version`                    | int; текущая **2** (легаси-проекты без маркера = 1)                                                            |
+| `artifact_sources`                  | string[] — дефолт `[]`                                                                                         |
+| `memory_types.core`                 | генерируемый блок из кода-канона (`wolf taxonomy sync`); ручные правки перезаписываются                        |
+| `memory_types.project`              | свои типы: lifecycle, subdir_thread, subdir_shared, fields; не могут конфликтовать с core-типами               |
+| `error_class_taxonomy`              | [{id, match[]}] — дефолт `[]`                                                                                  |
+| `learning.pattern_threshold`        | int >= 1 — дефолт **3**                                                                                        |
+| `learning.decay_ttl`                | map тип → число сессий без срабатывания                                                                        |
+| `learning.effectiveness_thresholds` | {noise_ok, noise_warn, silent_ok} — проценты                                                                   |
+| `pricing`                           | map модель → `{input, output, cache_read}` в $/Mtok; без блока `$`-поля скрыты (числа не выдумываются)         |
+| `analytics.thresholds`              | классификация lifecycle памяти: `{new_days, workhorse_uses}`; дефолт `{14, 3}`                                 |
+| `delivery.context_budget_tokens`    | int > 0; бюджет контекста сессии для предупреждения об инъекциях, токены; дефолт **200000**                    |
+| `delivery.context_warning_pct`      | число ≥ 0; предупреждение, когда инъекции сессии превышают эту долю бюджета, %; дефолт **20**, `0` — выключить |
 
 Пример:
 
@@ -36,6 +38,11 @@ analytics:
   thresholds:
     new_days: 14 # NEW до этого возраста
     workhorse_uses: 3 # WORKHORSE от этого числа использований
+# Мягкий лимит инъекций `wolf call` (аппроксимация токенов bytes/4):
+# одна строка в stderr выше доли бюджета, доставка не режется; 0 — выключить
+delivery:
+  context_budget_tokens: 200000
+  context_warning_pct: 20
 ```
 
 `pricing` и `analytics.thresholds` управляют [аналитикой эффективности](/ru/guide/cli/analytics#конфигурация) (`$`-поля и lifecycle-классы); там же — примеры использования.
@@ -64,7 +71,8 @@ wolf taxonomy sync   # регенерировать memory_types.core из ко�
 │   ├── relations.jsonl    # связи между объектами
 │   └── quarantine/        # карантин битых объектов (wolf validate --fix)
 ├── cache/index.sqlite     # FTS-индекс поиска
-├── metrics/               # session-metrics.jsonl, patterns.jsonl — сигнальный лог
+├── cache/sessions/        # лениво; реестры доставок по сессиям (дедупликация), GC после 7 дней
+├── metrics/               # session-metrics.jsonl, patterns.jsonl, signal-counts.json (derived-счётчики) — сигнальный лог
 ├── thinking/              # последовательности мышления
 ├── tools/                 # тела скриптов tool-объектов
 └── backup/<ts>/           # бэкапы (wolf init --recreate)

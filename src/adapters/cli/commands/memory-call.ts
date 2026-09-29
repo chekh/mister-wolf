@@ -83,6 +83,9 @@ export function memoryCallCommand(): Command {
             sessionId: resolveSessionId(),
             // волна 0 0.1: байты инъекции (detail.injection_bytes)
             injectionBytes: Buffer.byteLength(result.blocks[i] ?? '', 'utf8'),
+            // P108 (§5.i аддитивность): checksum блока — та же, что в реестре
+            // сессии; join «доставка → повторная доставка изменившегося» в аналитике
+            detail: { checksum: checksumBlock(result.blocks[i] ?? '') },
           });
         }
         // P108 (4.C): запись реестра доставок сессии — рядом с delivery-сигналами,
