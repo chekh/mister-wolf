@@ -135,6 +135,16 @@ describe('analytics + dashboard golden scenarios (spec 2026-09-03)', () => {
     };
     expect(councilsPayload.view).toBe('councils');
     expect(typeof councilsPayload.councils.questions.total).toBe('number');
+
+    // P110: панель наблюдаемости доставки
+    const deliveryView = runCli(['analytics', '--view', 'delivery', '--json'], dir);
+    expect(deliveryView.status).toBe(0);
+    const deliveryPayload = JSON.parse(deliveryView.stdout) as {
+      view: string;
+      delivery: { topDelivered: unknown[] };
+    };
+    expect(deliveryPayload.view).toBe('delivery');
+    expect(Array.isArray(deliveryPayload.delivery.topDelivered)).toBe(true);
   });
 
   it('campaign end-to-end: run --campaign + memory-stage injected + task-eval → views campaign/memory (P3 D1–D4)', () => {

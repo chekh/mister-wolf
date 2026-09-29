@@ -231,6 +231,21 @@ function fixtureReport(): AnalyticsReport {
         },
       ],
     },
+    // P110: панель доставки (renderAllSections включает секцию delivery)
+    delivery: {
+      topDelivered: [
+        { name: 'mem_render_delivery_x1', deliveries: 4, applied: 1, appliedPct: 25 },
+        { name: 'mem_render_delivery_x2', deliveries: 2, applied: 0, appliedPct: 0 },
+      ],
+      underApplied: [],
+      missRateByAgent: [{ agent: 'executor-lead', fallbacks: 1, total: 3, missRatePct: 100 / 3 }],
+      avgInjectionBytes: { deliverySignals: 700, routerLog: 1200 },
+      routerMs: { p50: 120, p90: 380, count: 9 },
+      skills: [
+        { skill: 'wolf-plan', count: 3 },
+        { skill: 'ponytail', count: 1 },
+      ],
+    },
   };
 }
 

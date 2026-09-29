@@ -45,7 +45,7 @@ The composition below is the catalog of `templates/base/` in the package.
 
 Plugins ship with the opencode harness layer of the package (`templates/opencode/plugins/`) and are part of the same stamped set:
 
-- `wolf-router` — deterministic playbook delivery per agent (by the `agent-id` marker); writes its routing decisions to `.wolf/router.log`.
+- `wolf-router` — deterministic playbook delivery per agent (by the `agent-id` marker); writes routing decisions to `.wolf/router.log` (with `ms=`/`bytes=` observability fields) and skill invocations to `.wolf/metrics/skill-invocations.jsonl` — skill usage is now measurable (see [Analytics — delivery panel](/guide/cli/analytics#delivery-panel)).
 - `wolf-session-start` — injects the bootstrap context when the transcript has no marker yet (covers session start, `/clear` and compact) and passes a fresh `opc-<uuid>` session id on every CLI spawn (see [Telemetry — session keys](/guide/telemetry#session-keys)).
 
 ## Playbooks — 6 → seeded into Wolf memory

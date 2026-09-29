@@ -5,7 +5,9 @@ import {
   classifyLifecycle,
   resolveLifecycleThresholds,
   DEFAULT_LIFECYCLE_THRESHOLDS,
+  parseSkillInvocations,
 } from '../../../src/app/use-cases/build-analytics.js';
+import type { RouterLogRow } from '../../../src/domain/router-log.js';
 import type { MemoryStore } from '../../../src/ports/memory-store.port.js';
 import type { EventLog } from '../../../src/ports/event-log.port.js';
 import type { RelationLog } from '../../../src/ports/relation-log.port.js';
@@ -920,5 +922,150 @@ describe('buildAnalyticsReport: experiment readiness (Q10)', () => {
         { experiment: 'e2', runs: 1 },
       ], // сорт runs убыв.
     });
+  });
+});
+
+describe('buildAnalyticsReport: delivery view (P110)', () => {
+  const deps = { store: mockStore([]), log: mockLog([]), relations: mockRelations([]), clock: fixedClock };
+
+  function deliverySig(name: string, ts: string, session: string | null, injectionBytes?: number): SignalEvent {
+    return {
+      ts,
+      event: 'delivery',
+      session_id: session,
+      gen_ai: { modelID: null, agent: null },
+      orchestration: { task: null, actor: 'user:cli' },
+      outcome: 'delivered',
+      detail: { name, ...(injectionBytes !== undefined ? { injection_bytes: injectionBytes } : {}) },
+    };
+  }
+
+  function mcpSig(tool: 'get' | 'search', ts: string, session: string | null, detail: Extra): SignalEvent {
+    return {
+      ts,
+      event: 'mcp_call',
+      session_id: session,
+      gen_ai: { modelID: null, agent: null },
+      orchestration: { task: null, actor: 'user:cli' },
+      outcome: 'ok',
+      tool_name: tool,
+      detail,
+    };
+  }
+
+  const routerRow = (
+    agentId: string,
+    variant: string | null,
+    ms: number | null,
+    bytes: number | null
+  ): RouterLogRow => ({
+    ts: '2026-09-01T00:00:00Z',
+    agentId,
+    hit: true,
+    playbookId: 'mem',
+    variant,
+    ms,
+    bytes,
+  });
+
+  it('golden: applied-join по get/search, miss-rate по router.log, байты/латентность, skills', async () => {
+    const signals: SignalEvent[] = [
+      // m1 ×3 в s1 (все с injection_bytes 100) + get(m1) ПОСЛЕ доставок → все 3 applied
+      deliverySig('m1', '2026-09-01T10:00:00Z', 's1', 100),
+      deliverySig('m1', '2026-09-01T10:01:00Z', 's1', 100),
+      deliverySig('m1', '2026-09-01T10:02:00Z', 's1', 100),
+      deliverySig('m2', '2026-09-01T10:03:00Z', 's1'), // get(m2) нет → applied 0
+      deliverySig('m3', '2026-09-01T10:04:00Z', null), // MCP session_id=null: в join не попадает, в topDelivered считается
+      // m4 ×10 без применения → underApplied (deliveries >= 10, appliedPct < 10)
+      ...Array.from({ length: 10 }, (_, i) =>
+        deliverySig('m4', `2026-09-01T10:10:${String(i).padStart(2, '0')}Z`, 's1')
+      ),
+      mcpSig('get', '2026-09-01T11:00:00Z', 's1', { memory_id: 'm1' }),
+    ];
+    // agent-a: 3 canonical (ms 10/20/30, bytes 100) + 1 fallback (ms 40, bytes 200); agent-b: 1 fallback без ms
+    const rows: RouterLogRow[] = [
+      routerRow('agent-a', 'canonical', 10, 100),
+      routerRow('agent-a', 'canonical', 20, 100),
+      routerRow('agent-a', 'canonical', 30, 100),
+      routerRow('agent-a', 'fallback', 40, 200),
+      routerRow('agent-b', 'fallback', null, null),
+    ];
+    const report = await buildAnalyticsReport(deps, {
+      signals,
+      runLogText: null,
+      routerLog: { rows, lines: rows.length, malformedLines: 0 },
+      skillInvocations: {
+        rows: [
+          { ts: '2026-09-01T00:00:00Z', skill: 'ponytail', agent: 'worker' },
+          { ts: '2026-09-01T00:01:00Z', skill: 'ponytail', agent: null },
+          { ts: '2026-09-01T00:02:00Z', skill: 'brainstorming', agent: null },
+        ],
+        malformedLines: 0,
+      },
+    });
+
+    const d = report.delivery;
+    // сорт deliveries убыв., потом name: m4(10), m1(3), m2(1), m3(1)
+    expect(d.topDelivered).toEqual([
+      { name: 'm4', deliveries: 10, applied: 0, appliedPct: 0 },
+      { name: 'm1', deliveries: 3, applied: 3, appliedPct: 100 },
+      { name: 'm2', deliveries: 1, applied: 0, appliedPct: 0 },
+      { name: 'm3', deliveries: 1, applied: 0, appliedPct: 0 },
+    ]);
+    expect(d.underApplied).toEqual(['m4']);
+    // fallbacks равны (1=1) → сорт по агенту; miss-rate 1/4 и 1/1
+    expect(d.missRateByAgent).toEqual([
+      { agent: 'agent-a', fallbacks: 1, total: 4, missRatePct: 25 },
+      { agent: 'agent-b', fallbacks: 1, total: 1, missRatePct: 100 },
+    ]);
+    expect(d.avgInjectionBytes).toEqual({ deliverySignals: 100, routerLog: 125 }); // mean по каждому каналу отдельно
+    expect(d.routerMs.p50).toBe(25); // [10,20,30,40]: idx 1.5 → 20+0.5×10
+    expect(d.routerMs.p90).toBeCloseTo(37, 10); // idx 2.7 → 30+0.7×10
+    expect(d.routerMs.count).toBe(4); // null-ms строка agent-b не считается
+    expect(d.skills).toEqual([
+      { skill: 'ponytail', count: 2 },
+      { skill: 'brainstorming', count: 1 },
+    ]);
+
+    // view-фильтр: top-срез topDelivered, остальные блоки целиком
+    const view = filterAnalytics(report, { view: 'delivery', top: 2 });
+    if (view.view !== 'delivery') throw new Error('expected delivery view');
+    expect(view.delivery.topDelivered).toHaveLength(2);
+    expect(view.delivery.topDelivered[0]).toMatchObject({ name: 'm4' });
+    expect(view.delivery.underApplied).toEqual(['m4']);
+    expect(view.delivery.skills).toEqual(d.skills);
+  });
+
+  it('applied-join: get ДО доставки не считается; search с memory_ids тоже джойнится', async () => {
+    const signals: SignalEvent[] = [
+      mcpSig('get', '2026-09-01T09:00:00Z', 's1', { memory_id: 'm_early' }), // раньше доставки — не applied
+      deliverySig('m_early', '2026-09-01T10:00:00Z', 's1'),
+      deliverySig('m_search', '2026-09-01T10:01:00Z', 's1'),
+      mcpSig('search', '2026-09-01T10:02:00Z', 's1', { memory_ids: ['m_search'] }), // ts >= доставки
+      deliverySig('m_other_session', '2026-09-01T10:03:00Z', 's2'), // get в другой сессии
+      mcpSig('get', '2026-09-01T10:04:00Z', 's1', { memory_id: 'm_other_session' }),
+    ];
+    const report = await buildAnalyticsReport(deps, { signals, runLogText: null });
+    const byName = new Map(report.delivery.topDelivered.map((r) => [r.name, r]));
+    expect(byName.get('m_early')).toMatchObject({ deliveries: 1, applied: 0 });
+    expect(byName.get('m_search')).toMatchObject({ deliveries: 1, applied: 1 });
+    expect(byName.get('m_other_session')).toMatchObject({ deliveries: 1, applied: 0 });
+  });
+
+  it('parseSkillInvocations: толерантный JSONL, битые строки считаются, agent отсутствует → null', () => {
+    const { rows, malformedLines } = parseSkillInvocations(
+      [
+        '{"ts":"2026-09-01T00:00:00Z","skill":"ponytail","agent":"worker"}',
+        '{"ts":"2026-09-01T00:01:00Z","skill":"brainstorming"}',
+        'not json at all',
+        '{"ts":"2026-09-01T00:02:00Z"}', // без skill — битая
+        '',
+      ].join('\n')
+    );
+    expect(rows).toEqual([
+      { ts: '2026-09-01T00:00:00Z', skill: 'ponytail', agent: 'worker' },
+      { ts: '2026-09-01T00:01:00Z', skill: 'brainstorming', agent: null },
+    ]);
+    expect(malformedLines).toBe(2);
   });
 });

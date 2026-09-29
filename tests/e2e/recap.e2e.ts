@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
-import { rmSync } from 'fs';
+import { rmSync, writeFileSync } from 'fs';
+import { join } from 'path';
 import { ensureBuilt, runCli, tmpProject } from './helpers.js';
 
 describe('recap golden scenarios', () => {
@@ -71,5 +72,29 @@ describe('recap golden scenarios', () => {
     expect(recap.stdout).toContain('## Open questions\n-');
     expect(recap.stdout).toContain('## Open info requests\n-');
     expect(recap.stdout).toContain('## Recent decisions\n-');
+    // P110: без router.log секции Delivery нет
+    expect(recap.stdout).not.toContain('## Delivery');
+  });
+
+  it('recap renders Delivery (7d) section from router.log', () => {
+    const dir = tmpProject();
+    dirs.push(dir);
+    runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
+
+    // P110: 2 строки в окне (canonical hit + fallback), ts = сейчас
+    const now = new Date().toISOString();
+    writeFileSync(
+      join(dir, '.wolf', 'router.log'),
+      [
+        `${now} agent-id=agent-a playbook=hit name=mem_x variant=canonical injected=yes ms=5 bytes=10`,
+        `${now} agent-id=agent-b playbook=hit name=mem_y variant=fallback injected=yes ms=6 bytes=20`,
+      ].join('\n') + '\n',
+      'utf-8'
+    );
+
+    const recap = runCli(['recap'], dir);
+    expect(recap.status).toBe(0);
+    expect(recap.stdout).toContain('## Delivery (7d)');
+    expect(recap.stdout).toContain('доставок 2, промахов 1');
   });
 });

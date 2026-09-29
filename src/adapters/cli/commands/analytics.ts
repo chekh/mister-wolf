@@ -7,6 +7,8 @@ import { loadWolfConfigSync } from '../../fs/config-file.js';
 import {
   buildAnalyticsReport,
   filterAnalytics,
+  parseSkillInvocations,
+  type AnalyticsInput,
   type AnalyticsReport,
   type AnalyticsViewFilter,
 } from '../../../app/use-cases/build-analytics.js';
@@ -34,6 +36,7 @@ type AnalyticsView =
   | 'councils'
   | 'coordination'
   | 'campaign'
+  | 'delivery'
   | 'acceptance'
   | 'all';
 type SectionView = Exclude<AnalyticsView, 'all'>;
@@ -50,6 +53,7 @@ const SECTION_VIEWS: SectionView[] = [
   'councils',
   'coordination',
   'campaign',
+  'delivery',
   'acceptance',
 ];
 
@@ -311,6 +315,35 @@ export function renderSection(report: AnalyticsReport, filter: SectionViewFilter
         renderTable(['campaign', 'cohort', 'n', 'median_weighted', 'accepted_%', 'pfail_%', 'note'], rows),
       ].join('\n');
     }
+    case 'delivery': {
+      // P110: панель наблюдаемости доставки — applied-join, miss-rate, байты/латентность, skills
+      const d = payload.delivery;
+      const pct = (v: number | null): string => (v === null ? 'n/a' : v.toFixed(1));
+      const int = (v: number | null): string => (v === null ? 'n/a' : String(Math.round(v)));
+      return [
+        header,
+        'top delivered:',
+        renderTable(
+          ['name', 'deliveries', 'applied', 'applied_%'],
+          d.topDelivered.map((r) => [r.name, cell(r.deliveries), cell(r.applied), pct(r.appliedPct)])
+        ),
+        `highlight (deliveries>=10, applied<10%): ${d.underApplied.join(', ') || '-'}`,
+        'miss-rate by agent:',
+        renderTable(
+          ['agent', 'fallbacks', 'total', 'miss_%'],
+          d.missRateByAgent.map((r) => [r.agent, cell(r.fallbacks), cell(r.total), pct(r.missRatePct)])
+        ),
+        `avg injection bytes: delivery_signals=${int(d.avgInjectionBytes.deliverySignals)} router_log=${int(
+          d.avgInjectionBytes.routerLog
+        )}`,
+        `router resolve ms: p50=${int(d.routerMs.p50)} p90=${int(d.routerMs.p90)} (n=${d.routerMs.count})`,
+        'skills:',
+        renderTable(
+          ['skill', 'count'],
+          d.skills.map((r) => [r.skill, cell(r.count)])
+        ),
+      ].join('\n');
+    }
     case 'acceptance': {
       // T003: машинная приёмка волн 1–3 — router miss-rate, mcp_call latency/errors,
       // burst'ы delivery, search->get follow, vitality; null-метрики → n/a
@@ -405,6 +438,7 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
           'councils',
           'coordination',
           'campaign',
+          'delivery',
           'acceptance',
           'all',
         ])
@@ -448,6 +482,16 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
     }
     const parsedRouterLog = parseRouterLog(routerLogText ?? '');
 
+    // P110: skill-invocations.jsonl плагина (нет файла → не передаём, skills пустые)
+    let skillInvocations: AnalyticsInput['skillInvocations'] = undefined;
+    try {
+      skillInvocations = parseSkillInvocations(
+        readFileSync(join(baseDir, '.wolf', 'metrics', 'skill-invocations.jsonl'), 'utf-8')
+      );
+    } catch {
+      skillInvocations = undefined; // ENOENT — плагин ещё не писал
+    }
+
     const { store, log, relations, clock } = createCliContainer(baseDir);
     // D7: readSignalLog вместо readSignals — events + счётчики битых строк для dataQuality
     const signalLog = readSignalLog(baseDir);
@@ -462,6 +506,7 @@ export function analyticsCommand(baseDir: string = safeCwd()): Command {
           lines: parsedRouterLog.rows.length + parsedRouterLog.malformedLines,
           malformedLines: parsedRouterLog.malformedLines,
         },
+        ...(skillInvocations !== undefined ? { skillInvocations } : {}),
         ...(analyticsThresholds !== undefined ? { thresholds: analyticsThresholds } : {}),
         weeks: options.weeks,
         topOutliers: options.top,

@@ -17,8 +17,18 @@ describe('parseRouterLog', () => {
         hit: true,
         playbookId: 'mem_pb_v4',
         variant: 'canonical',
+        ms: null,
+        bytes: null,
       },
-      { ts: '2026-09-27T09:00:01.000Z', agentId: 'executor-lead', hit: false, playbookId: null, variant: null },
+      {
+        ts: '2026-09-27T09:00:01.000Z',
+        agentId: 'executor-lead',
+        hit: false,
+        playbookId: null,
+        variant: null,
+        ms: null,
+        bytes: null,
+      },
     ]);
   });
 
@@ -28,8 +38,28 @@ describe('parseRouterLog', () => {
     );
     expect(malformedLines).toBe(0);
     expect(rows).toEqual([
-      { ts: '2026-09-01T00:00:00.000Z', agentId: 'apprentice', hit: true, playbookId: null, variant: null },
+      {
+        ts: '2026-09-01T00:00:00.000Z',
+        agentId: 'apprentice',
+        hit: true,
+        playbookId: null,
+        variant: null,
+        ms: null,
+        bytes: null,
+      },
     ]);
+  });
+
+  // P106 (волна 2.12): строка несёт ms=/bytes=; числа парсятся, мусор → null
+  it('ms=/bytes= парсятся; нечисловые значения → null', () => {
+    const text = [
+      '2026-09-29T10:00:00.000Z agent-id=executor-lead playbook=hit name=mem_pb_v1 variant=canonical injected=yes ms=42 bytes=1337',
+      '2026-09-29T10:00:01.000Z agent-id=apprentice playbook=hit name=fallback variant=fallback injected=yes ms=7 bytes=2.5',
+    ].join('\n');
+    const { rows, malformedLines } = parseRouterLog(text);
+    expect(malformedLines).toBe(0);
+    expect(rows[0]).toMatchObject({ agentId: 'executor-lead', ms: 42, bytes: 1337 });
+    expect(rows[1]).toMatchObject({ agentId: 'apprentice', ms: 7, bytes: null }); // «2.5» — не целое
   });
 
   it('мусорная строка → malformedLines; валидные строки вокруг парсятся', () => {

@@ -1,12 +1,26 @@
 import { Command } from 'commander';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { generateRecap, renderRecap } from '../../../app/use-cases/generate-recap.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
+import { parseRouterLog } from '../../../domain/router-log.js';
 
 export function memoryRecapCommand(): Command {
   return new Command('recap')
     .description('Summarize active project memory: rules, threads, blockers, questions, decisions')
     .action(async () => {
       const { store } = createCliContainer(process.cwd());
-      console.log(renderRecap(await generateRecap({ store })));
+      // P110: router.log плагина wolf-router (нет файла → delivery = null, секция опускается)
+      let routerLogText: string | null = null;
+      try {
+        routerLogText = readFileSync(join(process.cwd(), '.wolf', 'router.log'), 'utf-8');
+      } catch {
+        routerLogText = null; // ENOENT — плагин ещё не писал
+      }
+      const report = await generateRecap({
+        store,
+        ...(routerLogText !== null ? { routerLogRows: parseRouterLog(routerLogText).rows } : {}),
+      });
+      console.log(renderRecap(report));
     });
 }

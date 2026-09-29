@@ -273,6 +273,47 @@ describe('buildAnalyticsReport: acceptance view (T003 golden-корпус)', () 
     expect(view.acceptance).toBe(a);
   });
 
+  it('P110: routerLog + skillInvocations → report.delivery заполнен', async () => {
+    const router = parseRouterLog(
+      '2026-09-27T09:00:00.000Z agent-id=worker playbook=hit name=mem_pb variant=canonical injected=yes ms=5 bytes=10\n' +
+        '2026-09-27T09:00:01.000Z agent-id=worker playbook=hit name=mem_fb variant=fallback injected=yes ms=7 bytes=20'
+    );
+    const report = await buildAnalyticsReport(
+      { store: mockStore(), log: mockLog(), relations: mockRelations(), clock: fixedClock },
+      {
+        signals: [JSON.parse(delivery('mem_x', '2026-09-27T10:00:00Z', 's1')) as SignalEvent],
+        runLogText: null,
+        routerLog: { rows: router.rows, lines: router.rows.length, malformedLines: 0 },
+        skillInvocations: { rows: [{ ts: '2026-09-27T11:00:00Z', skill: 'ponytail', agent: null }], malformedLines: 1 },
+      }
+    );
+    const d = report.delivery;
+    // доставки без последующего get/search в сессии → applied 0
+    expect(d.topDelivered).toEqual([{ name: 'mem_x', deliveries: 1, applied: 0, appliedPct: 0 }]);
+    expect(d.underApplied).toEqual([]); // deliveries < 10 — порог подсветки не сработал
+    expect(d.missRateByAgent).toEqual([{ agent: 'worker', fallbacks: 1, total: 2, missRatePct: 50 }]);
+    expect(d.avgInjectionBytes).toEqual({ deliverySignals: null, routerLog: 15 }); // (10+20)/2
+    expect(d.routerMs.p50).toBe(6); // [5,7]: idx 0.5 → 5+0.5×2
+    expect(d.routerMs.p90).toBeCloseTo(6.8, 10); // idx 0.9 → 5+0.9×2, float-шум
+    expect(d.routerMs.count).toBe(2);
+    expect(d.skills).toEqual([{ skill: 'ponytail', count: 1 }]);
+  });
+
+  it('P110: пустые входы → пустая delivery-структура без исключений', async () => {
+    const report = await buildAnalyticsReport(
+      { store: mockStore(), log: mockLog(), relations: mockRelations(), clock: fixedClock },
+      { signals: [] as SignalEvent[], runLogText: null }
+    );
+    expect(report.delivery).toEqual({
+      topDelivered: [],
+      underApplied: [],
+      missRateByAgent: [],
+      avgInjectionBytes: { deliverySignals: null, routerLog: null },
+      routerMs: { p50: null, p90: null, count: 0 },
+      skills: [],
+    });
+  });
+
   it('пустые signals/routerLog → нули и null-метрики, отчёт не падает', async () => {
     const report = await buildAnalyticsReport(
       { store: mockStore(), log: mockLog(), relations: mockRelations(), clock: fixedClock },

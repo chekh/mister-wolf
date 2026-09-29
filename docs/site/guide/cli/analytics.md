@@ -11,13 +11,14 @@ Usage: wolf analytics [options]
 
 Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents,
 steward view, councils, outliers, experiment readiness, memory lifecycle &
-coordination, campaigns & per-memory ROI, machine acceptance (wave metrics)
+coordination, campaigns & per-memory ROI, delivery panel, machine acceptance
+(wave metrics)
 
 Options:
   --view <view>      Analytics view (choices: "memory", "tools", "rules",
-                     "weeklyActivity", "agents", "steward", "outliers",
-                     "readiness", "councils", "coordination", "campaign",
-                     "acceptance", "all", default: "all")
+                      "weeklyActivity", "agents", "steward", "outliers",
+                      "readiness", "councils", "coordination", "campaign",
+                      "delivery", "acceptance", "all", default: "all")
   --class <class>    Memory lifecycle filter (choices: "new", "sleeper",
                      "workhorse", "dead")
   --type <type>      Memory type filter
@@ -32,7 +33,7 @@ Options:
 
 Options:
 
-- `--view <view>` — analytics view (choices: `memory`, `tools`, `rules`, `weeklyActivity`, `agents`, `steward`, `outliers`, `readiness`, `councils`, `coordination`, `campaign`, `acceptance`, `all`; default: `all`)
+- `--view <view>` — analytics view (choices: `memory`, `tools`, `rules`, `weeklyActivity`, `agents`, `steward`, `outliers`, `readiness`, `councils`, `coordination`, `campaign`, `delivery`, `acceptance`, `all`; default: `all`)
 - `--class <class>` — memory lifecycle filter (choices: `new`, `sleeper`, `workhorse`, `dead`)
 - `--type <type>` — memory type filter
 - `--origin <origin>` — tool origin filter (choices: `script`, `native`)
@@ -57,6 +58,7 @@ Views:
 | `campaign`       | Campaigns → cohorts with/without injected memory in the run's session: n, median weighted, accepted share, process-failure rate; honest n/a for small samples (P3)                                                                         |
 | `outliers`       | Most expensive runs (weighted; `$` with pricing)                                                                                                                                                                                           |
 | `readiness`      | Experiment readiness: share of runs with an arm, sample sizes per group                                                                                                                                                                    |
+| `delivery`       | Delivery panel: top delivered objects with the applied% indicator, miss-rate by agent-id, average injection size (two channels), router resolve latency p50/p90, skill invocation counters (see [Delivery panel](#delivery-panel))         |
 | `acceptance`     | Machine acceptance (wave metrics): router miss-rate per agent, per-tool error rate + p50/p90 latency, error classes, delivery bursts, search→get follow, 72 h vitality, malformed lines (see [Machine acceptance](#machine-acceptance))    |
 | `all`            | All sections in sequence (default)                                                                                                                                                                                                         |
 
@@ -282,6 +284,49 @@ memory ROI (correlational, not causal):
 │ mem_20260905_prefer_vitest_run_over_wat… │ 0              │ 0             │ 1              │ 2026-09-05T09:30:00.480Z │
 └──────────────────────────────────────────┴────────────────┴───────────────┴────────────────┴──────────────────────────┘
 ```
+
+### Delivery panel
+
+`--view delivery` is the one-command view onto the delivery funnel — what gets delivered, how big it is, and whether the agent ever comes back for what was delivered. No new collectors: it aggregates delivery signals, `.wolf/router.log` (including the `ms=`/`bytes=` fields) and `.wolf/metrics/skill-invocations.jsonl`:
+
+- **top delivered** — delivery-signal counts per `detail.name`, with the **applied%** indicator: the share of a name's deliveries that were followed in the same session by a `wolf get`/`wolf search` touching that same id (a CLI-channel join; MCP sessions have a null session id and are outside the metric). Applied% is an indicator, not a verdict — but a name with `deliveries ≥ 10` and `applied% < 10%` lands in the **highlight** line: delivered a lot, never touched — a candidate for the constitution's rot filter.
+- **miss-rate by agent** — share of `variant=fallback` router lines per agent-id (a "miss" = the canonical playbook wasn't found, the universal fallback was delivered; misses are a subset of deliveries).
+- **avg injection bytes** — mean injection size, two channels kept separate: `delivery_signals` (mean `detail.injection_bytes`) and `router_log` (mean `bytes=` of playbook injections).
+- **router resolve ms** — p50/p90 over the router log's `ms=` field; the wave acceptance threshold (p90 < 500 ms) is checked against exactly this number.
+- **skills** — invocation counters per skill name from the plugin-written skill-invocations log (see [Base Set — plugins](/guide/base-set#plugins--2--opencodeplugins)): until now, skill value was invisible.
+
+The same numbers reach the session entry point: `wolf recap` prints a `Delivery (7d)` line — `доставок N, промахов M, топ промахов: <agent> (×k)…` (N = delivered canonical+fallback over the last 7 days, M = fallback share of it, top-3 miss agents). The section is omitted when there is no router log.
+
+```bash
+wolf analytics --view delivery
+```
+
+```text
+== delivery ==
+top delivered:
+┌──────────────────┬────────────┬─────────┬───────────┐
+│ name             │ deliveries │ applied │ applied_% │
+├──────────────────┼────────────┼─────────┼───────────┤
+│ mem_…_prefer_vt… │ 14         │ 2       │ 14.3      │
+└──────────────────┴────────────┴─────────┴───────────┘
+highlight (deliveries>=10, applied<10%): -
+miss-rate by agent:
+┌──────────┬───────────┬───────┬────────┐
+│ agent    │ fallbacks │ total │ miss_% │
+├──────────┼───────────┼───────┼────────┤
+│ reviewer │ 3         │ 12    │ 25.0   │
+└──────────┴───────────┴───────┴────────┘
+avg injection bytes: delivery_signals=812 router_log=1493
+router resolve ms: p50=210 p90=433 (n=57)
+skills:
+┌────────────┬───────┐
+│ skill      │ count │
+├────────────┼───────┤
+│ wolf-plan  │ 7     │
+└────────────┴───────┘
+```
+
+`--json` returns the same sections machine-readable (`topDelivered`, `underApplied`, `missRateByAgent`, `avgInjectionBytes`, `routerMs`, `skills`); the MCP `analytics` tool accepts `view: "delivery"`.
 
 ### Machine acceptance
 

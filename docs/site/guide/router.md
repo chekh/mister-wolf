@@ -7,10 +7,11 @@ Playbooks only help if they reach the agent. The router is the delivery layer: t
 On every message the plugin:
 
 1. Reads the `agent-id: <id>` marker from the agent frame **body**. The marker must live in the body, not in frontmatter — frontmatter never reaches the system prompt (a known opencode trap).
-2. Runs `wolf search <id> --type playbook` and fetches each candidate with `wolf get`.
+2. Runs `wolf search <id> --type playbook` and fetches candidates with `wolf get` — stopping early: the first candidate that passes the ownership guard wins (search relevance already ranks them, and `--hide-superseded` cuts old versions), so a cache miss costs a single `get` instead of K sequential fetches.
 3. Guards ownership: only playbooks with `owner_skill === agentId` (legacy `skill:<agentId>` also accepted) are eligible.
-4. Picks the highest `version` among the eligible ones.
-5. Injects the playbook body into the system prompt under the header `# Актуальный playbook`.
+4. Injects the playbook body into the system prompt under the header `# Актуальный playbook`.
+
+Resolved playbooks are cached per agent-id for 5 minutes (a negative result is cached too — a project without a playbook doesn't spawn a CLI on every turn). The playbook is canonical memory that the Steward mutates rarely, so minutes-level freshness is enough; a session restart picks up changes immediately.
 
 Injection is idempotent — the header is checked, so the playbook is never injected twice. The plugin is fail-safe: any error is swallowed; it has no right to break the session. The registry of deliveries is the playbook objects themselves, via `owner_skill` — there is no separate router config.
 
@@ -25,19 +26,22 @@ The router log records which variant was delivered (`variant=canonical | fallbac
 Every routing decision is appended to `.wolf/router.log`:
 
 ```text
-<ISO> agent-id=<id> playbook=hit name=<mem-id|fallback> variant=canonical|fallback injected=yes
+<ISO> agent-id=<id> playbook=hit name=<mem-id|fallback> variant=canonical|fallback injected=yes ms=<resolve-ms> bytes=<body-bytes>
 <ISO> agent-id=<id> playbook=miss injected=no
 ```
 
 - `hit` + `name=<mem-id> variant=canonical` — the canonical playbook was injected.
 - `hit` + `name=fallback variant=fallback` — no canonical playbook; the built-in fallback was injected.
 - `miss` — nothing was injected: neither canonical nor fallback answered. The current plugin version does not emit this line (a CLI failure resolves to the fallback playbook); the format is kept for compatibility with logs written by older versions.
+- `ms=` / `bytes=` — how long the resolve took (milliseconds) and the size of the injected body (bytes). Lines written by older versions don't carry these fields; the parser is k=v-tolerant in both directions.
 
-The miss-rate per agent-id is part of the acceptance metrics:
+The `ms=` field is the latency source for the wave acceptance threshold (router resolve p90 < 500 ms), and `bytes=` feeds the average injection size in the [delivery panel](/guide/cli/analytics#delivery-panel):
 
 ```bash
-wolf analytics --view acceptance --json
+wolf analytics --view delivery --json
 ```
+
+The miss-rate per agent-id remains part of the acceptance metrics (`wolf analytics --view acceptance --json`).
 
 The log's place in telemetry is covered in [Telemetry](/guide/telemetry), the metrics in [Analytics — machine acceptance](/guide/cli/analytics#machine-acceptance).
 

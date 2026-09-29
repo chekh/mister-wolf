@@ -7,10 +7,11 @@ Playbook помогает ровно настолько, насколько он
 На каждое сообщение плагин:
 
 1. Читает маркер `agent-id: <id>` из **тела** рамки агента. Маркер обязан жить в теле, а не во frontmatter — frontmatter в system-промпт не попадает (известная грабля opencode).
-2. Выполняет `wolf search <id> --type playbook` и забирает каждого кандидата через `wolf get`.
+2. Выполняет `wolf search <id> --type playbook` и забирает кандидатов через `wolf get` — с ранним стопом: побеждает первый кандидат, прошедший гвард владельца (релевантность поиска уже отсортировала, `--hide-superseded` отсёк старые версии), поэтому miss кэша стоит один `get` вместо K последовательных.
 3. Проверяет владельца: подходят только playbook'и с `owner_skill === agentId` (legacy-вариант `skill:<agentId>` тоже принимается).
-4. Берёт наибольшую `version` среди прошедших гвард.
-5. Инъецирует тело playbook в system-промпт под заголовком `# Актуальный playbook`.
+4. Инъецирует тело playbook в system-промпт под заголовком `# Актуальный playbook`.
+
+Отрезолвленный playbook кэшируется по agent-id на 5 минут (негативный результат — тоже: проект без playbook не спавнит CLI на каждом ходу). Playbook — canonical-память, которую Стюард мутирует редко, минутной свежести достаточно; перезапуск сессии подхватывает изменения мгновенно.
 
 Инъекция идемпотентна — заголовок проверяется, playbook никогда не вставляется дважды. Плагин fail-safe: любая ошибка проглатывается, он не имеет права уронить сессию. Реестр доставок — сами playbook-объекты через `owner_skill`; отдельного конфига у роутера нет.
 
@@ -25,19 +26,22 @@ Playbook помогает ровно настолько, насколько он
 Каждое решение о доставке дописывается в `.wolf/router.log`:
 
 ```text
-<ISO> agent-id=<id> playbook=hit name=<mem-id|fallback> variant=canonical|fallback injected=yes
+<ISO> agent-id=<id> playbook=hit name=<mem-id|fallback> variant=canonical|fallback injected=yes ms=<мс> bytes=<байты>
 <ISO> agent-id=<id> playbook=miss injected=no
 ```
 
 - `hit` + `name=<mem-id> variant=canonical` — инъецирован канонический playbook.
 - `hit` + `name=fallback variant=fallback` — канонического playbook нет; инъецирован встроенный fallback.
 - `miss` — не инъецировано ничего: не ответил ни канон, ни fallback. Текущая версия плагина эту строку не пишет (отказ CLI резолвится fallback-плейбуком); формат сохранён для совместимости с логами старых версий.
+- `ms=` / `bytes=` — сколько занял resolve (миллисекунды) и размер инъецированного тела (байты). Строки старых версий этих полей не несут; парсер k=v-толерантен в обе стороны.
 
-Miss-rate по каждому agent-id входит в acceptance-метрики:
+Поле `ms=` — источник латентности для волнового порога приёмки (router resolve p90 < 500 мс), `bytes=` — средний размер инъекции в [панели доставки](/ru/guide/cli/analytics#панель-доставки):
 
 ```bash
-wolf analytics --view acceptance --json
+wolf analytics --view delivery --json
 ```
+
+Miss-rate по каждому agent-id остаётся частью acceptance-метрик (`wolf analytics --view acceptance --json`).
 
 Место лога в телеметрии разобрано в [Телеметрии](/ru/guide/telemetry), метрики — в [Аналитике — машинная приёмка](/ru/guide/cli/analytics#машинная-приёмка).
 
