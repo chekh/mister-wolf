@@ -1,17 +1,23 @@
 import { describe, it, expect } from 'vitest';
-import { getDeclaration, subdirectoryFor } from '../../../src/domain/memory-types.js';
+import type { MemoryType, MemoryTypeDeclaration } from '../../../src/domain/memory-types.js';
 import { buildTypeSchema } from '../../../src/domain/type-schema-builder.js';
 
+// 2.13 §5.4: playbook удалён из core (alias → note facet howto); схема живёт
+// на инлайн-декларации до смерти читателей в W2 (window-compat)
+const decl: MemoryTypeDeclaration = {
+  name: 'playbook' as MemoryType,
+  lifecycle: ['active', 'stale', 'superseded', 'archived'],
+  subdirThread: null,
+  subdirShared: 'playbooks',
+  fields: {
+    trigger_keywords: { kind: 'string[]', default: [] },
+    steps: { kind: 'string[]', required: true, minItems: 1 },
+    owner_skill: { kind: 'string', required: true, min: 1 },
+    version: { kind: 'string', required: true, min: 1 },
+  },
+};
+
 describe('playbook type (W5)', () => {
-  const decl = getDeclaration('playbook');
-
-  it('объявлен в core-таксономии с placement shared/playbooks', () => {
-    expect(decl.name).toBe('playbook');
-    expect(subdirectoryFor('playbook', 'shared')).toBe('playbooks');
-    expect(subdirectoryFor('playbook', 'thread')).toBeNull();
-    expect(decl.lifecycle).toContain('superseded');
-  });
-
   it('валидный объект проходит схему', () => {
     const schema = buildTypeSchema(decl);
     const check = schema.safeParse({

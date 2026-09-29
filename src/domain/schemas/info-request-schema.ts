@@ -2,8 +2,9 @@ import { buildTypeSchema } from '../type-schema-builder.js';
 import { getDeclaration } from '../memory-types.js';
 import { z } from 'zod';
 
-const decl = getDeclaration('info-request');
-export const InfoRequestSchema = buildTypeSchema(decl, {
+// wave13-a: info-request поглощён note+facet context (карта §5.4 2.13); схема
+// валидирует форму note, спец-поля живут в passthrough
+export const InfoRequestSchema = buildTypeSchema(getDeclaration('note'), {
   thread: z.string().min(1),
   question: z.string().min(1),
   detour_reason: z.string().min(1),

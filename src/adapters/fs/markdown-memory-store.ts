@@ -8,6 +8,7 @@ import {
   type MemoryType,
   type MemoryTypeDeclaration,
   CORE_TAXONOMY,
+  DEPRECATED_TYPE_ALIASES,
   getDeclaration,
 } from '../../domain/memory-types.js';
 import { buildTypeSchema } from '../../domain/type-schema-builder.js';
@@ -17,6 +18,19 @@ import { mergeTaxonomy, type WolfConfig } from '../../domain/taxonomy.js';
 
 const STALE_DAYS = 30;
 const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n\n?([\s\S]*)$/;
+
+/**
+ * P211 §5.4: alias-резолвер — старый frontmatter читается как целевой тип.
+ * facet инжектится ТОЛЬКО если его нет в frontmatter; transient-поле
+ * alias_origin переживает passthrough в рантайме и стрипается при save().
+ */
+function resolveTypeAlias(base: MemoryObject): MemoryObject | null {
+  const alias = DEPRECATED_TYPE_ALIASES[base.type];
+  if (!alias) return null;
+  const out = { ...base, type: alias.target, alias_origin: base.type } as MemoryObject;
+  if (alias.facet !== undefined && out.facet === undefined) out.facet = alias.facet;
+  return out;
+}
 
 let typeSchemaCache: Map<MemoryType, z.ZodTypeAny> | null = null;
 let configLoadWarned = false;
@@ -93,25 +107,85 @@ export class MarkdownMemoryStore implements MemoryStore {
   async save(object: MemoryObject): Promise<void> {
     const path = targetPathFor(this.baseDir, object, this.projectDeclarations());
     await fs.mkdir(dirname(path), { recursive: true });
-    const { body, ...frontmatter } = object;
+    // P211: transient alias_origin не пишется — файл получает каноническую форму
+    const { body, alias_origin: _strippedAliasOrigin, ...frontmatter } = object;
     await writeFileAtomic(path, `---\n${yaml.dump(frontmatter)}---\n\n${body}`);
   }
 
-  async get(id: string): Promise<MemoryObject | null> {
-    const roots = this.roots();
-    for (const root of roots) {
+  /** Фактический путь файла объекта (alias-объект живёт по старому пути). */
+  private async locate(id: string): Promise<{ path: string; obj: MemoryObject } | null> {
+    for (const root of this.roots()) {
       const files = await this.walkMarkdownFiles(root);
       for (const path of files) {
         const parsed = await this.parseFileSafe(path);
-        if (parsed && parsed.id === id) return parsed;
+        if (parsed && parsed.id === id) return { path, obj: parsed };
       }
     }
     return null;
   }
 
+  async get(id: string): Promise<MemoryObject | null> {
+    const located = await this.locate(id);
+    return located ? located.obj : null;
+  }
+
+  /**
+   * P211 §5.5: корни сканирования для тип-предфильтрации list({type}) —
+   * subdir-корни типа + alias-корни (карта §5.4) + legacy objects/.
+   * null → тип без каталогов (или project-тип без subdir) — полный обход.
+   */
+  private async typeScanRoots(type: string): Promise<string[] | null> {
+    const roots = new Set<string>();
+    let decl: MemoryTypeDeclaration | null = null;
+    try {
+      decl = getDeclaration(type, this.projectDeclarations());
+    } catch {
+      return []; // старый/неизвестный тип фильтра: после alias-резолва совпадений нет
+    }
+    await this.addDeclRoots(decl.layout === 'work-thread-file', decl.subdirThread, decl.subdirShared, roots);
+    for (const [oldType, spec] of Object.entries(DEPRECATED_TYPE_ALIASES)) {
+      if (spec.target !== type) continue;
+      await this.addDeclRoots(oldType === 'work-thread', spec.subdirThread, spec.subdirShared, roots);
+    }
+    if (roots.size === 0) return null;
+    roots.add(objectsDir(this.baseDir)); // legacy layout v1 — резервный корень чтения
+    return [...roots];
+  }
+
+  private async addDeclRoots(
+    isThreadFileLayout: boolean,
+    subdirThread: string | null,
+    subdirShared: string | null,
+    roots: Set<string>
+  ): Promise<void> {
+    if (isThreadFileLayout) {
+      // спецслучай threads/<tid>/WORK-THREAD.md — walk по threads/
+      roots.add(threadsDir(this.baseDir));
+      return;
+    }
+    if (subdirThread) {
+      const tRoot = threadsDir(this.baseDir);
+      let entries: import('fs').Dirent[];
+      try {
+        entries = await fs.readdir(tRoot, { withFileTypes: true });
+      } catch (err) {
+        if (!isEnoent(err)) throw err;
+        entries = []; // threads/ нет — thread-корней типа нет, shared-корень ниже всё равно добавляется
+      }
+      for (const e of entries) {
+        if (e.isDirectory()) roots.add(join(tRoot, e.name, subdirThread));
+      }
+    }
+    if (subdirShared) roots.add(join(sharedDir(this.baseDir), subdirShared));
+  }
+
   async list(filters?: ListFilters): Promise<MemoryObject[]> {
     const seen = new Map<string, { obj: MemoryObject; isLegacy: boolean }>();
-    const roots = this.roots();
+    let roots = this.roots();
+    if (filters?.type) {
+      const typeRoots = await this.typeScanRoots(filters.type);
+      if (typeRoots !== null) roots = typeRoots;
+    }
     for (let ri = 0; ri < roots.length; ri++) {
       const root = roots[ri];
       const isLegacy = ri === roots.length - 1;
@@ -119,6 +193,7 @@ export class MarkdownMemoryStore implements MemoryStore {
       for (const path of files) {
         const parsed = await this.parseFileSafe(path);
         if (!parsed) continue;
+        if (filters?.type && parsed.type !== filters.type) continue;
         const existing = seen.get(parsed.id);
         if (!existing) {
           seen.set(parsed.id, { obj: parsed, isLegacy });
@@ -129,22 +204,26 @@ export class MarkdownMemoryStore implements MemoryStore {
       }
     }
     let results = Array.from(seen.values(), (v) => v.obj);
-    if (filters?.type) results = results.filter((o) => o.type === filters.type);
     if (filters?.status) results = results.filter((o) => o.status === filters.status);
     if (filters?.stale) results = results.filter((o) => isStale(o));
+    // P212 (2.13 §5.3б): фасет — postfilter по frontmatter (alias-резолв уже
+    // инжектировал facet старым типам); значение не из словаря → пусто
+    if (filters?.facet) results = results.filter((o) => o.facet === filters.facet);
     return results;
   }
 
   async update(id: string, patch: Partial<MemoryObject>): Promise<MemoryObject> {
-    const existing = await this.get(id);
-    if (!existing) throw new Error(`Memory object not found: ${id}`);
-    const updated = { ...existing, ...patch, updated_at: new Date().toISOString() };
-    const oldPath = targetPathFor(this.baseDir, existing, this.projectDeclarations());
+    const located = await this.locate(id);
+    if (!located) throw new Error(`Memory object not found: ${id}`);
+    const updated: MemoryObject = { ...located.obj, ...patch, updated_at: new Date().toISOString() };
+    // P211: alias-объект при первом update переезжает на канонический путь/тип;
+    // transient alias_origin умирает — повторный update идемпотентен
+    delete (updated as { alias_origin?: string }).alias_origin;
     await this.save(updated);
     const newPath = targetPathFor(this.baseDir, updated, this.projectDeclarations());
-    if (oldPath !== newPath) {
+    if (located.path !== newPath) {
       try {
-        await fs.unlink(oldPath);
+        await fs.unlink(located.path);
       } catch (err) {
         if (!isEnoent(err)) throw err;
       }
@@ -178,10 +257,11 @@ export class MarkdownMemoryStore implements MemoryStore {
           const frontmatter = yaml.load(match[1]) as Record<string, unknown>;
           const body = match[2] || '';
           const base = MemoryObjectSchema.parse({ ...frontmatter, body });
+          const effective = resolveTypeAlias(base) ?? base;
           const schemas = getTypeSchemas(this.baseDir);
-          const typeSchema = schemas.get(base.type as MemoryType);
-          if (!typeSchema) throw new Error(`Unknown memory type: ${base.type}`);
-          const result = typeSchema.safeParse(base);
+          const typeSchema = schemas.get(effective.type as MemoryType);
+          if (!typeSchema) throw new Error(`Unknown memory type: ${effective.type}`);
+          const result = typeSchema.safeParse(effective);
           if (!result.success) throw new Error(result.error.issues.map((i) => i.message).join(', '));
         } catch (err) {
           msgs.push(formatError(err));
@@ -244,10 +324,11 @@ export class MarkdownMemoryStore implements MemoryStore {
       const frontmatter = yaml.load(match[1]) as Record<string, unknown>;
       const body = match[2] || '';
       const base = MemoryObjectSchema.parse({ ...frontmatter, body });
+      const effective = resolveTypeAlias(base) ?? base;
       const schemas = getTypeSchemas(this.baseDir, this.onProblem);
-      const typeSchema = schemas.get(base.type as MemoryType);
-      if (!typeSchema) throw new Error(`Unknown memory type: ${base.type}`);
-      const result = typeSchema.safeParse(base);
+      const typeSchema = schemas.get(effective.type as MemoryType);
+      if (!typeSchema) throw new Error(`Unknown memory type: ${effective.type}`);
+      const result = typeSchema.safeParse(effective);
       if (!result.success) {
         throw new Error(`Per-type validation: ${result.error.issues.map((i) => i.message).join(', ')}`);
       }

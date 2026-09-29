@@ -2,9 +2,25 @@ import * as fs from 'fs/promises';
 import { existsSync, readFileSync } from 'fs';
 import { join, relative, dirname } from 'path';
 import yaml from 'js-yaml';
-import { objectsDir, targetPathFor, memoryDir } from './project-paths.js';
+import { objectsDir, targetPathFor, memoryDir, threadsDir, sharedDir } from './project-paths.js';
+import { DEPRECATED_TYPE_ALIASES, type MemoryType } from '../../domain/memory-types.js';
 import { writeFileAtomic } from './markdown-memory-store.js';
-import type { MemoryType } from '../../domain/memory-types.js';
+
+/**
+ * wave13-a: старые типы удалены из core — цель миграции считается по подкаталогам
+ * alias-карты §5.4 (файл остаётся читаемым: alias-корни list/get). work-thread —
+ * layout WORK-THREAD.md (как у наследника thread).
+ */
+function legacyTargetPath(baseDir: string, type: string, id: string, thread?: string): string {
+  if (type === 'work-thread') return join(threadsDir(baseDir), id, 'WORK-THREAD.md');
+  const alias = DEPRECATED_TYPE_ALIASES[type];
+  if (alias) {
+    if (thread && alias.subdirThread) return join(threadsDir(baseDir), thread, alias.subdirThread, `${id}.md`);
+    const sub = alias.subdirShared ?? alias.subdirThread;
+    if (sub) return join(sharedDir(baseDir), sub, `${id}.md`);
+  }
+  return targetPathFor(baseDir, { type: type as MemoryType, id, thread });
+}
 
 export interface MigrationEntry {
   id: string;
@@ -90,7 +106,7 @@ export async function planLayoutMigration(baseDir: string): Promise<MigrationRep
 
     let to: string;
     try {
-      to = relative(baseDir, targetPathFor(baseDir, { type: type as MemoryType, id, thread: fm.thread }));
+      to = relative(baseDir, legacyTargetPath(baseDir, type, id, fm.thread));
     } catch {
       problems.push({ path: rel, error: `cannot compute target for type ${type}` });
       continue;

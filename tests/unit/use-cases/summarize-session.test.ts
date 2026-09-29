@@ -40,7 +40,8 @@ describe('summarizeSession', () => {
     const result = await summarizeSession({ store, log, clock, idGen }, { createdBy: 'user:demo' });
 
     expect(result).not.toBeNull();
-    expect(result!.object.type).toBe('session-summary');
+    expect(result!.object.type).toBe('note');
+    expect(result!.object.facet).toBe('history');
     expect(result!.object.body).toContain('mem_a');
     expect(result!.object.tags).toContain('session-summary');
   });

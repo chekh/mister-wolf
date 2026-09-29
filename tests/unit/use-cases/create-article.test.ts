@@ -43,7 +43,8 @@ describe('createArticle', () => {
       }
     );
 
-    expect(result.object.type).toBe('article');
+    expect(result.object.type).toBe('note'); // wave13-a: article → note+facet context
+    expect(result.object.facet).toBe('context');
     expect(result.object.title).toBe('Article answering info request');
     expect(result.object.thread).toBe('thread-abc');
     expect(result.object.summary).toBe('Summary of the article');
@@ -55,14 +56,15 @@ describe('createArticle', () => {
 
     const loaded = await store.get(result.object.id);
     expect(loaded).not.toBeNull();
-    expect(loaded?.type).toBe('article');
+    expect(loaded?.type).toBe('note');
+    expect((loaded as { facet?: string }).facet).toBe('context');
 
     const events = await log.readAll();
     expect(events).toHaveLength(2);
     expect(events[0].type).toBe('memory.added');
     expect(events[0].payload.memory_id).toBe(result.object.id);
     expect(events[1].type).toBe('memory.added');
-    expect(events[1].payload.type).toBe('session-summary');
+    expect(events[1].payload.type).toBe('note'); // wave13-a: session-summary → note+history
   });
 
   it('sets review_state to proposed when created by an agent', async () => {

@@ -80,6 +80,14 @@ export function buildTypeSchema<F extends z.ZodRawShape = Record<string, never>>
 }
 
 /**
+ * 2.13 §5.3: подменяет enum фасета note на переданный словарь (кастомный
+ * facets.character из config.yaml) — для add-пути, валидирующего выбор значения.
+ */
+export function applyFacetEnum(decl: MemoryTypeDeclaration, values: readonly string[]): MemoryTypeDeclaration {
+  return { ...decl, fields: { ...decl.fields, facet: { kind: 'enum', values } } };
+}
+
+/**
  * Per-type поля всех деклараций таксономии как zod-shape — единый источник
  * входной схемы MCP `add`: поле, добавленное в декларацию, автоматически
  * появляется в MCP-туле. Коллизии ключей между типами (rule.trigger — string,

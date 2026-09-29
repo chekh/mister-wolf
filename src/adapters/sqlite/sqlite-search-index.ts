@@ -69,8 +69,33 @@ export class SQLiteSearchIndex implements SearchIndex {
       this.db = new Database(this.dbPath);
       this.db.pragma('busy_timeout = 5000');
       this.db.exec(SQLITE_SCHEMA);
+      this.migrateFacetColumns();
     }
     return this.db;
+  }
+
+  /**
+   * P212 (2.13 §5.3а): facet-колонки в БД старой схемы. memory_meta — обычная
+   * таблица, хватает ALTER ADD COLUMN; FTS5 не поддерживает ALTER для
+   * виртуальных таблиц — копируем в новую таблицу с facet (drop/rename),
+   * данные сохраняются без пересборки индекса.
+   */
+  private migrateFacetColumns(): void {
+    const db = this.db!;
+    const hasFacet = (table: string) =>
+      (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).some((c) => c.name === 'facet');
+    if (!hasFacet('memory_meta')) {
+      db.exec('ALTER TABLE memory_meta ADD COLUMN facet TEXT');
+    }
+    if (!hasFacet('memory_search')) {
+      db.exec(`CREATE VIRTUAL TABLE memory_search_new USING fts5(
+        memory_id, type, title, body, tags, status, review_state, facet
+      )`);
+      db.exec(`INSERT INTO memory_search_new(memory_id, type, title, body, tags, status, review_state, facet)
+        SELECT memory_id, type, title, body, tags, status, review_state, NULL FROM memory_search`);
+      db.exec('DROP TABLE memory_search');
+      db.exec('ALTER TABLE memory_search_new RENAME TO memory_search');
+    }
   }
 
   async indexObject(object: MemoryObject): Promise<void> {
@@ -102,14 +127,14 @@ export class SQLiteSearchIndex implements SearchIndex {
       return [];
     }
 
-    // Колонки memory_search по порядку: memory_id, type, title, body, tags, status, review_state.
-    // title и tags весят заметно больше body.
-    const bm25Expr = 'bm25(memory_search, 1.0, 1.0, 8.0, 1.0, 4.0, 1.0, 1.0)';
+    // Колонки memory_search по порядку: memory_id, type, title, body, tags, status, review_state, facet.
+    // title и tags весят заметно больше body; facet — фильтруемая колонка, вес дефолтный.
+    const bm25Expr = 'bm25(memory_search, 1.0, 1.0, 8.0, 1.0, 4.0, 1.0, 1.0, 1.0)';
 
     let sql = `
       SELECT s.memory_id, s.type, s.title, s.body, s.status, s.review_state,
              m.confidence, m.importance, m.created_at, m.updated_at, m.created_by,
-             m.schema_version, m.source, m.related, m.tags, m.superseded_by,
+             m.schema_version, m.source, m.related, m.tags, m.superseded_by, m.facet,
              ${bm25Expr} AS rank
       FROM memory_search s
       JOIN memory_meta m ON s.memory_id = m.memory_id
@@ -125,6 +150,11 @@ export class SQLiteSearchIndex implements SearchIndex {
     if (options.type) {
       sql += ` AND s.type = ?`;
       params.push(options.type);
+    }
+    if (options.facet) {
+      // P212 (2.13 §5.3б): фасет хранится в memory_meta (NULL у типов без фасета)
+      sql += ` AND m.facet = ?`;
+      params.push(options.facet);
     }
     if (options.status) {
       sql += ` AND s.status = ?`;
@@ -194,7 +224,7 @@ export class SQLiteSearchIndex implements SearchIndex {
       .prepare(
         `SELECT s.memory_id, s.type, s.title, s.body, s.status, s.review_state,
                 m.confidence, m.importance, m.created_at, m.updated_at, m.created_by,
-                m.schema_version, m.source, m.related, m.tags, m.superseded_by
+                m.schema_version, m.source, m.related, m.tags, m.superseded_by, m.facet
          FROM memory_search s
          JOIN memory_meta m ON s.memory_id = m.memory_id
          WHERE s.status NOT IN ('superseded', 'archived')`
@@ -222,6 +252,8 @@ export class SQLiteSearchIndex implements SearchIndex {
         related: JSON.parse(row.related),
         tags: JSON.parse(row.tags),
         superseded_by: row.superseded_by,
+        // NULL → undefined: без фасета объект сравним с каноническим (toEqual)
+        ...(row.facet != null ? { facet: row.facet } : {}),
       } as MemoryObject,
       score: this.computeScore(row.rank ?? 0, row.importance, row.confidence),
     };
@@ -238,9 +270,11 @@ export class SQLiteSearchIndex implements SearchIndex {
   }
 
   private insertIntoIndex(object: MemoryObject): void {
+    // P212 (2.13 §5.3а): facet пишется только у note (иначе NULL)
+    const facet = typeof object.facet === 'string' ? object.facet : null;
     this.getDb()
       .prepare(
-        'INSERT INTO memory_search (memory_id, type, title, body, tags, status, review_state) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO memory_search (memory_id, type, title, body, tags, status, review_state, facet) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
       )
       .run(
         object.id,
@@ -249,11 +283,12 @@ export class SQLiteSearchIndex implements SearchIndex {
         object.body,
         object.tags.join(','),
         object.status,
-        object.review_state
+        object.review_state,
+        facet
       );
     this.getDb()
       .prepare(
-        'INSERT INTO memory_meta (memory_id, type, status, review_state, importance, created_at, confidence, created_by, updated_at, superseded_by, source, related, tags, schema_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO memory_meta (memory_id, type, status, review_state, importance, created_at, confidence, created_by, updated_at, superseded_by, source, related, tags, schema_version, facet) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
       )
       .run(
         object.id,
@@ -269,7 +304,8 @@ export class SQLiteSearchIndex implements SearchIndex {
         JSON.stringify(object.source),
         JSON.stringify(object.related),
         JSON.stringify(object.tags),
-        object.schema_version
+        object.schema_version,
+        facet
       );
   }
 }

@@ -122,7 +122,8 @@ async function upsertScanObject(
   const defaults = governanceDefaults(actor);
   const object: MemoryObject = {
     id: SCAN_OBJECT_ID,
-    type: 'context',
+    type: 'note', // wave13-a: context → note+facet context (§5.4)
+    facet: 'context',
     title,
     body,
     status: 'active',
@@ -170,8 +171,10 @@ async function registerDocuments(
   const defaults = governanceDefaults(actor);
   // Канон id document-ref (спека 2.1.0 §2.1 F9): существующие ищем по source.path
   // (один list), занятость id — Set всех id памяти (второй list, без фильтра).
+  // wave13-a: document-ref → note+facet legacy; старые файлы читаются как note
+  // (alias), поэтому корнем поиска остаётся list({type:'note'}) + source.path
   const existingByPath = new Map<string, MemoryObject>();
-  for (const ref of await deps.store.list({ type: 'document-ref' })) {
+  for (const ref of await deps.store.list({ type: 'note' })) {
     if (ref.source?.path) existingByPath.set(ref.source.path, ref);
   }
   const takenIds = new Set((await deps.store.list()).map((o) => o.id));
@@ -195,7 +198,8 @@ async function registerDocuments(
     takenIds.add(id);
     const object: MemoryObject = {
       id,
-      type: 'document-ref',
+      type: 'note', // wave13-a: document-ref → note+facet legacy (§5.4); source.path — в passthrough
+      facet: 'legacy',
       title: doc.title,
       body: `Registered project document: ${doc.path}`,
       status: 'active',

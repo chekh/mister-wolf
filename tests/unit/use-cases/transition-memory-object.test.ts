@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync } from 'fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { transitionMemoryObject } from '../../../src/app/use-cases/transition-memory-object.js';
@@ -9,6 +9,8 @@ import { SystemClock } from '../../../src/adapters/fs/system-clock.js';
 import { HashIdGenerator } from '../../../src/adapters/fs/hash-id-generator.js';
 import { eventsPath } from '../../../src/adapters/fs/project-paths.js';
 import { addMemoryObject } from '../../../src/app/use-cases/add-memory-object.js';
+import { loadWolfConfigSync } from '../../../src/adapters/fs/config-file.js';
+import { mergeTaxonomy } from '../../../src/domain/taxonomy.js';
 import type { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
 
 function makeTaskBrief(id: string): MemoryObject {
@@ -34,11 +36,26 @@ function makeTaskBrief(id: string): MemoryObject {
   };
 }
 
+// wave13-a: task-brief больше не core-тип — подаётся как project-тип (dogfood)
+// через config.yaml; пишется в КАЖДОМ beforeEach, чтобы глобальный typeSchemaCache
+// стора видел task-brief с первого парса файла
+const TASK_BRIEF_CONFIG = `artifact_sources: []
+memory_types:
+  core: {}
+  project:
+    task-brief:
+      lifecycle: [active, completed, paused]
+      subdir_thread: tasks
+      subdir_shared: ~
+`;
+
 describe('transitionMemoryObject', () => {
   let dir: string;
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'wolf-transition-'));
+    mkdirSync(join(dir, '.wolf'), { recursive: true });
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), TASK_BRIEF_CONFIG);
   });
 
   afterEach(() => {
@@ -103,11 +120,14 @@ describe('transitionMemoryObject', () => {
     const log = new JsonlEventLog(eventsPath(dir));
     const clock = new SystemClock();
     const idGen = new HashIdGenerator();
+    const declarations = [...mergeTaxonomy(loadWolfConfigSync(dir)).types.values()];
 
     const id = idGen.generateMemoryId(clock.now(), 'Batch task');
     await store.save(makeTaskBrief(id));
 
-    await expect(transitionMemoryObject({ store, log, clock, idGen }, id, 'open')).rejects.toThrow(/lifecycle/);
+    await expect(transitionMemoryObject({ store, log, clock, idGen, declarations }, id, 'open')).rejects.toThrow(
+      /lifecycle/
+    );
   });
 
   it('allows transition within type lifecycle (task-brief active -> completed)', async () => {
@@ -115,24 +135,26 @@ describe('transitionMemoryObject', () => {
     const log = new JsonlEventLog(eventsPath(dir));
     const clock = new SystemClock();
     const idGen = new HashIdGenerator();
+    const declarations = [...mergeTaxonomy(loadWolfConfigSync(dir)).types.values()];
 
     const id = idGen.generateMemoryId(clock.now(), 'Batch task');
     await store.save(makeTaskBrief(id));
 
-    await transitionMemoryObject({ store, log, clock, idGen }, id, 'completed');
+    await transitionMemoryObject({ store, log, clock, idGen, declarations }, id, 'completed');
     const updated = await store.get(id);
     expect(updated?.status).toBe('completed');
   });
 
-  it('allows blocker active -> resolved via generic transition', async () => {
+  it('allows blocker-note active -> resolved via generic transition', async () => {
     const store = new MarkdownMemoryStore(dir);
     const log = new JsonlEventLog(eventsPath(dir));
     const clock = new SystemClock();
     const idGen = new HashIdGenerator();
 
+    // wave13-a: blocker → note+facet pitfall; note имеет FULL lifecycle
     const added = await addMemoryObject(
       { store, log, clock, idGen },
-      { type: 'blocker', title: 'Broken build', createdBy: 'user:test', extra: { impact: 'blocks CI' } }
+      { type: 'note', facet: 'pitfall', title: 'Broken build', createdBy: 'user:test' }
     );
 
     await transitionMemoryObject({ store, log, clock, idGen }, added.object.id, 'resolved');
@@ -140,7 +162,7 @@ describe('transitionMemoryObject', () => {
     expect(updated?.status).toBe('resolved');
   });
 
-  it('auto-creates session-summary when transitioning to answered', async () => {
+  it('auto-creates session-summary (note+history) when transitioning to answered', async () => {
     const store = new MarkdownMemoryStore(dir);
     const log = new JsonlEventLog(eventsPath(dir));
     const clock = new SystemClock();
@@ -148,16 +170,20 @@ describe('transitionMemoryObject', () => {
 
     const added = await addMemoryObject(
       { store, log, clock, idGen },
-      { type: 'open-question', title: 'Which approach?', createdBy: 'user:test' }
+      { type: 'note', facet: 'context', status: 'open', title: 'Which approach?', createdBy: 'user:test' }
     );
 
     await transitionMemoryObject({ store, log, clock, idGen }, added.object.id, 'answered');
 
-    const summaries = (await store.list()).filter((obj) => obj.type === 'session-summary');
+    // wave13-a: session-summary → note+facet history с тегом session-summary
+    const summaries = (await store.list()).filter(
+      (obj) =>
+        obj.type === 'note' && (obj as { facet?: string }).facet === 'history' && obj.tags.includes('session-summary')
+    );
     expect(summaries.length).toBeGreaterThan(0);
   });
 
-  it('allows open-question active -> answered via generic transition', async () => {
+  it('allows question-note active -> answered via generic transition', async () => {
     const store = new MarkdownMemoryStore(dir);
     const log = new JsonlEventLog(eventsPath(dir));
     const clock = new SystemClock();
@@ -165,7 +191,7 @@ describe('transitionMemoryObject', () => {
 
     const added = await addMemoryObject(
       { store, log, clock, idGen },
-      { type: 'open-question', title: 'Which approach?', createdBy: 'user:test', status: 'active' }
+      { type: 'note', facet: 'context', title: 'Which approach?', createdBy: 'user:test', status: 'active' }
     );
     expect(added.object.status).toBe('active');
 
@@ -174,7 +200,7 @@ describe('transitionMemoryObject', () => {
     expect(updated?.status).toBe('answered');
   });
 
-  it('allows info-request open -> answered', async () => {
+  it('allows info-request-note open -> answered', async () => {
     const store = new MarkdownMemoryStore(dir);
     const log = new JsonlEventLog(eventsPath(dir));
     const clock = new SystemClock();
@@ -183,10 +209,11 @@ describe('transitionMemoryObject', () => {
     const added = await addMemoryObject(
       { store, log, clock, idGen },
       {
-        type: 'info-request',
+        type: 'note', // wave13-a: info-request → note+facet context
+        facet: 'context',
+        status: 'open',
         title: 'Need API details',
         createdBy: 'user:test',
-        extra: { question: 'Which API?', detour_reason: 'blocks design', expected_answer: ['REST v2'] },
       }
     );
     expect(added.object.status).toBe('open');
@@ -196,7 +223,7 @@ describe('transitionMemoryObject', () => {
     expect(updated?.status).toBe('answered');
   });
 
-  it('allows council-question open -> answered', async () => {
+  it('allows council-question-note open -> answered', async () => {
     const store = new MarkdownMemoryStore(dir);
     const log = new JsonlEventLog(eventsPath(dir));
     const clock = new SystemClock();
@@ -204,7 +231,7 @@ describe('transitionMemoryObject', () => {
 
     const added = await addMemoryObject(
       { store, log, clock, idGen },
-      { type: 'council-question', title: 'Council Q', createdBy: 'user:test', extra: { question: 'Ship it?' } }
+      { type: 'note', facet: 'context', status: 'open', title: 'Council Q', createdBy: 'user:test' }
     );
     expect(added.object.status).toBe('open');
 

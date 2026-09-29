@@ -68,3 +68,28 @@ describe('question transitions', () => {
     expect(canTransition('active', 'answered')).toBe(true);
   });
 });
+
+// Волна 2.13 §5.2: blocker/info_request/question — статусы thread
+describe('thread status transitions (2.13 §5.2)', () => {
+  it('allows active -> blocked / waiting_answer / open', () => {
+    expect(canTransition('active', 'blocked')).toBe(true);
+    expect(canTransition('active', 'waiting_answer')).toBe(true);
+    expect(canTransition('active', 'open')).toBe(true);
+  });
+  it('allows blocked -> active (разрешение)', () => {
+    expect(canTransition('blocked', 'active')).toBe(true);
+  });
+  it('allows waiting_answer -> active', () => {
+    expect(canTransition('waiting_answer', 'active')).toBe(true);
+  });
+  it('allows open -> active', () => {
+    expect(canTransition('open', 'active')).toBe(true);
+  });
+  it('allows blocked/waiting_answer -> archived (гигиена)', () => {
+    expect(canTransition('blocked', 'archived')).toBe(true);
+    expect(canTransition('waiting_answer', 'archived')).toBe(true);
+  });
+  it('disallows blocked -> completed', () => {
+    expect(canTransition('blocked', 'completed')).toBe(false);
+  });
+});

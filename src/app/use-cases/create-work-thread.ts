@@ -28,7 +28,7 @@ export async function createWorkThread(
     const defaults = governanceDefaults(input.createdBy);
     const object: WorkThread = {
       id: deps.idGen.generateMemoryId(now, input.title),
-      type: 'work-thread',
+      type: 'thread', // wave13-a: window-compat (work-thread \u2192 thread, \u00a75.4)
       title: input.title,
       status: 'active',
       review_state: input.createdBy.startsWith('agent:') ? 'proposed' : 'accepted',

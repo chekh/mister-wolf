@@ -3,7 +3,8 @@ import { ArticleSchema } from '../../../src/domain/schemas/article-schema.js';
 
 const baseArticle = {
   id: 'mem_20260630_article_e5f6',
-  type: 'article',
+  type: 'note', // wave13-a: article → note+facet context
+  facet: 'context',
   title: 'Rate-limiting policy summary',
   status: 'accepted',
   review_state: 'accepted',

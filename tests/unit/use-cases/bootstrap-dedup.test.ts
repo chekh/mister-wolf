@@ -43,13 +43,13 @@ describe('bootstrapProject dedup (спека §8: дедупликация пр�
     const d = deps();
     const first = await bootstrapProject(d, { baseDir: dir, createdBy: 'user:test' });
     const rulesAfterFirst = await d.store.list({ type: 'rule', status: 'proposed' });
-    const threadsAfterFirst = await d.store.list({ type: 'work-thread' });
+    const threadsAfterFirst = await d.store.list({ type: 'thread' });
     expect(rulesAfterFirst.length).toBeGreaterThan(0);
     expect(threadsAfterFirst).toHaveLength(1);
 
     const second = await bootstrapProject(d, { baseDir: dir, createdBy: 'user:test' });
     const rulesAfterSecond = await d.store.list({ type: 'rule', status: 'proposed' });
-    const threadsAfterSecond = await d.store.list({ type: 'work-thread' });
+    const threadsAfterSecond = await d.store.list({ type: 'thread' });
 
     expect(rulesAfterSecond.length).toBe(rulesAfterFirst.length);
     expect(threadsAfterSecond).toHaveLength(1);

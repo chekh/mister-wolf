@@ -1,4 +1,5 @@
 import { join } from 'path';
+import { z } from 'zod';
 import { MemoryStore } from '../../ports/memory-store.port.js';
 import { EventLog } from '../../ports/event-log.port.js';
 import { Clock } from '../../ports/clock.port.js';
@@ -8,10 +9,30 @@ import { MemoryLock } from '../../ports/memory-lock.port.js';
 import { RelationLog } from '../../ports/relation-log.port.js';
 import { FileSystem } from '../../ports/file-system.port.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
-import { MemoryTypeDeclaration } from '../../domain/memory-types.js';
+import { getDeclaration, MemoryTypeDeclaration } from '../../domain/memory-types.js';
+import { buildTypeSchema } from '../../domain/type-schema-builder.js';
+import { governanceDefaults } from '../../domain/governance.js';
 import { UserFacingError } from '../../domain/errors.js';
-import { addMemoryObject } from './add-memory-object.js';
 import { recordRelation } from './record-relation.js';
+
+// wave13-a: playbook поглощён note+facet howto (карта §5.4 2.13); спец-поля
+// (steps/owner_skill/version) живут в passthrough — как у article/blocker
+const PlaybookNoteSchema = buildTypeSchema(getDeclaration('note'), {
+  steps: z.array(z.string()).default([]),
+  owner_skill: z.string().min(1),
+  version: z.string().default('v1'),
+});
+type PlaybookNote = MemoryObject & { steps: string[]; owner_skill: string; version: string };
+
+/** Playbook-примечание: note+facet howto (старые файлы читаются как note — alias). */
+function isPlaybookNote(pb: MemoryObject | null): pb is MemoryObject {
+  if (!pb) return false;
+  return (
+    pb.type === 'playbook' ||
+    (pb.type === 'note' &&
+      ((pb as { facet?: string }).facet === 'howto' || (pb as { alias_origin?: string }).alias_origin === 'playbook'))
+  );
+}
 
 export const SCAFFOLD_KINDS = ['agent', 'skill', 'command'] as const;
 export type ScaffoldKind = (typeof SCAFFOLD_KINDS)[number];
@@ -117,7 +138,7 @@ export async function scaffoldFrame(
     let ownerSkill: string;
     if (input.fromPlaybook) {
       const pb = await deps.store.get(input.fromPlaybook);
-      if (!pb || pb.type !== 'playbook') {
+      if (!isPlaybookNote(pb)) {
         throw new UserFacingError(`Playbook not found: ${input.fromPlaybook}`);
       }
       playbookId = pb.id;
@@ -128,27 +149,49 @@ export async function scaffoldFrame(
           ? existing.owner_skill
           : input.name;
     } else {
-      const { object } = await addMemoryObject(
-        {
-          store: deps.store,
-          log: deps.log,
-          clock: deps.clock,
-          idGen: deps.idGen,
-          index: deps.index,
-          declarations: deps.declarations,
-        },
-        {
-          type: 'playbook',
-          title: `Playbook: ${input.name}`,
-          body: `Scaffold stub for the ${input.kind}:${input.name} frame. Fill in steps and methodology.`,
-          createdBy: input.createdBy,
-          extra: {
-            steps: ['Fill in the playbook steps (scaffold stub)'],
-            owner_skill: input.name,
-            version: 'v1',
-          },
-        }
-      );
+      // wave13-a: прямой window-compat паттерн (как create-blocker) — addMemoryObject
+      // не пускает спец-поля playbook в extra (guard полей note)
+      const now = deps.clock.now();
+      const defaults = governanceDefaults(input.createdBy);
+      const object: PlaybookNote = {
+        id: deps.idGen.generateMemoryId(now, `Playbook: ${input.name}`),
+        type: 'note',
+        facet: 'howto',
+        title: `Playbook: ${input.name}`,
+        body: `Scaffold stub for the ${input.kind}:${input.name} frame. Fill in steps and methodology.`,
+        status: 'active',
+        review_state: input.createdBy.startsWith('agent:') ? 'proposed' : 'accepted',
+        confidence: 'medium',
+        importance: 0.5,
+        created_at: now.toISOString(),
+        updated_at: now.toISOString(),
+        created_by: input.createdBy,
+        schema_version: 1,
+        source: { kind: 'manual' },
+        related: { files: [], docs: [], decisions: [] },
+        tags: [],
+        superseded_by: null,
+        memory_class: defaults.memory_class,
+        truth_role: defaults.truth_role,
+        lifetime: defaults.lifetime,
+        steps: ['Fill in the playbook steps (scaffold stub)'],
+        owner_skill: input.name,
+        version: 'v1',
+      };
+
+      PlaybookNoteSchema.parse(object);
+
+      await deps.store.save(object);
+      await deps.log.append({
+        id: deps.idGen.generateEventId(now),
+        type: 'memory.added',
+        timestamp: now.toISOString(),
+        actor: input.createdBy,
+        payload: { memory_id: object.id, type: object.type },
+      });
+      if (deps.index) {
+        await deps.index.indexObject(object);
+      }
       playbookId = object.id;
       ownerSkill = input.name;
     }

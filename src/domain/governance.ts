@@ -34,7 +34,7 @@ export function validateGovernance(obj: {
 
 export const ALLOWED_TRANSITIONS: Record<MemoryStatus, MemoryStatus[]> = {
   // resolved/obsolete/answered из active нужны блокерам и вопросам (open-question);
-  // deprecated из active — типу tool (Фаза C); paused из active — work-thread
+  // deprecated из active — типу tool (Фаза C); paused из active — thread
   // (onboarding v2 §5.1: владелец сознательно откладывает);
   // эффективные переходы = ALLOWED_TRANSITIONS ∩ lifecycle типа.
   active: [
@@ -48,8 +48,12 @@ export const ALLOWED_TRANSITIONS: Record<MemoryStatus, MemoryStatus[]> = {
     'answered',
     'deprecated',
     'paused',
+    // волна 2.13 §5.2: blocker/info_request/question — статусы thread
+    'blocked',
+    'waiting_answer',
+    'open',
   ],
-  open: ['resolved', 'rejected', 'archived', 'answered'],
+  open: ['resolved', 'rejected', 'archived', 'answered', 'active'],
   resolved: ['archived'],
   stale: ['active', 'archived'],
   conflicting: ['active', 'archived'],
@@ -66,6 +70,9 @@ export const ALLOWED_TRANSITIONS: Record<MemoryStatus, MemoryStatus[]> = {
   candidate: ['active', 'deprecated', 'archived'],
   // реанимация инструмента — deprecated → active разрешена
   deprecated: ['active', 'archived'],
+  // 2.13 §5.2: разрешение blocked/waiting_answer — обратный переход или archived
+  blocked: ['active', 'archived'],
+  waiting_answer: ['active', 'archived'],
 };
 
 export function canTransition(from: MemoryStatus, to: MemoryStatus): boolean {

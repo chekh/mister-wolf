@@ -12,8 +12,12 @@ import { ensureCurrentSchema } from '../../../adapters/fs/schema-guard.js';
 import { initProject, recreateConfig } from '../../../app/use-cases/init-project.js';
 import { OpencodeBaseSetRenderer } from '../../../adapters/render/opencode/opencode-renderer.js';
 import { templatesRoot, harnessTemplatesRoot, wolfVersion } from '../../../adapters/render/templates-root.js';
-import { seedBasePlaybooks } from '../../../app/use-cases/seed-base-playbooks.js';
-import { addMemoryObject } from '../../../app/use-cases/add-memory-object.js';
+import {
+  seedBasePlaybooks,
+  PlaybookNoteSchema,
+  type PlaybookNoteInput,
+} from '../../../app/use-cases/seed-base-playbooks.js';
+import { governanceDefaults } from '../../../domain/governance.js';
 import { isNpxRun } from '../../../domain/npx.js';
 import { UserFacingError } from '../../../domain/errors.js';
 import { safeCwd } from '../cli-entry.js';
@@ -237,12 +241,55 @@ export function memoryInitCommand(): Command {
         }
       }
       // ListFilters поддерживает type (memory-store.port.ts) — фильтр на уровне порта (правка r2)
-      const existing = await store.list({ type: 'playbook' });
+      // wave13-a: playbook → note+facet howto; старые файлы читаются как note (alias)
+      const existing = (await store.list({ type: 'note' })).filter(
+        (o) =>
+          (o as { facet?: string }).facet === 'howto' || (o as { alias_origin?: string }).alias_origin === 'playbook'
+      );
       const seededOwners = new Set(
         existing.map((o) => (o as { owner_skill?: string }).owner_skill).filter((x): x is string => Boolean(x))
       );
-      const addFn = (input: Parameters<typeof addMemoryObject>[1]) =>
-        addMemoryObject({ store, log, clock, idGen, index, lock, declarations }, input);
+      // wave13-a: guard полей addMemoryObject не пускает steps/owner_skill в extra
+      // note — сеем напрямую по window-compat паттерну (схема — PlaybookNoteSchema)
+      const addFn = (input: PlaybookNoteInput) => {
+        const now = clock.now();
+        const defaults = governanceDefaults(input.createdBy);
+        const object = {
+          id: idGen.generateMemoryId(now, input.title),
+          type: 'note' as const,
+          facet: 'howto' as const,
+          title: input.title,
+          body: input.body,
+          status: 'active' as const,
+          review_state: 'accepted' as const,
+          confidence: 'medium' as const,
+          importance: 0.5,
+          created_at: now.toISOString(),
+          updated_at: now.toISOString(),
+          created_by: input.createdBy,
+          schema_version: 1,
+          source: { kind: 'manual' as const },
+          related: { files: [], docs: [], decisions: [] },
+          tags: input.tags,
+          superseded_by: null,
+          memory_class: defaults.memory_class,
+          truth_role: defaults.truth_role,
+          lifetime: defaults.lifetime,
+          ...input.extra,
+        };
+        PlaybookNoteSchema.parse(object);
+        return (async () => {
+          await store.save(object);
+          await log.append({
+            id: idGen.generateEventId(now),
+            type: 'memory.added',
+            timestamp: now.toISOString(),
+            actor: input.createdBy,
+            payload: { memory_id: object.id, type: object.type },
+          });
+          if (index) await index.indexObject(object);
+        })();
+      };
 
       const result = await initProject(
         {

@@ -7,6 +7,8 @@ export interface SearchResult {
 
 export interface SearchOptions {
   type?: string;
+  /** P212 (2.13 §5.3б): фильтр по фасету note; NULL у типов без фасета */
+  facet?: string;
   includeSuperseded?: boolean;
   tags?: string[];
   status?: string;

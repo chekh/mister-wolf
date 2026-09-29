@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtempSync, rmSync } from 'fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { buildMcpServer } from '../../../src/adapters/mcp/mcp-server.js';
@@ -109,25 +109,47 @@ describe('memory_stage auto-writers (CLI call)', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  /**
+   * wave13-a (§5.4): call-injection — deprecated-тип, add больше не принимает;
+   * пул доставок читает сырые legacy-файлы (alias-слой → note+alias_origin).
+   * Сеем файл руками в alias-корень shared/calls/.
+   */
+  function seedCallInjection(id: string, keywords: string[]): string {
+    const callsDir = join(dir, '.wolf', 'memory', 'shared', 'calls');
+    mkdirSync(callsDir, { recursive: true });
+    const fm = [
+      `id: ${id}`,
+      'type: call-injection',
+      `title: Injection ${id}`,
+      'status: active',
+      'review_state: accepted',
+      'confidence: medium',
+      'importance: 0.5',
+      // даты ОБЯЗАТЕЛЬНО квоченные: js-yaml парсит голый ISO в Date,
+      // zod z.string().datetime() отвергает → файл молча выпадает из store
+      "created_at: '2026-09-29T10:00:00Z'",
+      "updated_at: '2026-09-29T10:00:00Z'",
+      'created_by: user:unit-test',
+      'schema_version: 1',
+      'source: { kind: manual }',
+      'related: { files: [], docs: [], decisions: [] }',
+      'tags: []',
+      'superseded_by: null',
+      `trigger_keywords: [${keywords.map((k) => `"${k}"`).join(', ')}]`,
+    ].join('\n');
+    writeFileSync(join(callsDir, `${id}.md`), `---\n${fm}\n---\n\nprobe content`);
+    return id;
+  }
+
   it('call: инъекции есть → injected с deliveredIds; нет инъекций → нет события', async () => {
-    // посев активного call-injection в store каталога (agent:* → proposed, задаём accepted явно)
-    const { createCliContainer } = await import('../../../src/bootstrap/container.js');
-    const { addMemoryObject } = await import('../../../src/app/use-cases/add-memory-object.js');
-    const deps = createCliContainer(dir);
-    const seeded = await addMemoryObject(deps, {
-      type: 'call-injection',
-      title: 'CLI stage probe',
-      body: 'probe content',
-      createdBy: 'user:unit-test',
-      reviewState: 'accepted',
-      extra: { trigger_keywords: ['stageprobe'] },
-    });
+    // посев активного call-injection в store каталога (alias-чтение, wave13-a)
+    const injectedId = seedCallInjection('cli_stage_inj_1', ['stageprobe']);
 
     const { memoryCallCommand } = await import('../../../src/adapters/cli/commands/memory-call.js');
     await memoryCallCommand().parseAsync(['call', '--for', 'stageprobe'], { from: 'user' });
     const injected = readSignals(dir).filter((e) => e.event === 'memory_stage' && e.detail?.stage === 'injected');
     expect(injected).toHaveLength(1);
-    expect(injected[0]!.detail?.memory_ids).toContain(seeded.object.id);
+    expect(injected[0]!.detail?.memory_ids).toContain(injectedId);
     // Ф26 delivery-сигналы не тронуты: по одному на delivered id
     const deliveries = readSignals(dir).filter((e) => e.event === 'delivery');
     expect(deliveries.length).toBeGreaterThanOrEqual(1);
@@ -139,17 +161,7 @@ describe('memory_stage auto-writers (CLI call)', () => {
   });
 
   it('WOLF_SESSION: авто-писатель call связывает injected с session_id (P2 D4)', async () => {
-    const { createCliContainer } = await import('../../../src/bootstrap/container.js');
-    const { addMemoryObject } = await import('../../../src/app/use-cases/add-memory-object.js');
-    const deps = createCliContainer(dir);
-    await addMemoryObject(deps, {
-      type: 'call-injection',
-      title: 'Session probe',
-      body: 'probe content',
-      createdBy: 'user:unit-test',
-      reviewState: 'accepted',
-      extra: { trigger_keywords: ['sesprobe'] },
-    });
+    seedCallInjection('cli_stage_inj_2', ['sesprobe']);
     vi.stubEnv('WOLF_SESSION', 'ses_e2e');
     try {
       const { memoryCallCommand } = await import('../../../src/adapters/cli/commands/memory-call.js');

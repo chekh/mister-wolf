@@ -44,7 +44,14 @@ export async function summarizeSession(
   let lastSummaryIndex = -1;
   for (let i = events.length - 1; i >= 0; i--) {
     const evt = events[i];
-    if (evt.type === 'memory.added' && evt.payload.type === 'session-summary') {
+    // 2.13 P210(е): wrap-up пишет note+facet history с тегом session-summary;
+    // legacy-события (payload.type 'session-summary') читаются как раньше (инвариант i)
+    const p = evt.payload as { type?: unknown; tags?: unknown };
+    const isSummaryEvent =
+      evt.type === 'memory.added' &&
+      (p.type === 'session-summary' ||
+        (p.type === 'note' && Array.isArray(p.tags) && p.tags.includes('session-summary')));
+    if (isSummaryEvent) {
       lastSummaryIndex = i;
       break;
     }
@@ -58,7 +65,10 @@ export async function summarizeSession(
   const result = await addMemoryObject(
     { store: deps.store, log: deps.log, clock: deps.clock, idGen: deps.idGen, index: deps.index, lock: deps.lock },
     {
-      type: 'session-summary',
+      // 2.13 C16-хвост: session-summary → note facet history, тег сохраняется
+      // (на нём держится should-summarize дедуп)
+      type: 'note',
+      facet: 'history',
       title,
       body,
       createdBy: input.createdBy,

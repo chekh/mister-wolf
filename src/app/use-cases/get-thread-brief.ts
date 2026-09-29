@@ -17,16 +17,30 @@ export interface ThreadBrief {
 
 export async function getThreadBrief(deps: { store: MemoryStore }, threadId: string): Promise<ThreadBrief> {
   const all = await deps.store.list();
-  const thread = all.find((o) => o.id === threadId && o.type === 'work-thread') as WorkThread | undefined;
+  // wave13-a §5.4: work-thread → thread; info-request/article/blocker → note
+  // (старые файлы читаются как note — alias); разграничение по полям-маркерам
+  const thread = all.find((o) => o.id === threadId && o.type === 'thread') as WorkThread | undefined;
   if (!thread) throw new Error(`Thread not found: ${threadId}`);
 
   const requests = all.filter(
-    (o) => o.type === 'info-request' && (o as InfoRequest).thread === threadId
+    (o) =>
+      o.type === 'note' &&
+      typeof (o as { question?: unknown }).question === 'string' &&
+      (o as InfoRequest).thread === threadId
   ) as InfoRequest[];
-  const articles = all.filter((o) => o.type === 'article' && (o as Article).thread === threadId) as Article[];
+  const articles = all.filter(
+    (o) =>
+      o.type === 'note' &&
+      typeof (o as { summary?: unknown }).summary === 'string' &&
+      (o as Article).thread === threadId
+  ) as Article[];
   const decisions = all.filter((o) => o.type === 'decision' && (o as Decision).thread === threadId) as Decision[];
   const blockers = all.filter(
-    (o) => o.type === 'blocker' && (o as Blocker).thread === threadId && (o as Blocker).status === 'active'
+    (o) =>
+      o.type === 'note' &&
+      (o as { facet?: string }).facet === 'pitfall' &&
+      (o as Blocker).thread === threadId &&
+      (o as Blocker).status === 'active'
   ) as Blocker[];
 
   const openInfoRequests = requests.filter((r) => r.status === 'open');

@@ -23,25 +23,36 @@ export async function generateAgentBrief(
   // дали бы три полных прохода. С parse-кэшем стора это одна walk+stat-проходка.
   const memoryObjects = await deps.store.list();
 
+  // wave13-a §5.4: context/open-question/blocker поглощены note+фасетами —
+  // заметки этих фасетов исключены из Active Memory (дублируют секции ниже);
+  // старые файлы читаются как note с инжектнутым фасетом (alias-резолвер)
+  const isNote = (obj: MemoryObject, facet: string): boolean =>
+    obj.type === 'note' && (obj as { facet?: string }).facet === facet;
+
   const acceptedMemory = memoryObjects
     .filter(
       (obj) =>
-        obj.review_state === 'accepted' &&
-        obj.status === 'active' &&
-        obj.type !== 'context' &&
-        obj.type !== 'open-question' &&
-        obj.type !== 'blocker'
+        obj.review_state === 'accepted' && obj.status === 'active' && !isNote(obj, 'context') && !isNote(obj, 'pitfall')
     )
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
     .slice(0, 10);
 
-  // Вопросы живут в 'open' (defaultStatus) или 'active' (созданные до введения defaultStatus)
+  // Вопросы: note+context без question-поля (статус open; active — legacy alias;
+  // скан-объекты отсекаются по source.kind=scan) — та же семантика, что в recap
   const openQuestions = memoryObjects
-    .filter((obj) => obj.type === 'open-question' && (obj.status === 'open' || obj.status === 'active'))
+    .filter((obj) => {
+      if (!isNote(obj, 'context') && (obj as { alias_origin?: string }).alias_origin !== 'open-question') return false;
+      if (obj.source?.kind === 'scan') return false;
+      if (typeof (obj as { question?: unknown }).question === 'string') return false;
+      return (
+        obj.status === 'open' ||
+        (obj.status === 'active' && (obj as { alias_origin?: string }).alias_origin === 'open-question')
+      );
+    })
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
   const blockers = memoryObjects
-    .filter((obj) => obj.type === 'blocker' && obj.status === 'active')
+    .filter((obj) => isNote(obj, 'pitfall') && obj.status === 'active')
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
   const description = await buildProjectDescription(deps.fs, root, snapshot);

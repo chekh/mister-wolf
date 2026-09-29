@@ -69,32 +69,34 @@ describe('scanProject', () => {
     const result = await scanProject({ store, log, clock, idGen, scanner }, projectDir);
 
     expect(result.object.id).toBe('project-scan-latest');
-    expect(result.object.type).toBe('context');
+    expect(result.object.type).toBe('note'); // wave13-a: context → note+facet context
+    expect((result.object as { facet?: string }).facet).toBe('context');
     expect(result.object.review_state).toBe('accepted');
     expect(result.object.title).toBe('Project scan for demo-project');
     expect(result.object.body).toContain('## Repository');
 
     const loaded = await store.get('project-scan-latest');
     expect(loaded).not.toBeNull();
-    expect(loaded?.type).toBe('context');
+    expect(loaded?.type).toBe('note');
 
     const events = await log.readAll();
     expect(events).toHaveLength(2);
     expect(events[0].type).toBe('memory.added');
     expect(events[0].payload).toMatchObject({
       memory_id: 'project-scan-latest',
-      type: 'context',
+      type: 'note',
     });
-    expect(events[1].payload).toMatchObject({ type: 'document-ref' });
+    expect(events[1].payload).toMatchObject({ type: 'note' }); // wave13-a: document-ref → note+legacy
 
     expect(result.documents).toHaveLength(1);
-    expect(result.documents[0].type).toBe('document-ref');
+    expect(result.documents[0].type).toBe('note');
+    expect((result.documents[0] as { facet?: string }).facet).toBe('legacy');
     expect(result.documents[0].source.path).toBe('docs/guide.md');
     // канон id §2.1: mem_<день>_doc_<slug>_<hash8>
     expect(isCanonicalDocumentId(result.documents[0].id)).toBe(true);
     expect(result.documents[0].id).toContain('_doc_guide_');
     const loadedDoc = await store.get(result.documents[0].id);
-    expect(loadedDoc?.type).toBe('document-ref');
+    expect(loadedDoc?.type).toBe('note');
   });
 
   it('повторный скан неизменного дерева: 0 save, 0 событий, 0 индексаций (P105 diff-before-save)', async () => {
@@ -172,7 +174,7 @@ describe('scanProject', () => {
     const evts = await log.readAll();
     expect(evts).toHaveLength(eventsBefore + 1);
     expect(evts[evts.length - 1].type).toBe('memory.scan.updated');
-    expect(evts[evts.length - 1].payload).toMatchObject({ memory_id: docId, type: 'document-ref' });
+    expect(evts[evts.length - 1].payload).toMatchObject({ memory_id: docId, type: 'note' }); // document-ref → note
   });
 
   it('scan-объект изменился (другой projectName) → пишется save+event', async () => {
@@ -191,7 +193,7 @@ describe('scanProject', () => {
     const evts = await log.readAll();
     expect(evts).toHaveLength(eventsBefore + 1); // только scan-объект; doc-ref не изменился
     expect(evts[evts.length - 1].type).toBe('memory.scan.updated');
-    expect(evts[evts.length - 1].payload).toMatchObject({ memory_id: 'project-scan-latest', type: 'context' });
+    expect(evts[evts.length - 1].payload).toMatchObject({ memory_id: 'project-scan-latest', type: 'note' });
   });
 
   it('повторный скан: легаси doc_* id и created_at/created_by сохраняются (§2.1: скан не мигрирует)', async () => {
@@ -200,15 +202,42 @@ describe('scanProject', () => {
     const idGen = new HashIdGenerator();
     const scanner = new HeuristicProjectScanner(new FsFileSystem());
 
-    await store.save(
-      seedObject({
-        id: 'doc_docs_guide_md',
-        type: 'document-ref',
-        title: 'Guide',
-        source: { kind: 'scan', path: 'docs/guide.md' },
-        created_at: '2020-01-01T00:00:00.000Z',
-        created_by: 'user:legacy',
-      })
+    // wave13-a: легаси document-ref сеем сырым .md (правило в) — save() старый
+    // тип не принимает; alias-резолвер читает его как note+facet legacy
+    const docDir = join(projectDir, '.wolf', 'memory', 'shared', 'documents');
+    mkdirSync(docDir, { recursive: true });
+    writeFileSync(
+      join(docDir, 'doc_docs_guide_md.md'),
+      [
+        '---',
+        'id: doc_docs_guide_md',
+        'type: document-ref',
+        'title: Guide',
+        'status: active',
+        'review_state: accepted',
+        'confidence: high',
+        'importance: 0.5',
+        `created_at: '2020-01-01T00:00:00.000Z'`,
+        `updated_at: '2020-01-01T00:00:00.000Z'`,
+        'created_by: user:legacy',
+        'schema_version: 1',
+        'source:',
+        '  kind: scan',
+        '  path: docs/guide.md',
+        'related:',
+        '  files: []',
+        '  docs: []',
+        '  decisions: []',
+        'tags: []',
+        'superseded_by: null',
+        'memory_class: working',
+        'truth_role: accepted_knowledge',
+        'lifetime: long_term',
+        '---',
+        '',
+        'seed body',
+        '',
+      ].join('\n')
     );
 
     const result = await scanProject({ store, log, clock: fixedClock, idGen, scanner }, projectDir);

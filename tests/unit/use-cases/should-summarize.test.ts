@@ -5,7 +5,7 @@ import { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.j
 function makeSummary(date: string): MemoryObject {
   return {
     id: 'mem_summary',
-    type: 'session-summary',
+    type: 'note', // 2.13: wrap-up пишет note+facet history, дедуп — по тегу
     title: 'Summary',
     status: 'active',
     review_state: 'accepted',
@@ -23,6 +23,7 @@ function makeSummary(date: string): MemoryObject {
     memory_class: 'working',
     truth_role: 'accepted_knowledge',
     lifetime: 'long_term',
+    facet: 'history',
   };
 }
 
@@ -39,5 +40,10 @@ describe('shouldSummarize', () => {
   it('returns true when the latest summary is older than 5 minutes', () => {
     const objects = [makeSummary('2026-07-02T11:54:00Z')];
     expect(shouldSummarize(objects, new Date('2026-07-02T12:00:00Z'))).toBe(true);
+  });
+
+  it('note без тега session-summary не считается сводкой', () => {
+    const other = { ...makeSummary('2026-07-02T11:58:00Z'), tags: ['other'] };
+    expect(shouldSummarize([other], new Date('2026-07-02T12:00:00Z'))).toBe(true);
   });
 });

@@ -7,7 +7,10 @@ import type { WolfConfig } from '../../domain/taxonomy.js';
 import { generateCoreConfigBlock } from '../../domain/taxonomy.js';
 import { configPath } from './project-paths.js';
 
-const FieldSpecSchema: z.ZodType<FieldSpec> = z.discriminatedUnion('kind', [
+// union, не discriminatedUnion: у трёх вариантов kind:'string' (required/optional/
+// default) один дискриминатор — zod v4 бросает "Duplicate discriminator value"
+// при любом fields-блоке project-типа (dogfood task-brief читался как битый конфиг)
+const FieldSpecSchema: z.ZodType<FieldSpec> = z.union([
   z.object({ kind: z.literal('string'), required: z.literal(true), min: z.number().int().optional() }),
   z.object({ kind: z.literal('string'), optional: z.literal(true) }),
   z.object({ kind: z.literal('string'), default: z.string() }),
@@ -78,6 +81,14 @@ const ConfigFileSchema = z.object({
     })
     .optional()
     .catch(undefined),
+  // 2.13 §5.3: словарь фасетов «характер записи» (7–10 значений). БЕЗ catch:
+  // битый блок — громкая ошибка конфига; отсутствие ключа — старые конфиги
+  // читаются без ошибок (инвариант iii).
+  facets: z
+    .object({
+      character: z.array(z.string().min(1)).min(7).max(10),
+    })
+    .optional(),
 });
 
 export class ConfigLoadError extends Error {}
@@ -144,6 +155,7 @@ export async function loadWolfConfig(baseDir: string): Promise<WolfConfig | null
       decayTtl: cfg.learning?.decay_ttl,
       effectivenessThresholds: mapEffectivenessThresholds(cfg.learning?.effectiveness_thresholds),
     },
+    facets: cfg.facets,
   };
 }
 
@@ -230,6 +242,7 @@ function readWolfConfigSync(path: string): WolfConfig | null {
       decayTtl: cfg.learning?.decay_ttl,
       effectivenessThresholds: mapEffectivenessThresholds(cfg.learning?.effectiveness_thresholds),
     },
+    facets: cfg.facets,
   };
 }
 

@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'fs';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import yaml from 'js-yaml';
 import { getCallInjections } from '../../../src/app/use-cases/get-call-injections.js';
 import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
 import { checksumBlock } from '../../../src/adapters/fs/session-delivery-registry.js';
@@ -52,7 +53,17 @@ describe('getCallInjections', () => {
 
   async function seed(...objs: Record<string, unknown>[]) {
     for (const o of objs) {
-      await store.save(o as any);
+      // wave13-a: call-injection поглощён note+howto — легаси-записи сеем сырым
+      // .md со старым типом (правило в): alias-резолвер читает их как note с
+      // alias_origin='call-injection', пул доставок находит по alias_origin
+      if (o.type === 'call-injection') {
+        const { body, ...fm } = o;
+        const path = join(dir, '.wolf', 'memory', 'shared', 'calls', `${o.id}.md`);
+        mkdirSync(dirname(path), { recursive: true });
+        writeFileSync(path, `---\n${yaml.dump(fm)}---\n\n${body ?? ''}`);
+      } else {
+        await store.save(o as any);
+      }
     }
   }
 
@@ -124,7 +135,8 @@ describe('getCallInjections', () => {
       makeObj({ id: 'rule_1', type: 'rule', status: 'active', title: 'Project Rule', scope: 'project', body: '' }),
       makeObj({
         id: 'blocker_1',
-        type: 'blocker',
+        type: 'note', // wave13-a: blocker → note+facet pitfall
+        facet: 'pitfall',
         status: 'active',
         thread: 'mem_t1',
         title: 'Thread Blocker',
@@ -359,7 +371,15 @@ describe('getCallInjections', () => {
       makeObj({ id: 'inj_A', type: 'call-injection', status: 'active', trigger_keywords: ['merge'], title: 'A' }),
       makeObj({ id: 'lesson_1', type: 'lesson', status: 'active', trigger_keywords: ['merge'], title: 'L' }),
       makeObj({ id: 'rule_1', type: 'rule', status: 'active', scope: 'project', title: 'R' }),
-      makeObj({ id: 'blocker_1', type: 'blocker', status: 'active', thread: 'mem_t1', title: 'B', impact: 'x' })
+      makeObj({
+        id: 'blocker_1',
+        type: 'note',
+        facet: 'pitfall',
+        status: 'active',
+        thread: 'mem_t1',
+        title: 'B',
+        impact: 'x',
+      }) // wave13-a: blocker → note
     );
     let listCalls = 0;
     const countingStore = {
@@ -412,7 +432,8 @@ describe('getCallInjections', () => {
       }),
       makeObj({
         id: 'blocker_1',
-        type: 'blocker',
+        type: 'note', // wave13-a: blocker → note+facet pitfall
+        facet: 'pitfall',
         status: 'active',
         thread: 'mem_t1',
         title: 'Thread Blocker',
@@ -422,18 +443,28 @@ describe('getCallInjections', () => {
         updated_at: daysAgo(1),
       }),
       // шум: не должен попасть в вывод
-      makeObj({ id: 'blocker_other', type: 'blocker', status: 'active', thread: 'mem_x', title: 'Other', impact: 'x' }),
+      makeObj({
+        id: 'blocker_other',
+        type: 'note',
+        facet: 'pitfall',
+        status: 'active',
+        thread: 'mem_x',
+        title: 'Other',
+        impact: 'x',
+      }), // wave13-a: blocker → note
       makeObj({ id: 'rule_global', type: 'rule', status: 'active', scope: 'global', title: 'Global Rule' }),
       makeObj({ id: 'decision_1', type: 'decision', status: 'active', title: 'Decision' }),
       makeObj({ id: 'rule_done', type: 'rule', status: 'superseded', scope: 'project', title: 'Old Rule' })
     );
 
     const result = await getCallInjections({ store, clock }, { topic: 'merge', thread: 'mem_t1' });
+    // P212 §5.3в: фасет перед title (inj_A — call-injection alias → howto,
+    // blocker_1 — note+pitfall); lesson/rule без фасета — плоско
     expect(result.blocks).toEqual([
-      `- [inj_A] Injection A (high, ${daysAgo(1)})\n  source: inj_A`,
+      `- [inj_A] [howto] Injection A (high, ${daysAgo(1)})\n  source: inj_A`,
       `- [lesson_1] Lesson One (medium, ${daysAgo(1)})\n  source: lesson_1`,
       `- [rule_kw] Rule KW (medium, ${daysAgo(1)})\n  source: rule_kw`,
-      `- [blocker_1] Thread Blocker (low, ${daysAgo(1)})\n  source: blocker_1`,
+      `- [blocker_1] [pitfall] Thread Blocker (low, ${daysAgo(1)})\n  source: blocker_1`,
     ]);
     expect(result.truncated).toBe(0);
   });

@@ -104,7 +104,7 @@ describe('mcp_call telemetry', () => {
 
   it('wave0 get: detail.memory_id = id вызванного объекта', async () => {
     const tools = toolsOf(dir);
-    const created = (await tools.add.handler({ type: 'context', title: 'для get', createdBy: 'u' })) as {
+    const created = (await tools.add.handler({ type: 'note', facet: 'context', title: 'для get', createdBy: 'u' })) as {
       content: Array<{ text: string }>;
     };
     const id = created.content[0]?.text?.match(/Created memory object: (\S+)/)?.[1];
@@ -120,7 +120,8 @@ describe('mcp_call telemetry', () => {
   it('wave0 search: detail.memory_ids содержит id найденных; пустой поиск → пустой массив', async () => {
     const tools = toolsOf(dir);
     const created = (await tools.add.handler({
-      type: 'context',
+      type: 'note', // wave13-a: context → note+facet context
+      facet: 'context',
       title: 'уникальный-заголовок-qwerty',
       createdBy: 'u',
     })) as {
@@ -181,15 +182,16 @@ describe('mcp_call telemetry', () => {
   it('T011 normalisation: camelCase-ключи add проходят валидацию схемы; успех не пишет mcp_call', async () => {
     const tools = toolsOf(dir);
     const result = (await schemaOf(tools, 'add')['~standard'].validate({
-      type: 'info-request',
+      type: 'thread',
       title: 't',
       createdBy: 'u',
-      question: 'q',
-      detourReason: 'r',
-      expectedAnswer: ['a'],
+      goal: 'g',
+      currentState: 's',
+      nextSteps: ['a'],
     })) as { value?: Record<string, unknown>; issues?: unknown[] };
     expect(result.issues).toBeUndefined();
-    expect(result.value?.expected_answer).toEqual(['a']);
+    expect(result.value?.current_state).toBe('s');
+    expect(result.value?.next_steps).toEqual(['a']);
     // schema-success: телеметрию пишет только withMcpCall вокруг handler'а
     expect(readSignals(dir).filter((e) => e.event === 'mcp_call')).toHaveLength(0);
   });

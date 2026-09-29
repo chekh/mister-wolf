@@ -46,7 +46,8 @@ describe('scaffoldFrame', () => {
     expect(result.framePath).toBe(join('.opencode', 'agents', 'demo-agent.md'));
 
     const pb = await store.get(result.playbookId);
-    expect(pb?.type).toBe('playbook');
+    expect(pb?.type).toBe('note'); // wave13-a: playbook → note+facet howto
+    expect((pb as { facet?: string }).facet).toBe('howto');
     const extra = pb as { owner_skill?: string; version?: string; steps?: string[] };
     expect(extra.owner_skill).toBe('demo-agent');
     expect(extra.version).toBe('v1');
@@ -85,7 +86,7 @@ describe('scaffoldFrame', () => {
     await expect(scaffoldFrame(deps, { kind: 'agent', name: 'demo-agent', createdBy: 'user:test' })).rejects.toThrow(
       /already exists/
     );
-    const playbooks = await store.list({ type: 'playbook' });
+    const playbooks = (await store.list({ type: 'note' })).filter((o) => (o as { facet?: string }).facet === 'howto');
     expect(playbooks).toHaveLength(1);
     expect(playbooks[0]?.id).toBe(first.playbookId);
   });
@@ -103,7 +104,9 @@ describe('scaffoldFrame', () => {
     expect(second.ownerSkill).toBe('orig-agent');
     const frame = readFileSync(join(dir, second.framePath), 'utf-8');
     expect(frame).toContain('agent-id: orig-agent');
-    expect(await store.list({ type: 'playbook' })).toHaveLength(1);
+    expect(
+      (await store.list({ type: 'note' })).filter((o) => (o as { facet?: string }).facet === 'howto')
+    ).toHaveLength(1);
     const rels = await relations.list({ subject: first.playbookId, predicate: 'owner_skill' });
     expect(rels.map((r) => r.object)).toContain('agent:new-frame');
   });
@@ -118,7 +121,7 @@ describe('scaffoldFrame', () => {
         createdBy: 'user:test',
       })
     ).rejects.toThrow(/Playbook not found/);
-    expect(await store.list({ type: 'playbook' })).toHaveLength(0);
+    expect(await store.list({ type: 'note' })).toHaveLength(0);
   });
 
   it('skill и command пишутся в правильные каталоги', async () => {

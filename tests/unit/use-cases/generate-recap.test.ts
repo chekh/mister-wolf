@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync } from 'fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { generateRecap, renderRecap } from '../../../src/app/use-cases/generate-recap.js';
@@ -80,20 +80,54 @@ describe('generateRecap', () => {
     await transitionMemoryObject(deps, resolvedBlocker.object.id, 'resolved', 'user:test');
 
     const openQuestion = await addMemoryObject(deps, {
-      type: 'open-question',
+      type: 'note', // wave13-a: open-question → note+facet context
+      facet: 'context',
+      status: 'open',
       title: 'Auth strategy',
       body: 'JWT or sessions?',
       createdBy: 'user:test',
     });
-    const legacyQuestion = await addMemoryObject(deps, {
-      type: 'open-question',
-      title: 'Legacy open question',
-      body: 'Created before defaultStatus existed.',
-      status: 'active',
-      createdBy: 'user:test',
-    });
+    // legacy-запись (старый тип open-question, статус active) — сырой .md:
+    // alias-резолвер читает её как note+facet context с alias_origin
+    const legacyDir = join(dir, '.wolf', 'memory', 'shared', 'notes');
+    mkdirSync(legacyDir, { recursive: true });
+    writeFileSync(
+      join(legacyDir, 'mem_legacy_question.md'),
+      [
+        '---',
+        'id: mem_legacy_question',
+        'type: open-question',
+        'title: Legacy open question',
+        'status: active',
+        'review_state: accepted',
+        'confidence: medium',
+        'importance: 0.5',
+        `created_at: '2026-01-01T00:00:00.000Z'`,
+        `updated_at: '2026-01-01T00:00:00.000Z'`,
+        'created_by: user:test',
+        'schema_version: 1',
+        'source:',
+        '  kind: manual',
+        'related:',
+        '  files: []',
+        '  docs: []',
+        '  decisions: []',
+        'tags: []',
+        'superseded_by: null',
+        'memory_class: working',
+        'truth_role: accepted_knowledge',
+        'lifetime: long_term',
+        '---',
+        '',
+        'Created before defaultStatus existed.',
+        '',
+      ].join('\n')
+    );
+    const legacyQuestion = { object: { id: 'mem_legacy_question', title: 'Legacy open question' } };
     const answeredQuestion = await addMemoryObject(deps, {
-      type: 'open-question',
+      type: 'note',
+      facet: 'context',
+      status: 'open',
       title: 'Answered question',
       body: 'No longer open.',
       createdBy: 'user:test',
@@ -245,7 +279,8 @@ describe('generateRecap', () => {
   it('onboarding: bootstrap signal when active init-report exists and no thread', async () => {
     const deps = mkDeps();
     await addMemoryObject(deps, {
-      type: 'report',
+      type: 'note', // wave13-a: report → note+facet history
+      facet: 'history',
       title: 'Init report: demo',
       body: '## Сделано\n…',
       createdBy: 'wolf-init',
@@ -296,7 +331,8 @@ describe('generateRecap', () => {
   it('onboarding: active thread wins over init-report (continue)', async () => {
     const deps = mkDeps();
     await addMemoryObject(deps, {
-      type: 'report',
+      type: 'note', // wave13-a: report → note+facet history
+      facet: 'history',
       title: 'Init report: demo',
       body: '…',
       createdBy: 'wolf-init',
@@ -317,7 +353,8 @@ describe('generateRecap', () => {
   it('onboarding: silence when thread paused even with active init-report', async () => {
     const deps = mkDeps();
     await addMemoryObject(deps, {
-      type: 'report',
+      type: 'note', // wave13-a: report → note+facet history
+      facet: 'history',
       title: 'Init report: demo',
       body: '…',
       createdBy: 'wolf-init',

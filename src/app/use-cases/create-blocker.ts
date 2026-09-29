@@ -38,7 +38,8 @@ export async function createBlocker(
     const defaults = governanceDefaults(input.createdBy);
     const object: Blocker = {
       id: deps.idGen.generateMemoryId(now, input.title),
-      type: 'blocker',
+      type: 'note', // wave13-a: blocker → note+facet pitfall (§5.4)
+      facet: 'pitfall',
       title: input.title,
       status: 'active',
       review_state: input.createdBy.startsWith('agent:') ? 'proposed' : 'accepted',

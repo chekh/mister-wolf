@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildTypeSchema } from '../../../src/domain/type-schema-builder.js';
+import { buildTypeSchema, applyFacetEnum } from '../../../src/domain/type-schema-builder.js';
 import { getDeclaration } from '../../../src/domain/memory-types.js';
 
 const minimalBase = {
@@ -18,28 +18,42 @@ const minimalBase = {
 
 describe('buildTypeSchema', () => {
   it('rejects status outside type lifecycle', () => {
-    const s = buildTypeSchema(getDeclaration('task-brief'));
-    expect(() => s.parse({ ...minimalBase, type: 'task-brief', status: 'open' })).toThrow();
+    const s = buildTypeSchema(getDeclaration('thread'));
+    expect(() => s.parse({ ...minimalBase, type: 'thread', status: 'resolved', goal: 'g' })).toThrow();
   });
-  it('rejects missing declared field (executor)', () => {
-    const s = buildTypeSchema(getDeclaration('task-brief'));
-    expect(() => s.parse({ ...minimalBase, type: 'task-brief', status: 'active' })).toThrow(/executor/i);
+  it('accepts new thread statuses blocked/waiting_answer/open', () => {
+    const s = buildTypeSchema(getDeclaration('thread'));
+    for (const status of ['blocked', 'waiting_answer', 'open'] as const) {
+      expect(s.safeParse({ ...minimalBase, type: 'thread', status, goal: 'g' }).success).toBe(true);
+    }
   });
-  it('accepts valid task-brief with executor+priority', () => {
-    const s = buildTypeSchema(getDeclaration('task-brief'));
-    const obj = s.parse({
+  it('rejects missing declared field (thread.goal)', () => {
+    const s = buildTypeSchema(getDeclaration('thread'));
+    expect(() => s.parse({ ...minimalBase, type: 'thread', status: 'active' })).toThrow(/goal/i);
+  });
+  it('note требует facet из enum-словаря', () => {
+    const s = buildTypeSchema(getDeclaration('note'));
+    expect(() => s.parse({ ...minimalBase, type: 'note', status: 'active' })).toThrow(/facet/i);
+    expect(() => s.parse({ ...minimalBase, type: 'note', status: 'active', facet: 'bogus' })).toThrow();
+    expect(s.safeParse({ ...minimalBase, type: 'note', status: 'active', facet: 'pitfall' }).success).toBe(true);
+  });
+  it('applyFacetEnum подменяет словарь фасета (кастомный facets.character)', () => {
+    const custom = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    const s = buildTypeSchema(applyFacetEnum(getDeclaration('note'), custom));
+    expect(s.safeParse({ ...minimalBase, type: 'note', status: 'active', facet: 'h' }).success).toBe(true);
+    expect(s.safeParse({ ...minimalBase, type: 'note', status: 'active', facet: 'pitfall' }).success).toBe(false);
+  });
+  it('passthrough guard (§8.2.2): чужие поля переживают buildTypeSchema и остаются в результате', () => {
+    const s = buildTypeSchema(getDeclaration('note'));
+    const parsed = s.parse({
       ...minimalBase,
-      type: 'task-brief',
+      type: 'note',
       status: 'active',
-      executor: 'executor-lead',
-      priority: 'high',
+      facet: 'legacy',
+      impact: 'CI is down',
+      legacy_field: { nested: true },
     });
-    expect(obj.executor).toBe('executor-lead');
-  });
-  it('document-ref requires source.path', () => {
-    const s = buildTypeSchema(getDeclaration('document-ref'));
-    expect(() => s.parse({ ...minimalBase, type: 'document-ref', status: 'active', source: { kind: 'scan' } })).toThrow(
-      /source\.path/
-    );
+    expect(parsed.impact).toBe('CI is down');
+    expect(parsed.legacy_field).toEqual({ nested: true });
   });
 });

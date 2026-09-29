@@ -34,18 +34,16 @@ describe('MemoryAddInputSchema (derived from taxonomy)', () => {
     }
   });
 
-  it('keeps task-brief executor and priority through parse', () => {
+  it('keeps thread.goal through parse (not stripped)', () => {
     const parsed = MemoryAddInputSchema.safeParse({
-      type: 'task-brief',
+      type: 'thread',
       title: 't',
       createdBy: 'user:x',
-      executor: 'worker',
-      priority: 'high',
+      goal: 'ship it',
     });
     expect(parsed.success).toBe(true);
     if (parsed.success) {
-      expect(parsed.data.executor).toBe('worker');
-      expect(parsed.data.priority).toBe('high');
+      expect(parsed.data.goal).toBe('ship it');
     }
   });
 
@@ -80,12 +78,10 @@ describe('MemoryAddInputSchema (derived from taxonomy)', () => {
 // T011: агентские camelCase-ключи → snake_case per-type поля тула add
 describe('normalizeAddInputKeys', () => {
   it('renames camelCase key to its known snake_case field', () => {
-    expect(normalizeAddInputKeys({ expectedAnswer: ['a'] })).toEqual({ expected_answer: ['a'] });
-    expect(
-      normalizeAddInputKeys({ type: 'info-request', detourReason: 'r', currentState: 's', nextSteps: ['a'] })
-    ).toEqual({
-      type: 'info-request',
-      detour_reason: 'r',
+    // wave13-a: per-type поля таксономии 7 типов (trigger_keywords, current_state, next_steps)
+    expect(normalizeAddInputKeys({ triggerKeywords: ['a'] })).toEqual({ trigger_keywords: ['a'] });
+    expect(normalizeAddInputKeys({ type: 'thread', currentState: 's', nextSteps: ['a'] })).toEqual({
+      type: 'thread',
       current_state: 's',
       next_steps: ['a'],
     });
@@ -111,20 +107,20 @@ describe('normalizeAddInputKeys', () => {
 
   it('full add input validates after normalization; value carries snake_case fields', async () => {
     const raw = {
-      type: 'info-request',
+      type: 'thread',
       title: 't',
       createdBy: 'user:x',
-      question: 'q',
-      detourReason: 'r',
-      expectedAnswer: ['a'],
+      goal: 'g',
+      currentState: 's',
+      nextSteps: ['a'],
     };
     const result = (await MemoryAddInputSchema['~standard'].validate(normalizeAddInputKeys(raw))) as {
       value?: Record<string, unknown>;
       issues?: unknown[];
     };
     expect(result.issues).toBeUndefined();
-    expect(result.value?.expected_answer).toEqual(['a']);
-    expect(result.value?.detour_reason).toBe('r');
+    expect(result.value?.current_state).toBe('s');
+    expect(result.value?.next_steps).toEqual(['a']);
     expect(result.value?.createdBy).toBe('user:x');
   });
 });

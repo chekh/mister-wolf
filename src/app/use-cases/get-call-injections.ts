@@ -3,6 +3,7 @@ import { SearchIndex } from '../../ports/search-index.port.js';
 import { Clock } from '../../ports/clock.port.js';
 import { tokenize } from '../../domain/solve/scenarios.js';
 import { finalScore } from '../../domain/solve/relevance.js';
+import { highlightFacet } from '../../domain/facet-colors.js';
 import { checksumBlock } from '../../adapters/fs/session-delivery-registry.js';
 
 export interface CallInjectionResult {
@@ -15,8 +16,11 @@ export interface CallInjectionResult {
   deduplicated: number;
 }
 
-function formatBlock(obj: Record<string, unknown>): string {
-  return `- [${obj.id}] ${obj.title} (${obj.confidence}, ${obj.updated_at})\n  source: ${obj.id}`;
+function formatBlock(obj: Record<string, unknown>, colors?: boolean): string {
+  // P212 (2.13 §5.3в): фасет перед title — формат как в list; нет фасета → без скобок
+  const facet = typeof obj.facet === 'string' ? obj.facet : null;
+  const facetPart = facet ? `[${highlightFacet(facet, colors ?? false)}] ` : '';
+  return `- [${obj.id}] ${facetPart}${obj.title} (${obj.confidence}, ${obj.updated_at})\n  source: ${obj.id}`;
 }
 
 /** Машино-состояние (routing-объект моделей) — не руководство для агента: в инъекции никогда. */
@@ -33,6 +37,8 @@ export async function getCallInjections(
     /** P108 (4.C): мапа id→checksum уже доставленных в сессию блоков (готовит
      * memory-call из loadSessionRegistry). Не передана (MCP-канал) — фильтр выключен. */
     deliveredRegistry?: Record<string, string>;
+    /** P212 (2.13 §5.3в): подсветка фасета (CLI-TTY); false/undefined → плоский текст. */
+    colors?: boolean;
   }
 ): Promise<CallInjectionResult> {
   const now = deps.clock.now();
@@ -46,8 +52,16 @@ export async function getCallInjections(
   const activeOf = (type: string): Record<string, unknown>[] =>
     memoryObjects.filter((o) => o.type === type && o.status === 'active');
 
-  // 1. active call-injections
-  const injections = activeOf('call-injection');
+  // 1. active call-injections.
+  // wave13-a §3.4 (инвариант v): call-injection поглощён note+howto; старые
+  // записи читаются как note с transient alias_origin='call-injection' — пул
+  // доставок находит их по alias_origin (доставка живёт до migrate; после
+  // migrate alias_origin исчезает и пул их не видит — задумано спекой 8.1)
+  const injections = memoryObjects.filter(
+    (o) =>
+      o.status === 'active' &&
+      (o.type === 'call-injection' || (o.type === 'note' && o.alias_origin === 'call-injection'))
+  );
 
   // 2. topic matching
   let matched: Record<string, unknown>[];
@@ -101,7 +115,14 @@ export async function getCallInjections(
       }
     }
     if (threadId) {
-      const blockers = activeOf('blocker') as Record<string, unknown>[];
+      // wave13-a: blocker → note+facet pitfall (старые файлы — alias_origin);
+      // «открытые блокеры треда» = активные note-pitfall с thread
+      const blockers = memoryObjects.filter(
+        (o) =>
+          o.status === 'active' &&
+          o.type === 'note' &&
+          ((o.facet === 'pitfall' || o.alias_origin === 'blocker') as boolean)
+      );
       for (const b of blockers) {
         if (b.thread === threadId && !matched.some((m) => m.id === b.id)) {
           matched.push(b);
@@ -132,7 +153,7 @@ export async function getCallInjections(
   let deduplicated = 0;
   const pending = input.deliveredRegistry
     ? scored.filter(({ obj }) => {
-        if (input.deliveredRegistry![obj.id as string] !== checksumBlock(formatBlock(obj))) return true;
+        if (input.deliveredRegistry![obj.id as string] !== checksumBlock(formatBlock(obj, input.colors))) return true;
         deduplicated++;
         return false;
       })
@@ -146,7 +167,7 @@ export async function getCallInjections(
   let used = 0;
 
   for (const { obj } of pending) {
-    const block = formatBlock(obj);
+    const block = formatBlock(obj, input.colors);
     if (used + block.length <= budget) {
       blocks.push(block);
       deliveredIds.push(obj.id as string);

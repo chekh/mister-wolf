@@ -6,7 +6,8 @@ export const SQLITE_SCHEMA = `
     body,
     tags,
     status,
-    review_state
+    review_state,
+    facet
   );
 
   CREATE TABLE IF NOT EXISTS memory_meta (
@@ -23,6 +24,7 @@ export const SQLITE_SCHEMA = `
     source TEXT NOT NULL,
     related TEXT NOT NULL,
     tags TEXT NOT NULL,
-    schema_version INTEGER NOT NULL
+    schema_version INTEGER NOT NULL,
+    facet TEXT
   );
 `;
