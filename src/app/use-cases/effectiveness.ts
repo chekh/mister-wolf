@@ -16,18 +16,18 @@
 import type { MemoryStore } from '../../ports/memory-store.port.js';
 import type { EventLog } from '../../ports/event-log.port.js';
 import type { RelationLog } from '../../ports/relation-log.port.js';
-import type { SignalEvent } from '../../adapters/fs/session-metrics-log.js';
 import type { EconomyResult } from '../../domain/tool-economy.js';
 import { median } from '../../domain/tool-economy.js';
 import { runCostUsd, type PricingTable, type RawTokens } from '../../domain/pricing.js';
 import { toolStats } from './tool-stats.js';
-import { mergeRunEntries } from './run-source.js';
 import {
+  mergeRunEntries,
   countSessions,
   silentRuleIds,
   SILENT_RULE_MIN_DELIVERIES,
   SILENT_RULE_WINDOW_SESSIONS,
-} from './learn-decay.js';
+  type SignalEvent,
+} from '../../adapters/fs/session-metrics-log.js';
 
 /** Пороги статусов панели (проценты). */
 export interface EffectivenessThresholds {
@@ -217,7 +217,7 @@ export async function buildEffectivenessReport(
     { signals: input.signals, runLogText: input.runLogText }
   );
 
-  // Блок 3 «Доставка→срабатывание»: сигнальный лог + окно молчания из learn-decay
+  // Блок 3 «Доставка→срабатывание»: сигнальный лог + окно молчания из session-metrics-log
   const deliveries = input.signals.filter((s) => s.event === 'delivery');
   const triggered = new Set<string>();
   for (const ev of deliveries) {

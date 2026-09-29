@@ -4,16 +4,16 @@
  * логи контура, скелет платформы. Нарушение отклоняется механически, без LLM.
  *
  * Исключение (спека §3 L0 / §9 инвариант 2): op='append-signal' разрешён
- * ТОЛЬКО для сигнальных логов session-metrics/patterns — это наблюдение,
+ * ТОЛЬКО для сигнального лога session-metrics — это наблюдение,
  * не адаптация. events.jsonl / relations.jsonl append идёт через штатные
  * writer'ы (event-log / relation-log) вне этого guard'а — здесь тоже запрещён.
  *
  * Чистая политика: без IO; матчинг — нормализованный posix-relpath,
  * каталоги (trailing '/') — префикс-матчем.
  *
- * ponytail: guard встроен в stop-gate (zoneProbe) и точки записи контура
- * (template-evolve); общий write-путь контура через единый враппер — если
- * у контура появятся новые file-writer'ы, оберни их здесь же.
+ * ponytail: guard встроен в stop-gate (zoneProbe); общий write-путь контура
+ * через единый враппер — если у контура появятся новые file-writer'ы,
+ * оберни их здесь же.
  */
 import { UserFacingError } from '../errors.js';
 
@@ -30,18 +30,14 @@ export const READ_ONLY_ZONES: readonly ReadOnlyZone[] = [
   { path: '.wolf/memory/events.jsonl', reason: 'loop audit log, actual layout path (spec §5)' },
   { path: '.wolf/memory/relations.jsonl', reason: 'loop relation graph, actual layout path (spec §5)' },
   { path: '.wolf/metrics/session-metrics.jsonl', reason: 'loop signal log (spec §5)' },
-  { path: '.wolf/metrics/patterns.jsonl', reason: 'loop pattern journal (spec §5)' },
   { path: 'src/domain/gates/', reason: 'gate code — the loop does not change its own gates (spec §5)' },
   { path: 'src/domain/policies/', reason: 'validator/policy code (spec §5)' },
   { path: '.opencode/', reason: 'platform skeleton/frames (spec §13)' },
   { path: 'AGENTS.md', reason: 'AGENTS.md frame (spec §13)' },
 ];
 
-/** Сигнальные логи: append разрешён (наблюдение, не адаптация — §3, §9). */
-const SIGNAL_APPEND_ALLOWED: ReadonlySet<string> = new Set([
-  '.wolf/metrics/session-metrics.jsonl',
-  '.wolf/metrics/patterns.jsonl',
-]);
+/** Сигнальный лог: append разрешён (наблюдение, не адаптация — §3, §9). */
+const SIGNAL_APPEND_ALLOWED: ReadonlySet<string> = new Set(['.wolf/metrics/session-metrics.jsonl']);
 
 /** Нормализация в posix-relpath: разделители \\ и /, пустые и '.' сегменты долой. */
 function normalizeRelPath(relPath: string): string {
@@ -74,7 +70,7 @@ export function assertLearnWriteAllowed(relPath: string, op: 'write' | 'rewrite'
   if (op === 'append-signal') {
     throw new UserFacingError(
       `loop read-only zone: ${relPath} (${zone.reason}); append-signal is allowed only ` +
-        `for the signal logs (.wolf/metrics/session-metrics.jsonl, .wolf/metrics/patterns.jsonl)`
+        `for the signal log (.wolf/metrics/session-metrics.jsonl)`
     );
   }
   throw new UserFacingError(`loop read-only zone: ${relPath} (${zone.reason})`);

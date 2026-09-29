@@ -284,9 +284,6 @@ export function memoryInitCommand(): Command {
       console.log(`- memory skeleton: ensured (${join(baseDir, '.wolf')})`);
       for (const o of result.baseSetOutcomes) console.log(formatBaseSetLine(o)); // F5: скиллы — [skill] имя → путь
       for (const outcome of result.platformOutcomes) console.log(formatPlatformLine(outcome)); // F6: configFile + keys
-      if (result.routing.action !== 'skipped') {
-        console.log(`- routing: agent models — ${result.routing.action} (primary ${models.primary})`);
-      }
       console.log(
         result.initReport.action === 'created'
           ? `- init-report: created (${result.initReport.id})`

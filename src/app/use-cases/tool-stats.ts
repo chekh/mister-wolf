@@ -1,7 +1,7 @@
 import { MemoryStore } from '../../ports/memory-store.port.js';
 import { analyzeEconomy, EconomyResult } from '../../domain/tool-economy.js';
 import type { SignalEvent } from '../../adapters/fs/session-metrics-log.js';
-import { mergeRunEntries } from './run-source.js';
+import { mergeRunEntries } from '../../adapters/fs/session-metrics-log.js';
 
 export interface ToolUsageRow {
   id: string;

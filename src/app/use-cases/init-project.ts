@@ -19,7 +19,6 @@ import { writeFileAtomic } from '../../adapters/fs/markdown-memory-store.js';
 import { UserFacingError } from '../../domain/errors.js';
 import { RenderAction, ModelContext } from '../../ports/base-set-renderer.port.js';
 import { addMemoryObject } from './add-memory-object.js';
-import { upsertModelRouting } from './model-routing.js';
 
 /** Минимальный контракт реестра для init (структурно совместим с ProjectsRegistry). */
 export interface ProjectRegistry {
@@ -46,7 +45,7 @@ export interface InitProjectDeps {
   /** Проставить маркер версии схемы (writeSchemaVersionIfAbsent). */
   markSchemaCurrent: (baseDir: string) => Promise<void>;
   baseSet?: BaseSetDeps;
-  /** Память: routing-объект моделей (§4.5) + init-отчёт (§4.1). */
+  /** Память: init-отчёт (§4.1). */
   store: MemoryStore;
   log: EventLog;
   clock: Clock;
@@ -81,7 +80,6 @@ export interface InitProjectResult {
   npx: boolean;
   platformOutcomes: PlatformInitOutcome[];
   baseSetOutcomes: BaseSetOutcome[];
-  routing: { action: 'created' | 'unchanged' | 'superseded' | 'skipped'; id?: string };
   initReport: { action: 'created' | 'skipped'; id?: string };
 }
 
@@ -103,7 +101,7 @@ export async function findInitReport(store: MemoryStore): Promise<MemoryObject |
 
 /**
  * `wolf init` v2 (спека §4, onboarding-pipeline-v2): без скана (D1/F8 — полный скан живёт
- * в bootstrap), платформы/модель до рендера, routing-объект до рендера, opencode-конфиг
+ * в bootstrap), платформы/модель до рендера, opencode-конфиг
  * безусловно по факту рендера набора (D2/F4), init-отчёт с guard по тегам (D4).
  */
 export async function initProject(
@@ -129,11 +127,6 @@ export async function initProject(
     lock: deps.lock,
     declarations: deps.declarations,
   };
-
-  // §4 п.4/§4.5: routing-объект до рендера — рендер подставляет модели. npx молчит (§4 п.6).
-  const routing = deps.npx
-    ? ({ action: 'skipped' } as const)
-    : await upsertModelRouting(memDeps, input.models, 'wolf-init');
 
   // §4 п.5: рендер базового набора с подстановкой моделей (AGENTS.md — частью рендера, §4.2)
   const baseSetOutcomes: BaseSetOutcome[] = [];
@@ -209,7 +202,7 @@ export async function initProject(
       const { object } = await addMemoryObject(memDeps, {
         type: 'report',
         title: `Init report: ${basename(baseDir)}`,
-        body: renderInitReportBody(deps, input, { baseSetOutcomes, platformOutcomes, routingAction: routing.action }),
+        body: renderInitReportBody(deps, input, { baseSetOutcomes, platformOutcomes }),
         createdBy: 'wolf-init',
         tags: [...INIT_REPORT_TAGS],
         importance: 0.7,
@@ -218,7 +211,7 @@ export async function initProject(
     }
   }
 
-  return { npx: deps.npx, platformOutcomes, baseSetOutcomes, routing, initReport };
+  return { npx: deps.npx, platformOutcomes, baseSetOutcomes, initReport };
 }
 
 /** Тело init-отчёта (§4.1): made / found / needs-fix. */
@@ -228,10 +221,9 @@ function renderInitReportBody(
   outcomes: {
     baseSetOutcomes: BaseSetOutcome[];
     platformOutcomes: PlatformInitOutcome[];
-    routingAction: string;
   }
 ): string {
-  const { baseSetOutcomes, platformOutcomes, routingAction } = outcomes;
+  const { baseSetOutcomes, platformOutcomes } = outcomes;
   const platformSource = input.platformSource ?? (input.platformChoice ? 'flag' : 'default');
   const selectedPlatforms =
     input.platformChoice ??
@@ -251,7 +243,6 @@ function renderInitReportBody(
   made.push(
     `- model: primary ${input.models.primary} (source: ${modelSource}) — applied to all agents (worker = primary)`
   );
-  made.push(`- model routing object: ${routingAction}`);
 
   const found: string[] = [];
   const skippedFiles = baseSetOutcomes.filter((o) => o.action === 'skipped' && o.file !== '(base set)');
