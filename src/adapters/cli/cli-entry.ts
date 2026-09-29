@@ -1,105 +1,360 @@
 import { Command } from 'commander';
-import { ensureCurrentSchema } from '../../adapters/fs/schema-guard.js';
 import { getWolfVersion } from '../version.js';
-import { memoryInitCommand as initCommand } from './commands/memory-init.js';
-import { memorySyncCommand as syncCommand } from './commands/memory-sync.js';
-import { memoryDoctorCommand as doctorCommand } from './commands/memory-doctor.js';
-import { memoryAddCommand as addCommand } from './commands/memory-add.js';
-import { memoryListCommand as listCommand } from './commands/memory-list.js';
-import { memoryGetCommand as getCommand } from './commands/memory-get.js';
-import { memorySearchCommand as searchCommand } from './commands/memory-search.js';
-import { memoryRebuildIndexCommand as rebuildIndexCommand } from './commands/memory-rebuild-index.js';
-import { memorySupersedeCommand as supersedeCommand } from './commands/memory-supersede.js';
-import { memoryTransitionCommand as transitionCommand } from './commands/memory-transition.js';
-import { memoryScanCommand as scanCommand } from './commands/memory-scan.js';
-import { memoryBriefCommand as briefCommand } from './commands/memory-brief.js';
-import { memoryThreadCommand as threadCommand } from './commands/memory-thread.js';
-import { memoryInfoRequestCommand as infoRequestCommand } from './commands/memory-info-request.js';
-import { memoryArticleCommand as articleCommand } from './commands/memory-article.js';
-import { memoryDecisionCommand as decisionCommand } from './commands/memory-decision.js';
-import { memoryBlockerCommand as blockerCommand } from './commands/memory-blocker.js';
-import {
-  memorySessionCommand as sessionCommand,
-  memoryThreadDiffCommand as threadDiffCommand,
-} from './commands/memory-session.js';
-import { memoryMcpCommand as mcpCommand } from './commands/memory-mcp.js';
-import { memoryRuleCommand as ruleCommand } from './commands/memory-rule.js';
-import { memoryRelationCommand as relationCommand } from './commands/memory-relation.js';
-import { memoryTaxonomyCommand as taxonomyCommand } from './commands/memory-taxonomy.js';
-import { memoryMigrateCommand as migrateCommand } from './commands/memory-migrate.js';
-import { memoryCouncilCommand as councilCommand } from './commands/memory-council.js';
-import { memoryValidateCommand as validateCommand } from './commands/memory-validate.js';
-import { memorySolveCommand as solveCommand } from './commands/memory-solve.js';
-import { memoryCallCommand as callCommand } from './commands/memory-call.js';
-import { memoryInsightsCommand as insightsCommand } from './commands/memory-insights.js';
-import { memoryRecapCommand as recapCommand } from './commands/memory-recap.js';
-import { memoryThinkCommand as thinkCommand } from './commands/memory-think.js';
-import { memoryScaffoldCommand as scaffoldCommand } from './commands/memory-scaffold.js';
-import { memoryToolCommand as toolCommand } from './commands/memory-tool.js';
-import { memoryComplainCommand as complainCommand } from './commands/memory-complain.js';
-import { memoryUpdateCommand as updateCommand } from './commands/memory-update.js';
-import { memoryLearnCommand as learnCommand } from './commands/memory-learn.js';
-import { memoryEffectivenessCommand as effectivenessCommand } from './commands/memory-effectiveness.js';
-import { analyticsCommand } from './commands/analytics.js';
-import { dashboardCommand } from './commands/dashboard.js';
-import { taskEvalCommand } from './commands/task-eval.js';
-import { memoryStageCommand } from './commands/memory-stage.js';
-import { coordCommand } from './commands/coord.js';
-import { memoryRunCommand as runCommand } from './commands/memory-run.js';
-import { memoryBootstrapCommand as bootstrapCommand } from './commands/memory-bootstrap.js';
-import { memoryUpgradeCommand as upgradeCommand } from './commands/memory-upgrade.js';
 import { UserFacingError } from '../../domain/errors.js';
 import { ensureCliSessionId } from '../../domain/actor.js';
+
+/**
+ * Спека A3 / план P101: ленивые команды. Статические импорты 45 командных
+ * модулей заставляли `--version`/`--help` платить за весь import-граф
+ * (zod/js-yaml/etc). Вместо этого — статические метаданные (name +
+ * description + usage-хинт для списка команд в program --help, скопированы
+ * дословно из командных модулей), тела подгружаются `await import()` только
+ * внутри action выбранной команды.
+ */
+interface CommandSpec {
+  name: string;
+  description: string;
+  /** usage-хинт в списке команд program --help (`get [options] <id>`); '' — без хинта. */
+  usage: string;
+  load: () => Promise<Command>;
+}
+
+/** Порядок = порядок бывших addCommand: влияет на `--help` и unknown-command suggestions. */
+const COMMANDS: CommandSpec[] = [
+  {
+    name: 'init',
+    description: 'Initialize Mr. Wolf memory for this project (interactive in TTY; non-interactive requires --model)',
+    usage: '[options]',
+    load: () => import('./commands/memory-init.js').then((m) => m.memoryInitCommand()),
+  },
+  {
+    name: 'sync',
+    description: 'Re-render the wolf base set (stamped files only; memory untouched)',
+    usage: '',
+    load: () => import('./commands/memory-sync.js').then((m) => m.memorySyncCommand()),
+  },
+  {
+    name: 'add',
+    description: 'Add a memory object',
+    usage: '[options]',
+    load: () => import('./commands/memory-add.js').then((m) => m.memoryAddCommand()),
+  },
+  {
+    name: 'list',
+    description: 'List memory objects',
+    usage: '[options]',
+    load: () => import('./commands/memory-list.js').then((m) => m.memoryListCommand()),
+  },
+  {
+    name: 'get',
+    description: 'Get a memory object by id',
+    usage: '[options] <id>',
+    load: () => import('./commands/memory-get.js').then((m) => m.memoryGetCommand()),
+  },
+  {
+    name: 'search',
+    description: 'Search memory objects',
+    usage: '[options] <query>',
+    load: () => import('./commands/memory-search.js').then((m) => m.memorySearchCommand()),
+  },
+  {
+    name: 'rebuild-index',
+    description: 'Rebuild the SQLite search index from memory objects',
+    usage: '',
+    load: () => import('./commands/memory-rebuild-index.js').then((m) => m.memoryRebuildIndexCommand()),
+  },
+  {
+    name: 'supersede',
+    description: 'Supersede a memory object with another',
+    usage: '<old-id> <new-id>',
+    load: () => import('./commands/memory-supersede.js').then((m) => m.memorySupersedeCommand()),
+  },
+  {
+    name: 'transition',
+    description: 'Transition a memory object to a new status',
+    usage: '[options] <id> <status>',
+    load: () => import('./commands/memory-transition.js').then((m) => m.memoryTransitionCommand()),
+  },
+  {
+    name: 'scan',
+    description: 'Scan the project and save a context snapshot',
+    usage: '',
+    load: () => import('./commands/memory-scan.js').then((m) => m.memoryScanCommand()),
+  },
+  {
+    name: 'brief',
+    description: 'Generate the agent brief from the latest scan and memory',
+    usage: '',
+    load: () => import('./commands/memory-brief.js').then((m) => m.memoryBriefCommand()),
+  },
+  {
+    name: 'thread',
+    description: 'Manage work threads',
+    usage: '',
+    load: () => import('./commands/memory-thread.js').then((m) => m.memoryThreadCommand()),
+  },
+  {
+    name: 'diff',
+    description: 'Show thread changes since a checkpoint',
+    usage: '[options] <thread-id>',
+    load: () => import('./commands/memory-session.js').then((m) => m.memoryThreadDiffCommand()),
+  },
+  {
+    name: 'decision',
+    description: 'Manage decisions',
+    usage: '',
+    load: () => import('./commands/memory-decision.js').then((m) => m.memoryDecisionCommand()),
+  },
+  {
+    name: 'blocker',
+    description: 'Manage blockers',
+    usage: '',
+    load: () => import('./commands/memory-blocker.js').then((m) => m.memoryBlockerCommand()),
+  },
+  {
+    name: 'info-request',
+    description: 'Manage info requests',
+    usage: '',
+    load: () => import('./commands/memory-info-request.js').then((m) => m.memoryInfoRequestCommand()),
+  },
+  {
+    name: 'article',
+    description: 'Manage articles',
+    usage: '',
+    load: () => import('./commands/memory-article.js').then((m) => m.memoryArticleCommand()),
+  },
+  {
+    name: 'session',
+    description: 'Manage sessions and checkpoints',
+    usage: '',
+    load: () => import('./commands/memory-session.js').then((m) => m.memorySessionCommand()),
+  },
+  {
+    name: 'mcp',
+    description: 'Start the MCP server (stdio)',
+    usage: '',
+    load: () => import('./commands/memory-mcp.js').then((m) => m.memoryMcpCommand()),
+  },
+  {
+    name: 'rule',
+    description: 'Manage rules',
+    usage: '',
+    load: () => import('./commands/memory-rule.js').then((m) => m.memoryRuleCommand()),
+  },
+  {
+    name: 'relation',
+    description: 'Manage relations between memory objects',
+    usage: '',
+    load: () => import('./commands/memory-relation.js').then((m) => m.memoryRelationCommand()),
+  },
+  {
+    name: 'taxonomy',
+    description: 'Manage memory taxonomy',
+    usage: '',
+    load: () => import('./commands/memory-taxonomy.js').then((m) => m.memoryTaxonomyCommand()),
+  },
+  {
+    name: 'migrate',
+    description: 'One-time migration: objects/<type>/ -> threads/<tid>/<subdir>/ + shared/',
+    usage: '[options]',
+    load: () => import('./commands/memory-migrate.js').then((m) => m.memoryMigrateCommand()),
+  },
+  {
+    name: 'council',
+    description: 'Council operations',
+    usage: '',
+    load: () => import('./commands/memory-council.js').then((m) => m.memoryCouncilCommand()),
+  },
+  {
+    name: 'validate',
+    description: 'Validate memory store integrity',
+    usage: '[options]',
+    load: () => import('./commands/memory-validate.js').then((m) => m.memoryValidateCommand()),
+  },
+  {
+    name: 'solve',
+    description: 'Build a solve pack for a memory problem',
+    usage: '[options] <problem>',
+    load: () => import('./commands/memory-solve.js').then((m) => m.memorySolveCommand()),
+  },
+  {
+    name: 'call',
+    description: 'Get active call injections',
+    usage: '[options]',
+    load: () => import('./commands/memory-call.js').then((m) => m.memoryCallCommand()),
+  },
+  {
+    name: 'insights',
+    description: 'Heuristic pattern analysis over project memory (Level 1, no LLM)',
+    usage: '[options]',
+    load: () => import('./commands/memory-insights.js').then((m) => m.memoryInsightsCommand()),
+  },
+  {
+    name: 'recap',
+    description: 'Summarize active project memory: rules, threads, blockers, questions, decisions',
+    usage: '',
+    load: () => import('./commands/memory-recap.js').then((m) => m.memoryRecapCommand()),
+  },
+  {
+    name: 'think',
+    description: 'Structured thinking sequences (goal -> thoughts -> conclusion)',
+    usage: '',
+    load: () => import('./commands/memory-think.js').then((m) => m.memoryThinkCommand()),
+  },
+  {
+    name: 'scaffold',
+    description: 'Scaffold opencode frame (agent|skill|command) + playbook in Wolf memory',
+    usage: '[options] <kind> <name>',
+    load: () => import('./commands/memory-scaffold.js').then((m) => m.memoryScaffoldCommand()),
+  },
+  {
+    name: 'tool',
+    description: 'Tool librarian: register/list/use/expose/deprecate/revive',
+    usage: '',
+    load: () => import('./commands/memory-tool.js').then((m) => m.memoryToolCommand()),
+  },
+  {
+    name: 'complain',
+    description: 'File a complaint about a rule/playbook/agent as a memory object (type complaint, status open)',
+    usage: '[options]',
+    load: () => import('./commands/memory-complain.js').then((m) => m.memoryComplainCommand()),
+  },
+  {
+    name: 'update',
+    description:
+      'Update triage fields of a memory object (whitelist: --set triage|resolution, --inc dispatch_ages|corroborations, --tags append)',
+    usage: '[options] <id>',
+    load: () => import('./commands/memory-update.js').then((m) => m.memoryUpdateCommand()),
+  },
+  {
+    name: 'learn',
+    description: 'Self-learning loop: pattern digest, signal-log health, draft propose/validate/activate',
+    usage: '',
+    load: () => import('./commands/memory-learn.js').then((m) => m.memoryLearnCommand()),
+  },
+  {
+    name: 'effectiveness',
+    description:
+      'Memory effectiveness panel: rules holdout, tool economy, delivery, noise, routing (aggregation only, no LLM)',
+    usage: '[options]',
+    load: () => import('./commands/memory-effectiveness.js').then((m) => m.memoryEffectivenessCommand()),
+  },
+  {
+    name: 'analytics',
+    description:
+      'Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness, memory lifecycle & coordination, campaigns & per-memory ROI, machine acceptance (wave metrics)',
+    usage: '[options]',
+    load: () => import('./commands/analytics.js').then((m) => m.analyticsCommand()),
+  },
+  {
+    name: 'dashboard',
+    description: 'Console dashboard: health, ledgers, trends (unicode tables and sparklines; no files written)',
+    usage: '[options]',
+    load: () => import('./commands/dashboard.js').then((m) => m.dashboardCommand()),
+  },
+  {
+    name: 'task-eval',
+    description: 'Record a task verdict into the signal log (event task_evaluated)',
+    usage: '[options]',
+    load: () => import('./commands/task-eval.js').then((m) => m.taskEvalCommand()),
+  },
+  {
+    name: 'memory-stage',
+    description: 'Record a memory lifecycle stage into the signal log (event memory_stage)',
+    usage: '[options]',
+    load: () => import('./commands/memory-stage.js').then((m) => m.memoryStageCommand()),
+  },
+  {
+    name: 'coord',
+    description: 'Record a coordination event into the signal log (event coord_event)',
+    usage: '[options]',
+    load: () => import('./commands/coord.js').then((m) => m.coordCommand()),
+  },
+  {
+    name: 'run',
+    description: 'Run opencode with the model from the Wolf routing object; log weighted token cost',
+    usage: '[options] <prompt>',
+    load: () => import('./commands/memory-run.js').then((m) => m.memoryRunCommand()),
+  },
+  {
+    name: 'bootstrap',
+    description: 'Scan the project and draft starting memory: proposed rules, document-refs, work thread',
+    usage: '[options]',
+    load: () => import('./commands/memory-bootstrap.js').then((m) => m.memoryBootstrapCommand()),
+  },
+  {
+    name: 'upgrade',
+    description:
+      'Upgrade the global wolf installation to the latest npm version (runs npm install -g mister-wolf@latest); --check only compares versions, no install',
+    usage: '[options]',
+    load: () => import('./commands/memory-upgrade.js').then((m) => m.memoryUpgradeCommand()),
+  },
+  {
+    name: 'doctor',
+    description: 'Check all registered projects: binary vs schema version, platform configs, prune dead entries',
+    usage: '',
+    load: () => import('./commands/memory-doctor.js').then((m) => m.memoryDoctorCommand()),
+  },
+];
 
 export function createCli(): Command {
   const program = new Command('wolf');
   program.version(getWolfVersion());
+  // P101: стаб-команды несут usage-хинт списка команд в `.usage()` — дефолтный
+  // subcommandTerm собирает терм из declared arguments/options (которых у стаба
+  // нет) и кастомный usage игнорирует. Наш рендер: явный usage => `name usage`.
+  program.configureHelp({
+    subcommandTerm(cmd: Command): string {
+      return cmd.usage() !== '' ? `${cmd.name()} ${cmd.usage()}` : cmd.name();
+    },
+  });
 
-  program.addCommand(initCommand());
-  program.addCommand(syncCommand());
-  program.addCommand(addCommand());
-  program.addCommand(listCommand());
-  program.addCommand(getCommand());
-  program.addCommand(searchCommand());
-  program.addCommand(rebuildIndexCommand());
-  program.addCommand(supersedeCommand());
-  program.addCommand(transitionCommand());
-  program.addCommand(scanCommand());
-  program.addCommand(briefCommand());
-  program.addCommand(threadCommand());
-  program.addCommand(threadDiffCommand());
-  program.addCommand(decisionCommand());
-  program.addCommand(blockerCommand());
-  program.addCommand(infoRequestCommand());
-  program.addCommand(articleCommand());
-  program.addCommand(sessionCommand());
-  program.addCommand(mcpCommand());
-  program.addCommand(ruleCommand());
-  program.addCommand(relationCommand());
-  program.addCommand(taxonomyCommand());
-  program.addCommand(migrateCommand());
-  program.addCommand(councilCommand());
-  program.addCommand(validateCommand());
-  program.addCommand(solveCommand());
-  program.addCommand(callCommand());
-  program.addCommand(insightsCommand());
-  program.addCommand(recapCommand());
-  program.addCommand(thinkCommand());
-  program.addCommand(scaffoldCommand());
-  program.addCommand(toolCommand());
-  program.addCommand(complainCommand());
-  program.addCommand(updateCommand());
-  program.addCommand(learnCommand());
-  program.addCommand(effectivenessCommand());
-  program.addCommand(analyticsCommand());
-  program.addCommand(dashboardCommand());
-  program.addCommand(taskEvalCommand());
-  program.addCommand(memoryStageCommand());
-  program.addCommand(coordCommand());
-  program.addCommand(runCommand());
-  program.addCommand(bootstrapCommand());
-  program.addCommand(upgradeCommand());
-  program.addCommand(doctorCommand());
+  for (const spec of COMMANDS) {
+    const stub = new Command(spec.name)
+      .description(spec.description)
+      .allowUnknownOption()
+      .helpOption(false)
+      .action(async () => {
+        // Делегирование исходных токенов: process.argv = [node, cli.js, <cmd>, ...args],
+        // slice(3) + from:'user' — реальная команда сама парсит опции/позиционные/сабкоманды.
+        const real = await spec.load();
+        // Префикс wolf в usage реального хелпа (`wolf get --help` → `Usage: wolf get ...`):
+        // standalone-команда показывает usage без имени программы, поэтому вешаем на родителя.
+        new Command('wolf').addCommand(real);
+        await real.parseAsync(process.argv.slice(3), { from: 'user' });
+      });
+    if (spec.usage !== '') stub.usage(spec.usage);
+    program.addCommand(stub);
+  }
+
+  // `wolf help <cmd>` — хелп реальной команды: дефолтный help-обработчик commander
+  // нашёл бы стаб и напечатал бы пустой стаб-хелп (REGRESSION). Поведение дефолта
+  // воспроизведено: без топика — program help (stdout, exit 0); неизвестный топик —
+  // program help в stderr, exit 1; лишние топики игнорируются (хелп первого).
+  // addCommand (не addHelpCommand): последний кладёт команду только в
+  // _helpCommand, диспетчер её не находит и уходит в дефолтный _dispatchHelpCommand,
+  // который печатает стаб-хелп — кастомный экшен оставался мёртвым кодом.
+  program.addCommand(
+    new Command('help')
+      .description('display help for command')
+      .arguments('[command]')
+      .helpOption(false)
+      .allowExcessArguments()
+      .action(async (topic?: string) => {
+        if (topic === undefined) {
+          program.help();
+          return;
+        }
+        const spec = COMMANDS.find((c) => c.name === topic);
+        if (!spec) {
+          process.stderr.write(program.helpInformation());
+          process.exit(1);
+        }
+        const real = await spec.load();
+        new Command('wolf').addCommand(real);
+        real.help();
+      })
+  );
 
   return program;
 }
@@ -128,14 +383,22 @@ export async function runCli(argv: string[]): Promise<void> {
     // (не подстрока — иначе `wolf add --title "... init ..."` ложно обходил бы guard);
     // `--recreate` проверяется точным токеном массива.
     const isRecoveryInit = argv[2] === 'init' && argv.includes('--recreate');
-    if (!isRecoveryInit) {
-      await ensureCurrentSchema(safeCwd());
-    }
+    const program = createCli();
+    // P101 (спека A3): schema-guard платится только выбранной командой — preAction-хук
+    // срабатывает после разбора argv и выбора команды, но ДО её action (side-effects).
+    // `--version` / top-level `--help` / неизвестная команда до action не доходят —
+    // guard не платят. Динамический import: schema-guard тянет yaml-стек.
+    program.hook('preAction', async () => {
+      if (!isRecoveryInit) {
+        const { ensureCurrentSchema } = await import('../../adapters/fs/schema-guard.js');
+        await ensureCurrentSchema(safeCwd());
+      }
+    });
     // Волна 0 (0.2): per-invocation session-ключ CLI-канала (все writers процесса
     // получают один id). `mcp` — исключение: long-lived сервер, один env на все
     // запросы = фальшивая сессия, канал не сессионируется.
     if (argv[2] !== 'mcp') ensureCliSessionId();
-    await createCli().parseAsync(argv);
+    await program.parseAsync(argv);
   } catch (err: unknown) {
     if (err instanceof UserFacingError) {
       console.error(`Error: ${err.message}`);

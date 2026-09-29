@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { scanProjectCached } from '../../../app/use-cases/scan-project.js';
 import { projectTreeSignature } from '../../fs/heuristic-project-scanner.js';
+import { openScanSnapshotCache } from '../../fs/scan-snapshot-cache.js';
 import { generateAgentBrief } from '../../../app/use-cases/generate-agent-brief.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { appendMemoryStageSignal } from '../../fs/session-metrics-log.js';
@@ -11,10 +12,19 @@ export function memoryBriefCommand(): Command {
   return new Command('brief').description('Generate the agent brief from the latest scan and memory').action(
     withCliCall('brief', async () => {
       const { store, log, clock, idGen, scanner, fs, index } = createCliContainer(process.cwd());
-      // T013: инкрементальный скан (кэш по сигнатуре дерева) — CLI-процесс
-      // одноразовый, кэш греть нечему, но код-путь единый с MCP brief
+      // T013 → P105: инкрементальный скан; кэш персистный (.wolf/cache/scan-snapshot.json),
+      // hit по сигнатуре дерева → ноль обходов и ноль записей в памяти
       const scanResult = await scanProjectCached(
-        { store, log, clock, idGen, scanner, index, treeSignature: projectTreeSignature },
+        {
+          store,
+          log,
+          clock,
+          idGen,
+          scanner,
+          index,
+          treeSignature: projectTreeSignature,
+          snapshotCache: openScanSnapshotCache(process.cwd()),
+        },
         process.cwd()
       );
       const brief = await generateAgentBrief({ store, fs, clock }, process.cwd(), scanResult.snapshot);

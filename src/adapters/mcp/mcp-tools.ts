@@ -32,6 +32,7 @@ import { createDecision } from '../../app/use-cases/create-decision.js';
 import { createBlocker } from '../../app/use-cases/create-blocker.js';
 import { resolveBlocker } from '../../app/use-cases/resolve-blocker.js';
 import { scanProject, scanProjectCached } from '../../app/use-cases/scan-project.js';
+import { openScanSnapshotCache } from '../fs/scan-snapshot-cache.js';
 import { projectTreeSignature } from '../fs/heuristic-project-scanner.js';
 import { generateAgentBrief } from '../../app/use-cases/generate-agent-brief.js';
 import { generateInsights, renderInsights } from '../../app/use-cases/generate-insights.js';
@@ -482,9 +483,13 @@ export function registerMemoryTools(
       inputSchema: EmptyInputSchema,
     },
     async () => {
-      // T013: инкрементальный скан — полный scanProject только при изменении
-      // дерева (сигнатура каталогов/package.json/.git/HEAD), иначе кэш снапшота
-      const scanResult = await scanProjectCached({ ...deps, treeSignature: projectTreeSignature }, baseDir);
+      // T013/P105: инкрементальный скан — полный scanProject только при изменении
+      // дерева (сигнатура каталогов/package.json/.git/HEAD), иначе персистный
+      // кэш снапшота (.wolf/cache/scan-snapshot.json)
+      const scanResult = await scanProjectCached(
+        { ...deps, treeSignature: projectTreeSignature, snapshotCache: openScanSnapshotCache(baseDir) },
+        baseDir
+      );
       const brief = await generateAgentBrief(deps, baseDir, scanResult.snapshot);
       // P2 D1: бриф реально инъекцировал объекты → injected
       if (brief.injectedIds.length > 0) {

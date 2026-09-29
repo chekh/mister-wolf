@@ -19,8 +19,9 @@ describe('schema guard at entry points (спека §3 уровень 2)', () =>
     writeFileSync(join(project, '.wolf', 'config.yaml'), 'artifact_sources: []\n');
     writeFileSync(join(project, '.wolf', 'memory', 'objects', 'decision', 'mem_legacy.md'), legacyMd);
 
-    // guard стоит в runCli ДО parseAsync, поэтому достаточно любой команды, даже --version
-    const res = spawnSync('node', [cli, '--version'], { cwd: project, encoding: 'utf-8', timeout: 30_000 });
+    // guard стоит в preAction выбранной команды (P101), поэтому достаточно любой
+    // реальной команды; --version до action не доходит и guard не платит
+    const res = spawnSync('node', [cli, 'list'], { cwd: project, encoding: 'utf-8', timeout: 30_000 });
     expect(res.status).toBe(0);
     // маркер проставлен
     expect(readFileSync(join(project, '.wolf', 'config.yaml'), 'utf-8')).toContain('schema_version: 2');
@@ -36,7 +37,7 @@ describe('schema guard at entry points (спека §3 уровень 2)', () =>
     mkdirSync(join(project, '.wolf'), { recursive: true });
     writeFileSync(join(project, '.wolf', 'config.yaml'), 'artifact_sources: []\nschema_version: 99\n');
 
-    const res = spawnSync('node', [cli, '--version'], { cwd: project, encoding: 'utf-8', timeout: 30_000 });
+    const res = spawnSync('node', [cli, 'list'], { cwd: project, encoding: 'utf-8', timeout: 30_000 });
     expect(res.status).toBe(1);
     expect(res.stderr).toContain('npm install -g mister-wolf');
     expect(readFileSync(join(project, '.wolf', 'config.yaml'), 'utf-8')).toBe(
@@ -51,7 +52,7 @@ describe('schema guard at entry points (спека §3 уровень 2)', () =>
     writeFileSync(join(project, '.wolf', 'config.yaml'), '{broken');
 
     // любой команде guard отказывает честно, с хинтом восстановления
-    const dead = spawnSync('node', [cli, '--version'], { cwd: project, encoding: 'utf-8', timeout: 30_000 });
+    const dead = spawnSync('node', [cli, 'list'], { cwd: project, encoding: 'utf-8', timeout: 30_000 });
     expect(dead.status).toBe(1);
     expect(dead.stderr).toContain('wolf init --recreate');
 
@@ -68,7 +69,7 @@ describe('schema guard at entry points (спека §3 уровень 2)', () =>
     expect(existsSync(join(project, '.wolf', 'backup'))).toBe(true); // битый оригинал в бэкапе
 
     // после восстановления guard снова пропускает команды
-    const alive = spawnSync('node', [cli, '--version'], { cwd: project, encoding: 'utf-8', timeout: 30_000 });
+    const alive = spawnSync('node', [cli, 'list'], { cwd: project, encoding: 'utf-8', timeout: 30_000 });
     expect(alive.status).toBe(0);
   });
 });

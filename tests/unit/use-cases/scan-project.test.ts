@@ -97,28 +97,101 @@ describe('scanProject', () => {
     expect(loadedDoc?.type).toBe('document-ref');
   });
 
-  it('повторный скан: memory.scan.updated вместо memory.added, id стабильны', async () => {
+  it('повторный скан неизменного дерева: 0 save, 0 событий, 0 индексаций (P105 diff-before-save)', async () => {
     const store = new MarkdownMemoryStore(projectDir);
     const log = new JsonlEventLog(eventsPath(projectDir));
-    const clock = new SystemClock();
+    const idGen = new HashIdGenerator();
+    const scanner = new HeuristicProjectScanner(new FsFileSystem());
+    const index = new (class {
+      indexed: unknown[] = [];
+      // ponytail: минимальный фейк SearchIndex — scan-project использует только indexObject
+      async indexObject(o: unknown): Promise<void> {
+        this.indexed.push(o);
+      }
+      async rebuild(): Promise<void> {}
+      async removeObject(): Promise<void> {}
+      async search(): Promise<never[]> {
+        return [];
+      }
+    })();
+
+    let saves = 0;
+    let events = 0;
+    const countedStore: MarkdownMemoryStore = Object.create(store);
+    countedStore.save = async (o: MemoryObject) => {
+      saves++;
+      return store.save(o);
+    };
+    const countedLog: JsonlEventLog = Object.create(log);
+    countedLog.append = async (e: never) => {
+      events++;
+      return log.append(e);
+    };
+
+    const deps = { store: countedStore, log: countedLog, clock: new SystemClock(), idGen, scanner, index };
+    const first = await scanProject(deps, projectDir);
+    const firstEvents = (await log.readAll()).length;
+    const firstScan = await store.get('project-scan-latest');
+    const firstDoc = await store.get(first.documents[0].id);
+    expect(firstEvents).toBe(2);
+    expect(index.indexed).toHaveLength(2);
+    saves = 0;
+    events = 0;
+    index.indexed.length = 0;
+
+    const second = await scanProject(deps, projectDir);
+
+    expect(saves).toBe(0);
+    expect(events).toBe(0);
+    expect(index.indexed).toHaveLength(0);
+    expect(await log.readAll()).toHaveLength(firstEvents);
+    // updated_at не тикает на no-op
+    expect((await store.get('project-scan-latest'))?.updated_at).toBe(firstScan?.updated_at);
+    expect((await store.get(second.documents[0].id))?.updated_at).toBe(firstDoc?.updated_at);
+    expect(second.object.id).toBe('project-scan-latest');
+    expect(second.documents[0].id).toBe(first.documents[0].id);
+  });
+
+  it('изменение title у doc-ref (existing рассинхронизирован) → пишется save+event memory.scan.updated', async () => {
+    const store = new MarkdownMemoryStore(projectDir);
+    const log = new JsonlEventLog(eventsPath(projectDir));
     const idGen = new HashIdGenerator();
     const scanner = new HeuristicProjectScanner(new FsFileSystem());
 
-    const first = await scanProject({ store, log, clock, idGen, scanner }, projectDir);
-    await scanProject({ store, log, clock, idGen, scanner }, projectDir);
+    const first = await scanProject({ store, log, clock: fixedClock, idGen, scanner }, projectDir);
+    const docId = first.documents[0].id;
+    const eventsBefore = (await log.readAll()).length;
+    // ручное редактирование title в store → следующий скан видит diff
+    const stored = await store.get(docId);
+    await store.save({ ...stored!, title: 'Renamed by hand' });
 
-    const events = await log.readAll();
-    expect(events).toHaveLength(4);
-    // первый скан: оба объекта новые → memory.added
-    expect(events[0].type).toBe('memory.added');
-    expect(events[0].payload).toMatchObject({ memory_id: 'project-scan-latest' });
-    expect(events[1].type).toBe('memory.added');
-    expect(events[1].payload).toMatchObject({ memory_id: first.documents[0].id, type: 'document-ref' });
-    // второй скан: оба объекта существуют → memory.scan.updated
-    expect(events[2].type).toBe('memory.scan.updated');
-    expect(events[2].payload).toMatchObject({ memory_id: 'project-scan-latest', type: 'context' });
-    expect(events[3].type).toBe('memory.scan.updated');
-    expect(events[3].payload).toMatchObject({ memory_id: first.documents[0].id, type: 'document-ref' });
+    const second = await scanProject({ store, log, clock: fixedClock, idGen, scanner }, projectDir);
+
+    expect(second.documents[0].id).toBe(docId);
+    expect(second.documents[0].title).not.toBe('Renamed by hand');
+    const evts = await log.readAll();
+    expect(evts).toHaveLength(eventsBefore + 1);
+    expect(evts[evts.length - 1].type).toBe('memory.scan.updated');
+    expect(evts[evts.length - 1].payload).toMatchObject({ memory_id: docId, type: 'document-ref' });
+  });
+
+  it('scan-объект изменился (другой projectName) → пишется save+event', async () => {
+    const store = new MarkdownMemoryStore(projectDir);
+    const log = new JsonlEventLog(eventsPath(projectDir));
+    const idGen = new HashIdGenerator();
+    const scanner = new HeuristicProjectScanner(new FsFileSystem());
+
+    await scanProject({ store, log, clock: fixedClock, idGen, scanner }, projectDir);
+    const eventsBefore = (await log.readAll()).length;
+    writeFileSync(join(projectDir, 'package.json'), JSON.stringify({ name: 'renamed-project', version: '1.0.0' }));
+
+    const second = await scanProject({ store, log, clock: fixedClock, idGen, scanner }, projectDir);
+
+    expect(second.object.title).toBe('Project scan for renamed-project');
+    const evts = await log.readAll();
+    expect(evts).toHaveLength(eventsBefore + 1); // только scan-объект; doc-ref не изменился
+    expect(evts[evts.length - 1].type).toBe('memory.scan.updated');
+    expect(evts[evts.length - 1].payload).toMatchObject({ memory_id: 'project-scan-latest', type: 'context' });
   });
 
   it('повторный скан: легаси doc_* id и created_at/created_by сохраняются (§2.1: скан не мигрирует)', async () => {

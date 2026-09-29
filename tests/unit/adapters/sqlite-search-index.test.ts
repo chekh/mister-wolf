@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync } from 'fs';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { mkdtempSync, rmSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { SQLiteSearchIndex } from '../../../src/adapters/sqlite/sqlite-search-index.js';
@@ -134,6 +134,31 @@ describe('SQLiteSearchIndex', () => {
     ]);
     const results = await index.search('target', { limit: 2 });
     expect(results).toHaveLength(2);
+  });
+
+  it('applies LIMIT in SQL: at most limit rows are mapped in JS (A7)', async () => {
+    await index.rebuild([
+      makeObject({ id: 'mem_1', title: 'One', body: 'target term' }),
+      makeObject({ id: 'mem_2', title: 'Two', body: 'target term' }),
+      makeObject({ id: 'mem_3', title: 'Three', body: 'target term' }),
+      makeObject({ id: 'mem_4', title: 'Four', body: 'target term' }),
+      makeObject({ id: 'mem_5', title: 'Five', body: 'target term' }),
+    ]);
+    const spy = vi.spyOn(index as any, 'rowToResult');
+    const results = await index.search('target', { limit: 2 });
+    expect(results).toHaveLength(2);
+    expect(spy).toHaveBeenCalledTimes(2); // старый код маппил все 5 до slice
+    spy.mockRestore();
+  });
+
+  it('does not open SQLite until first use (A8 lazy open)', async () => {
+    const nested = join(dir, 'nested', 'deep');
+    const lazy = new SQLiteSearchIndex(join(nested, 'index.sqlite'));
+    expect(existsSync(nested)).toBe(false); // ни mkdir, ни файла
+    await lazy.rebuild([makeObject({ id: 'mem_1', title: 'Lazy', body: 'lazy body' })]);
+    expect(existsSync(join(nested, 'index.sqlite'))).toBe(true);
+    const results = await lazy.search('lazy');
+    expect(results.map((r) => r.object.id)).toEqual(['mem_1']);
   });
 
   it('matches by token prefix', async () => {
