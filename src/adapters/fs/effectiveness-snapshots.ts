@@ -6,7 +6,7 @@
 import { appendFileSync, mkdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { metricsDir } from './project-paths.js';
-import type { EffectivenessReport } from '../../app/use-cases/effectiveness.js';
+import type { EffectivenessReport } from '../../app/use-cases/build-analytics.js';
 
 export interface SnapshotEntry {
   /** ISO8601 момента снапшота. */

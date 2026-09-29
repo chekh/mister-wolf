@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { renderTable } from '../../../src/adapters/cli/commands/dashboard.js';
+import { renderTable } from '../../../src/adapters/cli/commands/table-render.js';
 
 /** Независимый оракул визуальной ширины (минимальная wide-таблица из ТЗ). */
 function oracleWidth(s: string): number {

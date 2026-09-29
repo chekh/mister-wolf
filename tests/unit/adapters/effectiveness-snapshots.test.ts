@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { appendSnapshot, readSnapshots, snapshotsPath } from '../../../src/adapters/fs/effectiveness-snapshots.js';
-import type { EffectivenessReport } from '../../../src/app/use-cases/effectiveness.js';
+import type { EffectivenessReport } from '../../../src/app/use-cases/build-analytics.js';
 
 function report(activeRules: number): EffectivenessReport {
   return {

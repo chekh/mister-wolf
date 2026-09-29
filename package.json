@@ -40,7 +40,7 @@
     "bench:tokens": "node --disable-warning=ExperimentalWarning scripts/bench-tokens.mjs",
     "check": "node scripts/check-english-surface.mjs && npm run format:check && npm run lint && npm run build && npm run test:run",
     "docs:dev": "vitepress dev docs/site",
-    "docs:build": "vitepress build docs/site",
+    "docs:build": "node scripts/sync-changelog.mjs && vitepress build docs/site",
     "docs:preview": "vitepress preview docs/site"
   },
   "dependencies": {

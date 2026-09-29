@@ -116,6 +116,10 @@ export default defineConfig({
               { text: 'Troubleshooting', link: '/guide/troubleshooting' },
             ],
           },
+          {
+            text: 'CHANGELOG',
+            items: [{ text: 'Changelog', link: '/changelog/' }],
+          },
         ],
         socialLinks: [{ icon: 'github', link: 'https://github.com/chekh/mister-wolf' }],
       },
@@ -162,6 +166,10 @@ export default defineConfig({
               { text: 'Телеметрия', link: '/ru/guide/telemetry' },
               { text: 'Решение проблем', link: '/ru/guide/troubleshooting' },
             ],
+          },
+          {
+            text: 'CHANGELOG',
+            items: [{ text: 'Changelog', link: '/changelog/' }],
           },
         ],
         socialLinks: [{ icon: 'github', link: 'https://github.com/chekh/mister-wolf' }],

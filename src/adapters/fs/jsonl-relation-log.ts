@@ -32,8 +32,16 @@ export class JsonlRelationLog implements RelationLog {
     for (const p of problems) {
       console.error(`[mr-wolf] skipping bad line ${p.line} in ${basename(this.path)}: ${p.error}`);
     }
-    if (!filters) return items;
-    return items.filter(
+    // Компенсации §6.4 (прецедент событий — replay last-write-wins): запись
+    // removed: true гасит ребро-тройку (subject, predicate, object); повторный
+    // add после remove дописывает новую запись и оживляет ребро.
+    const lastByTriple = new Map<string, Relation>();
+    for (const r of items) {
+      lastByTriple.set(`${r.subject}\0${r.predicate}\0${r.object}`, r);
+    }
+    const live = [...lastByTriple.values()].filter((r) => r.removed !== true);
+    if (!filters) return live;
+    return live.filter(
       (r) =>
         (!filters.subject || r.subject === filters.subject) &&
         (!filters.object || r.object === filters.object) &&

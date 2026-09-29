@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { computeSnapshotDelta, flattenReportNumbers } from '../../../src/app/use-cases/snapshot-delta.js';
-import type { EffectivenessReport } from '../../../src/app/use-cases/effectiveness.js';
+import type { EffectivenessReport } from '../../../src/app/use-cases/build-analytics.js';
 
 function baseReport(): EffectivenessReport {
   return {

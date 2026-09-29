@@ -4,8 +4,7 @@
  * числовые поля всех блоков + routing построчно по model-ключу; null-поля
  * пропускаются (в Map<string, number> null не кладётся — «не знаем» ≠ 0).
  */
-import type { EffectivenessReport } from './effectiveness.js';
-import type { TotalsBlock } from './effectiveness.js';
+import type { EffectivenessReport, TotalsBlock } from './build-analytics.js';
 
 export interface DeltaRow {
   path: string;
