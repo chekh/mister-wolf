@@ -1716,7 +1716,7 @@ async function buildCouncils(
   const syntheses = objects.filter((o) => o.type === 'synthesis');
 
   // вопрос → id его мнений; субъект-реляция засчитывается только если это
-  // существующее в store мнение (прецедент tallyCouncilVotes)
+  // существующее в store мнение (парсер council-голосов — локальный, ниже)
   const answersByQuestion = new Map<string, string[]>();
   for (const r of await relations.list({ predicate: 'answers' })) {
     const op = byId.get(r.subject);
