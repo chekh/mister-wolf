@@ -15,7 +15,16 @@
  * schema_version = v1, поля остаются undefined; писатели переходят на v2 отдельно.
  * Спека: docs/superpowers/specs/2026-09-04-p1-telemetry-identity-design.md.
  */
-import { appendFileSync, closeSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'fs';
+import {
+  appendFileSync,
+  closeSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
+} from 'fs';
 import { join } from 'path';
 import { z } from 'zod';
 import { metricsDir } from './project-paths.js';

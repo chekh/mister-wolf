@@ -664,7 +664,8 @@ describe('P104 (A1/A6): сайдкар signal-counts.json + конфиг тол�
 
   it('(в) регресс Ф21: кластер уже фиксирован → снижение pattern_threshold не даёт повторной фиксации', () => {
     mkdirSync(join(dir, '.wolf'), { recursive: true });
-    const cfg = (t: string) => writeFileSync(join(dir, '.wolf', 'config.yaml'), `learning:\n  pattern_threshold: ${t}\n`);
+    const cfg = (t: string) =>
+      writeFileSync(join(dir, '.wolf', 'config.yaml'), `learning:\n  pattern_threshold: ${t}\n`);
     cfg('3');
     expect(delivery('mono').patternFixed).toBe(false);
     expect(delivery('mono').patternFixed).toBe(false);

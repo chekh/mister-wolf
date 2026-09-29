@@ -3,7 +3,12 @@ import { getCallInjections } from '../../../app/use-cases/get-call-injections.js
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { resolveCreatedBy, resolveSessionId } from '../../../domain/actor.js';
 import { appendDeliverySignal, appendMemoryStageSignal } from '../../../adapters/fs/session-metrics-log.js';
-import { checksumBlock, deliveryWarningLine, loadSessionRegistry, recordDeliveries } from '../../../adapters/fs/session-delivery-registry.js';
+import {
+  checksumBlock,
+  deliveryWarningLine,
+  loadSessionRegistry,
+  recordDeliveries,
+} from '../../../adapters/fs/session-delivery-registry.js';
 import { loadDeliverySettings } from '../../../adapters/fs/config-file.js';
 import { withCliCall } from './with-cli-call.js';
 
