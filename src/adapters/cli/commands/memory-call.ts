@@ -3,7 +3,8 @@ import { getCallInjections } from '../../../app/use-cases/get-call-injections.js
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { resolveCreatedBy, resolveSessionId } from '../../../domain/actor.js';
 import { appendDeliverySignal, appendMemoryStageSignal } from '../../../adapters/fs/session-metrics-log.js';
-import { checksumBlock, loadSessionRegistry, recordDeliveries } from '../../../adapters/fs/session-delivery-registry.js';
+import { checksumBlock, deliveryWarningLine, loadSessionRegistry, recordDeliveries } from '../../../adapters/fs/session-delivery-registry.js';
+import { loadDeliverySettings } from '../../../adapters/fs/config-file.js';
 import { withCliCall } from './with-cli-call.js';
 
 function parseCompact(v: string | undefined): number | true {
@@ -87,6 +88,9 @@ export function memoryCallCommand(): Command {
         // P108 (4.C): запись реестра доставок сессии — рядом с delivery-сигналами,
         // только по факту реальной доставки. Телеметрия выше остаётся как была:
         // сигналы пишутся лишь о реально доставленном (repeat-streak-метрика).
+        // P109 (4.D): injectedBytes реестра инкрементится здесь же — на нём мягкий
+        // лимит контекста ниже.
+        const deliveredBytesNow = result.blocks.reduce((s, b) => s + Buffer.byteLength(b, 'utf8'), 0);
         if (sessionKey && result.deliveredIds.length > 0) {
           try {
             recordDeliveries(
@@ -100,6 +104,21 @@ export function memoryCallCommand(): Command {
             );
           } catch {
             // derived-кэш: сбой реестра не ломает доставку
+          }
+        }
+        // P109 (4.D): мягкий лимит — одна строка в stderr при пересечении порога
+        // (bytes/4 — токен-аппроксимация); доставка не режется, код возврата не
+        // меняется, playbook роутера в сумме не участвует (§10.2). Проверяется и
+        // при полном дедуп-фильтре: контекст уже занят прошлыми доставками сессии.
+        if (sessionKey) {
+          try {
+            const line = deliveryWarningLine(
+              (registry?.injectedBytes ?? 0) + deliveredBytesNow,
+              loadDeliverySettings(baseDir)
+            );
+            if (line) console.error(line);
+          } catch {
+            // предупреждение не должно ломать вызов
           }
         }
       })

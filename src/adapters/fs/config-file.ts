@@ -69,6 +69,15 @@ const ConfigFileSchema = z.object({
     })
     .optional()
     .catch(undefined),
+  // P109 (волна 2.12 4.D): мягкий лимит инъекций сессии; отсутствующие/битые
+  // ключи = дефолты (§5.iii: старый волк strip'ает блок, новый — дефолты на старом конфиге)
+  delivery: z
+    .object({
+      context_budget_tokens: z.number().int().positive().catch(200_000),
+      context_warning_pct: z.number().min(0).catch(20),
+    })
+    .optional()
+    .catch(undefined),
 });
 
 export class ConfigLoadError extends Error {}
@@ -163,6 +172,26 @@ export function loadWolfConfigSync(baseDir: string): WolfConfig | null {
   const value = stat === 'ENOENT' ? null : readWolfConfigSync(path);
   syncConfigCache.set(path, { stat, value });
   return value;
+}
+
+/** P109 (4.D): настройки мягкого лимита инъекций — delivery.context_budget_tokens
+ * (дефолт 200 000 токенов) и delivery.context_warning_pct (дефолт 20; 0 = выключить
+ * предупреждение). Отсутствующий/битый конфиг → дефолты; один вызов на CLI-процесс —
+ * процессной мемоизации не требует (в отличие от loadWolfConfigSync для long-lived MCP). */
+export function loadDeliverySettings(baseDir: string): {
+  contextBudgetTokens: number;
+  contextWarningPct: number;
+} {
+  try {
+    const raw = fsSync.readFileSync(configPath(baseDir), 'utf-8');
+    const cfg = ConfigFileSchema.parse(yaml.load(raw));
+    return {
+      contextBudgetTokens: cfg.delivery?.context_budget_tokens ?? 200_000,
+      contextWarningPct: cfg.delivery?.context_warning_pct ?? 20,
+    };
+  } catch {
+    return { contextBudgetTokens: 200_000, contextWarningPct: 20 };
+  }
 }
 
 function readWolfConfigSync(path: string): WolfConfig | null {

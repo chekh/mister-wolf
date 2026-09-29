@@ -78,6 +78,27 @@ export function isDelivered(registry: SessionDeliveryRegistry, id: string, check
   return registry.delivered[id] === checksum;
 }
 
+/** P109 (спека 4.D): строка мягкого лимита — инъекции сессии заняли больше
+ * context_warning_pct% бюджета контекста (токен-аппроксимация bytes/4 — точная
+ * токенизация не-цель); null — порог не пересечён либо предупреждение выключено
+ * (pct = 0). Не блокирует доставку, не меняет код возврата. Кириллица через
+ * \u-эскейпы: гейт english-surface запрещает кириллические литералы в src/adapters/**. */
+export function deliveryWarningLine(
+  injectedBytes: number,
+  settings: { contextBudgetTokens: number; contextWarningPct: number }
+): string | null {
+  if (settings.contextWarningPct <= 0 || settings.contextBudgetTokens <= 0) return null;
+  const pct = (injectedBytes / 4 / settings.contextBudgetTokens) * 100;
+  if (pct <= settings.contextWarningPct) return null;
+  const pctR = Math.round(pct);
+  return (
+    `[wolf] \u0438\u043d\u044a\u0435\u043a\u0446\u0438\u0438 \u0441\u0435\u0441\u0441\u0438\u0438 ~${pctR}% ` +
+    `\u0431\u044e\u0434\u0436\u0435\u0442\u0430 \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442\u0430 ` +
+    `(${injectedBytes} bytes / ${settings.contextBudgetTokens} tokens) ` +
+    `\u2014 \u043b\u0438\u043c\u0438\u0442 \u043f\u0440\u0435\u0434\u0443\u043f\u0440\u0435\u0436\u0434\u0435\u043d\u0438\u044f ${settings.contextWarningPct}%`
+  );
+}
+
 /** Обновляет delivered-checksum'ы, инкрементит injectedBytes на сумму bytes,
  * атомарная запись (tmp+rename — прецедент signal-counts.json). */
 export function recordDeliveries(

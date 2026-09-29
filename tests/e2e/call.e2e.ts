@@ -217,3 +217,70 @@ console.log('seeded');
     expect(deliveryLines(dir, 'opc-e2e-b')).toHaveLength(1);
   });
 });
+
+// P109 (спека 4.D): мягкий лимит контекста — fault-injection: реестр с накрученным
+// injectedBytes выше порога → одна строка в stderr; вывод и exit code не меняются.
+describe('P109: context budget warning (fault-injection)', () => {
+  const dirs: string[] = [];
+  const INJ_ID = 'mem_inj_budget_e2e';
+
+  beforeAll(() => {
+    ensureBuilt();
+  });
+
+  afterEach(() => {
+    const dir = dirs.pop();
+    if (dir) rmSync(dir, { recursive: true, force: true });
+  });
+
+  function seedBudgetProject(): string {
+    const dir = tmpProject();
+    dirs.push(dir);
+    runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
+    const script = `
+import { MarkdownMemoryStore } from '${join(repoRoot, 'dist/adapters/fs/markdown-memory-store.js')}';
+const store = new MarkdownMemoryStore(process.cwd());
+const now = new Date().toISOString();
+await store.save({
+  id: '${INJ_ID}', type: 'call-injection', title: 'Budget probe: do not use top-level get',
+  status: 'active', review_state: 'accepted', confidence: 'high', importance: 0.8,
+  created_at: now, updated_at: now, created_by: 'user:e2e-budget', schema_version: 1,
+  source: { kind: 'manual' }, related: { files: [], docs: [], decisions: [] }, tags: [],
+  superseded_by: null, body: 'Do not use top-level get. Use entity-specific commands.',
+  trigger_keywords: ['get'],
+});
+console.log('seeded');
+`;
+    writeFileSync(join(dir, 'seed-budget.mjs'), script);
+    const seedRun = spawnSync('node', ['seed-budget.mjs'], { cwd: dir, encoding: 'utf-8' });
+    expect(seedRun.stdout).toContain('seeded');
+    rmSync(join(dir, 'seed-budget.mjs'), { force: true });
+    return dir;
+  }
+
+  it('over-budget registry prints one stderr line; stdout and exit code unchanged', () => {
+    const dir = seedBudgetProject();
+    const env = { WOLF_SESSION: 'opc-e2e-budget-1' };
+
+    // первый вызов: доставка, порог не пересечён — stderr чист
+    const first = runCli(['call', '--for', 'get'], dir, env);
+    expect(first.status).toBe(0);
+    expect(first.stderr).not.toContain('[wolf]');
+
+    // fault-injection: накручиваем injectedBytes (1M байт ≈ 250k токенов > 20% от 200k)
+    const regPath = join(dir, '.wolf', 'cache', 'sessions', 'opc-e2e-budget-1.json');
+    const reg = JSON.parse(readFileSync(regPath, 'utf8')) as { injectedBytes: number };
+    reg.injectedBytes = 1_000_000;
+    writeFileSync(regPath, JSON.stringify(reg));
+
+    // второй вызов в той же сессии: дедупликация фильтрует всё (stdout — строка
+    // дедупликации), предупреждение о бюджете — в stderr, exit code прежний
+    const second = runCli(['call', '--for', 'get'], dir, env);
+    expect(second.status).toBe(0);
+    expect(second.stderr).toContain('[wolf]');
+    expect(second.stderr).toContain('~125%');
+    expect(second.stderr).toContain('1000000 bytes / 200000 tokens');
+    expect(second.stdout).toContain('[wolf] 1 '); // дедуп-объяснение на месте
+    expect(second.stdout).not.toContain(`source: ${INJ_ID}`); // доставке не помешало фильтру
+  });
+});

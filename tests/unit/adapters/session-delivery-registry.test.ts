@@ -5,6 +5,7 @@ import { join } from 'path';
 import {
   SESSION_TTL_MS,
   checksumBlock,
+  deliveryWarningLine,
   isDelivered,
   loadSessionRegistry,
   recordDeliveries,
@@ -100,5 +101,31 @@ describe('session-delivery-registry (P108, спека 4.C)', () => {
     recordDeliveries(baseDir, 's3', [{ id: 'mem_1', checksum: 'aaaa1111aaaa1111', bytes: 1 }]);
     expect(existsSync(old)).toBe(false);
     expect(existsSync(registryFile('s3'))).toBe(true);
+  });
+});
+
+// P109 (4.D): мягкий лимит контекста — чистая функция предупреждения.
+describe('deliveryWarningLine (P109, спека 4.D)', () => {
+  const DEFAULTS = { contextBudgetTokens: 200_000, contextWarningPct: 20 };
+
+  it('порог не пересечён → null', () => {
+    // 20% от 200k токенов = 40k токенов = 160k байт; меньше — молчим
+    expect(deliveryWarningLine(159_999, DEFAULTS)).toBeNull();
+  });
+
+  it('ровно на пороге → null (строгий >)', () => {
+    expect(deliveryWarningLine(160_000, DEFAULTS)).toBeNull();
+  });
+
+  it('порог пересечён → строка с числами (bytes / бюджет, bytes/4-аппроксимация)', () => {
+    const line = deliveryWarningLine(400_000, DEFAULTS); // 100k токенов = 50%
+    expect(line).toContain('~50%');
+    expect(line).toContain('400000 bytes / 200000 tokens');
+    expect(line).toContain('20%');
+    expect(line).toContain('[wolf]');
+  });
+
+  it('context_warning_pct = 0 → предупреждение выключено', () => {
+    expect(deliveryWarningLine(10_000_000, { contextBudgetTokens: 200_000, contextWarningPct: 0 })).toBeNull();
   });
 });
