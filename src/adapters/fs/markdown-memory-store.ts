@@ -206,6 +206,9 @@ export class MarkdownMemoryStore implements MemoryStore {
     let results = Array.from(seen.values(), (v) => v.obj);
     if (filters?.status) results = results.filter((o) => o.status === filters.status);
     if (filters?.stale) results = results.filter((o) => isStale(o));
+    // P212 (2.13 §5.3б): фасет — postfilter по frontmatter (alias-резолв уже
+    // инжектировал facet старым типам); значение не из словаря → пусто
+    if (filters?.facet) results = results.filter((o) => o.facet === filters.facet);
     return results;
   }
 

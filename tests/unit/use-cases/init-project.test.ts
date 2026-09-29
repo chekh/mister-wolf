@@ -201,7 +201,7 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     // набор отрендерен, конфиг opencode не писан, wolf-запись opencode удалена
     expect(result.baseSetOutcomes[0].action).toBe('created');
     expect(result.platformOutcomes.some((o) => o.platform === 'opencode' && o.action === 'removed')).toBe(true);
-    const report = store.objects.find((o) => o.type === 'report');
+    const report = store.objects.find((o) => o.type === 'note' && (o as { facet?: string }).facet === 'history');
     expect(report?.body).toContain('## Needs fixing (needs-fix)');
     expect(report?.body).toContain('opencode not in the --platform list');
   });
@@ -252,7 +252,7 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     };
     const result = await initProject(deps, dir, { models: MODELS });
     expect(result.initReport.action).toBe('created');
-    const reports = store.objects.filter((o) => o.type === 'report');
+    const reports = store.objects.filter((o) => o.type === 'note' && (o as { facet?: string }).facet === 'history');
     expect(reports).toHaveLength(1);
     const r = reports[0];
     expect(r.title).toBe(`Init report: ${dir.split('/').pop()}`);
@@ -276,7 +276,9 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     const second = await initProject(deps, dir, { models: MODELS });
     expect(second.initReport.action).toBe('skipped');
     expect(second.initReport.id).toBeDefined();
-    expect(store.objects.filter((o) => o.type === 'report')).toHaveLength(1);
+    expect(
+      store.objects.filter((o) => o.type === 'note' && (o as { facet?: string }).facet === 'history')
+    ).toHaveLength(1);
     expect(await findInitReport(store as never)).not.toBeNull();
   });
 
@@ -297,7 +299,7 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     });
     const { deps, store } = makeDeps([oc]);
     await initProject(deps, dir, { models: MODELS });
-    const report = store.objects.find((o) => o.type === 'report');
+    const report = store.objects.find((o) => o.type === 'note' && (o as { facet?: string }).facet === 'history');
     const needsFix = report!.body.split('## Needs fixing (needs-fix)')[1];
     expect(needsFix).toContain('default_agent=other is taken');
   });

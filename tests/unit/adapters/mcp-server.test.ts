@@ -421,21 +421,15 @@ describe('buildMcpServer', () => {
   });
 
   // C4: полный пайплайн parse → handler для всех типов с обязательными per-type полями
+  // (wave13-a: таксономия 7 типов; старые типы дают UserFacingError с подсказкой)
   it.each([
     ['rule', { scope: 'project' }],
-    ['task-brief', { executor: 'worker', priority: 'high' }],
-    ['work-thread', { goal: 'g' }],
-    ['info-request', { question: 'q', detour_reason: 'r', expected_answer: ['a'] }],
-    ['article', { thread: 'mem_t1', summary: 's' }],
-    ['blocker', { impact: 'blocks' }],
-    ['session-checkpoint', { thread: 'mem_t1' }],
-    ['council-question', { question: 'q' }],
-    ['council-opinion', { vote: 'yes' }],
-    ['synthesis', { recommendation: 'r' }],
-    ['escalation', { question: 'q' }],
-    ['decision-request', { question: 'q' }],
-    ['playbook', { steps: ['s1'], owner_skill: 'x', version: '1' }],
+    ['lesson', { trigger_keywords: ['kw'] }],
+    ['decision', { thread: 'mem_t1' }],
+    ['thread', { goal: 'g' }],
+    ['complaint', { about: 'a', rule: 'r', evidence: 'e', proposal: 'p' }],
     ['tool', { name: 'n', script_path: '.wolf/tools/n.sh', language: 'bash' }],
+    ['note', { facet: 'context' }],
   ] as const)('add pipeline creates %s with per-type fields', async (type, extra) => {
     const server = buildMcpServer(dir);
     const tools = (

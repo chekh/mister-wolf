@@ -31,7 +31,7 @@ describe('initProjectMemory', () => {
       memory_types?: { core?: Record<string, unknown> };
       artifact_sources?: string[];
     };
-    expect(cfg.memory_types?.core?.['task-brief']).toBeDefined();
+    expect(cfg.memory_types?.core?.['note']).toBeDefined(); // wave13-a: task-brief больше не core-тип
     expect(cfg.artifact_sources).toEqual([]);
   });
 });

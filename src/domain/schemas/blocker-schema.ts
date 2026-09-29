@@ -1,16 +1,10 @@
 import { buildTypeSchema } from '../type-schema-builder.js';
-import type { MemoryType, MemoryTypeDeclaration } from '../memory-types.js';
+import { getDeclaration } from '../memory-types.js';
 import { z } from 'zod';
 
-// wave13-a: window-compat — тип удалён из core (карта §5.4 2.13); декларация
-// захардкожена до смерти читателей в W2
-const decl: MemoryTypeDeclaration = {
-  name: 'blocker' as MemoryType,
-  lifecycle: ['active', 'resolved', 'obsolete'],
-  subdirThread: 'blockers',
-  subdirShared: 'blockers',
-};
-export const BlockerSchema = buildTypeSchema(decl, {
+// wave13-a: blocker поглощён note+facet pitfall (карта §5.4 2.13); схема
+// валидирует форму note, спец-поля живут в passthrough
+export const BlockerSchema = buildTypeSchema(getDeclaration('note'), {
   thread: z.string().optional(),
   impact: z.string().min(1),
   workaround: z.string().optional(),

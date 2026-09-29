@@ -63,9 +63,7 @@ export async function bootstrapProject(
   // Guard §5.1 «онбординг уже закрыт»: thread status ≠ active → no-op без скана.
   // Иначе повторный bootstrap после закрытия регрессировал бы память к черновикам
   // (дедуп смотрит только proposed, а после свёртки черновиков их нет).
-  const existingThread = (await deps.store.list({ type: 'work-thread' })).find(
-    (t) => t.title === BOOTSTRAP_THREAD_TITLE
-  );
+  const existingThread = (await deps.store.list({ type: 'thread' })).find((t) => t.title === BOOTSTRAP_THREAD_TITLE);
   if (existingThread && existingThread.status !== 'active') {
     return {
       rules: [],
@@ -109,9 +107,12 @@ export async function bootstrapProject(
     threadId = existingThread.id;
   } else {
     // Указатель «что и когда сделано» (§5.2): id init-отчёта по тегам wolf-init
+    // (wave13-a: report → note+facet history; alias-корни list({note}) покрывают старые)
     const now = deps.clock.now().toISOString();
-    const initReport = (await deps.store.list({ type: 'report' }))
-      .filter((r) => r.status === 'active' && r.tags.includes('wolf-init'))
+    const initReport = (await deps.store.list({ type: 'note' }))
+      .filter(
+        (r) => r.status === 'active' && (r as { facet?: string }).facet === 'history' && r.tags.includes('wolf-init')
+      )
       .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
     const initTs = initReport ? initReport.created_at : now;
     const { object: thread } = await createWorkThread(deps, {

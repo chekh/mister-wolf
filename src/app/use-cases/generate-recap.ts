@@ -37,13 +37,15 @@ export interface RecapReport {
  * 3. иначе (нет ни того ни другого; thread completed/archived/paused) — null.
  */
 function detectOnboarding(all: MemoryObject[]): OnboardingSignal | null {
-  const thread = all.find((o) => o.type === 'work-thread' && o.title === BOOTSTRAP_THREAD_TITLE);
+  // wave13-a: work-thread → thread (alias-чтение отдаёт старые как thread);
+  // report → note+facet history
+  const thread = all.find((o) => o.type === 'thread' && o.title === BOOTSTRAP_THREAD_TITLE);
   if (thread) {
     return thread.status === 'active' ? { kind: 'continue', threadId: thread.id } : null;
   }
   const hasInitReport = all.some(
     (o) =>
-      o.type === 'report' && o.status === 'active' && o.tags.includes('wolf-init') && o.tags.includes('onboarding-v2')
+      o.type === 'note' && o.status === 'active' && o.tags.includes('wolf-init') && o.tags.includes('onboarding-v2')
   );
   return hasInitReport ? { kind: 'bootstrap' } : null;
 }
@@ -78,17 +80,32 @@ export async function generateRecap(deps: {
   // ponytail: store.list() — полный reparse всех md (V6); ровно один вызов на отчёт (D1)
   const all = await deps.store.list();
 
-  // Вопросы живут в 'open' (defaultStatus) или 'active' (созданные до введения defaultStatus)
-  const openQuestions = all.filter(
-    (obj) => obj.type === 'open-question' && (obj.status === 'open' || obj.status === 'active')
-  );
+  // wave13-a §5.4: open-question/info-request/blocker поглощены note+фасетами.
+  // Вопросы: note+context БЕЗ поля question (статус open; active — только legacy
+  // с alias_origin 'open-question'; скан-объекты отсекаются по source.kind=scan).
+  // Info-запросы (старые и новые): note с полем question в статусе open.
+  // Блокеры: note+pitfall в active. Треды: type thread (alias-чтение старых).
+  const isNote = (o: MemoryObject, facet: string): boolean =>
+    o.type === 'note' && (o as { facet?: string }).facet === facet;
+  const openQuestions = all.filter((obj) => {
+    if (!isNote(obj, 'context') && (obj as { alias_origin?: string }).alias_origin !== 'open-question') return false;
+    if (obj.source?.kind === 'scan') return false;
+    if (typeof (obj as { question?: unknown }).question === 'string') return false;
+    return (
+      obj.status === 'open' ||
+      (obj.status === 'active' && (obj as { alias_origin?: string }).alias_origin === 'open-question')
+    );
+  });
 
   return {
     activeRules: all.filter((obj) => obj.type === 'rule' && (obj.status === 'active' || obj.status === 'accepted')),
-    activeWorkThreads: all.filter((obj) => obj.type === 'work-thread' && obj.status === 'active'),
-    openBlockers: all.filter((obj) => obj.type === 'blocker' && obj.status === 'active'),
+    activeWorkThreads: all.filter((obj) => obj.type === 'thread' && obj.status === 'active'),
+    openBlockers: all.filter((obj) => isNote(obj, 'pitfall') && obj.status === 'active'),
     openQuestions,
-    openInfoRequests: all.filter((obj) => obj.type === 'info-request' && obj.status === 'open'),
+    openInfoRequests: all.filter(
+      (obj) =>
+        obj.type === 'note' && typeof (obj as { question?: unknown }).question === 'string' && obj.status === 'open'
+    ),
     recentDecisions: all
       .filter((obj) => obj.type === 'decision' && obj.status === 'active')
       .sort((a, b) => b.updated_at.localeCompare(a.updated_at))

@@ -38,7 +38,7 @@ describe('createWorkThread', () => {
       }
     );
 
-    expect(result.object.type).toBe('work-thread');
+    expect(result.object.type).toBe('thread'); // wave13-a: work-thread → thread
     expect(result.object.title).toBe('Implement phase 1 thread object');
     expect(result.object.goal).toBe('Create work-thread use-case and tests');
     expect(result.object.status).toBe('active');
@@ -46,7 +46,7 @@ describe('createWorkThread', () => {
 
     const loaded = await store.get(result.object.id);
     expect(loaded).not.toBeNull();
-    expect(loaded?.type).toBe('work-thread');
+    expect(loaded?.type).toBe('thread');
 
     const events = await log.readAll();
     expect(events).toHaveLength(1);

@@ -57,7 +57,8 @@ describe('createDecision', () => {
     expect(events[0].type).toBe('memory.added');
     expect(events[0].payload.memory_id).toBe(result.object.id);
     expect(events[1].type).toBe('memory.added');
-    expect(events[1].payload.type).toBe('session-summary');
+    // wave13-a: session-summary → note+facet history (§5.4)
+    expect(events[1].payload.type).toBe('note');
   });
 
   it('sets review_state to proposed when created by an agent', async () => {

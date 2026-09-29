@@ -20,8 +20,8 @@ import {
 import { addMemoryObject } from '../../src/app/use-cases/add-memory-object.js';
 import { createWorkThread } from '../../src/app/use-cases/create-work-thread.js';
 import { recordRelation } from '../../src/app/use-cases/record-relation.js';
-import { tallyCouncilVotes } from '../../src/app/use-cases/tally-council-votes.js';
-import { createSynthesis } from '../../src/app/use-cases/create-synthesis.js';
+import { loadWolfConfigSync } from '../../src/adapters/fs/config-file.js';
+import { mergeTaxonomy } from '../../src/domain/taxonomy.js';
 import { JsonlEventLog } from '../../src/adapters/fs/jsonl-event-log.js';
 import { JsonlRelationLog } from '../../src/adapters/fs/jsonl-relation-log.js';
 import { SystemClock } from '../../src/adapters/fs/system-clock.js';
@@ -59,6 +59,25 @@ describe('phase8 workflow', () => {
     mkdirSync(join(dir, '.wolf', 'memory'), { recursive: true });
     writeFileSync(join(dir, '.wolf', 'memory', 'events.jsonl'), '');
     writeFileSync(join(dir, '.wolf', 'memory', 'relations.jsonl'), '');
+    // wave13-a: task-brief больше не core-тип — project-тип по образцу dogfood
+    // (§8.2.6); конфиг пишется ДО первого парса стора (глобальный typeSchemaCache)
+    writeFileSync(
+      join(dir, '.wolf', 'config.yaml'),
+      [
+        'artifact_sources: []',
+        'memory_types:',
+        '  core: {}',
+        '  project:',
+        '    task-brief:',
+        '      lifecycle: [active, completed, paused]',
+        '      subdir_thread: tasks',
+        '      subdir_shared: ~',
+        '      fields:',
+        '        executor: { kind: string, optional: true }',
+        '        priority: { kind: string, optional: true }',
+        '',
+      ].join('\n')
+    );
 
     const objs = objectsDir(dir);
     // lesson
@@ -108,11 +127,19 @@ describe('phase8 workflow', () => {
     expect(report.conflicts).toHaveLength(0);
 
     // 2) store sees all 4 with correct types
+    // wave13-a §5.4: alias-резолвер читает старые типы как целевые
+    // (document → note+legacy, work-thread → thread) с transient alias_origin
     const store = new MarkdownMemoryStore(dir);
     const objs = await store.list();
     expect(objs).toHaveLength(4);
-    expect(objs.find((o) => o.id === 'doc_1')?.type).toBe('document-ref');
-    expect(objs.find((o) => o.id === 'wt_1')?.type).toBe('work-thread');
+    const doc1 = objs.find((o) => o.id === 'doc_1') as { type: string; facet?: string; alias_origin?: string };
+    expect(doc1?.type).toBe('note');
+    expect(doc1?.facet).toBe('legacy');
+    // layout-migration раньше переименовал document → document-ref в самом файле
+    expect(doc1?.alias_origin).toBe('document-ref');
+    const wt1 = objs.find((o) => o.id === 'wt_1') as { type: string; alias_origin?: string };
+    expect(wt1?.type).toBe('thread');
+    expect(wt1?.alias_origin).toBe('work-thread');
     expect(objs.find((o) => o.id === 'dec_1')?.type).toBe('decision');
     expect(objs.find((o) => o.id === 'les_1')?.type).toBe('lesson');
 
@@ -134,6 +161,8 @@ describe('phase8 workflow', () => {
     const clock = new SystemClock();
     const idGen = new HashIdGenerator();
     const rels = new JsonlRelationLog(relationsPath(dir));
+    // project-типы фикстуры из config.yaml (task-brief — project-тип с §8.2.6)
+    const declarations = [...mergeTaxonomy(loadWolfConfigSync(dir)).types.values()];
 
     const thread = await createWorkThread(
       { store, log, clock, idGen },
@@ -141,7 +170,7 @@ describe('phase8 workflow', () => {
     );
 
     const brief = await addMemoryObject(
-      { store, log, clock, idGen },
+      { store, log, clock, idGen, declarations },
       {
         type: 'task-brief',
         title: 'Do thing',
@@ -152,9 +181,10 @@ describe('phase8 workflow', () => {
     expect(brief.object.executor).toBe('agent:X');
     expect(brief.object.priority).toBe('high');
 
+    // wave13-a: report → note+facet history (§5.4)
     const report = await addMemoryObject(
       { store, log, clock, idGen },
-      { type: 'report', title: 'Done thing', body: 'All good', createdBy: 'agent:X' }
+      { type: 'note', facet: 'history', title: 'Done thing', body: 'All good', createdBy: 'agent:X' }
     );
 
     await recordRelation({ relations: rels, idGen }, clock.now(), brief.object.id, 'answers', thread.object.id);
@@ -164,63 +194,16 @@ describe('phase8 workflow', () => {
     expect((storedBrief as any).executor).toBe('agent:X');
 
     const storedReport = await store.get(report.object.id);
-    expect(storedReport?.type).toBe('report');
+    expect(storedReport?.type).toBe('note');
+    expect((storedReport as { facet?: string }).facet).toBe('history');
 
     const answerRels = await rels.list({ subject: brief.object.id, predicate: 'answers' });
     expect(answerRels).toHaveLength(1);
     expect(answerRels[0].object).toBe(thread.object.id);
   });
 
-  it('council flow: question -> 2 opinions -> tally -> synthesis', async () => {
-    const store = new MarkdownMemoryStore(dir);
-    const log = new JsonlEventLog(eventsPath(dir));
-    const clock = new SystemClock();
-    const idGen = new HashIdGenerator();
-    const rels = new JsonlRelationLog(relationsPath(dir));
-
-    const q = await addMemoryObject(
-      { store, log, clock, idGen },
-      {
-        type: 'council-question',
-        title: 'Should we?',
-        body: 'Decide now',
-        createdBy: 'user:test',
-        status: 'open',
-        extra: { question: 'Should we proceed?' },
-      }
-    );
-
-    const op1 = await addMemoryObject(
-      { store, log, clock, idGen },
-      { type: 'council-opinion', title: 'Op A', createdBy: 'agent:A', status: 'proposed', extra: { vote: 'yes' } }
-    );
-    const op2 = await addMemoryObject(
-      { store, log, clock, idGen },
-      { type: 'council-opinion', title: 'Op B', createdBy: 'agent:B', status: 'proposed', extra: { vote: 'yes' } }
-    );
-
-    const now = clock.now();
-    await recordRelation({ relations: rels, idGen }, now, op1.object.id, 'answers', q.object.id);
-    await recordRelation({ relations: rels, idGen }, now, op2.object.id, 'answers', q.object.id);
-
-    const tally = await tallyCouncilVotes(
-      { store, relations: rels },
-      { questionId: q.object.id, quorum: 2, consensusThreshold: 0.5 }
-    );
-    expect(tally.quorumMet).toBe(true);
-    expect(tally.winner).toBe('yes');
-
-    const { object: synth, relatedOpinions } = await createSynthesis(
-      { store, log, clock, idGen, relations: rels },
-      { questionId: q.object.id, recommendation: 'Proceed with plan', createdBy: 'user:test' }
-    );
-    expect(synth.type).toBe('synthesis');
-    expect(synth.status).toBe('proposed');
-    expect(relatedOpinions).toHaveLength(2);
-
-    const basedOn = await rels.list({ subject: synth.id, predicate: 'based_on' });
-    expect(basedOn).toHaveLength(2);
-  });
+  // council flow removed in 2.13 (spec C15): council-question/opinion/synthesis
+  // поглощены note+facet context (§5.4), add больше не принимает старые типы.
 
   it('validate reports problems and --fix quarantines them', async () => {
     // Ensure a valid object exists

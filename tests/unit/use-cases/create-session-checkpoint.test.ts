@@ -52,7 +52,8 @@ describe('createSessionCheckpoint', () => {
       { threadId: thread.object.id, createdBy: 'user:test' }
     );
 
-    expect(checkpoint.object.type).toBe('session-checkpoint');
+    expect(checkpoint.object.type).toBe('note'); // wave13-a: session-checkpoint → note+facet history
+    expect(checkpoint.object.facet).toBe('history');
     expect(checkpoint.object.thread).toBe(thread.object.id);
     expect(checkpoint.object.captured_state.thread_current_state).toBe('Initial');
     expect(checkpoint.object.captured_state.related_ids).toContain(ireq.object.id);

@@ -13,7 +13,8 @@ import { recordRelation } from './record-relation.js';
 import type { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 
 // buildTypeSchema with no custom thread → decl field {optional:true} applies
-const RepairSchema = buildTypeSchema(getDeclaration('info-request'), {
+// wave13-a: info-request → note+facet context (§5.4); спец-поля — в passthrough
+const RepairSchema = buildTypeSchema(getDeclaration('note'), {
   question: z.string().min(1),
   detour_reason: z.string().min(1),
   needed_for: z.array(z.string()).default([]),
@@ -38,7 +39,8 @@ export async function createMemoryRepairRequest(
     const defaults = governanceDefaults(input.createdBy);
     const object = {
       id: deps.idGen.generateMemoryId(now, input.problem),
-      type: 'info-request',
+      type: 'note', // wave13-a: info-request → note+facet context (§5.4)
+      facet: 'context',
       title: input.problem,
       status: 'open',
       review_state: input.createdBy.startsWith('agent:') ? 'proposed' : 'accepted',
@@ -80,7 +82,7 @@ export async function createMemoryRepairRequest(
         type: 'memory.added',
         timestamp: now.toISOString(),
         actor: input.createdBy,
-        payload: { memory_id: parsed.data.id, type: 'info-request' },
+        payload: { memory_id: parsed.data.id, type: 'note' },
       });
     }
     if (deps.index) {

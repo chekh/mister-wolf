@@ -42,7 +42,8 @@ export async function createArticle(
     const defaults = governanceDefaults(input.createdBy);
     const object: Article = {
       id: deps.idGen.generateMemoryId(now, input.title),
-      type: 'article' as unknown as Article['type'], // wave13-a: window-compat (§5.4)
+      type: 'note', // wave13-a: article → note+facet context (§5.4)
+      facet: 'context',
       title: input.title,
       status: 'proposed',
       review_state: input.createdBy.startsWith('agent:') ? 'proposed' : 'accepted',

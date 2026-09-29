@@ -43,7 +43,8 @@ describe('createInfoRequest', () => {
       }
     );
 
-    expect(result.object.type).toBe('info-request');
+    expect(result.object.type).toBe('note'); // wave13-a: info-request → note+facet context
+    expect(result.object.facet).toBe('context');
     expect(result.object.title).toBe('Missing schema field docs');
     expect(result.object.thread).toBe('thread-abc');
     expect(result.object.question).toBe('Where is the schema field documented?');
@@ -56,7 +57,7 @@ describe('createInfoRequest', () => {
 
     const loaded = await store.get(result.object.id);
     expect(loaded).not.toBeNull();
-    expect(loaded?.type).toBe('info-request');
+    expect(loaded?.type).toBe('note');
 
     const events = await log.readAll();
     expect(events).toHaveLength(1);

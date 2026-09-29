@@ -76,17 +76,22 @@ describe('bootstrapProject', () => {
       expect(await deps.store.get(rule.id)).not.toBeNull();
     }
     expect(await deps.store.get(result.workThreadId)).not.toBeNull();
-    const docs = await deps.store.list({ type: 'document-ref' });
+    // wave13-a: document-ref → note+facet legacy (source.path в passthrough)
+    const docs = (await deps.store.list({ type: 'note' })).filter(
+      (o) => (o as { facet?: string }).facet === 'legacy' && o.source?.kind === 'scan'
+    );
     expect(docs.length).toBeGreaterThanOrEqual(1);
   });
 
   it('re-run does not duplicate document-refs', async () => {
     await bootstrapProject(deps, { baseDir: dir, createdBy: 'user:bootstrap' });
     const second = await bootstrapProject(deps, { baseDir: dir, createdBy: 'user:bootstrap' });
-    const docs = await deps.store.list({ type: 'document-ref' });
+    const docs = (await deps.store.list({ type: 'note' })).filter(
+      (o) => (o as { facet?: string }).facet === 'legacy' && o.source?.kind === 'scan'
+    );
     expect(docs.length).toBe(second.documentCount);
     // активный thread переиспользуется, не дублируется
-    const threads = await deps.store.list({ type: 'work-thread' });
+    const threads = await deps.store.list({ type: 'thread' });
     expect(threads).toHaveLength(1);
   });
 
@@ -113,7 +118,9 @@ describe('bootstrapProject', () => {
           `Onboarding already finished/deferred (thread ${finalStatus}); to re-create — the owner does it manually`
         );
         // скан не выполнялся: doc-ref'ы не добавились
-        const docs = await project.deps.store.list({ type: 'document-ref' });
+        const docs = (await project.deps.store.list({ type: 'note' })).filter(
+          (o) => (o as { facet?: string }).facet === 'legacy' && o.source?.kind === 'scan'
+        );
         expect(docs.length).toBe(first.documentCount);
       } finally {
         rmSync(project.dir, { recursive: true, force: true });
@@ -124,7 +131,8 @@ describe('bootstrapProject', () => {
   // §5.2: указатель «что и когда» в currentState — id init-отчёта по тегам wolf-init
   it('new thread currentState carries pointer with init report id', async () => {
     const { object: report } = await addMemoryObject(deps, {
-      type: 'report',
+      type: 'note', // wave13-a: report → note+facet history
+      facet: 'history',
       title: 'Init report: demo-app',
       body: '## Сделано\n…',
       createdBy: 'wolf-init',
@@ -151,14 +159,16 @@ describe('bootstrapProject', () => {
 
   it('pointer prefers the latest init report by updated_at', async () => {
     const first = await addMemoryObject(deps, {
-      type: 'report',
+      type: 'note', // wave13-a: report → note+facet history
+      facet: 'history',
       title: 'Init report: one',
       body: '…',
       createdBy: 'wolf-init',
       tags: ['wolf-init', 'onboarding-v2'],
     });
     const second = await addMemoryObject(deps, {
-      type: 'report',
+      type: 'note', // wave13-a: report → note+facet history
+      facet: 'history',
       title: 'Init report: two',
       body: '…',
       createdBy: 'wolf-init',

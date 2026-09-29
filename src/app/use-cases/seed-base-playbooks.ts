@@ -1,18 +1,32 @@
 // src/app/use-cases/seed-base-playbooks.ts
+import { z } from 'zod';
+import { buildTypeSchema } from '../../domain/type-schema-builder.js';
+import { getDeclaration } from '../../domain/memory-types.js';
+
 export interface SeedOutcome {
   file: string;
   action: 'created' | 'skipped';
   reason?: string;
 }
 
-export type SeedAddFn = (input: {
-  type: 'playbook';
+// wave13-a: playbook поглощён note+facet howto (карта §5.4 2.13); спец-поля
+// (owner_skill/version/steps) живут в passthrough — как у article/blocker
+export const PlaybookNoteSchema = buildTypeSchema(getDeclaration('note'), {
+  owner_skill: z.string(),
+  version: z.string().default('1'),
+  steps: z.array(z.string()).default([]),
+});
+export type PlaybookNoteInput = {
+  type: 'note';
+  facet: 'howto';
   title: string;
   body: string;
   createdBy: string;
   tags: string[];
   extra: { owner_skill: string; version: string; steps: string[] };
-}) => Promise<unknown>;
+};
+
+export type SeedAddFn = (input: PlaybookNoteInput) => Promise<unknown>;
 
 export interface SeedDeps {
   files: Map<string, string>;
@@ -48,7 +62,8 @@ export async function seedBasePlaybooks(deps: SeedDeps): Promise<SeedOutcome[]> 
       .map((s) => s.trim())
       .filter(Boolean);
     await deps.add({
-      type: 'playbook',
+      type: 'note', // wave13-a: playbook → note+facet howto
+      facet: 'howto',
       title: meta.title ?? file,
       body,
       createdBy: 'wolf-init',

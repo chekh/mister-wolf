@@ -3,7 +3,8 @@ import { InfoRequestSchema } from '../../../src/domain/schemas/info-request-sche
 
 const baseInfoRequest = {
   id: 'mem_20260630_info_c3d4',
-  type: 'info-request',
+  type: 'note', // wave13-a: info-request → note+facet context
+  facet: 'context',
   title: 'Clarify rate-limiting policy',
   status: 'open',
   review_state: 'proposed',

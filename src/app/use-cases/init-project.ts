@@ -96,8 +96,14 @@ export function looksLikeProjectRoot(dir: string): boolean {
 
 /** Guard идемпотентности отчёта (§4.1): активный report с тегами wolf-init+onboarding-v2. */
 export async function findInitReport(store: MemoryStore): Promise<MemoryObject | null> {
-  const reports = await store.list({ type: 'report' });
-  const active = reports.filter((o) => o.status === 'active' && INIT_REPORT_TAGS.every((t) => o.tags.includes(t)));
+  // wave13-a: report → note+facet history; старые файлы читаются как note (alias)
+  const reports = await store.list({ type: 'note' });
+  const active = reports.filter(
+    (o) =>
+      o.status === 'active' &&
+      (o as { facet?: string }).facet === 'history' &&
+      INIT_REPORT_TAGS.every((t) => o.tags.includes(t))
+  );
   return active.length > 0 ? active[0] : null;
 }
 
@@ -207,7 +213,8 @@ export async function initProject(
       initReport = { action: 'skipped', id: existing.id };
     } else {
       const { object } = await addMemoryObject(memDeps, {
-        type: 'report',
+        type: 'note', // wave13-a: report → note+facet history (§5.4)
+        facet: 'history',
         title: `Init report: ${basename(baseDir)}`,
         body: renderInitReportBody(deps, input, { baseSetOutcomes, platformOutcomes, routingAction: routing.action }),
         createdBy: 'wolf-init',

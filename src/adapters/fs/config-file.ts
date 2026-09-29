@@ -7,7 +7,10 @@ import type { WolfConfig } from '../../domain/taxonomy.js';
 import { generateCoreConfigBlock } from '../../domain/taxonomy.js';
 import { configPath } from './project-paths.js';
 
-const FieldSpecSchema: z.ZodType<FieldSpec> = z.discriminatedUnion('kind', [
+// union, не discriminatedUnion: у трёх вариантов kind:'string' (required/optional/
+// default) один дискриминатор — zod v4 бросает "Duplicate discriminator value"
+// при любом fields-блоке project-типа (dogfood task-brief читался как битый конфиг)
+const FieldSpecSchema: z.ZodType<FieldSpec> = z.union([
   z.object({ kind: z.literal('string'), required: z.literal(true), min: z.number().int().optional() }),
   z.object({ kind: z.literal('string'), optional: z.literal(true) }),
   z.object({ kind: z.literal('string'), default: z.string() }),

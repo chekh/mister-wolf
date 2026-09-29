@@ -106,9 +106,11 @@ describe('addThought', () => {
 
 // свежий session-summary в list → shouldSummarize false → summarizeSession (внутри createDecision)
 // отрабатывает вхолостую и не пишет в saved лишний объект (план Task 3, примечание)
+// wave13-a: session-summary → note+facet history, дедуп — по тегу session-summary
 const RECENT_SUMMARY = {
   id: 'mem_summary_recent',
-  type: 'session-summary',
+  type: 'note',
+  facet: 'history',
   title: 'Session wrap-up',
   status: 'active',
   review_state: 'accepted',
@@ -120,7 +122,7 @@ const RECENT_SUMMARY = {
   schema_version: 1,
   source: { kind: 'session' },
   related: { files: [], docs: [], decisions: [] },
-  tags: [],
+  tags: ['session-summary'],
   superseded_by: null,
   body: '',
   memory_class: 'working',

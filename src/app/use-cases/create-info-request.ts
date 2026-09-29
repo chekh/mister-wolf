@@ -44,7 +44,8 @@ export async function createInfoRequest(
     const defaults = governanceDefaults(input.createdBy);
     const object: InfoRequest = {
       id: deps.idGen.generateMemoryId(now, input.title),
-      type: 'info-request' as unknown as InfoRequest['type'], // wave13-a: window-compat (§5.4)
+      type: 'note', // wave13-a: info-request → note+facet context (§5.4)
+      facet: 'context',
       title: input.title,
       status: 'open',
       review_state: input.createdBy.startsWith('agent:') ? 'proposed' : 'accepted',

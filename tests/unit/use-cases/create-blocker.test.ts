@@ -40,7 +40,8 @@ describe('createBlocker', () => {
       }
     );
 
-    expect(result.object.type).toBe('blocker');
+    expect(result.object.type).toBe('note'); // wave13-a: blocker → note+facet pitfall
+    expect(result.object.facet).toBe('pitfall');
     expect(result.object.title).toBe('Missing CI lint step');
     expect(result.object.impact).toBe('Main branch can receive unformatted code.');
     expect(result.object.workaround).toBe('Run npm run lint manually before merging.');
@@ -52,7 +53,7 @@ describe('createBlocker', () => {
 
     const loaded = await store.get(result.object.id);
     expect(loaded).not.toBeNull();
-    expect(loaded?.type).toBe('blocker');
+    expect(loaded?.type).toBe('note');
 
     const events = await log.readAll();
     expect(events).toHaveLength(1);

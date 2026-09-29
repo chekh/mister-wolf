@@ -20,7 +20,13 @@ export async function diffThread(
 ): Promise<ThreadDiff> {
   const checkpoint = await deps.store.get(checkpointId);
   if (!checkpoint) throw new Error(`Checkpoint not found: ${checkpointId}`);
-  if (checkpoint.type !== 'session-checkpoint') throw new Error(`Memory object is not a checkpoint: ${checkpointId}`);
+  // wave13-a: session-checkpoint → note+facet history (captured_state — passthrough)
+  const isCheckpoint =
+    checkpoint.type === 'session-checkpoint' ||
+    (checkpoint.type === 'note' &&
+      ((checkpoint as { facet?: string }).facet === 'history' ||
+        (checkpoint as { alias_origin?: string }).alias_origin === 'session-checkpoint'));
+  if (!isCheckpoint) throw new Error(`Memory object is not a checkpoint: ${checkpointId}`);
 
   const captured = (checkpoint as { captured_state?: { thread_current_state?: string; related_ids?: string[] } })
     .captured_state ?? {
@@ -32,14 +38,12 @@ export async function diffThread(
   if (!thread) throw new Error(`Thread not found: ${threadId}`);
 
   const currentRelated = await deps.store.list();
+  // wave13-a: info-request/article/blocker/session-checkpoint → note; старые
+  // файлы читаются как note (alias) — фильтр по note+thread покрывает и их
   const currentRelatedIds = currentRelated
     .filter(
       (obj) =>
-        (obj.type === 'info-request' && (obj as { thread?: string }).thread === threadId) ||
-        (obj.type === 'article' && (obj as { thread?: string }).thread === threadId) ||
-        (obj.type === 'decision' && (obj as { thread?: string }).thread === threadId) ||
-        (obj.type === 'blocker' && (obj as { thread?: string }).thread === threadId) ||
-        (obj.type === 'session-checkpoint' && (obj as { thread?: string }).thread === threadId)
+        ((obj.type === 'note' || obj.type === 'decision') && (obj as { thread?: string }).thread === threadId) || false
     )
     .map((obj) => obj.id);
 

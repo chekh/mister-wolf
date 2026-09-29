@@ -10,15 +10,16 @@ const incident: MemoryTypeDeclaration = {
 };
 
 describe('targetPathFor (layout v2)', () => {
-  it('work-thread goes to threads/<id>/WORK-THREAD.md', () => {
-    expect(targetPathFor('/base', { type: 'work-thread', id: 'mem_t1' })).toBe(
+  it('thread goes to threads/<id>/WORK-THREAD.md', () => {
+    // wave13-a: work-thread переименован в thread (layout тот же)
+    expect(targetPathFor('/base', { type: 'thread', id: 'mem_t1' })).toBe(
       '/base/.wolf/memory/threads/mem_t1/WORK-THREAD.md'
     );
   });
 
   it('threaded object goes to threads/<tid>/<subdir>/', () => {
-    expect(targetPathFor('/base', { type: 'task-brief', id: 'mem_b1', thread: 'mem_t1' })).toBe(
-      '/base/.wolf/memory/threads/mem_t1/tasks/mem_b1.md'
+    expect(targetPathFor('/base', { type: 'note', id: 'mem_b1', thread: 'mem_t1' })).toBe(
+      '/base/.wolf/memory/threads/mem_t1/notes/mem_b1.md'
     );
   });
 

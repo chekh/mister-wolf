@@ -3,9 +3,13 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, existsSync
 import { tmpdir } from 'os';
 import { join, dirname } from 'path';
 import yaml from 'js-yaml';
-import { planDocIdMigration, applyDocIdMigration } from '../../src/adapters/fs/doc-id-migration.js';
+import {
+  planDocIdMigration,
+  applyDocIdMigration,
+  documentRefTargetPath,
+} from '../../src/adapters/fs/doc-id-migration.js';
 import { documentRefId, isCanonicalDocumentId, withTieBreak } from '../../src/adapters/fs/document-id.js';
-import { targetPathFor, relationsPath, memoryDir } from '../../src/adapters/fs/project-paths.js';
+import { relationsPath, memoryDir } from '../../src/adapters/fs/project-paths.js';
 import { walkMd } from '../../src/adapters/fs/layout-migration.js';
 
 // фикстура (спека 2.1.0 §2.6): два document-ref со старыми id + decision со ссылками
@@ -144,8 +148,8 @@ describe('doc-id-migration (спека 2.1.0 §2.6)', () => {
 
     // число .md неизменно; файлы легли по каноническим путям, старые пути свободны
     expect(countMd(dir)).toBe(3);
-    expect(existsSync(targetPathFor(dir, { type: 'document-ref', id: entryA.newId }))).toBe(true);
-    expect(existsSync(targetPathFor(dir, { type: 'document-ref', id: entryB.newId }))).toBe(true);
+    expect(existsSync(documentRefTargetPath(dir, entryA.newId))).toBe(true);
+    expect(existsSync(documentRefTargetPath(dir, entryB.newId))).toBe(true);
     expect(existsSync(join(dir, '.wolf/memory/shared/documents', `${DOC_A}.md`))).toBe(false);
 
     // старых id нет нигде в .md и relations.jsonl (по границе id — DOC_A+X легитимно
@@ -164,7 +168,7 @@ describe('doc-id-migration (спека 2.1.0 §2.6)', () => {
     expect(decision).toContain(entryB.newId);
 
     // frontmatter переименованных файлов несёт новый id
-    const docAContent = readFileSync(targetPathFor(dir, { type: 'document-ref', id: entryA.newId }), 'utf-8');
+    const docAContent = readFileSync(documentRefTargetPath(dir, entryA.newId), 'utf-8');
     expect(docAContent).toContain(`id: ${entryA.newId}`);
 
     // events.jsonl не тронут (исторический лог)
@@ -181,7 +185,7 @@ describe('doc-id-migration (спека 2.1.0 §2.6)', () => {
 
   it('конфликт: чужой файл по целевому пути → action conflict, не трогаем', async () => {
     const newIdA = withTieBreak(documentRefId(PATH_A, CREATED), [DOC_A, DOC_B, 'dec_1']);
-    const foreign = targetPathFor(dir, { type: 'document-ref', id: newIdA });
+    const foreign = documentRefTargetPath(dir, newIdA);
     mkdirSync(dirname(foreign), { recursive: true });
     writeFileSync(foreign, '---\nid: mem_foreign\n---\n\nx');
 

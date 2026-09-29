@@ -28,7 +28,7 @@ describe('createMemoryRepairRequest', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it('creates info-request tagged solve/memory-repair with expected answer contract', async () => {
+  it('creates info-request-note tagged solve/memory-repair with expected answer contract', async () => {
     const { object } = await createMemoryRepairRequest(
       { store, log, clock, idGen },
       {
@@ -37,7 +37,8 @@ describe('createMemoryRepairRequest', () => {
         createdBy: 'user:test',
       }
     );
-    expect(object.type).toBe('info-request');
+    expect(object.type).toBe('note'); // wave13-a: info-request → note+facet context
+    expect((object as { facet?: string }).facet).toBe('context');
     expect(object.status).toBe('open');
     expect(object.tags).toEqual(expect.arrayContaining(['solve', 'memory-repair']));
     expect(object.question).toBe('agent keeps using deprecated get command');

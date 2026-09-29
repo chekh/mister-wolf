@@ -2,12 +2,18 @@ import * as fs from 'fs/promises';
 import { existsSync, readFileSync } from 'fs';
 import { join, relative, dirname } from 'path';
 import yaml from 'js-yaml';
-import { memoryDir, relationsPath, targetPathFor } from './project-paths.js';
+import { memoryDir, relationsPath, threadsDir, sharedDir } from './project-paths.js';
 import { writeFileAtomic } from './markdown-memory-store.js';
 import { parseFrontmatter, walkMd } from './layout-migration.js';
 import { documentRefId, isCanonicalDocumentId, withTieBreak } from './document-id.js';
 import { rebuildMemoryIndex } from '../../app/use-cases/rebuild-memory-index.js';
 import { createCliContainer } from '../../bootstrap/container.js';
+
+/** wave13-a: document-ref удалён из core — цель по alias-подкаталогам (documents/). */
+export function documentRefTargetPath(baseDir: string, id: string, thread?: string): string {
+  if (thread) return join(threadsDir(baseDir), thread, 'documents', `${id}.md`);
+  return join(sharedDir(baseDir), 'documents', `${id}.md`);
+}
 
 export interface DocIdMigrationEntry {
   id: string;
@@ -74,7 +80,7 @@ export async function planDocIdMigration(baseDir: string): Promise<DocIdMigratio
     }
     const newId = withTieBreak(documentRefId(sourcePath, fm.created_at), takenIds);
     takenIds.add(newId); // накапливаем новые id — защита от коллизий внутри одного прогона
-    const to = relative(baseDir, targetPathFor(baseDir, { type: 'document-ref', id: newId, thread: fm.thread }));
+    const to = relative(baseDir, documentRefTargetPath(baseDir, newId, fm.thread));
     // конфликт: файл по пути to уже существует на диске и его id != newId
     let action: DocIdMigrationEntry['action'] = 'rename';
     if (existsSync(join(baseDir, to)) && readIdFromDisk(join(baseDir, to)) !== newId) {

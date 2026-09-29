@@ -24,7 +24,13 @@ export async function resolveBlocker(
   const run = async (): Promise<void> => {
     const existing = await deps.store.get(id);
     if (!existing) throw new Error(`Memory object not found: ${id}`);
-    if (existing.type !== 'blocker') throw new Error(`Memory object is not a blocker: ${id}`);
+    // wave13-a: blocker → note+facet pitfall; старые файлы читаются как note
+    // (alias_origin 'blocker') с инжектнутым facet pitfall
+    const isBlocker =
+      existing.type === 'note' &&
+      ((existing as { facet?: string }).facet === 'pitfall' ||
+        (existing as { alias_origin?: string }).alias_origin === 'blocker');
+    if (!isBlocker) throw new Error(`Memory object is not a blocker: ${id}`);
 
     const now = deps.clock.now();
     const updated = await deps.store.update(id, { status: 'resolved' });

@@ -84,7 +84,9 @@ describe('generateAgentBrief', () => {
     const question = await addMemoryObject(
       { store, log, clock, idGen },
       {
-        type: 'open-question',
+        type: 'note', // wave13-a: open-question → note+facet context (§5.4)
+        facet: 'context',
+        status: 'open', // семантика вопроса в brief: note+context+open
         title: 'Auth strategy',
         body: 'Should we use JWT or sessions?',
         createdBy: 'user:test',
@@ -159,9 +161,11 @@ describe('generateAgentBrief', () => {
       } else if (kind === 1) {
         await store.save(fixtureObject(id, { type: 'lesson' }));
       } else if (kind === 2) {
-        await store.save(fixtureObject(id, { type: 'open-question', status: 'open' }));
+        await store.save(fixtureObject(id, { type: 'note', facet: 'context', status: 'open' })); // wave13-a: open-question
       } else if (kind === 3) {
-        await store.save(fixtureObject(id, { type: 'blocker', impact: 'Blocks something.', status: 'active' }));
+        await store.save(
+          fixtureObject(id, { type: 'note', facet: 'pitfall', impact: 'Blocks something.', status: 'active' })
+        ); // wave13-a: blocker
       } else {
         await store.save(fixtureObject(id, { type: 'decision', status: 'superseded' }));
       }

@@ -23,16 +23,18 @@ export async function createSessionCheckpoint(
   const run = async (): Promise<CreateSessionCheckpointResult> => {
     const thread = await deps.store.get(input.threadId);
     if (!thread) throw new Error(`Memory object not found: ${input.threadId}`);
-    if (thread.type !== 'work-thread') throw new Error(`Memory object is not a work thread: ${input.threadId}`);
+    // wave13-a: work-thread переименован в thread; старые файлы читаются как thread (alias)
+    if (thread.type !== 'thread') throw new Error(`Memory object is not a work thread: ${input.threadId}`);
 
     const related = await deps.store.list();
+    // wave13-a: info-request/article/blocker поглощены note — alias-резолвер тоже
+    // отдаёт их как note, поэтому фильтруем по note+thread; decision остался core-типом
     const relatedIds = related
       .filter(
         (obj) =>
-          (obj.type === 'info-request' && (obj as { thread?: string }).thread === input.threadId) ||
-          (obj.type === 'article' && (obj as { thread?: string }).thread === input.threadId) ||
-          (obj.type === 'decision' && (obj as { thread?: string }).thread === input.threadId) ||
-          (obj.type === 'blocker' && (obj as { thread?: string }).thread === input.threadId)
+          ((obj.type === 'note' || obj.type === 'decision') &&
+            (obj as { thread?: string }).thread === input.threadId) ||
+          false
       )
       .map((obj) => obj.id);
 
@@ -40,7 +42,8 @@ export async function createSessionCheckpoint(
     const defaults = governanceDefaults(input.createdBy);
     const object: SessionCheckpoint = {
       id: deps.idGen.generateMemoryId(now, `checkpoint-${input.threadId}`),
-      type: 'session-checkpoint' as unknown as SessionCheckpoint['type'], // wave13-a: window-compat (§5.4)
+      type: 'note', // wave13-a: session-checkpoint → note+facet history (§5.4)
+      facet: 'history',
       title: `Checkpoint for ${thread.title}`,
       status: 'active',
       review_state: input.createdBy.startsWith('agent:') ? 'proposed' : 'accepted',
