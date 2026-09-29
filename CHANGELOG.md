@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.12.0] - 2026-09-29
+
+### Changed
+
+- Performance: CLI cold boot (lazy command imports + lazy SQLite open) — `wolf --version` ≈ 0.13 s (was ~1 s); `wolf brief` p90 ≈ 1.4 s (was ~7 s) via persistent scan snapshot with diff-before-save (stops ~120 event-log lines per call); delivery telemetry switched to incremental sidecar counters (no full log re-reads per delivery — linear degradation removed); `wolf call` uses a single store pass instead of five; search pushes LIMIT and file_path down to SQL.
+- Router plugin: playbook cache TTL 5 minutes + early-stop on miss (warm chat-turns: zero CLI spawns, was 5–7 s); `router.log` gains `ms=`/`bytes=` fields; `WOLF_SESSION` producer; skill-invocation hook — skills are now measurable.
+
+### Added
+
+- Session-scoped delivery deduplication: a memory is injected once per session, re-delivered only when its text checksum changes; deduplicated empty output explains itself.
+- Soft injection-size warning (`delivery.*` config, default 20% of session context, stderr, non-blocking).
+- Delivery observability: recap line (deliveries / misses / top-missed agents), `wolf analytics --view delivery` (top delivered, miss-rate by agent, avg injection bytes, router p50/p90, skill counters), applied-rate join for delivered memories (CLI channel).
+- Docs updated (EN+RU): mcp (dedup/limit/recap line), configuration (delivery.\*), router (TTL/early-stop/ms=), cli/analytics (`--view delivery`), base-set (skill telemetry).
+
 ## [2.11.0] - 2026-09-29
 
 ### Added
