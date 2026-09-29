@@ -11,13 +11,14 @@ Usage: wolf analytics [options]
 
 Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents,
 steward view, councils, outliers, experiment readiness, memory lifecycle &
-coordination, campaigns & per-memory ROI, machine acceptance (wave metrics)
+coordination, campaigns & per-memory ROI, delivery panel, machine acceptance
+(wave metrics)
 
 Options:
   --view <view>      Analytics view (choices: "memory", "tools", "rules",
-                     "weeklyActivity", "agents", "steward", "outliers",
-                     "readiness", "councils", "coordination", "campaign",
-                     "acceptance", "all", default: "all")
+                      "weeklyActivity", "agents", "steward", "outliers",
+                      "readiness", "councils", "coordination", "campaign",
+                      "delivery", "acceptance", "all", default: "all")
   --class <class>    Memory lifecycle filter (choices: "new", "sleeper",
                      "workhorse", "dead")
   --type <type>      Memory type filter
@@ -32,35 +33,36 @@ Options:
 
 Опции:
 
-| Опция               | Описание                                                                                                                                                                         |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--view <view>`     | Выборка: `memory`, `tools`, `rules`, `weeklyActivity`, `agents`, `steward`, `outliers`, `readiness`, `councils`, `coordination`, `campaign`, `acceptance`, `all` (дефолт: `all`) |
-| `--class <class>`   | Фильтр по lifecycle-классу памяти: `new`, `sleeper`, `workhorse`, `dead`                                                                                                         |
-| `--type <type>`     | Фильтр по типу памяти                                                                                                                                                            |
-| `--origin <origin>` | Фильтр по tool origin: `script`, `native`                                                                                                                                        |
-| `--agent <agent>`   | Фильтр по имени агента                                                                                                                                                           |
-| `--silent`          | Rules view: только молчащие правила (дефолт: false)                                                                                                                              |
-| `--top <n>`         | Лимит строк (дефолт: 20)                                                                                                                                                         |
-| `--weeks <n>`       | Окно недельной активности в неделях (дефолт: 8)                                                                                                                                  |
-| `--json`            | Машинный JSON-вывод (дефолт: false)                                                                                                                                              |
+| Опция               | Описание                                                                                                                                                                                     |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--view <view>`     | Выборка: `memory`, `tools`, `rules`, `weeklyActivity`, `agents`, `steward`, `outliers`, `readiness`, `councils`, `coordination`, `campaign`, `delivery`, `acceptance`, `all` (дефолт: `all`) |
+| `--class <class>`   | Фильтр по lifecycle-классу памяти: `new`, `sleeper`, `workhorse`, `dead`                                                                                                                     |
+| `--type <type>`     | Фильтр по типу памяти                                                                                                                                                                        |
+| `--origin <origin>` | Фильтр по tool origin: `script`, `native`                                                                                                                                                    |
+| `--agent <agent>`   | Фильтр по имени агента                                                                                                                                                                       |
+| `--silent`          | Rules view: только молчащие правила (дефолт: false)                                                                                                                                          |
+| `--top <n>`         | Лимит строк (дефолт: 20)                                                                                                                                                                     |
+| `--weeks <n>`       | Окно недельной активности в неделях (дефолт: 8)                                                                                                                                              |
+| `--json`            | Машинный JSON-вывод (дефолт: false)                                                                                                                                                          |
 
 Выборки:
 
-| Выборка          | Что возвращает                                                                                                                                                                                                               |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `memory`         | Memory ledger: возраст, доставки, срабатывания, жалобы, last_used, lifecycle-класс на объект; garbage ratio (DEAD / active); воронка стадий added→retrieved→injected→cited→applied; attribution; per-memory ROI (P3)         |
-| `tools`          | Tool ledger: usage, доля ошибок, lifecycle (script-инструменты); атрибуции `tools` из сигнального лога (model-native); promotion-кандидаты                                                                                   |
-| `rules`          | Ранжирование правил по `holdout_prevented`; список молчащих правил                                                                                                                                                           |
-| `weeklyActivity` | Недельная активность: writes / delivers / triggers по неделям                                                                                                                                                                |
-| `agents`         | Прогоны по агентам: weighted-стоимость, длительность, доля process-провалов, завершённые и принятые задачи, жалобы, prevented; честные JSON-имена: `completedRuns` (раны с `outcome: 'ok'`) и `processFailureRatePct`        |
-| `steward`        | Мутации Стюарда по видам, жалобная воронка, нарушения SLA (dispatch ages), рецидивы, churn, доля авто-мутаций                                                                                                                |
-| `councils`       | Консилиумы: созывы (всего / за окно / открытые), мнений на вопрос, участие по агентам, распределение голосов, доля синтезов и медианное время вопрос→синтез, недельная активность, открытые вопросы                          |
-| `coordination`   | Координационные события: counts по парам kind × источник, последние 20 событий, пары blocker открыт→закрыт по ref                                                                                                            |
-| `campaign`       | Кампании → когорты с/без injected-памяти в сессии прогона: n, медиана weighted, доля accepted, pfail; честные n/a на малых выборках (P3)                                                                                     |
-| `outliers`       | Самые дорогие прогоны (weighted; `$` при pricing)                                                                                                                                                                            |
-| `readiness`      | Готовность к экспериментам: доля прогонов с arm, размер выборки по группам                                                                                                                                                   |
-| `acceptance`     | Машинная приёмка (метрики волн): miss-rate роутера по агентам, error-rate + p50/p90 по тулам, классы ошибок, burst'ы доставок, search→get follow, vitality за 72 ч, битые строки (см. [Машинная приёмка](#машинная-приёмка)) |
-| `all`            | Все секции подряд (дефолт)                                                                                                                                                                                                   |
+| Выборка          | Что возвращает                                                                                                                                                                                                                          |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `memory`         | Memory ledger: возраст, доставки, срабатывания, жалобы, last_used, lifecycle-класс на объект; garbage ratio (DEAD / active); воронка стадий added→retrieved→injected→cited→applied; attribution; per-memory ROI (P3)                    |
+| `tools`          | Tool ledger: usage, доля ошибок, lifecycle (script-инструменты); атрибуции `tools` из сигнального лога (model-native); promotion-кандидаты                                                                                              |
+| `rules`          | Ранжирование правил по `holdout_prevented`; список молчащих правил                                                                                                                                                                      |
+| `weeklyActivity` | Недельная активность: writes / delivers / triggers по неделям                                                                                                                                                                           |
+| `agents`         | Прогоны по агентам: weighted-стоимость, длительность, доля process-провалов, завершённые и принятые задачи, жалобы, prevented; честные JSON-имена: `completedRuns` (раны с `outcome: 'ok'`) и `processFailureRatePct`                   |
+| `steward`        | Мутации Стюарда по видам, жалобная воронка, нарушения SLA (dispatch ages), рецидивы, churn, доля авто-мутаций                                                                                                                           |
+| `councils`       | Консилиумы: созывы (всего / за окно / открытые), мнений на вопрос, участие по агентам, распределение голосов, доля синтезов и медианное время вопрос→синтез, недельная активность, открытые вопросы                                     |
+| `coordination`   | Координационные события: counts по парам kind × источник, последние 20 событий, пары blocker открыт→закрыт по ref                                                                                                                       |
+| `campaign`       | Кампании → когорты с/без injected-памяти в сессии прогона: n, медиана weighted, доля accepted, pfail; честные n/a на малых выборках (P3)                                                                                                |
+| `outliers`       | Самые дорогие прогоны (weighted; `$` при pricing)                                                                                                                                                                                       |
+| `readiness`      | Готовность к экспериментам: доля прогонов с arm, размер выборки по группам                                                                                                                                                              |
+| `delivery`       | Панель доставки: топ доставляемых объектов с индикатором applied%, miss-rate по agent-id, средний размер инъекции (два канала), латентность resolve роутера p50/p90, счётчики вызовов скиллов (см. [Панель доставки](#панель-доставки)) |
+| `acceptance`     | Машинная приёмка (метрики волн): miss-rate роутера по агентам, error-rate + p50/p90 по тулам, классы ошибок, burst'ы доставок, search→get follow, vitality за 72 ч, битые строки (см. [Машинная приёмка](#машинная-приёмка))            |
+| `all`            | Все секции подряд (дефолт)                                                                                                                                                                                                              |
 
 ### Lifecycle-классы
 
@@ -284,6 +286,49 @@ memory ROI (correlational, not causal):
 │ mem_20260905_prefer_vitest_run_over_wat… │ 0              │ 0             │ 1              │ 2026-09-05T09:30:00.480Z │
 └──────────────────────────────────────────┴────────────────┴───────────────┴────────────────┴──────────────────────────┘
 ```
+
+### Панель доставки
+
+`--view delivery` — взгляд на воронку доставки одной командой: что доставляется, какого оно размера и возвращается ли агент к доставленному. Новых сборщиков нет: агрегируются delivery-сигналы, `.wolf/router.log` (включая поля `ms=`/`bytes=`) и `.wolf/metrics/skill-invocations.jsonl`:
+
+- **топ доставляемых** — count'ы delivery-сигналов по `detail.name` с индикатором **applied%**: доля доставок имени, за которыми в той же сессии последовал `wolf get`/`wolf search` по этому же id (join CLI-канала; у MCP-сессий session id null — они вне метрики). Applied% — индикатор, не приговор, но имя с `deliveries ≥ 10` и `applied% < 10%` попадает в строку-**подсветку**: доставляется много, не трогается никогда — кандидат в фильтр гнили конституции.
+- **miss-rate по агентам** — доля строк `variant=fallback` в router.log по agent-id («промах» = канон не найден, доставлен универсальный fallback; промахи — подмножество доставок).
+- **средний размер инъекции** — mean по двум каналам раздельно: `delivery_signals` (mean `detail.injection_bytes`) и `router_log` (mean `bytes=` playbook-инъекций).
+- **латентность resolve роутера** — p50/p90 по полю `ms=` router.log; волновый порог приёмки (p90 < 500 мс) проверяется ровно по этому числу.
+- **скиллы** — счётчики вызовов по имени скилла из пишемого плагином лога skill-invocations (см. [Базовый набор — плагины](/ru/guide/base-set#плагины--2--opencodeplugins)): до сих пор ценность скиллов была невидима.
+
+Те же числа доступны на входе в сессию: `wolf recap` печатает строку `Delivery (7d)` — `доставок N, промахов M, топ промахов: <agent> (×k)…` (N = доставки canonical+fallback за 7 дней, M — из них fallback, топ-3 агентов по промахам). Нет router.log — секции нет.
+
+```bash
+wolf analytics --view delivery
+```
+
+```text
+== delivery ==
+top delivered:
+┌──────────────────┬────────────┬─────────┬───────────┐
+│ name             │ deliveries │ applied │ applied_% │
+├──────────────────┼────────────┼─────────┼───────────┤
+│ mem_…_prefer_vt… │ 14         │ 2       │ 14.3      │
+└──────────────────┴────────────┴─────────┴───────────┘
+highlight (deliveries>=10, applied<10%): -
+miss-rate by agent:
+┌──────────┬───────────┬───────┬────────┐
+│ agent    │ fallbacks │ total │ miss_% │
+├──────────┼───────────┼───────┼────────┤
+│ reviewer │ 3         │ 12    │ 25.0   │
+└──────────┴───────────┴───────┴────────┘
+avg injection bytes: delivery_signals=812 router_log=1493
+router resolve ms: p50=210 p90=433 (n=57)
+skills:
+┌────────────┬───────┐
+│ skill      │ count │
+├────────────┼───────┤
+│ wolf-plan  │ 7     │
+└────────────┴───────┘
+```
+
+`--json` возвращает те же секции машинно (`topDelivered`, `underApplied`, `missRateByAgent`, `avgInjectionBytes`, `routerMs`, `skills`); MCP-инструмент `analytics` принимает `view: "delivery"`.
 
 ### Машинная приёмка
 
