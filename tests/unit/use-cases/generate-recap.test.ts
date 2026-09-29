@@ -16,6 +16,7 @@ import { createDecision } from '../../../src/app/use-cases/create-decision.js';
 import { createInfoRequest } from '../../../src/app/use-cases/create-info-request.js';
 import { transitionMemoryObject } from '../../../src/app/use-cases/transition-memory-object.js';
 import { BOOTSTRAP_THREAD_TITLE } from '../../../src/app/use-cases/bootstrap-project.js';
+import { parseRouterLog } from '../../../src/domain/router-log.js';
 
 describe('generateRecap', () => {
   let dir: string;
@@ -349,5 +350,57 @@ describe('generateRecap', () => {
       expect(report.onboarding).toBeNull();
       expect(renderRecap(report)).not.toContain('## Onboarding');
     }
+  });
+
+  // --- P110: панель наблюдаемости доставки (router.log, окно 7 дней) ---
+
+  /** ISO «N минут назад» — окно отсчитывается от Date.now(). */
+  const minutesAgoIso = (minutes: number): string => new Date(Date.now() - minutes * 60_000).toISOString();
+
+  it('delivery section: корпус router.log → доставок 5, промахов 2, топ промахов', async () => {
+    const store = new MarkdownMemoryStore(dir);
+    const log = [
+      `${minutesAgoIso(1)} agent-id=agent-ok playbook=hit name=mem_1 variant=canonical injected=yes ms=5 bytes=10`,
+      `${minutesAgoIso(2)} agent-id=agent-ok playbook=hit name=mem_2 variant=canonical injected=yes ms=6 bytes=20`,
+      `${minutesAgoIso(3)} agent-id=agent-ok playbook=hit name=mem_3 variant=canonical injected=yes ms=7 bytes=30`,
+      `${minutesAgoIso(4)} agent-id=agent-miss playbook=hit name=mem_4 variant=fallback injected=yes ms=8 bytes=40`,
+      `${minutesAgoIso(5)} agent-id=agent-miss playbook=hit name=mem_5 variant=fallback injected=yes ms=9 bytes=50`,
+      // старше 7 дней — не считается (3 канонических + fallback были бы, но окно их режет)
+      `${minutesAgoIso(8 * 24 * 60)} agent-id=agent-old playbook=hit name=mem_old variant=fallback injected=yes`,
+      'garbage line without kv structure', // парсер отбрасывает сам
+    ].join('\n');
+    const parsed = parseRouterLog(log);
+    expect(parsed.malformedLines).toBe(1);
+
+    const report = await generateRecap({ store, routerLogRows: parsed.rows });
+
+    expect(report.delivery).toEqual({
+      deliveries: 5,
+      fallbacks: 2,
+      topMissAgents: [{ agent: 'agent-miss', count: 2 }],
+    });
+    const text = renderRecap(report);
+    expect(text).toContain('## Delivery (7d)');
+    expect(text).toContain('доставок 5, промахов 2, топ промахов: agent-miss (×2)');
+    // секция — до Active rules (после Onboarding, которого здесь нет)
+    expect(text.indexOf('## Delivery (7d)')).toBeGreaterThan(0);
+    expect(text.indexOf('## Delivery (7d)')).toBeLessThan(text.indexOf('## Active rules'));
+  });
+
+  it('delivery: без routerLogRows → null, секции нет (снапшот старого вывода не меняется)', async () => {
+    const store = new MarkdownMemoryStore(dir);
+    const report = await generateRecap({ store });
+    expect(report.delivery).toBeNull();
+    expect(renderRecap(report)).not.toContain('## Delivery');
+  });
+
+  it('delivery: строки вне 7-дневного окна не считаются (корпус только из старых → null)', async () => {
+    const store = new MarkdownMemoryStore(dir);
+    const oldTs = new Date(Date.now() - 8 * 86_400_000).toISOString();
+    const parsed = parseRouterLog(
+      `${oldTs} agent-id=agent-ok playbook=hit name=mem_old variant=canonical injected=yes`
+    );
+    const report = await generateRecap({ store, routerLogRows: parsed.rows });
+    expect(report.delivery).toBeNull();
   });
 });

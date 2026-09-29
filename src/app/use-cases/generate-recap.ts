@@ -1,9 +1,22 @@
 import { MemoryStore } from '../../ports/memory-store.port.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
+import type { RouterLogRow } from '../../domain/router-log.js';
 import { BOOTSTRAP_THREAD_TITLE } from './bootstrap-project.js';
 
 /** Сигнал «онбординг не завершён» (спека onboarding-pipeline-v2 §3, D6/D8). */
 export type OnboardingSignal = { kind: 'bootstrap' } | { kind: 'continue'; threadId: string };
+
+/** P110: окно панели доставки в recap — 7 дней от «сейчас». */
+const DELIVERY_WINDOW_MS = 7 * 86_400_000;
+
+/** P110: панель наблюдаемости доставки по router.log (нет данных в окне → null, секция опускается). */
+export interface RecapDelivery {
+  deliveries: number;
+  /** Промахи канона ⊆ доставок: hit-строки с variant === 'fallback'. */
+  fallbacks: number;
+  /** Топ-3 agentId по числу fallback-строк; сорт count убыв., потом агент. */
+  topMissAgents: { agent: string; count: number }[];
+}
 
 export interface RecapReport {
   activeRules: MemoryObject[]; // active ∪ accepted (F11/D9)
@@ -13,6 +26,7 @@ export interface RecapReport {
   openInfoRequests: MemoryObject[];
   recentDecisions: MemoryObject[]; // top 5 по updated_at (убывание)
   onboarding: OnboardingSignal | null;
+  delivery: RecapDelivery | null;
 }
 
 /**
@@ -34,7 +48,33 @@ function detectOnboarding(all: MemoryObject[]): OnboardingSignal | null {
   return hasInitReport ? { kind: 'bootstrap' } : null;
 }
 
-export async function generateRecap(deps: { store: MemoryStore }): Promise<RecapReport> {
+/** P110: доставки за 7 дней по router.log; NaN-ts — пропуск (fail-safe), пустое окно → null. */
+function buildDeliveryStats(rows: RouterLogRow[] | undefined, nowMs: number): RecapDelivery | null {
+  if (rows === undefined) return null;
+  const inWindow = rows.filter((r) => {
+    const ts = Date.parse(r.ts);
+    return !Number.isNaN(ts) && ts >= nowMs - DELIVERY_WINDOW_MS;
+  });
+  if (inWindow.length === 0) return null;
+  const hits = inWindow.filter((r) => r.hit);
+  const byAgent = new Map<string, number>();
+  for (const r of hits) {
+    if (r.variant === 'fallback') byAgent.set(r.agentId, (byAgent.get(r.agentId) ?? 0) + 1);
+  }
+  return {
+    deliveries: hits.length,
+    fallbacks: [...byAgent.values()].reduce((n, c) => n + c, 0),
+    topMissAgents: [...byAgent.entries()]
+      .map(([agent, count]) => ({ agent, count }))
+      .sort((a, b) => b.count - a.count || a.agent.localeCompare(b.agent))
+      .slice(0, 3),
+  };
+}
+
+export async function generateRecap(deps: {
+  store: MemoryStore;
+  routerLogRows?: RouterLogRow[];
+}): Promise<RecapReport> {
   // ponytail: store.list() — полный reparse всех md (V6); ровно один вызов на отчёт (D1)
   const all = await deps.store.list();
 
@@ -54,6 +94,7 @@ export async function generateRecap(deps: { store: MemoryStore }): Promise<Recap
       .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
       .slice(0, 5),
     onboarding: detectOnboarding(all),
+    delivery: buildDeliveryStats(deps.routerLogRows, Date.now()),
   };
 }
 
@@ -90,6 +131,16 @@ export function renderRecap(report: RecapReport): string {
 
   if (report.onboarding !== null) {
     section(lines, 'Onboarding', [onboardingText(report.onboarding)]);
+  }
+
+  // P110: панель доставки — после Onboarding, до Active rules; тело строки русское (Т3)
+  if (report.delivery !== null) {
+    const d = report.delivery;
+    let line = `доставок ${d.deliveries}, промахов ${d.fallbacks}`;
+    if (d.topMissAgents.length > 0) {
+      line += `, топ промахов: ${d.topMissAgents.map((a) => `${a.agent} (×${a.count})`).join(', ')}`;
+    }
+    section(lines, 'Delivery (7d)', [line]);
   }
 
   section(lines, 'Active rules', report.activeRules.map(fmtObj));

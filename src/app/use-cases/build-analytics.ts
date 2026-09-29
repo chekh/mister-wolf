@@ -207,6 +207,46 @@ export interface AcceptanceView {
   dataQuality: { malformedLines: number };
 }
 
+// --- P110 (волна 2.12): панель наблюдаемости доставки ---
+
+/** Строка .wolf/metrics/skill-invocations.jsonl (пишет плагин). */
+export interface SkillInvocationRow {
+  ts: string;
+  skill: string;
+  agent: string | null;
+}
+
+/** Топ доставляемых memory/tool по delivery-сигналам + applied-join по get/search. */
+export interface DeliveryTopRow {
+  name: string;
+  deliveries: number;
+  applied: number;
+  appliedPct: number | null;
+}
+
+/** Промахи канона по router.log: total = все строки агента, fallbacks = variant=fallback. */
+export interface DeliveryMissRow {
+  agent: string;
+  fallbacks: number;
+  total: number;
+  missRatePct: number | null;
+}
+
+export interface DeliveryView {
+  /** сорт deliveries убыв., потом name. */
+  topDelivered: DeliveryTopRow[];
+  /** подсветка: deliveries >= 10 && appliedPct !== null && appliedPct < 10. */
+  underApplied: string[];
+  /** по router.log: total = все строки агента, fallbacks = variant=fallback. */
+  missRateByAgent: DeliveryMissRow[];
+  /** mean по двум каналам РАЗДЕЛЬНО. */
+  avgInjectionBytes: { deliverySignals: number | null; routerLog: number | null };
+  /** по row.ms (null-строки не считаются). */
+  routerMs: { p50: number | null; p90: number | null; count: number };
+  /** сорт count убыв., потом skill. */
+  skills: { skill: string; count: number }[];
+}
+
 /** P2 D4: счётчик стадии — события + уникальные memory_ids. */
 export interface StageCount {
   events: number;
@@ -403,6 +443,8 @@ export interface AnalyticsReport {
   coordination: CoordinationView;
   /** P3 D2: витрина кампаний (когорты with/no memory). */
   campaign: CampaignView;
+  /** P110: панель наблюдаемости доставки (applied-join, miss-rate, байты/латентность, skills). */
+  delivery: DeliveryView;
   /** D4 accepted-вердикты + T003 машинная приёмка волн 1–3 (один JSON-блок). */
   acceptance: AcceptanceStats & AcceptanceView;
   coverage: CoverageStats;
@@ -428,6 +470,8 @@ export interface AnalyticsInput {
   signalLogStats?: { malformedLines: number; totalLines: number };
   /** T003: распарсенный .wolf/router.log (undefined → пустая структура). */
   routerLog?: { rows: RouterLogRow[]; lines: number; malformedLines: number };
+  /** P110: распарсенный .wolf/metrics/skill-invocations.jsonl (undefined → пустые skills). */
+  skillInvocations?: { rows: SkillInvocationRow[]; malformedLines: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -904,6 +948,153 @@ function buildAcceptance(
     searchFollow,
     vitality: { coreCalls72h },
     dataQuality: { malformedLines: signalLogMalformedLines },
+  };
+}
+
+/**
+ * P110: толерантный парсер .wolf/metrics/skill-invocations.jsonl (прецедент readJsonl):
+ * битая строка → malformedLines++, не бросает; agent отсутствует → null.
+ * Валидная строка = JSON-объект с непустой строкой в `skill`.
+ */
+export function parseSkillInvocations(text: string): { rows: SkillInvocationRow[]; malformedLines: number } {
+  const rows: SkillInvocationRow[] = [];
+  let malformedLines = 0;
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed === '') continue;
+    try {
+      const parsed: unknown = JSON.parse(trimmed);
+      const rec = typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, unknown>) : null;
+      if (rec === null || typeof rec.skill !== 'string' || rec.skill === '') {
+        malformedLines += 1;
+        continue;
+      }
+      rows.push({
+        ts: typeof rec.ts === 'string' ? rec.ts : '',
+        skill: rec.skill,
+        agent: typeof rec.agent === 'string' && rec.agent !== '' ? rec.agent : null,
+      });
+    } catch {
+      malformedLines += 1;
+    }
+  }
+  return { rows, malformedLines };
+}
+
+/** P110: панель доставки — чистая агрегация signals + router.log + skill-invocations.
+ * applied-join (только CLI-канал, session_id !== null): доставка (S, name N, ts T)
+ * считается applied, если в той же сессии S есть get(memory_id=N) или
+ * search(memory_ids ∋ N) с ts >= T. Пустые входы → пустые массивы/null-метрики. */
+function buildDelivery(
+  signals: SignalEvent[],
+  routerLog: AnalyticsInput['routerLog'],
+  skillInvocations: AnalyticsInput['skillInvocations']
+): DeliveryView {
+  // индекс get/search-вызовов по сессии (CLI-канал): tsMs + множество затронутых id
+  const callsBySession = new Map<string, { tsMs: number; ids: Set<string> }[]>();
+  for (const s of signals) {
+    if (s.event !== 'mcp_call' || s.session_id === null) continue;
+    if (s.tool_name !== 'get' && s.tool_name !== 'search') continue;
+    let ids: Set<string>;
+    if (s.tool_name === 'get') {
+      const mid = s.detail?.memory_id;
+      if (typeof mid !== 'string' || mid === '') continue;
+      ids = new Set([mid]);
+    } else {
+      const mids = s.detail?.memory_ids;
+      ids = new Set((Array.isArray(mids) ? mids : []).filter((v): v is string => typeof v === 'string' && v !== ''));
+    }
+    if (ids.size === 0) continue;
+    const tsMs = Date.parse(s.ts);
+    if (Number.isNaN(tsMs)) continue;
+    const arr = callsBySession.get(s.session_id) ?? [];
+    arr.push({ tsMs, ids });
+    callsBySession.set(s.session_id, arr);
+  }
+
+  const byName = new Map<string, { deliveries: number; applied: number }>();
+  let bytesSum = 0;
+  let bytesCount = 0;
+  for (const s of signals) {
+    if (s.event !== 'delivery') continue;
+    const name = s.detail?.name;
+    if (typeof name !== 'string' || name === '') continue;
+    const acc = byName.get(name) ?? { deliveries: 0, applied: 0 };
+    acc.deliveries += 1;
+    const b = finiteNumber(s.detail?.injection_bytes);
+    if (b !== null) {
+      bytesSum += b;
+      bytesCount += 1;
+    }
+    // ponytail: O(D×G) на логах ~10^4 — достаточно; индекс по id, если вырастет
+    if (s.session_id !== null) {
+      const tMs = Date.parse(s.ts);
+      const calls = callsBySession.get(s.session_id);
+      if (!Number.isNaN(tMs) && calls !== undefined) {
+        for (const c of calls) {
+          if (c.tsMs >= tMs && c.ids.has(name)) {
+            acc.applied += 1;
+            break;
+          }
+        }
+      }
+    }
+    byName.set(name, acc);
+  }
+  const topDelivered: DeliveryTopRow[] = [...byName.entries()]
+    .map(([name, a]) => ({
+      name,
+      deliveries: a.deliveries,
+      applied: a.applied,
+      appliedPct: a.deliveries > 0 ? (a.applied / a.deliveries) * 100 : null,
+    }))
+    .sort((a, b) => b.deliveries - a.deliveries || a.name.localeCompare(b.name));
+  const underApplied = topDelivered
+    .filter((r) => r.deliveries >= 10 && r.appliedPct !== null && r.appliedPct < 10)
+    .map((r) => r.name);
+
+  const routerAcc = new Map<string, { fallbacks: number; total: number }>();
+  let routerBytesSum = 0;
+  let routerBytesCount = 0;
+  const msValues: number[] = [];
+  for (const row of routerLog?.rows ?? []) {
+    const acc = routerAcc.get(row.agentId) ?? { fallbacks: 0, total: 0 };
+    acc.total += 1;
+    if (row.variant === 'fallback') acc.fallbacks += 1;
+    routerAcc.set(row.agentId, acc);
+    if (row.bytes !== null && row.bytes > 0) {
+      routerBytesSum += row.bytes;
+      routerBytesCount += 1;
+    }
+    if (row.ms !== null) msValues.push(row.ms);
+  }
+  const missRateByAgent: DeliveryMissRow[] = [...routerAcc.entries()]
+    .map(([agent, a]) => ({
+      agent,
+      fallbacks: a.fallbacks,
+      total: a.total,
+      missRatePct: a.total > 0 ? (a.fallbacks / a.total) * 100 : null,
+    }))
+    .sort((a, b) => b.fallbacks - a.fallbacks || a.agent.localeCompare(b.agent));
+  const msSorted = msValues.sort((x, y) => x - y);
+
+  const skillsAcc = new Map<string, number>();
+  for (const row of skillInvocations?.rows ?? []) {
+    skillsAcc.set(row.skill, (skillsAcc.get(row.skill) ?? 0) + 1);
+  }
+
+  return {
+    topDelivered,
+    underApplied,
+    missRateByAgent,
+    avgInjectionBytes: {
+      deliverySignals: bytesCount > 0 ? bytesSum / bytesCount : null,
+      routerLog: routerBytesCount > 0 ? routerBytesSum / routerBytesCount : null,
+    },
+    routerMs: { p50: percentileInterp(msSorted, 50), p90: percentileInterp(msSorted, 90), count: msSorted.length },
+    skills: [...skillsAcc.entries()]
+      .map(([skill, count]) => ({ skill, count }))
+      .sort((a, b) => b.count - a.count || a.skill.localeCompare(b.skill)),
   };
 }
 
@@ -1684,6 +1875,7 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
   const councils = await buildCouncils(allObjects, deps.relations, now, weeks);
   const coordination = buildCoordination(signals, events); // P2 D5
   const campaign = buildCampaignView(signals); // P3 D2
+  const delivery = buildDelivery(signals, input.routerLog, input.skillInvocations); // P110
   const coverage = buildCoverage(signals);
   // D6: unknown-model и pricing-coverage по дедуплицированным run-сигналам
   const runSignals = signals.filter((s) => s.event === 'run');
@@ -1724,6 +1916,7 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
     councils,
     coordination,
     campaign,
+    delivery,
     // acceptedByAgent (Map, не-JSON) остаётся внутренним — в отчёт идут публичные поля
     acceptance: {
       accepted: acceptance.accepted,
@@ -1758,6 +1951,7 @@ export interface AnalyticsViewFilter {
     | 'councils'
     | 'coordination'
     | 'campaign'
+    | 'delivery'
     | 'acceptance'
     | 'all';
   class?: 'new' | 'sleeper' | 'workhorse' | 'dead';
@@ -1787,6 +1981,7 @@ export type AnalyticsViewPayload =
   | { view: 'councils'; councils: CouncilsView }
   | { view: 'coordination'; coordination: CoordinationView }
   | { view: 'campaign'; campaign: CampaignView }
+  | { view: 'delivery'; delivery: DeliveryView }
   | { view: 'acceptance'; acceptance: AcceptanceView }
   | { view: 'all'; report: AnalyticsReport };
 
@@ -1837,6 +2032,12 @@ export function filterAnalytics(report: AnalyticsReport, filter: AnalyticsViewFi
       return { view: 'coordination', coordination: report.coordination };
     case 'campaign':
       return { view: 'campaign', campaign: report.campaign };
+    case 'delivery':
+      // P110: top-срез из фильтра, остальные блоки целиком (JSON-сериализуемые)
+      return {
+        view: 'delivery',
+        delivery: { ...report.delivery, topDelivered: report.delivery.topDelivered.slice(0, top) },
+      };
     case 'acceptance':
       // report.acceptance = AcceptanceStats & AcceptanceView — JSON несёт и D4-поля
       return { view: 'acceptance', acceptance: report.acceptance };
