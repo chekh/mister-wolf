@@ -4,6 +4,35 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.13.0] - 2026-09-30
+
+### Removed — the big diet
+
+- `wolf coord`, the whole `run`/model-routing/RCT experiment family, `memory-stage` (manual producer of an automatic event), council CLI, session-checkpoint, and the learn conveyor (digest/propose/validate/activate/decay/pattern-detection/evolve) — zero confirmed usage across all observed projects (owner decision 2026-09-29; lessons are written by executor-leads, aggregation moves to Steward in 2.14). ~5,600 lines removed.
+- Manual type namespaces (`decision add`, `thread create`, …) — replaced by generated commands; `create` is removed immediately (decision: no alias period): every `create_*` path answers with an actionable hint to use `add`.
+- Dead code: `prune()`, `artifact_sources`, run-log, orphaned stop-gate; playbook `wolf-review-lenses` (unreachable by router construction).
+- Config noise: the 570-line `memory_types.core` dump is gone — replaced by a `wolf_version` stamp; legacy configs with the dump still validate (drift check intact), and the config round-trip no longer silently drops pricing/learning/analytics sections.
+
+### Changed — taxonomy: 7 types + facets (owner-approved)
+
+- Data model: `rule`, `lesson`, `decision`, `thread`, `complaint`, `tool`, `note` (new universal type). 19 types collapsed into `note` + facet; `blocker`/`info_request`/`question` become `thread` statuses (`blocked`/`waiting_answer`/`open`).
+- Facets: closed vocabularies (first: character — howto/pitfall/context/metric/history/legacy/constraint), picked from a list on `add` — free-form input is rejected with a hint; ANSI facet colors in list/search/call (auto-off for non-TTY/agents, `WOLF_NO_COLOR`).
+- Alias reading: old frontmatter types and old directories read as their new equivalents (layout v2 type-prefiltering preserved).
+
+### Added
+
+- `wolf migrate taxonomy`: dry-run report (old type → type+facet map, counts, conflicts untouched, active call-injections listed) → confirm → `--apply` with git-clean guard and rollback (`git checkout .wolf/memory && wolf rebuild-index`); idempotent; id-set comparison before/after — zero losses on staging (dogfood 864 objects, Tender 509).
+- Honest CRUD: `wolf edit` (title/body with two-line diff audit), `wolf archive`, `wolf relation list --of / remove`.
+- State windows merged: `recap` / `brief` / `analytics --view` (effectiveness, dashboard, delivery as views); old names work as hidden synonyms with deprecation warnings.
+- CLI surface: help 81 → 30 visible commands (plumbing hidden); CLI reference generated from the registry (1,406 hand-written lines → 0); type command namespaces generated from the taxonomy (guard: all 7 types have add/list).
+- MCP diet: catalog reduced to 7 tools + ping; removed tools answer with migration hints.
+- `WOLF_SESSION` is inherited across spawns (session delivery dedup now works between spawns of one session — 2.12 tail).
+- Docs (EN+RU): new memory model page and "Upgrading to 2.13" migration guide; getting-started/cli/configuration/analytics/base-set updated; site gains a Changelog page synced from CHANGELOG.md at build time.
+
+### Upgrade notes
+
+- Run `wolf migrate taxonomy` after updating (dry-run first — it is safe and idempotent). Scripts calling `create_*` must switch to `add` (the error message tells you how).
+
 ## [2.12.0] - 2026-09-29
 
 ### Changed
