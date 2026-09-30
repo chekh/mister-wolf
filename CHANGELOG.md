@@ -4,7 +4,28 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
-## [2.13.0] - 2026-09-30
+## [2.14.0] - 2026-09-30
+
+### Fixed — data integrity (first complaint in the new loop)
+
+- `add` no longer silently overwrites a memory on id collision: a deterministic id that already exists fails with an actionable hint (`edit` / `supersede` / different title). Every overwriting save now writes a `memory.overwritten` audit event **before** the write (store-level safety net; fixes the same-title silent-loss defect reported through the new complaint loop).
+
+### Added — steward loop (owner-approved design)
+
+- Complaint classification `kind` (technical / behavioral, heuristic by `about`); recap shows "complaints without outcome"; behavioral complaints escalate to Steward for playbook mutation from the executor-lead frame.
+- `outcome` / `outcome_of` relation predicates: every resolved complaint links to what it produced (rule / lesson / rejection / deferral).
+- Steward-aggregator: detector of mature unaggregated lessons (3 lessons / 7 days per class), recap and call banners, `wolf aggregate apply` (hidden; transactional with completion-on-retry, idempotent): archives source lessons, creates the generalized one, links `aggregates`, emits `memory.aggregated`. "Redistribution, not layering" — the aggregate replaces sources in delivery; two-step confirmation through memory.
+- Class decay metric in `analytics --view steward`: new lessons/complaints of a class before vs after aggregation.
+- Coordinator and Steward frames carry the loop protocol (cycle-end trigger → call Steward; aggregation recipe with was/became/why).
+
+### Added — projects & hygiene
+
+- `wolf projects`: registry list with computed stats (version, activity, memory size) — the registry as a phone book for finding projects and statistics.
+- Doctor hygiene: automatic sandbox pruning, ghost detection (wolf markers without memory — and vice versa), registry self-healing.
+
+### Upgrade notes
+
+- One behavior change: `add` with a colliding deterministic id now fails (previously: silent overwrite). No migration needed; everything is additive.
 
 ### Removed — the big diet
 

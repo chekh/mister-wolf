@@ -2,7 +2,7 @@
 name: wolf-plan
 description: "Используй, когда есть спека или требования для многошаговой задачи — до касания кода. Пишет zero-context планы: каждая задача = самодостаточный бриф воркера, исполнитель не обязан знать кодовую базу."
 ---
-<!-- wolf:rendered base=SKILL.md set=2.12.0 -->
+<!-- wolf:rendered base=SKILL.md set=2.13.0 -->
 
 # wolf-plan: план для zero-context исполнителя
 

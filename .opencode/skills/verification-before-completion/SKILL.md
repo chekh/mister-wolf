@@ -2,7 +2,7 @@
 name: verification-before-completion
 description: Используй перед любым заявлением о завершённости, исправленности или прохождении тестов, перед коммитом или PR — требует запуска верификационных команд и подтверждения вывода до любых заявлений об успехе; доказательства раньше утверждений, всегда
 ---
-<!-- wolf:rendered base=SKILL.md set=2.12.0 -->
+<!-- wolf:rendered base=SKILL.md set=2.13.0 -->
 
 # Verification Before Completion
 

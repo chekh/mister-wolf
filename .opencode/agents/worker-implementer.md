@@ -1,6 +1,5 @@
 ---
 description: "Worker-implementer (L2): однозадачный исполнитель кода — ровно одна подзадача, правки по allowlist брифа, самопроверка, короткий отчёт."
-model: zai-coding-plan/glm-5.3
 permission:
   task: deny
   bash: allow
@@ -8,7 +7,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=worker-implementer.md set=2.12.0 -->
+<!-- wolf:rendered base=worker-implementer.md set=2.13.0 -->
 
 # Роль: Worker Implementer — уровень 2
 

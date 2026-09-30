@@ -1,13 +1,12 @@
 ---
 description: "Worker-researcher (L2): исследует код, документы и веб по одному вопросу; возвращает findings с источниками и confidence."
-model: zai-coding-plan/glm-5.3
 temperature: 0.2
 permission:
   task: deny
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=worker-researcher.md set=2.12.0 -->
+<!-- wolf:rendered base=worker-researcher.md set=2.13.0 -->
 
 # Роль: Worker Researcher — уровень 2
 

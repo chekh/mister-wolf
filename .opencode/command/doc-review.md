@@ -2,7 +2,7 @@
 description: Мульти-линзовое ревью документа по скиллу wolf-review (оркестрация линз mr-wolf'ом). Использование: /doc-review <путь-к-файлу>
 agent: mr-wolf
 ---
-<!-- wolf:rendered base=doc-review.md set=2.12.0 -->
+<!-- wolf:rendered base=doc-review.md set=2.13.0 -->
 Проведи doc-review документа: $ARGUMENTS
 
 Ты — оркестратор цикла; протокол — скилл wolf-review, правила цикла (MIN-3):

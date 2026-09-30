@@ -1,12 +1,11 @@
 ---
 description: "Worker-reviewer (L2): ревьюит код/документы воркеров против требований брифа, вердикт по контракту VERDICT/SUMMARY."
-model: zai-coding-plan/glm-5.3
 permission:
   task: deny
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=worker-reviewer.md set=2.12.0 -->
+<!-- wolf:rendered base=worker-reviewer.md set=2.13.0 -->
 
 # Роль: Worker Reviewer — уровень 2
 

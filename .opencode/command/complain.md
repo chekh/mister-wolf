@@ -2,7 +2,7 @@
 description: Жалоба владельца в контур мутаций памяти (объект complaint → триаж → Стюард). Использование: /complain <текст жалобы>
 agent: mr-wolf
 ---
-<!-- wolf:rendered base=complain.md set=2.12.0 -->
+<!-- wolf:rendered base=complain.md set=2.13.0 -->
 Прими жалобу: $ARGUMENTS
 
 Протокол (жалобный контур v2):
