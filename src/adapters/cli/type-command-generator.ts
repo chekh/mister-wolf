@@ -52,7 +52,10 @@ function addFieldOption(cmd: Command, name: string, spec: FieldSpec): void {
     return;
   }
   if (spec.kind === 'enum') {
-    cmd.addOption(new Option(flag, name).choices([...spec.values]).makeOptionMandatory());
+    // optional-enum (2.14 §6.1, complaint.kind) — choices без обязательности
+    const opt = new Option(flag, name).choices([...spec.values]);
+    if (!spec.optional) opt.makeOptionMandatory();
+    cmd.addOption(opt);
     return;
   }
   // int-поля — счётчики (complaint.dispatch_ages и пр.): флага нет, значение — через --set;

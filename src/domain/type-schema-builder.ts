@@ -36,7 +36,9 @@ export function fieldToZod(spec: FieldSpec): z.ZodTypeAny {
     if (s.required) return z.array(z.string()).min(s.minItems ?? 0);
     return z.array(z.string()).default((s.default as string[]) ?? []);
   }
-  return z.enum(s.values as [string, ...string[]]);
+  // enum: optional (2.14 §6.1, complaint.kind) — отсутствует у старых объектов
+  const enumSchema = z.enum(s.values as [string, ...string[]]);
+  return s.optional ? enumSchema.optional() : enumSchema;
 }
 
 /**
