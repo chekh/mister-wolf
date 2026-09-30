@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { rmSync, readFileSync } from 'fs';
+import { rmSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { ensureBuilt, runCli, tmpProject } from './helpers.js';
 
@@ -95,5 +95,109 @@ describe('wolf complain (complaint-v2)', () => {
     expect(got.stdout).toContain('"dispatch_ages": 1');
     expect(got.stdout).toContain('"stalled"');
     expect(got.stdout).toContain('"rule": "r"');
+  });
+
+  // Волна 2.14 §6.1/§11.2 (критерий 1): kind по эвристике, флаг переопределяет,
+  // старая жалоба без kind рендерится с «—».
+  it('kind: эвристика по about → behavioral; --kind technical переопределяет', () => {
+    const r = runCli(
+      ['complain', '--about', 'executor-lead', '--rule', 'r', '--evidence', 'e', '--proposal', 'p'],
+      cwd
+    );
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain('Complaint kind: behavioral');
+    const id = r.stdout.trim().split('\n')[0].split(': ')[1];
+    const got = runCli(['get', id], cwd);
+    expect(got.status).toBe(0);
+    expect(got.stdout).toContain('"kind": "behavioral"');
+
+    // флаг переопределяет эвристику (владелец/лид всегда прав)
+    const t = runCli(
+      [
+        'complain',
+        '--about',
+        'executor-lead',
+        '--kind',
+        'technical',
+        '--rule',
+        'r',
+        '--evidence',
+        'e',
+        '--proposal',
+        'p',
+      ],
+      cwd
+    );
+    expect(t.status).toBe(0);
+    expect(t.stdout).toContain('Complaint kind: technical');
+    const tId = t.stdout.trim().split('\n')[0].split(': ')[1];
+    expect(runCli(['get', tId], cwd).stdout).toContain('"kind": "technical"');
+
+    // мусорный kind — читаемая ошибка
+    const bad = runCli(
+      [
+        'complain',
+        '--about',
+        'executor-lead',
+        '--kind',
+        'spiritual',
+        '--rule',
+        'r',
+        '--evidence',
+        'e',
+        '--proposal',
+        'p',
+      ],
+      cwd
+    );
+    expect(bad.status).not.toBe(0);
+    expect(bad.stderr).toContain('Invalid --kind');
+  });
+
+  it('kind: старая жалоба без kind (фикстура до-2.14) → list-рендер «—»', () => {
+    const complaintsDir = join(cwd, '.wolf', 'memory', 'shared', 'complaints');
+    mkdirSync(complaintsDir, { recursive: true });
+    writeFileSync(
+      join(complaintsDir, 'mem_legacy_complaint.md'),
+      [
+        '---',
+        'id: mem_legacy_complaint',
+        'type: complaint',
+        'title: Legacy complaint without kind',
+        'status: open',
+        'review_state: accepted',
+        'confidence: medium',
+        'importance: 0.5',
+        `created_at: '2026-01-01T00:00:00.000Z'`,
+        `updated_at: '2026-01-01T00:00:00.000Z'`,
+        'created_by: user:test',
+        'schema_version: 1',
+        'source:',
+        '  kind: manual',
+        'related:',
+        '  files: []',
+        '  docs: []',
+        '  decisions: []',
+        'tags: []',
+        'superseded_by: null',
+        'memory_class: working',
+        'truth_role: accepted_knowledge',
+        'lifetime: long_term',
+        'about: worker-researcher',
+        'rule: r',
+        'evidence: e',
+        'proposal: p',
+        '---',
+        '',
+        'Created before kind existed.',
+        '',
+      ].join('\n')
+    );
+
+    const list = runCli(['list', '--type', 'complaint'], cwd);
+    expect(list.status).toBe(0);
+    expect(list.stdout).toContain('mem_legacy_complaint [complaint] [open] Legacy complaint without kind (kind: —)');
+    // новые жалобы рендерятся со своим kind
+    expect(list.stdout).toMatch(/\[complaint\] \[open\] .+ \(kind: behavioral\)/);
   });
 });

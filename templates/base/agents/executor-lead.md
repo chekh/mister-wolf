@@ -70,6 +70,11 @@ Used / Validation Results).
 - Исход — обязательная пара: `wolf transition <id> <status>` +
   `wolf update <id> --set resolution="…"`; переход без resolution —
   нарушение контракта.
+- Поведенческая жалоба (kind=behavioral) после resolved с исходом
+  «закреплено» — ветвь steward-mutation: вложенный вызов Стюарда
+  (`opencode run --agent steward`, вход = id жалобы + id артефакта).
+  Технические — существующим порядком (dispatch_ages/SLA). Автоспавна
+  нет — вызов делает диспетчер.
 - Жалобы с about уровня ≥ своего (executor-lead / mr-wolf / steward) —
   статус и поля НЕ трогать (включая dispatch_ages) → строка
   `ESCALATION: <id> — жалоба на диспетчера` в отчёте.

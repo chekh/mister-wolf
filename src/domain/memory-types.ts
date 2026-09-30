@@ -33,7 +33,7 @@ export type FieldSpec =
   | { kind: 'string[]'; default?: readonly string[] }
   | { kind: 'boolean'; optional: true }
   | { kind: 'int'; default?: number }
-  | { kind: 'enum'; values: readonly string[] };
+  | { kind: 'enum'; values: readonly string[]; optional?: true };
 
 export interface MemoryTypeDeclaration {
   name: MemoryType;
@@ -144,6 +144,9 @@ const CORE_TAXONOMY_DECLS = [
       rule: { kind: 'string', required: true, min: 1 },
       evidence: { kind: 'string', required: true, min: 1 },
       proposal: { kind: 'string', required: true, min: 1 },
+      // Волна 2.14 §6.1: классификация жалобы; опционально — старые жалобы
+      // читаются без kind (list-рендер показывает «—»)
+      kind: { kind: 'enum', values: ['technical', 'behavioral'], optional: true },
       triage: { kind: 'string', optional: true },
       resolution: { kind: 'string', optional: true },
       dispatch_ages: { kind: 'int', default: 0 },

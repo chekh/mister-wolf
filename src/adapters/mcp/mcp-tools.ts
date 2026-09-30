@@ -397,7 +397,8 @@ export function registerMemoryTools(
       inputSchema: EmptyInputSchema,
     },
     async () => {
-      const report = await generateRecap({ store: deps.store });
+      // 2.14 §6.3: relations → счётчик «жалоб без исхода» в recap
+      const report = await generateRecap({ store: deps.store, relations: deps.relations });
       return { content: [{ type: 'text' as const, text: renderRecap(report) }] };
     }
   );

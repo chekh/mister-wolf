@@ -22,6 +22,19 @@ const BASE_AGENT_IDS = [
   'worker-reviewer',
 ] as const;
 
+// Волна 2.14 §6.1: классификация жалоб technical/behavioral; дефолт —
+// эвристика по about, флаг --kind переопределяет (владелец/лид всегда прав).
+const COMPLAINT_KINDS = ['technical', 'behavioral'] as const;
+export type ComplaintKind = (typeof COMPLAINT_KINDS)[number];
+
+/** Дефолт-эвристика kind (спека §6.1): about = агент/скилл → behavioral;
+ * mem-id → technical; прочее — без kind (явный только через --kind). */
+export function inferComplaintKind(about: string): ComplaintKind | undefined {
+  if ((BASE_AGENT_IDS as readonly string[]).includes(about) || about.startsWith('skill:')) return 'behavioral';
+  if (about.startsWith('mem_')) return 'technical';
+  return undefined;
+}
+
 // baseDir инъектится для тестов (прецедент: runValidate в memory-validate.ts);
 // при обычной регистрации в cli-entry cwd идёт через safeCwd (§2.5).
 export function memoryComplainCommand(baseDir: string = safeCwd()): Command {
@@ -32,12 +45,18 @@ export function memoryComplainCommand(baseDir: string = safeCwd()): Command {
     .option('--evidence <evidence>', 'Proof: verbatim quote + what happened (file/test/numbers)')
     .option('--text <text>', 'Deprecated alias for --evidence')
     .requiredOption('--proposal <proposal>', 'Proposed change to the rule')
+    .option('--kind <kind>', 'Complaint kind: technical | behavioral (default: heuristic by --about)')
     .option('--created-by <actor>', 'Creator actor (default: env WOLF_ACTOR, else user:cli)')
     .action(async (options) => {
       const evidence = options.evidence ?? options.text;
       if (!evidence) {
         throw new UserFacingError('--evidence is required (deprecated alias: --text)');
       }
+      if (options.kind !== undefined && !(COMPLAINT_KINDS as readonly string[]).includes(options.kind)) {
+        throw new UserFacingError(`Invalid --kind "${options.kind}": expected technical or behavioral`);
+      }
+      const kind: ComplaintKind | undefined =
+        (options.kind as ComplaintKind | undefined) ?? inferComplaintKind(options.about);
       const { store, log, clock, idGen, index, relations, lock, declarations } = createCliContainer(baseDir);
       const aboutKnown =
         (BASE_AGENT_IDS as readonly string[]).includes(options.about) ||
@@ -63,6 +82,7 @@ export function memoryComplainCommand(baseDir: string = safeCwd()): Command {
             rule: options.rule,
             evidence,
             proposal: options.proposal,
+            ...(kind !== undefined ? { kind } : {}),
           },
         }
       );
@@ -76,7 +96,9 @@ export function memoryComplainCommand(baseDir: string = safeCwd()): Command {
         actor: resolveCreatedBy(options.createdBy),
         objectId: id,
       });
+      // kind — отдельной строкой: существующие парсеры id читают split(': ')[1]
       console.log(`Complaint recorded: ${id}`);
+      console.log(`Complaint kind: ${kind ?? '—'}`);
       console.log(`Relation recorded: ${id} -complain-> ${options.about}`);
     });
 }

@@ -44,7 +44,9 @@ export async function runListAction(options: ListActionOptions): Promise<void> {
   for (const obj of objects) {
     const facet = typeof obj.facet === 'string' ? obj.facet : undefined;
     const facetPart = facet ? ` [${highlightFacet(facet, colored)}]` : '';
-    console.log(`${obj.id} [${obj.type}]${facetPart} [${obj.status}] ${obj.title}`);
+    // 2.14 §6.1: kind в строке жалобы; старые жалобы без kind — «—»
+    const kindPart = obj.type === 'complaint' ? ` (kind: ${(obj as { kind?: string }).kind ?? '—'})` : '';
+    console.log(`${obj.id} [${obj.type}]${facetPart} [${obj.status}] ${obj.title}${kindPart}`);
   }
 }
 

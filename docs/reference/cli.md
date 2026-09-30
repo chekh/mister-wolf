@@ -495,6 +495,7 @@ Options:
   --rule <rule>              rule (required)
   --evidence <evidence>      evidence (required)
   --proposal <proposal>      proposal (required)
+  --kind <kind>              kind (choices: "technical", "behavioral")
   --triage <triage>          triage
   --resolution <resolution>  resolution
   -h, --help                 display help for command
@@ -719,6 +720,8 @@ Options:
                          (file/test/numbers)
   --text <text>          Deprecated alias for --evidence
   --proposal <proposal>  Proposed change to the rule
+  --kind <kind>          Complaint kind: technical | behavioral (default:
+                         heuristic by --about)
   --created-by <actor>   Creator actor (default: env WOLF_ACTOR, else user:cli)
   -h, --help             display help for command
 ```

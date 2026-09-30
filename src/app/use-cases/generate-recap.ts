@@ -1,4 +1,5 @@
 import { MemoryStore } from '../../ports/memory-store.port.js';
+import { RelationLog } from '../../ports/relation-log.port.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import type { RouterLogRow } from '../../domain/router-log.js';
 import { BOOTSTRAP_THREAD_TITLE } from './bootstrap-project.js';
@@ -27,6 +28,8 @@ export interface RecapReport {
   recentDecisions: MemoryObject[]; // top 5 по updated_at (убывание)
   onboarding: OnboardingSignal | null;
   delivery: RecapDelivery | null;
+  /** 2.14 §6.3: resolved-жалобы без ребра исхода; null = relations не передан (секция опускается). */
+  complaintsWithoutOutcome: number | null;
 }
 
 /**
@@ -73,9 +76,29 @@ function buildDeliveryStats(rows: RouterLogRow[] | undefined, nowMs: number): Re
   };
 }
 
+/**
+ * 2.14 §6.3: счётчик «жалоб без исхода» — resolved-объекты типа complaint,
+ * у которых нет ребра исхода. Множество «имеющих исход» собирается по ОБЕИМ
+ * сторонам пары: outcome → subject, outcome_of → object (одно чтение лога,
+ * без индексов; removed-строки уже отфильтрованы адаптером).
+ */
+async function countComplaintsWithoutOutcome(
+  relations: RelationLog | undefined,
+  all: MemoryObject[]
+): Promise<number | null> {
+  if (relations === undefined) return null;
+  const withOutcome = new Set<string>();
+  for (const r of await relations.list()) {
+    if (r.predicate === 'outcome') withOutcome.add(r.subject);
+    else if (r.predicate === 'outcome_of') withOutcome.add(r.object);
+  }
+  return all.filter((o) => o.type === 'complaint' && o.status === 'resolved' && !withOutcome.has(o.id)).length;
+}
+
 export async function generateRecap(deps: {
   store: MemoryStore;
   routerLogRows?: RouterLogRow[];
+  relations?: RelationLog;
 }): Promise<RecapReport> {
   // ponytail: store.list() — полный reparse всех md (V6); ровно один вызов на отчёт (D1)
   const all = await deps.store.list();
@@ -112,6 +135,7 @@ export async function generateRecap(deps: {
       .slice(0, 5),
     onboarding: detectOnboarding(all),
     delivery: buildDeliveryStats(deps.routerLogRows, Date.now()),
+    complaintsWithoutOutcome: await countComplaintsWithoutOutcome(deps.relations, all),
   };
 }
 
@@ -165,6 +189,10 @@ export function renderRecap(report: RecapReport): string {
   section(lines, 'Open blockers', report.openBlockers.map(fmtObj));
   section(lines, 'Open questions', report.openQuestions.map(fmtObj));
   section(lines, 'Open info requests', report.openInfoRequests.map(fmtObj));
+  // 2.14 §6.3: контур поправок — после Open info requests, до Recent decisions
+  if (report.complaintsWithoutOutcome !== null) {
+    section(lines, 'Контур поправок', [`жалоб без исхода: ${report.complaintsWithoutOutcome}`]);
+  }
   section(lines, 'Recent decisions', report.recentDecisions.map(fmtObj));
 
   return lines.join('\n');
