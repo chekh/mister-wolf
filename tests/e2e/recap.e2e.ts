@@ -101,4 +101,30 @@ describe('recap golden scenarios', () => {
     expect(recap.stdout).toContain('## Delivery (7d)');
     expect(recap.stdout).toContain('доставок 2, промахов 1');
   });
+
+  // 2.14 §6.3: счётчик «жалоб без исхода» в секции Контур поправок
+  it('recap counts resolved complaints without outcome edge', () => {
+    const dir = tmpProject();
+    dirs.push(dir);
+    runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
+
+    const complaint = runCli(
+      ['complain', '--about', 'executor-lead', '--rule', 'r', '--evidence', 'e', '--proposal', 'p'],
+      dir
+    );
+    expect(complaint.status).toBe(0);
+    const id = complaint.stdout.match(/Complaint recorded: (\S+)/)?.[1]!;
+    expect(runCli(['transition', id, 'resolved'], dir).status).toBe(0);
+
+    const recap1 = runCli(['recap'], dir);
+    expect(recap1.status).toBe(0);
+    expect(recap1.stdout).toContain('## Контур поправок');
+    expect(recap1.stdout).toContain('жалоб без исхода: 1');
+
+    expect(runCli(['relation', 'add', id, 'outcome', 'rejected'], dir).status).toBe(0);
+
+    const recap2 = runCli(['recap'], dir);
+    expect(recap2.status).toBe(0);
+    expect(recap2.stdout).toContain('жалоб без исхода: 0');
+  });
 });

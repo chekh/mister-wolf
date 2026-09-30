@@ -21,6 +21,10 @@ export const RELATION_PREDICATES = [
   'skill_of',
   'complain',
   'complained_by',
+  // 2.14 §6.2: исход жалобы (пара, прецедент complain/complained_by);
+  // object — свободная строка (литералы rejected/deferred или mem-id артефакта)
+  'outcome',
+  'outcome_of',
 ] as const;
 
 export const RelationSchema = z.object({

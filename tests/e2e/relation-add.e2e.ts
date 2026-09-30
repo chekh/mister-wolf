@@ -52,4 +52,26 @@ describe('relation add via CLI', () => {
     const r = runCli(['relation', 'add', 'mem_a', 'loves', 'mem_b'], dir);
     expect(r.status).not.toBe(0);
   });
+
+  // 2.14 §6.2: пара outcome/outcome_of — обе стороны видны от жалобы
+  it('records outcome_of pair with forward and inverse rows', () => {
+    const dir = newProject();
+    const rule = runCli(['add', '--type', 'rule', '--title', 'R', '--body', 'b', '--scope', 'project'], dir);
+    expect(rule.status).toBe(0);
+    const ruleId = rule.stdout.match(/Created memory object: (\S+)/)?.[1]!;
+    const complaint = runCli(
+      ['complain', '--about', 'executor-lead', '--rule', 'r', '--evidence', 'e', '--proposal', 'p'],
+      dir
+    );
+    expect(complaint.status).toBe(0);
+    const complaintId = complaint.stdout.match(/Complaint recorded: (\S+)/)?.[1]!;
+
+    const rel = runCli(['relation', 'add', ruleId, 'outcome_of', complaintId], dir);
+    expect(rel.status).toBe(0);
+
+    const list = runCli(['relation', 'list', '--of', complaintId], dir);
+    expect(list.status).toBe(0);
+    expect(list.stdout).toContain('-outcome_of->');
+    expect(list.stdout).toContain('-outcome->');
+  });
 });
