@@ -16,5 +16,15 @@ const changelog = readFileSync(source, 'utf8').replace(/\n+$/, '\n').replaceAll(
 mkdirSync(dirname(target), { recursive: true });
 writeFileSync(target, `---\ntitle: Changelog\n---\n\n${changelog}`);
 
+// RU-зеркало: та же история версий (синхронно при каждой сборке), русская шапка.
+// Тело остаётся на английском — как в npm/GitHub Releases; ручной перевод
+// рассинхронизируется, машинальная копия — нет.
+const ruTarget = join(repoRoot, 'docs/site/ru/changelog/index.md');
+mkdirSync(dirname(ruTarget), { recursive: true });
+writeFileSync(
+  ruTarget,
+  `---\ntitle: История версий\n---\n\nИстория версий синхронизируется автоматически из [CHANGELOG.md](https://github.com/chekh/mister-wolf/blob/main/CHANGELOG.md) при каждой сборке сайта. Описания изменений приведены на английском — в том же виде, что в npm и GitHub Releases.\n\n${changelog}`
+);
+
 const { size } = statSync(target);
-console.log(`sync-changelog: ${target} (${size} bytes)`);
+console.log(`sync-changelog: ${target} (${size} bytes) + ru mirror`);

@@ -1,6 +1,8 @@
 ---
-title: Changelog
+title: История версий
 ---
+
+История версий синхронизируется автоматически из [CHANGELOG.md](https://github.com/chekh/mister-wolf/blob/main/CHANGELOG.md) при каждой сборке сайта. Описания изменений приведены на английском — в том же виде, что в npm и GitHub Releases.
 
 # Changelog
 

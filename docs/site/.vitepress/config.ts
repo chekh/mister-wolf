@@ -171,7 +171,7 @@ export default defineConfig({
           },
           {
             text: 'CHANGELOG',
-            items: [{ text: 'Changelog', link: '/changelog/' }],
+            items: [{ text: 'История версий', link: '/ru/changelog/' }],
           },
         ],
         socialLinks: [{ icon: 'github', link: 'https://github.com/chekh/mister-wolf' }],
