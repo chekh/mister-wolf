@@ -24,9 +24,11 @@ function loadDeclarations(baseDir: string): readonly MemoryTypeDeclaration[] {
 
 export function createCliContainer(baseDir: string) {
   const fs = new FsFileSystem();
+  // P300/2.14 §5.2: log создаётся раньше store (точка ребейза для P331)
+  const log = new JsonlEventLog(eventsPath(baseDir));
   return {
-    store: new MarkdownMemoryStore(baseDir),
-    log: new JsonlEventLog(eventsPath(baseDir)),
+    store: new MarkdownMemoryStore(baseDir, undefined, log),
+    log,
     index: new SQLiteSearchIndex(indexPath(baseDir)),
     relations: new JsonlRelationLog(relationsPath(baseDir)),
     clock: new SystemClock(),
