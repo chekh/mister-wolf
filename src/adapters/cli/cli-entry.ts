@@ -335,6 +335,14 @@ export const COMMANDS: CommandSpec[] = [
     usage: '',
     load: () => import('./commands/memory-doctor.js').then((m) => m.memoryDoctorCommand()),
   },
+  {
+    // Волна 2.14 §8.1 (P330): реестр-«телефонная книга» — просмотр; C-поток
+    // регистрирует aggregate выше — ребейз механический (точка 4 §1 плана)
+    name: 'projects',
+    description: 'List registered projects: activity and memory size',
+    usage: '',
+    load: () => import('./commands/projects.js').then((m) => m.projectsCommand()),
+  },
 ];
 
 export function createCli(): Command {

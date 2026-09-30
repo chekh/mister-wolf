@@ -1,11 +1,44 @@
 import { Command } from 'commander';
-import { join } from 'path';
-import { existsSync } from 'fs';
+import { join, sep } from 'path';
+import { existsSync, realpathSync } from 'fs';
+import { readFile } from 'fs/promises';
+import { tmpdir } from 'os';
 import { runDoctor } from '../../../app/use-cases/doctor.js';
 import { ProjectsRegistry } from '../../../adapters/fs/projects-registry.js';
 import { wolfUserConfigDir } from '../../../adapters/fs/user-config.js';
 import { readSchemaVersion } from '../../../adapters/fs/schema-version.js';
 import { PLATFORM_ADAPTERS } from '../../../adapters/platforms/index.js';
+import { safeCwd } from '../cli-entry.js';
+
+/**
+ * Песочницы (спека 2.14 §8.2): записи под os.tmpdir() чистим с пометкой sandbox.
+ * macOS-нюанс: os.tmpdir() возвращает `/var/folders/…`, а пути в реестре часто
+ * `/private/var/folders/…` (realpath) — сравниваем с обоими написаними + `/tmp`
+ * (и его realpath) для явных tmp-песочниц.
+ */
+function isSandboxPath(p: string): boolean {
+  const roots = new Set<string>();
+  for (const r of [tmpdir(), '/tmp']) {
+    roots.add(r);
+    try {
+      roots.add(realpathSync(r));
+    } catch {
+      // корня нет — пропускаем
+    }
+  }
+  for (const r of roots) {
+    if (p === r || p.startsWith(r + sep)) return true;
+  }
+  return false;
+}
+
+async function readFileOrNull(p: string): Promise<string | null> {
+  try {
+    return await readFile(p, 'utf-8');
+  } catch {
+    return null;
+  }
+}
 
 export function memoryDoctorCommand(): Command {
   return new Command('doctor')
@@ -17,6 +50,9 @@ export function memoryDoctorCommand(): Command {
         readSchema: (p) => readSchemaVersion(p),
         exists: async (p) => existsSync(p),
         adapters: PLATFORM_ADAPTERS,
+        cwd: safeCwd(),
+        isSandbox: isSandboxPath,
+        readFile: readFileOrNull,
       });
 
       console.log(`# wolf doctor — binary schema v${report.binarySchemaVersion}`);
@@ -27,6 +63,10 @@ export function memoryDoctorCommand(): Command {
         return;
       }
       for (const e of report.entries) {
+        if (e.status === 'sandbox') {
+          console.log(`- ${e.path}: sandbox — pruned (os tmpdir)`);
+          continue;
+        }
         const schema = e.schemaVersion === null ? '-' : `v${e.schemaVersion}`;
         let hint = '';
         if (e.status === 'outdated-binary') hint = ' — update wolf: npm install -g mister-wolf';

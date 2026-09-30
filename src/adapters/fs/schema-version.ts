@@ -1,4 +1,5 @@
 import * as fs from 'fs/promises';
+import { readFileSync } from 'fs';
 import yaml from 'js-yaml';
 import { configPath } from './project-paths.js';
 import { writeFileAtomic } from './markdown-memory-store.js';
@@ -27,6 +28,21 @@ export async function readSchemaVersion(baseDir: string): Promise<number | null>
   } catch {
     return null;
   }
+  return schemaFromConfig(raw);
+}
+
+/** Sync-вариант для самолечения реестра (контейнер CLI синхронен, P331/2.14). */
+export function readSchemaVersionSync(baseDir: string): number | null {
+  let raw: string;
+  try {
+    raw = readFileSync(configPath(baseDir), 'utf-8');
+  } catch {
+    return null;
+  }
+  return schemaFromConfig(raw);
+}
+
+function schemaFromConfig(raw: string): number | null {
   const doc = parseConfig(raw);
   return typeof doc.schema_version === 'number' ? doc.schema_version : LEGACY_SCHEMA_VERSION;
 }
