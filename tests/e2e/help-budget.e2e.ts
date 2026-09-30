@@ -3,11 +3,12 @@ import { rmSync } from 'fs';
 import { ensureBuilt, runCli, tmpProject } from './helpers.js';
 
 /**
- * P224 (спека 2.13 §6.6/§10.2): `wolf --help` ≤ 30 строк; plumbing скрыт
- * из help, но работает. Бюджет: 23 видимые команды + 7 строк шапки, каждая
- * команда — ровно одна строка (описания стабов ≤ 52 симв., колонка 80−2−24−2).
+ * P224 (спека 2.13 §6.6/§10.2): `wolf --help` ≤ 31 строки (2.14 §8.1: +1 видимая
+ * `projects`); plumbing скрыт из help, но работает. Бюджет: 24 видимые команды
+ * + 7 строк шапки, каждая команда — ровно одна строка (описания стабов ≤ 52
+ * симв., колонка 80−2−24−2).
  */
-describe('help budget: wolf --help <= 30 lines, plumbing hidden but alive (P224)', () => {
+describe('help budget: wolf --help <= 31 lines, plumbing hidden but alive (P224)', () => {
   const dirs: string[] = [];
 
   beforeAll(() => {
@@ -26,12 +27,12 @@ describe('help budget: wolf --help <= 30 lines, plumbing hidden but alive (P224)
     return dir;
   }
 
-  it('--help fits the 30-line budget', () => {
+  it('--help fits the 31-line budget (2.14: +visible projects)', () => {
     const dir = newProject();
     const help = runCli(['--help'], dir);
     expect(help.status).toBe(0);
     const lines = help.stdout.replace(/\n+$/, '').split('\n');
-    expect(lines.length).toBeLessThanOrEqual(30);
+    expect(lines.length).toBeLessThanOrEqual(31);
   });
 
   it('hidden plumbing works: think --help answers, scan runs, session wrap-up --help answers', () => {
@@ -104,6 +105,7 @@ describe('help budget: wolf --help <= 30 lines, plumbing hidden but alive (P224)
       'complain',
       'upgrade',
       'doctor',
+      'projects',
     ]) {
       expect(startsWith(visible), `expected ${visible} to be visible`).toBe(true);
     }

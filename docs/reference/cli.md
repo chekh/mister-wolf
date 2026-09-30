@@ -781,6 +781,17 @@ Options:
   -h, --help  display help for command
 ```
 
+### wolf projects
+
+```text
+Usage: wolf projects [options]
+
+List registered projects: activity and memory size
+
+Options:
+  -h, --help  display help for command
+```
+
 ## Скрытые команды (plumbing)
 
 Скрыты из `wolf --help` (бюджет ≤ 30 строк, спека 2.13 §6.6), но работают как обычные команды.
