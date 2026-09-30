@@ -115,6 +115,8 @@ function fixtureReport(): AnalyticsReport {
       recidivismCount: 0,
       churnIds: [],
       autoMutationSharePct: null,
+      // 2.14 §7.4: затухание класса агрегатов (пусто — секция не печатается)
+      aggregationDecay: [],
     },
     readiness: { totalRuns: 0, withArm: 0, withArmPct: null, byArm: [], byExperiment: [] },
     acceptance: {

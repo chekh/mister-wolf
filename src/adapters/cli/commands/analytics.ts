@@ -217,6 +217,23 @@ export function renderSection(report: AnalyticsReport, filter: SectionViewFilter
           payload.steward.churnIds.length
         )} | autoShare: ${autoShare}`
       );
+      // 2.14 §7.4: затухание класса агрегатов (метрика Т5); сноска об эвристике
+      // класса обязательна (решение ревью спеки Р3 — ограничение честно отражено)
+      if (payload.steward.aggregationDecay.length > 0) {
+        lines.push(
+          'aggregation decay (7d before / after):',
+          renderTable(
+            ['aggregate', 'src', 'lessons -/+7d', 'complaints -/+7d'],
+            payload.steward.aggregationDecay.map((a) => [
+              a.aggregateId,
+              cell(a.sources),
+              `${a.lessonsBefore} / ${a.lessonsAfter}`,
+              `${a.complaintsBefore} / ${a.complaintsAfter}`,
+            ])
+          ),
+          'note: class = free-tag heuristic (>=1 shared tag); upgrade path — pattern_key'
+        );
+      }
       return lines.join('\n');
     }
     case 'outliers': {

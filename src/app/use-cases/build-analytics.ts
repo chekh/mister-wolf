@@ -9,6 +9,7 @@ import type { RelationLog } from '../../ports/relation-log.port.js';
 import type { Clock } from '../../ports/clock.port.js';
 import type { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import type { MemoryEvent } from '../../domain/schemas/memory-event-schema.js';
+import type { Relation } from '../../domain/schemas/relation-schema.js';
 import {
   DEFAULT_PATTERN_THRESHOLD,
   mergeRunEntries,
@@ -383,6 +384,15 @@ export interface StewardView {
   recidivismCount: number;
   churnIds: string[];
   autoMutationSharePct: number | null;
+  /** 2.14 §7.4: затухание класса на каждый active-агрегат (метрика Т5). */
+  aggregationDecay: {
+    aggregateId: string;
+    sources: number;
+    lessonsBefore: number;
+    lessonsAfter: number;
+    complaintsBefore: number;
+    complaintsAfter: number;
+  }[];
 }
 
 export interface ExperimentReadiness {
@@ -1548,14 +1558,90 @@ function mutationKindOf(ev: MemoryEvent): string | null {
 
 const MUTATION_KINDS = ['update', 'supersede', 'resolve', 'transition', 'tool-mutation'] as const;
 
+/** Окно «до/после» метрики затухания класса (§7.4) — 7 дней. */
+const DECAY_WINDOW_MS = 7 * 86_400_000;
+
+/**
+ * 2.14 §7.4 (метрика Т5): затухание класса на каждый применённый агрегат.
+ * Агрегат = active-урок с событием memory.aggregated (payload.aggregate_id === id);
+ * anchor — timestamp ПЕРВОГО такого события (dose-completion-повтор окно не
+ * сдвигает). Класс = множество тегов агрегата ∪ тегов исходников по рёбрам
+ * aggregates (класс = множество тегов — решение ревью спеки Р3; свободные теги —
+ * эвристика «≥1 общий тег», апгрейд — pattern_key). «Запись того же класса» =
+ * memory.added с payload.type lesson/complaint, непустым пересечением payload.tags
+ * с классом и memory_id ≠ агрегата (собственное добавление агрегата — сам акт
+ * агрегации). До/после — счётчики в окнах (anchor−7д, anchor] и (anchor, anchor+7д]:
+ * затухание меряется в фиксированном окне, «после» на свежем агрегате честно пустое.
+ */
+function buildAggregationDecay(
+  events: MemoryEvent[],
+  objects: MemoryObject[],
+  aggregationEdges: Relation[]
+): StewardView['aggregationDecay'] {
+  // anchor каждого агрегата = минимальный timestamp его memory.aggregated
+  const anchorById = new Map<string, string>();
+  for (const ev of events) {
+    if (ev.type !== 'memory.aggregated') continue;
+    const id = (ev.payload as Record<string, unknown> | undefined)?.aggregate_id;
+    if (typeof id !== 'string') continue;
+    const cur = anchorById.get(id);
+    if (cur === undefined || ev.timestamp < cur) anchorById.set(id, ev.timestamp);
+  }
+  if (anchorById.size === 0) return [];
+
+  const byId = new Map(objects.map((o) => [o.id, o]));
+  const sourceIdsByAgg = new Map<string, Set<string>>();
+  for (const r of aggregationEdges) {
+    const set = sourceIdsByAgg.get(r.subject) ?? new Set<string>();
+    set.add(r.object);
+    sourceIdsByAgg.set(r.subject, set);
+  }
+
+  const out: StewardView['aggregationDecay'] = [];
+  for (const [aggregateId, anchorTs] of anchorById) {
+    const agg = byId.get(aggregateId);
+    // только применённые агрегаты: proposed/rejected не доказали затухание
+    if (agg === undefined || agg.type !== 'lesson' || agg.status !== 'active') continue;
+    const sourceIds = sourceIdsByAgg.get(aggregateId) ?? new Set<string>();
+    const classTags = new Set<string>([...agg.tags, ...[...sourceIds].flatMap((id) => byId.get(id)?.tags ?? [])]);
+    const anchor = Date.parse(anchorTs);
+    let lessonsBefore = 0;
+    let lessonsAfter = 0;
+    let complaintsBefore = 0;
+    let complaintsAfter = 0;
+    for (const ev of events) {
+      if (ev.type !== 'memory.added') continue;
+      const payload = ev.payload as Record<string, unknown> | undefined;
+      if (payload?.type !== 'lesson' && payload?.type !== 'complaint') continue;
+      if (payload.memory_id === aggregateId) continue;
+      // теги события из payload.tags; отсутствуют → класс не совпадает
+      const tags = Array.isArray(payload?.tags) ? payload.tags : [];
+      if (!tags.some((t) => typeof t === 'string' && classTags.has(t))) continue;
+      const ts = Date.parse(ev.timestamp);
+      if (ts > anchor - DECAY_WINDOW_MS && ts <= anchor) {
+        if (payload.type === 'lesson') lessonsBefore += 1;
+        else complaintsBefore += 1;
+      } else if (ts > anchor && ts <= anchor + DECAY_WINDOW_MS) {
+        if (payload.type === 'lesson') lessonsAfter += 1;
+        else complaintsAfter += 1;
+      }
+    }
+    out.push({ aggregateId, sources: sourceIds.size, lessonsBefore, lessonsAfter, complaintsBefore, complaintsAfter });
+  }
+  // свежие агрегаты сверху (ISO-строки сортируются лексикографически = хронология)
+  return out.sort((a, b) => (anchorById.get(b.aggregateId) ?? '').localeCompare(anchorById.get(a.aggregateId) ?? ''));
+}
+
 /** Steward view Q12: мутации за окно weeks (то же, что weekly activity), жалобная воронка,
- * SLA-эскалации (dispatch_ages >= 3), рецидивы, churn, доля авто-мутаций. */
+ * SLA-эскалации (dispatch_ages >= 3), рецидивы, churn, доля авто-мутаций,
+ * затухание класса агрегатов (2.14 §7.4). */
 function buildSteward(
   events: MemoryEvent[],
   signals: SignalEvent[],
   objects: MemoryObject[],
   now: Date,
-  weeks: number
+  weeks: number,
+  aggregationEdges: Relation[]
 ): StewardView {
   const keys = weekBuckets(now, weeks);
 
@@ -1656,6 +1742,7 @@ function buildSteward(
     recidivismCount,
     churnIds,
     autoMutationSharePct: totalMutations > 0 ? (autoMutations / totalMutations) * 100 : null,
+    aggregationDecay: buildAggregationDecay(events, objects, aggregationEdges),
   };
 }
 
@@ -1881,7 +1968,10 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
   const outliers = buildOutliers(runEntries, input.pricing, input.topOutliers ?? 10);
   const acceptance = buildAcceptance(signals, input.routerLog, now, input.signalLogStats?.malformedLines ?? 0);
   const agents = buildAgents(signals, allObjects, input.pricing, acceptance.acceptedByAgent);
-  const steward = buildSteward(events, signals, allObjects, now, weeks);
+  // 2.14 §7.4: рёбра aggregates для метрики затухания (IO здесь — buildSteward чистый;
+  // прецедент filtered-list — buildCouncils)
+  const aggregationEdges = await deps.relations.list({ predicate: 'aggregates' });
+  const steward = buildSteward(events, signals, allObjects, now, weeks, aggregationEdges);
   const readiness = buildReadiness(signals);
   const councils = await buildCouncils(allObjects, deps.relations, now, weeks);
   const coordination = buildCoordination(signals, events); // P2 D5
