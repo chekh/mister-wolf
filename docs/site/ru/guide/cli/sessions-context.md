@@ -42,30 +42,9 @@ wolf call [--for <topic>] [--thread <thread-id>] [--compact [chars]]
 wolf call --for "vitest" --compact
 ```
 
-## `wolf insights`
-
-Эвристический анализ памяти (Level 1, без LLM).
-
-| Опция             | Описание                                                                        |
-| ----------------- | ------------------------------------------------------------------------------- |
-| `--topic <topic>` | Фильтр по теме: точный тег или подстрока в заголовке/тексте                     |
-| `--type <type>`   | Линза: patterns, technical_debt, decisions, lessons, activity (дефолт patterns) |
-
-```bash
-wolf insights --type technical_debt
-```
-
 ## `wolf session`
 
-Сессии и чекпоинты.
-
-### `wolf session checkpoint`
-
-Чекпоинт рабочего треда. Опции: `--thread <thread-id>`, `--created-by <actor>` (дефолт `user:cli`).
-
-```bash
-wolf session checkpoint --thread thr_001
-```
+Сессии и итоговые сводки.
 
 ### `wolf session wrap-up`
 

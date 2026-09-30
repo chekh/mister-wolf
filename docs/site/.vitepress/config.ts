@@ -19,8 +19,7 @@ const cliItems = [
   { text: 'Memory', link: '/guide/cli/memory' },
   { text: 'Sessions & Context', link: '/guide/cli/sessions-context' },
   { text: 'Work Management', link: '/guide/cli/work-management' },
-  { text: 'Thinking & Council', link: '/guide/cli/thinking-council' },
-  { text: 'Learning', link: '/guide/cli/learning' },
+  { text: 'Thinking', link: '/guide/cli/thinking-council' },
   { text: 'Analytics', link: '/guide/cli/analytics' },
   { text: 'Platform & Maintenance', link: '/guide/cli/platform' },
 ];
@@ -31,8 +30,7 @@ const ruCliItems = [
   { text: 'Память', link: '/ru/guide/cli/memory' },
   { text: 'Сессии и контекст', link: '/ru/guide/cli/sessions-context' },
   { text: 'Управление работой', link: '/ru/guide/cli/work-management' },
-  { text: 'Мышление и совет', link: '/ru/guide/cli/thinking-council' },
-  { text: 'Самообучение', link: '/ru/guide/cli/learning' },
+  { text: 'Мышление', link: '/ru/guide/cli/thinking-council' },
   { text: 'Аналитика', link: '/ru/guide/cli/analytics' },
   { text: 'Платформа и обслуживание', link: '/ru/guide/cli/platform' },
 ];

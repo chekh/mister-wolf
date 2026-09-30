@@ -82,3 +82,27 @@ wolf relation add mem_002 supports mem_thread_01
 - `wolf relation remove <id>` — appends a compensating record (`removed: true`) to `relations.jsonl`; the log is append-only, edges marked `removed` are not read, and rolling back a removal means removing the record.
 
 Full reference: [Memory](/guide/cli/memory).
+
+## wolf complain
+
+File a complaint about a rule/playbook/agent as a memory object (type `complaint`, status `open`) — the hot signal for the Steward.
+
+```text
+Usage: wolf complain [options]
+```
+
+Options:
+
+- `--about <about>` — complaint target: agent id, `skill:<name>` or an existing mem-id
+- `--rule <rule>` — which rule is bad (pointer + what it requires)
+- `--evidence <evidence>` — proof: a verbatim quote + what happened (file/test/numbers); `--text` is a deprecated alias
+- `--proposal <proposal>` — the proposed change to the rule
+- `--created-by <actor>` — creator actor (default: env `WOLF_ACTOR`, else `user:cli`)
+
+The complaint lands in the store as a first-class object with required `about`/`rule`/`evidence`/`proposal` fields and triage fields for the Steward (`wolf update --set triage|resolution`); its lifecycle is `open → resolved | rejected | archived`.
+
+```bash
+wolf complain --about skill:apprentice --rule "step 2 requires a plan review" \
+  --evidence "Run of 2026-09-04 skipped the plan review step (diff has no review notes)" \
+  --proposal "Make the gate blocking in CI, not advisory"
+```

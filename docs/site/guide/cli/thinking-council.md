@@ -1,4 +1,4 @@
-# Thinking & Council
+# Thinking
 
 ## wolf think
 
@@ -68,41 +68,3 @@ Usage: wolf think abandon [options]
 Options:
 
 - `--sequence <id>` — thinking sequence id
-
-## wolf council
-
-Council operations.
-
-```text
-Usage: wolf council [options] [command]
-```
-
-Commands: `tally`, `synthesize`.
-
-### wolf council tally
-
-Tally council votes.
-
-```text
-Usage: wolf council tally [options]
-```
-
-Options:
-
-- `--question-id <id>` — question ID
-- `--quorum <n>` — minimum votes required
-- `--threshold <x>` — consensus threshold (0-1; default: 0.5)
-
-### wolf council synthesize
-
-Create synthesis from council opinions.
-
-```text
-Usage: wolf council synthesize [options]
-```
-
-Options:
-
-- `--question-id <id>` — question ID
-- `--recommendation <text>` — recommendation text
-- `--created-by <actor>` — creator actor (default: `user:cli`)

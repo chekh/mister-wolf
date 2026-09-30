@@ -4,26 +4,27 @@
 
 YAML-файл, валидируется zod-схемой. Ключи и дефолты:
 
-| Ключ                                | Тип / дефолт                                                                                                       |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `schema_version`                    | int; текущая **2** (легаси-проекты без маркера = 1)                                                                |
-| `artifact_sources`                  | string[] — дефолт `[]`                                                                                             |
-| `memory_types.core`                 | генерируемый блок из кода-канона (`wolf taxonomy sync`); ручные правки перезаписываются                            |
-| `memory_types.project`              | свои типы: lifecycle, subdir_thread, subdir_shared, fields; не могут конфликтовать с core-типами                   |
-| `error_class_taxonomy`              | [{id, match[]}] — дефолт `[]`                                                                                      |
-| `facets.character`                  | string[] из **7–10** значений; закрытый словарь «характер записи» для `--facet` типа note; дефолт — канонические 7 |
-| `learning.pattern_threshold`        | int >= 1 — дефолт **3**                                                                                            |
-| `learning.decay_ttl`                | map тип → число сессий без срабатывания                                                                            |
-| `learning.effectiveness_thresholds` | {noise_ok, noise_warn, silent_ok} — проценты                                                                       |
-| `pricing`                           | map модель → `{input, output, cache_read}` в $/Mtok; без блока `$`-поля скрыты (числа не выдумываются)             |
-| `analytics.thresholds`              | классификация lifecycle памяти: `{new_days, workhorse_uses}`; дефолт `{14, 3}`                                     |
-| `delivery.context_budget_tokens`    | int > 0; бюджет контекста сессии для предупреждения об инъекциях, токены; дефолт **200000**                        |
-| `delivery.context_warning_pct`      | число ≥ 0; предупреждение, когда инъекции сессии превышают эту долю бюджета, %; дефолт **20**, `0` — выключить     |
+| Ключ                                | Тип / дефолт                                                                                                                      |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `schema_version`                    | int; текущая **2** (легаси-проекты без маркера = 1)                                                                               |
+| `wolf_version`                      | semver-штамп версии wolf, писавшей конфиг; маркер дрейфа таксономии — несовпадение с бинарём даёт warning `wolf migrate taxonomy` |
+| `artifact_sources`                  | string[] — дефолт `[]`                                                                                                            |
+| `memory_types.project`              | свои типы: lifecycle, subdir_thread, subdir_shared, fields; не могут конфликтовать с core-типами                                  |
+| `error_class_taxonomy`              | [{id, match[]}] — дефолт `[]`                                                                                                     |
+| `facets.character`                  | string[] из **7–10** значений; закрытый словарь «характер записи» для `--facet` типа note; дефолт — канонические 7                |
+| `learning.pattern_threshold`        | int >= 1 — дефолт **3**                                                                                                           |
+| `learning.decay_ttl`                | map тип → число сессий без срабатывания                                                                                           |
+| `learning.effectiveness_thresholds` | {noise_ok, noise_warn, silent_ok} — проценты                                                                                      |
+| `pricing`                           | map модель → `{input, output, cache_read}` в $/Mtok; без блока `$`-поля скрыты (числа не выдумываются)                            |
+| `analytics.thresholds`              | классификация lifecycle памяти: `{new_days, workhorse_uses}`; дефолт `{14, 3}`                                                    |
+| `delivery.context_budget_tokens`    | int > 0; бюджет контекста сессии для предупреждения об инъекциях, токены; дефолт **200000**                                       |
+| `delivery.context_warning_pct`      | число ≥ 0; предупреждение, когда инъекции сессии превышают эту долю бюджета, %; дефолт **20**, `0` — выключить                    |
 
 Пример:
 
 ```yaml
 schema_version: 2
+wolf_version: 2.12.0 # штамп версии wolf, писавшей конфиг
 artifact_sources: []
 # Закрытый словарь «характер записи» для нот (валидируется на `wolf add --facet`);
 # 7–10 значений; без ключа — дефолтные 7
@@ -61,11 +62,11 @@ delivery:
 
 ## Свои типы памяти
 
-Свои типы объявляются в `memory_types.project`: lifecycle, subdir_thread, subdir_shared, fields. Единственное ограничение — имена не должны конфликтовать с core-типами. Посмотреть эффективную таксономию (код-канон + проектные типы) и синхронизировать канон:
+Свои типы объявляются в `memory_types.project`: lifecycle, subdir_thread, subdir_shared, fields. Единственное ограничение — имена не должны конфликтовать с core-типами. Core-таксономия живёт в коде-каноне — её дамп в конфиге отсутствует, есть только штамп `wolf_version`; несовпадение штампа с бинарём показывает `wolf validate` предупреждением. Посмотреть эффективную таксономию и обновить конфиг:
 
 ```bash
 wolf taxonomy show   # эффективная таксономия
-wolf taxonomy sync   # регенерировать memory_types.core из кода-канона
+wolf taxonomy sync   # перезаписать .wolf/config.yaml: проектные типы и настройки сохраняются, штамп wolf_version обновляется
 ```
 
 ## Фасеты

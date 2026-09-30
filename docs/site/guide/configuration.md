@@ -4,29 +4,29 @@
 
 Each project's configuration lives in `.wolf/config.yaml` (YAML validated by a zod schema). Keys and defaults:
 
-| Key                                 | Type / default                                                                                                               |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `schema_version`                    | int; current **2**. Legacy projects without the marker are treated as 1                                                      |
-| `artifact_sources`                  | string[]; default `[]`                                                                                                       |
-| `memory_types.core`                 | generated block from the code canon (`wolf taxonomy sync`); manual edits are overwritten                                     |
-| `memory_types.project`              | your custom types: `lifecycle`, `subdir_thread`, `subdir_shared`, `fields`; cannot conflict with core types                  |
-| `error_class_taxonomy`              | `[{id, match[]}]`; default `[]`                                                                                              |
-| `facets.character`                  | string[] of **7–10** values; closed "record character" dictionary for the `note` type's `--facet`; default — the canonical 7 |
-| `learning.pattern_threshold`        | int >= 1; default **3**                                                                                                      |
-| `learning.decay_ttl`                | map of type → number of sessions without a hit                                                                               |
-| `learning.effectiveness_thresholds` | `{noise_ok, noise_warn, silent_ok}` — percentages                                                                            |
-| `pricing`                           | map model → `{input, output, cache_read}` in $/Mtok; without the block `$` fields are hidden (numbers are never invented)    |
-| `analytics.thresholds`              | memory lifecycle classification: `{new_days, workhorse_uses}`; default `{14, 3}`                                             |
-| `delivery.context_budget_tokens`    | int > 0; session context budget for the injection warning, tokens; default **200000**                                        |
-| `delivery.context_warning_pct`      | number ≥ 0; warn when session injections exceed this share of the budget, %; default **20**, `0` disables                    |
+| Key                                 | Type / default                                                                                                                           |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema_version`                    | int; current **2**. Legacy projects without the marker are treated as 1                                                                  |
+| `wolf_version`                      | semver stamp of the wolf that wrote the config; taxonomy drift marker — a mismatch with the running binary warns `wolf migrate taxonomy` |
+| `artifact_sources`                  | string[]; default `[]`                                                                                                                   |
+| `memory_types.project`              | your custom types: `lifecycle`, `subdir_thread`, `subdir_shared`, `fields`; cannot conflict with core types                              |
+| `error_class_taxonomy`              | `[{id, match[]}]`; default `[]`                                                                                                          |
+| `facets.character`                  | string[] of **7–10** values; closed "record character" dictionary for the `note` type's `--facet`; default — the canonical 7             |
+| `learning.pattern_threshold`        | int >= 1; default **3**                                                                                                                  |
+| `learning.decay_ttl`                | map of type → number of sessions without a hit                                                                                           |
+| `learning.effectiveness_thresholds` | `{noise_ok, noise_warn, silent_ok}` — percentages                                                                                        |
+| `pricing`                           | map model → `{input, output, cache_read}` in $/Mtok; without the block `$` fields are hidden (numbers are never invented)                |
+| `analytics.thresholds`              | memory lifecycle classification: `{new_days, workhorse_uses}`; default `{14, 3}`                                                         |
+| `delivery.context_budget_tokens`    | int > 0; session context budget for the injection warning, tokens; default **200000**                                                    |
+| `delivery.context_warning_pct`      | number ≥ 0; warn when session injections exceed this share of the budget, %; default **20**, `0` disables                                |
 
 Example (defaults shape):
 
 ```yaml
 schema_version: 2
+wolf_version: 2.12.0 # stamp of the wolf that wrote the config
 artifact_sources: []
 memory_types:
-  core: {} # generated by `wolf taxonomy sync`; manual edits are overwritten
   project: {} # your custom types
 error_class_taxonomy: []
 # Closed "record character" dictionary for notes (validated on `wolf add --facet`);
@@ -73,11 +73,11 @@ A broken YAML is only repaired by `wolf init --recreate`: the corrupted file is 
 - `subdir_thread` / `subdir_shared` — where objects of the type live (thread-scoped or shared layout);
 - `fields` — type-specific fields.
 
-Project types cannot conflict with core types. Two commands manage the taxonomy:
+Project types cannot conflict with core types. The core taxonomy lives in the code canon — the config carries no dump of it, only the `wolf_version` stamp; a mismatch with the running binary shows up as a `wolf validate` warning. Two commands manage the taxonomy:
 
 ```bash
 wolf taxonomy show   # print the effective taxonomy (code canon + project types)
-wolf taxonomy sync   # regenerate memory_types.core in .wolf/config.yaml from the code canon
+wolf taxonomy sync   # rewrite .wolf/config.yaml: project types and settings preserved, wolf_version stamp refreshed
 ```
 
 ## Facets

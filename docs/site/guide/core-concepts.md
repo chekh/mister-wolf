@@ -2,7 +2,7 @@
 
 ## Memory objects
 
-Everything Wolf stores is a **memory object**: a plain markdown file under `.wolf/memory/` with an id like `mem_20260831_…`, a type, a lifecycle status, attribution (creator actor), tags, confidence and importance. Objects are created via `wolf add`, the type-specific commands (`wolf decision add`, `wolf blocker add`, …) or the MCP tools — all surfaces write to the same store.
+Everything Wolf stores is a **memory object**: a plain markdown file under `.wolf/memory/` with an id like `mem_20260831_…`, a type, a lifecycle status, attribution (creator actor), tags, confidence and importance. Objects are created via `wolf add`, the type-specific commands (`wolf decision add`, `wolf note add`, …) or the MCP tools — all surfaces write to the same store.
 
 Because objects are files:
 
@@ -119,21 +119,19 @@ The type-specific commands wrap the common flows:
 ```bash
 # Decisions
 wolf decision add --title "Use worktrees for docs work" --body "Trunk-based; work happens in .worktrees/<task>."
-wolf decision list --thread <thread-id>
+wolf decision list
 
-# Blockers
-wolf blocker add --title "CI blocked" --impact "No releases" --workaround "Run tests locally"
-wolf blocker resolve <id> --by <artifact-id>
+# Notes (character facet: howto, pitfall, context, …)
+wolf note add --title "Release checklist" --facet howto
+wolf note list
 
 # Rules (user-created only)
 wolf rule add --title "Search before writing scripts" --body "Run wolf tool list / search first." --scope project
 wolf rule list
 
 # Work threads
-wolf thread create --title "Docs site" --goal "Ship the VitePress site" --next-steps "write pages,build,deploy"
-wolf thread brief <thread-id>
-wolf session checkpoint --thread <thread-id>
-wolf diff <thread-id> --since <checkpoint-id>
+wolf thread add --title "Docs site" --goal "Ship the VitePress site" --next-steps "write pages,build,deploy"
+wolf thread list
 ```
 
 ## Injections

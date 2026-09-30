@@ -184,7 +184,18 @@ wolf relation remove <id>
 
 Скрыто из `wolf --help`, живо для скриптов и жалобного контура:
 
-- `wolf update <id> [--set k=v …] [--inc field=n …] [--tags …] [--actor …]` — команда триажа Стюарда для жалоб: triage-поля (`triage|resolution`), монотонные счётчики (`dispatch_ages|corroborations`).
-- `wolf supersede <old-id> <new-id>` — смыслная замена записи: старому объекту — `superseded` + `superseded_by` на новый, затем переиндексация.
-- `wolf transition <id> <status> [--actor …]` — полная матрица статусов жизненного цикла (см. [переходы жизненного цикла](/ru/guide/core-concepts#lifecycle)); `archive` закрывает типовой выход.
-- `wolf rebuild-index` — перестроить SQLite-индекс поиска из объектов памяти.
+### wolf update
+
+`wolf update <id> [--set k=v …] [--inc field=n …] [--tags …] [--actor …]` — команда триажа Стюарда для жалоб: triage-поля (`triage|resolution`), монотонные счётчики (`dispatch_ages|corroborations`).
+
+### wolf supersede
+
+`wolf supersede <old-id> <new-id>` — смыслная замена записи: старому объекту — `superseded` + `superseded_by` на новый, затем переиндексация.
+
+### wolf transition
+
+`wolf transition <id> <status> [--actor …]` — полная матрица статусов жизненного цикла (см. [переходы жизненного цикла](/ru/guide/core-concepts#lifecycle)); `archive` закрывает типовой выход.
+
+### wolf rebuild-index
+
+`wolf rebuild-index` — перестроить SQLite-индекс поиска из объектов памяти.

@@ -208,7 +208,18 @@ Arguments: `id` — relation id (see `relation list`).
 
 Hidden from `wolf --help`, alive for scripts and the complaint loop:
 
-- `wolf update <id> [--set k=v …] [--inc field=n …] [--tags …] [--actor …]` — the Steward's triage command for complaints: triage fields (`triage|resolution`), monotonic counters (`dispatch_ages|corroborations`).
-- `wolf supersede <old-id> <new-id>` — meaningful replacement of a record: the old object gets `superseded` with `superseded_by` pointing to the new one, then reindexes.
-- `wolf transition <id> <status> [--actor …]` — the full lifecycle status matrix (see [lifecycle transitions](/guide/core-concepts#lifecycle)); `archive` covers the common exit.
-- `wolf rebuild-index` — rebuild the SQLite search index from memory objects.
+### wolf update
+
+`wolf update <id> [--set k=v …] [--inc field=n …] [--tags …] [--actor …]` — the Steward's triage command for complaints: triage fields (`triage|resolution`), monotonic counters (`dispatch_ages|corroborations`).
+
+### wolf supersede
+
+`wolf supersede <old-id> <new-id>` — meaningful replacement of a record: the old object gets `superseded` with `superseded_by` pointing to the new one, then reindexes.
+
+### wolf transition
+
+`wolf transition <id> <status> [--actor …]` — the full lifecycle status matrix (see [lifecycle transitions](/guide/core-concepts#lifecycle)); `archive` covers the common exit.
+
+### wolf rebuild-index
+
+`wolf rebuild-index` — rebuild the SQLite search index from memory objects.

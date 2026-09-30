@@ -1,71 +1,59 @@
 # CLI Reference
 
-Quick index of all 45 `wolf` commands. Each row links to the command's reference entry; group headings link to the section pages.
+Quick index of `wolf` commands: the visible surface plus advanced plumbing (hidden from `--help`). Each row links to the command's reference entry; group headings link to the section pages.
 
 Playbook delivery for opencode agents — the `wolf-router` plugin injecting the current playbook into the system prompt — is documented separately: [Router](/guide/router).
 
 ## Memory
 
-| Command                                                      | What it does                                        | Page                        |
-| ------------------------------------------------------------ | --------------------------------------------------- | --------------------------- |
-| [`wolf add`](/guide/cli/memory#wolf-add)                     | Add a memory object                                 | [Memory](/guide/cli/memory) |
-| [`wolf list`](/guide/cli/memory#wolf-list)                   | List memory objects                                 | [Memory](/guide/cli/memory) |
-| [`wolf get`](/guide/cli/memory#wolf-get)                     | Get a memory object by id                           | [Memory](/guide/cli/memory) |
-| [`wolf search`](/guide/cli/memory#wolf-search)               | Search memory objects (FTS over the SQLite index)   | [Memory](/guide/cli/memory) |
-| [`wolf supersede`](/guide/cli/memory#wolf-supersede)         | Supersede a memory object with another              | [Memory](/guide/cli/memory) |
-| [`wolf transition`](/guide/cli/memory#wolf-transition)       | Transition a memory object to a new status          | [Memory](/guide/cli/memory) |
-| [`wolf rebuild-index`](/guide/cli/memory#wolf-rebuild-index) | Rebuild the SQLite search index from memory objects | [Memory](/guide/cli/memory) |
-| [`wolf update`](/guide/cli/memory#wolf-update)               | Update triage fields of a memory object             | [Memory](/guide/cli/memory) |
+| Command                                                      | What it does                                          | Page                        |
+| ------------------------------------------------------------ | ----------------------------------------------------- | --------------------------- |
+| [`wolf add`](/guide/cli/memory#wolf-add)                     | Add a memory object                                   | [Memory](/guide/cli/memory) |
+| [`wolf list`](/guide/cli/memory#wolf-list)                   | List memory objects                                   | [Memory](/guide/cli/memory) |
+| [`wolf get`](/guide/cli/memory#wolf-get)                     | Get a memory object by id                             | [Memory](/guide/cli/memory) |
+| [`wolf search`](/guide/cli/memory#wolf-search)               | Search memory objects (FTS over the SQLite index)     | [Memory](/guide/cli/memory) |
+| [`wolf edit`](/guide/cli/memory#wolf-edit)                   | Edit title and/or body of a memory object             | [Memory](/guide/cli/memory) |
+| [`wolf archive`](/guide/cli/memory#wolf-archive)             | Archive a memory object                               | [Memory](/guide/cli/memory) |
+| [`wolf supersede`](/guide/cli/memory#wolf-supersede)         | Supersede a memory object with another (plumbing)     | [Memory](/guide/cli/memory) |
+| [`wolf transition`](/guide/cli/memory#wolf-transition)       | Transition a memory object to a new status (plumbing) | [Memory](/guide/cli/memory) |
+| [`wolf rebuild-index`](/guide/cli/memory#wolf-rebuild-index) | Rebuild the SQLite search index (plumbing)            | [Memory](/guide/cli/memory) |
+| [`wolf update`](/guide/cli/memory#wolf-update)               | Update triage fields of a memory object (plumbing)    | [Memory](/guide/cli/memory) |
 
 ## Sessions & Context
 
-| Command                                                      | What it does                                                                    | Page                                              |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------- |
-| [`wolf scan`](/guide/cli/sessions-context#wolf-scan)         | Scan the project and save a context snapshot                                    | [Sessions & Context](/guide/cli/sessions-context) |
-| [`wolf brief`](/guide/cli/sessions-context#wolf-brief)       | Generate the agent brief from the latest scan and memory                        | [Sessions & Context](/guide/cli/sessions-context) |
-| [`wolf recap`](/guide/cli/sessions-context#wolf-recap)       | Summarize active project memory: rules, threads, blockers, questions, decisions | [Sessions & Context](/guide/cli/sessions-context) |
-| [`wolf call`](/guide/cli/sessions-context#wolf-call)         | Get active call injections (cold-start)                                         | [Sessions & Context](/guide/cli/sessions-context) |
-| [`wolf insights`](/guide/cli/sessions-context#wolf-insights) | Heuristic pattern analysis over project memory (Level 1, no LLM)                | [Sessions & Context](/guide/cli/sessions-context) |
-| [`wolf session`](/guide/cli/sessions-context#wolf-session)   | Manage sessions and checkpoints                                                 | [Sessions & Context](/guide/cli/sessions-context) |
-| [`wolf diff`](/guide/cli/sessions-context#wolf-diff)         | Show thread changes since a checkpoint                                          | [Sessions & Context](/guide/cli/sessions-context) |
-| [`wolf solve`](/guide/cli/sessions-context#wolf-solve)       | Build a solve pack for a memory problem                                         | [Sessions & Context](/guide/cli/sessions-context) |
+| Command                                                    | What it does                                                                    | Page                                              |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------- |
+| [`wolf scan`](/guide/cli/sessions-context#wolf-scan)       | Scan the project and save a context snapshot (plumbing)                         | [Sessions & Context](/guide/cli/sessions-context) |
+| [`wolf brief`](/guide/cli/sessions-context#wolf-brief)     | Generate the agent brief from the latest scan and memory                        | [Sessions & Context](/guide/cli/sessions-context) |
+| [`wolf recap`](/guide/cli/sessions-context#wolf-recap)     | Summarize active project memory: rules, threads, blockers, questions, decisions | [Sessions & Context](/guide/cli/sessions-context) |
+| [`wolf call`](/guide/cli/sessions-context#wolf-call)       | Get active call injections (cold-start)                                         | [Sessions & Context](/guide/cli/sessions-context) |
+| [`wolf session`](/guide/cli/sessions-context#wolf-session) | Session summaries (plumbing)                                                    | [Sessions & Context](/guide/cli/sessions-context) |
+| [`wolf diff`](/guide/cli/sessions-context#wolf-diff)       | Show thread changes since a checkpoint (plumbing)                               | [Sessions & Context](/guide/cli/sessions-context) |
+| [`wolf solve`](/guide/cli/sessions-context#wolf-solve)     | Build a solve pack for a memory problem (plumbing)                              | [Sessions & Context](/guide/cli/sessions-context) |
 
 ## Work Management
 
-| Command                                                             | What it does                            | Page                                          |
-| ------------------------------------------------------------------- | --------------------------------------- | --------------------------------------------- |
-| [`wolf thread`](/guide/cli/work-management#wolf-thread)             | Manage work threads                     | [Work Management](/guide/cli/work-management) |
-| [`wolf decision`](/guide/cli/work-management#wolf-decision)         | Manage decisions                        | [Work Management](/guide/cli/work-management) |
-| [`wolf blocker`](/guide/cli/work-management#wolf-blocker)           | Manage blockers                         | [Work Management](/guide/cli/work-management) |
-| [`wolf info-request`](/guide/cli/work-management#wolf-info-request) | Manage info requests                    | [Work Management](/guide/cli/work-management) |
-| [`wolf article`](/guide/cli/work-management#wolf-article)           | Manage articles                         | [Work Management](/guide/cli/work-management) |
-| [`wolf rule`](/guide/cli/work-management#wolf-rule)                 | Manage rules                            | [Work Management](/guide/cli/work-management) |
-| [`wolf relation`](/guide/cli/work-management#wolf-relation)         | Manage relations between memory objects | [Work Management](/guide/cli/work-management) |
+| Command                                                                                                                                   | What it does                                                                        | Page                                          |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | --------------------------------------------- |
+| [`wolf thread`](/guide/cli/work-management#wolf-thread)                                                                                   | Manage work threads                                                                 | [Work Management](/guide/cli/work-management) |
+| [`wolf decision`](/guide/cli/work-management#wolf-decision)                                                                               | Manage decisions                                                                    | [Work Management](/guide/cli/work-management) |
+| [`wolf rule`](/guide/cli/work-management#wolf-rule)                                                                                       | Manage rules                                                                        | [Work Management](/guide/cli/work-management) |
+| [`wolf lesson`](/guide/cli/memory#wolf-add), [`wolf complaint`](/guide/cli/memory#wolf-add), [`wolf note`](/guide/cli/memory#wolf-add), … | Type namespaces generated from the taxonomy: `add`, `list` with type-specific flags | [Memory](/guide/cli/memory)                   |
+| [`wolf relation`](/guide/cli/work-management#wolf-relation)                                                                               | Manage relations between memory objects                                             | [Work Management](/guide/cli/work-management) |
+| [`wolf complain`](/guide/cli/work-management#wolf-complain)                                                                               | File a complaint about a rule/playbook/agent                                        | [Work Management](/guide/cli/work-management) |
 
-## Thinking & Council
+## Thinking
 
-| Command                                                    | What it does                                                 | Page                                              |
-| ---------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------- |
-| [`wolf think`](/guide/cli/thinking-council#wolf-think)     | Structured thinking sequences (goal → thoughts → conclusion) | [Thinking & Council](/guide/cli/thinking-council) |
-| [`wolf council`](/guide/cli/thinking-council#wolf-council) | Council operations                                           | [Thinking & Council](/guide/cli/thinking-council) |
-
-## Learning
-
-| Command                                                        | What it does                                                                           | Page                            |
-| -------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------- |
-| [`wolf learn`](/guide/cli/learning#wolf-learn)                 | Self-learning loop: pattern digest, signal-log health, draft propose/validate/activate | [Learning](/guide/cli/learning) |
-| [`wolf effectiveness`](/guide/cli/learning#wolf-effectiveness) | Memory effectiveness panel: rules holdout, tool economy, delivery, noise, routing      | [Learning](/guide/cli/learning) |
-| [`wolf complain`](/guide/cli/learning#wolf-complain)           | Record a complaint about agent/methodology behavior                                    | [Learning](/guide/cli/learning) |
+| Command                                                | What it does                                                 | Page                                    |
+| ------------------------------------------------------ | ------------------------------------------------------------ | --------------------------------------- |
+| [`wolf think`](/guide/cli/thinking-council#wolf-think) | Structured thinking sequences (goal → thoughts → conclusion) | [Thinking](/guide/cli/thinking-council) |
 
 ## Analytics
 
-| Command                                                       | What it does                                                                                                        | Page                              |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| [`wolf analytics`](/guide/cli/analytics#wolf-analytics)       | Effectiveness analytics: ledgers, funnel, agents, steward view, councils, outliers, experiment readiness, campaigns | [Analytics](/guide/cli/analytics) |
-| [`wolf dashboard`](/guide/cli/analytics#wolf-dashboard)       | Console dashboard: health, ledgers, trends                                                                          | [Analytics](/guide/cli/analytics) |
-| [`wolf task-eval`](/guide/cli/analytics#wolf-task-eval)       | Record a task verdict into the signal log (acceptance metrics, coverage)                                            | [Analytics](/guide/cli/analytics) |
-| [`wolf memory-stage`](/guide/cli/analytics#wolf-memory-stage) | Record a memory lifecycle stage (`cited`/`applied`) into the signal log                                             | [Analytics](/guide/cli/analytics) |
-| [`wolf coord`](/guide/cli/analytics#wolf-coord)               | Record a coordination event (handoff/review/acceptance/blocker/escalation) into the signal log                      | [Analytics](/guide/cli/analytics) |
+| Command                                                             | What it does                                                                                                        | Page                              |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| [`wolf analytics`](/guide/cli/analytics#wolf-analytics)             | Effectiveness analytics: ledgers, funnel, agents, steward view, councils, outliers, experiment readiness, campaigns | [Analytics](/guide/cli/analytics) |
+| [`wolf task-eval`](/guide/cli/analytics#hidden-synonyms-deprecated) | Record a task verdict into the signal log — acceptance metrics, coverage (hidden plumbing)                          | [Analytics](/guide/cli/analytics) |
 
 ## Platform & Maintenance
 
@@ -82,4 +70,3 @@ Playbook delivery for opencode agents — the `wolf-router` plugin injecting the
 | [`wolf doctor`](/guide/cli/platform#wolf-doctor)       | Check all registered projects: binary vs schema version, platform configs, prune dead entries      | [Platform & Maintenance](/guide/cli/platform) |
 | [`wolf sync`](/guide/cli/platform#wolf-sync)           | Re-render the wolf base set (stamped files only; memory untouched)                                 | [Platform & Maintenance](/guide/cli/platform) |
 | [`wolf upgrade`](/guide/cli/platform#wolf-upgrade)     | Upgrade the global wolf installation to the latest npm version                                     | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf run`](/guide/cli/platform#wolf-run)             | Run opencode with the model from the Wolf routing object; log weighted token cost                  | [Platform & Maintenance](/guide/cli/platform) |

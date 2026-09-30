@@ -188,7 +188,7 @@ Commands: `sync`, `show`.
 
 ### wolf taxonomy sync
 
-Regenerate `memory_types.core` in `.wolf/config.yaml` from code canon.
+Rewrite `.wolf/config.yaml`, preserving project types and settings, and stamp the `wolf_version` the taxonomy canon belongs to. The `memory_types.core` dump is no longer written.
 
 ```text
 Usage: wolf taxonomy sync [options]
@@ -283,35 +283,6 @@ The witness of the last render's hashes is `.opencode/wolf-sync-state.json`. The
 `WOLF_SESSION` — the env var that ties telemetry to a session — is produced by the CLI itself: every invocation without an explicit `WOLF_SESSION` gets a fresh `cli-<uuid>`, stable for the whole process (all telemetry writers of one command share it). An explicitly exported `WOLF_SESSION` is never overwritten. The stamped opencode plugins (`wolf-router`, `wolf-session-start`) pass a fresh `opc-<uuid>` on every CLI spawn — the inherited env of a long-lived opencode process would otherwise collapse all deliveries into one fake session. Plugin templates are updated by re-rendering with `wolf sync`.
 
 `wolf mcp` is deliberately not sessioned: the MCP server is a long-lived process with a single environment, so one session id for all requests would be false attribution — its telemetry is written with `session_id: null` (see [Telemetry](/guide/telemetry)).
-
-## wolf run
-
-Run opencode with the model from the Wolf routing object; log weighted token cost.
-
-```text
-Usage: wolf run [options] <prompt>
-```
-
-Arguments: `prompt` — prompt passed to opencode.
-
-Options:
-
-- `--agent <name>` — opencode agent name
-- `--title <title>` — run label written to the log
-- `--session <sid>` — opencode session id to continue
-- `--tool <name>` — mark this run as using tool(s) (repeatable; default: `[]`)
-- `--experiment <id>` — experiment id (comparative methodologies, e.g. RCT)
-- `--arm <choice>` — experiment arm (choices: `wolf`, `baseline`)
-- `--task-id <id>` — task id (written top-level whenever passed; duplicated in the experiment when `--experiment`)
-- `--campaign <id>` — campaign id (written top-level `campaign_id`; groups runs for `--view campaign`)
-- `--trace-id <id>` — trace id (defaults to a fresh uuid)
-- `--attempt <n>` — attempt number within the task
-
-See [Analytics](/guide/cli/analytics#wolf-run-enrichment) for run enrichment: raw tokens, `duration_ms` and experiment fields in the logs.
-
-```bash
-wolf run "Summarize the current blockers" --title "blocker-scan"
-```
 
 ## wolf upgrade
 

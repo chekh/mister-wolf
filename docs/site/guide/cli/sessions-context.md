@@ -48,49 +48,15 @@ Options:
 wolf call --for vitest --compact
 ```
 
-## wolf insights
-
-Heuristic pattern analysis over project memory (Level 1, no LLM).
-
-```text
-Usage: wolf insights [options]
-```
-
-Options:
-
-- `--topic <topic>` — filter by topic: exact tag match or substring in title/body
-- `--type <type>` — analysis lens. Choices: `patterns`, `technical_debt`, `decisions`, `lessons`, `activity` (default: `patterns`)
-
-```bash
-wolf insights --type technical_debt
-```
-
 ## wolf session
 
-Manage sessions and checkpoints.
+Manage sessions.
 
 ```text
 Usage: wolf session [options] [command]
 ```
 
-Commands: `checkpoint`, `wrap-up`.
-
-### wolf session checkpoint
-
-Create a checkpoint for a work thread.
-
-```text
-Usage: wolf session checkpoint [options]
-```
-
-Options:
-
-- `--thread <thread-id>` — thread id
-- `--created-by <actor>` — creator actor (default: `user:cli`)
-
-```bash
-wolf session checkpoint --thread mem_20260831_docs
-```
+Commands: `wrap-up`.
 
 ### wolf session wrap-up
 

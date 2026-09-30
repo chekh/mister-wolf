@@ -111,19 +111,18 @@ wolf get mem_001 --latest          # дойти по цепочке до акт�
 
 ## Рабочие процессы
 
-**Решения** — фиксируются с опорой на артефакты:
+**Решения** — фиксируются с привязкой к треду:
 
 ```bash
-wolf decision add --title "..." --body "..." --based-on "mem_001,mem_002"
+wolf decision add --title "..." --body "..."
 wolf decision list
 ```
 
-**Блокеры** — видимы, пока не закрыты:
+**Заметки** — характер записи задаётся фасетом (`howto`, `pitfall`, `context`, …):
 
 ```bash
-wolf blocker add --title "..." --impact "CI красный, релиз стоит"
-wolf blocker list
-wolf blocker resolve blk_001 --by mem_003
+wolf note add --title "..." --facet howto
+wolf note list
 ```
 
 **Правила** — только по запросу пользователя (`user request only`), с охватом:
@@ -136,11 +135,8 @@ wolf rule list
 **Рабочие треды** — рамка задачи: goal, current_state, next_steps:
 
 ```bash
-wolf thread create --title "..." --goal "..." --next-steps "шаг1,шаг2"
+wolf thread add --title "..." --goal "..." --next-steps "шаг1,шаг2"
 wolf thread list
-wolf thread brief thr_001          # бриф треда
-wolf session checkpoint --thread thr_001   # точка свёртки прогресса
-wolf diff thr_001                  # изменения треда с чекпоинта (--since <id>)
 ```
 
 ## Инъекции
