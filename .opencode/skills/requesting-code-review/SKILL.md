@@ -2,7 +2,7 @@
 name: requesting-code-review
 description: Используй при завершении задач, реализации крупных фич или перед мержем — проверить соответствие работы требованиям
 ---
-<!-- wolf:rendered base=SKILL.md set=2.10.0 -->
+<!-- wolf:rendered base=SKILL.md set=2.12.0 -->
 
 # Requesting Code Review
 
