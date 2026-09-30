@@ -326,7 +326,7 @@ describe('recreateConfig (спека §6: повреждённый .wolf → в�
     writeFileSync(join(dir, '.wolf', 'config.yaml'), '{broken');
     await recreateConfig(dir);
     const raw = readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8');
-    expect(raw).toContain('memory_types'); // валидный дефолт-рендер
+    expect(raw).toContain('wolf_version'); // валидный дефолт-рендер (P214: штамп вместо дампа)
     // бэкап оригинала сохранён
     const stamps = readdirSync(join(dir, '.wolf', 'backup'));
     expect(stamps).toHaveLength(1);

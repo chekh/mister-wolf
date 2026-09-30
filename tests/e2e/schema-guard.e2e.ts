@@ -65,7 +65,7 @@ describe('schema guard at entry points (спека §3 уровень 2)', () =>
     });
     expect(heal.status).toBe(0);
     const raw = readFileSync(join(project, '.wolf', 'config.yaml'), 'utf-8');
-    expect(raw).toContain('memory_types'); // валидный дефолт-рендер
+    expect(raw).toContain('wolf_version'); // P214: валидный дефолт-рендер (штамп, без дампа)
     expect(existsSync(join(project, '.wolf', 'backup'))).toBe(true); // битый оригинал в бэкапе
 
     // после восстановления guard снова пропускает команды

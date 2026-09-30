@@ -24,6 +24,11 @@ export interface WolfConfig {
   analytics?: { thresholds?: { newDays?: number; workhorseUses?: number } };
   /** 2.13 §5.3: закрытые словари фасетов; character — словарь типа note (7–10 значений). */
   facets?: { character: string[] };
+  /** P214 (C7): штамп версии Wolf, писавшей конфиг (wolf_version); без дампа —
+   * несовпадение с бинарьём = warning «wolf migrate taxonomy». */
+  wolfVersion?: string;
+  /** P214 (C8): delivery round-trip (само чтение настроек — loadDeliverySettings). */
+  delivery?: { contextBudgetTokens?: number; contextWarningPct?: number };
 }
 
 export class ProjectTypeConflictError extends Error {}
@@ -73,7 +78,9 @@ export function transitionsFor(decl: MemoryTypeDeclaration): Record<string, stri
   return out;
 }
 
-/** Генерирует core-блок конфига из каноничного CORE_TAXONOMY. */
+/** Каноничный core-блок из CORE_TAXONOMY. P214: рендер конфига его БОЛЬШЕ не
+ * пишет (вместо дампа — wolf_version-штамп); используется только drift-чеком
+ * `validate` для легаси-конфигов, где блок ещё лежит в файле. */
 export function generateCoreConfigBlock(): Record<string, unknown> {
   const block: Record<string, unknown> = {};
   for (const d of CORE_TAXONOMY) {

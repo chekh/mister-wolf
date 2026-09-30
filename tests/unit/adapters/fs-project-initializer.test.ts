@@ -16,7 +16,7 @@ afterEach(() => {
 describe('FsProjectInitializer ensure-semantics (спека §8: фикс перезаписи config.yaml)', () => {
   it('creates the skeleton and config on first run', async () => {
     await new FsProjectInitializer().initialize(dir);
-    expect(readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8')).toContain('memory_types');
+    expect(readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8')).toContain('wolf_version'); // P214: штамп вместо дампа
   });
 
   it('does NOT overwrite an existing config.yaml on re-init', async () => {

@@ -12,6 +12,7 @@ import { RelationSchema } from '../../../domain/schemas/relation-schema.js';
 import { LOCK_TIMING } from '../../fs/memory-lock.js';
 import { SQLiteSearchIndex } from '../../sqlite/sqlite-search-index.js';
 import { metricsLogPath } from '../../fs/session-metrics-log.js';
+import { getWolfVersion } from '../../version.js';
 
 export interface ValidateSection {
   name: string;
@@ -34,26 +35,40 @@ export async function runValidate(baseDir: string, opts?: { fix?: boolean }): Pr
 
   // 1. taxonomy
   let taxOk = true;
+  let taxNote = '';
+  const taxErrors: string[] = [];
+  const taxWarnings: string[] = [];
   try {
     const cfg = loadWolfConfigSync(baseDir);
+    // Легаси-путь: конфиг с дампом memory_types.core (до P214) — drift-чек против
+    // канона, как раньше
     const canon = JSON.stringify(generateCoreConfigBlock());
     const file = cfg?.rawCoreBlock ? JSON.stringify(cfg.rawCoreBlock) : null;
     if (file !== null && file !== canon) {
-      errors.push('core block drifted from code canon; run: wolf taxonomy sync');
+      taxErrors.push('core block drifted from code canon; run: wolf taxonomy sync');
       taxOk = false;
+    } else if (file === null && cfg?.wolfVersion !== undefined && cfg.wolfVersion !== getWolfVersion()) {
+      // P214 (C7): новый формат — штамп вместо дампа; несовпадение = warning
+      // (taxonomy сама по себе OK), а не error
+      taxWarnings.push(
+        `config wolf_version ${cfg.wolfVersion} does not match wolf ${getWolfVersion()}; run: wolf migrate taxonomy`
+      );
+      taxNote = ` (wolf_version ${cfg.wolfVersion} != wolf ${getWolfVersion()}; run: wolf migrate taxonomy)`;
     }
     try {
       mergeTaxonomy(cfg);
     } catch (err: unknown) {
       if (err instanceof ProjectTypeConflictError) {
-        errors.push(err.message);
+        taxErrors.push(err.message);
         taxOk = false;
       }
     }
   } catch {
     // config not loadable — not an error for validate
   }
-  displayLines.push(`taxonomy:   ${taxOk ? 'OK' : 'FAIL'}`);
+  errors.push(...taxErrors);
+  warnings.push(...taxWarnings);
+  displayLines.push(`taxonomy:   ${taxOk ? 'OK' : 'FAIL'}${taxNote}`);
 
   // 2. layout
   const objsDir = objectsDir(baseDir);
@@ -239,7 +254,7 @@ export async function runValidate(baseDir: string, opts?: { fix?: boolean }): Pr
 
   return {
     sections: [
-      { name: 'taxonomy', errors: [], warnings: [] },
+      { name: 'taxonomy', errors: taxErrors, warnings: taxWarnings },
       { name: 'layout', errors: [], warnings: legacyCount > 0 ? [`legacy objects left: ${legacyCount}`] : [] },
       { name: 'objects', errors: problems.map((p) => `${relative(memBase, p.path)}: ${p.error}`), warnings: [] },
       { name: 'events', errors: evtResult.problems.map((p) => `line ${p.line}: ${p.error}`), warnings: [] },

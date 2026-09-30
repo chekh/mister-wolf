@@ -3,6 +3,8 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { loadDeliverySettings, loadWolfConfigSync, renderConfigYaml } from '../../../src/adapters/fs/config-file.js';
+import type { WolfConfig } from '../../../src/domain/taxonomy.js';
+import { getWolfVersion } from '../../../src/adapters/version.js';
 
 // P104 (е): счётчик readFileSync — полная делегация реальному fs, поведение не меняется.
 const fsReadFiles = vi.hoisted(() => [] as string[]);
@@ -236,5 +238,119 @@ describe('P109 (4.D): loadDeliverySettings — delivery.context_budget_tokens / 
   it('0 выключает предупреждение', () => {
     writeConfig('delivery:\n  context_warning_pct: 0\n');
     expect(loadDeliverySettings(dir).contextWarningPct).toBe(0);
+  });
+});
+
+// P214 (спека 2.13 §7 C7+C8): wolf_version-штамп вместо дампа memory_types.core
+// (~570 строк) + полный round-trip конфига (фикс M8 — regenerate больше не теряет
+// pricing/analytics/learning.decay_ttl/effectiveness_thresholds/facets/delivery).
+describe('P214: wolf_version-штамп + round-trip', () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'wolf-config-p214-'));
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  function writeConfig(yaml: string): void {
+    mkdirSync(join(dir, '.wolf'), { recursive: true });
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), yaml);
+  }
+
+  const fullConfig: WolfConfig = {
+    artifact_sources: ['src/**/*.ts'],
+    schemaVersion: 2,
+    wolfVersion: '0.0.1', // рендер игнорирует и штампует версию бинарья
+    projectTypes: [
+      {
+        name: 'task_brief',
+        lifecycle: ['active', 'completed', 'paused'],
+        subdirThread: 'tasks',
+        subdirShared: null,
+        fields: { executor: { kind: 'string', optional: true } },
+      },
+    ],
+    rawCoreBlock: null,
+    errorClassTaxonomy: [{ id: 'grpc_unavailable', match: ['grpc', 'unavailable'] }],
+    learning: {
+      patternThreshold: 3,
+      decayTtl: { decision: 10 },
+      effectivenessThresholds: { noiseOk: 25, noiseWarn: 60, silentOk: 40 },
+    },
+    pricing: { 'zai-coding-plan/glm-5.3': { input: 0.6, output: 2.2, cache_read: 0.06 } },
+    analytics: { thresholds: { newDays: 14, workhorseUses: 3 } },
+    facets: { character: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] },
+    delivery: { contextBudgetTokens: 150_000, contextWarningPct: 15 },
+  };
+
+  it('дефолт: renderConfigYaml(null) ≤40 строк, wolf_version есть, memory_types нет', () => {
+    const rendered = renderConfigYaml(null);
+    expect(rendered.split('\n').filter((l) => l.trim() !== '').length).toBeLessThanOrEqual(40);
+    expect(rendered).toContain('wolf_version:');
+    expect(rendered).not.toContain('memory_types'); // проектных типов нет → секции нет вовсе
+  });
+
+  it('golden round-trip без потерь + стабильность render(load(render(cfg)))', () => {
+    const rendered = renderConfigYaml(fullConfig);
+    writeConfig(rendered);
+    const loaded = loadWolfConfigSync(dir);
+    expect(loaded?.wolfVersion).toBe(getWolfVersion()); // штамп = версия бинарья
+    expect(loaded?.artifact_sources).toEqual(fullConfig.artifact_sources);
+    expect(loaded?.schemaVersion).toBe(fullConfig.schemaVersion);
+    expect(loaded?.projectTypes).toEqual(fullConfig.projectTypes);
+    expect(loaded?.errorClassTaxonomy).toEqual(fullConfig.errorClassTaxonomy);
+    expect(loaded?.learning).toEqual(fullConfig.learning);
+    expect(loaded?.pricing).toEqual(fullConfig.pricing);
+    expect(loaded?.analytics).toEqual(fullConfig.analytics);
+    expect(loaded?.facets).toEqual(fullConfig.facets);
+    expect(loaded?.delivery).toEqual(fullConfig.delivery);
+    // стабильность: повторный рендер загруженного байт-в-байт совпадает
+    expect(renderConfigYaml(loaded)).toBe(rendered);
+  });
+
+  it('легаси-конфиг с дампом: парсится, rawCoreBlock не null, мусорный ключ stripped, wolfVersion undefined', () => {
+    writeConfig(
+      'memory_types:\n' +
+        '  core:\n' +
+        '    decision:\n' +
+        '      lifecycle: [active]\n' +
+        'learning:\n' +
+        '  pattern_threshold: 3\n' +
+        '  evolve_route: true\n'
+    );
+    const loaded = loadWolfConfigSync(dir);
+    expect(loaded).not.toBeNull();
+    expect(loaded?.rawCoreBlock).toEqual({ decision: { lifecycle: ['active'] } });
+    expect(loaded?.wolfVersion).toBeUndefined();
+    expect(loaded?.learning?.patternThreshold).toBe(3);
+    expect(JSON.stringify(loaded?.learning)).not.toContain('evolve_route'); // zod-strip
+  });
+
+  it('аддитивная замена: легаси-дамп → рендер без core, project type и pricing выживают', () => {
+    writeConfig(
+      'memory_types:\n' +
+        '  core:\n' +
+        '    decision:\n' +
+        '      lifecycle: [active]\n' +
+        '  project:\n' +
+        '    task_brief:\n' +
+        '      lifecycle: [active, completed, paused]\n' +
+        '      subdir_thread: tasks\n' +
+        '      subdir_shared: ~\n' +
+        '      fields:\n        executor: { kind: string, optional: true }\n' +
+        'pricing:\n' +
+        "  'zai-coding-plan/glm-5.3':\n" +
+        '    input: 0.6\n' +
+        '    output: 2.2\n' +
+        '    cache_read: 0.06\n'
+    );
+    const loaded = loadWolfConfigSync(dir);
+    const rendered = renderConfigYaml(loaded);
+    expect(rendered).toContain('wolf_version:');
+    expect(rendered).not.toContain('core:');
+    writeConfig(rendered);
+    const reloaded = loadWolfConfigSync(dir);
+    expect(reloaded?.rawCoreBlock).toBeNull(); // дамп не переживает regenerate
+    expect(reloaded?.projectTypes).toEqual(fullConfig.projectTypes);
+    expect(reloaded?.pricing).toEqual(fullConfig.pricing);
   });
 });

@@ -899,8 +899,8 @@ Options:
   -h, --help      display help for command
 
 Commands:
-  sync            Regenerate memory_types.core in .wolf/config.yaml from code
-                  canon
+  sync            Refresh .wolf/config.yaml: project types preserved,
+                  wolf_version stamp
   show            Print effective taxonomy (code canon + project types)
   help [command]  display help for command
 ```
@@ -910,7 +910,7 @@ Commands:
 ```text
 Usage: wolf taxonomy sync [options]
 
-Regenerate memory_types.core in .wolf/config.yaml from code canon
+Refresh .wolf/config.yaml: project types preserved, wolf_version stamp
 
 Options:
   -h, --help  display help for command

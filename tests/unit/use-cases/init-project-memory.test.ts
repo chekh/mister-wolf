@@ -28,10 +28,12 @@ describe('initProjectMemory', () => {
     const yamlText = await import('fs').then((m) => m.readFileSync(join(dir, '.wolf', 'config.yaml'), 'utf-8'));
     const { default: yaml } = await import('js-yaml');
     const cfg = yaml.load(yamlText) as {
+      wolf_version?: string;
       memory_types?: { core?: Record<string, unknown> };
       artifact_sources?: string[];
     };
-    expect(cfg.memory_types?.core?.['note']).toBeDefined(); // wave13-a: task-brief больше не core-тип
+    expect(cfg.wolf_version).toBeDefined(); // P214: штамп вместо дампа core
+    expect(cfg.memory_types?.core).toBeUndefined();
     expect(cfg.artifact_sources).toEqual([]);
   });
 });

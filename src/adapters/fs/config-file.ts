@@ -4,7 +4,7 @@ import yaml from 'js-yaml';
 import { z } from 'zod';
 import type { FieldSpec, MemoryType, MemoryTypeDeclaration } from '../../domain/memory-types.js';
 import type { WolfConfig } from '../../domain/taxonomy.js';
-import { generateCoreConfigBlock } from '../../domain/taxonomy.js';
+import { getWolfVersion } from '../version.js';
 import { configPath } from './project-paths.js';
 
 // union, не discriminatedUnion: у трёх вариантов kind:'string' (required/optional/
@@ -28,6 +28,8 @@ const ProjectTypeDeclSchema = z.object({
 });
 
 const ConfigFileSchema = z.object({
+  // P214 (C7): штамп версии писавшего бинарья; drift-чек легаси-дампов — в validate
+  wolf_version: z.string().optional(),
   schema_version: z.number().int().optional().catch(undefined),
   artifact_sources: z.array(z.string()).catch([]),
   memory_types: z
@@ -119,25 +121,14 @@ function mapAnalyticsThresholds(t?: {
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
-export async function loadWolfConfig(baseDir: string): Promise<WolfConfig | null> {
-  let raw: string;
-  try {
-    raw = await fs.readFile(configPath(baseDir), 'utf-8');
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
-    throw err;
-  }
-  let parsed: unknown;
-  try {
-    parsed = yaml.load(raw);
-  } catch (err) {
-    throw new ConfigLoadError(`Invalid YAML in ${configPath(baseDir)}: ${err instanceof Error ? err.message : err}`);
-  }
-  const cfg = ConfigFileSchema.parse(parsed);
+/** Схема → доменный WolfConfig; единственный маппинг для обоих загрузчиков (P214:
+ * раньше async/sync-загрузчики несли две идентичные копии). */
+function mapConfigFile(cfg: z.infer<typeof ConfigFileSchema>): WolfConfig {
   const mt = cfg.memory_types ?? {};
   return {
     artifact_sources: cfg.artifact_sources,
     schemaVersion: cfg.schema_version,
+    wolfVersion: cfg.wolf_version,
     projectTypes: Object.entries(mt.project ?? {}).map(([name, d]) => ({
       name: name as MemoryType,
       lifecycle: d.lifecycle as MemoryTypeDeclaration['lifecycle'],
@@ -156,7 +147,31 @@ export async function loadWolfConfig(baseDir: string): Promise<WolfConfig | null
       effectivenessThresholds: mapEffectivenessThresholds(cfg.learning?.effectiveness_thresholds),
     },
     facets: cfg.facets,
+    delivery:
+      cfg.delivery === undefined
+        ? undefined
+        : {
+            contextBudgetTokens: cfg.delivery.context_budget_tokens,
+            contextWarningPct: cfg.delivery.context_warning_pct,
+          },
   };
+}
+
+export async function loadWolfConfig(baseDir: string): Promise<WolfConfig | null> {
+  let raw: string;
+  try {
+    raw = await fs.readFile(configPath(baseDir), 'utf-8');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw err;
+  }
+  let parsed: unknown;
+  try {
+    parsed = yaml.load(raw);
+  } catch (err) {
+    throw new ConfigLoadError(`Invalid YAML in ${configPath(baseDir)}: ${err instanceof Error ? err.message : err}`);
+  }
+  return mapConfigFile(ConfigFileSchema.parse(parsed));
 }
 
 /**
@@ -220,48 +235,68 @@ function readWolfConfigSync(path: string): WolfConfig | null {
   } catch (err) {
     throw new ConfigLoadError(`Invalid YAML in ${path}: ${err instanceof Error ? err.message : err}`);
   }
-  const cfg = ConfigFileSchema.parse(parsed);
-  const mt = cfg.memory_types ?? {};
-  return {
-    artifact_sources: cfg.artifact_sources,
-    schemaVersion: cfg.schema_version,
-    projectTypes: Object.entries(mt.project ?? {}).map(([name, d]) => ({
-      name: name as MemoryType,
-      lifecycle: d.lifecycle as MemoryTypeDeclaration['lifecycle'],
-      subdirThread: d.subdir_thread,
-      subdirShared: d.subdir_shared,
-      fields: d.fields,
-    })),
-    rawCoreBlock: mt.core ?? null,
-    errorClassTaxonomy: cfg.error_class_taxonomy,
-    pricing: cfg.pricing,
-    analytics:
-      cfg.analytics === undefined ? undefined : { thresholds: mapAnalyticsThresholds(cfg.analytics.thresholds) },
-    learning: {
-      patternThreshold: cfg.learning?.pattern_threshold,
-      decayTtl: cfg.learning?.decay_ttl,
-      effectivenessThresholds: mapEffectivenessThresholds(cfg.learning?.effectiveness_thresholds),
-    },
-    facets: cfg.facets,
-  };
+  return mapConfigFile(ConfigFileSchema.parse(parsed));
 }
 
-/** Детерминированный YAML полного конфига: генерируемый core + сохранённые artifact_sources/project. */
+/** camelCase → snake_case для вложенных опциональных секций; пустые объекты
+ * схлопываются в undefined (js-yaml пропускает undefined-ключи, но `{}` бы написал). */
+function renderLearning(l?: WolfConfig['learning']): Record<string, unknown> | undefined {
+  if (!l) return undefined;
+  const out: Record<string, unknown> = {};
+  if (l.patternThreshold !== undefined) out.pattern_threshold = l.patternThreshold;
+  if (l.decayTtl !== undefined) out.decay_ttl = l.decayTtl;
+  if (l.effectivenessThresholds !== undefined) {
+    const e: Record<string, number> = {};
+    if (l.effectivenessThresholds.noiseOk !== undefined) e.noise_ok = l.effectivenessThresholds.noiseOk;
+    if (l.effectivenessThresholds.noiseWarn !== undefined) e.noise_warn = l.effectivenessThresholds.noiseWarn;
+    if (l.effectivenessThresholds.silentOk !== undefined) e.silent_ok = l.effectivenessThresholds.silentOk;
+    if (Object.keys(e).length > 0) out.effectiveness_thresholds = e;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function renderAnalytics(a?: WolfConfig['analytics']): Record<string, unknown> | undefined {
+  if (a?.thresholds === undefined) return undefined;
+  const t: Record<string, number> = {};
+  if (a.thresholds.newDays !== undefined) t.new_days = a.thresholds.newDays;
+  if (a.thresholds.workhorseUses !== undefined) t.workhorse_uses = a.thresholds.workhorseUses;
+  return Object.keys(t).length > 0 ? { thresholds: t } : undefined;
+}
+
+function renderDelivery(d?: WolfConfig['delivery']): Record<string, number> | undefined {
+  if (!d) return undefined;
+  const out: Record<string, number> = {};
+  if (d.contextBudgetTokens !== undefined) out.context_budget_tokens = d.contextBudgetTokens;
+  if (d.contextWarningPct !== undefined) out.context_warning_pct = d.contextWarningPct;
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
+ * P214 (C7/C8): конфиг без дампа memory_types.core (~570 строк канона) — вместо
+ * него top-level `wolf_version`-штамп; drift легаси-дампов ловит validate.
+ * Полный round-trip всех секций (фикс M8): pricing/analytics/learning/facets/
+ * delivery/project переживают regenerate. Пустые секции опускаются целиком.
+ */
 export function renderConfigYaml(existing: WolfConfig | null): string {
-  const doc = {
-    '# comment': 'memory_types.core is generated by `wolf taxonomy sync`; manual edits will be overwritten',
+  const doc: Record<string, unknown> = {
+    wolf_version: getWolfVersion(),
     schema_version: existing?.schemaVersion,
     artifact_sources: existing?.artifact_sources ?? [],
-    // сохраняем при regenerate (иначе taxonomy sync стёр бы настройки контура Ф20/Ф21)
-    error_class_taxonomy: existing?.errorClassTaxonomy ?? [],
-    learning:
-      existing?.learning?.patternThreshold !== undefined
-        ? { pattern_threshold: existing.learning.patternThreshold }
-        : {},
-    memory_types: {
-      core: generateCoreConfigBlock(),
+    error_class_taxonomy:
+      existing?.errorClassTaxonomy !== undefined && existing.errorClassTaxonomy.length > 0
+        ? existing.errorClassTaxonomy
+        : undefined,
+    learning: renderLearning(existing?.learning),
+    pricing: existing?.pricing,
+    analytics: renderAnalytics(existing?.analytics),
+    facets: existing?.facets,
+    delivery: renderDelivery(existing?.delivery),
+  };
+  const projectTypes = existing?.projectTypes ?? [];
+  if (projectTypes.length > 0) {
+    doc.memory_types = {
       project: Object.fromEntries(
-        (existing?.projectTypes ?? []).map((p) => [
+        projectTypes.map((p) => [
           p.name,
           {
             lifecycle: p.lifecycle,
@@ -271,7 +306,7 @@ export function renderConfigYaml(existing: WolfConfig | null): string {
           },
         ])
       ),
-    },
-  };
+    };
+  }
   return yaml.dump(doc, { sortKeys: false });
 }
