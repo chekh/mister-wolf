@@ -381,7 +381,17 @@ describe('wolf migrate taxonomy (CLI integration)', () => {
     expect(collectIds()).toEqual(idsBefore);
   });
 
-  it('apply refuses on dirty .wolf/memory in a git repo', async () => {
+  // ponytail: Docker-CI без git — гвард-тест исполняется только при доступном git
+  const gitIt = (() => {
+    try {
+      execSync('git --version', { stdio: 'ignore' });
+      return it;
+    } catch {
+      return it.skip;
+    }
+  })();
+
+  gitIt('apply refuses on dirty .wolf/memory in a git repo', async () => {
     seed();
     execSync('git init -q && git add -A && git -c user.name=t -c user.email=t@t commit -qm init', { cwd: dir });
     writeFileSync(join(dir, '.wolf', 'memory', 'shared', 'lessons', 'o1.md'), '---\n---\ndirty\n', { flag: 'a' });
