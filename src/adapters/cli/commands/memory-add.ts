@@ -2,7 +2,7 @@ import { Command, Option } from 'commander';
 import { safeCwd } from '../cli-entry.js';
 import { addMemoryObject } from '../../../app/use-cases/add-memory-object.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
-import { MEMORY_TYPES } from '../../../domain/memory-types.js';
+import { MEMORY_TYPES, type MemoryType } from '../../../domain/memory-types.js';
 import { parseSetPairs } from '../../../domain/parse-set-pairs.js';
 import { resolveCreatedBy } from '../../../domain/actor.js';
 import { UserFacingError } from '../../../domain/errors.js';
@@ -11,6 +11,60 @@ import { withCliCall } from './with-cli-call.js';
 
 function collectSet(value: string, previous: string[]): string[] {
   return [...previous, value];
+}
+
+/** Общая форма опций add-пути: generic `wolf add` и генерённые `<type> add` (§6.3). */
+export interface AddActionOptions {
+  type: string;
+  title: string;
+  body?: string;
+  tags?: string;
+  confidence?: string;
+  importance?: number;
+  set?: string[];
+  scope?: string;
+  facet?: string;
+  createdBy?: string;
+  /** Сгенерённые флаги полей типа (snake_case-ключи декларации); мержатся в extra поверх --set. */
+  extraFields?: Record<string, unknown>;
+}
+
+/**
+ * Единое действие add-пути (2.13 §6.3): `wolf add --type <type>` и генерённые
+ * `wolf <type> add` делегируют сюда — логика опций/use-case не дублируется.
+ */
+export async function runAddAction(baseDir: string, options: AddActionOptions): Promise<void> {
+  const { store, log, clock, idGen, index, declarations } = createCliContainer(baseDir);
+  const type = options.type as MemoryType;
+  const extra = parseSetPairs(options.set ?? [], type);
+  if (options.scope !== undefined) {
+    if ('scope' in extra) throw new UserFacingError('Duplicate scope: use either --scope or --set scope=..., not both');
+    extra.scope = options.scope;
+  }
+  if (options.facet !== undefined) {
+    if ('facet' in extra) throw new UserFacingError('Duplicate facet: use either --facet or --set facet=..., not both');
+  }
+  Object.assign(extra, options.extraFields ?? {});
+  const result = await addMemoryObject(
+    { store, log, clock, idGen, index, declarations },
+    {
+      type,
+      title: options.title,
+      body: options.body,
+      createdBy: resolveCreatedBy(options.createdBy),
+      tags: options.tags ? options.tags.split(',').map((t: string) => t.trim()) : [],
+      confidence: options.confidence as 'low' | 'medium' | 'high' | undefined,
+      importance: options.importance,
+      facet: options.facet,
+      extra,
+    }
+  );
+  console.log(`Created memory object: ${result.object.id}`);
+  if (result.warnings.length > 0) {
+    for (const warning of result.warnings) {
+      console.warn(`Warning: ${warning}`);
+    }
+  }
 }
 
 // baseDir инъектится для тестов (прецедент: memory-update.ts).
@@ -30,39 +84,7 @@ export function memoryAddCommand(baseDir: string = safeCwd()): Command {
     .action(
       withCliCall(
         'add',
-        async (options) => {
-          const { store, log, clock, idGen, index, declarations } = createCliContainer(baseDir);
-          const extra = parseSetPairs(options.set as string[], options.type);
-          if (options.scope !== undefined) {
-            if ('scope' in extra)
-              throw new UserFacingError('Duplicate scope: use either --scope or --set scope=..., not both');
-            extra.scope = options.scope;
-          }
-          if (options.facet !== undefined) {
-            if ('facet' in extra)
-              throw new UserFacingError('Duplicate facet: use either --facet or --set facet=..., not both');
-          }
-          const result = await addMemoryObject(
-            { store, log, clock, idGen, index, declarations },
-            {
-              type: options.type,
-              title: options.title,
-              body: options.body,
-              createdBy: resolveCreatedBy(options.createdBy),
-              tags: options.tags ? options.tags.split(',').map((t: string) => t.trim()) : [],
-              confidence: options.confidence,
-              importance: options.importance,
-              facet: options.facet,
-              extra,
-            }
-          );
-          console.log(`Created memory object: ${result.object.id}`);
-          if (result.warnings.length > 0) {
-            for (const warning of result.warnings) {
-              console.warn(`Warning: ${warning}`);
-            }
-          }
-        },
+        (options) => runAddAction(baseDir, options),
         // волна 0 0.1: args_summary в mcp_call-сигнал (body не попадает);
         // extra_keys — из --set пар (парсинг дублируется дёшево, телеметрия в try/catch обёртки)
         (options) => ({

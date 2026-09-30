@@ -8,7 +8,9 @@ import { EventLog } from '../../ports/event-log.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
 import { RelationLog } from '../../ports/relation-log.port.js';
 import { MemoryLock } from '../../ports/memory-lock.port.js';
-import { createDecision, CreateDecisionResult } from './create-decision.js';
+import { addMemoryObject, type AddMemoryObjectResult } from './add-memory-object.js';
+import { recordRelation } from './record-relation.js';
+import { summarizeSession } from './summarize-session.js';
 
 export const THOUGHT_TYPES = ['hypothesis', 'reasoning', 'evidence', 'concern'] as const;
 
@@ -139,31 +141,52 @@ export async function concludeThinking(
     lock?: MemoryLock;
   },
   input: { sequenceId: string; title: string; body: string; createdBy: string }
-): Promise<CreateDecisionResult> {
+): Promise<AddMemoryObjectResult> {
   const { meta, thoughts } = await readScratch(deps.baseDir, input.sequenceId);
   if (thoughts.length === 0) {
     throw new Error(`Sequence has no thoughts: ${input.sequenceId}`);
   }
   const trace = thoughts.map((t) => `${t.n}. [${t.type}] ${t.text}`).join('\n');
   const body = `${input.body}\n\n## Thinking trace (${meta.id})\n\n${trace}`;
-  const result = await createDecision(
+  // P222: create-decision умер — прямой add-путь + протокол create-decision
+  // (relations updates/based_on и авто-сводка сессии) сохранён здесь
+  const result = await addMemoryObject(
+    { store: deps.store, log: deps.log, clock: deps.clock, idGen: deps.idGen, index: deps.index, lock: deps.lock },
     {
-      store: deps.store,
-      log: deps.log,
-      clock: deps.clock,
-      idGen: deps.idGen,
-      index: deps.index,
-      relations: deps.relations,
-      lock: deps.lock,
-    },
-    {
+      type: 'decision',
       title: input.title,
       body,
-      thread: meta.thread ?? undefined,
-      basedOn: thoughts.map((t) => t.tid),
       createdBy: input.createdBy,
+      ...(meta.thread ? { extra: { thread: meta.thread } } : {}),
     }
   );
+  if (deps.relations) {
+    const now = deps.clock.now();
+    if (meta.thread) {
+      await recordRelation(
+        { relations: deps.relations, idGen: deps.idGen },
+        now,
+        result.object.id,
+        'updates',
+        meta.thread
+      );
+    }
+    for (const basis of thoughts) {
+      await recordRelation(
+        { relations: deps.relations, idGen: deps.idGen },
+        now,
+        result.object.id,
+        'based_on',
+        basis.tid
+      );
+    }
+  }
+  await summarizeSession(
+    { store: deps.store, log: deps.log, clock: deps.clock, idGen: deps.idGen, index: deps.index },
+    { createdBy: input.createdBy }
+  ).catch((err: unknown) => {
+    console.error('Session summary failed:', err);
+  });
   await unlink(scratchPath(deps.baseDir, input.sequenceId)).catch((err: NodeJS.ErrnoException) => {
     if (err.code !== 'ENOENT') throw err;
   });

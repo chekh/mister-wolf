@@ -104,7 +104,7 @@ describe('addThought', () => {
   });
 });
 
-// свежий session-summary в list → shouldSummarize false → summarizeSession (внутри createDecision)
+// свежий session-summary в list → shouldSummarize false → summarizeSession (внутри concludeThinking)
 // отрабатывает вхолостую и не пишет в saved лишний объект (план Task 3, примечание)
 // wave13-a: session-summary → note+facet history, дедуп — по тегу session-summary
 const RECENT_SUMMARY = {
@@ -205,7 +205,7 @@ describe('concludeThinking', () => {
     expect(existsSync(scratchPath(meta.id))).toBe(false);
   });
 
-  it('keeps the scratch file when createDecision fails', async () => {
+  it('keeps the scratch file when the decision add fails', async () => {
     const deps = thinkDeps();
     const meta = await startThinking(deps, { goal: 'g' });
     await addThought(deps, { sequenceId: meta.id, type: 'evidence', text: 'E1' });

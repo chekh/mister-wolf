@@ -18,7 +18,8 @@ describe('solve builds stale-instruction pack on seeded memory', () => {
     const dir = tmpProject();
     dirs.push(dir);
     runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
-    runCli(['thread', 'create', '--title', 'CLI repair thread', '--goal', 'Repair stale CLI guidance'], dir);
+    // 2.13 §6.3: генерённый неймспейс `thread add` (create умер в P222)
+    runCli(['thread', 'add', '--title', 'CLI repair thread', '--goal', 'Repair stale CLI guidance'], dir);
 
     const oldRun = runCli(
       [

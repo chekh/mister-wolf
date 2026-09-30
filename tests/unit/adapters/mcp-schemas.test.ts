@@ -1,10 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import {
-  MemoryAddInputSchema,
-  AnalyticsInputSchema,
-  normalizeAddInputKeys,
-} from '../../../src/adapters/mcp/mcp-schemas.js';
+import { MemoryAddInputSchema, normalizeAddInputKeys } from '../../../src/adapters/mcp/mcp-schemas.js';
 import { CORE_TAXONOMY } from '../../../src/domain/memory-types.js';
 
 describe('MemoryAddInputSchema (derived from taxonomy)', () => {
@@ -122,47 +118,5 @@ describe('normalizeAddInputKeys', () => {
     expect(result.value?.current_state).toBe('s');
     expect(result.value?.next_steps).toEqual(['a']);
     expect(result.value?.createdBy).toBe('user:x');
-  });
-});
-
-describe('AnalyticsInputSchema (analytics MCP tool)', () => {
-  it('parses a full valid object and keeps every field', () => {
-    const parsed = AnalyticsInputSchema.safeParse({
-      view: 'memory',
-      class: 'dead',
-      type: 'rule',
-      origin: 'script',
-      agent: 'dev',
-      top: 5,
-      weeks: 4,
-      silent: true,
-    });
-    expect(parsed.success).toBe(true);
-    if (parsed.success) {
-      expect(parsed.data).toEqual({
-        view: 'memory',
-        class: 'dead',
-        type: 'rule',
-        origin: 'script',
-        agent: 'dev',
-        top: 5,
-        weeks: 4,
-        silent: true,
-      });
-    }
-  });
-
-  it('rejects unknown view value', () => {
-    const parsed = AnalyticsInputSchema.safeParse({ view: 'bogus' });
-    expect(parsed.success).toBe(false);
-    if (!parsed.success) {
-      expect(parsed.error.issues.some((i) => i.path.includes('view'))).toBe(true);
-    }
-  });
-
-  it("parses view 'campaign' (P3 D4: campaigns & per-memory ROI wire-through)", () => {
-    const parsed = AnalyticsInputSchema.safeParse({ view: 'campaign' });
-    expect(parsed.success).toBe(true);
-    if (parsed.success) expect(parsed.data.view).toBe('campaign');
   });
 });

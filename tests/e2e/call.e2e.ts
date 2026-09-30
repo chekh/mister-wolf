@@ -19,11 +19,12 @@ describe('clean session repairs memory and call injects the fix', () => {
     const dir = tmpProject();
     dirs.push(dir);
     runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
+    // 2.13 §6.3: генерённый `thread add` (create умер в P222)
     const threadRun = runCli(
-      ['thread', 'create', '--title', 'CLI repair thread', '--goal', 'Repair stale CLI guidance'],
+      ['thread', 'add', '--title', 'CLI repair thread', '--goal', 'Repair stale CLI guidance'],
       dir
     );
-    const threadId = threadRun.stdout.match(/Created work thread: (\S+)/)?.[1] ?? '';
+    const threadId = threadRun.stdout.match(/Created memory object: (\S+)/)?.[1] ?? '';
 
     const oldRun = runCli(
       [

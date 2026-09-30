@@ -21,8 +21,9 @@ describe('generic add supports --scope for types that declare one', () => {
     expect(r.status).toBe(0);
     expect(r.stdout).toContain('Created memory object:');
 
+    // 2.13 §6.3: генерённый `rule list` — формат единого list-пути
     const list = runCli(['rule', 'list'], cwd);
-    expect(list.stdout).toContain('[active] [project] Use strict mode');
+    expect(list.stdout).toContain('[rule] [active] Use strict mode');
   });
 
   it('rejects invalid scope value', () => {

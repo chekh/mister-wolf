@@ -10,7 +10,6 @@ import { SystemClock } from '../../src/adapters/fs/system-clock.js';
 import { HashIdGenerator } from '../../src/adapters/fs/hash-id-generator.js';
 import { FsProjectInitializer } from '../../src/adapters/fs/fs-project-initializer.js';
 import { transitionMemoryObject } from '../../src/app/use-cases/transition-memory-object.js';
-import { createWorkThread } from '../../src/app/use-cases/create-work-thread.js';
 import { eventsPath } from '../../src/adapters/fs/project-paths.js';
 
 describe('Governance workflow', () => {
@@ -106,11 +105,12 @@ describe('Governance workflow', () => {
     const clock = new SystemClock();
     const idGen = new HashIdGenerator();
 
-    const { object } = await createWorkThread(
+    const { object } = await addMemoryObject(
       { store, log, clock, idGen },
       {
+        type: 'thread',
         title: 'Bootstrap: наполнение стартовой памяти',
-        goal: 'Свёртка черновиков и завершение онбординга',
+        extra: { goal: 'Свёртка черновиков и завершение онбординга' },
         createdBy: 'user:cli',
       }
     );

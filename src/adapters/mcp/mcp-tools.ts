@@ -6,54 +6,59 @@ import {
   MemoryGetInputSchema,
   MemoryListInputSchema,
   MemoryTransitionInputSchema,
-  MemoryCreateThreadInputSchema,
-  MemoryCreateInfoRequestInputSchema,
-  MemoryCreateArticleInputSchema,
-  MemoryCreateDecisionInputSchema,
-  MemoryCreateBlockerInputSchema,
-  MemoryResolveBlockerInputSchema,
-  MemoryCreateRuleInputSchema,
-  InsightsInputSchema,
-  AnalyticsInputSchema,
-  ThinkingStartInputSchema,
-  ThinkingAddInputSchema,
-  ThinkingConcludeInputSchema,
-  ThinkingAbandonInputSchema,
 } from './mcp-schemas.js';
 import { searchMemory } from '../../app/use-cases/search-memory.js';
 import { addMemoryObject } from '../../app/use-cases/add-memory-object.js';
 import { getMemoryObject } from '../../app/use-cases/get-memory-object.js';
 import { listMemoryObjects } from '../../app/use-cases/list-memory-objects.js';
 import { transitionMemoryObject } from '../../app/use-cases/transition-memory-object.js';
-import { createWorkThread } from '../../app/use-cases/create-work-thread.js';
-import { createInfoRequest } from '../../app/use-cases/create-info-request.js';
-import { createArticle } from '../../app/use-cases/create-article.js';
-import { createDecision } from '../../app/use-cases/create-decision.js';
-import { createBlocker } from '../../app/use-cases/create-blocker.js';
-import { resolveBlocker } from '../../app/use-cases/resolve-blocker.js';
-import { scanProject, scanProjectCached } from '../../app/use-cases/scan-project.js';
+import { scanProjectCached } from '../../app/use-cases/scan-project.js';
 import { openScanSnapshotCache } from '../fs/scan-snapshot-cache.js';
 import { projectTreeSignature } from '../fs/heuristic-project-scanner.js';
 import { generateAgentBrief } from '../../app/use-cases/generate-agent-brief.js';
-import { generateInsights, renderInsights } from '../../app/use-cases/generate-insights.js';
 import { generateRecap, renderRecap } from '../../app/use-cases/generate-recap.js';
-import { createRule } from '../../app/use-cases/create-rule.js';
-import { startThinking, addThought, concludeThinking, abandonThinking } from '../../app/use-cases/thinking.js';
 import { createCliContainer } from '../../bootstrap/container.js';
-import { buildAnalyticsReport, filterAnalytics } from '../../app/use-cases/build-analytics.js';
-import {
-  appendMcpCallSignal,
-  appendMemoryStageSignal,
-  readSignalLog,
-  addArgsSummary,
-} from '../../adapters/fs/session-metrics-log.js';
+import { appendMcpCallSignal, appendMemoryStageSignal, addArgsSummary } from '../../adapters/fs/session-metrics-log.js';
 import { normalizeAddInputKeys } from './mcp-schemas.js';
-import { loadWolfConfigSync } from '../../adapters/fs/config-file.js';
 import { getWolfVersion } from '../version.js';
 import { resolveSessionId } from '../../domain/actor.js';
-import { parseRouterLog } from '../../domain/router-log.js';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+
+/**
+ * Каталог MCP-тулов после диеты 2.13 (спека §6.2, §7 C11): ровно 7, порог ≤ 12.
+ * `ping` — отдельный health-check в mcp-server.ts, в каталог не входит.
+ */
+export const MCP_TOOL_NAMES = ['search', 'get', 'list', 'add', 'transition', 'brief', 'recap'] as const;
+
+/** Подсказки для тулов, удалённых в 2.13 (механика — зеркало CLI removed-commands.ts). */
+const REMOVED_TOOL_HINTS: Readonly<Record<string, string>> = {
+  create_thread: 'use `add` (types) or `transition` (statuses)',
+  create_info_request: 'use `add` (types) or `transition` (statuses)',
+  create_article: 'use `add` (types) or `transition` (statuses)',
+  create_decision: 'use `add` (types) or `transition` (statuses)',
+  create_blocker: 'use `add` (types) or `transition` (statuses)',
+  create_rule: 'use `add` (types) or `transition` (statuses)',
+  resolve_blocker: 'use `transition` (statuses)',
+  scan: 'use the CLI `wolf scan`; `brief` rescans automatically on structural changes',
+  insights: 'use the CLI `wolf analytics`',
+  analytics: 'use the CLI `wolf analytics --json`',
+  start_thinking: 'use the CLI `wolf think start`',
+  add_thought: 'use the CLI `wolf think add`',
+  conclude_thinking: 'use the CLI `wolf think conclude`',
+  abandon_thinking: 'use the CLI `wolf think abandon`',
+};
+
+/**
+ * P223 (спека 2.13 §6.2/§10.4): сообщение для вызова несуществующего тула —
+ * вместо сухого «Tool X not found» агент получает каталог и migration-подсказку.
+ */
+export function mcpToolNotFoundMessage(name: string): string {
+  const catalog = MCP_TOOL_NAMES.join('/');
+  const removed = REMOVED_TOOL_HINTS[name];
+  if (removed) {
+    return `tool '${name}' was removed in wolf 2.13 — ${removed}. Available: ${catalog}.`;
+  }
+  return `unknown tool '${name}' — available: ${catalog}; create_* tools were removed in 2.13, use \`add\` (types) or \`transition\` (statuses)`;
+}
 
 /** Detail mcp_call по инструменту (args_summary/memory_id; body в телеметрию не попадает). */
 const enrichDetail = (name: string, input: unknown): Record<string, unknown> => {
@@ -198,11 +203,13 @@ export function registerMemoryTools(
     };
   };
 
+  const registered: string[] = [];
   const register = (
     name: string,
     config: { description: string; inputSchema: unknown },
     handler: (input: unknown) => Promise<unknown>
   ): void => {
+    registered.push(name);
     // as never: registerTool перегружен (standard-schema + deprecated raw-shape),
     // Parameters<> берёт последний оверлоад и требует ZodRawShape — наши ZodObject туда не входят.
     // T011: inputSchema оборачивается (нормализация ключей add + телеметрия schema-фейлов).
@@ -351,132 +358,6 @@ export function registerMemoryTools(
   );
 
   register(
-    'create_thread',
-    {
-      description: 'Create a work thread',
-      inputSchema: MemoryCreateThreadInputSchema,
-    },
-    async (input: unknown) => {
-      const args = input as {
-        title: string;
-        goal: string;
-        currentState?: string;
-        nextSteps?: string[];
-        createdBy: string;
-      };
-      const result = await createWorkThread(deps, args);
-      return { content: [{ type: 'text' as const, text: `Created thread: ${result.object.id}` }] };
-    }
-  );
-
-  register(
-    'create_info_request',
-    {
-      description: 'Create an information request',
-      inputSchema: MemoryCreateInfoRequestInputSchema,
-    },
-    async (input: unknown) => {
-      const args = input as {
-        title: string;
-        thread: string;
-        question: string;
-        detourReason: string;
-        neededFor?: string[];
-        expectedAnswer: string[];
-        preliminaryAnswer?: string;
-        createdBy: string;
-      };
-      const result = await createInfoRequest(deps, args);
-      return { content: [{ type: 'text' as const, text: `Created info request: ${result.object.id}` }] };
-    }
-  );
-
-  register(
-    'create_article',
-    {
-      description: 'Create an article',
-      inputSchema: MemoryCreateArticleInputSchema,
-    },
-    async (input: unknown) => {
-      const args = input as {
-        title: string;
-        thread: string;
-        summary: string;
-        body: string;
-        answers?: string[];
-        supports?: string[];
-        evidence?: string[];
-        createdBy: string;
-      };
-      const result = await createArticle(deps, args);
-      return { content: [{ type: 'text' as const, text: `Created article: ${result.object.id}` }] };
-    }
-  );
-
-  register(
-    'create_decision',
-    {
-      description: 'Create a decision',
-      inputSchema: MemoryCreateDecisionInputSchema,
-    },
-    async (input: unknown) => {
-      const args = input as {
-        title: string;
-        body: string;
-        thread?: string;
-        basedOn?: string[];
-        createdBy: string;
-      };
-      const result = await createDecision(deps, args);
-      return { content: [{ type: 'text' as const, text: `Created decision: ${result.object.id}` }] };
-    }
-  );
-
-  register(
-    'create_blocker',
-    {
-      description: 'Create a blocker',
-      inputSchema: MemoryCreateBlockerInputSchema,
-    },
-    async (input: unknown) => {
-      const args = input as {
-        title: string;
-        impact: string;
-        workaround?: string;
-        thread?: string;
-        createdBy: string;
-      };
-      const result = await createBlocker(deps, args);
-      return { content: [{ type: 'text' as const, text: `Created blocker: ${result.object.id}` }] };
-    }
-  );
-
-  register(
-    'resolve_blocker',
-    {
-      description: 'Resolve a blocker',
-      inputSchema: MemoryResolveBlockerInputSchema,
-    },
-    async (input: unknown) => {
-      const args = input as { id: string; resolvedBy?: string };
-      await resolveBlocker(deps, args.id, args.resolvedBy);
-      return { content: [{ type: 'text' as const, text: `Resolved blocker: ${args.id}` }] };
-    }
-  );
-
-  register(
-    'scan',
-    {
-      description: 'Scan the project and register documents',
-      inputSchema: EmptyInputSchema,
-    },
-    async () => {
-      const result = await scanProject(deps, baseDir);
-      return { content: [{ type: 'text' as const, text: `Project scan complete: ${result.object.id}` }] };
-    }
-  );
-
-  register(
     'brief',
     {
       description: 'Generate the agent brief from the latest scan and memory',
@@ -509,111 +390,6 @@ export function registerMemoryTools(
   );
 
   register(
-    'insights',
-    {
-      description: 'Heuristic pattern analysis over project memory (Level 1, no LLM)',
-      inputSchema: InsightsInputSchema,
-    },
-    async (input: unknown) => {
-      const args = input as {
-        topic?: string;
-        type?: 'patterns' | 'technical_debt' | 'decisions' | 'lessons' | 'activity';
-      };
-      const report = await generateInsights(
-        { store: deps.store, clock: deps.clock },
-        { topic: args.topic, analysisType: args.type }
-      );
-      return { content: [{ type: 'text' as const, text: renderInsights(report) }] };
-    }
-  );
-
-  register(
-    'analytics',
-    {
-      description:
-        'Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness, memory lifecycle & coordination, campaigns & per-memory ROI, machine acceptance — same JSON as `wolf analytics --json`',
-      inputSchema: AnalyticsInputSchema,
-    },
-    async (input: unknown) => {
-      const args = input as {
-        view?:
-          | 'memory'
-          | 'tools'
-          | 'rules'
-          | 'weeklyActivity'
-          | 'agents'
-          | 'steward'
-          | 'outliers'
-          | 'readiness'
-          | 'councils'
-          | 'coordination'
-          | 'campaign'
-          | 'acceptance'
-          | 'all';
-        class?: 'new' | 'sleeper' | 'workhorse' | 'dead';
-        type?: string;
-        origin?: 'script' | 'native';
-        agent?: string;
-        top?: number;
-        weeks?: number;
-        silent?: boolean;
-      };
-
-      // те же входы, что CLI: сигналы, run-log, config (битый yaml → undefined)
-      let config: ReturnType<typeof loadWolfConfigSync> | undefined = undefined;
-      try {
-        config = loadWolfConfigSync(baseDir);
-      } catch {
-        config = undefined;
-      }
-      let runLogText: string | null = null;
-      try {
-        runLogText = readFileSync(join(baseDir, '.wolf', 'run-log.jsonl'), 'utf-8');
-      } catch {
-        runLogText = null; // ENOENT — run-log ещё не пишется
-      }
-      // T003: router.log плагина wolf-router (нет файла → пустая структура)
-      let routerLogText: string | null = null;
-      try {
-        routerLogText = readFileSync(join(baseDir, '.wolf', 'router.log'), 'utf-8');
-      } catch {
-        routerLogText = null;
-      }
-      const parsedRouterLog = parseRouterLog(routerLogText ?? '');
-
-      // D7: readSignalLog — events + счётчики битых строк для dataQuality
-      const signalLog = readSignalLog(baseDir);
-      const report = await buildAnalyticsReport(
-        { store: deps.store, log: deps.log, relations: deps.relations, clock: deps.clock },
-        {
-          signals: signalLog.events,
-          signalLogStats: { malformedLines: signalLog.malformedLines, totalLines: signalLog.totalLines },
-          runLogText,
-          routerLog: {
-            rows: parsedRouterLog.rows,
-            lines: parsedRouterLog.rows.length + parsedRouterLog.malformedLines,
-            malformedLines: parsedRouterLog.malformedLines,
-          },
-          ...(config?.analytics?.thresholds !== undefined ? { thresholds: config.analytics.thresholds } : {}),
-          ...(args.weeks !== undefined ? { weeks: args.weeks } : {}),
-          ...(config?.pricing !== undefined ? { pricing: config.pricing } : {}),
-        }
-      );
-      const payload = filterAnalytics(report, {
-        view: args.view ?? 'all',
-        ...(args.class !== undefined ? { class: args.class } : {}),
-        ...(args.type !== undefined ? { type: args.type } : {}),
-        // схема MCP — script|native (зеркало CLI §6.2); контракт задачи 6 — 'model-native'
-        ...(args.origin !== undefined ? { origin: args.origin === 'native' ? 'model-native' : 'script' } : {}),
-        ...(args.agent !== undefined ? { agent: args.agent } : {}),
-        ...(args.silent ? { silent: true } : {}),
-        ...(args.top !== undefined ? { top: args.top } : {}),
-      });
-      return { content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }] };
-    }
-  );
-
-  register(
     'recap',
     {
       description:
@@ -626,97 +402,11 @@ export function registerMemoryTools(
     }
   );
 
-  register(
-    'create_rule',
-    {
-      description: 'Create a rule (user request only)',
-      inputSchema: MemoryCreateRuleInputSchema,
-    },
-    async (input: unknown) => {
-      const args = input as {
-        title: string;
-        body: string;
-        scope: 'project' | 'global';
-        appliesTo?: string[];
-        trigger?: string;
-        createdBy: string;
-      };
-      const result = await createRule(deps, args);
-      return { content: [{ type: 'text' as const, text: `Created rule: ${result.object.id}` }] };
-    }
-  );
-
-  register(
-    'start_thinking',
-    {
-      description: 'Start a structured thinking sequence (goal -> thoughts -> conclusion)',
-      inputSchema: ThinkingStartInputSchema,
-    },
-    async (input: unknown) => {
-      const args = input as { goal: string; thread?: string; createdBy: string };
-      const meta = await startThinking(
-        { baseDir, clock: deps.clock, idGen: deps.idGen },
-        { goal: args.goal, thread: args.thread }
-      );
-      return { content: [{ type: 'text' as const, text: `Started thinking sequence: ${meta.id}` }] };
-    }
-  );
-
-  register(
-    'add_thought',
-    {
-      description: 'Add a thought to a thinking sequence',
-      inputSchema: ThinkingAddInputSchema,
-    },
-    async (input: unknown) => {
-      const args = input as {
-        sequenceId: string;
-        type: 'hypothesis' | 'reasoning' | 'evidence' | 'concern';
-        text: string;
-      };
-      const thought = await addThought(
-        { baseDir, clock: deps.clock, idGen: deps.idGen },
-        { sequenceId: args.sequenceId, type: args.type, text: args.text }
-      );
-      return { content: [{ type: 'text' as const, text: `Added thought: ${thought.tid}` }] };
-    }
-  );
-
-  register(
-    'conclude_thinking',
-    {
-      description: 'Conclude a thinking sequence into a decision with an embedded trace and based_on links',
-      inputSchema: ThinkingConcludeInputSchema,
-    },
-    async (input: unknown) => {
-      const args = input as { sequenceId: string; title: string; body: string; createdBy: string };
-      const result = await concludeThinking(
-        {
-          baseDir,
-          store: deps.store,
-          log: deps.log,
-          clock: deps.clock,
-          idGen: deps.idGen,
-          index: deps.index,
-          relations: deps.relations,
-          lock: deps.lock,
-        },
-        { sequenceId: args.sequenceId, title: args.title, body: args.body, createdBy: args.createdBy }
-      );
-      return { content: [{ type: 'text' as const, text: `Created decision: ${result.object.id}` }] };
-    }
-  );
-
-  register(
-    'abandon_thinking',
-    {
-      description: 'Abandon a thinking sequence without creating a decision',
-      inputSchema: ThinkingAbandonInputSchema,
-    },
-    async (input: unknown) => {
-      const args = input as { sequenceId: string };
-      await abandonThinking({ baseDir }, { sequenceId: args.sequenceId });
-      return { content: [{ type: 'text' as const, text: `Abandoned thinking sequence: ${args.sequenceId}` }] };
-    }
-  );
+  // P223: регистр обязан равняться каталогу MCP_TOOL_NAMES — рассинхрон ловится
+  // здесь при старте сервера, а не в доке/у агентов (спека 2.13 §6.2).
+  const actual = [...registered].sort().join(',');
+  const expected = [...MCP_TOOL_NAMES].sort().join(',');
+  if (actual !== expected) {
+    throw new Error(`MCP catalog drift: registered [${actual}] != MCP_TOOL_NAMES [${expected}]`);
+  }
 }

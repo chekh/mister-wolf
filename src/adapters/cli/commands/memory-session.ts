@@ -6,7 +6,8 @@ import { memorySessionWrapUpCommand } from './memory-session-wrap-up.js';
 export function memorySessionCommand(): Command {
   const session = new Command('session').description('Manage sessions and checkpoints');
 
-  session.addCommand(memorySessionWrapUpCommand());
+  // P224 (§6.6): wrap-up — plumbing, скрыт из help (сама команда работает)
+  session.addCommand(memorySessionWrapUpCommand(), { hidden: true });
 
   return session;
 }

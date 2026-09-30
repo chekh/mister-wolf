@@ -6,7 +6,6 @@ import { generateAgentBrief } from '../../../src/app/use-cases/generate-agent-br
 import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
 import { FsFileSystem } from '../../../src/adapters/fs/fs-file-system.js';
 import { addMemoryObject } from '../../../src/app/use-cases/add-memory-object.js';
-import { createBlocker } from '../../../src/app/use-cases/create-blocker.js';
 import { SystemClock } from '../../../src/adapters/fs/system-clock.js';
 import { HashIdGenerator } from '../../../src/adapters/fs/hash-id-generator.js';
 import { JsonlEventLog } from '../../../src/adapters/fs/jsonl-event-log.js';
@@ -93,11 +92,13 @@ describe('generateAgentBrief', () => {
       }
     );
 
-    const blocker = await createBlocker(
+    // wave13-a/2.13 §5.4: blocker → note+facet pitfall (create-blocker умер в P222)
+    const blocker = await addMemoryObject(
       { store, log, clock, idGen },
       {
+        type: 'note',
+        facet: 'pitfall',
         title: 'Missing OAuth provider',
-        impact: 'No OAuth provider selected yet.',
         createdBy: 'user:test',
       }
     );

@@ -18,7 +18,6 @@ import {
   quarantineDir,
 } from '../../src/adapters/fs/project-paths.js';
 import { addMemoryObject } from '../../src/app/use-cases/add-memory-object.js';
-import { createWorkThread } from '../../src/app/use-cases/create-work-thread.js';
 import { recordRelation } from '../../src/app/use-cases/record-relation.js';
 import { loadWolfConfigSync } from '../../src/adapters/fs/config-file.js';
 import { mergeTaxonomy } from '../../src/domain/taxonomy.js';
@@ -164,9 +163,9 @@ describe('phase8 workflow', () => {
     // project-типы фикстуры из config.yaml (task-brief — project-тип с §8.2.6)
     const declarations = [...mergeTaxonomy(loadWolfConfigSync(dir)).types.values()];
 
-    const thread = await createWorkThread(
+    const thread = await addMemoryObject(
       { store, log, clock, idGen },
-      { title: 'Orch thread', goal: 'test orchestration', createdBy: 'user:test' }
+      { type: 'thread', title: 'Orch thread', extra: { goal: 'test orchestration' }, createdBy: 'user:test' }
     );
 
     const brief = await addMemoryObject(

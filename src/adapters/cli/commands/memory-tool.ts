@@ -22,12 +22,16 @@ function printContractReminder(tool: ToolObject): void {
   console.log(`Script: ${tool.script_path}`);
 }
 
-export function memoryToolCommand(): Command {
-  const cmd = new Command('tool').description('Tool librarian: register/list/use/expose/deprecate/revive');
-
-  cmd
-    .command('register <script-path>')
-    .description('Register a script as tool memory object (copies script to .wolf/tools/)')
+// §6.3 2.13 (P222): `register` и его генерённый синоним `add` — один билдер
+// (общие опции и action; поля name/script_path/language — из декларации tool).
+function buildRegisterSubcommand(parent: Command, name: 'register' | 'add'): void {
+  parent
+    .command(`${name} <script-path>`)
+    .description(
+      name === 'register'
+        ? 'Register a script as tool memory object (copies script to .wolf/tools/)'
+        : 'Register a script as tool memory object (synonym for register)'
+    )
     .requiredOption('--name <name>', 'Tool name (unique)')
     .requiredOption('--language <language>', 'Script language (typescript, python, bash, ...)')
     // contract-in/out — опциональные (как в доменной схеме tool): иначе commander
@@ -71,6 +75,13 @@ export function memoryToolCommand(): Command {
         console.log(`Script: ${result.scriptPath}`);
       }
     );
+}
+
+export function memoryToolCommand(): Command {
+  const cmd = new Command('tool').description('Tool librarian: add/register/list/use/expose/deprecate/revive');
+
+  buildRegisterSubcommand(cmd, 'register');
+  buildRegisterSubcommand(cmd, 'add');
 
   cmd
     .command('list')

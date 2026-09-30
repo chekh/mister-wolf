@@ -14,7 +14,8 @@ import { removedCommandHint } from './removed-commands.js';
 function exitWithRemovedHint(err: CommanderError): never {
   const match = err.message.match(/unknown command '([^']+)'/);
   if (match) {
-    const hint = removedCommandHint(match[1]);
+    // §6.2 P222: для `<type> create` подсказке нужен родительский тип (process.argv[2])
+    const hint = removedCommandHint(match[1], process.argv);
     if (hint) {
       console.error(`Error: ${hint}`);
       process.exit(1);
@@ -31,7 +32,7 @@ function exitWithRemovedHint(err: CommanderError): never {
  * дословно из командных модулей), тела подгружаются `await import()` только
  * внутри action выбранной команды.
  */
-interface CommandSpec {
+export interface CommandSpec {
   name: string;
   description: string;
   /** usage-хинт в списке команд program --help (`get [options] <id>`); '' — без хинта. */
@@ -43,17 +44,21 @@ interface CommandSpec {
   aliasView?: string;
 }
 
-/** Порядок = порядок бывших addCommand: влияет на `--help` и unknown-command suggestions. */
-const COMMANDS: CommandSpec[] = [
+/**
+ * Порядок = порядок бывших addCommand: влияет на `--help` и unknown-command suggestions.
+ * Экспорт для scripts/generate-cli-reference.mjs и guard-теста справочника (P224):
+ * справочник CLI обязан отражать фактический реестр, включая hidden-команды.
+ */
+export const COMMANDS: CommandSpec[] = [
   {
     name: 'init',
-    description: 'Initialize Mr. Wolf memory for this project (interactive in TTY; non-interactive requires --model)',
+    description: 'Initialize Mr. Wolf memory for this project',
     usage: '[options]',
     load: () => import('./commands/memory-init.js').then((m) => m.memoryInitCommand()),
   },
   {
     name: 'sync',
-    description: 'Re-render the wolf base set (stamped files only; memory untouched)',
+    description: 'Re-render the wolf base set (stamped files only)',
     usage: '',
     load: () => import('./commands/memory-sync.js').then((m) => m.memorySyncCommand()),
   },
@@ -83,7 +88,7 @@ const COMMANDS: CommandSpec[] = [
   },
   {
     name: 'edit',
-    description: 'Edit title and/or body of a memory object (diff-audited in events.jsonl)',
+    description: 'Edit title and/or body of a memory object',
     usage: '[options] <id>',
     load: () => import('./commands/memory-edit.js').then((m) => m.memoryEditCommand()),
   },
@@ -91,23 +96,26 @@ const COMMANDS: CommandSpec[] = [
     name: 'rebuild-index',
     description: 'Rebuild the SQLite search index from memory objects',
     usage: '',
+    hidden: true,
     load: () => import('./commands/memory-rebuild-index.js').then((m) => m.memoryRebuildIndexCommand()),
   },
   {
     name: 'supersede',
     description: 'Supersede a memory object with another',
     usage: '<old-id> <new-id>',
+    hidden: true,
     load: () => import('./commands/memory-supersede.js').then((m) => m.memorySupersedeCommand()),
   },
   {
     name: 'transition',
     description: 'Transition a memory object to a new status',
     usage: '[options] <id> <status>',
+    hidden: true,
     load: () => import('./commands/memory-transition.js').then((m) => m.memoryTransitionCommand()),
   },
   {
     name: 'archive',
-    description: 'Archive a memory object (sugar for transition to archived)',
+    description: 'Archive a memory object',
     usage: '[options] <id>',
     load: () => import('./commands/memory-archive.js').then((m) => m.memoryArchiveCommand()),
   },
@@ -115,67 +123,35 @@ const COMMANDS: CommandSpec[] = [
     name: 'scan',
     description: 'Scan the project and save a context snapshot',
     usage: '',
+    hidden: true,
     load: () => import('./commands/memory-scan.js').then((m) => m.memoryScanCommand()),
   },
   {
     name: 'brief',
-    description: 'Generate the agent brief from the latest scan and memory',
+    description: 'Generate the agent brief from the latest scan',
     usage: '',
     load: () => import('./commands/memory-brief.js').then((m) => m.memoryBriefCommand()),
-  },
-  {
-    name: 'thread',
-    description: 'Manage work threads',
-    usage: '',
-    load: () => import('./commands/memory-thread.js').then((m) => m.memoryThreadCommand()),
   },
   {
     name: 'diff',
     description: 'Show thread changes since a checkpoint',
     usage: '[options] <thread-id>',
+    hidden: true,
     load: () => import('./commands/memory-session.js').then((m) => m.memoryThreadDiffCommand()),
-  },
-  {
-    name: 'decision',
-    description: 'Manage decisions',
-    usage: '',
-    load: () => import('./commands/memory-decision.js').then((m) => m.memoryDecisionCommand()),
-  },
-  {
-    name: 'blocker',
-    description: 'Manage blockers',
-    usage: '',
-    load: () => import('./commands/memory-blocker.js').then((m) => m.memoryBlockerCommand()),
-  },
-  {
-    name: 'info-request',
-    description: 'Manage info requests',
-    usage: '',
-    load: () => import('./commands/memory-info-request.js').then((m) => m.memoryInfoRequestCommand()),
-  },
-  {
-    name: 'article',
-    description: 'Manage articles',
-    usage: '',
-    load: () => import('./commands/memory-article.js').then((m) => m.memoryArticleCommand()),
   },
   {
     name: 'session',
     description: 'Manage sessions and checkpoints',
     usage: '',
+    hidden: true,
     load: () => import('./commands/memory-session.js').then((m) => m.memorySessionCommand()),
   },
   {
     name: 'mcp',
     description: 'Start the MCP server (stdio)',
     usage: '',
+    hidden: true,
     load: () => import('./commands/memory-mcp.js').then((m) => m.memoryMcpCommand()),
-  },
-  {
-    name: 'rule',
-    description: 'Manage rules',
-    usage: '',
-    load: () => import('./commands/memory-rule.js').then((m) => m.memoryRuleCommand()),
   },
   {
     name: 'relation',
@@ -187,24 +163,28 @@ const COMMANDS: CommandSpec[] = [
     name: 'taxonomy',
     description: 'Manage memory taxonomy',
     usage: '',
+    hidden: true,
     load: () => import('./commands/memory-taxonomy.js').then((m) => m.memoryTaxonomyCommand()),
   },
   {
     name: 'migrate',
     description: 'One-time migration: objects/<type>/ -> threads/<tid>/<subdir>/ + shared/',
     usage: '[options]',
+    hidden: true,
     load: () => import('./commands/memory-migrate.js').then((m) => m.memoryMigrateCommand()),
   },
   {
     name: 'validate',
     description: 'Validate memory store integrity',
     usage: '[options]',
+    hidden: true,
     load: () => import('./commands/memory-validate.js').then((m) => m.memoryValidateCommand()),
   },
   {
     name: 'solve',
     description: 'Build a solve pack for a memory problem',
     usage: '[options] <problem>',
+    hidden: true,
     load: () => import('./commands/memory-solve.js').then((m) => m.memorySolveCommand()),
   },
   {
@@ -223,7 +203,7 @@ const COMMANDS: CommandSpec[] = [
   },
   {
     name: 'recap',
-    description: 'Summarize active project memory: rules, threads, blockers, questions, decisions',
+    description: 'Summarize active project memory',
     usage: '',
     load: () => import('./commands/memory-recap.js').then((m) => m.memoryRecapCommand()),
   },
@@ -231,23 +211,64 @@ const COMMANDS: CommandSpec[] = [
     name: 'think',
     description: 'Structured thinking sequences (goal -> thoughts -> conclusion)',
     usage: '',
+    hidden: true,
     load: () => import('./commands/memory-think.js').then((m) => m.memoryThinkCommand()),
   },
   {
     name: 'scaffold',
     description: 'Scaffold opencode frame (agent|skill|command) + playbook in Wolf memory',
     usage: '[options] <kind> <name>',
+    hidden: true,
     load: () => import('./commands/memory-scaffold.js').then((m) => m.memoryScaffoldCommand()),
+  },
+  // Спека 2.13 §6.3 (P222): type-неймспейсы генерируются из таксономии
+  // (type-command-generator); порядок: окна → type-неймспейсы → обёртки
+  // (tool/complain). `tool` — живая обёртка с генерённым add-синонимом register.
+  {
+    name: 'rule',
+    description: 'Manage rules',
+    usage: '',
+    load: () => import('./type-command-generator.js').then((m) => m.typeNamespaceCommand('rule')),
+  },
+  {
+    name: 'lesson',
+    description: 'Manage lessons',
+    usage: '',
+    load: () => import('./type-command-generator.js').then((m) => m.typeNamespaceCommand('lesson')),
+  },
+  {
+    name: 'decision',
+    description: 'Manage decisions',
+    usage: '',
+    load: () => import('./type-command-generator.js').then((m) => m.typeNamespaceCommand('decision')),
+  },
+  {
+    name: 'thread',
+    description: 'Manage work threads',
+    usage: '',
+    load: () => import('./type-command-generator.js').then((m) => m.typeNamespaceCommand('thread')),
+  },
+  {
+    name: 'complaint',
+    description: 'Manage complaints',
+    usage: '',
+    load: () => import('./type-command-generator.js').then((m) => m.typeNamespaceCommand('complaint')),
+  },
+  {
+    name: 'note',
+    description: 'Manage notes',
+    usage: '',
+    load: () => import('./type-command-generator.js').then((m) => m.typeNamespaceCommand('note')),
   },
   {
     name: 'tool',
-    description: 'Tool librarian: register/list/use/expose/deprecate/revive',
+    description: 'Tool librarian: add/register/list/use/...',
     usage: '',
     load: () => import('./commands/memory-tool.js').then((m) => m.memoryToolCommand()),
   },
   {
     name: 'complain',
-    description: 'File a complaint about a rule/playbook/agent as a memory object (type complaint, status open)',
+    description: 'File a complaint about a rule/playbook/agent',
     usage: '[options]',
     load: () => import('./commands/memory-complain.js').then((m) => m.memoryComplainCommand()),
   },
@@ -256,6 +277,7 @@ const COMMANDS: CommandSpec[] = [
     description:
       'Update triage fields of a memory object (whitelist: --set triage|resolution, --inc dispatch_ages|corroborations, --tags append)',
     usage: '[options] <id>',
+    hidden: true,
     load: () => import('./commands/memory-update.js').then((m) => m.memoryUpdateCommand()),
   },
   {
@@ -268,8 +290,7 @@ const COMMANDS: CommandSpec[] = [
   },
   {
     name: 'analytics',
-    description:
-      'Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents, steward view, councils, outliers, experiment readiness, memory lifecycle & coordination, campaigns & per-memory ROI, machine acceptance (wave metrics), state windows (effectiveness, dashboard)',
+    description: 'Effectiveness analytics: ledgers, windows, ROI',
     usage: '[options]',
     load: () => import('./commands/analytics.js').then((m) => m.analyticsCommand()),
   },
@@ -285,24 +306,25 @@ const COMMANDS: CommandSpec[] = [
     name: 'task-eval',
     description: 'Record a task verdict into the signal log (event task_evaluated)',
     usage: '[options]',
+    hidden: true,
     load: () => import('./commands/task-eval.js').then((m) => m.taskEvalCommand()),
   },
   {
     name: 'bootstrap',
     description: 'Scan the project and draft starting memory: proposed rules, document-refs, work thread',
     usage: '[options]',
+    hidden: true,
     load: () => import('./commands/memory-bootstrap.js').then((m) => m.memoryBootstrapCommand()),
   },
   {
     name: 'upgrade',
-    description:
-      'Upgrade the global wolf installation to the latest npm version (runs npm install -g mister-wolf@latest); --check only compares versions, no install',
+    description: 'Upgrade global wolf to the latest npm version',
     usage: '[options]',
     load: () => import('./commands/memory-upgrade.js').then((m) => m.memoryUpgradeCommand()),
   },
   {
     name: 'doctor',
-    description: 'Check all registered projects: binary vs schema version, platform configs, prune dead entries',
+    description: 'Check registered projects and platform configs',
     usage: '',
     load: () => import('./commands/memory-doctor.js').then((m) => m.memoryDoctorCommand()),
   },
@@ -387,7 +409,11 @@ export function createCli(): Command {
         real.exitOverride(exitWithRemovedHint);
         new Command('wolf').addCommand(real);
         real.help();
-      })
+      }),
+    // P224 (§6.6): строка `help [command]` скрыта из листинга — бюджет 30 строк
+    // требует 23 видимых команды + 7 строк шапки; `wolf help`, `wolf help <cmd>`
+    // и `-h` работают как раньше (hidden влияет только на вывод списка).
+    { hidden: true }
   );
 
   return program;

@@ -149,7 +149,7 @@ export async function scaffoldFrame(
           ? existing.owner_skill
           : input.name;
     } else {
-      // wave13-a: прямой window-compat паттерн (как create-blocker) — addMemoryObject
+      // wave13-a/2.13 §5.4: сеем напрямую через store.save — addMemoryObject
       // не пускает спец-поля playbook в extra (guard полей note)
       const now = deps.clock.now();
       const defaults = governanceDefaults(input.createdBy);

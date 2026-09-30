@@ -14,10 +14,11 @@ describe('task lifecycle: init -> thread -> brief -> report -> relation -> trans
     const init = runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], cwd);
     expect(init.status).toBe(0);
 
-    const thread = runCli(['thread', 'create', '--title', 'T', '--goal', 'G'], cwd);
+    // 2.13 §6.3: `thread create` умер — генерённый неймспейс `thread add`
+    const thread = runCli(['thread', 'add', '--title', 'T', '--goal', 'G'], cwd);
     expect(thread.status).toBe(0);
-    expect(thread.stdout).toContain('Created work thread:');
-    const threadId = thread.stdout.match(/Created work thread: (\S+)/)?.[1]!;
+    expect(thread.stdout).toContain('Created memory object:');
+    const threadId = thread.stdout.match(/Created memory object: (\S+)/)?.[1]!;
 
     // 2.13: task-brief (project-тип) вне config.yaml — краткая сводка = note howto
     const brief = runCli(['add', '--type', 'note', '--facet', 'howto', '--title', 'Brief'], cwd);

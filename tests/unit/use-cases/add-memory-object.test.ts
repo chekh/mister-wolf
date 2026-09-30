@@ -49,6 +49,37 @@ describe('addMemoryObject', () => {
     expect(events[0].type).toBe('memory.added');
   });
 
+  // T030/2.13 §6.1 (P222): гвард «rules by user request only» перенесён из
+  // create-rule в домен add — агент получает ошибку (CLI не всегда TTY),
+  // пользовательский путь = actor user:*
+  it('rejects a rule from an agent actor (rules by user request only)', async () => {
+    await expect(
+      addMemoryObject(
+        { store, log, clock, idGen },
+        {
+          type: 'rule',
+          title: 'Agent-drafted rule',
+          createdBy: 'agent:worker',
+          extra: { scope: 'project' },
+        }
+      )
+    ).rejects.toThrow(/Rules can only be created by explicit user request/);
+  });
+
+  it('allows a rule from a user actor', async () => {
+    const { object } = await addMemoryObject(
+      { store, log, clock, idGen },
+      {
+        type: 'rule',
+        title: 'User-approved rule',
+        createdBy: 'user:test',
+        extra: { scope: 'project' },
+      }
+    );
+    expect(object.type).toBe('rule');
+    expect(object.status).toBe('active');
+  });
+
   it('creates typed object with extra fields validated by declaration', async () => {
     const { object } = await addMemoryObject(
       { store, log, clock, idGen },

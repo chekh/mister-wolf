@@ -50,6 +50,15 @@ export async function addMemoryObject(
   },
   input: AddMemoryObjectInput
 ): Promise<AddMemoryObjectResult> {
+  // T030/2.13 §6.1: гвард «rules by user request only» перенесён из create-rule
+  // (CLI не всегда TTY — ошибка вместо интерактивного вопроса; пользовательский
+  // путь = actor user:* через --created-by или env WOLF_ACTOR)
+  if (input.type === 'rule' && input.createdBy.startsWith('agent:')) {
+    throw new UserFacingError(
+      'Rules can only be created by explicit user request (use a user actor: --created-by user:<name> or env WOLF_ACTOR)'
+    );
+  }
+
   // 2.13 §5.3: фасетная валидация в домене (формат подсказки — прецедент getDeclaration)
   const facetDict = deps.facetCharacter ?? DEFAULT_CHARACTER_FACETS;
   const facet = input.facet ?? (input.extra?.facet as string | undefined);

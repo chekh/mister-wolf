@@ -6,7 +6,7 @@ import { initProjectMemory } from '../../../src/app/use-cases/init-project-memor
 import { bootstrapProject } from '../../../src/app/use-cases/bootstrap-project.js';
 import { addMemoryObject } from '../../../src/app/use-cases/add-memory-object.js';
 import { transitionMemoryObject } from '../../../src/app/use-cases/transition-memory-object.js';
-import type { WorkThread } from '../../../src/domain/schemas/thread-schema.js';
+// P222: thread-schema умер — поля треда в фикстуре читаются точечным кастом
 import { FsProjectInitializer } from '../../../src/adapters/fs/fs-project-initializer.js';
 import { createCliContainer } from '../../../src/bootstrap/container.js';
 
@@ -140,7 +140,7 @@ describe('bootstrapProject', () => {
     });
 
     const result = await bootstrapProject(deps, { baseDir: dir, createdBy: 'user:bootstrap' });
-    const thread = (await deps.store.get(result.workThreadId)) as WorkThread;
+    const thread = (await deps.store.get(result.workThreadId)) as { current_state?: string; goal?: string };
 
     expect(thread.current_state).toContain(`report ${report.id}`);
     expect(thread.current_state).toContain('drafts');
@@ -151,7 +151,7 @@ describe('bootstrapProject', () => {
 
   it('currentState says «без отчёта» when no active init report exists', async () => {
     const result = await bootstrapProject(deps, { baseDir: dir, createdBy: 'user:bootstrap' });
-    const thread = (await deps.store.get(result.workThreadId)) as WorkThread;
+    const thread = (await deps.store.get(result.workThreadId)) as { current_state?: string; goal?: string };
 
     expect(thread.current_state).toContain('no report');
     expect(thread.current_state).toContain('drafts');
@@ -178,7 +178,7 @@ describe('bootstrapProject', () => {
     await deps.store.save({ ...first.object, updated_at: '2026-01-01T00:00:00.000Z' });
 
     const result = await bootstrapProject(deps, { baseDir: dir, createdBy: 'user:bootstrap' });
-    const thread = (await deps.store.get(result.workThreadId)) as WorkThread;
+    const thread = (await deps.store.get(result.workThreadId)) as { current_state?: string; goal?: string };
 
     expect(thread.current_state).toContain(`report ${second.object.id}`);
     expect(thread.current_state).not.toContain(`report ${first.object.id}`);

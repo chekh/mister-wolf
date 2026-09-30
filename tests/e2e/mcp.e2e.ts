@@ -32,7 +32,7 @@ function sendAndReceive(proc: ChildProcess, message: unknown): Promise<unknown> 
   });
 }
 
-describe('MCP stdio: tools/list exposes phase 8 tools', () => {
+describe('MCP stdio: 2.13 catalog diet (7 tools + ping)', () => {
   let cwd: string;
   let child: ChildProcess;
   beforeAll(() => {
@@ -48,7 +48,7 @@ describe('MCP stdio: tools/list exposes phase 8 tools', () => {
     rmSync(cwd, { recursive: true, force: true });
   });
 
-  it('lists tools including search, add, transition, brief, scan, create_rule (phase 6+)', async () => {
+  it('tools/list exposes exactly the diet survivors + ping (spec 2.13 §6.2)', async () => {
     await sendAndReceive(child, {
       jsonrpc: '2.0',
       id: 1,
@@ -63,35 +63,33 @@ describe('MCP stdio: tools/list exposes phase 8 tools', () => {
       params: {},
     })) as { result?: { tools?: { name: string }[] } };
 
-    const names = (tools.result?.tools ?? []).map((t) => t.name);
-    // core MCP tools
-    expect(names).toContain('search');
-    expect(names).toContain('add');
-    expect(names).toContain('get');
-    expect(names).toContain('list');
-    expect(names).toContain('transition');
-    expect(names).toContain('brief');
-    expect(names).toContain('scan');
-    expect(names).toContain('create_rule');
-    expect(names).toContain('recap');
-    expect(names).toContain('ping');
-    // at least 14 tools registered
-    expect(names.length).toBeGreaterThanOrEqual(14);
+    const names = (tools.result?.tools ?? []).map((t) => t.name).sort();
+    expect(names).toEqual(['add', 'brief', 'get', 'list', 'ping', 'recap', 'search', 'transition']);
   });
 
-  it('tools/call analytics with view=campaign returns campaign payload (P3 D4)', async () => {
+  it('tools/call of a removed tool (create_thread) returns an error hinting add/transition (P223)', async () => {
     // initialize выполнен предыдущим it — сразу вызов тула
     const res = (await sendAndReceive(child, {
       jsonrpc: '2.0',
       id: 3,
       method: 'tools/call',
-      params: { name: 'analytics', arguments: { view: 'campaign' } },
-    })) as { result?: { content?: { type: string; text?: string }[] } };
-    const text = res.result?.content?.[0]?.text ?? '';
-    expect(text).not.toBe('');
-    const payload = JSON.parse(text) as { view: string; campaign?: { rows: unknown[] } };
-    expect(payload.view).toBe('campaign');
-    expect(payload.campaign).toBeDefined();
-    expect(Array.isArray(payload.campaign?.rows)).toBe(true);
+      params: { name: 'create_thread', arguments: {} },
+    })) as { error?: { message?: string } };
+    const message = res.error?.message ?? '';
+    expect(message).toContain("tool 'create_thread' was removed");
+    expect(message).toContain('`add`');
+    expect(message).toContain('`transition`');
+  });
+
+  it('tools/call of an unknown tool lists the available catalog', async () => {
+    const res = (await sendAndReceive(child, {
+      jsonrpc: '2.0',
+      id: 4,
+      method: 'tools/call',
+      params: { name: 'frobnicate', arguments: {} },
+    })) as { error?: { message?: string } };
+    const message = res.error?.message ?? '';
+    expect(message).toContain("unknown tool 'frobnicate'");
+    expect(message).toContain('search/get/list/add/transition/brief/recap');
   });
 });

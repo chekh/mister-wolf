@@ -9,11 +9,6 @@ import { HashIdGenerator } from '../../../src/adapters/fs/hash-id-generator.js';
 import { JsonlEventLog } from '../../../src/adapters/fs/jsonl-event-log.js';
 import { eventsPath } from '../../../src/adapters/fs/project-paths.js';
 import { addMemoryObject } from '../../../src/app/use-cases/add-memory-object.js';
-import { createRule } from '../../../src/app/use-cases/create-rule.js';
-import { createWorkThread } from '../../../src/app/use-cases/create-work-thread.js';
-import { createBlocker } from '../../../src/app/use-cases/create-blocker.js';
-import { createDecision } from '../../../src/app/use-cases/create-decision.js';
-import { createInfoRequest } from '../../../src/app/use-cases/create-info-request.js';
 import { transitionMemoryObject } from '../../../src/app/use-cases/transition-memory-object.js';
 import { BOOTSTRAP_THREAD_TITLE } from '../../../src/app/use-cases/bootstrap-project.js';
 import { parseRouterLog } from '../../../src/domain/router-log.js';
@@ -41,40 +36,47 @@ describe('generateRecap', () => {
   it('collects only active/open objects into their sections', async () => {
     const deps = mkDeps();
 
-    const rule = await createRule(deps, {
+    const rule = await addMemoryObject(deps, {
+      type: 'rule',
       title: 'Run checks before done',
       body: 'Always run npm run check.',
-      scope: 'project',
+      extra: { scope: 'project' },
       createdBy: 'user:test',
     });
-    const oldRule = await createRule(deps, {
+    const oldRule = await addMemoryObject(deps, {
+      type: 'rule',
       title: 'Old rule',
       body: 'Superseded rule.',
-      scope: 'project',
+      extra: { scope: 'project' },
       createdBy: 'user:test',
     });
     await transitionMemoryObject(deps, oldRule.object.id, 'superseded', 'user:test');
 
-    const thread = await createWorkThread(deps, {
+    const thread = await addMemoryObject(deps, {
+      type: 'thread',
       title: 'Phase 7 recap',
-      goal: 'Ship wolf recap',
+      extra: { goal: 'Ship wolf recap' },
       createdBy: 'user:test',
     });
-    const doneThread = await createWorkThread(deps, {
+    const doneThread = await addMemoryObject(deps, {
+      type: 'thread',
       title: 'Phase 6 insights',
-      goal: 'Ship wolf insights',
+      extra: { goal: 'Ship wolf insights' },
       createdBy: 'user:test',
     });
     await transitionMemoryObject(deps, doneThread.object.id, 'completed', 'user:test');
 
-    const blocker = await createBlocker(deps, {
+    // wave13-a/2.13 §5.4: blocker → note+facet pitfall (create-blocker умер в P222)
+    const blocker = await addMemoryObject(deps, {
+      type: 'note',
+      facet: 'pitfall',
       title: 'CLI crash on boot',
-      impact: 'Users cannot run wolf.',
       createdBy: 'user:test',
     });
-    const resolvedBlocker = await createBlocker(deps, {
+    const resolvedBlocker = await addMemoryObject(deps, {
+      type: 'note',
+      facet: 'pitfall',
       title: 'Index missing',
-      impact: 'Fixed already.',
       createdBy: 'user:test',
     });
     await transitionMemoryObject(deps, resolvedBlocker.object.id, 'resolved', 'user:test');
@@ -134,30 +136,35 @@ describe('generateRecap', () => {
     });
     await transitionMemoryObject(deps, answeredQuestion.object.id, 'answered', 'user:test');
 
-    const infoRequest = await createInfoRequest(deps, {
+    // wave13-a/2.13 §5.4: info-request → note+facet context; поле question —
+    // legacy-поле старого типа, домен add его не декларирует → посев через
+    // store.save поверх созданного объекта (фильтр recap смотрит только на него)
+    const infoRequest = await addMemoryObject(deps, {
+      type: 'note',
+      facet: 'context',
+      status: 'open',
       title: 'Need recap spec',
-      thread: thread.object.id,
-      question: 'What sections does recap have?',
-      detourReason: 'spec is with the lead',
-      expectedAnswer: ['section list'],
       createdBy: 'user:test',
     });
-    const answeredRequest = await createInfoRequest(deps, {
+    await deps.store.save({ ...infoRequest.object, question: 'What sections does recap have?' });
+    const answeredRequest = await addMemoryObject(deps, {
+      type: 'note',
+      facet: 'context',
+      status: 'open',
       title: 'Old info request',
-      thread: thread.object.id,
-      question: 'Answered already?',
-      detourReason: 'history',
-      expectedAnswer: ['yes'],
       createdBy: 'user:test',
     });
+    await deps.store.save({ ...answeredRequest.object, question: 'Answered already?' });
     await transitionMemoryObject(deps, answeredRequest.object.id, 'answered', 'user:test');
 
-    const decision = await createDecision(deps, {
+    const decision = await addMemoryObject(deps, {
+      type: 'decision',
       title: 'Use recap command',
       body: 'recap summarizes active memory.',
       createdBy: 'user:test',
     });
-    const supersededDecision = await createDecision(deps, {
+    const supersededDecision = await addMemoryObject(deps, {
+      type: 'decision',
       title: 'Old decision',
       body: 'Superseded decision.',
       createdBy: 'user:test',
@@ -201,7 +208,8 @@ describe('generateRecap', () => {
     const deps = mkDeps();
 
     for (let i = 1; i <= 7; i++) {
-      const { object } = await createDecision(deps, {
+      const { object } = await addMemoryObject(deps, {
+        type: 'decision',
         title: `Decision number ${i}`,
         body: `Body ${i}.`,
         createdBy: 'user:test',
@@ -253,10 +261,11 @@ describe('generateRecap', () => {
   it('includes accepted rules alongside active in activeRules', async () => {
     const deps = mkDeps();
 
-    await createRule(deps, {
+    await addMemoryObject(deps, {
+      type: 'rule',
       title: 'Active rule',
       body: 'Still active.',
-      scope: 'project',
+      extra: { scope: 'project' },
       createdBy: 'user:test',
     });
     const draft = await addMemoryObject(deps, {
@@ -307,9 +316,10 @@ describe('generateRecap', () => {
   // §3 правило 1: thread active → продолжение-сигнал (legacy: без init-report)
   it('onboarding: continue signal when bootstrap thread is active (legacy without report)', async () => {
     const deps = mkDeps();
-    const { object } = await createWorkThread(deps, {
+    const { object } = await addMemoryObject(deps, {
+      type: 'thread',
       title: BOOTSTRAP_THREAD_TITLE,
-      goal: 'Collapse drafts and finish onboarding',
+      extra: { goal: 'Collapse drafts and finish onboarding' },
       createdBy: 'user:test',
     });
 
@@ -338,9 +348,10 @@ describe('generateRecap', () => {
       createdBy: 'wolf-init',
       tags: ['wolf-init', 'onboarding-v2'],
     });
-    const { object } = await createWorkThread(deps, {
+    const { object } = await addMemoryObject(deps, {
+      type: 'thread',
       title: BOOTSTRAP_THREAD_TITLE,
-      goal: 'g',
+      extra: { goal: 'g' },
       createdBy: 'user:test',
     });
 
@@ -360,9 +371,10 @@ describe('generateRecap', () => {
       createdBy: 'wolf-init',
       tags: ['wolf-init', 'onboarding-v2'],
     });
-    const { object } = await createWorkThread(deps, {
+    const { object } = await addMemoryObject(deps, {
+      type: 'thread',
       title: BOOTSTRAP_THREAD_TITLE,
-      goal: 'g',
+      extra: { goal: 'g' },
       createdBy: 'user:test',
     });
     await transitionMemoryObject(deps, object.id, 'paused', 'user:test');
@@ -376,9 +388,10 @@ describe('generateRecap', () => {
   it('onboarding: silence when thread completed or archived', async () => {
     for (const finalStatus of ['completed', 'archived'] as const) {
       const deps = mkDeps();
-      const { object } = await createWorkThread(deps, {
+      const { object } = await addMemoryObject(deps, {
+        type: 'thread',
         title: BOOTSTRAP_THREAD_TITLE,
-        goal: 'g',
+        extra: { goal: 'g' },
         createdBy: 'user:test',
       });
       await transitionMemoryObject(deps, object.id, finalStatus, 'user:test');

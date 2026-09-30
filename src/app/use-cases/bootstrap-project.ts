@@ -13,7 +13,6 @@ import { UserFacingError } from '../../domain/errors.js';
 import type { MemoryTypeDeclaration } from '../../domain/memory-types.js';
 import { scanProject } from './scan-project.js';
 import { addMemoryObject } from './add-memory-object.js';
-import { createWorkThread } from './create-work-thread.js';
 
 export interface BootstrapProjectInput {
   baseDir: string;
@@ -115,14 +114,18 @@ export async function bootstrapProject(
       )
       .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
     const initTs = initReport ? initReport.created_at : now;
-    const { object: thread } = await createWorkThread(deps, {
+    // P222: create-work-thread умер — единый add-путь (goal обязателен по декларации)
+    const { object: thread } = await addMemoryObject(deps, {
+      type: 'thread',
       title: BOOTSTRAP_THREAD_TITLE,
-      goal: 'Collapse drafts and finish onboarding in dialogue with the user',
-      currentState:
-        `init ${initTs} ✓ (${initReport ? `report ${initReport.id}` : 'no report'}); ` +
-        `bootstrap ${now}: drafts ${rules.length}, document-refs ${documents.length}`,
-      nextSteps: rules.map((rule) => `${rule.id}: ${rule.title}`),
       createdBy: input.createdBy,
+      extra: {
+        goal: 'Collapse drafts and finish onboarding in dialogue with the user',
+        current_state:
+          `init ${initTs} ✓ (${initReport ? `report ${initReport.id}` : 'no report'}); ` +
+          `bootstrap ${now}: drafts ${rules.length}, document-refs ${documents.length}`,
+        next_steps: rules.map((rule) => `${rule.id}: ${rule.title}`),
+      },
     });
     threadId = thread.id;
   }

@@ -6,6 +6,48 @@ import { colorsEnabled, highlightFacet } from '../../../domain/facet-colors.js';
 import { UserFacingError } from '../../../domain/errors.js';
 import { withCliCall } from './with-cli-call.js';
 
+/** Общая форма опций list-пути: `wolf list` и генерённые `<type> list` (§6.3). */
+export interface ListActionOptions {
+  type?: string;
+  status?: string;
+  stale?: boolean;
+  facet?: string;
+}
+
+/**
+ * Единое действие list-пути (2.13 §6.3): `wolf list` и генерённые `wolf <type> list`
+ * (предустановленный --type) делегируют сюда.
+ */
+export async function runListAction(options: ListActionOptions): Promise<void> {
+  const { store, declarations } = createCliContainer(process.cwd());
+  let type: string | undefined = options.type;
+  if (type) {
+    // Резолв --type (спека 2.1.0 §2.2 F10 + карта §5.4 2.13): алиас → warning,
+    // неизвестный → error. DEPRECATED_TYPE_ALIASES теперь Record<string, TypeAliasSpec>.
+    const resolved = resolveListType(
+      type,
+      declarations.map((d) => d.name),
+      Object.fromEntries(Object.entries(DEPRECATED_TYPE_ALIASES).map(([k, spec]) => [k, spec.target]))
+    );
+    if (resolved.error) throw new UserFacingError(resolved.error);
+    if (resolved.warning) console.error(`Warning: ${resolved.warning}`);
+    type = resolved.type;
+  }
+  const objects = await listMemoryObjects(store, {
+    type,
+    status: options.status,
+    stale: options.stale,
+    facet: options.facet,
+  });
+  // P212 (2.13 §5.3в): решение о цвете — один раз на вывод (pipe/NO_COLOR → плоско)
+  const colored = colorsEnabled(process.stdout, process.env);
+  for (const obj of objects) {
+    const facet = typeof obj.facet === 'string' ? obj.facet : undefined;
+    const facetPart = facet ? ` [${highlightFacet(facet, colored)}]` : '';
+    console.log(`${obj.id} [${obj.type}]${facetPart} [${obj.status}] ${obj.title}`);
+  }
+}
+
 export function memoryListCommand(): Command {
   return new Command('list')
     .description('List memory objects')
@@ -16,35 +58,5 @@ export function memoryListCommand(): Command {
       '--facet <facet>',
       'Filter notes by character facet (howto|pitfall|context|metric|history|legacy|constraint)'
     )
-    .action(
-      withCliCall('list', async (options) => {
-        const { store, declarations } = createCliContainer(process.cwd());
-        let type: string | undefined = options.type;
-        if (type) {
-          // Резолв --type (спека 2.1.0 §2.2 F10 + карта §5.4 2.13): алиас → warning,
-          // неизвестный → error. DEPRECATED_TYPE_ALIASES теперь Record<string, TypeAliasSpec>.
-          const resolved = resolveListType(
-            type,
-            declarations.map((d) => d.name),
-            Object.fromEntries(Object.entries(DEPRECATED_TYPE_ALIASES).map(([k, spec]) => [k, spec.target]))
-          );
-          if (resolved.error) throw new UserFacingError(resolved.error);
-          if (resolved.warning) console.error(`Warning: ${resolved.warning}`);
-          type = resolved.type;
-        }
-        const objects = await listMemoryObjects(store, {
-          type,
-          status: options.status,
-          stale: options.stale,
-          facet: options.facet,
-        });
-        // P212 (2.13 §5.3в): решение о цвете — один раз на вывод (pipe/NO_COLOR → плоско)
-        const colored = colorsEnabled(process.stdout, process.env);
-        for (const obj of objects) {
-          const facet = typeof obj.facet === 'string' ? obj.facet : undefined;
-          const facetPart = facet ? ` [${highlightFacet(facet, colored)}]` : '';
-          console.log(`${obj.id} [${obj.type}]${facetPart} [${obj.status}] ${obj.title}`);
-        }
-      })
-    );
+    .action(withCliCall('list', (options) => runListAction(options)));
 }
