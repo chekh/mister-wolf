@@ -93,6 +93,7 @@ export default defineConfig({
             text: 'CONCEPTS',
             items: [
               { text: 'Core Concepts', link: '/guide/core-concepts' },
+              { text: 'Memory Model', link: '/guide/memory' },
               { text: 'Router', link: '/guide/router' },
             ],
           },
@@ -112,6 +113,7 @@ export default defineConfig({
             text: 'OPERATE',
             items: [
               { text: 'Configuration', link: '/guide/configuration' },
+              { text: 'Migration to 2.13', link: '/guide/migration-2.13' },
               { text: 'Telemetry', link: '/guide/telemetry' },
               { text: 'Troubleshooting', link: '/guide/troubleshooting' },
             ],
@@ -144,6 +146,7 @@ export default defineConfig({
             text: 'КОНЦЕПЦИИ',
             items: [
               { text: 'Основные концепции', link: '/ru/guide/core-concepts' },
+              { text: 'Модель памяти', link: '/ru/guide/memory' },
               { text: 'Роутер', link: '/ru/guide/router' },
             ],
           },
@@ -163,6 +166,7 @@ export default defineConfig({
             text: 'ЭКСПЛУАТАЦИЯ',
             items: [
               { text: 'Конфигурация', link: '/ru/guide/configuration' },
+              { text: 'Миграция на 2.13', link: '/ru/guide/migration-2.13' },
               { text: 'Телеметрия', link: '/ru/guide/telemetry' },
               { text: 'Решение проблем', link: '/ru/guide/troubleshooting' },
             ],

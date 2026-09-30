@@ -1,300 +1,84 @@
 # Work Management
 
+Work management in 2.13 is threads, decisions and rules — all through the five verbs and the generated type namespaces (see [Memory](/guide/cli/memory)).
+
+## Where blocker / info-request / article went
+
+The dedicated types are gone; their jobs moved to notes and thread statuses:
+
+| Pre-2.13       | Now                                                                                                                   |
+| -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `blocker`      | `wolf note add --facet pitfall` for the knowledge, or thread status `blocked` while work waits on external resolution |
+| `info-request` | `wolf note add --facet context`, or thread status `waiting_answer` when the question was asked upwards                |
+| `article`      | `wolf note add --facet context`                                                                                       |
+
 ## wolf thread
 
-Manage work threads.
+A work thread carries the running context of one piece of work. Create it with `wolf add --type thread` or the generated namespace `wolf thread add`:
 
 ```text
-Usage: wolf thread [options] [command]
+Usage: wolf thread add [options]
 ```
 
-Commands: `create`, `list`, `brief`.
+Options beyond the common `add` flags (`--title`, `--body`, `--tags`, `--confidence`, `--importance`, `--set`, `--created-by`):
 
-### wolf thread create
-
-Create a work thread.
-
-```text
-Usage: wolf thread create [options]
-```
-
-Options:
-
-- `--title <title>` — thread title
-- `--goal <goal>` — thread goal
-- `--current-state <state>` — current state (default: `""`)
+- `--goal <goal>` — thread goal (required)
+- `--current-state <state>` — current state
 - `--next-steps <steps>` — comma-separated next steps
-- `--created-by <actor>` — creator actor (default: `user:cli`)
 
 ```bash
-wolf thread create --title "Docs site" --goal "Ship the VitePress site" --next-steps "write pages,build,deploy"
+wolf thread add --title "Docs site" --goal "Ship the VitePress site" \
+  --current-state "pages drafted" --next-steps "write pages,build,deploy"
 ```
 
-### wolf thread list
+A thread lives on disk as `threads/<thread-id>/WORK-THREAD.md`. List threads with `wolf thread list [--status <status>] [--stale]` (generated namespace).
 
-List work threads.
+### Thread statuses
 
-```text
-Usage: wolf thread list [options]
+`active`, `paused`, `blocked`, `waiting_answer`, `open`, `completed`, `archived`. The three "waiting" statuses absorbed the former dedicated types:
+
+- `blocked` — the thread waits on external resolution (formerly `blocker`);
+- `waiting_answer` — a question was asked upwards (formerly `info-request`);
+- `open` — an open question with no addressee.
+
+When the situation resolves, move the thread back to `active` or straight to `archived`:
+
+```bash
+wolf transition mem_thread_01 blocked # hit an external blocker
+wolf transition mem_thread_01 active  # resolved — continue the work
 ```
 
-No options beyond `-h, --help`.
+### From `thread brief` to `recap`
 
-### wolf thread brief
-
-Generate a brief for a work thread.
-
-```text
-Usage: wolf thread brief [options] <thread-id>
-```
-
-Arguments: `thread-id` — thread id.
+`wolf thread brief <id>` is gone. The window over active work is now a single command — `wolf recap` — summarizing rules, threads, blockers, questions and decisions.
 
 ## wolf decision
 
-Manage decisions.
-
-```text
-Usage: wolf decision [options] [command]
-```
-
-Commands: `add`, `list`.
-
-### wolf decision add
-
-Add a decision.
-
-```text
-Usage: wolf decision add [options]
-```
-
-Options:
-
-- `--title <title>` — decision title
-- `--body <body>` — decision body
-- `--thread <thread-id>` — parent thread id
-- `--based-on <ids>` — comma-separated artifact ids this decision is based on
-- `--created-by <actor>` — creator actor (default: `user:cli`)
+Generated namespace. `wolf decision add` takes the common `add` flags plus `--thread <thread-id>` (parent thread); `wolf decision list [--status <status>] [--stale]` lists decisions.
 
 ```bash
-wolf decision add --title "Use worktrees for docs work" --body "Trunk-based; work in .worktrees/<task>."
+wolf decision add --title "Use worktrees for docs work" \
+  --body "Trunk-based; work in .worktrees/<task>." --thread mem_thread_01
 ```
-
-### wolf decision list
-
-List decisions.
-
-```text
-Usage: wolf decision list [options]
-```
-
-Options:
-
-- `--thread <thread-id>` — filter by thread
-
-## wolf blocker
-
-Manage blockers.
-
-```text
-Usage: wolf blocker [options] [command]
-```
-
-Commands: `add`, `list`, `resolve`.
-
-### wolf blocker add
-
-Add a blocker.
-
-```text
-Usage: wolf blocker add [options]
-```
-
-Options:
-
-- `--title <title>` — blocker title
-- `--impact <impact>` — blocker impact
-- `--workaround <workaround>` — possible workaround
-- `--thread <thread-id>` — parent thread id
-- `--created-by <actor>` — creator actor (default: `user:cli`)
-
-```bash
-wolf blocker add --title "CI blocked" --impact "No releases" --workaround "Run tests locally"
-```
-
-### wolf blocker list
-
-List blockers.
-
-```text
-Usage: wolf blocker list [options]
-```
-
-Options:
-
-- `--thread <thread-id>` — filter by thread
-
-### wolf blocker resolve
-
-Resolve a blocker.
-
-```text
-Usage: wolf blocker resolve [options] <id>
-```
-
-Arguments: `id` — blocker id.
-
-Options:
-
-- `--by <artifact-id>` — artifact that resolves the blocker
-
-## wolf info-request
-
-Manage info requests.
-
-```text
-Usage: wolf info-request [options] [command]
-```
-
-Commands: `create`, `list`.
-
-### wolf info-request create
-
-Create an info request.
-
-```text
-Usage: wolf info-request create [options]
-```
-
-Options:
-
-- `--title <title>` — request title
-- `--thread <thread-id>` — parent thread id
-- `--question <question>` — question to answer
-- `--detour-reason <reason>` — why this derails the main session
-- `--expected-answer <answers>` — comma-separated expected answer items
-- `--needed-for <items>` — comma-separated items this answer is needed for
-- `--preliminary-answer <answer>` — preliminary answer (default: `""`)
-- `--created-by <actor>` — creator actor (default: `user:cli`)
-
-### wolf info-request list
-
-List info requests.
-
-```text
-Usage: wolf info-request list [options]
-```
-
-Options:
-
-- `--thread <thread-id>` — filter by thread
-
-## wolf article
-
-Manage articles.
-
-```text
-Usage: wolf article [options] [command]
-```
-
-Commands: `add`, `list`.
-
-### wolf article add
-
-Add an article.
-
-```text
-Usage: wolf article add [options]
-```
-
-Options:
-
-- `--title <title>` — article title
-- `--thread <thread-id>` — parent thread id
-- `--summary <summary>` — article summary
-- `--body <body>` — article body
-- `--answers <ids>` — comma-separated answered info-request ids
-- `--supports <items>` — comma-separated items this article supports
-- `--evidence <items>` — comma-separated evidence items
-- `--created-by <actor>` — creator actor (default: `user:cli`)
-
-### wolf article list
-
-List articles.
-
-```text
-Usage: wolf article list [options]
-```
-
-Options:
-
-- `--thread <thread-id>` — filter by thread
 
 ## wolf rule
 
-Manage rules.
-
-```text
-Usage: wolf rule [options] [command]
-```
-
-Commands: `add`, `list`.
-
-### wolf rule add
-
-Add a rule (user only).
-
-```text
-Usage: wolf rule add [options]
-```
-
-Options:
-
-- `--title <title>` — rule title
-- `--body <body>` — rule body
-- `--scope <scope>` — rule scope (`project|global`)
-- `--applies-to <items>` — comma-separated paths/patterns
-- `--trigger <trigger>` — when to apply the rule
-- `--created-by <actor>` — creator actor (default: `user:cli`)
+Rules are added only by user request — agents must not seed rules. Generated namespace: `wolf rule add` adds `--scope <project|global>`, `--applies-to <items>`, `--trigger <trigger>` and `--trigger-keywords <items>` to the common flags; `wolf rule list` lists rules.
 
 ```bash
-wolf rule add --title "Search before writing scripts" --body "Check tool memory first." --scope project
+wolf rule add --title "Search before writing scripts" \
+  --body "Check tool memory first." --scope project
 ```
-
-### wolf rule list
-
-List rules.
-
-```text
-Usage: wolf rule list [options]
-```
-
-No options beyond `-h, --help`.
 
 ## wolf relation
 
-Manage relations between memory objects.
-
-```text
-Usage: wolf relation [options] [command]
-```
-
-Commands: `add`.
-
-### wolf relation add
-
-Record a relation between two memory objects.
-
-```text
-Usage: wolf relation add [options] <subject> <predicate> <object>
-```
-
-Arguments: `subject` — subject memory object id; `predicate` — relation predicate; `object` — object memory object id.
-
-Options:
-
-- `--source <source>` — relation source (default: `agent`)
+Typed edges tie work artifacts together — decisions to threads, notes to decisions:
 
 ```bash
-wolf relation add mem_001 supports mem_002
+wolf relation add mem_002 supports mem_thread_01
 ```
+
+- `wolf relation list [--of <id>] [--json]` — both directions of an object, output as `subject -predicate-> object`;
+- `wolf relation remove <id>` — appends a compensating record (`removed: true`) to `relations.jsonl`; the log is append-only, edges marked `removed` are not read, and rolling back a removal means removing the record.
+
+Full reference: [Memory](/guide/cli/memory).

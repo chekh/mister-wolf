@@ -46,20 +46,20 @@ The composition below is the catalog of `templates/base/` in the package.
 Plugins ship with the opencode harness layer of the package (`templates/opencode/plugins/`) and are part of the same stamped set:
 
 - `wolf-router` — deterministic playbook delivery per agent (by the `agent-id` marker); writes routing decisions to `.wolf/router.log` (with `ms=`/`bytes=` observability fields) and skill invocations to `.wolf/metrics/skill-invocations.jsonl` — skill usage is now measurable (see [Analytics — delivery panel](/guide/cli/analytics#delivery-panel)).
-- `wolf-session-start` — injects the bootstrap context when the transcript has no marker yet (covers session start, `/clear` and compact) and passes a fresh `opc-<uuid>` session id on every CLI spawn (see [Telemetry — session keys](/guide/telemetry#session-keys)).
+- `wolf-session-start` — injects the bootstrap context when the transcript has no marker yet (covers session start, `/clear` and compact) and manages the `WOLF_SESSION` key: since 2.13 the `opc-<uuid>` session id is inherited between CLI spawns of one logical session (set only when absent), so delivery deduplication covers the whole session (see [Telemetry — session keys](/guide/telemetry#session-keys)).
 
 ## Playbooks — 6 → seeded into Wolf memory
 
-Playbooks are the odd one out: they are **not** stamped files. `wolf init` seeds them into `.wolf/` memory as `playbook` objects (skipped when the same `owner_skill` is already seeded). From that moment they are memory — mutations go through the complaint loop and the Steward, and `wolf sync` never touches them.
+Playbooks are the odd one out: they are **not** stamped files. Since 2.13 they are no longer a `playbook` type: `wolf init` seeds them into `.wolf/` memory as `note` objects with `facet: howto` and an `owner_skill` field (skipped when the same `owner_skill` is already seeded). From that moment they are memory — mutations go through the complaint loop and the Steward, and `wolf sync` never touches them. See [Memory Model](/guide/memory).
 
-| Playbook                      | Content                                      | Owner                |
-| ----------------------------- | -------------------------------------------- | -------------------- |
-| `complaint-protocol`          | complaint intake and the triage tree         | `mr-wolf`            |
-| `steward-nastavnik`           | the playbook mutation protocol               | `steward`            |
-| `wolf-review-lenses`          | lens order, contracts, convergence rules     | `mr-wolf`            |
-| `worker-implementer-playbook` | method and report format for the implementer | `worker-implementer` |
-| `worker-researcher-playbook`  | analysis method and findings format          | `worker-researcher`  |
-| `worker-reviewer-playbook`    | review zones and the VERDICT contract        | `worker-reviewer`    |
+| Playbook                      | Content                                          | Owner                |
+| ----------------------------- | ------------------------------------------------ | -------------------- |
+| `complaint-protocol`          | complaint intake and the triage tree             | `mr-wolf`            |
+| `executor-lead-playbook`      | the lead's decomposition and acceptance pipeline | `executor-lead`      |
+| `steward-nastavnik`           | the playbook mutation protocol                   | `steward`            |
+| `worker-implementer-playbook` | method and report format for the implementer     | `worker-implementer` |
+| `worker-researcher-playbook`  | analysis method and findings format              | `worker-researcher`  |
+| `worker-reviewer-playbook`    | review zones and the VERDICT contract            | `worker-reviewer`    |
 
 ## Stamped files and sync
 

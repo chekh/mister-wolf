@@ -4,21 +4,21 @@
 
 ## `wolf analytics`
 
-Выборки для Стюарда: ledger'ы, недельная активность, view по агентам и steward view.
+Единая аналитическая поверхность: все окна состояния проекта рендерятся здесь (с 2.13 прежние отдельные команды `wolf effectiveness` / `wolf dashboard` / `wolf insights` — это view команды `wolf analytics`).
 
 ```text
 Usage: wolf analytics [options]
 
-Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents,
-steward view, councils, outliers, experiment readiness, memory lifecycle &
-coordination, campaigns & per-memory ROI, delivery panel, machine acceptance
-(wave metrics)
+Analytics state window: ledgers (memory/tools/rules), weekly activity, agents,
+steward, councils, outliers, readiness, coordination, campaign, delivery,
+acceptance, effectiveness, dashboard
 
 Options:
   --view <view>      Analytics view (choices: "memory", "tools", "rules",
-                      "weeklyActivity", "agents", "steward", "outliers",
-                      "readiness", "councils", "coordination", "campaign",
-                      "delivery", "acceptance", "all", default: "all")
+                     "weeklyActivity", "agents", "steward", "outliers",
+                     "readiness", "councils", "coordination", "campaign",
+                     "delivery", "acceptance", "effectiveness", "dashboard",
+                     "all", default: "all")
   --class <class>    Memory lifecycle filter (choices: "new", "sleeper",
                      "workhorse", "dead")
   --type <type>      Memory type filter
@@ -27,23 +27,27 @@ Options:
   --silent           Rules view: only silent rules (default: false)
   --top <n>          Row limit (default: 20)
   --weeks <n>        Weekly activity window in weeks (default: 8)
+  --snapshot         Effectiveness view: append the report to
+                     .wolf/metrics/effectiveness-snapshots.jsonl (default:
+                     false)
   --json             Machine-readable JSON output (default: false)
   -h, --help         display help for command
 ```
 
 Опции:
 
-| Опция               | Описание                                                                                                                                                                                     |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--view <view>`     | Выборка: `memory`, `tools`, `rules`, `weeklyActivity`, `agents`, `steward`, `outliers`, `readiness`, `councils`, `coordination`, `campaign`, `delivery`, `acceptance`, `all` (дефолт: `all`) |
-| `--class <class>`   | Фильтр по lifecycle-классу памяти: `new`, `sleeper`, `workhorse`, `dead`                                                                                                                     |
-| `--type <type>`     | Фильтр по типу памяти                                                                                                                                                                        |
-| `--origin <origin>` | Фильтр по tool origin: `script`, `native`                                                                                                                                                    |
-| `--agent <agent>`   | Фильтр по имени агента                                                                                                                                                                       |
-| `--silent`          | Rules view: только молчащие правила (дефолт: false)                                                                                                                                          |
-| `--top <n>`         | Лимит строк (дефолт: 20)                                                                                                                                                                     |
-| `--weeks <n>`       | Окно недельной активности в неделях (дефолт: 8)                                                                                                                                              |
-| `--json`            | Машинный JSON-вывод (дефолт: false)                                                                                                                                                          |
+| Опция               | Описание                                                                                                                                                                                                                   |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--view <view>`     | Выборка: `memory`, `tools`, `rules`, `weeklyActivity`, `agents`, `steward`, `outliers`, `readiness`, `councils`, `coordination`, `campaign`, `delivery`, `acceptance`, `effectiveness`, `dashboard`, `all` (дефолт: `all`) |
+| `--class <class>`   | Фильтр по lifecycle-классу памяти: `new`, `sleeper`, `workhorse`, `dead`                                                                                                                                                   |
+| `--type <type>`     | Фильтр по типу памяти                                                                                                                                                                                                      |
+| `--origin <origin>` | Фильтр по tool origin: `script`, `native`                                                                                                                                                                                  |
+| `--agent <agent>`   | Фильтр по имени агента                                                                                                                                                                                                     |
+| `--silent`          | Rules view: только молчащие правила (дефолт: false)                                                                                                                                                                        |
+| `--top <n>`         | Лимит строк (дефолт: 20)                                                                                                                                                                                                   |
+| `--weeks <n>`       | Окно недельной активности в неделях (дефолт: 8)                                                                                                                                                                            |
+| `--snapshot`        | Effectiveness view: дописать отчёт в `.wolf/metrics/effectiveness-snapshots.jsonl` (дефолт: false)                                                                                                                         |
+| `--json`            | Машинный JSON-вывод (дефолт: false)                                                                                                                                                                                        |
 
 Выборки:
 
@@ -62,6 +66,8 @@ Options:
 | `readiness`      | Готовность к экспериментам: доля прогонов с arm, размер выборки по группам                                                                                                                                                              |
 | `delivery`       | Панель доставки: топ доставляемых объектов с индикатором applied%, miss-rate по agent-id, средний размер инъекции (два канала), латентность resolve роутера p50/p90, счётчики вызовов скиллов (см. [Панель доставки](#панель-доставки)) |
 | `acceptance`     | Машинная приёмка (метрики волн): miss-rate роутера по агентам, error-rate + p50/p90 по тулам, классы ошибок, burst'ы доставок, search→get follow, vitality за 72 ч, битые строки (см. [Машинная приёмка](#машинная-приёмка))            |
+| `effectiveness`  | Панель эффективности памяти: rules holdout, tool economy, доставка, шум, роутинг; `--snapshot` дописывает отчёт в `.wolf/metrics/effectiveness-snapshots.jsonl` (см. [Эффективность](#эффективность-view-effectiveness))                |
+| `dashboard`      | Консольный дашборд: health, ledgers, trends — Unicode-таблицы и спарклайны, ничего на диск (см. [Дашборд](#дашборд-view-dashboard))                                                                                                     |
 | `all`            | Все секции подряд (дефолт)                                                                                                                                                                                                              |
 
 ### Lifecycle-классы
@@ -81,14 +87,14 @@ wolf analytics --view memory --class dead --top 3
 
 ```text
 == memory ==
-┌──────────────────────────────────────────┬──────────────┬───────────┬──────────┬────────────┬──────────┬────────────┬───────────┐
-│ id                                       │ type         │ lifecycle │ age_days │ deliveries │ triggers │ complaints │ last_used │
-├──────────────────────────────────────────┼──────────────┼───────────┼──────────┼────────────┼──────────┼────────────┼───────────┤
-│ mem_20260630_need_incremental_indexing_… │ blocker      │ dead      │ 65       │ 0          │ 0        │ 0          │ -         │
-│ mem_20260630_use_decision_and_blocker_t… │ decision     │ dead      │ 65       │ 0          │ 0        │ 0          │ -         │
-│ mem_20260630__c0acde                     │ info-request │ dead      │ 65       │ 0          │ 0        │ 0          │ -         │
-└──────────────────────────────────────────┴──────────────┴───────────┴──────────┴────────────┴──────────┴────────────┴───────────┘
-garbage: dead/base = 27/465 = 5.8%
+┌──────────────────────────────────────────┬──────────┬───────────┬──────────┬────────────┬──────────┬────────────┬───────────┐
+│ id                                       │ type     │ lifecycle │ age_days │ deliveries │ triggers │ complaints │ last_used │
+├──────────────────────────────────────────┼──────────┼───────────┼──────────┼────────────┼──────────┼────────────┼───────────┤
+│ mem_20260630_need_incremental_indexing_… │ note     │ dead      │ 91       │ 0          │ 0        │ 0          │ -         │
+│ mem_20260630_use_decision_and_blocker_t… │ decision │ dead      │ 91       │ 0          │ 0        │ 0          │ -         │
+│ mem_20260630__c0acde                     │ note     │ dead      │ 92       │ 0          │ 0        │ 0          │ -         │
+└──────────────────────────────────────────┴──────────┴───────────┴──────────┴────────────┴──────────┴────────────┴───────────┘
+garbage: dead/base = 422/732 = 57.7%
 ```
 
 ### Tool origin
@@ -164,14 +170,12 @@ open questions:
 
 `--view memory` завершается воронкой стадий `added → retrieved → injected → cited → applied` (события `memory_stage`): какая доля store когда-либо находилась поиском, попадала в контекст агента, цитировалась в ответе и реально меняла код. `added` — все объекты store (`events` = `-`); каждая стадия — `events` + `unique_ids` (уникальные id, дошедшие до стадии); JSON добавляет `appliedUniqueIds`.
 
-События стадий пишут два рода writer'ов (справка команды — [`wolf memory-stage`](#wolf-memory-stage)):
+С 2.13 у событий стадий ровно один род writer'ов — **автоматические** (ручная команда `wolf memory-stage` удалена; стадии пишутся автоматически командами памяти):
 
-- **автоматические** — `wolf search`/`get` пишут `retrieved` при непустой выдаче; `wolf brief`/`call` пишут `injected`, когда инъекции реально доставлены. Нечего фиксировать — события нет: пустая выдача поиска не пишет `retrieved`, бриф без инъекций — `injected`.
-- **ручные** — сам агент записывает `cited` (процитировал объект в ответе/отчёте) и `applied` (содержимое объекта дошло до кода/решения):
+- `wolf search`/`get` пишут `retrieved` при непустой выдаче; `wolf brief`/`call` пишут `injected`, когда инъекции реально доставлены. Нечего фиксировать — события нет: пустая выдача поиска не пишет `retrieved`, бриф без инъекций — `injected`.
+- у `cited` и `applied` встроенного писателя больше нет; харнес, которому они нужны, аппендит события `memory_stage` в сигнальный лог напрямую (см. [Интеграция обёрток](#интеграция-обёрток-harness-integration)).
 
-```bash
-wolf memory-stage --stage applied --ids mem_…_use_append_only_jsonl,mem_…_prefer_vitest --actor agent:worker
-```
+Строка `attribution: accepted X/Y (Z%)` — доля accepted-вердиктов `task_evaluated`, перед которыми в той же `session_id` была инъекция. Честные null: без данных — `attribution: n/a (<причина>)` (`no task_evaluated` / `no injected` / `no accepted verdicts`); injected без `session_id` в атрибуции не участвуют.
 
 ```bash
 wolf analytics --view memory --top 3
@@ -182,31 +186,30 @@ wolf analytics --view memory --top 3
 ┌──────────────────────────────────────────┬──────────┬───────────┬──────────┬────────────┬──────────┬────────────┬──────────────────────────┐
 │ id                                       │ type     │ lifecycle │ age_days │ deliveries │ triggers │ complaints │ last_used                │
 ├──────────────────────────────────────────┼──────────┼───────────┼──────────┼────────────┼──────────┼────────────┼──────────────────────────┤
-│ mem_20260904_docs_example_blocker_416c08 │ blocker  │ sleeper   │ 0        │ 0          │ 1        │ 0          │ 2026-09-04T19:44:50.567Z │
-│ ...                                      │          │           │          │            │          │            │                          │
+│ mem_20260630_mr_wolf_schema_driven_memo… │ thread   │ sleeper   │ 92       │ 0          │ 1        │ 0          │ 2026-08-25T08:49:35.952Z │
+│ mem_20260630_need_incremental_indexing_… │ note     │ dead      │ 91       │ 0          │ 0        │ 0          │ -                        │
+│ mem_20260630_use_decision_and_blocker_t… │ decision │ dead      │ 91       │ 0          │ 0        │ 0          │ -                        │
 └──────────────────────────────────────────┴──────────┴───────────┴──────────┴────────────┴──────────┴────────────┴──────────────────────────┘
-garbage: dead/base = 0/13 = 0.0%
+garbage: dead/base = 422/732 = 57.7%
 ┌───────────┬────────┬────────────┐
 │ stage     │ events │ unique_ids │
 ├───────────┼────────┼────────────┤
-│ added     │ -      │ 13         │
-│ retrieved │ 1      │ 1          │
-│ injected  │ 1      │ 2          │
-│ cited     │ 1      │ 1          │
-│ applied   │ 1      │ 1          │
+│ added     │ -      │ 803        │
+│ retrieved │ 144    │ 272        │
+│ injected  │ 5189   │ 50         │
+│ cited     │ 0      │ 0          │
+│ applied   │ 0      │ 0          │
 └───────────┴────────┴────────────┘
-attribution: accepted 1/1 (100.0%)
+attribution: accepted 0/1 (0.0%)
 ```
-
-Строка `attribution: accepted X/Y (Z%)` — доля accepted-вердиктов `task_evaluated`, перед которыми в той же `session_id` была инъекция. Честные null: без данных — `attribution: n/a (<причина>)` (`no task_evaluated` / `no injected` / `no accepted verdicts`); injected без `session_id` в атрибуции не участвуют.
 
 ### Координационная аналитика
 
-`--view coordination` агрегирует события `coord_event`, которые пишет [`wolf coord`](#wolf-coord) (таблица kind'ов и «кто что пишет» — в справке команды):
+`--view coordination` агрегирует события `coord_event` — координационный лог, который писала удалённая команда `wolf coord`; view читает историю (писателя больше нет, kind'ы — исторические данные):
 
 - **counts** — события по парам `kind × actor_from` (кто что инициировал);
 - **recent** — последние 20 событий: ts, kind, `from->to`, refs;
-- **blockers** — пары «открыт → закрыт» по ref: `opened` — самый ранний `coord --kind blocker` с этим ref, `resolved` — первый `memory.resolved` из event log (`wolf blocker resolve <id>`) не раньше opened; `-` — блокер ещё открыт. Пара закрывается резолвом блокера, а не вторым coord-событием.
+- **blockers** — пары «открыт → закрыт» по ref: `opened` — самый ранний `coord --kind blocker` с этим ref, `resolved` — первый `memory.resolved` по объекту не раньше opened; `-` — ещё открыт. Пара закрывается резолвом связанного объекта (в текущей модели — ноты через `wolf transition`), а не вторым coord-событием.
 
 ```bash
 wolf analytics --view coordination
@@ -241,11 +244,11 @@ blockers:
 
 ### Кампании
 
-`--view campaign` — A/B-витрина «та же задача, с памятью и без»: прогоны группируются по `campaign_id` (топ-левел поле run-сигнала, флаг `wolf run --campaign <id>`) и разбиваются на две когорты по наличию injected-памяти в сессии прогона — join по `session_id` через `memory_stage injected`, тот же паттерн, что у attribution (P2); ран с `session_id: null` попадает в `no_memory`:
+`--view campaign` — A/B-витрина «та же задача, с памятью и без»: прогоны группируются по `campaign_id` (топ-левел поле run-сигнала, которое пишет харнес — см. [Интеграция обёрток](#интеграция-обёрток-harness-integration)) и разбиваются на две когорты по наличию injected-памяти в сессии прогона — join по `session_id` через `memory_stage injected`, тот же паттерн, что у attribution (P2); ран с `session_id: null` попадает в `no_memory`:
 
 - **n** — раны когорты в кампании;
 - **median_weighted** — медиана weighted ранов когорты; при n < 3 вся строка метрик когорты → `n/a` с note `n<3: min 3 runs` (доли на малых выборках не показываем); пустая когорта → note `no runs`;
-- **accepted\_%** — доля accepted среди вердиктов когорты: вердикты входят в кампанию флагом `wolf task-eval --campaign <id>` (`detail.campaign_id`) и атрибутируются когорте той же связкой по сессии; кампания без вердиктов → `n/a` с note `no verdicts`;
+- **accepted\_%** — доля accepted среди вердиктов когорты: вердикты входят в кампанию через скрытую plumbing-команду `wolf task-eval --campaign <id>` (`detail.campaign_id`) и атрибутируются когорте той же связкой по сессии; кампания без вердиктов → `n/a` с note `no verdicts`;
 - **pfail\_%** — доля ранов с `outcome !== 'ok'` (в JSON когорты — `processFailureRatePct`).
 
 Витрина корреляционная: p-values и доверительные интервалы на малых n некорректны — это осознанная граница P3. Сравнение когорт — повод для гипотезы, не доказательство.
@@ -328,7 +331,7 @@ skills:
 └────────────┴───────┘
 ```
 
-`--json` возвращает те же секции машинно (`topDelivered`, `underApplied`, `missRateByAgent`, `avgInjectionBytes`, `routerMs`, `skills`); MCP-инструмент `analytics` принимает `view: "delivery"`.
+`--json` возвращает те же секции машинно (`topDelivered`, `underApplied`, `missRateByAgent`, `avgInjectionBytes`, `routerMs`, `skills`).
 
 ### Машинная приёмка
 
@@ -374,7 +377,7 @@ search->get follow: 3/7 (42.9%)
 vitality: core calls 72h = 18
 ```
 
-`--json` возвращает те же секции в машинном виде; MCP-инструмент `analytics` принимает `view: "acceptance"`.
+`--json` возвращает те же секции в машинном виде.
 
 ### Примеры
 
@@ -387,9 +390,9 @@ wolf analytics --view rules --top 3
 ┌──────────────────────────────────────────┬───────────┬─────────┬────────┬──────────────────────────────────────────┐
 │ id                                       │ prevented │ checked │ silent │ title                                    │
 ├──────────────────────────────────────────┼───────────┼─────────┼────────┼──────────────────────────────────────────┤
-│ mem_20260703_update_project_docs_after_… │ 0         │ 0       │ no     │ Update project docs after every impleme… │
-│ mem_20260823__c93eac                     │ 0         │ 0       │ no     │ Коммитить изменения после завершённой р… │
-│ mem_20260823_e2e_5459cc                  │ 0         │ 0       │ no     │ Полное E2E-тестирование после каждого в… │
+│ mem_20260703_update_project_docs_after_… │ 0         │ -       │ no     │ Update project docs after every impleme… │
+│ mem_20260823__c93eac                     │ 0         │ -       │ no     │ Коммитить изменения после завершённой р… │
+│ mem_20260823_e2e_5459cc                  │ 0         │ -       │ no     │ Полное E2E-тестирование после каждого в… │
 └──────────────────────────────────────────┴───────────┴─────────┴────────┴──────────────────────────────────────────┘
 ```
 
@@ -402,195 +405,83 @@ wolf analytics --view weeklyActivity --weeks 4
 ┌────────────┬────────┬──────────┬──────────┐
 │ week       │ writes │ delivers │ triggers │
 ├────────────┼────────┼──────────┼──────────┤
-│ 2026-08-10 │ 0      │ 0        │ 0        │
-│ 2026-08-17 │ 27     │ 0        │ 0        │
-│ 2026-08-24 │ 298    │ 4427     │ 8        │
-│ 2026-08-31 │ 311    │ 20123    │ 10       │
+│ 2026-09-07 │ 11     │ 267      │ 9        │
+│ 2026-09-14 │ 0      │ 0        │ 0        │
+│ 2026-09-21 │ 5      │ 878      │ 8        │
+│ 2026-09-28 │ 57     │ 9980     │ 30       │
 └────────────┴────────┴──────────┴──────────┘
 ```
 
 Delivery-события считаются на сессию, а не на уникальный объект, поэтому `delivers` может превышать `writes` — это счётчики активности по неделям, а не конверсия.
 
-## `wolf dashboard`
+### Дашборд (view=dashboard)
 
-Консольный дашборд: три секции рендерятся прямо в терминал — Unicode-таблицы и текстовые спарклайны (`▁▂▃▄▅▆▇█`).
-
-```text
-Usage: wolf dashboard [options]
-
-Console dashboard: health, ledgers, trends (unicode tables and sparklines; no
-files written)
-
-Options:
-  --tab <tab>  Render a single section (choices: "health", "ledgers", "trends")
-  --json       Machine-readable JSON output of the whole dashboard (default:
-               false)
-  -h, --help   display help for command
-```
-
-Опции:
-
-| Опция         | Описание                                                                                                                                                                                                                                                                                                                                            |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--tab <tab>` | Одна секция: `health` (L1-статусы, абсолюты, недельная активность текущего периода), `ledgers` (L2-таблицы: memory, tools, rules, agents, открытые council-вопросы, top-N), `trends` (L3-спарклайны по снапшотам, недельная активность, cache-hit ratio, готовность к экспериментам, недельная активность консилиумов, строки coverage/dataQuality) |
-| `--json`      | Машинный JSON всего дашборда (`DashboardData`)                                                                                                                                                                                                                                                                                                      |
+`--view dashboard` рендерит консольный дашборд: три секции прямо в терминал — Unicode-таблицы и текстовые спарклайны (`▁▂▃▄▅▆▇█`): health (L1-статусы, абсолюты, недельная активность текущего периода), ledgers (L2-таблицы: memory, tools, rules, agents, открытые council-вопросы, top-N) и trends (L3-спарклайны по снапшотам, недельная активность, cache-hit ratio, готовность к экспериментам, недельная активность консилиумов, строки coverage/dataQuality). Прежний флаг `--tab` отдельной команды `wolf dashboard` исчез: view рендерит все три секции; `--json` возвращает машинный `DashboardData`.
 
 ```bash
-wolf dashboard --tab health
+wolf analytics --view dashboard
 ```
 
 ```text
 == health ==
-rules: ✓ active=17 prevented/checked: 0/0
-tools: · count=0 usage=0 economy: n/a: not enough data (tool runs: 0, total: 3, need ≥ 3 in each group)
-delivery: · events=21770 triggered=10 silentRules=0 (n/a)
-noise: ✗ 391/460 = 85.0%
-routing: zai-coding-plan/glm-5.2: tasks=3 median=22868.2
+rules: ✓ active=23 prevented/checked: 0/0
+tools: · count=0 usage=0 economy: n/a: not enough data (tool runs: 0, total: 2, need ≥ 3 in each group)
+delivery: · events=42482 triggered=34 silentRules=0 (n/a)
+noise: ✗ 478/732 = 65.3%
+routing: zai-coding-plan/glm-5.2: tasks=2 median=21368
 totals: runs=2 weighted=42736
 ```
 
 Только консоль, by design: дашборд рендерит в stdout и не пишет файлов; HTML-витрина сознательно отложена (опциональный флаг может появиться, когда будет спрос).
 
-## `wolf effectiveness`
+### Эффективность (view=effectiveness)
 
-```text
-Usage: wolf effectiveness [options]
-
-Memory effectiveness panel: rules holdout, tool economy, delivery, noise,
-routing (aggregation only, no LLM)
-
-Options:
-  --snapshot  Append the full report to
-              .wolf/metrics/effectiveness-snapshots.jsonl
-  -h, --help  display help for command
-```
-
-Опции:
-
-| Опция        | Описание                                                                                                 |
-| ------------ | -------------------------------------------------------------------------------------------------------- |
-| `--snapshot` | Аппендить полный отчёт в `.wolf/metrics/effectiveness-snapshots.jsonl` (append-only история для трендов) |
+`--view effectiveness` печатает панель эффективности памяти — rules holdout, tool economy, доставка, шум, роутинг (агрегация без LLM). Флаг `--snapshot` сериализует полный отчёт и дописывает его в `.wolf/metrics/effectiveness-snapshots.jsonl` (append-only история для трендов).
 
 Обычный вызов печатает панель; когда есть хотя бы один снапшот, дополнительно печатается дельта к последнему снапшоту (`delta vs <ts>` по числовым полям каждого блока).
 
 Панель завершается блоком абсолютов: прогоны и process-провалы (`processFailures`), суммы токенов weighted и raw, cache-hit ratio, средняя длительность и `costPerCompletedRun` по моделям (`$cost / completedRuns`). `$`-поля появляются, только если настроен `pricing` (см. [Конфигурация](#конфигурация)).
 
 ```bash
-wolf effectiveness
+wolf analytics --view effectiveness
 ```
 
 ```text
 effectiveness panel (mileage aggregation, no LLM):
-rules: active=17 | prevented/checked: 0/0
-...
-noise: 416/485 = 85.8% [BAD]
-routing: zai-coding-plan/glm-5.2: tasks=3 median=22868.2
+rules: active=23 | prevented/checked: 0/0
+tools: count=0 | usage=0 | economy: n/a: not enough data (tool runs: 0, total: 2, need ≥ 3 in each group) [INFO]
+delivery: events=42482 | triggered=34 | silentRules=0 (not enough delivery data)
+noise: 478/732 = 65.3% [BAD]
+documents: 0 (registered refs, not part of the noise metric) [INFO]
+archived: 71 (outside the noise metric) [INFO]
+routing: zai-coding-plan/glm-5.2: tasks=2 median=21368
 totals: runs=2 processFailures=0 weighted=42736 cache=n/a avg=n/a
 cost: n/a (no pricing configured)
 model zai-coding-plan/glm-5.2: runs=2 processFailures=0 cost=n/a cost/completedRun=n/a
 thresholds: noise ok<20 warn<=40 bad | silent ok<30
 ```
 
-## Обогащение `wolf run`
+### Скрытые синонимы (deprecated)
 
-Сама команда `wolf run` описана на странице [Платформа и обслуживание](/ru/guide/cli/platform#wolf-run); здесь — enrichment-флаги для сравнительных методик (RCT, golden tasks) и телеметрии-идентичности:
+Прежние отдельные аналитические команды ещё работают, но скрыты (их нет в `--help`) и будут **удалены в 2.15**:
 
-- `--tool <name>` — пометить прогон как использующий тул(ы) (повторяемый); источник tool-run экономики из сигнального лога
-- `--experiment <id>` — id эксперимента (сравнительные методики, например RCT)
-- `--arm <choice>` — arm эксперимента (`wolf` \| `baseline`)
-- `--task-id <id>` — id задачи (пишется топ-левел всегда, когда передан — и вне эксперимента)
-- `--campaign <id>` — id кампании (пишется топ-левел как `campaign_id`; группирует раны для `--view campaign`)
-- `--trace-id <id>` — id трассы, объединяющий раны одной задачи (дефолт — свежий uuid)
-- `--attempt <n>` — номер попытки в рамках задачи
+| Старая команда       | Преобразуется в                       |
+| -------------------- | ------------------------------------- |
+| `wolf insights`      | `wolf analytics --view readiness`     |
+| `wolf effectiveness` | `wolf analytics --view effectiveness` |
+| `wolf dashboard`     | `wolf analytics --view dashboard`     |
 
-Каждый прогон пишет raw-токены (`input`, `output`, `cache_read`), `duration_ms` и v2-поля идентичности (`event_id`, `run_id`, `trace_id`, `config_hash`, `prompt_hash`, `tools`, `schema_version: 2`) в сигнальный лог — с P1 сигнальный лог является единственным каноническим источником run-метрик, а `.wolf/run-log.jsonl` больше не пишется (существующая история читается в переходном окне экономики; запусти `wolf migrate run-log`, чтобы архивировать legacy-файл и убрать двойной счёт). Прогоны без новых флагов сохраняют старый формат записи — обогащение обратно совместимо.
-
-`weighted`, который пишет `wolf run`, — не сумма токенов, а фиксированная формула: `weighted = input + 0.1 × cache_read + 5 × output` — чтение кэша почти бесплатно, генерация в пять раз дороже входа. Это же число кормит медианы agent ledger, кампаний, выбросов и tool-экономики — поэтому weighted и raw-суммы расходятся.
-
-```bash
-wolf run "Fix the failing test" --experiment exp-20260904-x1 --arm wolf --task-id t3 --tool wolf-search --trace-id 7f3a2b1c-9d4e-4f6a-8b2c-1e5d7a9f0b3e
-```
-
-## `wolf task-eval`
-
-Записывает вердикт по задаче в сигнальный лог (событие `task_evaluated`) — источник честных acceptance-метрик и coverage:
-
-- `--verdict <verdict>` — `accepted`, `rejected`, `partial`, `inconclusive`
-- `--scorer <scorer>` — кто оценил: `human` (дефолт), `deterministic`, `llm_judge`, `hidden_tests`
-- `--session <id>` / `--task-id <id>` — привязка вердикта к прогону/задаче (без привязки вердикт считается в coverage, но не атрибутируется агенту)
-- `--campaign <id>` — id кампании (пишется в `detail.campaign_id`; группирует вердикты для `--view campaign`)
-- `--criteria-passed <n>` / `--criteria-total <m>` — численные критерии
-- `--critical-failure` — критический провал; `--note <text>` — свободная заметка
-
-Завершённый прогон ≠ полезная задача: по вердиктам считаются `accepted` и `costPerAcceptedTask` (блок acceptance) и coverage оценённых прогонов (см. ниже).
-
-```bash
-wolf task-eval --verdict accepted --task-id docs-v2.5.0-rename --scorer human --note "v2.5.0 docs sync"
-```
+Каждый скрытый синоним печатает одну строку в stderr и выполняет соответствующее view:
 
 ```text
-task verdict recorded: verdict=accepted scorer=human
+[wolf] 'effectiveness' is deprecated since 2.13 and hidden: it now maps to "analytics --view effectiveness"; it will be removed in 2.15
 ```
 
-## `wolf memory-stage`
-
-Записать стадию жизненного цикла памяти в сигнальный лог (событие `memory_stage`) — ручной writer для стадий, о которых автоматика знать не может:
-
-```text
-Usage: wolf memory-stage [options]
-```
-
-Опции:
-
-- `--stage <stage>` — стадия (choices: `retrieved`, `injected`, `cited`, `applied`)
-- `--ids <ids>` — id объектов через запятую (список непустой; одно событие на пачку, не по событию на объект)
-- `--actor <actor>` — атрибуция актора (дефолт: env `WOLF_ACTOR` или `user:cli`; агенты передают `agent:<имя>`)
-- `--session <id>` — id сессии; без флага берётся из `WOLF_SESSION`
-
-Семантика: `retrieved` (объект достался из store) и `injected` (объект попал в контекст) пишутся автоматически — `wolf search`/`get` и `wolf brief`/`call`, но только когда есть что фиксировать (пустая выдача → события нет). `cited` (объект процитирован в ответе/отчёте) и `applied` (содержимое дошло до кода/решения) — пишешь ты сам. Честно и лениво: ничего не применил — ничего не пиши.
-
-```bash
-wolf memory-stage --stage cited --ids mem_…_validate_fts_queries --actor agent:worker
-```
-
-Стадии кормят [воронку жизненного цикла](#воронка-жизненного-цикла-памяти) и attribution; про связку с `WOLF_SESSION` — [Интеграция обёрток](#интеграция-обёрток-harness-integration).
-
-## `wolf coord`
-
-Записать координационное событие в сигнальный лог (событие `coord_event`) — факт перехода задачи между ролями: кто, кому, что.
-
-```text
-Usage: wolf coord [options]
-```
-
-Опции:
-
-- `--kind <kind>` — вид события (choices: `handoff`, `review`, `acceptance`, `blocker`, `escalation`)
-- `--from <actor>` — инициатор (дефолт: env `WOLF_ACTOR` или `user:cli`)
-- `--to <actor>` — адресат, если есть
-- `--ref <ids>` — id связанных объектов через запятую (повторяемый; дефолт: `[]`)
-- `--note <text>` — короткий контекст свободным текстом
-- `--actor <actor>` — атрибуция писателя (дефолт: env `WOLF_ACTOR` или `user:cli`)
-
-Виды и кто что пишет:
-
-| Вид          | Когда пишется                                          | Типичный писатель            |
-| ------------ | ------------------------------------------------------ | ---------------------------- |
-| `handoff`    | L0-координатор передал задачу/контекст исполнителю     | координатор (L0)             |
-| `review`     | ревьюер провёл ревью результата (`--from` = ревьюер)   | lead / ревьюер               |
-| `acceptance` | задача/фаза принята (`--from` = тот, кто принял)       | lead / ревьюер               |
-| `blocker`    | работа встала на блокере (`--ref` = id блокер-объекта) | кто столкнулся (lead/воркер) |
-| `escalation` | воркер не справился, вопрос уходит на уровень выше     | координатор (L0), воркер     |
-
-Для `blocker` в `--ref` передавай id реального блокер-объекта (`wolf blocker add`) — тогда [координационная аналитика](#координационная-аналитика) закроет пару «открыт → закрыт» по `wolf blocker resolve <id>`.
-
-```bash
-wolf coord --kind handoff --from "L0:wolf" --to "L1:lead" --ref mem_…_report --note "волна C"
-```
+Скрытый plumbing (жив, не deprecated, только для скриптов): `wolf task-eval` записывает вердикты по задачам (`task_evaluated`), на которых считаются acceptance-метрики, coverage и кампании.
 
 ## Coverage, acceptance и dataQuality
 
-`wolf analytics` (конец `--view all`) и `wolf dashboard` (секция trends) печатают строки честности данных. Реальный вывод:
+`wolf analytics` (конец `--view all`; view `dashboard` повторяет их в секции trends) печатает строки честности данных. Реальный вывод:
 
 ```text
 coverage: partial — scored 1/2 (50.0%)
@@ -623,51 +514,27 @@ completeTraceRatePct: n/a (span model planned P2)
 
 **v2-поля идентичности** (все опциональны — но чем полнее, тем сквознее аналитика):
 
-| Поле             | Тип / вид               | Семантика                                                    |
-| ---------------- | ----------------------- | ------------------------------------------------------------ |
-| `event_id`       | uuid                    | уникальный id события; дубликаты ловит data-quality v2       |
-| `schema_version` | `2` (literal)           | версия схемы; отсутствие = читается как v1                   |
-| `run_id`         | uuid                    | id прогона `wolf run` — сквозная цепочка задачи              |
-| `trace_id`       | uuid                    | трасса: объединяет раны одной задачи (`--trace-id` или uuid) |
-| `parent_span_id` | string                  | родительский span (зарезервирован; span-модель — план P2)    |
-| `role_level`     | `L0` \| `L1` \| `L2`    | уровень роли писателя по actor-конвенции                     |
-| `attempt`        | number                  | номер попытки (retry) в рамках run                           |
-| `task_id`        | string                  | общий id задачи (пишется всегда при передаче `--task-id`)    |
-| `config_hash`    | sha256, первые 12 симв. | подпись `.wolf/config.yaml` на момент прогона                |
-| `prompt_hash`    | sha256, первые 12 симв. | подпись текста промпта                                       |
-| `tools`          | `string[]`              | инструменты прогона (из `--tool`) — источник tool-экономики  |
+| Поле             | Тип / вид               | Семантика                                                  |
+| ---------------- | ----------------------- | ---------------------------------------------------------- |
+| `event_id`       | uuid                    | уникальный id события; дубликаты ловит data-quality v2     |
+| `schema_version` | `2` (literal)           | версия схемы; отсутствие = читается как v1                 |
+| `run_id`         | uuid                    | id прогона — сквозная цепочка задачи                       |
+| `trace_id`       | uuid                    | трасса: объединяет раны одной задачи (от харнеса или uuid) |
+| `parent_span_id` | string                  | родительский span (зарезервирован; span-модель — план P2)  |
+| `role_level`     | `L0` \| `L1` \| `L2`    | уровень роли писателя по actor-конвенции                   |
+| `attempt`        | number                  | номер попытки (retry) в рамках run                         |
+| `task_id`        | string                  | общий id задачи                                            |
+| `config_hash`    | sha256, первые 12 симв. | подпись `.wolf/config.yaml` на момент прогона              |
+| `prompt_hash`    | sha256, первые 12 симв. | подпись текста промпта                                     |
+| `tools`          | `string[]`              | инструменты прогона — источник tool-экономики              |
 
-`campaign_id` (из `--campaign`) — ключ группировки кампаний, см. [Кампании](#кампании).
+`campaign_id` — ключ группировки кампаний, см. [Кампании](#кампании).
 
 **role_level по actor-конвенции**: L0 — координатор (диспетчеризация и приёмка; человек-владелец — здесь, на приёмке), L1 — lead/ревьюер, L2 — воркер/исполнитель. Дефолт — поле не писать.
 
-**`WOLF_SESSION` связывает авто-писателей с сессией**: авто-писатели `memory_stage` (`wolf search`/`get` → `retrieved`, `wolf brief`/`call` → `injected`) берут id сессии из env `WOLF_SESSION` — симметрия с `WOLF_ACTOR`. Харнес, выставляющий `WOLF_SESSION` на старте агентской сессии, получает связку `injected` ↔ `task_evaluated` по `session_id` — атрибуция видит инъекции авто-путей. Без env события пишутся с `session_id: null` и в атрибуции не участвуют. `wolf memory-stage` без явного `--session` тоже подхватывает `WOLF_SESSION`.
+**`WOLF_SESSION` связывает авто-писателей с сессией**: авто-писатели `memory_stage` (`wolf search`/`get` → `retrieved`, `wolf brief`/`call` → `injected`) берут id сессии из env `WOLF_SESSION` — симметрия с `WOLF_ACTOR`. Харнес, выставляющий `WOLF_SESSION` на старте агентской сессии, получает связку `injected` ↔ `task_evaluated` по `session_id` — атрибуция видит инъекции авто-путей. Без env события пишутся с `session_id: null` и в атрибуции не участвуют.
 
 Механика: аппендь через `appendSignal(baseDir, event)` (или JSON-строка + `\n`); неизвестные поля отбрасываются Zod-схемой при чтении, записи без `schema_version` читаются как v1. Дубликаты `event_id` дедупятся аналитикой (первая копия остаётся, повторы видны как `duplicateEventRatePct`). Сбой телеметрии не должен ломать сам вызов — оборачивай в try/catch.
-
-## `wolf insights --type activity`
-
-Линза `activity` добавляет недельную разбивку мутаций — added / updated / superseded / resolved / transitioned — за то же 8-недельное окно, что и density-инсайты. Быстрый пульс: сколько памяти мутирует за неделю и какие недели были пиками захвата.
-
-```bash
-wolf insights --type activity --topic analytics
-```
-
-```text
-Insights [activity] (topic: analytics), matched 15/643 objects
-Scope: matched 15/643 objects, truth roles: accepted_knowledge 12 / proposed_knowledge 3
-...
-
-## Weekly mutations
-- 2026-07-13: added 0, updated 0, superseded 0, resolved 0, transitioned 0 (total 0)
-...
-- 2026-08-17: added 27, updated 0, superseded 0, resolved 1, transitioned 0 (total 28)
-- 2026-08-24: added 298, updated 0, superseded 20, resolved 3, transitioned 108 (total 429)
-- 2026-08-31: added 286, updated 0, superseded 6, resolved 4, transitioned 3 (total 299)
-
-## Status tally
-- active (15)
-```
 
 ## Конфигурация
 
@@ -689,12 +556,12 @@ analytics:
     workhorse_uses: 3
 ```
 
-## MCP-инструмент
+## MCP
 
-MCP-инструмент `analytics` зеркалит CLI: принимает те же параметры (`view`, `class`, `type`, `origin`, `agent`, `top`, `weeks`, `silent`) и возвращает тот же JSON, что `wolf analytics --json`. Терминальный рендеринг — только в CLI.
+С 2.13 аналитика — только CLI: прежний MCP-инструмент `analytics` удалён (оставшиеся MCP-тулы — core-набор: `search`, `get`, `list`, `add`, `transition`, `brief`, `recap`). Машинный вывод — `wolf analytics --json`.
 
 ## Ограничения
 
 - `$`-поля скрыты, пока не настроен `pricing`, — цены даёт владелец, никогда код.
 - Счётчики `holdout_prevented` кумулятивны (без таймстампов), поэтому prevented-количества не входят в недельную активность; они показываются суммарно в ранжировании правил.
-- `wolf dashboard` read-only: рендерит в stdout и не пишет файлов; HTML-витрина отложена by design.
+- `--view dashboard` read-only: рендерит в stdout и не пишет файлов; HTML-витрина отложена by design.

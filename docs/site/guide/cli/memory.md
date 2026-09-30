@@ -1,5 +1,7 @@
 # Memory
 
+The canonical entry points are the five verbs — `add`, `get`, `edit`, `list`/`search`, `archive` — plus `wolf relation` for edges between objects. The rest of this page is plumbing: hidden from `wolf --help`, alive for scripts and the complaint loop.
+
 ## wolf add
 
 Add a memory object.
@@ -10,7 +12,7 @@ Usage: wolf add [options]
 
 Options:
 
-- `--type <type>` — memory type. Choices: `decision`, `lesson`, `observation`, `complaint`, `session-summary`, `open-question`, `context`, `work-thread`, `info-request`, `article`, `blocker`, `session-checkpoint`, `rule`, `document-ref`, `document-native`, `task-brief`, `report`, `council-question`, `council-opinion`, `synthesis`, `escalation`, `decision-request`, `call-injection`, `playbook`, `tool`
+- `--type <type>` — memory type. Choices: `rule`, `lesson`, `decision`, `thread`, `complaint`, `tool`, `note`
 - `--title <title>` — title
 - `--body <body>` — body text
 - `--tags <tags>` — comma-separated tags
@@ -18,12 +20,17 @@ Options:
 - `--importance <n>` — importance from 0 to 1
 - `--set <k=v>` — extra field key=value (repeatable; a `"[a,b]"` value is a string array; default: `[]`)
 - `--scope <scope>` — scope field for types that declare one (rule: `project|global`)
+- `--facet <facet>` — note facet. Required for `note`: `howto|pitfall|context|metric|history|legacy|constraint`. Free input is an error — the facet vocabulary is closed
 - `--created-by <actor>` — creator actor (default: env `WOLF_ACTOR`, else `user:cli`)
 
 ```bash
 wolf add --type lesson --title "Run search before writing scripts" \
   --body "A registered tool often already exists." --tags "search,before-write" --confidence medium
+
+wolf add --type note --title "CI cache pitfall" --body "vitest needs --no-cache" --facet pitfall
 ```
+
+Every type also has a generated namespace with these base flags plus type-specific ones — `wolf note add --facet <choice>`, `wolf thread add --goal <goal> --current-state <s> --next-steps <a,b>`, and so on. The namespaces are generated from the taxonomy; see [Memory Model](/guide/memory).
 
 ## wolf list
 
@@ -38,9 +45,13 @@ Options:
 - `--type <type>` — filter by type
 - `--status <status>` — filter by status
 - `--stale` — list stale objects (not updated in 30 days; default: false)
+- `--facet <facet>` — filter notes by character facet (`howto|pitfall|context|metric|history|legacy|constraint`)
+
+`list` is enumeration with filters; when you need a full-text query, use `search` — the two share no duplicate options.
 
 ```bash
 wolf list --type decision --stale
+wolf list --facet pitfall
 ```
 
 ## wolf get
@@ -74,6 +85,7 @@ Arguments: `query` — search query.
 Options:
 
 - `--type <type>` — filter by type
+- `--facet <facet>` — filter notes by character facet (`howto|pitfall|context|metric|history|legacy|constraint`)
 - `--status <status>` — filter by status
 - `--tag <tag>` — filter by tag (repeatable; default: `[]`)
 - `--confidence <confidence>` — filter by confidence (`low|medium|high`)
@@ -88,6 +100,7 @@ Options:
 
 ```bash
 wolf search "supersede" --type rule --hide-superseded
+wolf search "cache" --facet pitfall
 ```
 
 ### Colon queries
@@ -102,69 +115,100 @@ An unknown prefix is not an error: `tag:deployment` (no such column) drops the p
 
 The structured flags above (`--type`, `--status`, `--tag`, …) do the same filtering with exact matching and remain the recommended path for scripts; colon queries shine in interactive, one-off exploration.
 
-## wolf update
+## wolf edit
 
-Update triage fields of a memory object (the Steward's triage command for complaints).
+Edit the title and/or body of a memory object. Every change is diff-audited: a `memory.edited` event lands in `events.jsonl` with payload `{memory_id, field, before, after}`, values truncated to 200 characters.
 
 ```text
-Usage: wolf update [options] <id>
+Usage: wolf edit [options] <id>
 ```
 
 Arguments: `id` — memory object id.
 
 Options:
 
-- `--set <k=v>` — set a triage field: `triage|resolution` (repeatable)
-- `--inc <field=n>` — increment a monotonic counter by integer n > 0: `dispatch_ages|corroborations` (repeatable)
-- `--tags <tags>` — append comma-separated tags
-- `--actor <actor>` — actor performing the update; recorded as `actor` on the `memory.updated` event in the event log (default: `user:cli`)
+- `--title <t>` — new title
+- `--body <b>` — new body
+- `--actor <actor>` — actor performing the edit (default: `user:cli`)
+
+Use `edit` for fixes — typos, wording — that do not change what the record means. For a meaningful replacement, create the new object and `wolf supersede` the old one, so the `superseded_by` chain stays intact.
 
 ```bash
-wolf update mem_…_complaint --set triage=duplicate --inc dispatch_ages=1
+wolf edit mem_001 --title "Run search before writing scripts (rev)"
 ```
 
-## wolf supersede
+## wolf archive
 
-Supersede a memory object with another. Marks the old object `superseded` with `superseded_by` pointing to the new one and reindexes.
+Archive a memory object. Sugar for `transition --status archived`; `transition` remains the full status matrix.
 
 ```text
-Usage: wolf supersede [options] <old-id> <new-id>
+Usage: wolf archive [options] <id>
 ```
 
-Arguments: `old-id` — id of the object to supersede; `new-id` — id of the replacement object.
-
-```bash
-wolf supersede mem_001 mem_002
-```
-
-## wolf transition
-
-Transition a memory object to a new status (see [lifecycle transitions](/guide/core-concepts#lifecycle)).
-
-```text
-Usage: wolf transition [options] <id> <status>
-```
-
-Arguments: `id` — memory object id; `status` — new status.
+Arguments: `id` — memory object id.
 
 Options:
 
-- `--actor <actor>` — actor performing the transition (default: `user:cli`)
+- `--actor <actor>` — actor performing the archive (default: `user:cli`)
 
 ```bash
-wolf transition mem_002 accepted
+wolf archive mem_042
 ```
 
-## wolf rebuild-index
+## wolf relation
 
-Rebuild the SQLite search index from memory objects.
+Typed edges between memory objects. The edge log is append-only: `remove` appends a compensating record instead of deleting anything.
+
+### wolf relation add
+
+Record a relation between two memory objects.
 
 ```text
-Usage: wolf rebuild-index [options]
+Usage: wolf relation add [options] <subject> <predicate> <object>
 ```
 
-No options beyond `-h, --help`.
+Arguments: `subject` — subject memory object id; `predicate` — relation predicate; `object` — object memory object id.
+
+Options:
+
+- `--source <source>` — relation source (default: `agent`)
 
 ```bash
-wolf rebuild-index
+wolf relation add mem_001 supports mem_002
 ```
+
+### wolf relation list
+
+List relations — direct and inverse edges, output as `subject -predicate-> object`.
+
+```text
+Usage: wolf relation list [options]
+```
+
+Options:
+
+- `--of <id>` — only edges of this memory object (subject or object side)
+- `--json` — JSON output
+
+```bash
+wolf relation list --of mem_001
+```
+
+### wolf relation remove
+
+Remove a relation by id. Appends a compensating record with `removed: true` to `relations.jsonl`; edges with `removed` are not read anymore. Rolling back a removal means removing that record — the log itself stays append-only.
+
+```text
+Usage: wolf relation remove <id>
+```
+
+Arguments: `id` — relation id (see `relation list`).
+
+## Plumbing
+
+Hidden from `wolf --help`, alive for scripts and the complaint loop:
+
+- `wolf update <id> [--set k=v …] [--inc field=n …] [--tags …] [--actor …]` — the Steward's triage command for complaints: triage fields (`triage|resolution`), monotonic counters (`dispatch_ages|corroborations`).
+- `wolf supersede <old-id> <new-id>` — meaningful replacement of a record: the old object gets `superseded` with `superseded_by` pointing to the new one, then reindexes.
+- `wolf transition <id> <status> [--actor …]` — the full lifecycle status matrix (see [lifecycle transitions](/guide/core-concepts#lifecycle)); `archive` covers the common exit.
+- `wolf rebuild-index` — rebuild the SQLite search index from memory objects.

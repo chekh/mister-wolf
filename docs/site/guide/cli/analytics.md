@@ -4,21 +4,21 @@ Effectiveness analytics aggregates the logs the harness already writes — the s
 
 ## wolf analytics
 
-Sample queries for the Steward: ledgers, weekly activity, agent and steward views.
+The single analytics surface: every window of the project state renders here (since 2.13 the former standalone `wolf effectiveness` / `wolf dashboard` / `wolf insights` commands are views of `wolf analytics`).
 
 ```text
 Usage: wolf analytics [options]
 
-Effectiveness analytics: ledgers (memory/tools/rules), weekly activity, agents,
-steward view, councils, outliers, experiment readiness, memory lifecycle &
-coordination, campaigns & per-memory ROI, delivery panel, machine acceptance
-(wave metrics)
+Analytics state window: ledgers (memory/tools/rules), weekly activity, agents,
+steward, councils, outliers, readiness, coordination, campaign, delivery,
+acceptance, effectiveness, dashboard
 
 Options:
   --view <view>      Analytics view (choices: "memory", "tools", "rules",
-                      "weeklyActivity", "agents", "steward", "outliers",
-                      "readiness", "councils", "coordination", "campaign",
-                      "delivery", "acceptance", "all", default: "all")
+                     "weeklyActivity", "agents", "steward", "outliers",
+                     "readiness", "councils", "coordination", "campaign",
+                     "delivery", "acceptance", "effectiveness", "dashboard",
+                     "all", default: "all")
   --class <class>    Memory lifecycle filter (choices: "new", "sleeper",
                      "workhorse", "dead")
   --type <type>      Memory type filter
@@ -27,13 +27,16 @@ Options:
   --silent           Rules view: only silent rules (default: false)
   --top <n>          Row limit (default: 20)
   --weeks <n>        Weekly activity window in weeks (default: 8)
+  --snapshot         Effectiveness view: append the report to
+                     .wolf/metrics/effectiveness-snapshots.jsonl (default:
+                     false)
   --json             Machine-readable JSON output (default: false)
   -h, --help         display help for command
 ```
 
 Options:
 
-- `--view <view>` — analytics view (choices: `memory`, `tools`, `rules`, `weeklyActivity`, `agents`, `steward`, `outliers`, `readiness`, `councils`, `coordination`, `campaign`, `delivery`, `acceptance`, `all`; default: `all`)
+- `--view <view>` — analytics view (choices: `memory`, `tools`, `rules`, `weeklyActivity`, `agents`, `steward`, `outliers`, `readiness`, `councils`, `coordination`, `campaign`, `delivery`, `acceptance`, `effectiveness`, `dashboard`, `all`; default: `all`)
 - `--class <class>` — memory lifecycle filter (choices: `new`, `sleeper`, `workhorse`, `dead`)
 - `--type <type>` — memory type filter
 - `--origin <origin>` — tool origin filter (choices: `script`, `native`)
@@ -41,6 +44,7 @@ Options:
 - `--silent` — rules view: only silent rules (default: false)
 - `--top <n>` — row limit (default: 20)
 - `--weeks <n>` — weekly activity window in weeks (default: 8)
+- `--snapshot` — effectiveness view: append the report to `.wolf/metrics/effectiveness-snapshots.jsonl` (default: false)
 - `--json` — machine-readable JSON output (default: false)
 
 Views:
@@ -60,6 +64,8 @@ Views:
 | `readiness`      | Experiment readiness: share of runs with an arm, sample sizes per group                                                                                                                                                                    |
 | `delivery`       | Delivery panel: top delivered objects with the applied% indicator, miss-rate by agent-id, average injection size (two channels), router resolve latency p50/p90, skill invocation counters (see [Delivery panel](#delivery-panel))         |
 | `acceptance`     | Machine acceptance (wave metrics): router miss-rate per agent, per-tool error rate + p50/p90 latency, error classes, delivery bursts, search→get follow, 72 h vitality, malformed lines (see [Machine acceptance](#machine-acceptance))    |
+| `effectiveness`  | Memory effectiveness panel: rules holdout, tool economy, delivery, noise, routing; `--snapshot` appends the report to `.wolf/metrics/effectiveness-snapshots.jsonl` (see [Effectiveness](#effectiveness-view-effectiveness))               |
+| `dashboard`      | Console dashboard: health, ledgers, trends — Unicode tables and text sparklines, nothing written to disk (see [Dashboard](#dashboard-view-dashboard))                                                                                      |
 | `all`            | All sections in sequence (default)                                                                                                                                                                                                         |
 
 ### Lifecycle classes
@@ -79,28 +85,24 @@ wolf analytics --view memory --class dead --top 3
 
 ```text
 == memory ==
-┌──────────────────────────────────────────┬──────────────┬───────────┬──────────┬────────────┬──────────┬────────────┬───────────┐
-│ id                                       │ type         │ lifecycle │ age_days │ deliveries │ triggers │ complaints │ last_used │
-├──────────────────────────────────────────┼──────────────┼───────────┼──────────┼────────────┼──────────┼────────────┼───────────┤
-│ mem_20260630_need_incremental_indexing_… │ blocker      │ dead      │ 65       │ 0          │ 0        │ 0          │ -         │
-│ mem_20260630_use_decision_and_blocker_t… │ decision     │ dead      │ 65       │ 0          │ 0        │ 0          │ -         │
-│ mem_20260630__c0acde                     │ info-request │ dead      │ 65       │ 0          │ 0        │ 0          │ -         │
-└──────────────────────────────────────────┴──────────────┴───────────┴──────────┴────────────┴──────────┴────────────┴───────────┘
-garbage: dead/base = 27/465 = 5.8%
+┌──────────────────────────────────────────┬──────────┬───────────┬──────────┬────────────┬──────────┬────────────┬───────────┐
+│ id                                       │ type     │ lifecycle │ age_days │ deliveries │ triggers │ complaints │ last_used │
+├──────────────────────────────────────────┼──────────┼───────────┼──────────┼────────────┼──────────┼────────────┼───────────┤
+│ mem_20260630_need_incremental_indexing_… │ note     │ dead      │ 91       │ 0          │ 0        │ 0          │ -         │
+│ mem_20260630_use_decision_and_blocker_t… │ decision │ dead      │ 91       │ 0          │ 0        │ 0          │ -         │
+│ mem_20260630__c0acde                     │ note     │ dead      │ 92       │ 0          │ 0        │ 0          │ -         │
+└──────────────────────────────────────────┴──────────┴───────────┴──────────┴────────────┴──────────┴────────────┴───────────┘
+garbage: dead/base = 422/732 = 57.7%
 ```
 
 ### Memory lifecycle funnel
 
 The `memory` view ends with a stage funnel `added → retrieved → injected → cited → applied` built from `memory_stage` signal events: which share of the store ever gets retrieved, lands in an agent's context, gets cited in an answer, and actually changes the code. `added` counts all store objects (`events` = `-`: births live in the memory event log, not the signal log); each stage reports `events` plus `unique_ids` (distinct memory ids that reached the stage). The JSON payload adds `appliedUniqueIds` — the sorted list of ids that reached `applied`.
 
-Stage events come from two kinds of writers (the command reference: [wolf memory-stage](#wolf-memory-stage)):
+Stage events have exactly one kind of writer since 2.13 — **automatic** (the manual `wolf memory-stage` command was removed; stages are written automatically by the memory commands):
 
-- **automatic** — `wolf search` / `wolf get` write `retrieved` on a non-empty result set; `wolf brief` / `wolf call` write `injected` when injections are actually delivered. Nothing to record → no event: an empty search result writes no `retrieved`, a brief without injections writes no `injected`.
-- **manual** — the agent itself records `cited` (it referenced the object in its answer/report) and `applied` (the object's content made it into the code/decision):
-
-```bash
-wolf memory-stage --stage applied --ids mem_…_use_append_only_jsonl,mem_…_prefer_vitest --actor agent:worker
-```
+- `wolf search` / `wolf get` write `retrieved` on a non-empty result set; `wolf brief` / `wolf call` write `injected` when injections are actually delivered. Nothing to record → no event: an empty search result writes no `retrieved`, a brief without injections writes no `injected`.
+- `cited` and `applied` have no built-in writer anymore; a harness that wants them appends `memory_stage` events to the signal log directly (see [Harness integration](#harness-integration)).
 
 `attribution: accepted X/Y (Z%)` — the share of `accepted` `task_evaluated` verdicts preceded by an injection in the same `session_id` (an `injected` stage with `ts` ≤ the verdict's `ts`). Injections without a `session_id` do not participate. Honest nulls: with no data the line reads `attribution: n/a (<reason>)` — `no task_evaluated`, `no injected` or `no accepted verdicts`.
 
@@ -113,20 +115,21 @@ wolf analytics --view memory --top 3
 ┌──────────────────────────────────────────┬──────────┬───────────┬──────────┬────────────┬──────────┬────────────┬──────────────────────────┐
 │ id                                       │ type     │ lifecycle │ age_days │ deliveries │ triggers │ complaints │ last_used                │
 ├──────────────────────────────────────────┼──────────┼───────────┼──────────┼────────────┼──────────┼────────────┼──────────────────────────┤
-│ mem_20260904_docs_example_blocker_416c08 │ blocker  │ sleeper   │ 0        │ 0          │ 1        │ 0          │ 2026-09-04T19:44:50.567Z │
-│ ...                                      │          │           │          │            │          │            │                          │
+│ mem_20260630_mr_wolf_schema_driven_memo… │ thread   │ sleeper   │ 92       │ 0          │ 1        │ 0          │ 2026-08-25T08:49:35.952Z │
+│ mem_20260630_need_incremental_indexing_… │ note     │ dead      │ 91       │ 0          │ 0        │ 0          │ -                        │
+│ mem_20260630_use_decision_and_blocker_t… │ decision │ dead      │ 91       │ 0          │ 0        │ 0          │ -                        │
 └──────────────────────────────────────────┴──────────┴───────────┴──────────┴────────────┴──────────┴────────────┴──────────────────────────┘
-garbage: dead/base = 0/13 = 0.0%
+garbage: dead/base = 422/732 = 57.7%
 ┌───────────┬────────┬────────────┐
 │ stage     │ events │ unique_ids │
 ├───────────┼────────┼────────────┤
-│ added     │ -      │ 13         │
-│ retrieved │ 1      │ 1          │
-│ injected  │ 1      │ 2          │
-│ cited     │ 1      │ 1          │
-│ applied   │ 1      │ 1          │
+│ added     │ -      │ 803        │
+│ retrieved │ 144    │ 272        │
+│ injected  │ 5189   │ 50         │
+│ cited     │ 0      │ 0          │
+│ applied   │ 0      │ 0          │
 └───────────┴────────┴────────────┘
-attribution: accepted 1/1 (100.0%)
+attribution: accepted 0/1 (0.0%)
 ```
 
 ### Tool origin
@@ -177,8 +180,7 @@ votes:
 │ decision-audit     │ 1     │
 │ session-resume     │ 1     │
 │ solve-pack-anatomy │ 1     │
-│ нет                │ 1     │
-│ только измерив     │ 1     │
+│ …                  │       │
 └────────────────────┴───────┘
 synthesis: questions=1/2 (50.0%) median question->synthesis=0.0h
 weeks:
@@ -196,15 +198,13 @@ open questions:
 └──────────────────────────┴───────────┴──────────┴──────────────────────────────────────────┘
 ```
 
-(The weeks table shows all 8 week buckets; trimmed here. Vote strings are whatever the council actually used — including plain-language votes.)
+(The weeks table shows all 8 week buckets; trimmed here. Vote strings are whatever the council actually used — including plain-language votes.)### Coordination
 
-### Coordination
-
-`--view coordination` aggregates `coord_event` signals written by [`wolf coord`](#wolf-coord) (the kinds table and who writes what is in that command's section):
+`--view coordination` aggregates `coord_event` signals — a coordination log written by the removed `wolf coord` command; the view reads the history (there is no writer anymore, kinds are historical data):
 
 - **counts** — events per `kind × actor_from` pair (who initiated what);
 - **recent** — the 20 most recent events: ts, kind, `from->to`, refs;
-- **blockers** — open→resolve pairs by ref: `opened` is the earliest `coord --kind blocker` naming that ref, `resolved` is the first `memory.resolved` event (`wolf blocker resolve <id>`) at or after it; `-` means still open. A pair is closed by resolving the blocker object, not by a second coord event.
+- **blockers** — open→resolve pairs by ref: `opened` is the earliest `coord --kind blocker` naming that ref, `resolved` is the first `memory.resolved` event for the referenced object at or after it; `-` means still open. A pair is closed by resolving the referenced object (in the current model — a note via `wolf transition`), not by a second coord event.
 
 ```bash
 wolf analytics --view coordination
@@ -239,11 +239,11 @@ blockers:
 
 ### Campaigns
 
-`--view campaign` is the A/B storefront "same task, with and without memory": runs are grouped by `campaign_id` (a top-level run-signal field written by `wolf run --campaign <id>`) and split into two cohorts by whether the run's session had injected memory — a `session_id` join over `memory_stage injected`, the same pattern as attribution (P2); a run with `session_id: null` lands in `no_memory`:
+`--view campaign` is the A/B storefront "same task, with and without memory": runs are grouped by `campaign_id` (a top-level run-signal field written by the harness — see [Harness integration](#harness-integration)) and split into two cohorts by whether the run's session had injected memory — a `session_id` join over `memory_stage injected`, the same pattern as attribution (P2); a run with `session_id: null` lands in `no_memory`:
 
 - **n** — cohort runs in the campaign;
 - **median_weighted** — median weighted of the cohort's runs; below 3 runs the whole cohort metric row is `n/a` with note `n<3: min 3 runs` (shares are not shown on tiny samples); an empty cohort notes `no runs`;
-- **accepted\_%** — share of accepted verdicts in the cohort: verdicts enter the campaign via `wolf task-eval --campaign <id>` (`detail.campaign_id`) and are cohorted by the same session join; a campaign with no verdicts at all → `n/a` with note `no verdicts`;
+- **accepted\_%** — share of accepted verdicts in the cohort: verdicts enter the campaign via the hidden `wolf task-eval --campaign <id>` plumbing (`detail.campaign_id`) and are cohorted by the same session join; a campaign with no verdicts at all → `n/a` with note `no verdicts`;
 - **pfail\_%** — runs with `outcome !== 'ok'` / n (`processFailureRatePct` in the JSON cohort row).
 
 The view is correlational: p-values and confidence intervals are wrong at these sample sizes — a deliberate P3 boundary. Read a cohort split as a hypothesis prompt, not a proof.
@@ -295,7 +295,7 @@ memory ROI (correlational, not causal):
 - **router resolve ms** — p50/p90 over the router log's `ms=` field; the wave acceptance threshold (p90 < 500 ms) is checked against exactly this number.
 - **skills** — invocation counters per skill name from the plugin-written skill-invocations log (see [Base Set — plugins](/guide/base-set#plugins--2--opencodeplugins)): until now, skill value was invisible.
 
-The same numbers reach the session entry point: `wolf recap` prints a `Delivery (7d)` line — `доставок N, промахов M, топ промахов: <agent> (×k)…` (N = delivered canonical+fallback over the last 7 days, M = fallback share of it, top-3 miss agents). The section is omitted when there is no router log.
+The same numbers reach the session entry point: `wolf recap` prints a `Delivery (7d)` line — N deliveries (canonical+fallback over the last 7 days), M misses among them (the fallback share) and the top-3 miss agents. The section is omitted when there is no router log.
 
 ```bash
 wolf analytics --view delivery
@@ -326,7 +326,7 @@ skills:
 └────────────┴───────┘
 ```
 
-`--json` returns the same sections machine-readable (`topDelivered`, `underApplied`, `missRateByAgent`, `avgInjectionBytes`, `routerMs`, `skills`); the MCP `analytics` tool accepts `view: "delivery"`.
+`--json` returns the same sections machine-readable (`topDelivered`, `underApplied`, `missRateByAgent`, `avgInjectionBytes`, `routerMs`, `skills`).
 
 ### Machine acceptance
 
@@ -372,7 +372,7 @@ search->get follow: 3/7 (42.9%)
 vitality: core calls 72h = 18
 ```
 
-`--json` returns the same sections machine-readable; the MCP `analytics` tool accepts `view: "acceptance"`.
+`--json` returns the same sections machine-readable.
 
 ### Examples
 
@@ -385,9 +385,8 @@ wolf analytics --view rules --top 3
 ┌──────────────────────────────────────────┬───────────┬─────────┬────────┬──────────────────────────────────────────┐
 │ id                                       │ prevented │ checked │ silent │ title                                    │
 ├──────────────────────────────────────────┼───────────┼─────────┼────────┼──────────────────────────────────────────┤
-│ mem_20260703_update_project_docs_after_… │ 0         │ 0       │ no     │ Update project docs after every impleme… │
-│ mem_20260823__c93eac                     │ 0         │ 0       │ no     │ Коммитить изменения после завершённой р… │
-│ mem_20260823_e2e_5459cc                  │ 0         │ 0       │ no     │ Полное E2E-тестирование после каждого в… │
+│ mem_20260703_update_project_docs_after_… │ 0         │ -       │ no     │ Update project docs after every impleme… │
+│ …                                       │           │         │        │                                          │
 └──────────────────────────────────────────┴───────────┴─────────┴────────┴──────────────────────────────────────────┘
 ```
 
@@ -400,191 +399,83 @@ wolf analytics --view weeklyActivity --weeks 4
 ┌────────────┬────────┬──────────┬──────────┐
 │ week       │ writes │ delivers │ triggers │
 ├────────────┼────────┼──────────┼──────────┤
-│ 2026-08-10 │ 0      │ 0        │ 0        │
-│ 2026-08-17 │ 27     │ 0        │ 0        │
-│ 2026-08-24 │ 298    │ 4427     │ 8        │
-│ 2026-08-31 │ 311    │ 20123    │ 10       │
+│ 2026-09-07 │ 11     │ 267      │ 9        │
+│ 2026-09-14 │ 0      │ 0        │ 0        │
+│ 2026-09-21 │ 5      │ 878      │ 8        │
+│ 2026-09-28 │ 57     │ 9980     │ 30       │
 └────────────┴────────┴──────────┴──────────┘
 ```
 
 Delivery events are counted per session (not unique objects), so `delivers` can exceed `writes` — the table is a weekly activity count, not a conversion rate.
 
-## wolf dashboard
+### Dashboard (view=dashboard)
 
-Console dashboard: three sections rendered straight to the terminal with Unicode tables and text sparklines (`▁▂▃▄▅▆▇█`).
-
-```text
-Usage: wolf dashboard [options]
-
-Console dashboard: health, ledgers, trends (unicode tables and sparklines; no
-files written)
-
-Options:
-  --tab <tab>  Render a single section (choices: "health", "ledgers", "trends")
-  --json       Machine-readable JSON output of the whole dashboard (default:
-               false)
-  -h, --help   display help for command
-```
-
-Options:
-
-- `--tab <tab>` — render a single section: `health` (L1 statuses, absolutes, current-period weekly activity), `ledgers` (L2 tables: memory, tools, rules, agents, open council questions, top-N), `trends` (L3 sparklines over snapshots, weekly activity, cache-hit ratio, experiment readiness, council activity per week, coverage and data quality lines)
-- `--json` — machine-readable JSON output of the whole dashboard (`DashboardData`)
+`--view dashboard` renders the console dashboard: three sections straight to the terminal with Unicode tables and text sparklines (`▁▂▃▄▅▆▇█`) — health (L1 statuses, absolutes, current-period weekly activity), ledgers (L2 tables: memory, tools, rules, agents, open council questions, top-N) and trends (L3 sparklines over snapshots, weekly activity, cache-hit ratio, experiment readiness, council activity per week, coverage and data quality lines). The former `--tab` flag of the standalone `wolf dashboard` is gone: the view renders all three sections; `--json` returns the machine-readable `DashboardData`.
 
 ```bash
-wolf dashboard --tab health
+wolf analytics --view dashboard
 ```
 
 ```text
 == health ==
-rules: ✓ active=17 prevented/checked: 0/0
-tools: · count=0 usage=0 economy: n/a: not enough data (tool runs: 0, total: 3, need ≥ 3 in each group)
-delivery: · events=21770 triggered=10 silentRules=0 (n/a)
-noise: ✗ 391/460 = 85.0%
-routing: zai-coding-plan/glm-5.2: tasks=3 median=22868.2
+rules: ✓ active=23 prevented/checked: 0/0
+tools: · count=0 usage=0 economy: n/a: not enough data (tool runs: 0, total: 2, need ≥ 3 in each group)
+delivery: · events=42482 triggered=34 silentRules=0 (n/a)
+noise: ✗ 478/732 = 65.3%
+routing: zai-coding-plan/glm-5.2: tasks=2 median=21368
 totals: runs=2 weighted=42736
 ```
 
 Console-only by design: the dashboard renders to stdout and writes no files; the HTML storefront was deliberately deferred (an optional flag may appear when there is demand).
 
-## wolf effectiveness
+### Effectiveness (view=effectiveness)
 
-```text
-Usage: wolf effectiveness [options]
-
-Memory effectiveness panel: rules holdout, tool economy, delivery, noise,
-routing (aggregation only, no LLM)
-
-Options:
-  --snapshot  Append the full report to
-              .wolf/metrics/effectiveness-snapshots.jsonl
-  -h, --help  display help for command
-```
-
-Options:
-
-- `--snapshot` — serialize the full report and append it to `.wolf/metrics/effectiveness-snapshots.jsonl` (append-only history for trends)
+`--view effectiveness` prints the memory effectiveness panel — rules holdout, tool economy, delivery, noise, routing (aggregation only, no LLM). The `--snapshot` flag serializes the full report and appends it to `.wolf/metrics/effectiveness-snapshots.jsonl` (append-only history for trends).
 
 A plain call prints the panel; once at least one snapshot exists, it also prints a delta versus the latest snapshot (`delta vs <ts>` over the numeric fields of each block).
 
 The panel ends with an absolutes block: run and process-failure counts (`processFailures`), weighted and raw token sums, cache-hit ratio, average duration, and per-model `costPerCompletedRun` (`$cost / completedRuns`). `$` fields appear only when `pricing` is configured (see [Configuration](#configuration)).
 
 ```bash
-wolf effectiveness
+wolf analytics --view effectiveness
 ```
 
 ```text
 effectiveness panel (mileage aggregation, no LLM):
-rules: active=17 | prevented/checked: 0/0
-...
-noise: 416/485 = 85.8% [BAD]
-routing: zai-coding-plan/glm-5.2: tasks=3 median=22868.2
+rules: active=23 | prevented/checked: 0/0
+tools: count=0 | usage=0 | economy: n/a: not enough data (tool runs: 0, total: 2, need ≥ 3 in each group) [INFO]
+delivery: events=42482 | triggered=34 | silentRules=0 (not enough delivery data)
+noise: 478/732 = 65.3% [BAD]
+documents: 0 (registered refs, not part of the noise metric) [INFO]
+archived: 71 (outside the noise metric) [INFO]
+routing: zai-coding-plan/glm-5.2: tasks=2 median=21368
 totals: runs=2 processFailures=0 weighted=42736 cache=n/a avg=n/a
 cost: n/a (no pricing configured)
 model zai-coding-plan/glm-5.2: runs=2 processFailures=0 cost=n/a cost/completedRun=n/a
 thresholds: noise ok<20 warn<=40 bad | silent ok<30
 ```
 
-## wolf run enrichment
+### Hidden synonyms (deprecated)
 
-`wolf run` itself is documented on the [Platform page](/guide/cli/platform#wolf-run); these are the enrichment flags for comparative methodologies (RCT, golden tasks) and telemetry identity:
+The former standalone analytics commands still work but are hidden (not in `--help`) and will be **removed in 2.15**:
 
-- `--tool <name>` — mark the run as using tool(s) (repeatable); feeds tool-run economy from the signal log
-- `--experiment <id>` — experiment id (comparative methodologies, e.g. RCT)
-- `--arm <choice>` — experiment arm (choices: `wolf`, `baseline`)
-- `--task-id <id>` — task id (written top-level whenever passed, experiment or not)
-- `--campaign <id>` — campaign id (written top-level as `campaign_id`; groups runs for `--view campaign`)
-- `--trace-id <id>` — trace id grouping runs of one task (defaults to a fresh uuid)
-- `--attempt <n>` — attempt number within the task
+| Old command          | Maps to                               |
+| -------------------- | ------------------------------------- |
+| `wolf insights`      | `wolf analytics --view readiness`     |
+| `wolf effectiveness` | `wolf analytics --view effectiveness` |
+| `wolf dashboard`     | `wolf analytics --view dashboard`     |
 
-Every run writes raw tokens (`input`, `output`, `cache_read`), `duration_ms` and the v2 identity fields (`event_id`, `run_id`, `trace_id`, `config_hash`, `prompt_hash`, `tools`, `schema_version: 2`) into the signal log — since P1 the signal log is the single canonical source of run metrics, and `.wolf/run-log.jsonl` is no longer written (existing history is still read for the economy transition window; run `wolf migrate run-log` to archive the legacy file and stop the double count). Runs without the new flags keep the old record format — the enrichment is backward-compatible.
-
-The `weighted` cost logged by `wolf run` is not a raw token sum but a fixed-formula blend: `weighted = input + 0.1 × cache_read + 5 × output` — cache reads are nearly free, generation costs five times the input. The same number feeds the medians of the agent ledger, campaigns, outliers and the tool economy, which is why `weighted` and raw token sums differ.
-
-```bash
-wolf run "Fix the failing test" --experiment exp-20260904-x1 --arm wolf --task-id t3 --tool wolf-search --trace-id 7f3a2b1c-9d4e-4f6a-8b2c-1e5d7a9f0b3e
-```
-
-## wolf task-eval
-
-Records a task verdict into the signal log (`task_evaluated` event) — the input for honest acceptance metrics and run coverage:
-
-- `--verdict <verdict>` — `accepted`, `rejected`, `partial`, `inconclusive`
-- `--scorer <scorer>` — who evaluated: `human` (default), `deterministic`, `llm_judge`, `hidden_tests`
-- `--session <id>` / `--task-id <id>` — link the verdict to a run/task (without a link it still counts toward coverage, but is not attributed to an agent)
-- `--campaign <id>` — campaign id (written as `detail.campaign_id`; groups verdicts for `--view campaign`)
-- `--criteria-passed <n>` / `--criteria-total <m>` — numeric criteria counts
-- `--critical-failure` — mark a critical failure; `--note <text>` — free-form note
-
-A completed run is not the same as a useful task: verdicts feed `accepted` and `costPerAcceptedTask` (the acceptance block) and the coverage line below.
-
-```bash
-wolf task-eval --verdict accepted --task-id docs-v2.5.0-rename --scorer human --note "v2.5.0 docs sync"
-```
+Each hidden synonym prints one stderr notice and then runs the mapped view:
 
 ```text
-task verdict recorded: verdict=accepted scorer=human
+[wolf] 'effectiveness' is deprecated since 2.13 and hidden: it now maps to "analytics --view effectiveness"; it will be removed in 2.15
 ```
 
-## wolf memory-stage
-
-Record a memory lifecycle stage into the signal log (`memory_stage` event) — the manual writer for the stages automation can't know about:
-
-```text
-Usage: wolf memory-stage [options]
-```
-
-Options:
-
-- `--stage <stage>` — memory lifecycle stage (choices: `retrieved`, `injected`, `cited`, `applied`)
-- `--ids <ids>` — comma-separated memory object ids (a non-empty list; one event per batch, not per object)
-- `--actor <actor>` — actor attribution (default: `WOLF_ACTOR` env or `user:cli`; agents pass `agent:<name>`)
-- `--session <id>` — session id; picks up `WOLF_SESSION` when omitted
-
-Semantics: `retrieved` (the object came out of the store) and `injected` (the object entered the agent's context) are written automatically by `wolf search`/`get` and `wolf brief`/`call` — but only when there is something to record (empty result → no event). `cited` (the object was referenced in an answer/report) and `applied` (the object's content reached the code/decision) are yours to write. Honest and lazy: nothing applied → write nothing.
-
-```bash
-wolf memory-stage --stage cited --ids mem_…_validate_fts_queries --actor agent:worker
-```
-
-Stages feed the [memory lifecycle funnel](#memory-lifecycle-funnel) and attribution; see also [Harness integration](#harness-integration) for the `WOLF_SESSION` binding.
-
-## wolf coord
-
-Record a coordination event into the signal log (`coord_event` event) — a fact of a task moving between roles: who, to whom, what.
-
-```text
-Usage: wolf coord [options]
-```
-
-Options:
-
-- `--kind <kind>` — coordination event kind (choices: `handoff`, `review`, `acceptance`, `blocker`, `escalation`)
-- `--from <actor>` — source actor (default: `WOLF_ACTOR` env or `user:cli`)
-- `--to <actor>` — target actor, if any
-- `--ref <ids>` — comma-separated referenced object ids (repeatable; default: `[]`)
-- `--note <text>` — free-form note
-- `--actor <actor>` — writer actor attribution (default: `WOLF_ACTOR` env or `user:cli`)
-
-Kinds and who writes them:
-
-| Kind         | When it is written                                              | Typical writer               |
-| ------------ | --------------------------------------------------------------- | ---------------------------- |
-| `handoff`    | the L0 coordinator dispatched a task/context to an executor     | coordinator (L0)             |
-| `review`     | a reviewer reviewed the result (`--from` = the reviewer)        | lead / reviewer              |
-| `acceptance` | the task/phase was accepted (`--from` = whoever accepted)       | lead / reviewer              |
-| `blocker`    | work is stuck on a blocker (`--ref` = the blocker object id)    | whoever hit it (lead/worker) |
-| `escalation` | a worker could not cope and escalates the question one level up | coordinator (L0), worker     |
-
-For `blocker`, `--ref` should be the id of a real blocker object (`wolf blocker add`) — then [coordination analytics](#coordination) closes the open→resolve pair on `wolf blocker resolve <id>`.
-
-```bash
-wolf coord --kind handoff --from "L0:wolf" --to "L1:lead" --ref mem_…_report --note "wave C"
-```
+Hidden plumbing (alive, not deprecated, for scripts only): `wolf task-eval` records task verdicts (`task_evaluated`) that feed acceptance metrics, coverage and campaigns.
 
 ## Coverage, acceptance and data quality
 
-`wolf analytics` (end of `--view all`) and `wolf dashboard` (trends section) print data-honesty lines. Real output:
+`wolf analytics` (end of `--view all`; the `dashboard` view repeats them in the trends section) prints data-honesty lines. Real output:
 
 ```text
 coverage: partial — scored 1/2 (50.0%)
@@ -617,51 +508,27 @@ Wrapper and plugin authors can write v2 events into the signal log (`.wolf/metri
 
 **v2 identity fields** (all optional — but the fuller, the richer the cross-run analytics):
 
-| Field            | Type / form            | Semantics                                                   |
-| ---------------- | ---------------------- | ----------------------------------------------------------- |
-| `event_id`       | uuid                   | unique event id; duplicates are detected by data-quality v2 |
-| `schema_version` | `2` (literal)          | schema version; absent = read as v1                         |
-| `run_id`         | uuid                   | id of the `wolf run` invocation — the task's chain          |
-| `trace_id`       | uuid                   | trace: groups the runs of one task (`--trace-id` or a uuid) |
-| `parent_span_id` | string                 | parent span (reserved; the span model is planned for P2)    |
-| `role_level`     | `L0` \| `L1` \| `L2`   | writer's role level by the actor convention                 |
-| `attempt`        | number                 | retry number within the run                                 |
-| `task_id`        | string                 | shared task id (written whenever `--task-id` is passed)     |
-| `config_hash`    | sha256, first 12 chars | signature of `.wolf/config.yaml` at run time                |
-| `prompt_hash`    | sha256, first 12 chars | signature of the prompt text                                |
-| `tools`          | `string[]`             | tools of the run (from `--tool`) — feeds the tool economy   |
+| Field            | Type / form            | Semantics                                                       |
+| ---------------- | ---------------------- | --------------------------------------------------------------- |
+| `event_id`       | uuid                   | unique event id; duplicates are detected by data-quality v2     |
+| `schema_version` | `2` (literal)          | schema version; absent = read as v1                             |
+| `run_id`         | uuid                   | id of the run — the task's chain                                |
+| `trace_id`       | uuid                   | trace: groups the runs of one task (harness-supplied or a uuid) |
+| `parent_span_id` | string                 | parent span (reserved; the span model is planned for P2)        |
+| `role_level`     | `L0` \| `L1` \| `L2`   | writer's role level by the actor convention                     |
+| `attempt`        | number                 | retry number within the run                                     |
+| `task_id`        | string                 | shared task id                                                  |
+| `config_hash`    | sha256, first 12 chars | signature of `.wolf/config.yaml` at run time                    |
+| `prompt_hash`    | sha256, first 12 chars | signature of the prompt text                                    |
+| `tools`          | `string[]`             | tools of the run — feeds the tool economy                       |
 
-`campaign_id` (from `--campaign`) is the campaigns' grouping key — see [Campaigns](#campaigns).
+`campaign_id` is the campaigns' grouping key — see [Campaigns](#campaigns).
 
 **role_level follows the actor convention**: L0 — coordinator (dispatch and acceptance; the human owner sits here at acceptance), L1 — lead/reviewer, L2 — worker/executor. Default: omit the field.
 
-**`WOLF_SESSION` ties the auto-writers to the session**: the automatic `memory_stage` writers (`wolf search`/`get` → `retrieved`, `wolf brief`/`call` → `injected`) take the session id from the `WOLF_SESSION` env var — the symmetric twin of `WOLF_ACTOR`. A harness that exports `WOLF_SESSION` when an agent session starts gets its `injected` events joined with `task_evaluated` by `session_id`, so attribution sees auto-path injections; without the env the events are written with `session_id: null` and do not participate in attribution. `wolf memory-stage` without an explicit `--session` picks up `WOLF_SESSION` as well.
+**`WOLF_SESSION` ties the auto-writers to the session**: the automatic `memory_stage` writers (`wolf search`/`get` → `retrieved`, `wolf brief`/`call` → `injected`) take the session id from the `WOLF_SESSION` env var — the symmetric twin of `WOLF_ACTOR`. A harness that exports `WOLF_SESSION` when an agent session starts gets its `injected` events joined with `task_evaluated` by `session_id`, so attribution sees auto-path injections; without the env the events are written with `session_id: null` and do not participate in attribution.
 
 Mechanics: append via `appendSignal(baseDir, event)` (or append a JSON line + `\n`); unknown fields are stripped by the Zod schema on read, records without `schema_version` are read as v1. Duplicate `event_id`s are deduplicated by analytics (first copy wins, repeats surface as `duplicateEventRatePct`). A telemetry failure must never break the wrapped call — keep it in try/catch.
-
-## wolf insights --type activity
-
-The `activity` lens adds a weekly mutations breakdown — added / updated / superseded / resolved / transitioned over the same 8-week window as density insights. A quick pulse of how much memory churns per week and which weeks were capture spikes.
-
-```bash
-wolf insights --type activity --topic analytics
-```
-
-```text
-Insights [activity] (topic: analytics), matched 15/643 objects
-Scope: matched 15/643 objects, truth roles: accepted_knowledge 12 / proposed_knowledge 3
-...
-
-## Weekly mutations
-- 2026-07-13: added 0, updated 0, superseded 0, resolved 0, transitioned 0 (total 0)
-...
-- 2026-08-17: added 27, updated 0, superseded 0, resolved 1, transitioned 0 (total 28)
-- 2026-08-24: added 298, updated 0, superseded 20, resolved 3, transitioned 108 (total 429)
-- 2026-08-31: added 286, updated 0, superseded 6, resolved 4, transitioned 3 (total 299)
-
-## Status tally
-- active (15)
-```
 
 ## Configuration
 
@@ -683,12 +550,12 @@ analytics:
     workhorse_uses: 3
 ```
 
-## MCP tool
+## MCP
 
-The `analytics` MCP tool mirrors the CLI: it accepts the same parameters (`view`, `class`, `type`, `origin`, `agent`, `top`, `weeks`, `silent`) and returns the same JSON as `wolf analytics --json`. Terminal rendering is CLI-only.
+Analytics is CLI-only since 2.13: the former `analytics` MCP tool was removed (the remaining MCP tools are the core set — `search`, `get`, `list`, `add`, `transition`, `brief`, `recap`). For machine-readable output use `wolf analytics --json`.
 
 ## Limitations
 
 - `$` fields are hidden unless `pricing` is configured — prices come from the owner, never from the code.
 - `holdout_prevented` counters are cumulative (no timestamps), so prevented counts are not part of the weekly activity view; they surface as totals in the rule ranking.
-- `wolf dashboard` is read-only: it renders to stdout and writes no files; the HTML storefront is deferred by design.
+- `--view dashboard` is read-only: it renders to stdout and writes no files; the HTML storefront is deferred by design.

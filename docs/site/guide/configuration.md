@@ -4,20 +4,21 @@
 
 Each project's configuration lives in `.wolf/config.yaml` (YAML validated by a zod schema). Keys and defaults:
 
-| Key                                 | Type / default                                                                                                            |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `schema_version`                    | int; current **2**. Legacy projects without the marker are treated as 1                                                   |
-| `artifact_sources`                  | string[]; default `[]`                                                                                                    |
-| `memory_types.core`                 | generated block from the code canon (`wolf taxonomy sync`); manual edits are overwritten                                  |
-| `memory_types.project`              | your custom types: `lifecycle`, `subdir_thread`, `subdir_shared`, `fields`; cannot conflict with core types               |
-| `error_class_taxonomy`              | `[{id, match[]}]`; default `[]`                                                                                           |
-| `learning.pattern_threshold`        | int >= 1; default **3**                                                                                                   |
-| `learning.decay_ttl`                | map of type → number of sessions without a hit                                                                            |
-| `learning.effectiveness_thresholds` | `{noise_ok, noise_warn, silent_ok}` — percentages                                                                         |
-| `pricing`                           | map model → `{input, output, cache_read}` in $/Mtok; without the block `$` fields are hidden (numbers are never invented) |
-| `analytics.thresholds`              | memory lifecycle classification: `{new_days, workhorse_uses}`; default `{14, 3}`                                          |
-| `delivery.context_budget_tokens`    | int > 0; session context budget for the injection warning, tokens; default **200000**                                     |
-| `delivery.context_warning_pct`      | number ≥ 0; warn when session injections exceed this share of the budget, %; default **20**, `0` disables                 |
+| Key                                 | Type / default                                                                                                               |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `schema_version`                    | int; current **2**. Legacy projects without the marker are treated as 1                                                      |
+| `artifact_sources`                  | string[]; default `[]`                                                                                                       |
+| `memory_types.core`                 | generated block from the code canon (`wolf taxonomy sync`); manual edits are overwritten                                     |
+| `memory_types.project`              | your custom types: `lifecycle`, `subdir_thread`, `subdir_shared`, `fields`; cannot conflict with core types                  |
+| `error_class_taxonomy`              | `[{id, match[]}]`; default `[]`                                                                                              |
+| `facets.character`                  | string[] of **7–10** values; closed "record character" dictionary for the `note` type's `--facet`; default — the canonical 7 |
+| `learning.pattern_threshold`        | int >= 1; default **3**                                                                                                      |
+| `learning.decay_ttl`                | map of type → number of sessions without a hit                                                                               |
+| `learning.effectiveness_thresholds` | `{noise_ok, noise_warn, silent_ok}` — percentages                                                                            |
+| `pricing`                           | map model → `{input, output, cache_read}` in $/Mtok; without the block `$` fields are hidden (numbers are never invented)    |
+| `analytics.thresholds`              | memory lifecycle classification: `{new_days, workhorse_uses}`; default `{14, 3}`                                             |
+| `delivery.context_budget_tokens`    | int > 0; session context budget for the injection warning, tokens; default **200000**                                        |
+| `delivery.context_warning_pct`      | number ≥ 0; warn when session injections exceed this share of the budget, %; default **20**, `0` disables                    |
 
 Example (defaults shape):
 
@@ -28,6 +29,10 @@ memory_types:
   core: {} # generated by `wolf taxonomy sync`; manual edits are overwritten
   project: {} # your custom types
 error_class_taxonomy: []
+# Closed "record character" dictionary for notes (validated on `wolf add --facet`);
+# 7–10 values; omit the key for the default 7
+facets:
+  character: [howto, pitfall, context, metric, history, legacy, constraint]
 learning:
   pattern_threshold: 3
   decay_ttl: {} # type -> sessions without a hit
@@ -53,6 +58,13 @@ delivery:
 
 A broken YAML is only repaired by `wolf init --recreate`: the corrupted file is backed up to `.wolf/backup/<ts>/` and a default config is rendered.
 
+### Delivery context limit
+
+`delivery.*` is a soft limit on `wolf call` injections — a warning, never a cut:
+
+- `delivery.context_budget_tokens` (default **200000**) — the session context budget the warning is computed against (bytes/4 token approximation);
+- `delivery.context_warning_pct` (default **20**) — when a session's injections exceed this share of the budget, `wolf call` prints **one** stderr warning; the delivery itself is never trimmed. `0` disables the warning.
+
 ## Custom memory types
 
 `memory_types.project` extends the taxonomy with your own types. Each project type declares:
@@ -67,6 +79,16 @@ Project types cannot conflict with core types. Two commands manage the taxonomy:
 wolf taxonomy show   # print the effective taxonomy (code canon + project types)
 wolf taxonomy sync   # regenerate memory_types.core in .wolf/config.yaml from the code canon
 ```
+
+## Facets
+
+`facets.character` overrides the closed "record character" dictionary of the `note` type — the values `--facet` accepts on `wolf add`:
+
+- the list must contain **7–10 non-empty values**; a broken block is a loud config error, never a silent fallback;
+- without the key the canonical 7 are used: `howto`, `pitfall`, `context`, `metric`, `history`, `legacy`, `constraint`;
+- `wolf add --facet <value>` validates against the effective dictionary — an unknown value is rejected.
+
+What facets mean for notes — see [Memory model](/guide/memory).
 
 ## Storage layout
 

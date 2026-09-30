@@ -24,7 +24,7 @@ What each step does:
 
 1. `npm install -g mister-wolf` installs the global `wolf` binary.
 2. `wolf init` creates the `.wolf/` skeleton in the project and writes MCP configs for detected platforms (opencode, Claude Code). Detection is automatic; explicit: `wolf init --platform opencode,claude` (the list replaces the current set). In a TTY init asks for the model interactively; outside a TTY pass `--model`.
-3. `wolf bootstrap` scans the project and drafts starting memory: proposed rules, `document-ref`s and a work thread.
+3. `wolf bootstrap` scans the project and drafts starting memory: proposed rules and a work thread.
 
 After `wolf init` **restart your agent platform** — the Wolf MCP server connects at startup. Claude Code will ask you to approve the project-scope MCP server on first start; that is expected.
 
@@ -52,14 +52,25 @@ wolf add --type lesson --title "Run wolf search before writing new scripts" \
   --body "A similar script often already exists in tool memory." \
   --tags "search,before-write" --confidence medium
 
-wolf recap               # summary: rules, work threads, blockers, questions, decisions
+wolf recap               # summary of active project memory
 ```
+
+Choosing a type is now a choice of **seven** (it used to be 26). The old question "which of the 26 types is this?" became "is this one of the six special ones? If not — `note` plus a facet." See [Memory Model](/guide/memory).
+
+The whole command surface of 2.13 is five verbs:
+
+- `add` — write an object;
+- `get` — read one object by id;
+- `edit` — change title/body;
+- `search` / `list` — find objects;
+- `archive` — retire an object.
 
 Key flags of `wolf add` (see the [CLI reference](/guide/cli/memory#wolf-add) for the full list):
 
-- `--type <type>` — one of the 25 memory types (`decision`, `lesson`, `rule`, `blocker`, …).
+- `--type <type>` — one of the 7 memory types (`rule`, `lesson`, `decision`, `thread`, `complaint`, `tool`, `note`).
 - `--title`, `--body` — the object's content.
 - `--tags <tags>` — comma-separated tags.
+- `--facet <facet>` — the note's character (`howto|pitfall|context|metric|history|legacy|constraint`); required for `note`, forbidden for other types.
 - `--confidence <level>` — `low|medium|high`.
 - `--importance <n>` — importance from 0 to 1.
 - `--set <k=v>` — extra field, repeatable (`"[a,b]"` value is a string array).
@@ -90,8 +101,9 @@ Everything is local, inside your project's `.wolf/` directory:
 
 ## Next steps
 
-- [Core Concepts](/guide/core-concepts) — memory objects, the 25 types, lifecycle and governance.
+- [Memory Model](/guide/memory) — the seven types, facets, thread statuses, reading pre-2.13 data.
+- [Core Concepts](/guide/core-concepts) — memory objects, lifecycle and governance.
 - [CLI Reference](/guide/cli/) — every command and subcommand.
 - [MCP Integration](/guide/mcp) — connecting agents via MCP.
-- [Configuration](/guide/configuration) — `.wolf/config.yaml`, custom memory types, storage layout.
+- [Configuration](/guide/configuration) — `.wolf/config.yaml`, facet vocabulary, storage layout.
 - [Troubleshooting](/guide/troubleshooting) — common problems and fixes.

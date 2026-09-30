@@ -46,20 +46,20 @@
 Плагины приезжают из harness-слоя пакета (`templates/opencode/plugins/`) и входят в тот же штампованный набор:
 
 - `wolf-router` — детерминированная доставка playbook-контекста агенту (по маркеру `agent-id`); решения о маршрутизации пишет в `.wolf/router.log` (с наблюдаемыми полями `ms=`/`bytes=`), вызовы скиллов — в `.wolf/metrics/skill-invocations.jsonl`: скиллы теперь измеримы (см. [Аналитика — панель доставки](/ru/guide/cli/analytics#панель-доставки)).
-- `wolf-session-start` — инъекция bootstrap-контекста, когда в актуальном транскрипте нет маркера (покрывает старт сессии, `/clear` и compact); передаёт свежий `opc-<uuid>` session id при каждом spawn CLI (см. [Телеметрия — ключи сессий](/ru/guide/telemetry#ключи-сессий)).
+- `wolf-session-start` — инъекция bootstrap-контекста, когда в актуальном транскрипте нет маркера (покрывает старт сессии, `/clear` и compact); ведёт ключ `WOLF_SESSION`: с 2.13 `opc-<uuid>` наследуется между спавнами CLI одной логической сессии (ключ ставится только при отсутствии) — дедупликация доставки работает на всю сессию (см. [Телеметрия — ключи сессий](/ru/guide/telemetry#ключи-сессий)).
 
 ## Плейбуки — 6 → посев в память Wolf
 
-Плейбуки — исключение: это **не** штампованные файлы. `wolf init` сеет их в память `.wolf/` объектами типа `playbook` (скип, если `owner_skill` уже посеян). Дальше они — память: мутации идут через жалобный контур и Стюарда, `wolf sync` их не трогает.
+Плейбуки — исключение: это **не** штампованные файлы. С 2.13 это больше не тип `playbook`: `wolf init` сеет их в память `.wolf/` объектами `note` с `facet: howto` и полем `owner_skill` (скип, если `owner_skill` уже посеян). Дальше они — память: мутации идут через жалобный контур и Стюарда, `wolf sync` их не трогает. См. [Модель памяти](/ru/guide/memory).
 
-| Плейбук                       | Содержание                                  | Владелец             |
-| ----------------------------- | ------------------------------------------- | -------------------- |
-| `complaint-protocol`          | подача жалоб и дерево триажа                | `mr-wolf`            |
-| `steward-nastavnik`           | протокол мутации playbook'ов                | `steward`            |
-| `wolf-review-lenses`          | порядок линз, контракты, правила сходимости | `mr-wolf`            |
-| `worker-implementer-playbook` | методика и формат отчёта исполнителя        | `worker-implementer` |
-| `worker-researcher-playbook`  | методика анализа и формат findings          | `worker-researcher`  |
-| `worker-reviewer-playbook`    | зоны обзора и VERDICT-контракт              | `worker-reviewer`    |
+| Плейбук                       | Содержание                           | Владелец             |
+| ----------------------------- | ------------------------------------ | -------------------- |
+| `complaint-protocol`          | подача жалоб и дерево триажа         | `mr-wolf`            |
+| `executor-lead-playbook`      | конвейер декомпозиции и приёмки лида | `executor-lead`      |
+| `steward-nastavnik`           | протокол мутации playbook'ов         | `steward`            |
+| `worker-implementer-playbook` | методика и формат отчёта исполнителя | `worker-implementer` |
+| `worker-researcher-playbook`  | методика анализа и формат findings   | `worker-researcher`  |
+| `worker-reviewer-playbook`    | зоны обзора и VERDICT-контракт       | `worker-reviewer`    |
 
 ## Штампованные файлы и sync
 

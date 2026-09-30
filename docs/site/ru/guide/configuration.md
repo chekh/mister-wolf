@@ -4,26 +4,31 @@
 
 YAML-файл, валидируется zod-схемой. Ключи и дефолты:
 
-| Ключ                                | Тип / дефолт                                                                                                   |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `schema_version`                    | int; текущая **2** (легаси-проекты без маркера = 1)                                                            |
-| `artifact_sources`                  | string[] — дефолт `[]`                                                                                         |
-| `memory_types.core`                 | генерируемый блок из кода-канона (`wolf taxonomy sync`); ручные правки перезаписываются                        |
-| `memory_types.project`              | свои типы: lifecycle, subdir_thread, subdir_shared, fields; не могут конфликтовать с core-типами               |
-| `error_class_taxonomy`              | [{id, match[]}] — дефолт `[]`                                                                                  |
-| `learning.pattern_threshold`        | int >= 1 — дефолт **3**                                                                                        |
-| `learning.decay_ttl`                | map тип → число сессий без срабатывания                                                                        |
-| `learning.effectiveness_thresholds` | {noise_ok, noise_warn, silent_ok} — проценты                                                                   |
-| `pricing`                           | map модель → `{input, output, cache_read}` в $/Mtok; без блока `$`-поля скрыты (числа не выдумываются)         |
-| `analytics.thresholds`              | классификация lifecycle памяти: `{new_days, workhorse_uses}`; дефолт `{14, 3}`                                 |
-| `delivery.context_budget_tokens`    | int > 0; бюджет контекста сессии для предупреждения об инъекциях, токены; дефолт **200000**                    |
-| `delivery.context_warning_pct`      | число ≥ 0; предупреждение, когда инъекции сессии превышают эту долю бюджета, %; дефолт **20**, `0` — выключить |
+| Ключ                                | Тип / дефолт                                                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `schema_version`                    | int; текущая **2** (легаси-проекты без маркера = 1)                                                                |
+| `artifact_sources`                  | string[] — дефолт `[]`                                                                                             |
+| `memory_types.core`                 | генерируемый блок из кода-канона (`wolf taxonomy sync`); ручные правки перезаписываются                            |
+| `memory_types.project`              | свои типы: lifecycle, subdir_thread, subdir_shared, fields; не могут конфликтовать с core-типами                   |
+| `error_class_taxonomy`              | [{id, match[]}] — дефолт `[]`                                                                                      |
+| `facets.character`                  | string[] из **7–10** значений; закрытый словарь «характер записи» для `--facet` типа note; дефолт — канонические 7 |
+| `learning.pattern_threshold`        | int >= 1 — дефолт **3**                                                                                            |
+| `learning.decay_ttl`                | map тип → число сессий без срабатывания                                                                            |
+| `learning.effectiveness_thresholds` | {noise_ok, noise_warn, silent_ok} — проценты                                                                       |
+| `pricing`                           | map модель → `{input, output, cache_read}` в $/Mtok; без блока `$`-поля скрыты (числа не выдумываются)             |
+| `analytics.thresholds`              | классификация lifecycle памяти: `{new_days, workhorse_uses}`; дефолт `{14, 3}`                                     |
+| `delivery.context_budget_tokens`    | int > 0; бюджет контекста сессии для предупреждения об инъекциях, токены; дефолт **200000**                        |
+| `delivery.context_warning_pct`      | число ≥ 0; предупреждение, когда инъекции сессии превышают эту долю бюджета, %; дефолт **20**, `0` — выключить     |
 
 Пример:
 
 ```yaml
 schema_version: 2
 artifact_sources: []
+# Закрытый словарь «характер записи» для нот (валидируется на `wolf add --facet`);
+# 7–10 значений; без ключа — дефолтные 7
+facets:
+  character: [howto, pitfall, context, metric, history, legacy, constraint]
 learning:
   pattern_threshold: 3
   decay_ttl: {} # map: тип -> число сессий без срабатывания
@@ -47,6 +52,13 @@ delivery:
 
 `pricing` и `analytics.thresholds` управляют [аналитикой эффективности](/ru/guide/cli/analytics#конфигурация) (`$`-поля и lifecycle-классы); там же — примеры использования.
 
+### Мягкий лимит доставки
+
+`delivery.*` — мягкий лимит инъекций `wolf call`: предупреждение, но никогда не обрезка:
+
+- `delivery.context_budget_tokens` (дефолт **200000**) — бюджет контекста сессии, по которому считается предупреждение (аппроксимация токенов bytes/4);
+- `delivery.context_warning_pct` (дефолт **20**) — когда инъекции сессии превышают эту долю бюджета, `wolf call` печатает **одно** предупреждение в stderr; сама доставка не режется никогда. `0` отключает предупреждение.
+
 ## Свои типы памяти
 
 Свои типы объявляются в `memory_types.project`: lifecycle, subdir_thread, subdir_shared, fields. Единственное ограничение — имена не должны конфликтовать с core-типами. Посмотреть эффективную таксономию (код-канон + проектные типы) и синхронизировать канон:
@@ -55,6 +67,16 @@ delivery:
 wolf taxonomy show   # эффективная таксономия
 wolf taxonomy sync   # регенерировать memory_types.core из кода-канона
 ```
+
+## Фасеты
+
+`facets.character` подменяет закрытый словарь «характер записи» типа `note` — значения, которые принимает `--facet` у `wolf add`:
+
+- в списке должно быть **7–10 непустых значений**; битый блок — громкая ошибка конфига, а не молчаливый откат;
+- без ключа используются канонические 7: `howto`, `pitfall`, `context`, `metric`, `history`, `legacy`, `constraint`;
+- `wolf add --facet <значение>` валидируется по эффективному словарю — неизвестное значение отвергается.
+
+Что фасеты значат для нот — см. [Модель памяти](/ru/guide/memory).
 
 ## Структура хранилища
 
