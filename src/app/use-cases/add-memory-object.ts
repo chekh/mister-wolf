@@ -125,6 +125,16 @@ export async function addMemoryObject(
     }
 
     const validation = validateMemoryObject(object);
+    // P300/2.14 §5.1: коллизия детерминированного id — отказ с подсказкой,
+    // никогда тихая перезапись (P0-жалоба 817efd). get — один locate-обход,
+    // add не hot-path (Р5 спеки 2.14)
+    const existing = await deps.store.get(object.id);
+    if (existing) {
+      throw new UserFacingError(
+        `Memory object "${object.id}" already exists (same title produced same id).\n` +
+          `Use: wolf edit ${object.id} (правка) | wolf supersede ${object.id} <new-id> (смена) | другой --title.`
+      );
+    }
     await deps.store.save(object);
     await deps.log.append({
       id: deps.idGen.generateEventId(now),

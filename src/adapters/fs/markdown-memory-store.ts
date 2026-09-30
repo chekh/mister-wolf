@@ -3,6 +3,7 @@ import { dirname, join, relative } from 'path';
 import yaml from 'js-yaml';
 import { z } from 'zod';
 import { MemoryStore, ListFilters } from '../../ports/memory-store.port.js';
+import type { EventLog } from '../../ports/event-log.port.js';
 import { MemoryObject, MemoryObjectSchema } from '../../domain/schemas/memory-object-schema.js';
 import {
   type MemoryType,
@@ -63,7 +64,8 @@ export class MarkdownMemoryStore implements MemoryStore {
 
   constructor(
     private baseDir: string,
-    private onProblem?: (message: string) => void
+    private onProblem?: (message: string) => void,
+    private overwriteLog?: Pick<EventLog, 'append'>
   ) {}
 
   private roots(): string[] {
@@ -109,6 +111,24 @@ export class MarkdownMemoryStore implements MemoryStore {
     await fs.mkdir(dirname(path), { recursive: true });
     // P211: transient alias_origin не пишется — файл получает каноническую форму
     const { body, alias_origin: _strippedAliasOrigin, ...frontmatter } = object;
+    // P300/2.14 §5.2: перезапись всегда со следом — событие ДО записи (краш
+    // между событием и записью оставляет след намерения, для аудита безопаснее
+    // молчания). Формат — прецедент memory.edited (memory-edit.ts); actor system.
+    const prev = await this.parseFileSafe(path);
+    if (prev && this.overwriteLog) {
+      const now = new Date();
+      await this.overwriteLog.append({
+        id: `evt_${now.toISOString().slice(0, 19).replace(/[-:T]/g, '')}_${Math.random().toString(16).slice(2, 8)}`,
+        type: 'memory.overwritten',
+        timestamp: now.toISOString(),
+        actor: 'system',
+        payload: {
+          memory_id: object.id,
+          prev_title: prev.title.length > 120 ? prev.title.slice(0, 120) : prev.title,
+          prev_status: prev.status,
+        },
+      });
+    }
     await writeFileAtomic(path, `---\n${yaml.dump(frontmatter)}---\n\n${body}`);
   }
 

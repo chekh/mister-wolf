@@ -34,7 +34,7 @@ export interface AddActionOptions {
  * `wolf <type> add` делегируют сюда — логика опций/use-case не дублируется.
  */
 export async function runAddAction(baseDir: string, options: AddActionOptions): Promise<void> {
-  const { store, log, clock, idGen, index, declarations } = createCliContainer(baseDir);
+  const { store, log, clock, idGen, index, declarations, lock } = createCliContainer(baseDir);
   const type = options.type as MemoryType;
   const extra = parseSetPairs(options.set ?? [], type);
   if (options.scope !== undefined) {
@@ -46,7 +46,7 @@ export async function runAddAction(baseDir: string, options: AddActionOptions): 
   }
   Object.assign(extra, options.extraFields ?? {});
   const result = await addMemoryObject(
-    { store, log, clock, idGen, index, declarations },
+    { store, log, clock, idGen, index, declarations, lock },
     {
       type,
       title: options.title,
