@@ -11,6 +11,7 @@ export const MemoryEventSchema = z.object({
     'memory.resolved',
     'memory.transitioned',
     'memory.overwritten',
+    'memory.aggregated',
   ]),
   timestamp: z.string().datetime(),
   actor: z.string().min(1),

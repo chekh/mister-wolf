@@ -25,6 +25,10 @@ export const RELATION_PREDICATES = [
   // object — свободная строка (литералы rejected/deferred или mem-id артефакта)
   'outcome',
   'outcome_of',
+  // 2.14 §7.2: агрегация уроков (пара; <aggregate> -aggregates-> <source>,
+  // инверсия — aggregated_in от исходника к агрегату)
+  'aggregates',
+  'aggregated_in',
 ] as const;
 
 export const RelationSchema = z.object({

@@ -1,8 +1,10 @@
 import { MemoryStore } from '../../ports/memory-store.port.js';
 import { RelationLog } from '../../ports/relation-log.port.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
+import { Relation } from '../../domain/schemas/relation-schema.js';
 import type { RouterLogRow } from '../../domain/router-log.js';
 import { BOOTSTRAP_THREAD_TITLE } from './bootstrap-project.js';
+import { detectUnaggregatedLessons } from './detect-unaggregated-lessons.js';
 
 /** Сигнал «онбординг не завершён» (спека onboarding-pipeline-v2 §3, D6/D8). */
 export type OnboardingSignal = { kind: 'bootstrap' } | { kind: 'continue'; threadId: string };
@@ -30,6 +32,8 @@ export interface RecapReport {
   delivery: RecapDelivery | null;
   /** 2.14 §6.3: resolved-жалобы без ребра исхода; null = relations не передан (секция опускается). */
   complaintsWithoutOutcome: number | null;
+  /** 2.14 §7.2/§7.4: агрегация уроков; null = relations не передан (секция опускается). */
+  stewardAggregation: { unaggregatedTotal: number; unaggregatedMature: number; proposedAggregates: number } | null;
 }
 
 /**
@@ -79,20 +83,24 @@ function buildDeliveryStats(rows: RouterLogRow[] | undefined, nowMs: number): Re
 /**
  * 2.14 §6.3: счётчик «жалоб без исхода» — resolved-объекты типа complaint,
  * у которых нет ребра исхода. Множество «имеющих исход» собирается по ОБЕИМ
- * сторонам пары: outcome → subject, outcome_of → object (одно чтение лога,
- * без индексов; removed-строки уже отфильтрованы адаптером).
+ * сторонам пары: outcome → subject, outcome_of → object (removed-строки уже
+ * отфильтрованы адаптером). 2.14 §7.2: rows читаются один раз на отчёт и
+ * передаются сюда готовыми — IO не дублируется.
  */
-async function countComplaintsWithoutOutcome(
-  relations: RelationLog | undefined,
-  all: MemoryObject[]
-): Promise<number | null> {
-  if (relations === undefined) return null;
+function countComplaintsWithoutOutcome(rows: Relation[] | undefined, all: MemoryObject[]): number | null {
+  if (rows === undefined) return null;
   const withOutcome = new Set<string>();
-  for (const r of await relations.list()) {
+  for (const r of rows) {
     if (r.predicate === 'outcome') withOutcome.add(r.subject);
     else if (r.predicate === 'outcome_of') withOutcome.add(r.object);
   }
   return all.filter((o) => o.type === 'complaint' && o.status === 'resolved' && !withOutcome.has(o.id)).length;
+}
+
+/** 2.14 §7.4: proposed-агрегаты — lesson в proposed с ≥1 живым ребром aggregates от себя. */
+function countProposedAggregates(all: MemoryObject[], rows: Relation[]): number {
+  const proposers = new Set(rows.filter((r) => r.predicate === 'aggregates').map((r) => r.subject));
+  return all.filter((o) => o.type === 'lesson' && o.status === 'proposed' && proposers.has(o.id)).length;
 }
 
 export async function generateRecap(deps: {
@@ -102,6 +110,19 @@ export async function generateRecap(deps: {
 }): Promise<RecapReport> {
   // ponytail: store.list() — полный reparse всех md (V6); ровно один вызов на отчёт (D1)
   const all = await deps.store.list();
+
+  // 2.14 §7.2: одно чтение relations на отчёт — rows кормят и контур поправок
+  // (§6.3), и стюард-агрегацию; relations не передан → обе секции опускаются
+  const relationRows = deps.relations ? await deps.relations.list() : undefined;
+  let stewardAggregation: RecapReport['stewardAggregation'] = null;
+  if (relationRows !== undefined) {
+    const detect = detectUnaggregatedLessons(all, relationRows, new Date(Date.now()));
+    stewardAggregation = {
+      unaggregatedTotal: detect.total,
+      unaggregatedMature: detect.mature,
+      proposedAggregates: countProposedAggregates(all, relationRows),
+    };
+  }
 
   // wave13-a §5.4: open-question/info-request/blocker поглощены note+фасетами.
   // Вопросы: note+context БЕЗ поля question (статус open; active — только legacy
@@ -135,7 +156,8 @@ export async function generateRecap(deps: {
       .slice(0, 5),
     onboarding: detectOnboarding(all),
     delivery: buildDeliveryStats(deps.routerLogRows, Date.now()),
-    complaintsWithoutOutcome: await countComplaintsWithoutOutcome(deps.relations, all),
+    complaintsWithoutOutcome: countComplaintsWithoutOutcome(relationRows, all),
+    stewardAggregation,
   };
 }
 
@@ -192,6 +214,22 @@ export function renderRecap(report: RecapReport): string {
   // 2.14 §6.3: контур поправок — после Open info requests, до Recent decisions
   if (report.complaintsWithoutOutcome !== null) {
     section(lines, 'Контур поправок', [`жалоб без исхода: ${report.complaintsWithoutOutcome}`]);
+  }
+  // 2.14 §7.4: стюард-агрегация — после контура поправок, до Recent decisions;
+  // строки — контракт для рамок (§7.1), дословно; пусто → секция целиком опускается
+  if (report.stewardAggregation !== null) {
+    const s = report.stewardAggregation;
+    const items: string[] = [];
+    if (s.unaggregatedMature >= 1) {
+      items.push(
+        `неагрегированных уроков: ${s.unaggregatedTotal} (зрелых: ${s.unaggregatedMature}) — ` +
+          'вызовите Стюарда: opencode run --agent steward'
+      );
+    }
+    if (s.proposedAggregates >= 1) {
+      items.push(`предложенных агрегатов: ${s.proposedAggregates} — wolf aggregate apply <id> для подтверждения`);
+    }
+    if (items.length > 0) section(lines, 'Стюард: агрегация', items);
   }
   section(lines, 'Recent decisions', report.recentDecisions.map(fmtObj));
 
