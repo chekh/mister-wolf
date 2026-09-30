@@ -90,3 +90,11 @@ npm install -g mister-wolf
 ```bash
 wolf analytics --view acceptance
 ```
+
+## 9. `add` refuses: id collision guard
+
+- **Symptom:** `wolf add` with the same title twice (within the id millisecond window) exits non-zero instead of writing the object:
+  `Memory object "mem_…" already exists (same title produced same id).` followed by `Use: wolf edit <id> (правка) | wolf supersede <id> <new-id> (смена) | другой --title.`
+- **Cause:** before 2.14 a same-id `add` silently **overwrote** the existing object — data loss dressed as success. The guard turns that into an explicit refusal.
+- **Fix:** pick the lane the hint offers — `wolf edit <id>` to change the existing object, `wolf supersede <old> <new>` to replace it with a successor, or a different `--title` for a genuinely new object.
+- **Audit trail:** any save that does overwrite a file (there are legitimate paths) records a `memory.overwritten` event with the previous title — silent overwrites no longer exist; the event log is the proof.

@@ -92,6 +92,8 @@ export default defineConfig({
             items: [
               { text: 'Core Concepts', link: '/guide/core-concepts' },
               { text: 'Memory Model', link: '/guide/memory' },
+              { text: 'Feedback Loop', link: '/guide/feedback' },
+              { text: 'Steward Aggregation', link: '/guide/steward' },
               { text: 'Router', link: '/guide/router' },
             ],
           },
@@ -111,6 +113,7 @@ export default defineConfig({
             text: 'OPERATE',
             items: [
               { text: 'Configuration', link: '/guide/configuration' },
+              { text: 'Transfer & Multi-Project', link: '/guide/transfer' },
               { text: 'Migration to 2.13', link: '/guide/migration-2.13' },
               { text: 'Telemetry', link: '/guide/telemetry' },
               { text: 'Troubleshooting', link: '/guide/troubleshooting' },
@@ -145,6 +148,8 @@ export default defineConfig({
             items: [
               { text: 'Основные концепции', link: '/ru/guide/core-concepts' },
               { text: 'Модель памяти', link: '/ru/guide/memory' },
+              { text: 'Контур поправок', link: '/ru/guide/feedback' },
+              { text: 'Агрегация Стюарда', link: '/ru/guide/steward' },
               { text: 'Роутер', link: '/ru/guide/router' },
             ],
           },
@@ -164,6 +169,7 @@ export default defineConfig({
             text: 'ЭКСПЛУАТАЦИЯ',
             items: [
               { text: 'Конфигурация', link: '/ru/guide/configuration' },
+              { text: 'Перенос и мультипроектность', link: '/ru/guide/transfer' },
               { text: 'Миграция на 2.13', link: '/ru/guide/migration-2.13' },
               { text: 'Телеметрия', link: '/ru/guide/telemetry' },
               { text: 'Решение проблем', link: '/ru/guide/troubleshooting' },

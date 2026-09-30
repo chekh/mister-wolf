@@ -92,6 +92,7 @@ wolf relation add mem_001 supports mem_002
 - `wolf taxonomy show|sync` — the effective taxonomy and its regeneration from code.
 - `wolf validate [--fix]` — store integrity, quarantine for broken objects.
 - FTS search over a SQLite index (`wolf rebuild-index` to rebuild).
+- `wolf projects` — all registered projects: activity and memory size; transfer is just git — commit `.wolf/memory/`, the clone carries it.
 
 ### Processes
 
@@ -108,11 +109,13 @@ wolf solve "битые relation-ссылки" --save         # solve pack для
 wolf think start --goal "…"                       # последовательность: goal → мысли → решение
 ```
 
+- Контур поправок замыкается в памяти: жалоба → триаж → исход (`relation outcome_of`) — **поправил → закрепилось → доставилось → окупилось**.
+
 ### Agents
 
 - `wolf scaffold agent|skill|command <name>` — a platform frame + a playbook in memory + a relation, all in one command; `--persona` and `--model` for agents, `--from-playbook <id>` to reuse an existing playbook.
 - Playbook delivery is plugin injection into the system prompt (delivery layer #1): `.opencode/plugins/wolf-router.ts`.
-- **Steward** — the loop's background agent with faces: **Mentor** (methodology, handles complaints), **Librarian** (tools), **Archivist** (knowledge). A new face = a new playbook, not a new agent.
+- **Steward** — the loop's background agent with faces: **Mentor** (methodology, handles complaints), **Librarian** (tools), **Archivist** (knowledge). A new face = a new playbook, not a new agent. Since 2.14 the Steward also aggregates mature lessons into single replacements — proposed, then owner-confirmed.
 
 ### Tools
 
