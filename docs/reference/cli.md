@@ -891,6 +891,38 @@ Options:
   -h, --help  display help for command
 ```
 
+### wolf aggregate (hidden)
+
+```text
+Usage: wolf aggregate [options] [command]
+
+Apply a proposed lesson aggregate (steward plumbing)
+
+Options:
+  -h, --help                      display help for command
+
+Commands:
+  apply [options] <aggregate-id>  Apply a proposed aggregate: activate it and
+                                  archive its sources
+  help [command]                  display help for command
+```
+
+#### wolf aggregate apply
+
+```text
+Usage: wolf aggregate apply [options] <aggregate-id>
+
+Apply a proposed aggregate: activate it and archive its sources
+
+Arguments:
+  aggregate-id          Aggregate memory object id
+
+Options:
+  --created-by <actor>  Actor performing the apply (default: env WOLF_ACTOR,
+                        else user:cli)
+  -h, --help            display help for command
+```
+
 ### wolf taxonomy (hidden)
 
 ```text

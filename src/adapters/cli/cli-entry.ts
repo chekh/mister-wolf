@@ -160,6 +160,13 @@ export const COMMANDS: CommandSpec[] = [
     load: () => import('./commands/memory-relation.js').then((m) => m.memoryRelationCommand()),
   },
   {
+    name: 'aggregate',
+    description: 'Apply a proposed lesson aggregate (steward plumbing)',
+    usage: 'apply <aggregate-id>',
+    hidden: true,
+    load: () => import('./commands/memory-aggregate.js').then((m) => m.memoryAggregateCommand()),
+  },
+  {
     name: 'taxonomy',
     description: 'Manage memory taxonomy',
     usage: '',

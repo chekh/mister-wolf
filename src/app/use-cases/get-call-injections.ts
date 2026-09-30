@@ -1,10 +1,13 @@
 import { MemoryStore } from '../../ports/memory-store.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
 import { Clock } from '../../ports/clock.port.js';
+import { RelationLog } from '../../ports/relation-log.port.js';
+import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import { tokenize } from '../../domain/solve/scenarios.js';
 import { finalScore } from '../../domain/solve/relevance.js';
 import { highlightFacet } from '../../domain/facet-colors.js';
 import { checksumBlock } from '../../adapters/fs/session-delivery-registry.js';
+import { detectUnaggregatedLessons } from './detect-unaggregated-lessons.js';
 
 export interface CallInjectionResult {
   blocks: string[];
@@ -14,6 +17,10 @@ export interface CallInjectionResult {
   /** P108 (4.C): сколько объектов отфильтровано сессионной дедупликацией
    * (id уже в реестре сессии с той же checksum блока). */
   deduplicated: number;
+  /** 2.14 §7.1 (триггер 2): строка «зрелые неагрегированные уроки — вызвать
+   * Стюарда»; null = relations не передан (MCP-канал) или зрелых нет. В blocks
+   * не входит — не занимает бюджет доставки. */
+  banner: string | null;
 }
 
 function formatBlock(obj: Record<string, unknown>, colors?: boolean): string {
@@ -29,7 +36,7 @@ function isMachineState(obj: Record<string, unknown>): boolean {
 }
 
 export async function getCallInjections(
-  deps: { store: MemoryStore; index?: SearchIndex; clock: Clock },
+  deps: { store: MemoryStore; index?: SearchIndex; clock: Clock; relations?: RelationLog },
   input: {
     topic?: string;
     thread?: boolean | string;
@@ -177,5 +184,22 @@ export async function getCallInjections(
     }
   }
 
-  return { blocks, truncated, deliveredIds, deduplicated };
+  // 2.14 §7.1 (триггер 2): banner про зрелых неагрегированных — по ВСЕМ
+  // объектам (не по matched); Р8 спеки: без повторной загрузки — один cast
+  // уже прочитанного memoryObjects + один list() лога рёбер
+  let banner: string | null = null;
+  if (deps.relations) {
+    const detect = detectUnaggregatedLessons(
+      memoryObjects as unknown as MemoryObject[],
+      await deps.relations.list(),
+      now
+    );
+    if (detect.mature >= 1) {
+      banner =
+        `неагрегированных уроков: ${detect.total} (зрелых: ${detect.mature}) — ` +
+        'вызовите Стюарда: opencode run --agent steward';
+    }
+  }
+
+  return { blocks, truncated, deliveredIds, deduplicated, banner };
 }

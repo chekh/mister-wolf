@@ -39,9 +39,9 @@ export function memoryCallCommand(): Command {
         // ensureCliSessionId в cli-entry); null → фильтр выключен (MCP-контур).
         const sessionKey = resolveSessionId();
         const registry = sessionKey ? loadSessionRegistry(baseDir, sessionKey) : null;
-        const { store, index, clock } = createCliContainer(baseDir);
+        const { store, index, clock, relations } = createCliContainer(baseDir);
         const result = await getCallInjections(
-          { store, index, clock },
+          { store, index, clock, relations },
           {
             topic: options.for,
             thread: options.thread !== undefined ? options.thread : undefined,
@@ -62,6 +62,10 @@ export function memoryCallCommand(): Command {
           if (result.truncated > 0) {
             console.log(`\n[truncated: ${result.truncated} blocks omitted]`);
           }
+        }
+        // 2.14 §7.1 (триггер 2): строка Стюарда — после блоков, вне blocks/бюджета
+        if (result.banner !== null) {
+          console.log('\n' + result.banner);
         }
         // Ф26: доставка = срабатывание (decay-пробег сбрасывается по этим событиям,
         // спека §6). Объекты памяти НЕ обновляем (дорого) — last_triggered_at

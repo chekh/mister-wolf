@@ -220,4 +220,56 @@ describe('analytics + dashboard golden scenarios (spec 2026-09-03)', () => {
     // D8: дашборд ничего не пишет на диск (HTML-витрина отложена)
     expect(existsSync(join(dir, 'dashboard.html'))).toBe(false);
   });
+
+  // 2.14 §7.4: метрика затухания класса (Т5) в steward view; полный путь
+  // aggregate apply (прецедент aggregate-apply.e2e.ts), короткий title агрегата —
+  // id не клипуется renderTable (лимит колонки 40)
+  it('aggregation decay: 3 lessons -> apply -> steward table with before/after counts', () => {
+    const dir = tmpProject();
+    dirs.push(dir);
+    expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir).status).toBe(0);
+
+    const srcIds: string[] = [];
+    for (let i = 1; i <= 3; i++) {
+      const r = runCli(
+        ['add', '--type', 'lesson', '--title', `Deploy pain ${i}`, '--body', 'b', '--tags', 'deploy'],
+        dir
+      );
+      expect(r.status).toBe(0);
+      srcIds.push(r.stdout.match(/Created memory object: (\S+)/)?.[1]!);
+    }
+
+    const agg = runCli(
+      [
+        'add',
+        '--type',
+        'lesson',
+        '--title',
+        'Agg k',
+        '--body',
+        '## Было → стало → почему',
+        '--tags',
+        'deploy',
+        '--set',
+        'status=proposed',
+        '--created-by',
+        'agent:steward',
+      ],
+      dir
+    );
+    expect(agg.status).toBe(0);
+    const aggId = agg.stdout.match(/Created memory object: (\S+)/)?.[1]!;
+    for (const src of srcIds) {
+      expect(runCli(['relation', 'add', aggId, 'aggregates', src], dir).status).toBe(0);
+    }
+
+    expect(runCli(['aggregate', 'apply', aggId], dir).status).toBe(0);
+
+    const steward = runCli(['analytics', '--view', 'steward'], dir);
+    expect(steward.status).toBe(0);
+    expect(steward.stdout).toContain(aggId);
+    // lessons −/+7d: три исходника до якоря, ноль после (агрегация погасила поток)
+    expect(steward.stdout).toContain('3 / 0');
+    expect(steward.stdout).toContain('free-tag heuristic');
+  });
 });

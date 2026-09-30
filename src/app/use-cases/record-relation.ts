@@ -26,6 +26,8 @@ const INVERSE: Record<RelationPredicate, RelationPredicate> = {
   complained_by: 'complain',
   outcome: 'outcome_of',
   outcome_of: 'outcome',
+  aggregates: 'aggregated_in',
+  aggregated_in: 'aggregates',
 };
 
 export async function recordRelation(
