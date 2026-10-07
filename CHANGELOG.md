@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.14.1] - 2026-10-07
+
+### Fixed — OpenCode v2 compatibility
+
+- Plugin templates (`wolf-router.ts`, `wolf-session-start.js`) now support both OpenCode v1 and v2 from one file: v1 hook registrations are preserved unchanged; v2-native hooks (`ctx.session.hook("context")`, `ctx.tool.hook("execute.before")`, dual entry shape `{id, setup, server}`) are added, because v1 implementations do not run in v2.
+- `wolf init` detects the installed OpenCode version (`opencode --version`, 5s timeout, read-only): `< 1.18.29` → warning with v1 fallback (config still written); unparseable output → warning, init continues; absent CLI → legacy v1 behavior unchanged. Only the OpenCode branch is affected — other platforms and npx are untouched.
+- Container smoke harness `tests/container/opencode-v2/` (Docker Node 22; pinned `opencode-ai@1.18.35` / `@opencode/cli@2.0.24`; isolated HOME; read-only repo mount; host-config hash checked before/after): hooks verified to fire in both v1 and v2.
+
+Supported OpenCode range: v1 ≥ 1.18.29 and v2 (tested against 2.0.24).
+
 ## [2.14.0] - 2026-09-30
 
 ### Fixed — data integrity (first complaint in the new loop)

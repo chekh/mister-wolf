@@ -52,7 +52,7 @@ Use-case'ы (сценарии) в `src/app/use-cases/` по факту: `activat
 Истина всегда в памяти: playbook и tool-объект — канонические объекты. Платформенные носители — скиллы, команды, MCP-тулы — **генерируемые отпечатки**: регенерируются scaffold'ом после каждой версии канона. Реверс-импорт внешних артефактов возможен только с пометкой «непроверенный».
 
 - Код: `src/app/use-cases/scaffold-agent.ts` (команда `wolf scaffold`), генерируемый `.wolf/SKILL.md`.
-- Доставка playbook в system-промпт — плагин-инъекция `.opencode/plugins/wolf-router.ts`: маркер `agent-id` в теле рамки → `wolf search --type playbook` → максимальная `version` → инжект; fallback — `wolf search` из самой рамки.
+- Доставка playbook в system-промпт — плагин-инъекция `.opencode/plugins/wolf-router.ts`: маркер `agent-id` в теле рамки → `wolf search --type playbook` → максимальная `version` → инжект; fallback — `wolf search` из самой рамки. Шаблоны dual v1/v2 (v1 hook-реализации в v2 не исполняются — обе ветки экспортируются из одного файла); `wolf init` детектирует версию OpenCode — поддерживаются v1 ≥ 1.18.29 и v2.
 
 ### 3.2. Конвейер активации (§3.2)
 

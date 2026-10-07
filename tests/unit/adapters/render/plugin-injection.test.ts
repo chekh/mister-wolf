@@ -7,7 +7,7 @@
 // вызывает КАЖДЫЙ export файла плагина как фабрику — лишние экспорты
 // валили загрузку всего плагина), поэтому тестируем через хуки фабрики.
 import { describe, expect, it, vi } from 'vitest';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const { execFileMock } = vi.hoisted(() => {
@@ -26,7 +26,35 @@ vi.mock('child_process', () => ({ execFile: execFileMock }));
 const templatePath = (rel: string) =>
   fileURLToPath(new URL(`../../../../templates/opencode/plugins/${rel}`, import.meta.url));
 
-const { WolfSessionStartPlugin } = await import(templatePath('wolf-session-start.js'));
+// Dual v1/v2 entry: один default-export, v1-поведение — через `.server()`.
+const { default: WolfSessionStartPlugin } = await import(templatePath('wolf-session-start.js'));
+const { default: WolfPlaybookPlugin } = await import(templatePath('wolf-router.ts'));
+
+// Мок v2-контекста opencode: session.hook / tool.hook возвращают {dispose}.
+interface V2Hook {
+  (event: unknown): Promise<void>;
+}
+const makeCtx = () => {
+  const sessionHooks: Record<string, V2Hook> = {};
+  const toolHooks: Record<string, V2Hook> = {};
+  const dispose = async () => {};
+  return {
+    session: {
+      hook: async (name: string, fn: V2Hook) => {
+        sessionHooks[name] = fn;
+        return { dispose };
+      },
+    },
+    tool: {
+      hook: async (name: string, fn: V2Hook) => {
+        toolHooks[name] = fn;
+        return { dispose };
+      },
+    },
+    sessionHooks,
+    toolHooks,
+  };
+};
 
 interface Part {
   type: string;
@@ -44,7 +72,7 @@ const fresh = [msg('новый вопрос после /clear')];
 const GOVERNANCE = ['1%-правило', 'SUBAGENT-STOP', 'Лестница приоритетов', 'process-скиллы', 'rigid', 'flexible'];
 const DISPATCH = ['1%', 'SUBAGENT-STOP', 'Лестница приоритетов', 'process-скиллы'];
 
-const hooks = await WolfSessionStartPlugin({});
+const hooks = await WolfSessionStartPlugin.server();
 const transform = hooks['experimental.chat.messages.transform'];
 const systemTransform = hooks['experimental.chat.system.transform'];
 const setAgent = async (id: string | null) => {
@@ -62,7 +90,7 @@ describe('wolf-session-start: контракт загрузчика opencode (д
       const src = readFileSync(pluginsDir + rel, 'utf-8');
       const exports = src.match(/^export\b.*$/gm) ?? [];
       expect(exports, rel).toHaveLength(1);
-      expect(exports[0], rel).toMatch(/WolfSessionStartPlugin|WolfPlaybookPlugin|Plugin/);
+      expect(exports[0], rel).toMatch(/^export default\b/);
     }
   });
 });
@@ -115,5 +143,95 @@ describe('wolf-session-start: инъекция (спека §5.4)', () => {
     await expect(transform({}, { messages: null })).resolves.toBeUndefined();
     await expect(transform({}, {})).resolves.toBeUndefined();
     await expect(transform(null as never, { messages: [] })).resolves.toBeUndefined();
+  });
+});
+
+// v2 loader: setup(ctx) с session.hook('context') — инъекция в content[].
+const v2Message = (text: string) => ({
+  id: 'm1',
+  role: 'user',
+  content: [{ type: 'text', text }],
+  metadata: {},
+});
+const v2Event = (agentId: string, text = 'новый вопрос') => ({
+  system: [{ type: 'text', text: `рамка агента\n\nagent-id: ${agentId}\n` }],
+  messages: [v2Message(text)],
+  agent: agentId,
+});
+const contentText = (event: { messages: Array<{ content: Array<{ text?: string }> }> }) =>
+  event.messages[0].content.map((p) => String(p.text ?? '')).join('\n');
+
+describe('wolf-session-start: v2 setup (context hook)', () => {
+  it('инъекция в messages[].content; полный governance-набор для L0/L1 (H2)', async () => {
+    const ctx = makeCtx();
+    await (WolfSessionStartPlugin.setup as (c: unknown) => Promise<void>)(ctx);
+    const event = v2Event('executor-lead');
+    await ctx.sessionHooks['context'](event);
+    const injected = contentText(event);
+    expect(injected).toContain(MARKER);
+    for (const marker of GOVERNANCE) expect(injected, marker).toContain(marker);
+  });
+
+  it('agent-id worker-* → усечённое тело, recap/call не спавнятся (MAJ-4)', async () => {
+    const ctx = makeCtx();
+    await (WolfSessionStartPlugin.setup as (c: unknown) => Promise<void>)(ctx);
+    execFileMock.mockClear();
+    const event = v2Event('worker-implementer');
+    await ctx.sessionHooks['context'](event);
+    const injected = contentText(event);
+    expect(injected).toContain('пассив');
+    expect(injected).toContain('rigid');
+    for (const marker of DISPATCH) expect(injected, marker).not.toContain(marker);
+    expect(execFileMock).not.toHaveBeenCalled();
+  });
+
+  it('идемпотентность по маркеру: второй context → без повторной инъекции', async () => {
+    const ctx = makeCtx();
+    await (WolfSessionStartPlugin.setup as (c: unknown) => Promise<void>)(ctx);
+    const event = v2Event('executor-lead');
+    await ctx.sessionHooks['context'](event);
+    await ctx.sessionHooks['context'](event);
+    const markerParts = event.messages[0].content.filter((p) => String(p.text).includes(MARKER));
+    expect(markerParts).toHaveLength(1);
+  });
+
+  it('fail-safe (m13): битый event → не бросает', async () => {
+    const ctx = makeCtx();
+    await (WolfSessionStartPlugin.setup as (c: unknown) => Promise<void>)(ctx);
+    await expect(ctx.sessionHooks['context'](null)).resolves.toBeUndefined();
+    await expect(ctx.sessionHooks['context']({})).resolves.toBeUndefined();
+  });
+});
+
+describe('wolf-router: v2 setup (context + tool hooks)', () => {
+  it('инъекция playbook в event.system: fallback + идемпотентность по хедеру', async () => {
+    const ctx = makeCtx();
+    await (WolfPlaybookPlugin.setup as (c: unknown) => Promise<void>)(ctx);
+    const event = { system: [{ type: 'text' as const, text: 'agent-id: v2-router-probe-xyz\n' }] };
+    await ctx.sessionHooks['context'](event);
+    expect(event.system.some((s) => String(s.text).includes('# Актуальный playbook'))).toBe(true);
+    const afterFirst = event.system.length;
+    await ctx.sessionHooks['context'](event);
+    expect(event.system.length).toBe(afterFirst); // INJECT_HEADER → второй раз мимо
+  });
+
+  it('skill-метрику пишет v2 tool.execute.before (execute.before hook)', async () => {
+    const skillLog = '/tmp/wolf-plugin-injection-test/v2-skill.jsonl';
+    const saved = process.env.WOLF_SKILL_LOG;
+    process.env.WOLF_SKILL_LOG = skillLog;
+    rmSync(skillLog, { force: true });
+    try {
+      const ctx = makeCtx();
+      await (WolfPlaybookPlugin.setup as (c: unknown) => Promise<void>)(ctx);
+      await ctx.toolHooks['execute.before']({ tool: 'skill', input: { name: 'ponytail' }, id: 't1' });
+      // не-skill → мимо
+      await ctx.toolHooks['execute.before']({ tool: 'bash', input: { command: 'ls' }, id: 't2' });
+      const lines = readFileSync(skillLog, 'utf-8').trim().split('\n').filter(Boolean);
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0] as string).skill).toBe('ponytail');
+    } finally {
+      if (saved === undefined) delete process.env.WOLF_SKILL_LOG;
+      else process.env.WOLF_SKILL_LOG = saved;
+    }
   });
 });

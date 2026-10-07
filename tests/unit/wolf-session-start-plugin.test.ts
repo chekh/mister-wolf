@@ -17,7 +17,8 @@ const { execFileMock } = vi.hoisted(() => {
 });
 vi.mock('child_process', () => ({ execFile: execFileMock }));
 
-import { WolfSessionStartPlugin } from '../../.opencode/plugins/wolf-session-start.js';
+// Тестируем templates/-канон; v1-поведение доступно через default.server().
+import WolfSessionStartPlugin from '../../templates/opencode/plugins/wolf-session-start.js';
 
 const makeSessionOutput = (text: string) => ({
   messages: [{ info: { role: 'user' }, parts: [{ type: 'text', text }] }],
@@ -25,7 +26,7 @@ const makeSessionOutput = (text: string) => ({
 
 describe('wolf-session-start plugin', () => {
   it('injects recap into the first user message', async () => {
-    const plugin = await WolfSessionStartPlugin({});
+    const plugin = await WolfSessionStartPlugin.server();
     const output = makeSessionOutput('Сделай плагин старта сессии для opencode');
     await plugin['experimental.chat.messages.transform']({}, output);
 
@@ -38,7 +39,7 @@ describe('wolf-session-start plugin', () => {
   });
 
   it('injects only once (marker guard)', async () => {
-    const plugin = await WolfSessionStartPlugin({});
+    const plugin = await WolfSessionStartPlugin.server();
     const output = makeSessionOutput('Повторное сообщение той же сессии');
     const transform = plugin['experimental.chat.messages.transform'];
     await transform({}, output);
@@ -56,7 +57,7 @@ describe('wolf-session-start plugin', () => {
     const key = 'opc-inherited-unit';
     process.env.WOLF_SESSION = key;
     try {
-      const plugin = await WolfSessionStartPlugin({});
+      const plugin = await WolfSessionStartPlugin.server();
       const output = makeSessionOutput('Наследование ключа сессии');
       await plugin['experimental.chat.messages.transform']({}, output);
       expect(execFileMock).toHaveBeenCalled();
@@ -75,7 +76,7 @@ describe('wolf-session-start plugin', () => {
   it('creates WOLF_SESSION when absent (opc- prefix, stable across calls)', async () => {
     delete process.env.WOLF_SESSION;
     try {
-      const plugin = await WolfSessionStartPlugin({});
+      const plugin = await WolfSessionStartPlugin.server();
       await plugin['experimental.chat.messages.transform']({}, makeSessionOutput('Создание ключа'));
       const created = process.env.WOLF_SESSION;
       expect(created).toMatch(/^opc-/);

@@ -1,7 +1,15 @@
 import * as fs from 'fs/promises';
 import { existsSync } from 'fs';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { basename, join } from 'path';
-import { PlatformAdapter, McpCommand, PlatformConfig, PlatformWriteResult } from '../../ports/platform-adapter.port.js';
+import {
+  PlatformAdapter,
+  McpCommand,
+  PlatformConfig,
+  PlatformWriteResult,
+  PlatformVersionInfo,
+} from '../../ports/platform-adapter.port.js';
 import { parseJsonc } from './jsonc.js';
 import { writeFileAtomic } from '../fs/markdown-memory-store.js';
 import { UserFacingError } from '../../domain/errors.js';
@@ -11,6 +19,28 @@ export const DEFAULT_AGENT = 'mr-wolf';
 
 /** Глубина субагентов: executor-lead спавнит worker-* (трёхуровневая схема). */
 export const SUBAGENT_DEPTH = 2;
+
+const execFileAsync = promisify(execFile);
+
+/** Минимальная поддержанная v1 (порог диапазона). */
+const V1_MIN_MINOR = 18;
+const V1_MIN_PATCH = 29;
+
+/**
+ * Чистый парсер `opencode --version`. Эмпирика форматов: v1 печатает `1.18.35`,
+ * v2 — `opencode v2.0.24`; regex вытаскивает M.m.p из обоих.
+ */
+export function parseOpencodeVersion(raw: string): PlatformVersionInfo {
+  const trimmed = raw.trim();
+  const m = trimmed.match(/(\d+)\.(\d+)\.(\d+)/);
+  if (!m) return { status: 'unparseable', raw: trimmed };
+  const version = `${m[1]}.${m[2]}.${m[3]}`;
+  const [major, minor, patch] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  if (major >= 2) return { status: 'v2', version, raw: trimmed };
+  if (major === 1 && (minor > V1_MIN_MINOR || (minor === V1_MIN_MINOR && patch >= V1_MIN_PATCH)))
+    return { status: 'v1', version, raw: trimmed };
+  return { status: 'unsupported', version, raw: trimmed };
+}
 
 // ponytail: комментарии в opencode.jsonc теряются при rewrite (plain JSON валиден как JSONC);
 // сохранение комментариев = AST-редактор, YAGNI до запроса.
@@ -23,6 +53,16 @@ export class OpencodeAdapter implements PlatformAdapter {
       existsSync(join(projectRoot, 'opencode.jsonc')) ||
       existsSync(join(projectRoot, '.opencode'))
     );
+  }
+
+  /** `opencode --version`; бинарь недоступен/ошибка запуска → absent (не бросаем). */
+  async detectVersion(projectRoot: string): Promise<PlatformVersionInfo> {
+    try {
+      const { stdout } = await execFileAsync('opencode', ['--version'], { cwd: projectRoot, timeout: 5000 });
+      return parseOpencodeVersion(stdout);
+    } catch (err) {
+      return { status: 'absent', message: err instanceof Error ? err.message : String(err) };
+    }
   }
 
   /** Существующий конфиг (jsonc — только если нет json); для новой установки — opencode.json. */

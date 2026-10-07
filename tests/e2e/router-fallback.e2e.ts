@@ -18,10 +18,10 @@ const cli = join(REPO, 'dist', 'bootstrap', 'cli.js');
 /** Драйвер в tmp-проекте: импортирует ОТРЕНДЕРЕННЫЙ плагин (не догфуд-копию),
  *  вызывает transform с маркером agent-id, печатает true/false — инъекция была. */
 const DRIVER = `
-const { WolfPlaybookPlugin } = await import(new URL('./.opencode/plugins/wolf-router.ts', import.meta.url).href);
+const mod = await import(new URL('./.opencode/plugins/wolf-router.ts', import.meta.url).href);
 const agentId = process.argv[2];
 const output = { system: ['agent-id: ' + agentId + '\\n\\nРоль: рамка агента.'] };
-const plugin = await WolfPlaybookPlugin({});
+const plugin = await mod.default.server();
 await plugin['experimental.chat.system.transform']({}, output);
 const injected = output.system.some((p) => String(p).includes('# Актуальный playbook'));
 console.log(injected ? 'true' : 'false');

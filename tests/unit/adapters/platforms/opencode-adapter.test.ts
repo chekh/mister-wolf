@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, chmodSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { OpencodeAdapter } from '../../../../src/adapters/platforms/opencode-adapter.js';
+import { OpencodeAdapter, parseOpencodeVersion } from '../../../../src/adapters/platforms/opencode-adapter.js';
 import type { McpCommand } from '../../../../src/ports/platform-adapter.port.js';
 
 const cmd: McpCommand = { command: 'wolf', args: ['mcp'] };
@@ -38,6 +38,56 @@ describe('OpencodeAdapter.detect (маркеры: opencode.json / opencode.jsonc
 
   it('no markers → not detected', () => {
     expect(new OpencodeAdapter().detect(dir)).toBe(false);
+  });
+});
+
+describe('parseOpencodeVersion (диапазон поддержки: v1 >= 1.18.29 + v2)', () => {
+  it('v1: 1.18.35 → v1', () => {
+    expect(parseOpencodeVersion('1.18.35')).toEqual({ status: 'v1', version: '1.18.35', raw: '1.18.35' });
+  });
+
+  it('v2: "opencode v2.0.24" → v2 (raw сохранён)', () => {
+    expect(parseOpencodeVersion('opencode v2.0.24')).toEqual({
+      status: 'v2',
+      version: '2.0.24',
+      raw: 'opencode v2.0.24',
+    });
+  });
+
+  it('порог: 1.18.29 → v1', () => {
+    expect(parseOpencodeVersion('1.18.29').status).toBe('v1');
+  });
+
+  it('ниже порога v1: 1.18.28 → unsupported', () => {
+    expect(parseOpencodeVersion('1.18.28')).toEqual({
+      status: 'unsupported',
+      version: '1.18.28',
+      raw: '1.18.28',
+    });
+  });
+
+  it('major 0: 0.9.0 → unsupported', () => {
+    expect(parseOpencodeVersion('0.9.0').status).toBe('unsupported');
+  });
+
+  it('мусор → unparseable, raw = trimmed входа', () => {
+    expect(parseOpencodeVersion('  not a version \n')).toEqual({
+      status: 'unparseable',
+      raw: 'not a version',
+    });
+  });
+});
+
+describe('OpencodeAdapter.detectVersion', () => {
+  it('opencode отсутствует на PATH → absent (не бросает)', async () => {
+    vi.stubEnv('PATH', '');
+    try {
+      const info = await new OpencodeAdapter().detectVersion(dir);
+      expect(info.status).toBe('absent');
+      expect(info.message).toBeTruthy();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
 
