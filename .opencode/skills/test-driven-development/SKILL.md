@@ -2,7 +2,7 @@
 name: test-driven-development
 description: Используй при реализации любой фичи или багфикса, до написания кода реализации
 ---
-<!-- wolf:rendered base=SKILL.md set=2.13.0 -->
+<!-- wolf:rendered base=SKILL.md set=2.14.1 -->
 
 # Test-Driven Development (TDD)
 

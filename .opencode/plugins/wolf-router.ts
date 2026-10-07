@@ -1,4 +1,4 @@
-// wolf:rendered base=wolf-router.ts set=2.13.0
+// wolf:rendered base=wolf-router.ts set=2.14.1
 /**
  * Mr.Wolf router plugin (шаблон базового набора, спека §5.4).
  *
@@ -115,61 +115,119 @@ async function resolvePlaybook(agentId: string): Promise<{ id: string; body: str
   return found;
 }
 
-export const WolfPlaybookPlugin = async () => {
-  // 4.C: один WOLF_SESSION на процесс opencode — спавны волка и bash-вызовы
-  // наследуют ключ. Известный потолок: несколько чатов одного процесса
-  // opencode шарят ключ — консервативная недо-дедупликация.
+// B3: метрика вызовов скиллов. Форма входа v1: input.tool — имя тула,
+// output.args — объект аргументов; v2: event.tool + event.input (name | skill —
+// фолбэк). Отдельный JSONL-файл — инвариант: enum событий SignalEventSchema
+// закрытый, в общий router.log эти события класть нельзя. WOLF_SKILL_LOG —
+// тест-шов (читается на каждый вызов: env ставится тестами уже после импорта).
+function recordSkillMetric(tool: unknown, args: unknown): void {
+  try {
+    if (tool !== 'skill') return;
+    const a = (args ?? {}) as { name?: string; skill?: string } | null;
+    const skill = a?.name ?? a?.skill;
+    if (!skill) return;
+    const file =
+      process.env.WOLF_SKILL_LOG ?? path.join(PROJECT_ROOT, '.wolf', 'metrics', 'skill-invocations.jsonl');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const entry: { ts: string; skill: string; agent?: string } = { ts: new Date().toISOString(), skill };
+    if (lastAgentId) entry.agent = lastAgentId;
+    fs.appendFileSync(file, `${JSON.stringify(entry)}\n`);
+  } catch {
+    /* fail-safe: падение метрики не роняет сессию */
+  }
+}
+
+// Общая доставка playbook (v1 system.transform / v2 context): joined system-текст
+// → маркер agent-id → гвард идемпотентности INJECT_HEADER → resolvePlaybook →
+// push(текст). Fail-safe: не роняем сессию ни на одном шаге.
+async function deliverPlaybook(joined: string, push: (text: string) => void): Promise<void> {
+  try {
+    const m = joined.match(AGENT_ID_RE);
+    if (!m) return; // рамка без маркера — не наша забота
+    if (joined.includes(INJECT_HEADER)) return; // идемпотентность: не вставляем дважды
+    const agentId = m[1];
+    lastAgentId = agentId; // агент известен хуку skill-метрики (B3)
+    const startedAt = Date.now();
+    const resolved = await resolvePlaybook(agentId);
+    const ms = Date.now() - startedAt;
+    if (resolved) {
+      push(`\n\n${INJECT_HEADER}\n\n${resolved.body}`);
+      logRoute(
+        `agent-id=${agentId} playbook=hit name=${resolved.id} variant=canonical injected=yes` +
+          ` ms=${ms} bytes=${Buffer.byteLength(resolved.body)}`
+      );
+    } else {
+      // T012: miss канона → универсальный fallback; инъекция для любого agent-id
+      push(`\n\n${INJECT_HEADER}\n\n${FALLBACK_PLAYBOOK}`);
+      logRoute(
+        `agent-id=${agentId} playbook=hit name=fallback variant=fallback injected=yes` +
+          ` ms=${ms} bytes=${Buffer.byteLength(FALLBACK_PLAYBOOK)}`
+      );
+    }
+  } catch {
+    /* fail-safe: не роняем сессию */
+  }
+}
+
+// 4.C: один WOLF_SESSION на процесс opencode — спавны волка и bash-вызовы
+// наследуют ключ. Известный потолок: несколько чатов одного процесса opencode
+// шарят ключ — консервативная недо-дедупликация, не ошибка.
+function ensureSession(): void {
   if (!process.env.WOLF_SESSION) process.env.WOLF_SESSION = 'opc-' + randomUUID();
+}
+
+// v1-фабрика: loader v1 вызывает `server()` и получает hook-объект.
+async function server() {
+  ensureSession();
   return {
-    'experimental.chat.system.transform': async (_input, output) => {
-      try {
-        const joined = output.system.join('\n');
-        const m = joined.match(AGENT_ID_RE);
-        if (!m) return; // рамка без маркера — не наша забота
-        if (joined.includes(INJECT_HEADER)) return; // идемпотентность: не вставляем дважды
-        const agentId = m[1];
-        lastAgentId = agentId; // агент известен хуку skill-метрики (B3)
-        const startedAt = Date.now();
-        const resolved = await resolvePlaybook(agentId);
-        const ms = Date.now() - startedAt;
-        if (resolved) {
-          output.system.push(`\n\n${INJECT_HEADER}\n\n${resolved.body}`);
-          logRoute(
-            `agent-id=${agentId} playbook=hit name=${resolved.id} variant=canonical injected=yes` +
-              ` ms=${ms} bytes=${Buffer.byteLength(resolved.body)}`
-          );
-        } else {
-          // T012: miss канона → универсальный fallback; инъекция для любого agent-id
-          output.system.push(`\n\n${INJECT_HEADER}\n\n${FALLBACK_PLAYBOOK}`);
-          logRoute(
-            `agent-id=${agentId} playbook=hit name=fallback variant=fallback injected=yes` +
-              ` ms=${ms} bytes=${Buffer.byteLength(FALLBACK_PLAYBOOK)}`
-          );
-        }
-      } catch {
-        /* fail-safe: не роняем сессию */
-      }
+    'experimental.chat.system.transform': async (_input: unknown, output: { system: string[] }) => {
+      await deliverPlaybook((output?.system ?? []).join('\n'), (text) => output.system.push(text));
     },
-    // B3: метрика вызовов скиллов. Форма входа по докам opencode: input.tool —
-    // имя тула, output.args — объект аргументов (name | skill — фолбэк).
-    // Отдельный JSONL-файл — инвариант: enum событий SignalEventSchema закрытый,
-    // в общий router.log эти события класть нельзя. WOLF_SKILL_LOG — тест-шов
-    // (читается на каждый вызов: env ставится тестами уже после импорта модуля).
     'tool.execute.before': async (input: unknown, output: unknown) => {
-      try {
-        if ((input as { tool?: string } | null)?.tool !== 'skill') return;
-        const args = (output as { args?: { name?: string; skill?: string } } | null)?.args;
-        const skill = args?.name ?? args?.skill;
-        if (!skill) return;
-        const file =
-          process.env.WOLF_SKILL_LOG ?? path.join(PROJECT_ROOT, '.wolf', 'metrics', 'skill-invocations.jsonl');
-        fs.mkdirSync(path.dirname(file), { recursive: true });
-        const entry: { ts: string; skill: string; agent?: string } = { ts: new Date().toISOString(), skill };
-        if (lastAgentId) entry.agent = lastAgentId;
-        fs.appendFileSync(file, `${JSON.stringify(entry)}\n`);
-      } catch {
-        /* fail-safe: падение метрики не роняет сессию */
-      }
+      recordSkillMetric(
+        (input as { tool?: string } | null)?.tool,
+        (output as { args?: { name?: string; skill?: string } } | null)?.args
+      );
     },
   };
-};
+}
+
+// v2-контракт: loader v2 вызывает `setup(ctx)`; инъекция — текст-блок в
+// event.system (мутация доходит до модельного запроса), метрика — tool-hook.
+interface V2ContextEvent {
+  system: Array<{ type: 'text'; text: string }>;
+  messages: Array<{ id: string; role: string; content: Array<{ type: 'text'; text: string }>; metadata: unknown }>;
+  agent: string;
+}
+interface V2ToolEvent {
+  tool: string;
+  input: unknown;
+  id: string;
+}
+interface V2Ctx {
+  session: {
+    hook(name: 'context', fn: (event: V2ContextEvent) => Promise<void>): Promise<{ dispose: () => Promise<void> }>;
+  };
+  tool: {
+    hook(
+      name: 'execute.before',
+      fn: (event: V2ToolEvent) => Promise<void>
+    ): Promise<{ dispose: () => Promise<void> }>;
+  };
+}
+
+async function setup(ctx: V2Ctx) {
+  ensureSession();
+  await ctx.session.hook('context', async (event) => {
+    await deliverPlaybook(
+      (event?.system ?? []).map((s) => s.text).join('\n'),
+      (text) => event.system.push({ type: 'text', text })
+    );
+  });
+  await ctx.tool.hook('execute.before', async (event) => {
+    recordSkillMetric(event.tool, event.input);
+  });
+}
+
+// РОВНО ОДИН export на файл (контракт loader'а opencode): dual v1/v2 entry.
+export default { id: 'wolf-router', setup, server };

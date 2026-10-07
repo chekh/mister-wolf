@@ -2,7 +2,7 @@
 name: using-git-worktrees
 description: Используй при старте фичи, которой нужна изоляция от текущего workspace, или перед исполнением планов — создаёт изолированные git-worktree с проверкой безопасности
 ---
-<!-- wolf:rendered base=SKILL.md set=2.13.0 -->
+<!-- wolf:rendered base=SKILL.md set=2.14.1 -->
 
 # Using Git Worktrees
 

@@ -1,4 +1,4 @@
-// wolf:rendered base=wolf-session-start.js set=2.13.0
+// wolf:rendered base=wolf-session-start.js set=2.14.1
 /**
  * Mr.Wolf session-start plugin (шаблон базового набора, спека §5.4).
  *
@@ -56,16 +56,15 @@ const WORKER_BODY = `## using-skills: пассивный режим воркер
 /**
  * Чистая функция инъекции (юнит-тестируемая): по маркеру в транскрипте и
  * agent-id решает, какое тело доставить. null = инъекция не нужна.
- * Fail-safe (m13): битый вход → null, никогда не бросает.
+ * Shape-agnostic (v1 parts / v2 content): части сообщения — `m.parts` ИЛИ
+ * `m.content`. Fail-safe (m13): битый вход → null, никогда не бросает.
  */
 function computeInjection(messages, agentId) {
   try {
     if (!Array.isArray(messages)) return null;
     // H3: идемпотентность — маркер в ЛЮБОМ сообщении транскрипта → не инъекцируем.
-    const seen = messages.some(
-      (m) =>
-        Array.isArray(m?.parts) &&
-        m.parts.some((p) => p?.type === 'text' && String(p.text ?? '').includes(MARKER))
+    const seen = messages.some((m) =>
+      blockList(m).some((p) => p?.type === 'text' && String(p.text ?? '').includes(MARKER))
     );
     if (seen) return null;
     // MAJ-4: worker-* → усечённое тело (без диспетчерского контура using-skills).
@@ -95,9 +94,13 @@ const runWolf = (args) => {
     .catch(() => null);
 };
 
+// Блоки контента сообщения: v1 транскрипт — m.parts, v2 context — m.content.
+const blockList = (message) =>
+  Array.isArray(message?.parts) ? message.parts : Array.isArray(message?.content) ? message.content : [];
+
 // Topic = первые слова первого пользовательского сообщения, для `call --for`.
 const topicOf = (message) =>
-  (message?.parts ?? [])
+  blockList(message)
     .filter((p) => p.type === 'text' && p.text)
     .map((p) => p.text)
     .join(' ')
@@ -106,49 +109,94 @@ const topicOf = (message) =>
     .slice(0, 10)
     .join(' ');
 
+/** MAJ-1: БЕЗ кэша на процесс — каждый запуск без маркера пересчитывает
+ *  recap/call заново (маркер исчез после /clear или compact → снова).
+ *  L2 (worker-*) секции recap/call не трогает вообще. */
+async function buildSections(body, firstUser, agentId) {
+  const sections = [body];
+  if (!(agentId ?? '').startsWith('worker-')) {
+    const topic = topicOf(firstUser);
+    const [recap, call] = await Promise.all([
+      runWolf(['recap']),
+      topic ? runWolf(['call', '--for', topic, '--compact', '600']) : null,
+    ]);
+    if (call?.trim()) sections.unshift(`## Active injections\n${call.trim()}`);
+    if (recap?.trim()) sections.unshift(`## Recap\n${recap.trim()}`);
+  }
+  return sections;
+}
+
+const wrap = (sections) =>
+  `<session_context>\n${MARKER}\n\n${sections.join('\n\n')}\n</session_context>`;
+
 // MAJ-4: уровень сессии читаем из system-промпта (маркер agent-id в теле
 // рамки агента). Порядок хуков на первый запрос — на совести рантайма;
 // пока agent-id не виден, дефолт — полный набор (L0/L1, primary-сессии).
 let currentAgentId = null;
 
-export const WolfSessionStartPlugin = async () => ({
-  'experimental.chat.system.transform': async (_input, output) => {
+// 4.C/P204: один WOLF_SESSION на процесс opencode — и v1-, и v2-фабрика
+// ставят ключ только при отсутствии (спавны наследуют process.env).
+function ensureSession() {
+  if (!process.env.WOLF_SESSION) process.env.WOLF_SESSION = 'opc-' + randomUUID();
+}
+
+// v1-фабрика: loader v1 вызывает `server()` и получает hook-объект.
+async function server() {
+  ensureSession();
+  return {
+    'experimental.chat.system.transform': async (_input, output) => {
+      try {
+        const m = (output?.system ?? []).join('\n').match(AGENT_ID_RE);
+        currentAgentId = m ? m[1] : null;
+      } catch {
+        /* fail-safe */
+      }
+    },
+    'experimental.chat.messages.transform': async (_input, output) => {
+      try {
+        const messages = output?.messages;
+        const body = computeInjection(messages, currentAgentId);
+        if (!body) return;
+        const firstUser = messages.find((m) => m.info?.role === 'user');
+        if (!firstUser?.parts?.length) return;
+
+        const sections = await buildSections(body, firstUser, currentAgentId);
+        const ref = firstUser.parts[0];
+        firstUser.parts.unshift({
+          ...ref,
+          type: 'text',
+          text: wrap(sections),
+        });
+      } catch {
+        // Fail-safe (m13): ошибка плагина не имеет права уронить сессию.
+      }
+    },
+  };
+}
+
+// v2-контракт: loader v2 вызывает `setup(ctx)`. agent-id — из текстов
+// event.system (маркер рамки), первый user — по m.role, инъекция — text-блок
+// в начало content (мутация доходит до модельного запроса).
+async function setup(ctx) {
+  ensureSession();
+  await ctx.session.hook('context', async (event) => {
     try {
-      const m = (output?.system ?? []).join('\n').match(AGENT_ID_RE);
-      currentAgentId = m ? m[1] : null;
-    } catch {
-      /* fail-safe */
-    }
-  },
-  'experimental.chat.messages.transform': async (_input, output) => {
-    try {
-      const messages = output?.messages;
+      const messages = event?.messages;
+      const systemText = (event?.system ?? []).map((s) => s?.text ?? '').join('\n');
+      const m = systemText.match(AGENT_ID_RE);
+      currentAgentId = m ? m[1] : typeof event?.agent === 'string' ? event.agent : null;
       const body = computeInjection(messages, currentAgentId);
       if (!body) return;
-      const firstUser = messages.find((m) => m.info?.role === 'user');
-      if (!firstUser?.parts?.length) return;
+      const firstUser = Array.isArray(messages) ? messages.find((mm) => mm?.role === 'user') : null;
+      if (!Array.isArray(firstUser?.content) || firstUser.content.length === 0) return;
 
-      const sections = [body];
-      // MAJ-1: БЕЗ кэша на процесс — каждый запуск без маркера пересчитывает
-      // recap/call заново (маркер исчез после /clear или compact → снова).
-      if (!(currentAgentId ?? '').startsWith('worker-')) {
-        const topic = topicOf(firstUser);
-        const [recap, call] = await Promise.all([
-          runWolf(['recap']),
-          topic ? runWolf(['call', '--for', topic, '--compact', '600']) : null,
-        ]);
-        if (call?.trim()) sections.unshift(`## Active injections\n${call.trim()}`);
-        if (recap?.trim()) sections.unshift(`## Recap\n${recap.trim()}`);
-      }
-
-      const ref = firstUser.parts[0];
-      firstUser.parts.unshift({
-        ...ref,
-        type: 'text',
-        text: `<session_context>\n${MARKER}\n\n${sections.join('\n\n')}\n</session_context>`,
-      });
+      const sections = await buildSections(body, firstUser, currentAgentId);
+      firstUser.content.unshift({ type: 'text', text: wrap(sections) });
     } catch {
       // Fail-safe (m13): ошибка плагина не имеет права уронить сессию.
     }
-  },
-});
+  });
+}
+
+// РОВНО ОДИН export на файл (контракт loader'а opencode): dual v1/v2 entry.
+export default { id: 'wolf-session-start', setup, server };

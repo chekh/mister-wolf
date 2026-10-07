@@ -2,7 +2,7 @@
 name: using-skills
 description: Мета-скилл: как находить и применять скиллы — 1%-правило, лестница приоритетов, порядок и типы. Use at the start of any session; для воркеров L2 диспетчерский контур отключён (см. ниже).
 ---
-<!-- wolf:rendered base=SKILL.md set=2.13.0 -->
+<!-- wolf:rendered base=SKILL.md set=2.14.1 -->
 
 # using-skills — как пользоваться скиллами
 

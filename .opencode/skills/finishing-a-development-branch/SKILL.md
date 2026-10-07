@@ -2,7 +2,7 @@
 name: finishing-a-development-branch
 description: Используй, когда реализация завершена, все тесты зелёные и нужно решить, как интегрировать работу — ведёт финал через структурированные опции мержа, PR или уборки
 ---
-<!-- wolf:rendered base=SKILL.md set=2.13.0 -->
+<!-- wolf:rendered base=SKILL.md set=2.14.1 -->
 
 # Finishing a Development Branch
 
