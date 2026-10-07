@@ -98,7 +98,8 @@ const { execFileMock } = vi.hoisted(() => {
 vi.mock('child_process', () => ({ execFile: execFileMock }));
 
 // vi.mock хойстится выше импортов — плагин получит замоканный execFile.
-import { WolfPlaybookPlugin } from '../../.opencode/plugins/wolf-router.ts';
+// Тестируем templates/-канон (dogfood-копия .opencode/plugins рендерится из него).
+import WolfPlaybookPlugin from '../../templates/opencode/plugins/wolf-router.ts';
 
 const HEADER = '# Актуальный playbook';
 const makeSystemOutput = (text: string) => ({ system: [text] });
@@ -119,7 +120,7 @@ const getCalls = () => execFileMock.mock.calls.filter((c) => (c[1] as string[])[
 
 describe('wolf-router plugin', () => {
   it('injects playbook for agent-id: apprentice', async () => {
-    const plugin = await WolfPlaybookPlugin({});
+    const plugin = await WolfPlaybookPlugin.server();
     const output = makeSystemOutput('agent-id: apprentice\n\nТы — аналитик-подмастерье. Работай строго по playbook.');
     await plugin['experimental.chat.system.transform']({}, output);
 
@@ -132,7 +133,7 @@ describe('wolf-router plugin', () => {
 
   it('no marker → nothing injected, CLI not spawned', async () => {
     execFileMock.mockClear();
-    const plugin = await WolfPlaybookPlugin({});
+    const plugin = await WolfPlaybookPlugin.server();
     const output = makeSystemOutput('Ты — аналитик. Работай сам, без playbook.');
     await plugin['experimental.chat.system.transform']({}, output);
 
@@ -143,7 +144,7 @@ describe('wolf-router plugin', () => {
 
   // T012: miss канона → инъекция универсального fallback, не пустота
   it('unknown agent-id → fallback playbook injected (no throw)', async () => {
-    const plugin = await WolfPlaybookPlugin({});
+    const plugin = await WolfPlaybookPlugin.server();
     const output = makeSystemOutput('agent-id: net-takogo-agenta-xyz\n\nТы — кто-то неизвестный.');
     await expect(plugin['experimental.chat.system.transform']({}, output)).resolves.toBeUndefined();
 
@@ -155,7 +156,7 @@ describe('wolf-router plugin', () => {
 
   // T012: канон приоритетен — fallback не примешивается к canonical-инъекту
   it('canonical (apprentice) → injected WITHOUT fallback body', async () => {
-    const plugin = await WolfPlaybookPlugin({});
+    const plugin = await WolfPlaybookPlugin.server();
     const output = makeSystemOutput('agent-id: apprentice\n\nТы — аналитик-подмастерье.');
     await plugin['experimental.chat.system.transform']({}, output);
 
@@ -166,7 +167,7 @@ describe('wolf-router plugin', () => {
 
   // T012: worker-hit по второму канону в моке — variant=canonical, без fallback
   it('worker-reviewer → canonical hit, no fallback injected', async () => {
-    const plugin = await WolfPlaybookPlugin({});
+    const plugin = await WolfPlaybookPlugin.server();
     const output = makeSystemOutput('agent-id: worker-reviewer\n\nТы — рецензент.');
     await plugin['experimental.chat.system.transform']({}, output);
 
@@ -180,7 +181,7 @@ describe('wolf-router plugin', () => {
   });
 
   it('two calls in a row → exactly one injected part (idempotent, no double insert)', async () => {
-    const plugin = await WolfPlaybookPlugin({});
+    const plugin = await WolfPlaybookPlugin.server();
     const output = makeSystemOutput('agent-id: apprentice\n\nТы — аналитик-подмастерье.');
     const transform = plugin['experimental.chat.system.transform'];
     await transform({}, output);
@@ -190,7 +191,7 @@ describe('wolf-router plugin', () => {
   });
 
   it('hit: router.log line contains playbook=hit name=<id> variant=canonical injected=yes', async () => {
-    const plugin = await WolfPlaybookPlugin({});
+    const plugin = await WolfPlaybookPlugin.server();
     const output = makeSystemOutput('agent-id: apprentice\n\nТы — аналитик-подмастерье.');
     await plugin['experimental.chat.system.transform']({}, output);
     expect(playbookParts(output)).toHaveLength(1);
@@ -202,7 +203,7 @@ describe('wolf-router plugin', () => {
 
   // T012: miss-ветки больше нет — fallback логируется как hit variant=fallback
   it('fallback: router.log line playbook=hit name=fallback variant=fallback injected=yes', async () => {
-    const plugin = await WolfPlaybookPlugin({});
+    const plugin = await WolfPlaybookPlugin.server();
     const output = makeSystemOutput('agent-id: net-takogo-2-xyz\n\nТы — неизвестный агент.');
     await plugin['experimental.chat.system.transform']({}, output);
 
@@ -218,7 +219,7 @@ describe('P106: TTL 5 мин / ранний стоп / негативный кэ
     vi.useFakeTimers({ toFake: ['Date'] });
     try {
       execFileMock.mockClear();
-      const plugin = await WolfPlaybookPlugin({});
+      const plugin = await WolfPlaybookPlugin.server();
       const transform = plugin['experimental.chat.system.transform'];
       const out1 = makeSystemOutput('agent-id: ttl-probe-p106\n\nТы — проба TTL.');
       await transform({}, out1);
@@ -245,7 +246,7 @@ describe('P106: TTL 5 мин / ранний стоп / негативный кэ
   // (б) ранний стоп: оба кандидата проходят гвард → ровно один get
   it('early stop: два подходящих кандидата → ровно один get-спавн, побеждает первый', async () => {
     execFileMock.mockClear();
-    const plugin = await WolfPlaybookPlugin({});
+    const plugin = await WolfPlaybookPlugin.server();
     const output = makeSystemOutput('agent-id: early-stop-p106\n\nТы — проба раннего стопа.');
     await plugin['experimental.chat.system.transform']({}, output);
 
@@ -257,7 +258,7 @@ describe('P106: TTL 5 мин / ранний стоп / негативный кэ
   // негативный кэш: null кэшируется тем же TTL — повторный miss без спавнов
   it('negative cache: miss → только search (0 get); повтор → ноль новых спавнов', async () => {
     execFileMock.mockClear();
-    const plugin = await WolfPlaybookPlugin({});
+    const plugin = await WolfPlaybookPlugin.server();
     const transform = plugin['experimental.chat.system.transform'];
     const out1 = makeSystemOutput('agent-id: neg-cache-p106\n\nНеизвестный агент.');
     await transform({}, out1);
@@ -274,7 +275,7 @@ describe('P106: TTL 5 мин / ранний стоп / негативный кэ
 
   // (в) ms=/bytes= в router.log — отдельная явная проверка полей
   it('router.log: canonical и fallback строки несут ms=<n> bytes=<n>, bytes > 0', async () => {
-    const plugin = await WolfPlaybookPlugin({});
+    const plugin = await WolfPlaybookPlugin.server();
     const transform = plugin['experimental.chat.system.transform'];
 
     await transform({}, makeSystemOutput('agent-id: apprentice\n\nТы — аналитик-подмастерье.'));
@@ -295,16 +296,16 @@ describe('P106: TTL 5 мин / ранний стоп / негативный кэ
     const saved = process.env.WOLF_SESSION;
     try {
       delete process.env.WOLF_SESSION;
-      await WolfPlaybookPlugin({});
+      await WolfPlaybookPlugin.server();
       expect(process.env.WOLF_SESSION?.startsWith('opc-')).toBe(true);
 
       process.env.WOLF_SESSION = 'custom-key';
-      await WolfPlaybookPlugin({});
+      await WolfPlaybookPlugin.server();
       expect(process.env.WOLF_SESSION).toBe('custom-key');
 
       // per-spawn override удалён: execFile зовётся без env-поля (наследование process.env)
       execFileMock.mockClear();
-      const plugin = await WolfPlaybookPlugin({});
+      const plugin = await WolfPlaybookPlugin.server();
       await plugin['experimental.chat.system.transform'](
         {},
         makeSystemOutput('agent-id: env-probe-p106\n\nПроба env.')
@@ -324,7 +325,7 @@ describe('P106: TTL 5 мин / ранний стоп / негативный кэ
     process.env.WOLF_SKILL_LOG = SKILL_LOG;
     rmSync(SKILL_LOG, { force: true });
     try {
-      const plugin = await WolfPlaybookPlugin({});
+      const plugin = await WolfPlaybookPlugin.server();
       // system.transform с agent-id наполняет lastAgentId
       await plugin['experimental.chat.system.transform'](
         {},

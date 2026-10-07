@@ -18,6 +18,21 @@ export interface PlatformWriteResult {
 }
 
 /**
+ * Статус версии платформы относительно диапазона поддержки Wolf:
+ * 'v1' — поддержан ≥ порога, 'v2' — поддержан, 'unsupported' — ниже порога,
+ * 'absent' — бинарь не найден на PATH, 'unparseable' — вывод не распознан.
+ */
+export type PlatformVersionStatus = 'v1' | 'v2' | 'unsupported' | 'absent' | 'unparseable';
+
+/** Результат detectVersion: статус + опциональные version/raw/message. */
+export interface PlatformVersionInfo {
+  status: PlatformVersionStatus;
+  version?: string;
+  raw?: string;
+  message?: string;
+}
+
+/**
  * Адаптер платформы: новая платформа = один файл-адаптер, init не меняется (спека §4).
  */
 export interface PlatformAdapter {
@@ -35,4 +50,6 @@ export interface PlatformAdapter {
   writeConfig(projectRoot: string, cmd: McpCommand): Promise<PlatformWriteResult>;
   /** Удалить wolf-запись (для --platform replace-семантики); true если удалил. */
   removeWolf(projectRoot: string): Promise<boolean>;
+  /** Детект версии платформы (опционально; init не ломается, если адаптер не умеет). */
+  detectVersion?(projectRoot: string): Promise<PlatformVersionInfo>;
 }

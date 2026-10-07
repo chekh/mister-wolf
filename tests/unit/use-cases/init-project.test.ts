@@ -16,6 +16,7 @@ import {
   PlatformConfig,
   McpCommand,
   PlatformWriteResult,
+  PlatformVersionInfo,
 } from '../../../src/ports/platform-adapter.port.js';
 import type { ModelContext } from '../../../src/ports/base-set-renderer.port.js';
 import { CURRENT_SCHEMA_VERSION } from '../../../src/adapters/fs/schema-version.js';
@@ -33,11 +34,16 @@ class FakeInitializer implements ProjectInitializer {
 class FakeAdapter implements PlatformAdapter {
   writeCalls = 0;
   removeCalls = 0;
+  /** opt-in: без version detectVersion отсутствует — старые тесты не видят поле в outcome. */
+  detectVersion?: (projectRoot: string) => Promise<PlatformVersionInfo>;
   constructor(
     readonly id: string,
     private readonly detected: boolean,
-    private readonly writeResult: PlatformWriteResult = { action: 'written' }
-  ) {}
+    private readonly writeResult: PlatformWriteResult = { action: 'written' },
+    version?: PlatformVersionInfo
+  ) {
+    if (version) this.detectVersion = async () => ({ ...version });
+  }
   detect(): boolean {
     return this.detected;
   }
@@ -297,6 +303,87 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     const report = store.objects.find((o) => o.type === 'note' && (o as { facet?: string }).facet === 'history');
     const needsFix = report!.body.split('## Needs fixing (needs-fix)')[1];
     expect(needsFix).toContain('default_agent=other is taken');
+  });
+
+  it('detectVersion: v2 попадает в outcome и в found-строку отчёта', async () => {
+    writeFileSync(join(dir, 'package.json'), '{}');
+    const oc = new FakeAdapter(
+      'opencode',
+      false,
+      { action: 'written' },
+      {
+        status: 'v2',
+        version: '2.0.24',
+        raw: 'opencode v2.0.24',
+      }
+    );
+    const { deps, store } = makeDeps([oc]);
+    const result = await initProject(deps, dir, { models: MODELS });
+    expect(result.platformOutcomes[0].version).toEqual({ status: 'v2', version: '2.0.24', raw: 'opencode v2.0.24' });
+    const report = store.objects.find((o) => o.type === 'note' && (o as { facet?: string }).facet === 'history');
+    const found = report!.body.split('## Detected (found)')[1].split('## Needs fixing')[0];
+    expect(found).toContain('- opencode: opencode v2.0.24 (v2)');
+  });
+
+  it('detectVersion: unsupported → found-строка + предупреждение в needs-fix', async () => {
+    writeFileSync(join(dir, 'package.json'), '{}');
+    const oc = new FakeAdapter(
+      'opencode',
+      false,
+      { action: 'written' },
+      {
+        status: 'unsupported',
+        version: '1.18.28',
+        raw: '1.18.28',
+      }
+    );
+    const { deps, store } = makeDeps([oc]);
+    await initProject(deps, dir, { models: MODELS });
+    const report = store.objects.find((o) => o.type === 'note' && (o as { facet?: string }).facet === 'history');
+    const found = report!.body.split('## Detected (found)')[1].split('## Needs fixing')[0];
+    const needsFix = report!.body.split('## Needs fixing (needs-fix)')[1];
+    expect(found).toContain('- opencode: 1.18.28 (unsupported)');
+    expect(needsFix).toContain('unsupported');
+  });
+
+  it('detectVersion: unparseable → found-строка + предупреждение в needs-fix', async () => {
+    writeFileSync(join(dir, 'package.json'), '{}');
+    const oc = new FakeAdapter(
+      'opencode',
+      false,
+      { action: 'written' },
+      {
+        status: 'unparseable',
+        raw: 'garbage',
+      }
+    );
+    const { deps, store } = makeDeps([oc]);
+    await initProject(deps, dir, { models: MODELS });
+    const report = store.objects.find((o) => o.type === 'note' && (o as { facet?: string }).facet === 'history');
+    const found = report!.body.split('## Detected (found)')[1].split('## Needs fixing')[0];
+    const needsFix = report!.body.split('## Needs fixing (needs-fix)')[1];
+    expect(found).toContain('- opencode: garbage (unparseable)');
+    expect(needsFix).toContain('could not be parsed');
+  });
+
+  it('detectVersion: absent → found-строка про PATH, needs-fix НЕ блокирует', async () => {
+    writeFileSync(join(dir, 'package.json'), '{}');
+    const oc = new FakeAdapter(
+      'opencode',
+      false,
+      { action: 'written' },
+      {
+        status: 'absent',
+        message: 'spawn opencode ENOENT',
+      }
+    );
+    const { deps, store } = makeDeps([oc]);
+    await initProject(deps, dir, { models: MODELS });
+    const report = store.objects.find((o) => o.type === 'note' && (o as { facet?: string }).facet === 'history');
+    const found = report!.body.split('## Detected (found)')[1].split('## Needs fixing')[0];
+    const needsFix = report!.body.split('## Needs fixing (needs-fix)')[1];
+    expect(found).toContain('- opencode: not found on PATH; assuming v1');
+    expect(needsFix).not.toContain('not found on PATH');
   });
 
   it('npx (§4 п.6): конфиги и набор не пишутся, отчёт НЕ создаётся', async () => {

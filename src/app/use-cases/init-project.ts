@@ -3,7 +3,7 @@ import * as fs from 'fs/promises';
 import { join, basename } from 'path';
 import yaml from 'js-yaml';
 import { ProjectInitializer } from '../../ports/project-initializer.port.js';
-import { PlatformAdapter, McpCommand } from '../../ports/platform-adapter.port.js';
+import { PlatformAdapter, McpCommand, PlatformVersionInfo } from '../../ports/platform-adapter.port.js';
 import { MemoryStore } from '../../ports/memory-store.port.js';
 import { EventLog } from '../../ports/event-log.port.js';
 import { Clock } from '../../ports/clock.port.js';
@@ -74,6 +74,8 @@ export interface PlatformInitOutcome {
   /** F6 (спека 2.1.0 §2.4): имя конфиг-файла платформы + фактические wolf-ключи (проброс из writeConfig). */
   configFile?: string;
   keys?: string[];
+  /** 2.14.1: детект версии opencode (диапазон v1 >= 1.18.29 + v2). */
+  version?: PlatformVersionInfo;
 }
 
 export interface InitProjectResult {
@@ -103,6 +105,30 @@ export async function findInitReport(store: MemoryStore): Promise<MemoryObject |
       INIT_REPORT_TAGS.every((t) => o.tags.includes(t))
   );
   return active.length > 0 ? active[0] : null;
+}
+
+/**
+ * writeConfig + (для opencode) detectVersion — единый outcome обоих call site (§4.4).
+ * Версия добавляется, только если адаптер её умеет и вернул.
+ */
+async function writePlatformOutcome(
+  adapter: PlatformAdapter,
+  baseDir: string,
+  cmd: McpCommand
+): Promise<PlatformInitOutcome> {
+  const r = await adapter.writeConfig(baseDir, cmd);
+  const outcome: PlatformInitOutcome = {
+    platform: adapter.id,
+    action: r.action,
+    reason: r.reason,
+    configFile: r.configFile,
+    keys: r.keys,
+  };
+  if (adapter.id === 'opencode') {
+    const version = await adapter.detectVersion?.(baseDir);
+    if (version) outcome.version = version;
+  }
+  return outcome;
 }
 
 /**
@@ -159,14 +185,7 @@ export async function initProject(
     const wanted = new Set(input.platformChoice);
     for (const adapter of deps.adapters) {
       if (wanted.has(adapter.id)) {
-        const r = await adapter.writeConfig(baseDir, deps.mcpCommand);
-        platformOutcomes.push({
-          platform: adapter.id,
-          action: r.action,
-          reason: r.reason,
-          configFile: r.configFile,
-          keys: r.keys,
-        });
+        platformOutcomes.push(await writePlatformOutcome(adapter, baseDir, deps.mcpCommand));
       } else if (adapter.detect(baseDir)) {
         const removed = await adapter.removeWolf(baseDir);
         platformOutcomes.push({
@@ -181,14 +200,7 @@ export async function initProject(
     // (D2: детекция не гейтит; F4); прочие платформы — по маркерам, не зависящим от рендера
     for (const adapter of deps.adapters) {
       if (adapter.id === 'opencode' || adapter.detect(baseDir)) {
-        const r = await adapter.writeConfig(baseDir, deps.mcpCommand);
-        platformOutcomes.push({
-          platform: adapter.id,
-          action: r.action,
-          reason: r.reason,
-          configFile: r.configFile,
-          keys: r.keys,
-        });
+        platformOutcomes.push(await writePlatformOutcome(adapter, baseDir, deps.mcpCommand));
       }
     }
   }
@@ -261,9 +273,27 @@ function renderInitReportBody(
   versions.push(`schema v${CURRENT_SCHEMA_VERSION}`);
   found.push(`- versions: ${versions.join(', ')}`);
 
+  // 2.14.1: версия opencode (диапазон поддержки v1 >= 1.18.29 + v2)
+  const ocVersion = platformOutcomes.find((o) => o.platform === 'opencode')?.version;
+  if (ocVersion?.status === 'absent') {
+    found.push('- opencode: not found on PATH; assuming v1');
+  } else if (ocVersion) {
+    found.push(`- opencode: ${ocVersion.raw ?? ocVersion.version} (${ocVersion.status})`);
+  }
+
   const needsFix: string[] = [];
   for (const o of platformOutcomes) {
     if (o.reason && o.action !== 'removed') needsFix.push(`- ${o.platform}: ${o.reason}`);
+  }
+  if (ocVersion?.status === 'unsupported') {
+    needsFix.push(
+      `- opencode ${ocVersion.version} is unsupported: Wolf needs opencode v1 >= 1.18.29 or v2 — upgrade opencode`
+    );
+  }
+  if (ocVersion?.status === 'unparseable') {
+    needsFix.push(
+      `- opencode version could not be parsed (${ocVersion.raw || 'empty output'}): Wolf needs v1 >= 1.18.29 or v2`
+    );
   }
   // §4.4 граничный случай: явный выбор без opencode — набор отрендерен, но MCP не подключён (осознанное состояние)
   if (input.platformChoice !== undefined && !input.platformChoice.includes('opencode')) {
