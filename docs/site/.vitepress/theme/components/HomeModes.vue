@@ -17,10 +17,10 @@ const modes = computed(() => [
     status: 'AVAILABLE',
     statusClass: 'st-available',
     cmd: '$ wolf call --for "auth refactor"',
-    input: t({ en: 'the task at hand.', ru: 'тема задачи или ветка — задача сессии.' }),
+    input: t({ en: "the day's task.", ru: 'задача дня.' }),
     output: t({
-      en: 'active rules, lessons and blockers injected at session start.',
-      ru: 'активные правила, уроки и блокеры доставлены в начало сессии.',
+      en: 'the organization opens the day: rules, lessons, blockers.',
+      ru: 'организация открывает день: правила, уроки, блокеры.',
     }),
   },
   {
@@ -30,8 +30,8 @@ const modes = computed(() => [
     cmd: '$ wolf solve "broken links" --save',
     input: t({ en: 'a recurring problem.', ru: 'повторяющаяся проблема.' }),
     output: t({
-      en: 'a solve pack — context, similar lessons, a plan; the outcome is saved back to memory.',
-      ru: 'solve pack — контекст, похожие уроки, план; итог сохраняется в память.',
+      en: 'a solve pack — organized delivery: context, lessons, a plan; outcome saved back.',
+      ru: 'solve pack — поставка решения: контекст, уроки, план; итог в памяти.',
     }),
   },
   {

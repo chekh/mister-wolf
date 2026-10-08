@@ -23,7 +23,7 @@ const inject = computed(() => t({
 <template>
   <section id="sessions" class="wolf-home-section wolf-sessions">
     <p class="wolf-home-label">{{ t({ en: '02 · MEMORY ACROSS SESSIONS', ru: '02 · ПАМЯТЬ МЕЖДУ СЕССИЯМИ' }) }}</p>
-    <h2 class="wolf-home-title">{{ t({ en: 'Two sessions, one memory', ru: 'Две сессии — одна память' }) }}</h2>
+    <h2 class="wolf-home-title">{{ t({ en: 'Two sessions, one organization', ru: 'Две сессии — одна организация' }) }}</h2>
     <div class="wolf-sessions-flow">
       <div class="wolf-sessions-col">
         <span class="wolf-sessions-node" aria-hidden="true" />
@@ -57,8 +57,8 @@ const inject = computed(() => t({
       </div>
     </div>
     <p class="wolf-sessions-takeaway">{{ t({
-      en: 'Experience doesn\u2019t evaporate — it becomes project infrastructure.',
-      ru: 'Опыт не испаряется. Он становится инфраструктурой проекта.'
+      en: 'Agents are temporary. What they learn becomes the project\u2019s organization.',
+      ru: 'Агенты — временные. Их опыт становится организацией проекта.'
     }) }}</p>
   </section>
 </template>

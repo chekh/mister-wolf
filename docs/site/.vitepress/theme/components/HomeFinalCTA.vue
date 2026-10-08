@@ -35,9 +35,9 @@ const t = (s: L): string => (ru.value ? s.ru : s.en)
       <circle cx="29" cy="9" r="3.2" fill="#d43a2f" />
     </svg>
     <p class="wolf-home-label">{{ t({ en: '06 · START', ru: '06 · СТАРТ' }) }}</p>
-    <p class="wolf-finalcta-status">PROJECT MEMORY READY</p>
+    <p class="wolf-finalcta-status">ORGANIZATION READY</p>
     <p class="wolf-finalcta-note">{{
-      t({ en: 'Give your agents a memory.', ru: 'Дайте вашим агентам память.' })
+      t({ en: 'Give your project an organization.', ru: 'Дайте проекту организацию.' })
     }}</p>
     <div class="wolf-finalcta-actions">
       <a
