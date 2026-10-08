@@ -25,4 +25,14 @@ describe('conveyor skills guard (2.15)', () => {
     expect(s).toContain('Маппинг');
     expect(s).toContain('КРАСНОЙ фазы');
   });
+
+  it('wolf-brainstorm v2 outputs requirements anatomy and roadmap triage', () => {
+    const s = read('wolf-brainstorm');
+    expect(s).toContain('requirements.md');
+    expect(s).toContain('[НЕОПРЕДЕЛЕНО');
+    expect(s).toContain('Журнал изменений (CR)');
+    expect(s).toContain('roadmap-триаж');
+    expect(s).toContain('backlog.md');
+    expect(s).toContain('rejected.md');
+  });
 });
