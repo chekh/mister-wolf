@@ -32,7 +32,7 @@ No options beyond `-h, --help`.
 
 ## wolf call
 
-Get active call injections — the cold-start delivery of relevant rules, lessons and call-injections. See [Injections](/guide/core-concepts#injections) for the matching and ranking mechanics.
+Get active call injections — the cold-start delivery of relevant rules, lessons and call-injections. See [Injections](/guide/memory#appendix-injections) for the matching and ranking mechanics.
 
 ```text
 Usage: wolf call [options]

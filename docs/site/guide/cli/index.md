@@ -2,7 +2,7 @@
 
 Quick index of `wolf` commands: the visible surface plus advanced plumbing (hidden from `--help`). Each row links to the command's reference entry; group headings link to the section pages.
 
-Playbook delivery for opencode agents — the `wolf-router` plugin injecting the current playbook into the system prompt — is documented separately: [Router](/guide/router).
+Playbook delivery for opencode agents — the `wolf-router` plugin injecting the current playbook into the system prompt — is documented separately: [Delivery](/guide/delivery).
 
 ## Memory
 
