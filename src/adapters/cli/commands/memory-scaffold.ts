@@ -1,5 +1,6 @@
 import { Command, Argument } from 'commander';
 import { scaffoldFrame, SCAFFOLD_KINDS, type ScaffoldKind } from '../../../app/use-cases/scaffold-agent.js';
+import { scaffoldArtifact } from '../../../app/use-cases/scaffold-artifact.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { resolveCreatedBy, resolveSessionId } from '../../../domain/actor.js';
 import { UserFacingError } from '../../../domain/errors.js';
@@ -13,13 +14,29 @@ export function memoryScaffoldCommand(): Command {
     .option('--persona <text>', 'Agent frame body text (agent only)')
     .option('--model <model>', 'Agent frontmatter model (agent only)')
     .option('--from-playbook <id>', 'Reuse existing playbook id instead of creating a new one')
+    .option('--fix', 'Fix profile for kind=artifact: requirements.md + plan.md only', false)
     .option('--created-by <actor>', 'Creator actor (default: env WOLF_ACTOR, else user:cli)')
     .action(
       async (
         kind: string,
         name: string,
-        options: { persona?: string; model?: string; fromPlaybook?: string; createdBy?: string }
+        options: { persona?: string; model?: string; fromPlaybook?: string; createdBy?: string; fix?: boolean }
       ) => {
+        if (kind !== 'artifact' && options.fix) {
+          throw new UserFacingError('--fix is supported only for kind=artifact');
+        }
+        if (kind === 'artifact') {
+          if (options.persona !== undefined || options.model !== undefined || options.fromPlaybook !== undefined) {
+            throw new UserFacingError('--persona/--model/--from-playbook are not supported for kind=artifact');
+          }
+          const { clock, fs } = createCliContainer(process.cwd());
+          const res = await scaffoldArtifact(
+            { clock, fs, baseDir: process.cwd() },
+            { slug: name, fix: options.fix === true }
+          );
+          for (const f of res.files) console.log(`Created artifact: ${f}`);
+          return;
+        }
         if (kind !== 'agent' && (options.persona !== undefined || options.model !== undefined)) {
           throw new UserFacingError('--persona and --model are supported only for kind=agent');
         }

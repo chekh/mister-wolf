@@ -34,7 +34,7 @@ function isPlaybookNote(pb: MemoryObject | null): pb is MemoryObject {
   );
 }
 
-export const SCAFFOLD_KINDS = ['agent', 'skill', 'command'] as const;
+export const SCAFFOLD_KINDS = ['agent', 'skill', 'command', 'artifact'] as const;
 export type ScaffoldKind = (typeof SCAFFOLD_KINDS)[number];
 
 export const DEFAULT_SCAFFOLD_MODEL = 'zai-coding-plan/glm-5.3';
