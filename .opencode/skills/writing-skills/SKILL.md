@@ -2,7 +2,7 @@
 name: writing-skills
 description: 'Жизненный цикл скиллов Wolf: templates/base → рендер со штампами → sync; таблица трассировки обязательна; граница с skill intake.'
 ---
-<!-- wolf:rendered base=SKILL.md set=2.14.1 -->
+<!-- wolf:rendered base=SKILL.md set=2.15.0 -->
 
 # writing-skills: создание и правка скиллов Wolf
 

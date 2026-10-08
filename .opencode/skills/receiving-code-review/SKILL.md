@@ -2,7 +2,7 @@
 name: receiving-code-review
 description: 'Фидбек владельца и ревью-линз: высший приоритет лестницы, но не слепое внедрение — техническая строгость, проверка возражений, протокол несогласия.'
 ---
-<!-- wolf:rendered base=SKILL.md set=2.14.1 -->
+<!-- wolf:rendered base=SKILL.md set=2.15.0 -->
 
 # receiving-code-review: приём фидбека
 

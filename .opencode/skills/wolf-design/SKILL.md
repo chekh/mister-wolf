@@ -2,7 +2,7 @@
 name: wolf-design
 description: 'Вход: requirements.md (approved) + кодовая база. Выход: design.md — компоненты, контракты кодом (≤10 строк), псевдокод алгоритмов, ADR-карточки, глоссарий. Копипаста реализации запрещена.'
 ---
-<!-- wolf:rendered base=SKILL.md set=2.14.1 -->
+<!-- wolf:rendered base=SKILL.md set=2.15.0 -->
 
 # wolf-design: design.md по requirements.md
 

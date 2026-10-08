@@ -2,7 +2,7 @@
 name: wolf-testplan
 description: 'Вход: requirements.md (approved) + design.md. Выход: test-plan.md — Given/When/Then сценарий на каждый REQ-NN + маппинг на e2e/юнит-файлы. AC переизобретаться не должны.'
 ---
-<!-- wolf:rendered base=SKILL.md set=2.14.1 -->
+<!-- wolf:rendered base=SKILL.md set=2.15.0 -->
 
 # wolf-testplan: test-plan.md по requirements.md
 

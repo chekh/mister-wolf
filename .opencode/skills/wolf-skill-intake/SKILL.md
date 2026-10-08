@@ -2,7 +2,7 @@
 name: wolf-skill-intake
 description: 'Подключение внешнего скилла: поиск (npx skills find, skills.sh) → ревью-линза кандидата → гейт владельца (явное «да») → установка → регистрация tool → откат. Без аппрува владельца установка не идёт.'
 ---
-<!-- wolf:rendered base=SKILL.md set=2.14.1 -->
+<!-- wolf:rendered base=SKILL.md set=2.15.0 -->
 
 # wolf-skill-intake: подключение внешнего скилла
 

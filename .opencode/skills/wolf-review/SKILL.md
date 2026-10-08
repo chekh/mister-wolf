@@ -2,7 +2,7 @@
 name: wolf-review
 description: Мульти-линзовое ревью документов (doc-review): mr-wolf оркестрирует линзы-воркеров, цикл до сходимости. Use when the user asks to review a document, run doc-review, or critique a spec/plan/report.
 ---
-<!-- wolf:rendered base=SKILL.md set=2.14.1 -->
+<!-- wolf:rendered base=SKILL.md set=2.15.0 -->
 
 # wolf-review — мульти-линзовое ревью документов
 

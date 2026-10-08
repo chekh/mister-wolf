@@ -2,7 +2,7 @@
 name: wolf-sdd
 description: 'Используй для исполнения планов реализации с независимыми задачами через субагентов: свежий воркер на каждую задачу через executor-lead + двухстадийное ревью worker-reviewer (соответствие брифу, затем качество).'
 ---
-<!-- wolf:rendered base=SKILL.md set=2.14.1 -->
+<!-- wolf:rendered base=SKILL.md set=2.15.0 -->
 
 # wolf-sdd: разработка через субагентов
 
