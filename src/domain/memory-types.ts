@@ -171,6 +171,10 @@ const CORE_TAXONOMY_DECLS = [
       usage_count: { kind: 'int', default: 0 },
       last_used_at: { kind: 'string', optional: true },
       deprecation_reason: { kind: 'string', optional: true },
+      // Волна 2.15 C4: регистрация подключённых внешних скиллов (wolf-skill-intake).
+      owner_skill: { kind: 'string', optional: true },
+      version: { kind: 'string', optional: true },
+      source_url: { kind: 'string', optional: true },
     },
   },
   {
