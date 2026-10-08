@@ -98,6 +98,13 @@ export default defineConfig({
             ],
           },
           {
+            text: 'PIPELINE',
+            items: [
+              { text: 'Artifact Pipeline', link: '/guide/artifact-pipeline' },
+              { text: 'Skill Intake', link: '/guide/skill-intake' },
+            ],
+          },
+          {
             text: 'CLI REFERENCE',
             items: cliItems,
           },
@@ -151,6 +158,13 @@ export default defineConfig({
               { text: 'Контур поправок', link: '/ru/guide/feedback' },
               { text: 'Агрегация Стюарда', link: '/ru/guide/steward' },
               { text: 'Роутер', link: '/ru/guide/router' },
+            ],
+          },
+          {
+            text: 'КОНВЕЙЕР',
+            items: [
+              { text: 'Конвейер артефактов', link: '/ru/guide/artifact-pipeline' },
+              { text: 'Подключение скиллов', link: '/ru/guide/skill-intake' },
             ],
           },
           {

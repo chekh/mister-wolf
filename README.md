@@ -200,6 +200,8 @@ Mutation attribution: every memory object has an author. Priority: the `--create
 - [Architecture (RU)](docs/guide/architecture.md) — how the system is built
 - [Documentation index (RU)](docs/README.md)
 
+Feature documentation lives in `docs/dev/` as an artifact pipeline (requirements → design → plan → test-plan): `wolf scaffold artifact` creates the feature folder, `wolf sync` maintains INDEX.md, and `wolf doctor` lints the documents. External skills are onboarded through skill intake: search → review → owner gate → `npx skills add` → registration in Wolf memory.
+
 ## Development
 
 TypeScript (strict, ESM), Node 22, vitest. Verification: `npm run check` (format + lint + test + build); e2e suite: `npm run e2e`. Architecture: ports & adapters — `src/domain` · `src/app/use-cases` · `src/adapters` · `src/ports`.

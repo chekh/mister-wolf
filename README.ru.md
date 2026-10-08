@@ -217,6 +217,8 @@ wolf learn status                    # здоровье сигнального �
 - [Architecture](docs/guide/architecture.md) — устройство системы
 - [Индекс документации](docs/README.md)
 
+Документация фич живёт в `docs/dev/` как конвейер артефактов (requirements → design → plan → test-plan): `wolf scaffold artifact` создаёт папку фичи, `wolf sync` ведёт INDEX.md, `wolf doctor` линтит документы. Внешние скиллы подключаются через skill intake: поиск → ревью → гейт владельца → `npx skills add` → регистрация в памяти Wolf.
+
 ## Разработка
 
 TypeScript (strict, ESM), Node 22, vitest. Верификация: `npm run check` (format + lint + test + build); e2e-набор: `npm run e2e`. Архитектура — ports & adapters: `src/domain` · `src/app/use-cases` · `src/adapters` · `src/ports`.
