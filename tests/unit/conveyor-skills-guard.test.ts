@@ -44,4 +44,14 @@ describe('conveyor skills guard (2.15)', () => {
     expect(s).toContain('истина завершённости');
     expect(s).toContain('file:line');
   });
+
+  it('wolf-review v2 reviews file pairs with owner gates', () => {
+    const s = read('wolf-review');
+    expect(s).toContain('одна пара файлов');
+    expect(s).toContain('plan.md ↔ design.md');
+    expect(s).toContain('Гейты');
+    expect(s).toContain('ADR');
+    expect(s).toContain('после аппрува предыдущей');
+    expect(s).toContain('review.md');
+  });
 });
