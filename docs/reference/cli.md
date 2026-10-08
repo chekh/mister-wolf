@@ -1143,7 +1143,8 @@ Usage: wolf scaffold [options] <kind> <name>
 Scaffold opencode frame (agent|skill|command) + playbook in Wolf memory
 
 Arguments:
-  kind                  Frame kind (choices: "agent", "skill", "command")
+  kind                  Frame kind (choices: "agent", "skill", "command",
+                        "artifact")
   name                  Frame name
 
 Options:
@@ -1151,6 +1152,8 @@ Options:
   --model <model>       Agent frontmatter model (agent only)
   --from-playbook <id>  Reuse existing playbook id instead of creating a new
                         one
+  --fix                 Fix profile for kind=artifact: requirements.md +
+                        plan.md only (default: false)
   --created-by <actor>  Creator actor (default: env WOLF_ACTOR, else user:cli)
   -h, --help            display help for command
 ```

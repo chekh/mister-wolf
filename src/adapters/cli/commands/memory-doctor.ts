@@ -1,13 +1,17 @@
 import { Command } from 'commander';
 import { join, sep } from 'path';
-import { existsSync, realpathSync } from 'fs';
+import { existsSync, readdirSync, realpathSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { runDoctor } from '../../../app/use-cases/doctor.js';
+import { runArtifactLint } from '../../../app/use-cases/lint-artifacts.js';
 import { ProjectsRegistry } from '../../../adapters/fs/projects-registry.js';
 import { wolfUserConfigDir } from '../../../adapters/fs/user-config.js';
 import { readSchemaVersion } from '../../../adapters/fs/schema-version.js';
+import { artifactFs } from '../../../adapters/fs/artifact-fs.js';
+import { templatesRoot } from '../../../adapters/render/templates-root.js';
 import { PLATFORM_ADAPTERS } from '../../../adapters/platforms/index.js';
+import { createCliContainer } from '../../../bootstrap/container.js';
 import { safeCwd } from '../cli-entry.js';
 
 /**
@@ -81,6 +85,31 @@ export function memoryDoctorCommand(): Command {
       if (report.pruned.length > 0) {
         console.log();
         console.log(`Pruned ${report.pruned.length} dead entr${report.pruned.length === 1 ? 'y' : 'ies'}.`);
+      }
+
+      const cwd = safeCwd();
+      if (existsSync(join(cwd, 'docs', 'dev'))) {
+        const { store } = createCliContainer(cwd);
+        const toolOwners = new Set<string>();
+        for (const t of await store.list({ type: 'tool' })) {
+          // archived-тулы не гасят призрака: гасят только живые регистрации (контракт e2e intake)
+          if (t.status === 'archived') continue;
+          const owner = (t as { owner_skill?: string }).owner_skill;
+          if (typeof owner === 'string' && owner !== '') toolOwners.add(owner);
+        }
+        const baseSkillsDir = join(templatesRoot(), 'skills');
+        const baseSkillNames = new Set(existsSync(baseSkillsDir) ? readdirSync(baseSkillsDir) : []);
+        const findings = await runArtifactLint({
+          fs: artifactFs(),
+          baseDir: cwd,
+          toolOwners,
+          baseSkillNames,
+        });
+        if (findings.length > 0) {
+          console.log();
+          console.log('## Artifacts (docs/dev)');
+          for (const f of findings) console.log(`! ${f.file}: ${f.message}`);
+        }
       }
     });
 }
