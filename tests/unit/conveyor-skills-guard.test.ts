@@ -54,4 +54,11 @@ describe('conveyor skills guard (2.15)', () => {
     expect(s).toContain('после аппрува предыдущей');
     expect(s).toContain('review.md');
   });
+
+  it('wolf-sdd/wolf-execute consume plan checkboxes and test-plan validation', () => {
+    expect(read('wolf-sdd')).toContain('сделано → коммит');
+    expect(read('wolf-sdd')).toContain('test-plan.md');
+    expect(read('wolf-execute')).toContain('FLAT-fallback');
+    expect(read('wolf-execute')).toContain('сделано → коммит');
+  });
 });
