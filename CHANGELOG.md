@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.15.0] - 2026-10-08
+
+### Added — artifact pipeline & skill intake (wave 2.15)
+
+- `wolf scaffold artifact <slug>`: creates a feature folder `docs/dev/<date>-<slug>/` with requirements/design/plan/test-plan templates; profiles `full` and `--fix`.
+- `wolf sync` generates `docs/dev/INDEX.md` (feature table with a "Waves" column) and per-part `_index.md` files; idempotent.
+- `wolf doctor` gains a `## Artifacts (docs/dev)` section — pipeline lint: duplicate REQ/NFR ids, broken links, REQ without AC/Source, `[НЕОПРЕДЕЛЕНО]` in approved docs, CR without downstream, downstream status resets, requirement/roadmap duplicates, readiness, ghost skills.
+- Pipeline skills: `wolf-design` and `wolf-testplan` (new); `wolf-brainstorm`/`wolf-plan`/`wolf-review` v2 with artifact inputs/outputs; `wolf-sdd`/`wolf-execute` gain checkboxes + test-plan validation; disciplinary axis: `receiving-code-review`, `writing-skills` (seed) plus a revision of TDD/verification/worktrees/finishing skills.
+- Skill intake: `wolf-skill-intake` skill + tool fields `owner_skill`/`version`/`source_url` for registering external skills in the tool registry.
+- Docs (EN+RU): artifact-pipeline and skill-intake guides, roadmap migrated to `docs/dev/roadmap/`, legacy wave folders frozen.
+
+### Upgrade notes
+
+- Migrations: none.
+
 ## [2.14.1] - 2026-10-07
 
 ### Fixed — OpenCode v2 compatibility

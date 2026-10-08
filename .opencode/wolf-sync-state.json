@@ -1,18 +1,18 @@
 {
   "files": {
-    ".opencode/skills/finishing-a-development-branch/SKILL.md": "0af9970d2711ed7b39650cd8788a0a3d9978dfd7c024a09f662b1845cca93b92",
+    ".opencode/skills/finishing-a-development-branch/SKILL.md": "f34ce322d89666aeabe879313f9b1e927803e9cf7e641e083b3f0ad99d5b0612",
     ".opencode/skills/requesting-code-review/SKILL.md": "98bf127105610363d85df9544718e86625460940391972a08c1d68a043e25aaa",
-    ".opencode/skills/test-driven-development/SKILL.md": "24bcacc0435983428e94b288a712f8fb8dc149f7059e544f76192d487a2e33ac",
-    ".opencode/skills/using-git-worktrees/SKILL.md": "e8dae618d1e4a7718f5180f88590b74afb1371b0df8bf99afac1167c570978df",
+    ".opencode/skills/test-driven-development/SKILL.md": "b5d1903b2da7a3c031c34d32595414c049a154da4ab5b31a6b4f4b5e1733b09f",
+    ".opencode/skills/using-git-worktrees/SKILL.md": "ace03d3e6eeb9fe2c027e8c6828394fff6e0bf245e4967ebaae5773e2871179d",
     ".opencode/skills/using-skills/SKILL.md": "55a86156d189eaab3fe6b5e569f46002df9bc9dc885c17c66927490c40c16aa5",
-    ".opencode/skills/verification-before-completion/SKILL.md": "b7612e129bcc6d7946f3dc848607a6ef731ad576ef9404e15c2c994af81768fa",
-    ".opencode/skills/wolf-brainstorm/SKILL.md": "3f0d9a3c8f039cf7a26c31e5c301e9c5bf44dc81c5799f70278489fd6cd88008",
+    ".opencode/skills/verification-before-completion/SKILL.md": "7e17e7aed01eb90ad93ca4de1194813233c38f22dfe6f84218fa62fc30eadc78",
+    ".opencode/skills/wolf-brainstorm/SKILL.md": "3d8b30f6ac6810565cf40ae1026171b6d0fe266522839477281ecd4993f1eb77",
     ".opencode/skills/wolf-debug/SKILL.md": "d7a3707e5b4da3eb973e0594dff499afe0936b223403910b764a240a633a04b5",
-    ".opencode/skills/wolf-execute/SKILL.md": "e037d4c51b114d0e8c76985a16a1a3e433457413a74cc3b63a7842adbb8f213b",
+    ".opencode/skills/wolf-execute/SKILL.md": "e5bd91e3b4484670fd35755d9e1cdcd61472f37761492f44d33fcde5b4c65adf",
     ".opencode/skills/wolf-handoff/SKILL.md": "226ab64109af6b982b84773f0673b232f720d4b04065654870b87298d5b94ca9",
-    ".opencode/skills/wolf-plan/SKILL.md": "390d99fdcf7466df18ac07455494b5776453ed2b95aba7a8f235c0f9cca6bf73",
-    ".opencode/skills/wolf-review/SKILL.md": "d007f0d5594c3ea6cb345161873f4a9ce06fc9897a7e6329ec40c4f262e6e055",
-    ".opencode/skills/wolf-sdd/SKILL.md": "d0b09e13a85fb1ff0d8ea4e107b154e28c0e93a0e7a8ade82cea0c101f34cbe3",
+    ".opencode/skills/wolf-plan/SKILL.md": "21ccf6b8161706e26da825792406ecd2624b95d123fed09298cf2b6afe44a5c3",
+    ".opencode/skills/wolf-review/SKILL.md": "c779d0c4e7fa5f6f57a95f54e32456fd6f0f7df32960b9b48bb281ac4fe86347",
+    ".opencode/skills/wolf-sdd/SKILL.md": "5e3d0fdf54cc66bb359647c80377cd9822a78049f756779d4b84804c6200566f",
     ".opencode/command/complain.md": "b393e68afb7f6d9a4995a9bef63691ab69a0e69b77efa2587fbe4096b140d12f",
     ".opencode/command/doc-review.md": "17d2b85148319b251185791eaf6ca9941716033a020b3a250db5be0e3675f728",
     ".opencode/agents/executor-lead.md": "5bc7380bb1515dbe954f56f156522166c9f1c205346c6f503d70e0e440648cb2",
@@ -23,6 +23,11 @@
     ".opencode/agents/worker-reviewer.md": "b2b92b76914235d6a17f2e59e52e1ca9864e5da5fb8512df0d1873afdfc6d34b",
     ".opencode/command/analyze-doc.md": "b43c0011bea15ad239cbdfd62d1408a8ec0647680e10f8a7ef46d992c026cadf",
     ".opencode/plugins/wolf-router.ts": "5b7b540610323d914f99764c028bcba547b9d43a6044501698b2dfe1532b95d1",
-    ".opencode/plugins/wolf-session-start.js": "27fe285081c5097e802f9b340912a078a9a38846b25285919fd35f952081145b"
+    ".opencode/plugins/wolf-session-start.js": "27fe285081c5097e802f9b340912a078a9a38846b25285919fd35f952081145b",
+    ".opencode/skills/receiving-code-review/SKILL.md": "99c420b053243acb13a1b6626237ff4f9a078df2ecfef3563a96744bf585ef20",
+    ".opencode/skills/wolf-design/SKILL.md": "2a9f3f28ac21618b63b59c697ca880a6f3c9b60869a5a7085fddff33b342303f",
+    ".opencode/skills/wolf-skill-intake/SKILL.md": "3dde08db12df5de22238636fa748d135e7b67b701f7bd84f1318eb15ac0447df",
+    ".opencode/skills/wolf-testplan/SKILL.md": "297c975a6b7cb1f2b6c18abbb7441f833da997aa140d6eeaa5121172c1d2cd6d",
+    ".opencode/skills/writing-skills/SKILL.md": "eba576b8b5cb914654b233ea377637aecbf261cb5c2be8bbb54ae14038a675a7"
   }
 }
