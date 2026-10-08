@@ -35,4 +35,13 @@ describe('conveyor skills guard (2.15)', () => {
     expect(s).toContain('backlog.md');
     expect(s).toContain('rejected.md');
   });
+
+  it('wolf-plan v2 consumes requirements+design; checkbox is source of truth', () => {
+    const s = read('wolf-plan');
+    expect(s).toContain('design.md');
+    expect(s).toContain('единственный источник контрактов');
+    expect(s).toContain('- [ ]');
+    expect(s).toContain('истина завершённости');
+    expect(s).toContain('file:line');
+  });
 });
