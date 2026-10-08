@@ -15,11 +15,12 @@ The composition below is the catalog of `templates/base/` in the package.
 | `worker-researcher`  | Investigates code, documents and the web against one question; returns findings with sources and confidence                                                       |
 | `worker-reviewer`    | Reviews workers' code and documents against the brief requirements; verdict via the VERDICT/SUMMARY contract                                                      |
 
-## Skills — 13 → `.opencode/skills/`
+## Skills — 18 → `.opencode/skills/`
 
 | Skill                            | Purpose                                                                |
 | -------------------------------- | ---------------------------------------------------------------------- |
 | `finishing-a-development-branch` | choose how to integrate finished work — merge, PR or cleanup           |
+| `receiving-code-review`          | receive review feedback with rigor, no performative agreement          |
 | `requesting-code-review`         | verify work against requirements before merging                        |
 | `test-driven-development`        | red-green-refactor discipline before any implementation code           |
 | `using-git-worktrees`            | isolated worktrees for feature work and plan execution                 |
@@ -27,11 +28,15 @@ The composition below is the catalog of `templates/base/` in the package.
 | `verification-before-completion` | run the checks before any "done" claim — evidence first                |
 | `wolf-brainstorm`                | structured dialogue before any creative work                           |
 | `wolf-debug`                     | root-cause phases before proposing fixes                               |
+| `wolf-design`                    | design.md produced from requirements.md before implementation          |
 | `wolf-execute`                   | flat linear plan execution without subagents (fallback mode)           |
 | `wolf-handoff`                   | continue an overloaded session in a fresh one, without losing progress |
 | `wolf-plan`                      | zero-context plans where every task is a self-sufficient worker brief  |
 | `wolf-review`                    | multi-lens document review loop                                        |
 | `wolf-sdd`                       | subagent-driven development for plans with independent tasks           |
+| `wolf-skill-intake`              | connect external skills through the Wolf quality loop, owner-gated     |
+| `wolf-testplan`                  | test-plan.md with Given/When/Then per requirement                      |
+| `writing-skills`                 | Wolf skill lifecycle: create, edit, verify                             |
 
 ## Commands — 3 → `.opencode/command/`
 
