@@ -1,5 +1,7 @@
 # Getting Started
 
+Mr. Wolf is a permanent project organization for temporary AI agents: a coordinator owns the goal, executors deliver, workers run in clean sessions — and typed memory, a complaint-driven learning loop and a grown tool library carry the organization from session to session. Locally, in your repo, CLI + MCP.
+
 ## Requirements
 
 - **Node.js >= 22** (Node 22 or 24).
@@ -38,7 +40,7 @@ Try-out mode creates project memory but **never writes MCP configs** — npx mod
 
 ## Your first session
 
-The cold-start ritual: pull injections, check the project state, do the work, write back what you learned.
+The cold-start ritual: pull injections, check the project state, do the work, write back what you learned. `call` injects the project's active organization state: rules, lessons, blockers.
 
 ```bash
 wolf call                # cold-start: active injections for this session
@@ -57,13 +59,15 @@ wolf recap               # summary of active project memory
 
 Choosing a type is now a choice of **seven** (it used to be 26). The old question "which of the 26 types is this?" became "is this one of the six special ones? If not — `note` plus a facet." See [Memory Model](/guide/memory).
 
-The whole command surface of 2.13 is five verbs:
+The memory surface is five verbs:
 
 - `add` — write an object;
 - `get` — read one object by id;
 - `edit` — change title/body;
 - `search` / `list` — find objects;
 - `archive` — retire an object.
+
+The full CLI goes beyond memory — its commands are organized in groups; see the [CLI Reference](/guide/cli/).
 
 Key flags of `wolf add` (see the [CLI reference](/guide/cli/memory#wolf-add) for the full list):
 
@@ -101,8 +105,8 @@ Everything is local, inside your project's `.wolf/` directory:
 
 ## Next steps
 
+- [Organization & Council](/guide/organization) — the L0/L1/L2 roles, the working cycle, the council for ambiguous calls.
 - [Memory Model](/guide/memory) — the seven types, facets, thread statuses, reading pre-2.13 data.
-- [Core Concepts](/guide/core-concepts) — memory objects, lifecycle and governance.
 - [CLI Reference](/guide/cli/) — every command and subcommand.
 - [MCP Integration](/guide/mcp) — connecting agents via MCP.
 - [Configuration](/guide/configuration) — `.wolf/config.yaml`, facet vocabulary, storage layout.
