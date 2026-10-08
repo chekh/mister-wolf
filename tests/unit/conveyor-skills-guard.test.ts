@@ -61,4 +61,15 @@ describe('conveyor skills guard (2.15)', () => {
     expect(read('wolf-execute')).toContain('FLAT-fallback');
     expect(read('wolf-execute')).toContain('сделано → коммит');
   });
+
+  it('discipline axis: seeds carry trace tables, revisions reference pipeline', () => {
+    expect(read('receiving-code-review')).toContain('Трассировка адаптации');
+    expect(read('receiving-code-review')).toContain('уроки фидбека');
+    expect(read('writing-skills')).toContain('Трассировка адаптации');
+    expect(read('writing-skills')).toContain('intake');
+    expect(read('test-driven-development')).toContain('КРАСНОЙ фазы');
+    expect(read('verification-before-completion')).toContain('переворота чекбокса');
+    expect(read('using-git-worktrees')).toContain('.worktrees/<имя-задачи>');
+    expect(read('finishing-a-development-branch')).toContain('trunk-based');
+  });
 });

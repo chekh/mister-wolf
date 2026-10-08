@@ -28,15 +28,15 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
   });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-  it("создаёт полный набор: 6 агентов, 15 скиллов, 3 команды, 2 плагина + 6 seeded playbook'ов (§11.1)", () => {
+  it("создаёт полный набор: 6 агентов, 17 скиллов, 3 команды, 2 плагина + 6 seeded playbook'ов (§11.1)", () => {
     const res = runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
     expect(res.status).toBe(0);
 
     // 24 файла (6+13+3+2) + AGENTS.md в корне (onboarding v2 §4.2) созданы + 6 playbook'ов посеяны;
-    // F5 (§2.3): 15 скиллов печатаются как `[skill] …` — в счётчике `- base set:` их больше нет
+    // F5 (§2.3): 17 скиллов печатаются как `[skill] …` — в счётчике `- base set:` их больше нет
     const created = (res.stdout.match(/- base set: \S+ created/g) ?? []).length;
     expect(created).toBe(18);
-    expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(15);
+    expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(17);
     expect(res.stdout).toMatch(/- base set: AGENTS\.md created/);
 
     const agents = readdirSync(join(dir, '.opencode/agents')).filter((f) => f.endsWith('.md'));
@@ -45,7 +45,7 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
     const skills = readdirSync(join(dir, '.opencode/skills')).filter((d) =>
       existsSync(join(dir, '.opencode/skills', d, 'SKILL.md'))
     );
-    expect(skills).toHaveLength(15);
+    expect(skills).toHaveLength(17);
 
     const commands = readdirSync(join(dir, '.opencode/command')).filter((f) => f.endsWith('.md'));
     expect(commands).toHaveLength(3);
