@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.15.2] - 2026-10-09
+
+### Changed — expert revision of the skill set + governance consistency
+
+- All 18 base skills rewritten per the 2026-10-09 external expert review, integrated with the owner-approved point-by-point verdicts: process routing map; FULL/LITE/FIX process scaling with a misclassification escalation protocol (the mode is changed only by L1; "approved scope" does not block escalation); deterministic triggers for mandatory process skills (wolf-brainstorm on new needs, wolf-debug on unexpected behavior, verification-before-completion on completion claims) plus a break-glass rule: "if in doubt whether a skill applies — load and check; you are not obliged to use an unfitting skill."
+- Review contracts: verdicts bound to artifact revision; review-budget exhaustion yields UNRESOLVED (never approval); INCONCLUSIVE where inputs are missing; conditional security/trust lens whose start/skip decision is recorded in review.md.
+- Execution discipline: TDD keeps RED-before-GREEN for new behavior and bugfixes, allows characterization tests for existing behavior, and treats code-first for new behavior as a documented deviation routed through test-quality review (DONE_WITH_CONCERNS minimum); verification switches to freshness-based evidence (revision + dirty-state digest), the receiver cross-checks evidence revision before the verdict, and "an executor's report is not proof" is restored as a red flag; git operations consolidated at L1 (workers never commit).
+- Governance consistency: worker-reviewer playbook v2 (narrow lens mandates instead of forced six zones, unified Critical/Major/Minor scale, APPROVED/CHANGES_REQUIRED/INCONCLUSIVE, "mark out-of-mandate findings, don't stay silent"); worker-implementer playbook (task_id, RESULT statuses DONE/DONE_WITH_CONCERNS/NEEDS_CONTEXT/BLOCKED, EVIDENCE contract, commits stay at L1); L0 frame acceptance tied to ACCEPTANCE criteria and fresh evidence; L2 reviewer frame aligned (INCONCLUSIVE + mark-don't-silence); common contracts and the assigned methodology delivered in lead briefs.
+- Delivery truth: "highest version" resolution wording replaced everywhere with the actual mechanism (current non-superseded playbook via `--hide-superseded`, owner_skill guard, universal plugin fallback — router tests green); the session-start plugin injection synced with the new using-skills (the old 1%-rule body removed); worktree memory documented as task-local (`.wolf/` resolves from cwd; state moves via wolf-handoff, not shared directories); AGENTS.md taxonomy fixed (`--type blocker` → thread with a blocked status per the actual CLI) and CLI paths corrected.
+- Tests: guard/render tests re-anchored to new-edition invariants (conveyor-skills-guard, intake-skill-guard, base-set-init, plugin-injection); full `npm run check` green; E2E suite green (46 files / 182 tests).
+
+### Upgrade notes
+
+- Migrations: none. Frames, playbooks and skills in initialized projects update via `wolf sync` with this release. Seeded playbook copies inside Wolf memory (for example, the lens playbook v1) are superseded by the shipped files; re-sync them through the Steward on the next mutation cycle.
+
 ## [2.15.1] - 2026-10-09
 
 ### Changed — positioning: a permanent project organization, not a memory utility
