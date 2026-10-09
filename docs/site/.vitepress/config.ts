@@ -37,7 +37,8 @@ const ruCliItems = [
 
 export default defineConfig({
   title: 'Mr. Wolf',
-  description: 'Local-first project memory for AI coding agents.',
+  description:
+    'Mr. Wolf turns temporary AI coding agents into a permanent project organization: typed memory, work processes, governed learning — local-first, CLI + MCP.',
   base: '/mister-wolf/',
   // VitePress does not apply `base` to head links — hardcode it for GitHub Pages
   head: [
@@ -48,23 +49,23 @@ export default defineConfig({
     // Social metadata (absolute URLs required by OG/Twitter crawlers)
     ['meta', { property: 'og:site_name', content: 'Mr. Wolf' }],
     ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:title', content: 'Mr. Wolf — Local-first project memory for AI coding agents' }],
+    ['meta', { property: 'og:title', content: 'Mr. Wolf — a permanent project organization for temporary AI agents' }],
     [
       'meta',
       {
         property: 'og:description',
-        content: "Agents forget. Mr. Wolf doesn't. Local-first memory for continuous agent work — CLI + MCP.",
+        content: "Agents are temporary. Your project's organization isn't. Local-first, CLI + MCP.",
       },
     ],
     ['meta', { property: 'og:image', content: `${SITE_URL}mark/og-image.png` }],
     ['meta', { property: 'og:url', content: SITE_URL }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
-    ['meta', { name: 'twitter:title', content: 'Mr. Wolf — Local-first project memory for AI coding agents' }],
+    ['meta', { name: 'twitter:title', content: 'Mr. Wolf — a permanent project organization for temporary AI agents' }],
     [
       'meta',
       {
         name: 'twitter:description',
-        content: "Agents forget. Mr. Wolf doesn't. Local-first memory for continuous agent work — CLI + MCP.",
+        content: "Agents are temporary. Your project's organization isn't. Local-first, CLI + MCP.",
       },
     ],
     ['meta', { name: 'twitter:image', content: `${SITE_URL}mark/og-image.png` }],
@@ -88,13 +89,15 @@ export default defineConfig({
             items: [{ text: 'Getting Started', link: '/guide/getting-started' }],
           },
           {
+            text: 'WHY WOLF',
+            items: [{ text: 'Organization & Council', link: '/guide/organization' }],
+          },
+          {
             text: 'CONCEPTS',
             items: [
-              { text: 'Core Concepts', link: '/guide/core-concepts' },
               { text: 'Memory Model', link: '/guide/memory' },
-              { text: 'Feedback Loop', link: '/guide/feedback' },
-              { text: 'Steward Aggregation', link: '/guide/steward' },
-              { text: 'Router', link: '/guide/router' },
+              { text: 'Learning Loop', link: '/guide/feedback' },
+              { text: 'Delivery & Trust', link: '/guide/delivery' },
             ],
           },
           {
@@ -105,12 +108,12 @@ export default defineConfig({
             ],
           },
           {
-            text: 'CLI REFERENCE',
-            items: cliItems,
-          },
-          {
             text: 'BASE SET',
             items: [{ text: 'Base Set', link: '/guide/base-set' }],
+          },
+          {
+            text: 'CLI REFERENCE',
+            items: cliItems,
           },
           {
             text: 'MCP',
@@ -121,7 +124,7 @@ export default defineConfig({
             items: [
               { text: 'Configuration', link: '/guide/configuration' },
               { text: 'Transfer & Multi-Project', link: '/guide/transfer' },
-              { text: 'Migration to 2.13', link: '/guide/migration-2.13' },
+              { text: 'Migration to 2.13 (historical)', link: '/guide/migration-2.13' },
               { text: 'Telemetry', link: '/guide/telemetry' },
               { text: 'Troubleshooting', link: '/guide/troubleshooting' },
             ],
@@ -137,6 +140,8 @@ export default defineConfig({
     ru: {
       label: 'Русский',
       lang: 'ru',
+      description:
+        'Mr. Wolf превращает временных AI-агентов в постоянную проектную организацию: типизированная память, рабочие процессы, управляемое обучение — local-first, CLI + MCP.',
       themeConfig: {
         nav: [
           { text: 'Руководство', link: '/ru/guide/getting-started', activeMatch: '/ru/guide/' },
@@ -151,13 +156,15 @@ export default defineConfig({
             items: [{ text: 'Начало работы', link: '/ru/guide/getting-started' }],
           },
           {
+            text: 'ПОЧЕМУ WOLF',
+            items: [{ text: 'Организация и консилиум', link: '/ru/guide/organization' }],
+          },
+          {
             text: 'КОНЦЕПЦИИ',
             items: [
-              { text: 'Основные концепции', link: '/ru/guide/core-concepts' },
               { text: 'Модель памяти', link: '/ru/guide/memory' },
-              { text: 'Контур поправок', link: '/ru/guide/feedback' },
-              { text: 'Агрегация Стюарда', link: '/ru/guide/steward' },
-              { text: 'Роутер', link: '/ru/guide/router' },
+              { text: 'Контур обучения', link: '/ru/guide/feedback' },
+              { text: 'Доставка и доверие', link: '/ru/guide/delivery' },
             ],
           },
           {
@@ -168,12 +175,12 @@ export default defineConfig({
             ],
           },
           {
-            text: 'СПРАВОЧНИК CLI',
-            items: ruCliItems,
-          },
-          {
             text: 'БАЗОВЫЙ НАБОР',
             items: [{ text: 'Базовый набор', link: '/ru/guide/base-set' }],
+          },
+          {
+            text: 'СПРАВОЧНИК CLI',
+            items: ruCliItems,
           },
           {
             text: 'MCP',
@@ -184,7 +191,7 @@ export default defineConfig({
             items: [
               { text: 'Конфигурация', link: '/ru/guide/configuration' },
               { text: 'Перенос и мультипроектность', link: '/ru/guide/transfer' },
-              { text: 'Миграция на 2.13', link: '/ru/guide/migration-2.13' },
+              { text: 'Миграция на 2.13 (historical)', link: '/ru/guide/migration-2.13' },
               { text: 'Телеметрия', link: '/ru/guide/telemetry' },
               { text: 'Решение проблем', link: '/ru/guide/troubleshooting' },
             ],

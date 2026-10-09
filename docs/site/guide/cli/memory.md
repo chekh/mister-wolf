@@ -218,7 +218,7 @@ Hidden from `wolf --help`, alive for scripts and the complaint loop:
 
 ### wolf transition
 
-`wolf transition <id> <status> [--actor …]` — the full lifecycle status matrix (see [lifecycle transitions](/guide/core-concepts#lifecycle)); `archive` covers the common exit.
+`wolf transition <id> <status> [--actor …]` — the full lifecycle status matrix (see [lifecycle transitions](/guide/memory#appendix-object-lifecycle)); `archive` covers the common exit.
 
 ### wolf rebuild-index
 

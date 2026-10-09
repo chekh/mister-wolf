@@ -4,25 +4,30 @@
 
 ![Mr. Wolf logo](docs/Mr.%20Wolf.png)
 
-> **"I solve problems."**
->
 > **Memory is the carrier. Processes are the essence. Agents are the shape. Tools are the hands.**
 > And the hands accumulate: every useful script becomes a permanent project resource.
+>
+> **"I solve problems."**
 
-**Concept version:** 3.0 · Status: opencode-first, roadmap v3 Phases A–B implemented.
+**Concept version:** 3.3.1 · Status: opencode-first, roadmap v3 Phases A–B implemented.
 
 ## What is Wolf
 
-Mr. Wolf is a local-first layer of memory, processes, agents and tools for AI coding: a single source of truth that agents write their experience to and read context from. It is not an orchestrator and not yet another agent — it is a substrate under any agent. Accumulation instead of evaporation: decisions, lessons, tools and processes stay with the project after the session and make the next task cheaper. The full picture is in the [concept v3 (RU)](docs/concept/concept.md).
+Mr. Wolf is a permanent project organization assembled from temporary AI agents: a coordinator (L0) owns the goal and accepts the result, an executor (L1) supplies context and dispatches, workers (L2) run single tasks in clean sessions. Typed memory, a complaint-driven learning loop and a library of accumulated tools carry the organization from session to session — a new session starts from the project's state, not from zero. Local-first: everything lives in your repo, driven by CLI + MCP. We run our own development through this organization daily. The full picture is in the [concept v3 (RU)](docs/concept/concept.md).
 
 ## Problems Wolf solves
 
-| #   | Problem                                  | Symptom                                                                        |
-| --- | ---------------------------------------- | ------------------------------------------------------------------------------ |
-| P1  | Context is lost between sessions         | the agent starts from scratch                                                  |
-| P2  | Experience is not reused                 | recurring tasks are solved from scratch: prose reasoning + new one-off scripts |
-| P3  | Project documents live apart from agents | no single source of truth                                                      |
-| P4  | Accumulated knowledge becomes noise      | memory grows, value drops                                                      |
+| #   | Problem                                  | Symptom                                                                        | Wolf response                                                                               |
+| --- | ---------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| P1  | Context is lost between sessions         | the agent starts from scratch                                                  | typed memory; `wolf call`/`wolf brief` re-inject project state at cold start                |
+| P2  | Experience is not reused                 | recurring tasks are solved from scratch: prose reasoning + new one-off scripts | lessons and the tool library: recurring work starts from what already worked                |
+| P3  | Project documents live apart from agents | no single source of truth                                                      | `.wolf/` — a single source of truth drafted from project documents                          |
+| P4  | Accumulated knowledge becomes noise      | memory grows, value drops                                                      | supersede chains, facets, decay by mileage                                                  |
+| P7  | One agent thinks and checks itself       | confident mistakes survive the session                                         | L0/L1/L2 hierarchy, independent acceptance, Council for ambiguous calls (designed, roadmap) |
+| P8  | The same mistakes repeat                 | corrections live in chat logs, not in the project                              | complaint → playbook mutation → next session behaves differently                            |
+| P9  | Quality degrades over a long process     | context bloat, drifting goals, lost decisions                                  | briefs, checkpoints, typed state continuity                                                 |
+
+> P5–P6 (capture/reuse failure) are answered by the learning loop and the tool pipeline — see the Learning Loop.
 
 ## Installation
 
@@ -77,7 +82,7 @@ Details: [architecture guide (RU)](docs/guide/architecture.md) · [concept v3 (R
 
 ### Memory
 
-Everything is memory: 25 object types (including `complaint`), versions, relations, attribution.
+Everything is memory: 7 core types (`rule`, `lesson`, `decision`, `thread`, `complaint`, `tool`, `note`) plus facets, versions, relations, attribution.
 
 ```bash
 wolf add --type lesson --title "..." --body "..." --tags "vitest,ci" --confidence medium
@@ -110,6 +115,10 @@ wolf think start --goal "…"                       # последователь
 ```
 
 - Контур поправок замыкается в памяти: жалоба → триаж → исход (`relation outcome_of`) — **поправил → закрепилось → доставилось → окупилось**.
+
+### Organization
+
+Wolf works as a permanent project organization from temporary agents: a **coordinator (L0)** holds the goal and accepts the result, an **executor (L1)** supplies context and dispatches, **workers (L2)** execute single tasks in clean sessions. Roles, the working cycle and the council for ambiguous calls — [Organization & Council](https://chekh.github.io/mister-wolf/guide/organization); the council is designed and on the roadmap, the hierarchy and independent acceptance work today. Corrections flow through the complaint loop: complaint → triage → outcome → playbook mutation → the next session behaves differently.
 
 ### Agents
 

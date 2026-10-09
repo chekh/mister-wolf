@@ -194,7 +194,7 @@ wolf relation remove <id>
 
 ### wolf transition
 
-`wolf transition <id> <status> [--actor …]` — полная матрица статусов жизненного цикла (см. [переходы жизненного цикла](/ru/guide/core-concepts#lifecycle)); `archive` закрывает типовой выход.
+`wolf transition <id> <status> [--actor …]` — полная матрица статусов жизненного цикла (см. [переходы жизненного цикла](/ru/guide/memory#приложение-жизненный-цикл-объектов)); `archive` закрывает типовой выход.
 
 ### wolf rebuild-index
 

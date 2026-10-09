@@ -2,6 +2,21 @@
 
 Индекс живой документации. Устаревшее ранее переносилось в архив; с 2026-09-01 архивы удалены из дерева и доступны только в git-истории (коммиты до `b31cbdd`, восстановление: `git checkout b31cbdd^ -- <путь>`). Канонический концепт: **v3.3.1**.
 
+## Сайт
+
+Пользовательская документация — на сайте: <https://chekh.github.io/mister-wolf/>
+
+- [Getting Started](https://chekh.github.io/mister-wolf/guide/getting-started) — установка и первая сессия
+- [Organization & Council](https://chekh.github.io/mister-wolf/guide/organization) — роли L0/L1/L2, цикл работы, консилиум
+- [Memory Model](https://chekh.github.io/mister-wolf/guide/memory) — семь типов, фасеты, статусы
+- [Learning Loop](https://chekh.github.io/mister-wolf/guide/feedback) — жалобный контур и самообучение
+- [Delivery & Trust](https://chekh.github.io/mister-wolf/guide/delivery) — доставка playbook'ов
+- [Artifact Pipeline](https://chekh.github.io/mister-wolf/guide/artifact-pipeline) — конвейер docs/dev
+- [Skill Intake](https://chekh.github.io/mister-wolf/guide/skill-intake) — подключение внешних скиллов
+- [CLI Reference](https://chekh.github.io/mister-wolf/guide/cli/) — все команды по группам
+- [MCP Integration](https://chekh.github.io/mister-wolf/guide/mcp) — подключение агентов через MCP
+- [Changelog](https://chekh.github.io/mister-wolf/changelog/) — история версий
+
 ## Canonical concept
 
 - [Concept v3.3.1](./concept/concept.md) — постоянная проектная организация из временных агентов: L0/L1/L2/консилиум, типизированная память, контур обучения, накопленные способности, опоры ценности (RU).

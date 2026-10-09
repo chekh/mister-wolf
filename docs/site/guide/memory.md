@@ -1,5 +1,7 @@
 # Memory Model
 
+This page is the single source of truth for Wolf's memory taxonomy.
+
 Since 2.13 Wolf's taxonomy is **seven types** — down from 26. The point is not renaming but redistributing responsibility:
 
 - **7 types instead of 26.** Deciding where to write something is now a one-second choice, not a taxonomy exam.
@@ -108,3 +110,85 @@ wolf list --type note --facet pitfall
 ```
 
 Full flag lists: [CLI reference](/guide/cli/memory).
+
+## Appendix: Object lifecycle
+
+Every object carries a status from a union of **18 statuses** — the 16 general ones plus `blocked` and `waiting_answer`, which are thread-specific (see [Thread statuses](#thread-statuses-blocked-waiting_answer-open)):
+
+`active`, `open`, `resolved`, `stale`, `conflicting`, `superseded`, `archived`, `paused`, `completed`, `answered`, `rejected`, `obsolete`, `proposed`, `accepted`, `candidate`, `deprecated`, `blocked`, `waiting_answer`.
+
+Transitions (mirroring `ALLOWED_TRANSITIONS` in the code; the effective set for a type is this matrix intersected with the type's declared lifecycle):
+
+| From                                                            | To                                                                                                                                                             |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `active`                                                        | `stale`, `superseded`, `archived`, `conflicting`, `completed`, `resolved`, `obsolete`, `answered`, `deprecated`, `paused`, `blocked`, `waiting_answer`, `open` |
+| `open`                                                          | `resolved`, `rejected`, `archived`, `answered`, `active`                                                                                                       |
+| `resolved` / `completed` / `answered` / `rejected` / `obsolete` | `archived`                                                                                                                                                     |
+| `stale`                                                         | `active`, `archived`                                                                                                                                           |
+| `conflicting`                                                   | `active`, `archived`                                                                                                                                           |
+| `paused`                                                        | `active`, `archived`                                                                                                                                           |
+| `blocked`                                                       | `active`, `archived` — thread: work resumes or the thread is dropped                                                                                           |
+| `waiting_answer`                                                | `active`, `archived` — thread: the answer arrived or the question is withdrawn                                                                                 |
+| `proposed`                                                      | `accepted`, `rejected`, `archived`                                                                                                                             |
+| `accepted`                                                      | `active`, `obsolete`, `archived`                                                                                                                               |
+| `candidate`                                                     | `active`, `deprecated`, `archived`                                                                                                                             |
+| `deprecated`                                                    | `active`, `archived` (tool revival)                                                                                                                            |
+| `superseded` / `archived`                                       | terminal — no transitions                                                                                                                                      |
+
+For a `thread` (lifecycle: `active`, `paused`, `blocked`, `waiting_answer`, `open`, `completed`, `archived`) the effective transitions are: `active` → `paused` / `blocked` / `waiting_answer` / `open` / `completed` / `archived`; `paused` / `blocked` / `waiting_answer` / `open` → `active` or `archived`; `completed` → `archived`.
+
+Moving an object:
+
+```bash
+wolf transition mem_001 accepted        # explicit transition (default actor: user:cli)
+wolf supersede mem_001 mem_002          # mem_001 replaced by mem_002
+wolf get mem_001 --latest               # follow the superseded_by chain to the current object
+```
+
+`wolf supersede` validates both ids, marks the old object `status: superseded` with `superseded_by: <newId>`, writes a `memory.superseded` event (actor `system:wolf`) and reindexes. `superseded` and `archived` are terminal — the only way "back" is a new object.
+
+### Status glyphs
+
+A status is always read from the node shape plus its label — color is only secondary reinforcement. The same eight glyphs are used across the docs, the CLI and the home terminal:
+
+| Glyph                                                                                                                         | Status      | Meaning                               |
+| ----------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------- |
+| <span class="wolf-glyph wg-active" aria-hidden="true">──●</span>                                                              | ACTIVE      | live, in force                        |
+| <span class="wolf-glyph wg-verified" aria-hidden="true">──✓</span>                                                            | ACCEPTED    | checked against evidence              |
+| <span class="wolf-glyph wg-proposed" aria-hidden="true">──◆</span>                                                            | PROPOSED    | draft, awaiting review                |
+| <span class="wolf-glyph wg-blocked" aria-hidden="true">──×</span>                                                             | OPEN        | needs attention — blockers, questions |
+| <span class="wolf-glyph wg-stale" aria-hidden="true">──○</span>                                                               | STALE       | no recent payoff, decay candidate     |
+| <span class="wolf-glyph wg-superseded" aria-hidden="true"><span class="wg-old">○──</span><span class="wg-new">●</span></span> | SUPERSEDED  | replaced by newer, chain              |
+| <span class="wolf-glyph wg-archived" aria-hidden="true">──□</span>                                                            | ARCHIVED    | terminal, kept for history            |
+| <span class="wolf-glyph wg-conflict" aria-hidden="true">●╱●</span>                                                            | CONFLICTING | two objects claim the same truth      |
+
+## Appendix: Governance axes
+
+Three axes keep accumulated knowledge honest:
+
+| Axis           | Values                                                            | Meaning                                                            |
+| -------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `memory_class` | `working` \| `canonical`                                          | working state vs established canon                                 |
+| `truth_role`   | `proposed_knowledge` \| `accepted_knowledge` \| `source_of_truth` | epistemic weight; `agent:*` actors default to `proposed_knowledge` |
+| `lifetime`     | `long_term` \| `short_term` \| `session`                          | how long the object should matter                                  |
+
+Together with the lifecycle this is what keeps stale knowledge visible and superseded knowledge reachable but out of the way — and nothing agent-written poses as source of truth by default.
+
+## Appendix: Injections
+
+`wolf call` is the cold-start mechanism that delivers relevant knowledge into a session:
+
+1. **Base:** all active `call-injection` objects — the pre-2.13 type or its 2.13 form, a note with `alias_origin: call-injection`.
+2. **Topic mode** (`--for <topic>`): trigger_keywords matched against topic tokens, with an FTS fallback over the index (limit 10). Active `lesson` and `rule` objects with matching trigger_keywords join in. If nothing matches, a fallback delivers up to 3 rules without keyword match.
+3. **Thread mode** (`--thread <id>`): adds all active rules with `scope: project` plus the active blockers of that thread.
+4. **Ranking:** blocks are ordered by `finalScore` (importance, confidence, recency of `updated_at`).
+5. **Budget:** `--compact` without a number caps delivery at 1200 chars; `--compact <n>` caps at N; without the flag there is no limit. Anything over budget is truncated.
+6. **Result:** `{ blocks, truncated, deliveredIds }`.
+
+```bash
+wolf call                       # everything active
+wolf call --for vitest          # topic-matched injections
+wolf call --thread mem_20260831_docs --compact   # thread mode, 1200-char budget
+```
+
+The same mechanics power agent-side delivery: MCP-exposed memory plus platform integrations keep a session from starting blind.

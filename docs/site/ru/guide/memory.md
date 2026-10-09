@@ -1,5 +1,7 @@
 # Модель памяти
 
+Эта страница — единственный источник таксономии памяти Wolf.
+
 С 2.13 таксономия Wolf — **семь типов** (было 26). Суть не в переименовании, а в перераспределении ответственности:
 
 - **7 типов вместо 26.** Выбор «куда записать» теперь решается за секунду, а не экзаменом по таксономии.
@@ -108,3 +110,85 @@ wolf list --type note --facet pitfall
 ```
 
 Полный список флагов: [справочник CLI](/ru/guide/cli/memory).
+
+## Приложение: жизненный цикл объектов
+
+Каждый объект несёт статус из union в **18 статусов** — 16 общих плюс `blocked` и `waiting_answer`, специфичные для треда (см. [Статусы thread](#статусы-thread-blocked-waiting_answer-open)):
+
+`active`, `open`, `resolved`, `stale`, `conflicting`, `superseded`, `archived`, `paused`, `completed`, `answered`, `rejected`, `obsolete`, `proposed`, `accepted`, `candidate`, `deprecated`, `blocked`, `waiting_answer`.
+
+Переходы (зеркалируют `ALLOWED_TRANSITIONS` в коде; эффективное множество для типа = матрица ∩ декларированный lifecycle типа):
+
+| Переход                                                         | Куда                                                                                                                                 |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `active`                                                        | stale, superseded, archived, conflicting, completed, resolved, obsolete, answered, deprecated, paused, blocked, waiting_answer, open |
+| `open`                                                          | resolved, rejected, archived, answered, active                                                                                       |
+| `resolved` / `completed` / `answered` / `rejected` / `obsolete` | archived                                                                                                                             |
+| `stale`                                                         | active, archived                                                                                                                     |
+| `conflicting`                                                   | active, archived                                                                                                                     |
+| `paused`                                                        | active, archived                                                                                                                     |
+| `blocked`                                                       | active, archived — тред: работа продолжается или тред заброшен                                                                       |
+| `waiting_answer`                                                | active, archived — тред: ответ пришёл или вопрос снят                                                                                |
+| `proposed`                                                      | accepted, rejected, archived                                                                                                         |
+| `accepted`                                                      | active, obsolete, archived                                                                                                           |
+| `candidate`                                                     | active, deprecated, archived                                                                                                         |
+| `deprecated`                                                    | active, archived (реанимация tool)                                                                                                   |
+| `superseded` / `archived`                                       | терминальные — переходов нет                                                                                                         |
+
+Для `thread` (lifecycle: `active`, `paused`, `blocked`, `waiting_answer`, `open`, `completed`, `archived`) эффективные переходы: `active` → `paused` / `blocked` / `waiting_answer` / `open` / `completed` / `archived`; `paused` / `blocked` / `waiting_answer` / `open` → `active` или `archived`; `completed` → `archived`.
+
+Команды:
+
+```bash
+wolf transition mem_002 accepted   # смена статуса (актор: --actor, дефолт user:cli)
+wolf supersede mem_001 mem_002     # mem_001 заменён mem_002: status=superseded + superseded_by
+wolf get mem_001 --latest          # дойти по цепочке до актуального
+```
+
+`supersede` валидирует оба id, ставит старому объекту `status: 'superseded'` + `superseded_by: <newId>`, пишет событие `memory.superseded` и переиндексирует поиск. `superseded` и `archived` терминальные — «назад» только новым объектом.
+
+### Графемы статусов
+
+Статус всегда читается по форме узла и подписи — цвет лишь вторичное усиление. Те же восемь графем используются в документации, CLI и hero-терминале:
+
+| Графема                                                                                                                       | Статус      | Значение                              |
+| ----------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------- |
+| <span class="wolf-glyph wg-active" aria-hidden="true">──●</span>                                                              | ACTIVE      | действует                             |
+| <span class="wolf-glyph wg-verified" aria-hidden="true">──✓</span>                                                            | ACCEPTED    | проверен, принят                      |
+| <span class="wolf-glyph wg-proposed" aria-hidden="true">──◆</span>                                                            | PROPOSED    | черновик, ждёт ревью                  |
+| <span class="wolf-glyph wg-blocked" aria-hidden="true">──×</span>                                                             | OPEN        | требует внимания — блокеры, вопросы   |
+| <span class="wolf-glyph wg-stale" aria-hidden="true">──○</span>                                                               | STALE       | не окупается, кандидат в отставку     |
+| <span class="wolf-glyph wg-superseded" aria-hidden="true"><span class="wg-old">○──</span><span class="wg-new">●</span></span> | SUPERSEDED  | заменён новым, цепочка                |
+| <span class="wolf-glyph wg-archived" aria-hidden="true">──□</span>                                                            | ARCHIVED    | терминальный, хранится для истории    |
+| <span class="wolf-glyph wg-conflict" aria-hidden="true">●╱●</span>                                                            | CONFLICTING | два объекта претендуют на одну правду |
+
+## Приложение: оси управления
+
+Три оси отделяют рабочие заметки от канона и держат накопленное знание честным:
+
+| Ось            | Значения                                                                                              | Смысл                                        |
+| -------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `memory_class` | working \| canonical                                                                                  | рабочее состояние против устоявшегося канона |
+| `truth_role`   | proposed_knowledge \| accepted_knowledge \| source_of_truth (для `agent:*` дефолт proposed_knowledge) | эпистемический вес записи                    |
+| `lifetime`     | long_term \| short_term \| session                                                                    | как долго объект должен иметь значение       |
+
+Вместе с жизненным циклом это делает устаревшее знание видимым, а заменённое — достижимым, но не на пути: записанное агентом по умолчанию не притворяется источником истины.
+
+## Приложение: инъекции
+
+`wolf call` собирает контекст для начала сессии (или вызова). Механика:
+
+1. База: все active `call-injection` — до-2.13-тип или его форма 2.13, note с `alias_origin: call-injection`.
+2. `--for <topic>`: матчинг `trigger_keywords` по токенам темы + FTS-fallback по индексу (limit 10); присоединяются active `lesson` и `rule` с совпавшими `trigger_keywords`; если ничего не нашлось — fallback: до 3 правил без ключевого совпадения.
+3. `--thread <id>`: добавляются все active правила со scope=project + active блокеры этого треда.
+4. Ранжирование по `finalScore` (importance, confidence, давность updated_at).
+5. Бюджет: `--compact` без числа → 1200 символов, числом → N; без флага — без лимита; сверх бюджета — truncated.
+6. Результат: `{ blocks, truncated, deliveredIds }`.
+
+```bash
+wolf call                          # всё активное
+wolf call --for "vitest" --compact # по теме, бюджет 1200 символов
+wolf call --thread thr_001 --compact 800
+```
+
+Та же механика работает и на стороне агента: память через MCP плюс платформенные интеграции не дают сессии начинать вслепую.

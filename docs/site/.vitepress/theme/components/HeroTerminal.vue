@@ -50,7 +50,7 @@ const items = computed(() => [
       <span class="dot dot-signal" />
       <span class="dot dot-brass" />
       <span class="dot dot-verified" />
-      <span class="wolf-terminal-title">wolf · session-injection</span>
+      <span class="wolf-terminal-title">wolf · organization boot</span>
     </div>
     <div class="wolf-terminal-body">
       <p class="wolf-terminal-cmd">$ wolf call --for &quot;auth refactor&quot;</p>
@@ -73,7 +73,7 @@ const items = computed(() => [
         </li>
       </ul>
 
-      <p class="wolf-terminal-result">{{ t({ en: '✓ 3 relevant memories injected', ru: '✓ Внедрено 3 релевантных объекта памяти' }) }}</p>
+      <p class="wolf-terminal-result">{{ t({ en: '✓ Organization loaded: 3 active rules and lessons', ru: '✓ Организация загружена: 3 активных правила и урока' }) }}</p>
     </div>
   </div>
 </template>

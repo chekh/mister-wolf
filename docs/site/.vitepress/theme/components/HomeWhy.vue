@@ -53,17 +53,44 @@ const rows: Row[] = [
       ru: 'типизация, статусы жизненного цикла и supersede-цепочки — знание устаревает явным образом',
     },
   },
+  {
+    id: 'P7',
+    problem: { en: 'One agent thinks and checks itself', ru: 'Один агент думает и проверяет сам себя' },
+    symptom: { en: 'confident mistakes survive the session', ru: 'уверенные ошибки доживают до конца сессии' },
+    response: {
+      en: 'L0/L1/L2 hierarchy, independent acceptance, Council for ambiguous calls',
+      ru: 'иерархия L0/L1/L2, независимая приёмка, консилиум для неоднозначных решений',
+    },
+  },
+  {
+    id: 'P8',
+    problem: { en: 'The same mistakes repeat', ru: 'Одни и те же ошибки повторяются' },
+    symptom: { en: 'corrections live in chat logs, not in the project', ru: 'правки живут в логах чата, а не в проекте' },
+    response: {
+      en: 'complaint → playbook mutation → next session behaves differently',
+      ru: 'жалоба → мутация playbook → следующая сессия ведёт себя иначе',
+    },
+  },
+  {
+    id: 'P9',
+    problem: { en: 'Quality degrades over a long process', ru: 'Качество деградирует на длинном процессе' },
+    symptom: { en: 'context bloat, drifting goals, lost decisions', ru: 'раздутый контекст, дрейф цели, потерянные решения' },
+    response: {
+      en: 'briefs, checkpoints, typed state continuity',
+      ru: 'брифы, чекпоинты, непрерывность типизированного состояния',
+    },
+  },
 ]
 </script>
 
 <template>
   <section class="wolf-home-section wolf-why">
     <p class="wolf-home-label">{{ t({ en: '01 · PROBLEM', ru: '01 · ПРОБЛЕМА' }) }}</p>
-    <h2 class="wolf-home-title">{{ t({ en: 'Why Mr. Wolf?', ru: 'Почему' }) }}</h2>
+    <h2 class="wolf-home-title">{{ t({ en: 'Why Mr. Wolf?', ru: 'Почему Mr. Wolf?' }) }}</h2>
     <p class="wolf-why-text">{{
       t({
-        en: 'AI coding agents are powerful but forgetful. Mr. Wolf is a local-first environment for continuous agent work. It preserves project knowledge, organizes processes, and delivers the right context between sessions via CLI and MCP. Wolf doesn’t replace the model and doesn’t tie your project to one agent platform. It creates a persistent organization of work on top of different agents. Accumulation instead of evaporation.',
-        ru: 'AI-агенты решают задачи, но их опыт испаряется вместе с сессией. Mr. Wolf — local-first среда непрерывной работы агентов. Она сохраняет знания проекта, организует процессы и доставляет нужный контекст между сессиями через CLI и MCP. Wolf не заменяет модель и не привязывает проект к одной агентской платформе. Он создаёт постоянную организацию работы поверх разных агентов. Накопление вместо испарения: решения, уроки, инструменты и процессы остаются в проекте после сессии и делают следующую задачу дешевле.'
+        en: 'A persistent organization — not another memory add-on. AI coding agents are powerful but temporary: every session starts from zero, lessons evaporate, and one agent grades its own homework. Mr. Wolf turns that stream of temporary agents into a permanent project organization with roles, processes and memory that outlives any session.',
+        ru: 'Постоянная организация — не очередное memory-дополнение. AI-агенты сильны, но временны: каждая сессия начинается с нуля, уроки испаряются, а один агент сам проверяет свою работу. Mr. Wolf превращает поток временных агентов в постоянную проектную организацию с ролями, процессами и памятью, которые переживают любую сессию.'
       })
     }}</p>
     <!-- data-label: mobile cards caption each field via td::before (pure CSS) -->
@@ -92,8 +119,14 @@ const rows: Row[] = [
         </tr>
       </tbody>
     </table>
+    <p class="wolf-why-footnote">{{
+      t({
+        en: 'P5–P6 (capture/reuse failure) are answered by the learning loop and the tool pipeline — see the Learning Loop.',
+        ru: 'П5–П6 (capture/reuse failure) закрывают контур обучения и конвейер инструментов — см. Контур обучения.'
+      })
+    }}</p>
     <p v-if="!ru" class="wolf-why-outro">
-      Ready to give your agents a memory? Start with the
+      Ready to give your project an organization? Start with the
       <a :href="withBase('/guide/getting-started')">Getting Started guide</a>.
     </p>
     <p v-else class="wolf-why-outro">
