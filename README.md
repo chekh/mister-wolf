@@ -27,6 +27,8 @@ Mr. Wolf is a permanent project organization assembled from temporary AI agents:
 | P8  | The same mistakes repeat                 | corrections live in chat logs, not in the project                              | complaint → playbook mutation → next session behaves differently                            |
 | P9  | Quality degrades over a long process     | context bloat, drifting goals, lost decisions                                  | briefs, checkpoints, typed state continuity                                                 |
 
+> P5–P6 (capture/reuse failure) are answered by the learning loop and the tool pipeline — see the Learning Loop.
+
 ## Installation
 
 > [!WARNING]

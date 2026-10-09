@@ -97,5 +97,5 @@ Today: the L0/L1/L2 hierarchy and the working cycle are **I3** — dogfooded on 
 The organization improves through turnover rather than despite it. An agent's behavior lives in its playbook — a mutable "face" stored in memory — while the frame (role, boundaries, prohibitions) stays fixed. When the loop finds a better way, the face is replaced by a new version; the agent itself is never attached to the outcome.
 
 - [Memory Model](/guide/memory) — where the organization's state lives: seven types, lifecycle, supersede chains.
-- [Feedback Loop](/guide/feedback) — how the organization learns: complaint → triage → playbook mutation.
+- [Learning Loop](/guide/feedback) — how the organization learns: complaint → triage → playbook mutation.
 - [Getting Started](/guide/getting-started) — set up the organization in your project.

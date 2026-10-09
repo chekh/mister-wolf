@@ -79,7 +79,7 @@
 
 | Опора                                   | Профиль                                                                                                                                 |
 | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| **Pillar 1 — Persistent Organization**  | L0/L1/L2 **I3/E3** · Council schema **I2/E1** · Council runtime **I1/E0**                                                               |
+| **Pillar 1 — Persistent Organization**  | L0/L1/L2 **I3/E3** · Council schema **I1/E1** · Council runtime **I1/E0**                                                               |
 | **Pillar 2 — Institutional Continuity** | storage **I3/E3** · typed process state **I2/E2** · resume workflow **I2/E3** · revalidation **I1/E0** · measured continuity **I0/E0**  |
 | **Pillar 3 — Accumulated Capabilities** | tool registry **I2/E2** · экономика переиспользования **I0/E0** · доставка **I2/E2**                                                    |
 | **Pillar 4 — Governed Learning**        | мутация по жалобе **I2/E2** · конвейер активации **I2/E2** · steward invocation policy **I1/E2** · measured positive learning **I1/E0** |

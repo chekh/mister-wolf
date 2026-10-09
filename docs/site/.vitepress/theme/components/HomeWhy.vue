@@ -119,6 +119,12 @@ const rows: Row[] = [
         </tr>
       </tbody>
     </table>
+    <p class="wolf-why-footnote">{{
+      t({
+        en: 'P5–P6 (capture/reuse failure) are answered by the learning loop and the tool pipeline — see the Learning Loop.',
+        ru: 'П5–П6 (capture/reuse failure) закрывают контур обучения и конвейер инструментов — см. Контур обучения.'
+      })
+    }}</p>
     <p v-if="!ru" class="wolf-why-outro">
       Ready to give your project an organization? Start with the
       <a :href="withBase('/guide/getting-started')">Getting Started guide</a>.

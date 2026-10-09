@@ -6,7 +6,7 @@ An agent's behavior has two halves — the static **frame** and the mutable **fa
 
 - **Frame** — the stamped agent file (`.opencode/agents/<name>.md`): role, boundaries, prohibitions. Static: `wolf sync` re-renders it, and hands off — it never carries the methodology.
 - **Face** — the playbook: a memory object in Wolf (since 2.13 a `note` with facet `howto` plus `owner_skill`/`version`/`steps`). Mutable: it evolves through the complaint loop, not by editing files.
-- **Mutator** — the Steward, and only the Steward. Agents file complaints (`wolf complain`); playbook mutations go through [Feedback](/guide/feedback) and `wolf supersede`. Nobody edits a face in place.
+- **Mutator** — the Steward, and only the Steward. Agents file complaints (`wolf complain`); playbook mutations go through [the Learning Loop](/guide/feedback) and `wolf supersede`. Nobody edits a face in place.
 - **Delivery** — the channel that puts the resolved playbook body into the system prompt. Three channels, one primary.
 
 ## Three delivery channels
