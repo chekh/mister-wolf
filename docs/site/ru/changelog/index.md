@@ -34,7 +34,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - Site structure: `router.md` renamed to `delivery.md` ("Delivery: Frames, Faces & Trust" — frame/face/mutator model, three delivery channels, router mechanics preserved, trust invariant as design intent); `feedback.md` retitled "Learning Loop" and absorbs the Steward aggregation page as a section (mutation proven in PoC #3, effect target/validating E1d); `core-concepts.md` removed as a page — lifecycle matrix, governance axes and injections moved into appendices of `memory.md`, which is now the single source of the taxonomy.
 - Fact hygiene: "25 object types / 16 statuses" claims replaced with the code truth (7 core types + facets; 18 lifecycle statuses in the union, `blocked`/`waiting_answer` thread-specific); README Problems table extended with P7–P9 (self-checking agent, repeated mistakes, quality decay) and the Organization subsection added to Features; the router `--type playbook` contradiction resolved against the actual plugin code (playbooks are notes with `facet: howto` + `owner_skill`).
 - Site meta (title/description/og/twitter) switched to the organization positioning, EN with RU-locale mirror.
-- maturity.md factual sync: `tool` type exists since 2.13 (Tool registry I1→I2, Pillar 3 profile updated); Council memory schema row corrected — council-* are deprecated aliases (note + facet: context) since the 7-type taxonomy.
+- maturity.md factual sync: `tool` type exists since 2.13 (Tool registry I1→I2, Pillar 3 profile updated); Council memory schema row corrected — council-\* are deprecated aliases (note + facet: context) since the 7-type taxonomy.
 
 ### Upgrade notes
 
