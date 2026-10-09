@@ -44,7 +44,7 @@ wolf add --type tool --title "skill: <name>" \
 
 ### 6. Observe
 
-Every skill invocation is written to `.wolf/metrics/skill-invocations.jsonl`, so usage is measurable (see [Analytics — delivery panel](/guide/cli/analytics#delivery-panel)). Complaints against a skill go through the complaint loop with `about: skill:<name>` ([Feedback](/guide/feedback)), and `wolf doctor` lints for ghost skills — in the set but not in memory.
+Every skill invocation is written to `.wolf/metrics/skill-invocations.jsonl`, so usage is measurable (see [Analytics — delivery panel](/guide/cli/analytics#delivery-panel)). Complaints against a skill go through the complaint loop with `about: skill:<name>` ([Learning Loop](/guide/feedback)), and `wolf doctor` lints for ghost skills — in the set but not in memory.
 
 ### 7. Roll back
 

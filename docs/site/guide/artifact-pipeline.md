@@ -68,7 +68,7 @@ Approved does not mean frozen — it means changes now have a price. Editing an 
 Two axes grow the skill set around the pipeline:
 
 - **Artifact axis** — a new artifact type gets its own skill that teaches agents how to produce it.
-- **Disciplinary axis** — a repeatedly breached discipline gets an enforcement skill; the detector is the complaint loop ([Feedback](/guide/feedback)).
+- **Disciplinary axis** — a repeatedly breached discipline gets an enforcement skill; the detector is the complaint loop ([Learning Loop](/guide/feedback)).
 
 The default set ships 18 skills (verified against `templates/base/skills` in the package; the set itself is described in [Base Set](/guide/base-set)):
 
