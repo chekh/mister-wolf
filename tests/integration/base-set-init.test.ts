@@ -110,9 +110,18 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
       expect(body, a).toContain('wolf search');
     }
 
-    // using-skills в rendered-виде: governance-набор (H2)
+    // using-skills в rendered-виде: инварианты редакции 2026-10-09
     const using = readFileSync(join(dir, '.opencode/skills/using-skills/SKILL.md'), 'utf-8');
-    for (const marker of ['1%', 'пассивн', 'лестниц', 'rigid', 'flexible']) expect(using).toContain(marker);
+    for (const marker of [
+      'Обязательные процессные скиллы',
+      'загрузи и проверь',
+      'протокол ошибки масштаба',
+      'режим меняет только L1',
+      'Режим фиксирует L1',
+      'Контракты передачи',
+      'DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED',
+    ])
+      expect(using).toContain(marker);
   });
 
   it('worker-*: wolf_* MCP-тулы запрещены в rendered permission (изоляция памяти воркеров)', () => {

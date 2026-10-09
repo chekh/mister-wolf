@@ -8,6 +8,6 @@ agent: mr-wolf
 
 1. Прими жалобу дословно — без пересказа и интерпретаций.
 2. Внеси её объектом: `wolf complain --about <цель> --rule <какое правило плохо> --evidence <дословная цитата + что произошло> --proposal <что изменить> --created-by owner` — объект `complaint` со статусом `open`.
-3. Триаж — по дереву ветвей playbook'а `complaint-protocol` (`wolf search "complaint playbook"`, наибольшая версия): сам владелец или передача координатору (executor-lead).
+3. Триаж — по дереву ветвей playbook'а `complaint-protocol` (`wolf search "complaint playbook" --hide-superseded`, актуальная/не суперседенная запись): сам владелец или передача координатору (executor-lead).
 4. Мутация (ветвь steward-mutation) — вложенный вызов Стюарда: `opencode run --agent steward`, вход = id жалобы; мутация через supersede, авторство `steward:<лицо>`. Это путь владельца/координатора — не воркера.
 5. Доложи владельцу: что принял, что изменилось в памяти.

@@ -25,8 +25,10 @@ agent-id: steward
 - **ЛИЦО** — матрица лиц (теги playbook'ов Стюарда), выбор по существу
   жалобы. Нет playbook'а лица — работай по рамке (безликий режим).
 - **ДОСТАВКА** — plugin-inject (основной); fallback: сам сделай
-  `wolf search "steward:<лицо> playbook"` перед задачей и возьми
-  наибольшую версию.
+  `wolf search "steward:<лицо> playbook" --hide-superseded` перед
+  задачей — работай по актуальному (не суперседенному) playbook'у,
+  проверь owner_skill (steward или skill:steward); канона нет —
+  работай по fallback-контуру, доставленному плагином.
 
 ## Матрица лиц
 

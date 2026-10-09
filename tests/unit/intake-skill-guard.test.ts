@@ -18,13 +18,14 @@ const skill = readFileSync(
 );
 
 describe('wolf-skill-intake guard', () => {
-  it('keeps owner gate and rollback', () => {
-    expect(skill).toContain('npx skills find');
-    expect(skill).toContain('Гейт владельца');
-    expect(skill).toContain('Без явного «да»');
-    expect(skill).toContain('npx skills add');
-    expect(skill).toContain('npx skills remove');
-    expect(skill).toContain('wolf add --type tool');
+  it('keeps owner gate, version pinning and rollback', () => {
+    expect(skill).toContain('Получи действующее разрешение');
+    expect(skill).toContain('только для того же согласованного пакета и scope');
+    expect(skill).toContain('закрепления версии');
+    expect(skill).toContain('latest молча');
+    expect(skill).toContain('trial на изолированной задаче');
+    expect(skill).toContain('Откат и обновление');
+    expect(skill).toContain('owner_skill');
     expect(skill).toContain('source_url');
   });
 });

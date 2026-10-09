@@ -30,8 +30,10 @@ GAPS: <чего не удалось выяснить, если есть>
   анализа, формат findings). Нет playbook'а — работай по рамке
   (безликий режим).
 - **ДОСТАВКА** — plugin-inject (основной); fallback: сам сделай
-  `wolf search "worker-researcher playbook"` перед задачей и возьми
-  наибольшую версию.
+  `wolf search "worker-researcher playbook" --hide-superseded` перед
+  задачей — работай по актуальному (не суперседенному) playbook'у,
+  проверь owner_skill (worker-researcher или skill:worker-researcher);
+  канона нет — работай по fallback-контуру, доставленному плагином.
 
 ## Контекст-бюджет уровня L2
 

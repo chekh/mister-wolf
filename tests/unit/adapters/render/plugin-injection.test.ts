@@ -69,8 +69,35 @@ const MARKER = 'Mr.Wolf session bootstrap'; // контракт маркера (
 const withMarker = [msg(`<session_context>\n${MARKER}\n\n## Recap\n…\n</session_context>`), msg('дальше')];
 const fresh = [msg('новый вопрос после /clear')];
 
-const GOVERNANCE = ['1%-правило', 'SUBAGENT-STOP', 'Лестница приоритетов', 'process-скиллы', 'rigid', 'flexible'];
-const DISPATCH = ['1%', 'SUBAGENT-STOP', 'Лестница приоритетов', 'process-скиллы'];
+const GOVERNANCE = [
+  'Полномочия',
+  'wolf-brainstorm',
+  'wolf-debug',
+  'verification-before-completion',
+  'wolf-sdd',
+  'wolf-execute',
+  'wolf-handoff',
+  'finishing-a-development-branch',
+  'FULL',
+  'LITE',
+  'FIX',
+  'TASK',
+  'RESULT',
+  'EVIDENCE',
+  'ACCEPTANCE',
+];
+// Маркеры диспетчерского контура H2, которых в усечённом L2-теле быть не должно.
+const DISPATCH = [
+  'Полномочия',
+  'wolf-brainstorm',
+  'wolf-debug',
+  'wolf-sdd',
+  'FULL',
+  'LITE',
+  'FIX',
+  'TASK',
+  'ACCEPTANCE',
+];
 
 const hooks = await WolfSessionStartPlugin.server();
 const transform = hooks['experimental.chat.messages.transform'];
@@ -123,7 +150,8 @@ describe('wolf-session-start: инъекция (спека §5.4)', () => {
     const injected = textOf(out.messages[0]);
     expect(injected).toContain(MARKER);
     expect(injected).toContain('пассив');
-    expect(injected).toContain('rigid');
+    expect(injected).toContain('подзадач');
+    expect(injected).toContain('RESULT');
     for (const marker of DISPATCH) expect(injected, marker).not.toContain(marker);
     // L2 не дергает recap/call вообще
     expect(execFileMock).not.toHaveBeenCalled();
@@ -180,7 +208,8 @@ describe('wolf-session-start: v2 setup (context hook)', () => {
     await ctx.sessionHooks['context'](event);
     const injected = contentText(event);
     expect(injected).toContain('пассив');
-    expect(injected).toContain('rigid');
+    expect(injected).toContain('подзадач');
+    expect(injected).toContain('RESULT');
     for (const marker of DISPATCH) expect(injected, marker).not.toContain(marker);
     expect(execFileMock).not.toHaveBeenCalled();
   });
