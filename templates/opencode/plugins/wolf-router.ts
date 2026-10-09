@@ -45,7 +45,8 @@ const FALLBACK_PLAYBOOK = `# Универсальный playbook (fallback)
 1. Холодный старт сессии: \`wolf call\` → \`wolf brief\` — возвращённые
    injections и brief — активное руководство проекта.
 2. Значимое фиксируй в память Wolf: решения — \`add --type decision\`,
-   уроки — \`--type lesson\`, блокеры — \`--type blocker\`.
+   уроки — \`--type lesson\`, блокеры — thread со статусом blocked
+   (\`thread add\` + \`transition <id> blocked\`).
 3. Состояние проекта спрашивай у Wolf (\`wolf search\`, \`wolf get\`,
    \`wolf brief\`): статические списки в файлах устаревают.
 4. Правила и playbook'ы не мутируй сам — мутатор Стюард; систематически

@@ -7,10 +7,11 @@
 ## Протокол холодного старта (каждая свежая сессия)
 
 1. **Начинай с состояния проекта:** запусти `wolf call` и `wolf brief`
-   (CLI: `node dist/bootstrap/cli.js`; MCP-инструменты: `mr-wolf_*`).
+   (CLI: установленный `wolf`, или `node <путь-к-repo-wolf>/dist/bootstrap/cli.js` в репо Wolf; MCP-инструменты: `mr-wolf_*`).
    Возвращённые injections и brief — активное руководство проекта.
 2. **Фиксируй значимое через Wolf:** решения — `wolf add --type decision`,
-   уроки — `--type lesson`, блокеры — `--type blocker`; устаревшее —
+   уроки — `--type lesson`, блокеры — thread со статусом `blocked`
+   (`wolf thread add`, затем `wolf transition <id> blocked`); устаревшее —
    `wolf supersede <old-id> <new-id>`.
 3. **Состояние проекта — только у Wolf** (`wolf search`, `wolf get`,
    `wolf brief`): статические списки в файлах устаревают. Память Wolf —
