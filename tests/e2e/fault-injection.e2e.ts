@@ -45,7 +45,7 @@ describe('fault-injection: mcp_call error-поля + старые jsonl-стро
     expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir).status).toBe(0);
 
     // note с facet вне словаря: домен бросает UserFacingError
-    // «Type validation failed: facet ...» внутри action (2.16: scope уже
+    // «Invalid facet "bogus" for type "note"» до zod-валидации (2.16: scope уже
     // passthrough-строка, кривое поле — только enum)
     const result = runCli(['add', '--type', 'note', '--title', 'broken note', '--facet', 'bogus'], dir);
     expect(result.status).not.toBe(0);
