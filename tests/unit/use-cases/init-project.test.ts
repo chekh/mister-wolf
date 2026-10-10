@@ -7,8 +7,10 @@ import {
   looksLikeProjectRoot,
   recreateConfig,
   findInitReport,
+  planInit,
   INIT_REPORT_TAGS,
   type InitProjectDeps,
+  type InitPlanEntry,
 } from '../../../src/app/use-cases/init-project.js';
 import { ProjectInitializer } from '../../../src/ports/project-initializer.port.js';
 import {
@@ -20,6 +22,7 @@ import {
 } from '../../../src/ports/platform-adapter.port.js';
 import type { ModelContext } from '../../../src/ports/base-set-renderer.port.js';
 import { CURRENT_SCHEMA_VERSION } from '../../../src/adapters/fs/schema-version.js';
+import { configPath } from '../../../src/adapters/fs/project-paths.js';
 import type { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
 
 /* ---------- fakes ---------- */
@@ -156,28 +159,26 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     expect('documentCount' in result).toBe(false);
   });
 
-  it('F4/§4.4 п.3: без явного выбора opencode пишется БЕЗУСЛОВНО (голый каталог, без маркеров)', async () => {
+  it('WP1 (спека 2.16 §4): без --platform платформенные конфиги не пишутся (минимальный путь)', async () => {
     writeFileSync(join(dir, 'package.json'), '{}');
-    const oc = new FakeAdapter('opencode', false); // детекция «не видит» — больше не гейтит
+    const oc = new FakeAdapter('opencode', false); // детекция «не видит» — дефолт всё равно пустой
     const claude = new FakeAdapter('claude', false);
     const { deps } = makeDeps([oc, claude]);
     const result = await initProject(deps, dir, { models: MODELS });
-    expect(result.platformOutcomes).toEqual([{ platform: 'opencode', action: 'written' }]);
-    expect(oc.writeCalls).toBe(1);
-    expect(claude.writeCalls).toBe(0); // claude без маркеров молча не подключается
+    expect(result.platformOutcomes).toEqual([]);
+    expect(oc.writeCalls).toBe(0);
+    expect(claude.writeCalls).toBe(0);
     expect(deps.registry.registered).toEqual([{ path: dir, schemaVersion: CURRENT_SCHEMA_VERSION }]);
   });
 
-  it('§4.4 п.3: claude без явного выбора — по маркерам', async () => {
+  it('WP1: найденные по маркерам платформы без --platform не подключаются молча', async () => {
     writeFileSync(join(dir, 'package.json'), '{}');
     const oc = new FakeAdapter('opencode', false);
     const claude = new FakeAdapter('claude', true);
     const { deps } = makeDeps([oc, claude]);
     const result = await initProject(deps, dir, { models: MODELS });
-    expect(result.platformOutcomes).toEqual([
-      { platform: 'opencode', action: 'written' },
-      { platform: 'claude', action: 'written' },
-    ]);
+    expect(result.platformOutcomes).toEqual([]);
+    expect(claude.writeCalls).toBe(0);
   });
 
   it('явный выбор (§4.4 п.1) ЗАМЕНЯЕТ набор: wolf-записи вне списка удаляются', async () => {
@@ -219,7 +220,7 @@ describe('initProject v2 (§4: без скана, платформы/модел�
       reason: 'default_agent=other is taken; mr-wolf not assigned',
     });
     const { deps } = makeDeps([oc]);
-    const result = await initProject(deps, dir, { models: MODELS });
+    const result = await initProject(deps, dir, { platformChoice: ['opencode'], models: MODELS });
     expect(result.platformOutcomes).toEqual([
       { platform: 'opencode', action: 'unchanged', reason: 'default_agent=other is taken; mr-wolf not assigned' },
     ]);
@@ -240,6 +241,21 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     expect(result).not.toHaveProperty('routing');
     expect(store.objects.filter((o) => o.type === 'rule')).toHaveLength(0);
     expect(seenModels).toEqual([MODELS]);
+  });
+
+  it("WP2 unpin (спека 2.16 §5): models = 'omit' доходит до render как 'omit'", async () => {
+    writeFileSync(join(dir, 'package.json'), '{}');
+    const { deps } = makeDeps([new FakeAdapter('opencode', false)]);
+    const seenModels: (ModelContext | 'omit' | undefined)[] = [];
+    deps.baseSet = {
+      render: async (_d, opts) => {
+        seenModels.push(opts?.models);
+        return [];
+      },
+      seed: async () => [],
+    };
+    await initProject(deps, dir, { models: 'omit' });
+    expect(seenModels).toEqual(['omit']);
   });
 
   it('§4.1/D4: init-отчёт — один объект report с тегами; body содержит made/found/needs-fix', async () => {
@@ -299,7 +315,7 @@ describe('initProject v2 (§4: без скана, платформы/модел�
       reason: 'default_agent=other is taken; mr-wolf not assigned',
     });
     const { deps, store } = makeDeps([oc]);
-    await initProject(deps, dir, { models: MODELS });
+    await initProject(deps, dir, { platformChoice: ['opencode'], models: MODELS });
     const report = store.objects.find((o) => o.type === 'note' && (o as { facet?: string }).facet === 'history');
     const needsFix = report!.body.split('## Needs fixing (needs-fix)')[1];
     expect(needsFix).toContain('default_agent=other is taken');
@@ -318,7 +334,7 @@ describe('initProject v2 (§4: без скана, платформы/модел�
       }
     );
     const { deps, store } = makeDeps([oc]);
-    const result = await initProject(deps, dir, { models: MODELS });
+    const result = await initProject(deps, dir, { platformChoice: ['opencode'], models: MODELS });
     expect(result.platformOutcomes[0].version).toEqual({ status: 'v2', version: '2.0.24', raw: 'opencode v2.0.24' });
     const report = store.objects.find((o) => o.type === 'note' && (o as { facet?: string }).facet === 'history');
     const found = report!.body.split('## Detected (found)')[1].split('## Needs fixing')[0];
@@ -338,7 +354,7 @@ describe('initProject v2 (§4: без скана, платформы/модел�
       }
     );
     const { deps, store } = makeDeps([oc]);
-    await initProject(deps, dir, { models: MODELS });
+    await initProject(deps, dir, { platformChoice: ['opencode'], models: MODELS });
     const report = store.objects.find((o) => o.type === 'note' && (o as { facet?: string }).facet === 'history');
     const found = report!.body.split('## Detected (found)')[1].split('## Needs fixing')[0];
     const needsFix = report!.body.split('## Needs fixing (needs-fix)')[1];
@@ -358,7 +374,7 @@ describe('initProject v2 (§4: без скана, платформы/модел�
       }
     );
     const { deps, store } = makeDeps([oc]);
-    await initProject(deps, dir, { models: MODELS });
+    await initProject(deps, dir, { platformChoice: ['opencode'], models: MODELS });
     const report = store.objects.find((o) => o.type === 'note' && (o as { facet?: string }).facet === 'history');
     const found = report!.body.split('## Detected (found)')[1].split('## Needs fixing')[0];
     const needsFix = report!.body.split('## Needs fixing (needs-fix)')[1];
@@ -378,12 +394,87 @@ describe('initProject v2 (§4: без скана, платформы/модел�
       }
     );
     const { deps, store } = makeDeps([oc]);
-    await initProject(deps, dir, { models: MODELS });
+    await initProject(deps, dir, { platformChoice: ['opencode'], models: MODELS });
     const report = store.objects.find((o) => o.type === 'note' && (o as { facet?: string }).facet === 'history');
     const found = report!.body.split('## Detected (found)')[1].split('## Needs fixing')[0];
     const needsFix = report!.body.split('## Needs fixing (needs-fix)')[1];
     expect(found).toContain('- opencode: not found on PATH; assuming v1');
     expect(needsFix).not.toContain('not found on PATH');
+  });
+
+  it('WP1 (спека 2.16 §4): full: false → render получает scope agents-md, seed НЕ вызван', async () => {
+    writeFileSync(join(dir, 'package.json'), '{}');
+    const { deps } = makeDeps([new FakeAdapter('opencode', false)]);
+    const seenOpts: ({ models?: ModelContext | 'omit'; scope?: 'full' | 'agents-md' } | undefined)[] = [];
+    let seedCalls = 0;
+    deps.baseSet = {
+      render: async (_d, opts) => {
+        seenOpts.push(opts);
+        return [];
+      },
+      seed: async () => {
+        seedCalls += 1;
+        return [];
+      },
+    };
+    await initProject(deps, dir, { models: 'omit', full: false });
+    expect(seenOpts).toEqual([{ models: 'omit', scope: 'agents-md' }]);
+    expect(seedCalls).toBe(0);
+  });
+
+  it('WP1: full: true → render получает scope full, seed вызван', async () => {
+    writeFileSync(join(dir, 'package.json'), '{}');
+    const { deps } = makeDeps([new FakeAdapter('opencode', false)]);
+    const seenOpts: ({ models?: ModelContext | 'omit'; scope?: 'full' | 'agents-md' } | undefined)[] = [];
+    let seedCalls = 0;
+    deps.baseSet = {
+      render: async (_d, opts) => {
+        seenOpts.push(opts);
+        return [];
+      },
+      seed: async () => {
+        seedCalls += 1;
+        return [];
+      },
+    };
+    await initProject(deps, dir, { models: 'omit', full: true });
+    expect(seenOpts).toEqual([{ models: 'omit', scope: 'full' }]);
+    expect(seedCalls).toBe(1);
+  });
+
+  it('WP1: purpose сеется как note (facet context, тег project-purpose, createdBy user:init)', async () => {
+    writeFileSync(join(dir, 'package.json'), '{}');
+    const { deps, store } = makeDeps([new FakeAdapter('opencode', false)]);
+    await initProject(deps, dir, { models: 'omit', purpose: 'тест' });
+    const notes = store.objects.filter((o) => o.type === 'note' && (o as { facet?: string }).facet === 'context');
+    expect(notes).toHaveLength(1);
+    expect(notes[0].title).toBe('Project purpose and conventions (init)');
+    expect(notes[0].body).toBe('тест');
+    expect(notes[0].created_by).toBe('user:init');
+    expect(notes[0].tags).toContain('project-purpose');
+    // интервью-ответ живёт в памяти (note с onboarding-тегом), а не в governing-инструкции
+    expect(notes[0].tags).toContain('onboarding');
+  });
+
+  it('WP1: purpose пустой/undefined — note не сеется', async () => {
+    writeFileSync(join(dir, 'package.json'), '{}');
+    const { deps, store } = makeDeps([new FakeAdapter('opencode', false)]);
+    await initProject(deps, dir, { models: 'omit' });
+    await initProject(deps, dir, { models: 'omit', purpose: '' });
+    expect(
+      store.objects.filter((o) => o.type === 'note' && (o as { facet?: string }).facet === 'context')
+    ).toHaveLength(0);
+  });
+
+  it('WP1 (спека 2.16 §4): platformChoice undefined → writeConfig НЕ вызывается (минимальный путь)', async () => {
+    writeFileSync(join(dir, 'package.json'), '{}');
+    const oc = new FakeAdapter('opencode', true);
+    const claude = new FakeAdapter('claude', true);
+    const { deps } = makeDeps([oc, claude]);
+    const result = await initProject(deps, dir, { models: MODELS });
+    expect(result.platformOutcomes).toEqual([]);
+    expect(oc.writeCalls).toBe(0);
+    expect(claude.writeCalls).toBe(0);
   });
 
   it('npx (§4 п.6): конфиги и набор не пишутся, отчёт НЕ создаётся', async () => {
@@ -404,6 +495,69 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     expect(oc.writeCalls).toBe(0);
     expect(result.initReport.action).toBe('skipped');
     expect(store.objects).toHaveLength(0); // пайплайн «молчит» до полноценной установки
+  });
+});
+
+describe('planInit (спека 2.16 §4 K6: read-only план повторного init, ничего не пишет)', () => {
+  /** Фейковые deps на Map: путь → содержимое. */
+  function fsDeps(files: Map<string, string>) {
+    return {
+      exists: async (p: string) => files.has(p),
+      readFile: async (p: string) => files.get(p) ?? null,
+    };
+  }
+  const entry = (plan: { entries: InitPlanEntry[] }, c: InitPlanEntry['component']) =>
+    plan.entries.find((e) => e.component === c)!;
+
+  it('fresh: live=false, create-план; не-full/без --platform/без purpose — skip', async () => {
+    const plan = await planInit(fsDeps(new Map()), dir, { models: 'omit' });
+    expect(plan.live).toBe(false);
+    expect(entry(plan, 'skeleton').action).toBe('create');
+    expect(entry(plan, 'config').action).toBe('create');
+    expect(entry(plan, 'agents-md').action).toBe('create');
+    expect(entry(plan, 'memory-seed').action).toBe('create');
+    expect(entry(plan, 'gitignore').action).toBe('create');
+    expect(entry(plan, 'base-set').action).toBe('skip');
+    expect(entry(plan, 'platforms').action).toBe('skip');
+    expect(entry(plan, 'purpose-note').action).toBe('skip');
+  });
+
+  it('live (конфиг + маркер в AGENTS.md + штамп gitignore): skeleton/config/agents-md/gitignore — keep; --platform → update', async () => {
+    const files = new Map<string, string>([
+      [configPath(dir), 'schema_version: 2\n'],
+      [join(dir, 'AGENTS.md'), '# Own\n\n<!-- wolf:onboarding v2 -->\n'],
+      [join(dir, '.gitignore'), '# wolf-gitignore:v1\n.wolf/cache/\n'],
+    ]);
+    const plan = await planInit(fsDeps(files), dir, { models: 'omit', platformChoice: ['opencode'] });
+    expect(plan.live).toBe(true);
+    expect(entry(plan, 'skeleton').action).toBe('keep');
+    expect(entry(plan, 'config').action).toBe('keep');
+    expect(entry(plan, 'agents-md').action).toBe('keep');
+    expect(entry(plan, 'gitignore').action).toBe('keep');
+    expect(entry(plan, 'memory-seed').action).toBe('keep');
+    expect(entry(plan, 'platforms').action).toBe('update');
+    expect(entry(plan, 'platforms').detail).toBe('opencode');
+  });
+
+  it('live + full: base-set — keep, detail обещает fresh/mutated-skip (blind reseed запрещён)', async () => {
+    const files = new Map<string, string>([[configPath(dir), 'schema_version: 2\n']]);
+    const plan = await planInit(fsDeps(files), dir, { models: 'omit', full: true });
+    const baseSet = entry(plan, 'base-set');
+    expect(baseSet.action).toBe('keep');
+    expect(baseSet.detail).toContain('never rewritten');
+  });
+
+  it('краевой случай спеки §4: пустой после trim конфиг — первый запуск (live=false, config create)', async () => {
+    const files = new Map<string, string>([[configPath(dir), '  \n']]);
+    const plan = await planInit(fsDeps(files), dir, { models: 'omit' });
+    expect(plan.live).toBe(false);
+    expect(entry(plan, 'config').action).toBe('create');
+  });
+
+  it('битый непустой yaml остаётся под гейтом: live=true (P3 — подтверждение безопаснее молчаливого прохода)', async () => {
+    const files = new Map<string, string>([[configPath(dir), '{broken']]);
+    const plan = await planInit(fsDeps(files), dir, { models: 'omit' });
+    expect(plan.live).toBe(true);
   });
 });
 

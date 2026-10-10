@@ -78,12 +78,17 @@ describe('global install from tarball into isolated HOME (спека §3, §7)',
     writeFileSync(join(project, 'opencode.json'), '{ "$schema": "https://opencode.ai/config.json" }');
     mkdirSync(join(project, '.claude'), { recursive: true });
 
-    const init = spawnSync(join(prefix, 'bin', 'wolf'), ['init', '--model', 'zai-coding-plan/glm-5.3'], {
-      cwd: project,
-      env,
-      encoding: 'utf-8',
-      timeout: 60_000,
-    });
+    // 2.16 WP1: кейс про платформенные конфиги — базовый набор не нужен, MCP пишется по --platform
+    const init = spawnSync(
+      join(prefix, 'bin', 'wolf'),
+      ['init', '--platform', 'opencode,claude', '--model', 'zai-coding-plan/glm-5.3'],
+      {
+        cwd: project,
+        env,
+        encoding: 'utf-8',
+        timeout: 60_000,
+      }
+    );
     expect(init.status).toBe(0);
     // F6: честный лог — имя конфиг-файла вместо `platform <id>`
     expect(init.stdout).toContain('opencode.json: written');
@@ -125,7 +130,7 @@ describe('global install from tarball into isolated HOME (спека §3, §7)',
     });
     expect(first.status).toBe(0);
     const before = readFileSync(join(project, 'opencode.json'), 'utf-8');
-    const second = spawnSync(wolf, ['init', '--model', 'zai-coding-plan/glm-5.3'], {
+    const second = spawnSync(wolf, ['init', '--model', 'zai-coding-plan/glm-5.3', '--yes'], {
       cwd: project,
       env,
       encoding: 'utf-8',

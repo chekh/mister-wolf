@@ -73,6 +73,13 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
   }
 
   async renderBaseSet(baseDir: string, opts?: RenderBaseSetOptions): Promise<RenderOutcome[]> {
+    // WP1 (спека 2.16 §4): минимальный init — только AGENTS.md (create wx / marker-append / skip)
+    if (opts?.scope === 'agents-md') {
+      const state = loadSyncState(baseDir);
+      const outcomes = await this.renderAgentsMd(baseDir, opts.models, state);
+      saveSyncState(baseDir, state);
+      return outcomes;
+    }
     const outcomes: RenderOutcome[] = [];
     const state = loadSyncState(baseDir);
     for (const f of this.templateFiles(baseDir)) {
@@ -88,6 +95,14 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
         if (fresh === current) {
           state.files[rel] = sha256(fresh);
           outcomes.push({ file: rel, action: 'skipped', reason: 'content identical' });
+        } else if (state.files[rel] !== undefined && sha256(current) !== state.files[rel]) {
+          // K6 (спека 2.16 §4): локальная правка штампованного файла не перебивается
+          // re-init — тот же mutated-skip, что в syncBaseSet (T010); blind reseed запрещён
+          outcomes.push({
+            file: rel,
+            action: 'skipped',
+            reason: 'mutated after render — differs from recorded render and fresh render; left untouched',
+          });
         } else {
           await writeFile(f.target, fresh, 'utf-8');
           state.files[rel] = sha256(fresh);
@@ -183,7 +198,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
   /** Init-ветка AGENTS.md: create (wx + штамп) / marker-append / skip (D3). */
   private async renderAgentsMd(
     baseDir: string,
-    models: ModelContext | undefined,
+    models: ModelContext | 'omit' | undefined,
     state: SyncState
   ): Promise<RenderOutcome[]> {
     const paths = this.agentsMdPaths(baseDir);

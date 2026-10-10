@@ -31,7 +31,10 @@ export interface BaseSetOutcome {
   reason?: string;
 }
 export interface BaseSetDeps {
-  render: (baseDir: string, opts?: { models?: ModelContext }) => Promise<BaseSetOutcome[]>;
+  render: (
+    baseDir: string,
+    opts?: { models?: ModelContext | 'omit'; scope?: 'full' | 'agents-md' }
+  ) => Promise<BaseSetOutcome[]>;
   seed: (baseDir: string) => Promise<BaseSetOutcome[]>;
 }
 
@@ -57,14 +60,99 @@ export interface InitProjectDeps {
   wolfVersion?: string;
 }
 
-/** Входы init v2 (§4 п.4): платформы и модель известны ДО рендера набора. */
+/** Входы init: платформы известны до рендера; модели — opt-in (WP2 unpin, спека 2.16 §5). */
 export interface InitProjectInput {
   /** Явный выбор платформ (флаг или TTY-ответ) — авторитетен (§4.4); undefined — дефолт рендера. */
   platformChoice?: string[];
   platformSource?: 'flag' | 'tty' | 'default';
-  /** Модель агентов (§4.5): primary всегда известен (Q7/Q11); worker = primary при init. */
-  models: ModelContext;
+  /** 'omit' — дефолт: model-строки вырезаются из fresh-контента (MODEL_LINE_RE);
+   * ModelContext — только явный --model (opt-in). */
+  models: ModelContext | 'omit';
   modelSource?: 'flag' | 'tty';
+  /** true — полный базовый набор + playbook-seed; false/undefined — минимальный набор. */
+  full?: boolean;
+  /** Ответ TTY-интервью (спека §4): сеется как note+facet context; пусто/не-TTY — не сеется. */
+  purpose?: string;
+}
+
+/* ---------- K6 (спека 2.16 §4): read-only план init перед любыми записями ---------- */
+
+export interface InitPlanEntry {
+  component:
+    | 'skeleton'
+    | 'config'
+    | 'agents-md'
+    | 'base-set'
+    | 'platforms'
+    | 'memory-seed'
+    | 'purpose-note'
+    | 'gitignore';
+  action: 'create' | 'update' | 'keep' | 'skip';
+  detail: string;
+}
+
+export interface InitPlan {
+  /** true — повторный запуск на живом проекте (.wolf/config.yaml существует) — требуется подтверждение. */
+  live: boolean;
+  entries: InitPlanEntry[];
+}
+
+export interface PlanInitDeps {
+  exists: (p: string) => Promise<boolean>;
+  readFile: (p: string) => Promise<string | null>;
+}
+
+const ONBOARDING_MARKER_TEXT = '<!-- wolf:onboarding';
+
+/** K6 (спека 2.16 §4): read-only план init — ничего не пишет; CLI показывает его
+ * как diff и требует подтверждения на живом проекте. */
+export async function planInit(deps: PlanInitDeps, baseDir: string, input: InitProjectInput): Promise<InitPlan> {
+  const cfgPath = configPath(baseDir);
+  const cfgRaw = (await deps.exists(cfgPath)) ? await deps.readFile(cfgPath) : null;
+  // Краевой случай спеки §4 «пустой/битый конфиг — первый запуск»: пустой после trim
+  // конфиг = первый запуск; битый непустой остаётся под гейтом (P3: подтверждение
+  // безопаснее молчаливого прохода; ремонт — существующий --recreate).
+  const live = cfgRaw !== null && cfgRaw.trim() !== '';
+  const agentsRaw = (await deps.readFile(join(baseDir, 'AGENTS.md'))) ?? '';
+  const marker = agentsRaw.includes(ONBOARDING_MARKER_TEXT);
+  const gitignoreRaw = (await deps.readFile(join(baseDir, '.gitignore'))) ?? '';
+  const entries: InitPlanEntry[] = [
+    {
+      component: 'skeleton',
+      action: live ? 'keep' : 'create',
+      detail: '.wolf/{memory,threads,shared,briefs,cache} dirs',
+    },
+    { component: 'config', action: live ? 'keep' : 'create', detail: '.wolf/config.yaml (never overwritten)' },
+    {
+      component: 'agents-md',
+      action: marker ? 'keep' : 'create',
+      detail: 'AGENTS.md onboarding marker (marker-append if foreign content)',
+    },
+    {
+      component: 'base-set',
+      action: input.full ? (live ? 'keep' : 'create') : 'skip',
+      detail: input.full
+        ? 'full base set; existing stamped files are never rewritten (fresh/mutated-skip)'
+        : 'minimal set — use --full for agents/skills/commands/plugins',
+    },
+    {
+      component: 'platforms',
+      action: input.platformChoice !== undefined && input.platformChoice.length > 0 ? 'update' : 'skip',
+      detail: input.platformChoice !== undefined ? input.platformChoice.join(', ') : 'no --platform given',
+    },
+    { component: 'memory-seed', action: live ? 'keep' : 'create', detail: 'init report note (guard by tags)' },
+    {
+      component: 'purpose-note',
+      action: input.purpose ? (live ? 'keep' : 'create') : 'skip',
+      detail: input.purpose ? 'interview answer seeded as note' : 'no TTY answer',
+    },
+    {
+      component: 'gitignore',
+      action: gitignoreRaw.includes('# wolf-gitignore:v1') ? 'keep' : 'create',
+      detail: 'ignore machine-local (.wolf/cache, lock, backup); memory is committed',
+    },
+  ];
+  return { live, entries };
 }
 
 export interface PlatformInitOutcome {
@@ -170,8 +258,10 @@ export async function initProject(
         reason: 'npx try-out does not write the base set (spec §7)',
       });
     } else {
-      baseSetOutcomes.push(...(await deps.baseSet.render(baseDir, { models: input.models })));
-      baseSetOutcomes.push(...(await deps.baseSet.seed(baseDir)));
+      baseSetOutcomes.push(
+        ...(await deps.baseSet.render(baseDir, { models: input.models, scope: input.full ? 'full' : 'agents-md' }))
+      );
+      if (input.full) baseSetOutcomes.push(...(await deps.baseSet.seed(baseDir)));
     }
   }
 
@@ -196,13 +286,7 @@ export async function initProject(
       }
     }
   } else {
-    // неинтерактивный дефолт (§4.4 п.3): opencode — безусловно, по факту рендера набора
-    // (D2: детекция не гейтит; F4); прочие платформы — по маркерам, не зависящим от рендера
-    for (const adapter of deps.adapters) {
-      if (adapter.id === 'opencode' || adapter.detect(baseDir)) {
-        platformOutcomes.push(await writePlatformOutcome(adapter, baseDir, deps.mcpCommand));
-      }
-    }
+    // WP1: без --platform платформенные конфиги не пишутся (минимальный путь, спека §4)
   }
 
   // §4 п.8: реестр проектов
@@ -228,6 +312,18 @@ export async function initProject(
       });
       initReport = { action: 'created', id: object.id };
     }
+  }
+
+  // WP1 (спека §4): ответ TTY-интервью сеется в память (note), не в governing-инструкцию
+  if (!deps.npx && input.purpose !== undefined && input.purpose !== '') {
+    await addMemoryObject(memDeps, {
+      type: 'note',
+      facet: 'context',
+      title: 'Project purpose and conventions (init)',
+      body: input.purpose,
+      createdBy: 'user:init',
+      tags: ['onboarding', 'project-purpose'],
+    });
   }
 
   return { npx: deps.npx, platformOutcomes, baseSetOutcomes, initReport };
@@ -259,9 +355,15 @@ function renderInitReportBody(
   }
   if (agentsMd) made.push(`- AGENTS.md: ${agentsMd.action}`);
   made.push(`- platforms: ${selectedPlatforms.join(', ') || '—'} (source: ${platformSource})`);
-  made.push(
-    `- model: primary ${input.models.primary} (source: ${modelSource}) — applied to all agents (worker = primary)`
-  );
+  if (input.models === 'omit') {
+    made.push(
+      '- model: not pinned (omit) — platform default applies; pin later: wolf init --model <providerID>/<modelID>'
+    );
+  } else {
+    made.push(
+      `- model: primary ${input.models.primary} (source: ${modelSource}) — applied to all agents (worker = primary)`
+    );
+  }
 
   const found: string[] = [];
   const skippedFiles = baseSetOutcomes.filter((o) => o.action === 'skipped' && o.file !== '(base set)');
