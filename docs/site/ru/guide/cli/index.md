@@ -18,6 +18,7 @@
 | [`wolf transition`](/ru/guide/cli/memory#wolf-transition)       | Сменить статус жизненного цикла (plumbing)  | [Память](/ru/guide/cli/memory) |
 | [`wolf rebuild-index`](/ru/guide/cli/memory#wolf-rebuild-index) | Перестроить SQLite-индекс поиска (plumbing) | [Память](/ru/guide/cli/memory) |
 | [`wolf update`](/ru/guide/cli/memory#wolf-update)               | Обновить triage-поля объекта (plumbing)     | [Память](/ru/guide/cli/memory) |
+| [`wolf promote`](/ru/guide/cli/memory#wolf-promote)             | Поднять worktree-scoped объекты до main     | [Память](/ru/guide/cli/memory) |
 
 ## Сессии и контекст
 
@@ -57,16 +58,16 @@
 
 ## Платформа и обслуживание
 
-| Команда                                                   | Что делает                                                          | Страница                                           |
-| --------------------------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------- |
-| [`wolf init`](/ru/guide/cli/platform#wolf-init)           | Инициализировать память Mr. Wolf для проекта                        | [Платформа и обслуживание](/ru/guide/cli/platform) |
-| [`wolf bootstrap`](/ru/guide/cli/platform#wolf-bootstrap) | Сканировать проект и создать черновую стартовую память              | [Платформа и обслуживание](/ru/guide/cli/platform) |
-| [`wolf mcp`](/ru/guide/cli/platform#wolf-mcp)             | Запустить MCP-сервер (stdio)                                        | [Платформа и обслуживание](/ru/guide/cli/platform) |
-| [`wolf scaffold`](/ru/guide/cli/platform#wolf-scaffold)   | Создать рамку платформы opencode (agent\|skill\|command) + playbook | [Платформа и обслуживание](/ru/guide/cli/platform) |
-| [`wolf tool`](/ru/guide/cli/platform#wolf-tool)           | Библиотекарь инструментов                                           | [Платформа и обслуживание](/ru/guide/cli/platform) |
-| [`wolf taxonomy`](/ru/guide/cli/platform#wolf-taxonomy)   | Таксономия памяти                                                   | [Платформа и обслуживание](/ru/guide/cli/platform) |
-| [`wolf migrate`](/ru/guide/cli/platform#wolf-migrate)     | Разовая миграция layout                                             | [Платформа и обслуживание](/ru/guide/cli/platform) |
-| [`wolf validate`](/ru/guide/cli/platform#wolf-validate)   | Проверить целостность хранилища                                     | [Платформа и обслуживание](/ru/guide/cli/platform) |
-| [`wolf doctor`](/ru/guide/cli/platform#wolf-doctor)       | Проверить все зарегистрированные проекты                            | [Платформа и обслуживание](/ru/guide/cli/platform) |
-| [`wolf sync`](/ru/guide/cli/platform#wolf-sync)           | Перерендерить базовый набор Wolf (память не трогается)              | [Платформа и обслуживание](/ru/guide/cli/platform) |
-| [`wolf upgrade`](/ru/guide/cli/platform#wolf-upgrade)     | Обновить глобальную установку wolf до последней npm-версии          | [Платформа и обслуживание](/ru/guide/cli/platform) |
+| Команда                                                   | Что делает                                                                                               | Страница                                           |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| [`wolf init`](/ru/guide/cli/platform#wolf-init)           | Инициализировать память Mr. Wolf для проекта (интерактив в TTY; пиннинг модели — opt-in через `--model`) | [Платформа и обслуживание](/ru/guide/cli/platform) |
+| [`wolf bootstrap`](/ru/guide/cli/platform#wolf-bootstrap) | Сканировать проект и создать черновую стартовую память                                                   | [Платформа и обслуживание](/ru/guide/cli/platform) |
+| [`wolf mcp`](/ru/guide/cli/platform#wolf-mcp)             | Запустить MCP-сервер (stdio)                                                                             | [Платформа и обслуживание](/ru/guide/cli/platform) |
+| [`wolf scaffold`](/ru/guide/cli/platform#wolf-scaffold)   | Создать рамку платформы opencode (agent\|skill\|command) + playbook                                      | [Платформа и обслуживание](/ru/guide/cli/platform) |
+| [`wolf tool`](/ru/guide/cli/platform#wolf-tool)           | Библиотекарь инструментов                                                                                | [Платформа и обслуживание](/ru/guide/cli/platform) |
+| [`wolf taxonomy`](/ru/guide/cli/platform#wolf-taxonomy)   | Таксономия памяти                                                                                        | [Платформа и обслуживание](/ru/guide/cli/platform) |
+| [`wolf migrate`](/ru/guide/cli/platform#wolf-migrate)     | Разовая миграция layout                                                                                  | [Платформа и обслуживание](/ru/guide/cli/platform) |
+| [`wolf validate`](/ru/guide/cli/platform#wolf-validate)   | Проверить целостность хранилища                                                                          | [Платформа и обслуживание](/ru/guide/cli/platform) |
+| [`wolf doctor`](/ru/guide/cli/platform#wolf-doctor)       | Проверить все зарегистрированные проекты                                                                 | [Платформа и обслуживание](/ru/guide/cli/platform) |
+| [`wolf sync`](/ru/guide/cli/platform#wolf-sync)           | Перерендерить базовый набор Wolf (память не трогается)                                                   | [Платформа и обслуживание](/ru/guide/cli/platform) |
+| [`wolf upgrade`](/ru/guide/cli/platform#wolf-upgrade)     | Обновить глобальную установку wolf до последней npm-версии                                               | [Платформа и обслуживание](/ru/guide/cli/platform) |

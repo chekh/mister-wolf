@@ -75,6 +75,18 @@ The former types `blocker`, `info-request` and `open-question` are statuses of a
 
 Resolution goes to `active` (work resumes) or to `archived` (abandoned). The substance — impact and workaround for a block, the text of a question — lives in a note inside the thread with a matching facet.
 
+## Memory in git worktrees
+
+Since 2.16 a linked git worktree shares the memory of the main checkout: the memory root resolves to the common `.wolf/` (via git common-dir), while rendered `.opencode/` files stay local to the worktree. Outside git — or without a common dir — the local `.wolf/` is used as before.
+
+Writes made from a worktree are scoped by default: the object gets `scope: worktree:<name>` and is delivered (`wolf call`, `wolf brief`) only inside the same worktree. Universal facts opt out explicitly: `wolf add --scope main`. When the worktree merges, its scoped objects graduate to main scope:
+
+```bash
+wolf promote my-feature   # scoped objects of the worktree become main
+```
+
+Related paths (`related.files` / `related.docs`) are normalized to project-relative at write time; an absolute path outside the project is rejected. Orphaned scopes of removed worktrees surface as a doctor finding — cleanup stays with the owner (no auto-deletion).
+
 ## Reading pre-2.13 data
 
 An existing installation keeps working without any migration — old data is read through aliases:

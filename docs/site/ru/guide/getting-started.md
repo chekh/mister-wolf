@@ -18,8 +18,11 @@ cd my-project && wolf init   # 2) проект: скелет .wolf/ + MCP-кон
 wolf bootstrap               # 3) память: стартовое наполнение из документов проекта
 ```
 
-- `wolf init` создаёт `.wolf/` и MCP-конфиги платформ (opencode, Claude Code — детект автоматический); в терминале спрашивает модель интерактивно, вне TTY требует `--model`.
+- `wolf init` создаёт `.wolf/` в проекте (MCP-конфиги платформ — opt-in: их пишет `wolf init --platform opencode,claude`, список заменяет текущий набор). Первый запуск не принимает решений за вас: минимальный набор файлов по умолчанию (`--full` отрисует полный базовый набор), один вопрос интервью в терминале (назначение проекта — Enter, чтобы пропустить), никакого пиннинга модели (`--model` — opt-in, строки модели опускаются — действует платформенный дефолт). Повторный init на живом проекте показывает план и требует подтверждения (`--yes` применяет без вопросов).
 - После `wolf init` **перезапустите агентскую платформу** — MCP-сервер Wolf подключается при старте. Claude Code при первом старте попросит approve project-scope MCP-сервер — это штатно.
+
+Init считается завершённым, когда `wolf doctor` на проекте сообщает 0 issues; метрика активации и окно приёмки определены в спеке волны (`docs/superpowers/specs/2026-10-10-wave-2.16-init2-unpin-hygiene-design.md`, §11).
+
 - Явно задать платформы: `wolf init --platform opencode,claude` (список заменяет текущий набор).
 - `wolf bootstrap` сканирует проект и создаёт черновую стартовую память: proposed-правила и work-thread.
 
@@ -48,7 +51,7 @@ wolf brief       # сводка состояния по последнему sca
 wolf add --type lesson --title "Вит-тесты падают от кэша" --body "Запускать vitest с флагом --no-cache в CI" --tags "vitest,ci" --confidence medium
 ```
 
-Полный набор флагов `wolf add`: `--type` (один из 7 типов: rule, lesson, decision, thread, complaint, tool, note), `--title`, `--body`, `--tags` (через запятую), `--confidence` (low|medium|high), `--importance` (0..1), `--set <k=v>` (доп. поля, повторяемый), `--scope` (для rule: project|global), `--facet` (характер записи: howto|pitfall|context|metric|history|legacy|constraint; обязателен для note, запрещён для остальных), `--created-by`.
+Полный набор флагов `wolf add`: `--type` (один из 7 типов: rule, lesson, decision, thread, complaint, tool, note), `--title`, `--body`, `--tags` (через запятую), `--confidence` (low|medium|high), `--importance` (0..1), `--set <k=v>` (доп. поля, повторяемый), `--scope` (для rule: project|global; при записи из linked worktree по умолчанию ставится `worktree:<имя>`, `main` — для универсальных фактов), `--facet` (характер записи: howto|pitfall|context|metric|history|legacy|constraint; обязателен для note, запрещён для остальных), `--created-by`.
 
 Выбор типа — теперь выбор из **семи** (было 26). Старый вопрос «какой из 26 типов это?» превратился в «это один из шести особых? если нет — note + фасет» (см. [Модель памяти](/ru/guide/memory)).
 

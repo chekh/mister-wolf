@@ -18,6 +18,7 @@ Playbook delivery for opencode agents — the `wolf-router` plugin injecting the
 | [`wolf transition`](/guide/cli/memory#wolf-transition)       | Transition a memory object to a new status (plumbing) | [Memory](/guide/cli/memory) |
 | [`wolf rebuild-index`](/guide/cli/memory#wolf-rebuild-index) | Rebuild the SQLite search index (plumbing)            | [Memory](/guide/cli/memory) |
 | [`wolf update`](/guide/cli/memory#wolf-update)               | Update triage fields of a memory object (plumbing)    | [Memory](/guide/cli/memory) |
+| [`wolf promote`](/guide/cli/memory#wolf-promote)             | Promote worktree-scoped memory objects to main        | [Memory](/guide/cli/memory) |
 
 ## Sessions & Context
 
@@ -59,7 +60,7 @@ Playbook delivery for opencode agents — the `wolf-router` plugin injecting the
 
 | Command                                                | What it does                                                                                       | Page                                          |
 | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| [`wolf init`](/guide/cli/platform#wolf-init)           | Initialize Mr. Wolf memory for this project (interactive in TTY; non-interactive requires --model) | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf init`](/guide/cli/platform#wolf-init)           | Initialize Mr. Wolf memory for this project (interactive in TTY; model pinning opt-in via --model) | [Platform & Maintenance](/guide/cli/platform) |
 | [`wolf bootstrap`](/guide/cli/platform#wolf-bootstrap) | Scan the project and draft starting memory: proposed rules, document-refs, work thread             | [Platform & Maintenance](/guide/cli/platform) |
 | [`wolf mcp`](/guide/cli/platform#wolf-mcp)             | Start the MCP server (stdio)                                                                       | [Platform & Maintenance](/guide/cli/platform) |
 | [`wolf scaffold`](/guide/cli/platform#wolf-scaffold)   | Scaffold opencode frame (agent\|skill\|command) + playbook in Wolf memory                          | [Platform & Maintenance](/guide/cli/platform) |

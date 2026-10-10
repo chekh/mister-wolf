@@ -25,10 +25,12 @@ wolf bootstrap               # 3) memory: starting content drafted from project 
 What each step does:
 
 1. `npm install -g mister-wolf` installs the global `wolf` binary.
-2. `wolf init` creates the `.wolf/` skeleton in the project and writes MCP configs for detected platforms (opencode, Claude Code). Detection is automatic; explicit: `wolf init --platform opencode,claude` (the list replaces the current set). In a TTY init asks for the model interactively; outside a TTY pass `--model`.
+2. `wolf init` creates the `.wolf/` skeleton in the project (platform MCP configs are opt-in: `wolf init --platform opencode,claude` writes them; the list replaces the current set). The first run decides nothing for you: a minimal file set by default (`--full` renders the complete base set), one interview question in a TTY (project purpose — Enter to skip), no model pinning (`--model` is opt-in; model lines are omitted and the platform default applies). Re-init on a live project shows the plan and asks for confirmation (`--yes` skips it).
 3. `wolf bootstrap` scans the project and drafts starting memory: proposed rules and a work thread.
 
 After `wolf init` **restart your agent platform** — the Wolf MCP server connects at startup. Claude Code will ask you to approve the project-scope MCP server on first start; that is expected.
+
+An init counts as completed when `wolf doctor` reports 0 issues on the project; the activation metric and the acceptance window are defined in the wave spec (`docs/superpowers/specs/2026-10-10-wave-2.16-init2-unpin-hygiene-design.md`, §11).
 
 ## Quick try-out (no installation)
 

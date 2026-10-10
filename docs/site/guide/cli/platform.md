@@ -2,7 +2,7 @@
 
 ## wolf init
 
-Initialize Mr. Wolf memory for this project (interactive in TTY; non-interactive requires `--model`).
+Initialize Mr. Wolf memory for this project (interactive in TTY; non-interactive works without flags). Since 2.16 the default is the minimal file set, no model pinning.
 
 ```text
 Usage: wolf init [options]
@@ -11,10 +11,12 @@ Usage: wolf init [options]
 Options:
 
 - `--platform <ids>` — explicit platform list (comma-separated: `opencode,claude`); replaces the current set
-- `--model <id>` — model for Mr. Wolf and its agents (`<providerID>/<modelID>`); required when non-interactive
+- `--model <id>` — model for Mr. Wolf and its agents (`<providerID>/<modelID>`); opt-in — by default model lines are omitted and the platform default applies
+- `--full` — render the full base set (agents/skills/commands/plugins) instead of the minimal set (default: false)
+- `--yes` — re-init: apply the plan without interactive confirmation (default: false)
 - `--recreate` — backup a corrupted `.wolf/config.yaml` and re-create it from defaults (default: false)
 
-In a TTY `wolf init` asks for the model interactively; in scripts and CI pass `--model` explicitly.
+In a TTY `wolf init` asks one interview question (project purpose, stack, conventions — Enter to skip; the answer seeds starting memory). Non-interactive runs (scripts, CI) need no flags — nothing is pinned. Re-init on a live project prints the plan and asks for confirmation; `--yes` applies it without asking.
 
 ```bash
 wolf init --platform opencode,claude
@@ -256,7 +258,10 @@ Check all registered projects: binary vs schema version, platform configs, prune
 Usage: wolf doctor [options]
 ```
 
-No options beyond `-h, --help`.
+Options:
+
+- `--repair` — repair storage in the current project: rebuild index, backfill `memory.added` events (default: false)
+- `--dry-run` — with `--repair`: print the plan without writing (default: false)
 
 ## wolf sync
 

@@ -48,6 +48,8 @@ Options:
 wolf call --for vitest --compact
 ```
 
+An empty result explains itself instead of printing nothing: the reason (scope filter of a worktree, an empty delivery pool, or a missed `--for` topic) plus the next step — e.g. `wolf promote <worktree-name>` when the scope filter hid objects.
+
 ## wolf session
 
 Manage sessions.

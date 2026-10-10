@@ -19,7 +19,7 @@ Options:
 - `--confidence <confidence>` — confidence level (`low|medium|high`)
 - `--importance <n>` — importance from 0 to 1
 - `--set <k=v>` — extra field key=value (repeatable; a `"[a,b]"` value is a string array; default: `[]`)
-- `--scope <scope>` — scope field for types that declare one (rule: `project|global`)
+- `--scope <scope>` — scope field for types that declare one (rule: `project|global`); also `main` or `worktree:<name>` — writes from a linked worktree get `worktree:<name>` by default, `--scope main` opts out (see [Memory in git worktrees](/guide/memory#memory-in-git-worktrees))
 - `--facet <facet>` — note facet. Required for `note`: `howto|pitfall|context|metric|history|legacy|constraint`. Free input is an error — the facet vocabulary is closed
 - `--created-by <actor>` — creator actor (default: env `WOLF_ACTOR`, else `user:cli`)
 
@@ -203,6 +203,20 @@ Usage: wolf relation remove <id>
 ```
 
 Arguments: `id` — relation id (see `relation list`).
+
+## wolf promote
+
+Deliver worktree-scoped memory objects: promote them to main scope. The finishing step when merging a worktree — its scoped objects stop being filtered out of delivery elsewhere.
+
+```text
+Usage: wolf promote <worktree>
+```
+
+Arguments: `worktree` — worktree name whose scoped objects become main.
+
+```bash
+wolf promote my-feature
+```
 
 ## Plumbing
 
