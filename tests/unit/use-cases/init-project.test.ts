@@ -449,7 +449,7 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     expect(notes[0].body).toBe('тест');
     expect(notes[0].created_by).toBe('user:init');
     expect(notes[0].tags).toContain('project-purpose');
-    // ответ интервью не попадает в AGENTS.md (там только маркер-блок из шаблона)
+    // интервью-ответ живёт в памяти (note с onboarding-тегом), а не в governing-инструкции
     expect(notes[0].tags).toContain('onboarding');
   });
 
