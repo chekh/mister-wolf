@@ -8,6 +8,27 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.16.0] - 2026-10-10
+
+### Added — Init 2.0, worktree memory & delivery hygiene (wave 2.16)
+
+- Init 2.0: `wolf init` creates the agreed minimum by default (`.wolf/` skeleton + config + AGENTS.md onboarding marker); the full base set is opt-in via `--full`; platform MCP configs are written only with `--platform`. The default TTY interview is a single purpose question; the answer is seeded into memory as a note (`project-purpose`), not into governing instructions.
+- Careful re-init: a repeated init on a live project prints a per-component plan (`planInit`) and requires confirmation (`--yes` for non-interactive runs); refusal changes nothing; blind base-set reseed is forbidden — stamped profiles and foreign AGENTS.md survive re-init untouched.
+- Unpin: init no longer asks for a model and omits model lines from generated profiles by default; `--model` is opt-in; non-interactive init completes without `--model`. Supersedes the previous Q11/Q7 decisions (recorded in Wolf memory: init model question is gone, worker=primary pinning is gone).
+- Worktree memory (git common-dir): a linked worktree resolves `.wolf/` into the main checkout (fs-parse of `.git` metadata, no subprocesses; any anomaly falls back to the local `.wolf/`). Rendered `.opencode/` surfaces stay local to the worktree.
+- Scope gating + `wolf promote <worktree>`: objects written from a worktree default to `scope: worktree:<name>`; delivery hides other worktrees' scoped objects and says so (empty-call diagnostics name the active scope). `wolf promote` moves a worktree's scoped objects to `main` (idempotent, `memory.scope_promoted` events); doctor reports orphaned worktree scopes — cleanup stays manual (no auto-delete).
+- Related-path normalization: `related.files/docs` are stored project-relative on write; a path escaping the project root refuses the write. `decisions` stay ids.
+- Durability: `wolf doctor --repair [--dry-run]` repairs the storage split — index is rebuilt from markdown, missing `memory.added` events are backfilled from markdown (markdown = object truth, events.jsonl = journal truth, index = derived); idempotent; damaged journal lines tolerated; dangling events are counted, never deleted.
+- `.gitignore` template at init (`# wolf-gitignore:v1`): machine-local state (`.wolf/cache`, lock, backup) ignored, `.wolf/memory` committed — cloning carries the memory.
+- Secret masking: doctor output masks known token patterns (sk-, ghp*/gho*, xox-, AKIA, JWT) and named assignments (`api_key=`, `token:`) as `[redacted]`.
+- Empty `wolf call` explains itself: pool size, why it is empty (scope filter with the active scope named, empty pool with a capture hint, or topic miss with a retry hint) and the next step.
+- T4: `canTransition` tolerates unknown stored statuses (`UserFacingError` instead of `TypeError` on corrupted data). T6: supersede refuses cycles on write; write-integrity e2e trio (id collision does not overwrite, proposed stays out of call, supersede cycle rejected).
+- `wolf --help` budget extended for the new `promote` command; CLI reference regenerated.
+
+### Upgrade notes
+
+- Migrations: none. Existing user-pinned model lines are untouched; `wolf sync` keeps omitting model lines for fresh content. A local `.wolf/` created inside a linked worktree before 2.16 stays in place but is no longer read (memory now resolves to the main checkout) — move data manually if needed. `--scope` no longer validates against a fixed enum: values are stored as written (`main`, `worktree:<name>` are the machine-written ones).
+
 ## [2.15.2] - 2026-10-09
 
 ### Changed — expert revision of the skill set + governance consistency

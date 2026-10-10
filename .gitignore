@@ -29,3 +29,10 @@ docs/site/.vitepress/cache/
 # playground: независимая площадка-снапшот (свой git, git init внутри)
 playground/
 node_modules
+
+# wolf-gitignore:v1
+# wolf: machine-local state; .wolf/memory is portable — commit it
+.wolf/cache/
+.wolf/memory/.lock
+.wolf/backup/
+# end wolf-gitignore
