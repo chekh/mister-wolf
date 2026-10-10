@@ -6,6 +6,7 @@ import { MEMORY_TYPES, type MemoryType } from '../../../domain/memory-types.js';
 import { parseSetPairs } from '../../../domain/parse-set-pairs.js';
 import { resolveCreatedBy } from '../../../domain/actor.js';
 import { UserFacingError } from '../../../domain/errors.js';
+import type { MemoryObject } from '../../../domain/schemas/memory-object-schema.js';
 import { addArgsSummary } from '../../fs/session-metrics-log.js';
 import { withCliCall } from './with-cli-call.js';
 
@@ -34,7 +35,7 @@ export interface AddActionOptions {
  * `wolf <type> add` делегируют сюда — логика опций/use-case не дублируется.
  */
 export async function runAddAction(baseDir: string, options: AddActionOptions): Promise<void> {
-  const { store, log, clock, idGen, index, declarations, lock } = createCliContainer(baseDir);
+  const { store, log, clock, idGen, index, declarations, lock, worktree, memoryRoot } = createCliContainer(baseDir);
   const type = options.type as MemoryType;
   const extra = parseSetPairs(options.set ?? [], type);
   if (options.scope !== undefined) {
@@ -45,8 +46,29 @@ export async function runAddAction(baseDir: string, options: AddActionOptions): 
     if ('facet' in extra) throw new UserFacingError('Duplicate facet: use either --facet or --set facet=..., not both');
   }
   Object.assign(extra, options.extraFields ?? {});
+  // WP3 §6.3: --set related.files/docs/decisions адресует related (точечный ключ
+  // --set-парсера не разворачивает точки); скаляр коэрсится в массив.
+  let related: MemoryObject['related'] | undefined;
+  for (const key of Object.keys(extra)) {
+    const m = /^related\.(files|docs|decisions)$/.exec(key);
+    if (!m) continue;
+    const value = extra[key];
+    delete extra[key];
+    related ??= { files: [], docs: [], decisions: [] };
+    related[m[1] as 'files' | 'docs' | 'decisions'] = Array.isArray(value) ? (value as string[]) : [String(value)];
+  }
   const result = await addMemoryObject(
-    { store, log, clock, idGen, index, declarations, lock },
+    {
+      store,
+      log,
+      clock,
+      idGen,
+      index,
+      declarations,
+      lock,
+      defaultScope: worktree ? `worktree:${worktree}` : undefined,
+      projectRoot: memoryRoot,
+    },
     {
       type,
       title: options.title,
@@ -56,6 +78,7 @@ export async function runAddAction(baseDir: string, options: AddActionOptions): 
       confidence: options.confidence as 'low' | 'medium' | 'high' | undefined,
       importance: options.importance,
       facet: options.facet,
+      related,
       extra,
     }
   );
@@ -78,7 +101,10 @@ export function memoryAddCommand(baseDir: string = safeCwd()): Command {
     .option('--confidence <confidence>', 'Confidence level (low|medium|high)')
     .option('--importance <n>', 'Importance from 0 to 1', parseFloat)
     .option('--set <k=v>', 'Extra field key=value (repeatable; "[a,b]" value is a string array)', collectSet, [])
-    .option('--scope <scope>', 'Scope field for types that declare one (rule: project|global)')
+    .option(
+      '--scope <scope>',
+      'Scope field for types that declare one (rule: project|global; also main or worktree:<name>)'
+    )
     .option('--facet <facet>', 'Note facet (required for note; howto|pitfall|context|metric|history|legacy|constraint)')
     .option('--created-by <actor>', 'Creator actor (default: env WOLF_ACTOR, else user:cli)')
     .action(

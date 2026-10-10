@@ -21,6 +21,7 @@ import { governanceDefaults } from '../../../domain/governance.js';
 import { isNpxRun } from '../../../domain/npx.js';
 import { UserFacingError } from '../../../domain/errors.js';
 import { safeCwd } from '../cli-entry.js';
+import { resolveMemoryRoot } from '../../../adapters/fs/memory-root.js';
 import type { ModelContext } from '../../../ports/base-set-renderer.port.js';
 
 /* ---------- TTY-вопросы (readline, тяжёлых зависимостей не добавляем — §4.6) ---------- */
@@ -104,13 +105,16 @@ export function memoryInitCommand(): Command {
         // §2.5 (recreate-guard): init --recreate — единственный вход CLI в обход guard runCli;
         // поэтому cwd берём тоже под защитой (safeCwd: удалённый каталог → однострочный Error, не сырой ENOENT)
         const baseDir = safeCwd();
+        // WP3 §6.1 (2.16): общий .wolf живёт в root (main-чекоут для linked worktree);
+        // конфиг-пути (recreate/guard/planInit/markSchemaCurrent) — через root, рендеры — локально
+        const { root } = resolveMemoryRoot(baseDir);
         if (options.recreate) {
-          await recreateConfig(baseDir);
+          await recreateConfig(root);
           // восстановление = приведение к валидному СОСТОЯНИЮ, а не тихий штамп маркера ниже:
           // легаси-схема (1/без маркера) мигрирует здесь (layout + маркер), иначе markSchemaCurrent
           // дописал бы v2 без layout-миграции и objects/ остался бы осиротевшим навсегда;
           // схема из будущего — честный отказ «обнови wolf» (спека §3), а не даунгрейд 99→2
-          await ensureCurrentSchema(baseDir);
+          await ensureCurrentSchema(root);
         }
 
         let platformChoice: string[] | undefined;
@@ -148,10 +152,11 @@ export function memoryInitCommand(): Command {
         const input = { platformChoice, platformSource, models, modelSource, full: options.full, purpose };
 
         // K6 (спека 2.16 §4): гейт повторного init — read-only план ДО любых записей
-        // (до createCliContainer); живой проект → diff + подтверждение, blind reseed запрещён
+        // (до createCliContainer); живой проект → diff + подтверждение, blind reseed запрещён.
+        // Детект живого проекта — через root: re-init в worktree видит общий конфиг.
         const plan = await planInit(
           { exists: async (p) => existsSync(p), readFile: async (p) => readFile(p, 'utf-8').catch(() => null) },
-          baseDir,
+          root,
           input
         );
         if (plan.live) {
@@ -244,7 +249,7 @@ export function memoryInitCommand(): Command {
             adapters: PLATFORM_ADAPTERS,
             mcpCommand: CANONICAL_MCP_COMMAND,
             npx: isNpxRun(),
-            markSchemaCurrent: (dir) => writeSchemaVersionIfAbsent(dir),
+            markSchemaCurrent: () => writeSchemaVersionIfAbsent(root),
             store,
             log,
             clock,

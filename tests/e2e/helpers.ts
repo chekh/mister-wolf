@@ -43,6 +43,8 @@ export interface LegacyInjectionSeed {
   trigger_keywords: string[];
   created_by: string;
   related_objects?: string[];
+  /** WP3 §6.2 (2.16): worktree-scope для кейсов scope-гейтинга доставки. */
+  scope?: string;
 }
 
 /**
@@ -79,6 +81,7 @@ export function writeLegacyInjection(dir: string, seed: LegacyInjectionSeed): st
     'superseded_by: null',
     `trigger_keywords: [${seed.trigger_keywords.map(q).join(', ')}]`,
     ...(seed.related_objects?.length ? [`related_objects: [${seed.related_objects.map(q).join(', ')}]`] : []),
+    ...(seed.scope !== undefined ? [`scope: ${q(seed.scope)}`] : []),
     '---',
   ].join('\n');
   const callsDir = join(dir, '.wolf', 'memory', 'shared', 'calls');

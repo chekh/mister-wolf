@@ -21,6 +21,10 @@ export interface CallInjectionResult {
    * Стюарда»; null = relations не передан (MCP-канал) или зрелых нет. В blocks
    * не входит — не занимает бюджет доставки. */
   banner: string | null;
+  /** WP3 §6.2: активных кандидатов в пуле (после status-фильтра, до scope/topic-фильтров). */
+  poolSize: number;
+  /** WP3 §6.2: сколько активных скрыто scope-фильтром чужого worktree; null — скрытых нет. */
+  hidden: { scope: string; count: number } | null;
 }
 
 function formatBlock(obj: Record<string, unknown>, colors?: boolean): string {
@@ -46,6 +50,8 @@ export async function getCallInjections(
     deliveredRegistry?: Record<string, string>;
     /** P212 (2.13 §5.3в): подсветка фасета (CLI-TTY); false/undefined → плоский текст. */
     colors?: boolean;
+    /** WP3 §6.2: текущий scope доставки; undefined/'main' — main. */
+    currentScope?: string;
   }
 ): Promise<CallInjectionResult> {
   const now = deps.clock.now();
@@ -70,6 +76,20 @@ export async function getCallInjections(
       (o.type === 'call-injection' || (o.type === 'note' && o.alias_origin === 'call-injection'))
   );
 
+  // WP3 §6.2 (спека 2.16): worktree-scoped объект виден только в той же ворктрии;
+  // весь пайплайн ниже — на visible. scope без префикса worktree: ('main', rule-
+  // легаси 'project'/'global') доставляется везде — гейтинг только для ворктрий.
+  const current = input.currentScope ?? 'main';
+  const scopeOf = (o: Record<string, unknown>): string | null => {
+    const s = o.scope;
+    return typeof s === 'string' && s.startsWith('worktree:') ? s : null;
+  };
+  const visible = injections.filter((o) => {
+    const s = scopeOf(o);
+    return s === null || s === current;
+  });
+  const hiddenCount = injections.length - visible.length;
+
   // 2. topic matching
   let matched: Record<string, unknown>[];
   if (input.topic) {
@@ -84,7 +104,7 @@ export async function getCallInjections(
         // ponytail: broken index degrades to keyword-only matching, never crashes wolf call
       }
     }
-    matched = injections.filter((obj) => {
+    matched = visible.filter((obj) => {
       const kw: string[] = (obj.trigger_keywords as string[]) ?? [];
       if (kw.some((k) => topicTokens.includes(k))) return true;
       return ftsIds.has(obj.id as string);
@@ -109,7 +129,7 @@ export async function getCallInjections(
       matched = rules.filter((r) => !isMachineState(r) && !keywordRules.some((k) => k.id === r.id)).slice(0, 3);
     }
   } else {
-    matched = injections;
+    matched = visible;
   }
 
   // 4. thread mode: append project rules + open blockers with matching thread
@@ -201,5 +221,13 @@ export async function getCallInjections(
     }
   }
 
-  return { blocks, truncated, deliveredIds, deduplicated, banner };
+  return {
+    blocks,
+    truncated,
+    deliveredIds,
+    deduplicated,
+    banner,
+    poolSize: injections.length,
+    hidden: hiddenCount > 0 ? { scope: current, count: hiddenCount } : null,
+  };
 }

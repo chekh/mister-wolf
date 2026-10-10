@@ -10,6 +10,7 @@ import {
   recordDeliveries,
 } from '../../../adapters/fs/session-delivery-registry.js';
 import { loadDeliverySettings } from '../../../adapters/fs/config-file.js';
+import { resolveMemoryRoot } from '../../../adapters/fs/memory-root.js';
 import { colorsEnabled } from '../../../domain/facet-colors.js';
 import { withCliCall } from './with-cli-call.js';
 
@@ -39,7 +40,7 @@ export function memoryCallCommand(): Command {
         // ensureCliSessionId в cli-entry); null → фильтр выключен (MCP-контур).
         const sessionKey = resolveSessionId();
         const registry = sessionKey ? loadSessionRegistry(baseDir, sessionKey) : null;
-        const { store, index, clock, relations } = createCliContainer(baseDir);
+        const { store, index, clock, relations, worktree } = createCliContainer(baseDir);
         const result = await getCallInjections(
           { store, index, clock, relations },
           {
@@ -49,6 +50,8 @@ export function memoryCallCommand(): Command {
             deliveredRegistry: registry?.delivered,
             // P212 (2.13 §5.3в): подсветка фасета в блоках (pipe/NO_COLOR → плоско)
             colors: colorsEnabled(process.stdout, process.env),
+            // WP3 §6.2: гейтинг доставки по scope (undefined — main-чекоут)
+            currentScope: worktree ?? undefined,
           }
         );
         if (result.blocks.length === 0) {
@@ -56,6 +59,14 @@ export function memoryCallCommand(): Command {
             console.log(DEDUP_NOTICE(result.deduplicated));
           } else {
             console.log('No active call injections.');
+            // WP3 §6.2, черновик (финальный текст — задача 8 WP5): пустой call
+            // из-за scope-фильтра называет активный scope и следующий шаг
+            if (result.hidden) {
+              console.log(
+                `[wolf] scope filter hid ${result.hidden.count} active object(s); current scope: ${result.hidden.scope}`
+              );
+              console.log('[wolf] to deliver them after merge, run: wolf promote <worktree-name>');
+            }
           }
         } else {
           console.log(result.blocks.join('\n'));
@@ -129,7 +140,8 @@ export function memoryCallCommand(): Command {
           try {
             const line = deliveryWarningLine(
               (registry?.injectedBytes ?? 0) + deliveredBytesNow,
-              loadDeliverySettings(baseDir)
+              // WP3 §6.1: конфиг живёт в общем root (main-чекоут для worktree)
+              loadDeliverySettings(resolveMemoryRoot(baseDir).root)
             );
             if (line) console.error(line);
           } catch {

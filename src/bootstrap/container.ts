@@ -10,6 +10,7 @@ import { eventsPath, indexPath, relationsPath, memoryDir } from '../adapters/fs/
 import { JsonlRelationLog } from '../adapters/fs/jsonl-relation-log.js';
 import { FsMemoryLock } from '../adapters/fs/memory-lock.js';
 import { loadWolfConfigSync } from '../adapters/fs/config-file.js';
+import { resolveMemoryRoot } from '../adapters/fs/memory-root.js';
 import { mergeTaxonomy } from '../domain/taxonomy.js';
 import { CORE_TAXONOMY, type MemoryTypeDeclaration } from '../domain/memory-types.js';
 import { ProjectsRegistry } from '../adapters/fs/projects-registry.js';
@@ -47,20 +48,23 @@ function selfHealRegistry(baseDir: string): void {
 
 export function createCliContainer(baseDir: string) {
   selfHealRegistry(baseDir);
+  const mem = resolveMemoryRoot(baseDir);
   const fs = new FsFileSystem();
   // P300/2.14 §5.2: log создаётся раньше store (точка ребейза для P331)
-  const log = new JsonlEventLog(eventsPath(baseDir));
+  const log = new JsonlEventLog(eventsPath(mem.root));
   return {
-    store: new MarkdownMemoryStore(baseDir, undefined, log),
+    store: new MarkdownMemoryStore(mem.root, undefined, log),
     log,
-    index: new SQLiteSearchIndex(indexPath(baseDir)),
-    relations: new JsonlRelationLog(relationsPath(baseDir)),
+    index: new SQLiteSearchIndex(indexPath(mem.root)),
+    relations: new JsonlRelationLog(relationsPath(mem.root)),
     clock: new SystemClock(),
     idGen: new HashIdGenerator(),
     initializer: new FsProjectInitializer(),
     fs,
     scanner: new HeuristicProjectScanner(fs),
-    lock: new FsMemoryLock(memoryDir(baseDir)),
-    declarations: loadDeclarations(baseDir),
+    lock: new FsMemoryLock(memoryDir(mem.root)),
+    declarations: loadDeclarations(mem.root),
+    memoryRoot: mem.root,
+    worktree: mem.worktree,
   };
 }

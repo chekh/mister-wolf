@@ -336,6 +336,12 @@ export const COMMANDS: CommandSpec[] = [
     load: () => import('./commands/memory-doctor.js').then((m) => m.memoryDoctorCommand()),
   },
   {
+    name: 'promote',
+    description: 'Promote worktree-scoped memory objects to main',
+    usage: '<worktree>',
+    load: () => import('./commands/memory-promote.js').then((m) => m.memoryPromoteCommand()),
+  },
+  {
     // Волна 2.14 §8.1 (P330): реестр-«телефонная книга» — просмотр; C-поток
     // регистрирует aggregate выше — ребейз механический (точка 4 §1 плана)
     name: 'projects',

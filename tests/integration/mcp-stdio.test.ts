@@ -58,7 +58,7 @@ describe('MCP stdio server', () => {
     expect(text).toContain('## Recent decisions');
   });
 
-  it('lists add tool with scope enum in inputSchema (wire level)', async () => {
+  it('lists add tool with scope in inputSchema (wire level)', async () => {
     const initMessage = {
       jsonrpc: '2.0',
       id: 1,
@@ -72,11 +72,12 @@ describe('MCP stdio server', () => {
       method: 'tools/list',
     })) as {
       result?: {
-        tools?: Array<{ name: string; inputSchema?: { properties?: Record<string, { enum?: string[] }> } }>;
+        tools?: Array<{ name: string; inputSchema?: { properties?: Record<string, { type?: string }> } }>;
       };
     };
     const add = response.result?.tools?.find((t) => t.name === 'add');
-    expect(add?.inputSchema?.properties?.scope?.enum).toContain('project');
+    // WP3 §6.2 (2.16): scope — строка (worktree:<имя>/main), enum project|global снят
+    expect(add?.inputSchema?.properties?.scope?.type).toBe('string');
   });
 
   it('creates a rule with scope via tools/call add', async () => {

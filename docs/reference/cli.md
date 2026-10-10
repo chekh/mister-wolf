@@ -59,7 +59,7 @@ Options:
   --set <k=v>                Extra field key=value (repeatable; "[a,b]" value
                              is a string array) (default: [])
   --scope <scope>            Scope field for types that declare one (rule:
-                             project|global)
+                             project|global; also main or worktree:<name>)
   --facet <facet>            Note facet (required for note;
                              howto|pitfall|context|metric|history|legacy|constraint)
   --created-by <actor>       Creator actor (default: env WOLF_ACTOR, else
@@ -290,7 +290,6 @@ Options:
   --importance <n>                       Importance from 0 to 1
   --set <k=v>                            Extra field key=value (repeatable) (default: [])
   --created-by <actor>                   Creator actor (default: env WOLF_ACTOR, else user:cli)
-  --scope <scope>                        scope (choices: "project", "global")
   --applies-to <applies-to>              applies_to (comma-separated)
   --trigger <trigger>                    trigger
   --trigger-keywords <trigger-keywords>  trigger_keywords (comma-separated)
@@ -780,6 +779,20 @@ Usage: wolf doctor [options]
 
 Check all registered projects: binary vs schema version, platform configs,
 prune dead entries
+
+Options:
+  -h, --help  display help for command
+```
+
+### wolf promote
+
+```text
+Usage: wolf promote [options] <worktree>
+
+Deliver worktree-scoped memory objects: promote them to main scope
+
+Arguments:
+  worktree    Worktree name whose scoped objects become main
 
 Options:
   -h, --help  display help for command
