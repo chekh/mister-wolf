@@ -80,6 +80,23 @@ describe('addMemoryObject', () => {
     expect(object.status).toBe('active');
   });
 
+  // WP3 §6.2 (2.16): запись из linked worktree получает дефолтный scope ворктрии
+  it('applies defaultScope when extra.scope is absent', async () => {
+    const { object } = await addMemoryObject(
+      { store, log, clock, idGen, defaultScope: 'worktree:wt' },
+      { type: 'rule', title: 'From worktree', createdBy: 'user:test' }
+    );
+    expect(object.scope).toBe('worktree:wt');
+  });
+
+  it('explicit extra.scope beats defaultScope', async () => {
+    const { object } = await addMemoryObject(
+      { store, log, clock, idGen, defaultScope: 'worktree:wt' },
+      { type: 'rule', title: 'Universal fact', createdBy: 'user:test', extra: { scope: 'main' } }
+    );
+    expect(object.scope).toBe('main');
+  });
+
   it('creates typed object with extra fields validated by declaration', async () => {
     const { object } = await addMemoryObject(
       { store, log, clock, idGen },

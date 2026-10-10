@@ -10,6 +10,7 @@ import {
   recordDeliveries,
 } from '../../../adapters/fs/session-delivery-registry.js';
 import { loadDeliverySettings } from '../../../adapters/fs/config-file.js';
+import { resolveMemoryRoot } from '../../../adapters/fs/memory-root.js';
 import { colorsEnabled } from '../../../domain/facet-colors.js';
 import { withCliCall } from './with-cli-call.js';
 
@@ -129,7 +130,8 @@ export function memoryCallCommand(): Command {
           try {
             const line = deliveryWarningLine(
               (registry?.injectedBytes ?? 0) + deliveredBytesNow,
-              loadDeliverySettings(baseDir)
+              // WP3 §6.1: конфиг живёт в общем root (main-чекоут для worktree)
+              loadDeliverySettings(resolveMemoryRoot(baseDir).root)
             );
             if (line) console.error(line);
           } catch {

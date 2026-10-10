@@ -15,19 +15,17 @@ describe('MemoryAddInputSchema (derived from taxonomy)', () => {
     if (parsed.success) expect(parsed.data.scope).toBe('project');
   });
 
-  it('rejects invalid scope with enum message', () => {
+  // WP3 §6.2 (2.16): scope — необязательная строка (машинные worktree:<имя>/main
+  // должны проходить; enum project|global резал их на границе MCP)
+  it('accepts worktree scope strings through parse (not stripped)', () => {
     const parsed = MemoryAddInputSchema.safeParse({
       type: 'rule',
       title: 't',
       createdBy: 'user:x',
-      scope: 'bogus',
+      scope: 'worktree:wt-e2e',
     });
-    expect(parsed.success).toBe(false);
-    if (!parsed.success) {
-      const scopeIssue = parsed.error.issues.find((i) => i.path.includes('scope'));
-      expect(scopeIssue).toBeDefined();
-      expect(scopeIssue?.message).toMatch(/project/);
-    }
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.scope).toBe('worktree:wt-e2e');
   });
 
   it('keeps thread.goal through parse (not stripped)', () => {
@@ -61,13 +59,14 @@ describe('MemoryAddInputSchema (derived from taxonomy)', () => {
     }
   });
 
-  it('JSON Schema exposes scope enum and additionalProperties: false for MCP clients', () => {
+  it('JSON Schema exposes scope as string (no enum) and additionalProperties: false for MCP clients', () => {
     const json = z.toJSONSchema(MemoryAddInputSchema) as {
       additionalProperties?: unknown;
-      properties?: Record<string, { enum?: string[] }>;
+      properties?: Record<string, { enum?: string[]; type?: string }>;
     };
     expect(json.additionalProperties).toBe(false);
-    expect(json.properties?.scope?.enum).toEqual(['project', 'global']);
+    expect(json.properties?.scope?.type).toBe('string');
+    expect(json.properties?.scope?.enum).toBeUndefined();
   });
 });
 

@@ -63,9 +63,11 @@ describe('mcp_call telemetry', () => {
 
   it('error-branch: domain failure appends outcome=error and rethrows original error', async () => {
     const tools = toolsOf(dir);
-    // rule без scope проходит input-схему, но доменная валидация бросает внутри handler'а
-    await expect(tools.add.handler({ type: 'rule', title: 'x', createdBy: 'user:mcp-test' })).rejects.toThrow(
-      /Type validation failed: scope/
+    // thread без goal проходит input-схему (per-type поля optional на границе),
+    // но доменная валидация бросает внутри handler'а (WP3 §6.2: rule-scope больше
+    // не required-enum, vehicle заменён с rule/scope на thread/goal)
+    await expect(tools.add.handler({ type: 'thread', title: 'x', createdBy: 'user:mcp-test' })).rejects.toThrow(
+      /Type validation failed: goal/
     );
 
     const events = readSignals(dir).filter((e) => e.event === 'mcp_call');
@@ -143,8 +145,9 @@ describe('mcp_call telemetry', () => {
 
   it('wave0 error: detail.error.message + detail.error_class_id (classifyError)', async () => {
     const tools = toolsOf(dir);
-    await expect(tools.add.handler({ type: 'rule', title: 'x', createdBy: 'u' })).rejects.toThrow(
-      /Type validation failed: scope/
+    // WP3 §6.2: vehicle — thread без goal (rule/scope больше не domain-error)
+    await expect(tools.add.handler({ type: 'thread', title: 'x', createdBy: 'u' })).rejects.toThrow(
+      /Type validation failed: goal/
     );
     const ev = readSignals(dir)
       .filter((e) => e.event === 'mcp_call')

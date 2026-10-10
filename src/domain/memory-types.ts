@@ -95,7 +95,9 @@ const CORE_TAXONOMY_DECLS = [
     subdirThread: null,
     subdirShared: 'rules',
     fields: {
-      scope: { kind: 'enum', values: ['project', 'global'] },
+      // WP3 §6.2 (2.16): необязательная строка (по образцу owner_skill) — enum
+      // project|global резал машинные значения worktree:<имя>/main
+      scope: { kind: 'string', optional: true },
       applies_to: { kind: 'string[]', default: [] },
       trigger: { kind: 'string', default: '' },
       trigger_keywords: { kind: 'string[]', default: [] },

@@ -228,18 +228,19 @@ describe('buildMcpServer', () => {
     expect(got.content[0].text).toContain('"scope": "project"');
   });
 
-  it('add rejects invalid scope at input schema with a clear error', () => {
-    expect(() =>
-      MemoryAddInputSchema.parse({
-        type: 'rule',
-        title: 'x',
-        createdBy: 'user:mcp-test',
-        scope: 'bogus',
-      })
-    ).toThrow(/scope/);
+  // WP3 §6.2 (2.16): scope — необязательная строка (машинные worktree:<имя>/main
+  // проходят границу MCP; enum project|global снят с декларации)
+  it('add accepts worktree scope strings at input schema', () => {
+    const parsed = MemoryAddInputSchema.parse({
+      type: 'rule',
+      title: 'x',
+      createdBy: 'user:mcp-test',
+      scope: 'worktree:wt-e2e',
+    });
+    expect(parsed.scope).toBe('worktree:wt-e2e');
   });
 
-  it('add without scope for rule passes input schema but is rejected by domain validation', async () => {
+  it('add without required per-type field passes input schema but is rejected by domain validation', async () => {
     const server = buildMcpServer(dir);
     const tools = (
       server as unknown as {
@@ -249,9 +250,10 @@ describe('buildMcpServer', () => {
         >;
       }
     )._registeredTools;
-    // handler вызывается напрямую (без parse) — объект как есть
-    await expect(tools.add.handler({ type: 'rule', title: 'x', createdBy: 'user:mcp-test' })).rejects.toThrow(
-      /Type validation failed: scope/
+    // handler вызывается напрямую (без parse) — объект как есть;
+    // все per-type поля optional на границе схемы, обязательность проверяет домен
+    await expect(tools.add.handler({ type: 'thread', title: 'x', createdBy: 'user:mcp-test' })).rejects.toThrow(
+      /Type validation failed: goal/
     );
   });
 

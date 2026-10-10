@@ -47,6 +47,8 @@ export async function addMemoryObject(
     declarations?: readonly MemoryTypeDeclaration[];
     /** 2.13 §5.3: кастомный словарь facets.character из config.yaml. */
     facetCharacter?: readonly string[];
+    /** WP3 §6.2: дефолт scope при записи из linked worktree ('worktree:<имя>'); нет — поле не ставится. */
+    defaultScope?: string;
   },
   input: AddMemoryObjectInput
 ): Promise<AddMemoryObjectResult> {
@@ -102,6 +104,8 @@ export async function addMemoryObject(
     };
 
     Object.assign(object, input.extra ?? {});
+    // WP3 §6.2: явный scope (--scope main / --set scope=...) сильнее дефолта ворктрии
+    if (deps.defaultScope !== undefined && object.scope === undefined) object.scope = deps.defaultScope;
     if (input.type === 'note' && facet !== undefined) object.facet = facet;
     const baseDecl = getDeclaration(object.type, deps.declarations);
     // note: enum фасета = эффективный словарь (кастомный из конфига или дефолт)

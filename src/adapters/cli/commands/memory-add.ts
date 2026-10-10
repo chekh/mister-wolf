@@ -34,7 +34,7 @@ export interface AddActionOptions {
  * `wolf <type> add` делегируют сюда — логика опций/use-case не дублируется.
  */
 export async function runAddAction(baseDir: string, options: AddActionOptions): Promise<void> {
-  const { store, log, clock, idGen, index, declarations, lock } = createCliContainer(baseDir);
+  const { store, log, clock, idGen, index, declarations, lock, worktree } = createCliContainer(baseDir);
   const type = options.type as MemoryType;
   const extra = parseSetPairs(options.set ?? [], type);
   if (options.scope !== undefined) {
@@ -46,7 +46,16 @@ export async function runAddAction(baseDir: string, options: AddActionOptions): 
   }
   Object.assign(extra, options.extraFields ?? {});
   const result = await addMemoryObject(
-    { store, log, clock, idGen, index, declarations, lock },
+    {
+      store,
+      log,
+      clock,
+      idGen,
+      index,
+      declarations,
+      lock,
+      defaultScope: worktree ? `worktree:${worktree}` : undefined,
+    },
     {
       type,
       title: options.title,
@@ -78,7 +87,10 @@ export function memoryAddCommand(baseDir: string = safeCwd()): Command {
     .option('--confidence <confidence>', 'Confidence level (low|medium|high)')
     .option('--importance <n>', 'Importance from 0 to 1', parseFloat)
     .option('--set <k=v>', 'Extra field key=value (repeatable; "[a,b]" value is a string array)', collectSet, [])
-    .option('--scope <scope>', 'Scope field for types that declare one (rule: project|global)')
+    .option(
+      '--scope <scope>',
+      'Scope field for types that declare one (rule: project|global; also main or worktree:<name>)'
+    )
     .option('--facet <facet>', 'Note facet (required for note; howto|pitfall|context|metric|history|legacy|constraint)')
     .option('--created-by <actor>', 'Creator actor (default: env WOLF_ACTOR, else user:cli)')
     .action(
