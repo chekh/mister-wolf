@@ -242,6 +242,21 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     expect(seenModels).toEqual([MODELS]);
   });
 
+  it("WP2 unpin (спека 2.16 §5): models = 'omit' доходит до render как 'omit'", async () => {
+    writeFileSync(join(dir, 'package.json'), '{}');
+    const { deps } = makeDeps([new FakeAdapter('opencode', false)]);
+    const seenModels: (ModelContext | 'omit' | undefined)[] = [];
+    deps.baseSet = {
+      render: async (_d, opts) => {
+        seenModels.push(opts?.models);
+        return [];
+      },
+      seed: async () => [],
+    };
+    await initProject(deps, dir, { models: 'omit' });
+    expect(seenModels).toEqual(['omit']);
+  });
+
   it('§4.1/D4: init-отчёт — один объект report с тегами; body содержит made/found/needs-fix', async () => {
     writeFileSync(join(dir, 'package.json'), '{}');
     const { deps, store } = makeDeps([new FakeAdapter('opencode', false)]);

@@ -27,7 +27,7 @@ function newProject(markers: 'opencode' | 'none'): { project: string; xdg: strin
   return { project, xdg };
 }
 
-describe('wolf init CLI (спека §3 уровень 1; onboarding v2 §4.6: не-TTY требует --model)', () => {
+describe('wolf init CLI (спека §3 уровень 1; WP2 unpin: --model opt-in, не-TTY без него завершается 0)', () => {
   it('writes canonical opencode config, registers project in XDG registry, re-init is a no-op', () => {
     const { project, xdg } = newProject('opencode');
 
@@ -59,13 +59,12 @@ describe('wolf init CLI (спека §3 уровень 1; onboarding v2 §4.6: �
     expect(readFileSync(join(project, 'opencode.json'), 'utf-8')).toBe(before);
   });
 
-  it('non-TTY без --model → жёсткая ошибка с точной командой (Q11)', () => {
+  it('non-TTY без --model → завершается 0 (WP2 unpin: omit по умолчанию)', () => {
     const { project, xdg } = newProject('opencode');
     const res = spawnSync('node', [cli, 'init'], { cwd: project, env: env(xdg), encoding: 'utf-8', timeout: 60_000 });
-    expect(res.status).toBe(1);
-    expect(res.stderr).toContain('non-interactive init requires a model');
-    expect(res.stderr).toContain('wolf init --model <providerID/modelID>');
-    expect(JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8')).mcp).toBeUndefined();
+    expect(res.status).toBe(0);
+    const agent = readFileSync(join(project, '.opencode/agents/mr-wolf.md'), 'utf-8');
+    expect(agent).not.toMatch(/^model:\s+\S+/m);
   });
 
   it('unknown --platform → UserFacingError, exit 1, no configs written', () => {

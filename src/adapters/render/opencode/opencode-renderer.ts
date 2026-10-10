@@ -183,7 +183,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
   /** Init-ветка AGENTS.md: create (wx + штамп) / marker-append / skip (D3). */
   private async renderAgentsMd(
     baseDir: string,
-    models: ModelContext | undefined,
+    models: ModelContext | 'omit' | undefined,
     state: SyncState
   ): Promise<RenderOutcome[]> {
     const paths = this.agentsMdPaths(baseDir);

@@ -6,7 +6,6 @@ import { createCliContainer } from '../../../bootstrap/container.js';
 import { ProjectsRegistry } from '../../../adapters/fs/projects-registry.js';
 import { wolfUserConfigDir } from '../../../adapters/fs/user-config.js';
 import { PLATFORM_ADAPTERS, CANONICAL_MCP_COMMAND } from '../../../adapters/platforms/index.js';
-import { parseJsonc } from '../../../adapters/platforms/jsonc.js';
 import { writeSchemaVersionIfAbsent } from '../../../adapters/fs/schema-version.js';
 import { ensureCurrentSchema } from '../../../adapters/fs/schema-guard.js';
 import { initProject, recreateConfig } from '../../../app/use-cases/init-project.js';
@@ -22,51 +21,6 @@ import { isNpxRun } from '../../../domain/npx.js';
 import { UserFacingError } from '../../../domain/errors.js';
 import { safeCwd } from '../cli-entry.js';
 import type { ModelContext } from '../../../ports/base-set-renderer.port.js';
-
-/* ---------- предложения модели «по возможности» (§4.5, только чтение) ---------- */
-
-/** ENV-ключ известных провайдеров → предлагаемая модель. */
-export const PROVIDER_ENV_MODELS: readonly (readonly [string, string])[] = [
-  ['ZAI_API_KEY', 'zai-coding-plan/glm-5.3'],
-  ['ANTHROPIC_API_KEY', 'anthropic/claude-sonnet-4-5'],
-  ['OPENAI_API_KEY', 'openai/gpt-5'],
-  ['GEMINI_API_KEY', 'google/gemini-2.5-pro'],
-];
-
-/** Список предложений: глобальный конфиг opencode первым, затем найденные ENV-ключи. */
-export function modelSuggestions(env: NodeJS.ProcessEnv, globalModel: string | null): string[] {
-  const out: string[] = [];
-  if (globalModel) out.push(globalModel);
-  for (const [key, model] of PROVIDER_ENV_MODELS) {
-    if (env[key]) out.push(model);
-  }
-  return [...new Set(out)];
-}
-
-function readFileSyncOrNull(path: string): string | null {
-  try {
-    return readFileSync(path, 'utf-8');
-  } catch {
-    return null;
-  }
-}
-
-/** Модель из глобального конфига opencode (~/.config/opencode/opencode.json[c]); только чтение. */
-export function readGlobalOpencodeModel(read = readFileSyncOrNull): string | null {
-  const home = process.env.HOME;
-  if (!home) return null;
-  for (const name of ['opencode.json', 'opencode.jsonc'] as const) {
-    const raw = read(join(home, '.config', 'opencode', name));
-    if (raw === null) continue;
-    try {
-      const cfg = parseJsonc(raw) as { model?: unknown };
-      if (typeof cfg.model === 'string' && cfg.model.includes('/')) return cfg.model;
-    } catch {
-      // нечитаемый конфиг — пропускаем (детект «по возможности», §4.5)
-    }
-  }
-  return null;
-}
 
 /* ---------- TTY-вопросы (readline, тяжёлых зависимостей не добавляем — §4.6) ---------- */
 
@@ -95,28 +49,6 @@ export async function askPlatformChoice(rl: Rl, baseDir: string): Promise<string
       continue;
     }
     if (ids.length > 0) return ids;
-  }
-}
-
-/** Модель (§4.5): один вопрос, Enter — первое предложение, свободный ввод, пропустить нельзя (Q11). */
-export async function askModel(rl: Rl, suggestions: string[]): Promise<string> {
-  if (suggestions.length > 0) {
-    const list = suggestions.map((m, i) => `  ${i + 1}. ${m}`).join('\n');
-    for (;;) {
-      const ans = (
-        await rl.question(
-          `Mr.Wolf and its agents model <providerID>/<modelID>:\n${list}\nNumber or your own id, Enter = 1: `
-        )
-      ).trim();
-      if (ans === '') return suggestions[0];
-      const n = Number(ans);
-      if (/^\d+$/.test(ans) && n >= 1 && n <= suggestions.length) return suggestions[n - 1];
-      return ans;
-    }
-  }
-  for (;;) {
-    const ans = (await rl.question('Mr.Wolf and its agents model <providerID>/<modelID>: ')).trim();
-    if (ans !== '') return ans;
   }
 }
 
@@ -173,9 +105,12 @@ export function formatPlatformLine(o: {
 
 export function memoryInitCommand(): Command {
   return new Command('init')
-    .description('Initialize Mr. Wolf memory for this project (interactive in TTY; non-interactive requires --model)')
+    .description('Initialize Mr. Wolf memory for this project (model pinning is opt-in via --model)')
     .option('--platform <ids>', 'explicit platform list (comma-separated: opencode,claude); replaces the current set')
-    .option('--model <id>', 'model for Mr.Wolf and its agents (<providerID>/<modelID>); required when non-interactive')
+    .option(
+      '--model <id>',
+      'model for Mr.Wolf and its agents (<providerID>/<modelID>); opt-in — by default model lines are omitted'
+    )
     .option('--recreate', 'backup a corrupted .wolf/config.yaml and re-create it from defaults', false)
     .action(async (options: { platform?: string; model?: string; recreate?: boolean }) => {
       // §2.5 (recreate-guard): init --recreate — единственный вход CLI в обход guard runCli;
@@ -205,30 +140,21 @@ export function memoryInitCommand(): Command {
         platformSource = 'flag';
       }
 
-      // Двухрежимность (D12/Q11): TTY — вопросы; не-TTY — --model обязателен, жёсткая ошибка
+      // WP2 unpin (спека 2.16 §5): модель не спрашиваем; пиннинг — opt-in через --model
       const isTty = Boolean(process.stdout.isTTY);
-      let model = options.model;
-      let modelSource: 'flag' | 'tty' | undefined = options.model !== undefined ? 'flag' : undefined;
-      if (!isTty && options.model === undefined) {
-        throw new UserFacingError(
-          'non-interactive init requires a model; re-run: wolf init --model <providerID/modelID> [--platform <ids>]'
-        );
-      }
+      const models: ModelContext | 'omit' =
+        options.model !== undefined ? { primary: options.model, worker: options.model } : 'omit';
+      const modelSource = options.model !== undefined ? ('flag' as const) : undefined;
       // npx try-out: пайплайн молчит (§4 п.6) — вопросы не задаём, ответы всё равно выброшены
-      if (isTty && options.model === undefined && !isNpxRun()) {
+      if (isTty && platformChoice === undefined && !isNpxRun()) {
         const rl = createInterface({ input: process.stdin, output: process.stdout });
         try {
-          if (platformChoice === undefined) {
-            platformChoice = await askPlatformChoice(rl, baseDir);
-            platformSource = 'tty';
-          }
-          model = await askModel(rl, modelSuggestions(process.env, readGlobalOpencodeModel()));
-          modelSource = 'tty';
+          platformChoice = await askPlatformChoice(rl, baseDir);
+          platformSource = 'tty';
         } finally {
           rl.close();
         }
       }
-      const models: ModelContext = { primary: model ?? '', worker: model ?? '' }; // worker = primary (Q7); npx — не используется
 
       const { initializer, store, log, clock, idGen, index, lock, declarations } = createCliContainer(baseDir);
       const registry = new ProjectsRegistry(wolfUserConfigDir());

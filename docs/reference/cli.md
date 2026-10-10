@@ -13,14 +13,14 @@
 ```text
 Usage: wolf init [options]
 
-Initialize Mr. Wolf memory for this project (interactive in TTY;
-non-interactive requires --model)
+Initialize Mr. Wolf memory for this project (model pinning is opt-in via
+--model)
 
 Options:
   --platform <ids>  explicit platform list (comma-separated: opencode,claude);
                     replaces the current set
   --model <id>      model for Mr.Wolf and its agents (<providerID>/<modelID>);
-                    required when non-interactive
+                    opt-in — by default model lines are omitted
   --recreate        backup a corrupted .wolf/config.yaml and re-create it from
                     defaults (default: false)
   -h, --help        display help for command

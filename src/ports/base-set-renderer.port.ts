@@ -20,7 +20,8 @@ export interface BakeResolver {
 
 export interface RenderBaseSetOptions {
   bake?: BakeResolver;
-  models?: ModelContext;
+  /** ModelContext — явный --model (opt-in); 'omit' — model-строки вырезаются (WP2 unpin, спека 2.16 §5). */
+  models?: ModelContext | 'omit';
 }
 
 export interface BaseSetRenderer {

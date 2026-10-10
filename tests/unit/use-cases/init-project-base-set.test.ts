@@ -1,6 +1,6 @@
 // tests/unit/use-cases/init-project-base-set.test.ts
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { initProject } from '../../../src/app/use-cases/init-project.js';
@@ -8,6 +8,8 @@ import type { BaseSetOutcome, InitProjectDeps } from '../../../src/app/use-cases
 import type { ProjectInitializer } from '../../../src/ports/project-initializer.port.js';
 import type { PlatformAdapter, McpCommand } from '../../../src/ports/platform-adapter.port.js';
 import type { ModelContext } from '../../../src/ports/base-set-renderer.port.js';
+import { OpencodeBaseSetRenderer } from '../../../src/adapters/render/opencode/opencode-renderer.js';
+import { templatesRoot, harnessTemplatesRoot } from '../../../src/adapters/render/templates-root.js';
 import type { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
 
 class FakeInitializer implements ProjectInitializer {
@@ -130,5 +132,33 @@ describe('initProject + baseSet (Task 6 + §4.5: модели — в ренде�
     writeFileSync(join(dir, 'package.json'), '{}');
     const result = await initProject(makeDeps(), dir, { models: MODELS });
     expect(result.baseSetOutcomes).toEqual([]);
+  });
+});
+
+/** Реальный рендер (интеграционный юнит): свежий контент агентов по контракту WP2 unpin. */
+function realBaseSet(): NonNullable<InitProjectDeps['baseSet']> {
+  return {
+    render: (d, opts) =>
+      new OpencodeBaseSetRenderer(templatesRoot(), {
+        harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
+      }).renderBaseSet(d, opts),
+    seed: async () => [],
+  };
+}
+
+describe('WP2 unpin (спека 2.16 §5): init-рендер свежего контента', () => {
+  it("'omit' — agent-профили без model-строк", async () => {
+    writeFileSync(join(dir, 'package.json'), '{}');
+    await initProject(makeDeps(realBaseSet()), dir, { models: 'omit' });
+    const raw = readFileSync(join(dir, '.opencode/agents/mr-wolf.md'), 'utf-8');
+    expect(raw).not.toMatch(/^[^\S\n]*model:[^\S\n]*\{\{model\./m);
+    expect(raw).not.toMatch(/^model:\s+\S+/m);
+  });
+
+  it('явный ModelContext — model-строка с подстановкой (opt-in)', async () => {
+    writeFileSync(join(dir, 'package.json'), '{}');
+    await initProject(makeDeps(realBaseSet()), dir, { models: MODELS });
+    const raw = readFileSync(join(dir, '.opencode/agents/mr-wolf.md'), 'utf-8');
+    expect(raw).toContain('model: zai-coding-plan/glm-5.3');
   });
 });

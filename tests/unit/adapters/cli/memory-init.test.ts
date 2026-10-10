@@ -1,15 +1,42 @@
 // tests/unit/adapters/cli/memory-init.test.ts
-// Тонкий CLI (D12/Q11): чистые помощники + жёсткая ошибка не-TTY без --model.
-// process.stdout.isTTY в vitest — undefined → прогон команды идёт по не-TTY ветке.
-import { describe, it, expect, vi, afterEach } from 'vitest';
+// Тонкий CLI (WP2 unpin, спека 2.16 §5): чистые помощники + не-TTY init без --model
+// доходит до initProject с models = 'omit'. process.stdout.isTTY в vitest — undefined
+// → прогон команды идёт по не-TTY ветке. initProject/контейнер мокаются:
+// юнит не пишет в рабочее дерево; содержимое профилей покрывают интеграционные юниты
+// (init-project-base-set.test.ts) и e2e (unpin-init.e2e.ts).
+import { describe, it, expect, vi } from 'vitest';
 import {
   memoryInitCommand,
-  modelSuggestions,
-  readGlobalOpencodeModel,
   renderNextSteps,
-  askModel,
   askPlatformChoice,
 } from '../../../../src/adapters/cli/commands/memory-init.js';
+import { initProject } from '../../../../src/app/use-cases/init-project.js';
+
+vi.mock('../../../../src/app/use-cases/init-project.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../src/app/use-cases/init-project.js')>();
+  return {
+    ...actual,
+    initProject: vi.fn(async () => ({
+      npx: false,
+      platformOutcomes: [],
+      baseSetOutcomes: [],
+      initReport: { action: 'skipped' as const },
+    })),
+  };
+});
+
+vi.mock('../../../../src/bootstrap/container.js', () => ({
+  createCliContainer: () => ({
+    initializer: {},
+    store: { list: async () => [] },
+    log: {},
+    clock: { now: () => new Date() },
+    idGen: {},
+    index: undefined,
+    lock: undefined,
+    declarations: undefined,
+  }),
+}));
 
 /** Fake readline: заранее заготовленные ответы по порядку. */
 function fakeRl(answers: string[]) {
@@ -22,67 +49,6 @@ function fakeRl(answers: string[]) {
     },
   };
 }
-
-describe('modelSuggestions (§4.5: ENV известных провайдеров + глобальный конфиг opencode)', () => {
-  it('ENV-ключи → предложения; несколько провайдеров', () => {
-    expect(modelSuggestions({ ZAI_API_KEY: 'x', ANTHROPIC_API_KEY: 'y' }, null)).toEqual([
-      'zai-coding-plan/glm-5.3',
-      'anthropic/claude-sonnet-4-5',
-    ]);
-  });
-
-  it('глобальный конфиг — первым; дубликат схлопывается', () => {
-    expect(modelSuggestions({ ZAI_API_KEY: 'x' }, 'my-provider/my-model')).toEqual([
-      'my-provider/my-model',
-      'zai-coding-plan/glm-5.3',
-    ]);
-    expect(modelSuggestions({ ZAI_API_KEY: 'x' }, 'zai-coding-plan/glm-5.3')).toEqual(['zai-coding-plan/glm-5.3']);
-  });
-
-  it('окружение молчит → предложений нет (детект «по возможности»)', () => {
-    expect(modelSuggestions({}, null)).toEqual([]);
-  });
-});
-
-describe('readGlobalOpencodeModel (только чтение)', () => {
-  it('читает model из opencode.json', () => {
-    const model = readGlobalOpencodeModel((p) =>
-      p.endsWith('opencode.json') ? JSON.stringify({ model: 'prov/model' }) : null
-    );
-    expect(model).toBe('prov/model');
-  });
-
-  it('понимает jsonc с комментариями', () => {
-    const model = readGlobalOpencodeModel((p) => (p.endsWith('.jsonc') ? '{ // c\n "model": "a/b" }' : null));
-    expect(model).toBe('a/b');
-  });
-
-  it('model без provider-префикса или нечитаемый конфиг → null', () => {
-    expect(readGlobalOpencodeModel(() => JSON.stringify({ model: 'just-model' }))).toBeNull();
-    expect(readGlobalOpencodeModel(() => '{ broken')).toBeNull();
-    expect(readGlobalOpencodeModel(() => null)).toBeNull();
-  });
-});
-
-describe('askModel (§4.5: Enter — первое предложение, свободный ввод, пропустить нельзя)', () => {
-  it('Enter → первое предложение', async () => {
-    const rl = fakeRl(['']);
-    expect(await askModel(rl, ['zai-coding-plan/glm-5.3', 'anthropic/claude-sonnet-4-5'])).toBe(
-      'zai-coding-plan/glm-5.3'
-    );
-  });
-
-  it('номер → соответствующее предложение; свободный ввод принимается как есть', async () => {
-    expect(await askModel(fakeRl(['2']), ['a/b', 'c/d'])).toBe('c/d');
-    expect(await askModel(fakeRl(['my-prov/my-model']), ['a/b'])).toBe('my-prov/my-model');
-  });
-
-  it('без предложений: пустой ответ НЕ пропускает вопрос — переспрашивает', async () => {
-    const rl = fakeRl(['', 'prov/model']);
-    expect(await askModel(rl, [])).toBe('prov/model');
-    expect(rl.questions).toHaveLength(2);
-  });
-});
 
 describe('askPlatformChoice (§4.4 п.2: opencode дефолт, найденные — в предложении)', () => {
   it('Enter → opencode (дефолт)', async () => {
@@ -117,14 +83,19 @@ describe('renderNextSteps (F6/F7: «Дальше»; restart — только п�
   });
 });
 
-describe('не-TTY без --model — жёсткая ошибка (Q11)', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
+describe('не-TTY без --model — успех (WP2 unpin: omit по умолчанию)', () => {
+  it('init доходит до initProject без модельного гейта: models=omit, modelSource undefined', async () => {
+    await memoryInitCommand().parseAsync([], { from: 'user' });
+    expect(initProject).toHaveBeenCalledTimes(1);
+    const input = vi.mocked(initProject).mock.calls[0][2];
+    expect(input.models).toBe('omit');
+    expect(input.modelSource).toBeUndefined();
   });
 
-  it('ненулевой контекст: UserFacingError с точной командой', async () => {
-    await expect(memoryInitCommand().parseAsync([], { from: 'user' })).rejects.toThrow(
-      /non-interactive init requires a model; re-run: wolf init --model <providerID\/modelID> \[--platform <ids>\]/
-    );
+  it('явный --model — opt-in: ModelContext (worker = primary), modelSource=flag', async () => {
+    await memoryInitCommand().parseAsync(['--model', 'prov/model'], { from: 'user' });
+    const input = vi.mocked(initProject).mock.calls.at(-1)![2];
+    expect(input.models).toEqual({ primary: 'prov/model', worker: 'prov/model' });
+    expect(input.modelSource).toBe('flag');
   });
 });

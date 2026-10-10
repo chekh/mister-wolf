@@ -31,7 +31,7 @@ export interface BaseSetOutcome {
   reason?: string;
 }
 export interface BaseSetDeps {
-  render: (baseDir: string, opts?: { models?: ModelContext }) => Promise<BaseSetOutcome[]>;
+  render: (baseDir: string, opts?: { models?: ModelContext | 'omit' }) => Promise<BaseSetOutcome[]>;
   seed: (baseDir: string) => Promise<BaseSetOutcome[]>;
 }
 
@@ -57,13 +57,14 @@ export interface InitProjectDeps {
   wolfVersion?: string;
 }
 
-/** Входы init v2 (§4 п.4): платформы и модель известны ДО рендера набора. */
+/** Входы init: платформы известны до рендера; модели — opt-in (WP2 unpin, спека 2.16 §5). */
 export interface InitProjectInput {
   /** Явный выбор платформ (флаг или TTY-ответ) — авторитетен (§4.4); undefined — дефолт рендера. */
   platformChoice?: string[];
   platformSource?: 'flag' | 'tty' | 'default';
-  /** Модель агентов (§4.5): primary всегда известен (Q7/Q11); worker = primary при init. */
-  models: ModelContext;
+  /** 'omit' — дефолт: model-строки вырезаются из fresh-контента (MODEL_LINE_RE);
+   * ModelContext — только явный --model (opt-in). */
+  models: ModelContext | 'omit';
   modelSource?: 'flag' | 'tty';
 }
 
@@ -259,9 +260,15 @@ function renderInitReportBody(
   }
   if (agentsMd) made.push(`- AGENTS.md: ${agentsMd.action}`);
   made.push(`- platforms: ${selectedPlatforms.join(', ') || '—'} (source: ${platformSource})`);
-  made.push(
-    `- model: primary ${input.models.primary} (source: ${modelSource}) — applied to all agents (worker = primary)`
-  );
+  if (input.models === 'omit') {
+    made.push(
+      '- model: not pinned (omit) — platform default applies; pin later: wolf init --model <providerID>/<modelID>'
+    );
+  } else {
+    made.push(
+      `- model: primary ${input.models.primary} (source: ${modelSource}) — applied to all agents (worker = primary)`
+    );
+  }
 
   const found: string[] = [];
   const skippedFiles = baseSetOutcomes.filter((o) => o.action === 'skipped' && o.file !== '(base set)');
