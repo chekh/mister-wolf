@@ -42,7 +42,8 @@ describe('wolf-router fallback (T012): canonical приоритетен, miss �
     mkdirSync(xdg);
 
     // init: сеет playbook'и (вкл. executor-lead) и рендерит плагин из templates/-канона
-    const init = spawnSync('node', [cli, 'init', '--model', 'zai-coding-plan/glm-5.3'], {
+    // (2.16 WP1: полный набор — только с --full; роутингу нужны плагин и playbook-сиды)
+    const init = spawnSync('node', [cli, 'init', '--full', '--model', 'zai-coding-plan/glm-5.3'], {
       cwd: project,
       encoding: 'utf-8',
       timeout: 60_000,
