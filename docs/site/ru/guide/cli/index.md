@@ -18,6 +18,7 @@
 | [`wolf transition`](/ru/guide/cli/memory#wolf-transition)       | Сменить статус жизненного цикла (plumbing)  | [Память](/ru/guide/cli/memory) |
 | [`wolf rebuild-index`](/ru/guide/cli/memory#wolf-rebuild-index) | Перестроить SQLite-индекс поиска (plumbing) | [Память](/ru/guide/cli/memory) |
 | [`wolf update`](/ru/guide/cli/memory#wolf-update)               | Обновить triage-поля объекта (plumbing)     | [Память](/ru/guide/cli/memory) |
+| [`wolf promote`](/ru/guide/cli/memory#wolf-promote)             | Поднять worktree-scoped объекты до main     | [Память](/ru/guide/cli/memory) |
 
 ## Сессии и контекст
 

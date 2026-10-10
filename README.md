@@ -47,6 +47,7 @@ After `wolf init` **restart your agent platform** — the Wolf MCP server connec
 - **Try it without installing:** `npx mister-wolf init` — creates project memory but never writes MCP configs (try-out mode). Like it? `npm install -g mister-wolf` and run `wolf init` again.
 - **Updating:** `wolf upgrade` — compares the installed version with the npm registry and runs `npm install -g mister-wolf@latest` (`--check` only reports, dev/linked installs are refused honestly). Manual path: `npm i -g mister-wolf@latest`.
 - **Platforms v1:** opencode, Claude Code. Detection is automatic; explicit: `wolf init --platform opencode,claude` (the list replaces the current set). If no platform markers are found, init warns you honestly and suggests `--platform`.
+- **First run without barriers:** `wolf init` decides nothing for you — a minimal file set by default (`--full` for the complete base set), one interview question in a TTY (Enter to skip), no model pinning (`--model` is opt-in; profiles inherit the platform default). Re-init on a live project shows the plan and needs a confirmation (`--yes` skips it).
 - **OS/runtime:** macOS and Linux (glibc) on Node 22/24. Alpine/musl is not supported in v1; Windows is best-effort, not claimed. The native dependency better-sqlite3 installs from prebuilds — that is the dependency's own behavior; mister-wolf ships no install scripts of its own.
 - **If installation fails on better-sqlite3 — two different situations:**
   `prebuild-install ... no prebuilt binary found (musl)` — no prebuilds are published for your platform (Alpine/musl) — **not supported in v1**, use a glibc distribution;
@@ -142,25 +143,12 @@ wolf tool revive check       # deprecated → active
 
 ### Self-learning
 
-The phases 20–26 loop on top of the signal log (`.wolf/metrics/session-metrics.jsonl`).
-
-```bash
-wolf learn digest                    # активные паттерны (N≥3) + post-audit draft'ы
-wolf learn propose <pattern-key>     # draft урока/правила из паттерна (без LLM)
-wolf learn validate <draft-id>       # Sandbox Replay Holdout на реальных событиях
-wolf learn activate <draft-id>       # активация (гейт: holdout pass или --human-approved)
-wolf learn gate                      # STOP-гейт: pressure-сценарии доставки + read-only probe
-wolf learn decay --dry-run           # чистка знаний по пробегу (сессии)
-wolf learn status                    # здоровье сигнального лога: объёмы, метрики, drift
-```
+The standalone self-learning pipeline (`wolf learn …`) was removed by owner decision — write lessons with `wolf add --type lesson`. The signal log (`.wolf/metrics/session-metrics.jsonl`) remains the source: `wolf tool stats` and `wolf analytics` aggregate it.
 
 ### Effectiveness
 
-- `wolf effectiveness` — dashboard: rules holdout, tool economy, delivery, noise, routing (aggregation, no LLM); `--snapshot` — append-only history for trends.
-- `wolf analytics` — ledgers (memory/tools/rules/agents), memory lifecycle & attribution, campaigns with/without memory + per-memory ROI, coordination, data-quality; honest metrics (`n/a` + reason, never invented numbers).
-- `wolf dashboard` — console dashboard: health, ledgers, trends (unicode tables, sparklines).
+- `wolf analytics` — the single analytics surface: ledgers (memory/tools/rules/agents), memory lifecycle & attribution, campaigns with/without memory + per-memory ROI, coordination, data-quality, console dashboard (`--view dashboard`), experiment readiness; honest metrics (`n/a` + reason, never invented numbers). The former standalone `wolf effectiveness` / `wolf dashboard` / `wolf insights` commands are views of `wolf analytics`.
 - `wolf task-eval --verdict accepted|rejected|partial|inconclusive` — task verdicts: acceptance, coverage, cost per accepted task; `--campaign` groups runs into A/B cohorts.
-- `wolf insights [--type lessons|decisions|technical_debt|…] [--topic <t>]` — heuristic analysis of memory (Level 1, no LLM).
 - Benchmarks: `scripts/bench/` (b1-repeat-debug, b2-bootstrap, b3-retrospective).
 
 ## Demos

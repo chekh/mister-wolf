@@ -10,18 +10,18 @@
 wolf add [options]
 ```
 
-| Опция                       | Описание                                                                                                                                         |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--type <type>`             | Тип памяти: `rule`, `lesson`, `decision`, `thread`, `complaint`, `tool`, `note`                                                                  |
-| `--title <title>`           | Заголовок                                                                                                                                        |
-| `--body <body>`             | Текст                                                                                                                                            |
-| `--tags <tags>`             | Теги через запятую                                                                                                                               |
-| `--confidence <confidence>` | Уверенность (low\|medium\|high)                                                                                                                  |
-| `--importance <n>`          | Важность от 0 до 1                                                                                                                               |
-| `--set <k=v>`               | Доп. поле key=value (повторяемый; значение «[a,b]» — строковый массив)                                                                           |
-| `--scope <scope>`           | Поле scope для типов с ним (rule: project\|global)                                                                                               |
-| `--facet <facet>`           | Фасет note. Обязателен для `note`: howto\|pitfall\|context\|metric\|history\|legacy\|constraint. Свободный ввод — ошибка: словарь фасетов закрыт |
-| `--created-by <actor>`      | Автор (дефолт: env WOLF_ACTOR, иначе user:cli)                                                                                                   |
+| Опция                       | Описание                                                                                                                                                                                                                                                   |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--type <type>`             | Тип памяти: `rule`, `lesson`, `decision`, `thread`, `complaint`, `tool`, `note`                                                                                                                                                                            |
+| `--title <title>`           | Заголовок                                                                                                                                                                                                                                                  |
+| `--body <body>`             | Текст                                                                                                                                                                                                                                                      |
+| `--tags <tags>`             | Теги через запятую                                                                                                                                                                                                                                         |
+| `--confidence <confidence>` | Уверенность (low\|medium\|high)                                                                                                                                                                                                                            |
+| `--importance <n>`          | Важность от 0 до 1                                                                                                                                                                                                                                         |
+| `--set <k=v>`               | Доп. поле key=value (повторяемый; значение «[a,b]» — строковый массив)                                                                                                                                                                                     |
+| `--scope <scope>`           | Поле scope для типов с ним (rule: project\|global); также `main` и `worktree:<имя>` — записи из linked worktree получают `worktree:<имя>` по умолчанию, `--scope main` исключает это (см. [память в git worktree](/ru/guide/memory#память-в-git-worktree)) |
+| `--facet <facet>`           | Фасет note. Обязателен для `note`: howto\|pitfall\|context\|metric\|history\|legacy\|constraint. Свободный ввод — ошибка: словарь фасетов закрыт                                                                                                           |
+| `--created-by <actor>`      | Автор (дефолт: env WOLF_ACTOR, иначе user:cli)                                                                                                                                                                                                             |
 
 ```bash
 wolf add --type lesson --title "Вит-тесты падают от кэша" --body "В CI — флаг --no-cache" --tags "vitest,ci" --confidence medium
@@ -179,6 +179,20 @@ wolf relation remove <id>
 ```
 
 `id` — идентификатор связи (см. `relation list`).
+
+## `wolf promote`
+
+Доставить worktree-scoped объекты памяти: повысить их до main scope. Завершающий шаг при влитии ворктрии — её scoped-объекты перестают фильтроваться из доставки в других местах.
+
+```bash
+wolf promote <worktree>
+```
+
+`worktree` — имя ворктрии, чьи scoped-объекты становятся main.
+
+```bash
+wolf promote my-feature
+```
 
 ## Plumbing
 
