@@ -2,11 +2,11 @@
 description: Анализ документа по методике из памяти Wolf (playbook worker-researcher). Использование: /analyze-doc <путь-к-файлу>
 agent: worker-researcher
 ---
-<!-- wolf:rendered base=analyze-doc.md set=2.15.0 -->
+<!-- wolf:rendered base=analyze-doc.md set=2.16.0 -->
 Проанализируй документ: $ARGUMENTS
 
 Протокол (рамочная команда — методика в памяти Wolf):
 
-1. ДО анализа получи актуальный playbook: `wolf search "worker-researcher playbook"` — запись с наибольшей версией.
+1. ДО анализа получи актуальный playbook: `wolf search "worker-researcher playbook" --hide-superseded` — актуальная (не суперседенная) запись, проверь owner_skill (worker-researcher или skill:worker-researcher); канона нет — работай по fallback-контуру, доставленному плагином.
 2. Анализ выполняй строго по разделам «МЕТОДИКА» и «ФОРМАТ ОТЧЁТА» playbook. Формат отчёта (шапка с версией, структура, футер) — из playbook, не отсюда.
 3. Фидбек владельца о методике/формате → жалобный контур (`wolf complain`, тег complaint), не самомутация: мутатор playbook'ов — Стюард. Без фидбека версию не меняй.

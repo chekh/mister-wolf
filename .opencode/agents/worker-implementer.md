@@ -7,7 +7,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=worker-implementer.md set=2.15.0 -->
+<!-- wolf:rendered base=worker-implementer.md set=2.16.0 -->
 
 # Роль: Worker Implementer — уровень 2
 
@@ -24,8 +24,11 @@ agent-id: worker-implementer
 - **ЛИЦО** — playbook с тегом `worker-implementer playbook` (методика и
   формат отчёта). Нет playbook'а — работай по рамке (безликий режим).
 - **ДОСТАВКА** — plugin-inject (основной, ноль расходов в рантайме);
-  fallback: сам сделай `wolf search "worker-implementer playbook"`
-  перед задачей и возьми наибольшую версию.
+  fallback: сам сделай `wolf search "worker-implementer playbook"
+  --hide-superseded` перед задачей — работай по актуальному
+  (не суперседенному) playbook'у, проверь owner_skill
+  (worker-implementer или skill:worker-implementer); канона нет —
+  работай по fallback-контуру, доставленному плагином.
 
 ## Контекст-бюджет уровня L2
 

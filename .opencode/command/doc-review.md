@@ -2,12 +2,12 @@
 description: Мульти-линзовое ревью документа по скиллу wolf-review (оркестрация линз mr-wolf'ом). Использование: /doc-review <путь-к-файлу>
 agent: mr-wolf
 ---
-<!-- wolf:rendered base=doc-review.md set=2.15.0 -->
+<!-- wolf:rendered base=doc-review.md set=2.16.0 -->
 Проведи doc-review документа: $ARGUMENTS
 
 Ты — оркестратор цикла; протокол — скилл wolf-review, правила цикла (MIN-3):
 
-1. Получи линзы: `wolf search "wolf-review playbook"` — наибольшая версия. Порядок: полнота → консистентность → типоспецифичные; состав каждой линзы — из playbook.
+1. Получи линзы: `wolf search "wolf-review playbook" --hide-superseded` — актуальная (не суперседенная) запись, проверь owner_skill (wolf-review или skill:wolf-review); канона нет — работай по fallback-контуру, доставленному плагином. Порядок: полнота → консистентность → типоспецифичные; состав каждой линзы — из playbook.
 2. Спавнь worker-reviewer'ов через task — одна линза = один воркер в чистой сессии, узкий мандат: чужие замечания запрещены (воркер видит только документ + свою линзу).
 3. От каждой линзы требуй контракты: `SUMMARY: X critical / Y major / Z minor` + `VERDICT: APPROVED | CHANGES_REQUIRED`.
 4. Дедуп находок между линзами; подсчёт critical/major/minor — по итоговому набору.
