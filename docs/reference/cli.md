@@ -784,6 +784,20 @@ Options:
   -h, --help  display help for command
 ```
 
+### wolf promote
+
+```text
+Usage: wolf promote [options] <worktree>
+
+Deliver worktree-scoped memory objects: promote them to main scope
+
+Arguments:
+  worktree    Worktree name whose scoped objects become main
+
+Options:
+  -h, --help  display help for command
+```
+
 ### wolf projects
 
 ```text

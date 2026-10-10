@@ -88,8 +88,10 @@ export function memoryDoctorCommand(): Command {
       }
 
       const cwd = safeCwd();
+      // Контейнер общий для артефакт- и осиротевшей-секций (WP3 §6.2):
+      // store + memoryRoot (поле из задачи 4), resolveMemoryRoot тут не нужен.
+      const { store, memoryRoot } = createCliContainer(cwd);
       if (existsSync(join(cwd, 'docs', 'dev'))) {
-        const { store } = createCliContainer(cwd);
         const toolOwners = new Set<string>();
         for (const t of await store.list({ type: 'tool' })) {
           // archived-тулы не гасят призрака: гасят только живые регистрации (контракт e2e intake)
@@ -110,6 +112,22 @@ export function memoryDoctorCommand(): Command {
           console.log('## Artifacts (docs/dev)');
           for (const f of findings) console.log(`! ${f.file}: ${f.message}`);
         }
+      }
+
+      // WP3 §6.2: осиротевшие worktree-scope — находка; очистка вручную (promote/edit), P3
+      const worktreesDir = join(memoryRoot, '.git', 'worktrees');
+      const live = existsSync(worktreesDir) ? readdirSync(worktreesDir) : [];
+      const orphan = new Map<string, number>();
+      for (const o of await store.list()) {
+        const s = (o as { scope?: string }).scope;
+        if (typeof s === 'string' && s.startsWith('worktree:') && !live.includes(s.slice('worktree:'.length))) {
+          orphan.set(s, (orphan.get(s) ?? 0) + 1);
+        }
+      }
+      if (orphan.size > 0) {
+        console.log();
+        console.log('## Orphaned worktree scopes (manual cleanup — promote or edit)');
+        for (const [scope, n] of orphan) console.log(`! ${scope}: ${n} object(s) — worktree no longer exists`);
       }
     });
 }

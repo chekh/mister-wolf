@@ -12,6 +12,7 @@ export const MemoryEventSchema = z.object({
     'memory.transitioned',
     'memory.overwritten',
     'memory.aggregated',
+    'memory.scope_promoted',
   ]),
   timestamp: z.string().datetime(),
   actor: z.string().min(1),

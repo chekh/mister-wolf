@@ -566,4 +566,47 @@ describe('getCallInjections', () => {
     expect(result.blocks).toHaveLength(1);
     expect(result.deduplicated).toBe(0);
   });
+
+  // --- WP3 §6.2 (волна 2.16): scope-гейтинг доставки ---
+
+  it('WP3: worktree-scoped объект скрыт из main и доставлен в своей ворктрии', async () => {
+    // «подходящая в пул» — фикс типа call-injection: seed() пишет легаси-md,
+    // alias-резолвер читает как note+alias_origin (как в существующих фикстурах файла)
+    await seed(
+      makeObj({
+        id: 'inj_wt',
+        type: 'call-injection',
+        status: 'active',
+        scope: 'worktree:a',
+        title: 'Worktree only',
+        body: 'x'.repeat(200),
+      })
+    );
+
+    const fromMain = await getCallInjections({ store, clock }, { currentScope: 'main' });
+    expect(fromMain.blocks).toEqual([]);
+    expect(fromMain.deliveredIds).toEqual([]);
+    expect(fromMain.hidden).toEqual({ scope: 'main', count: 1 });
+    expect(fromMain.poolSize).toBe(1);
+
+    const fromWorktree = await getCallInjections({ store, clock }, { currentScope: 'worktree:a' });
+    expect(fromWorktree.deliveredIds).toEqual(['inj_wt']);
+    expect(fromWorktree.hidden).toBeNull();
+
+    // currentScope не передан (MCP-канал) — трактуется как main
+    const noScope = await getCallInjections({ store, clock }, {});
+    expect(noScope.blocks).toEqual([]);
+    expect(noScope.hidden).toEqual({ scope: 'main', count: 1 });
+  });
+
+  it('WP3: без worktree-scope в пуле hidden = null, poolSize считает до фильтров', async () => {
+    await seed(
+      makeObj({ id: 'inj_A', type: 'call-injection', status: 'active', trigger_keywords: ['a'], title: 'AAA' })
+    );
+
+    const result = await getCallInjections({ store, clock }, { currentScope: 'main' });
+    expect(result.blocks).toHaveLength(1);
+    expect(result.hidden).toBeNull();
+    expect(result.poolSize).toBe(1);
+  });
 });
