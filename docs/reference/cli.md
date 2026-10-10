@@ -21,6 +21,8 @@ Options:
                     replaces the current set
   --model <id>      model for Mr.Wolf and its agents (<providerID>/<modelID>);
                     opt-in — by default model lines are omitted
+  --full            render the full base set (agents/skills/commands/plugins);
+                    default is the minimal set (default: false)
   --recreate        backup a corrupted .wolf/config.yaml and re-create it from
                     defaults (default: false)
   -h, --help        display help for command

@@ -12,7 +12,8 @@ describe('unpin: init без --model (спека 2.16 §14.1-14.2)', () => {
   afterAll(() => rmSync(cwd, { recursive: true, force: true }));
 
   it('non-interactive init without --model exits 0', () => {
-    expect(runCli(['init'], cwd).status).toBe(0);
+    // WP1 (спека 2.16 §4): профили существуют только в полном наборе — кейс через --full
+    expect(runCli(['init', '--full'], cwd).status).toBe(0);
   });
 
   it('profiles have no model lines (platform default is inherited)', () => {
@@ -27,7 +28,7 @@ describe('unpin: init без --model (спека 2.16 §14.1-14.2)', () => {
 
   it('--model stays opt-in and pins model lines', () => {
     const dir = tmpProject();
-    expect(runCli(['init', '--model', 'test-provider/test-model'], dir).status).toBe(0);
+    expect(runCli(['init', '--full', '--model', 'test-provider/test-model'], dir).status).toBe(0);
     const agent = readFileSync(join(dir, '.opencode/agents/mr-wolf.md'), 'utf-8');
     expect(agent).toContain('model: test-provider/test-model');
     rmSync(dir, { recursive: true, force: true });

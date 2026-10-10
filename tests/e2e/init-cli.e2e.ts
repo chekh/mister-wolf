@@ -31,12 +31,16 @@ describe('wolf init CLI (спека §3 уровень 1; WP2 unpin: --model opt
   it('writes canonical opencode config, registers project in XDG registry, re-init is a no-op', () => {
     const { project, xdg } = newProject('opencode');
 
-    const first = spawnSync('node', [cli, 'init', '--model', 'zai-coding-plan/glm-5.3'], {
-      cwd: project,
-      env: env(xdg),
-      encoding: 'utf-8',
-      timeout: 60_000,
-    });
+    const first = spawnSync(
+      'node',
+      [cli, 'init', '--full', '--platform', 'opencode', '--model', 'zai-coding-plan/glm-5.3'],
+      {
+        cwd: project,
+        env: env(xdg),
+        encoding: 'utf-8',
+        timeout: 60_000,
+      }
+    );
     expect(first.status).toBe(0);
     // F6: честный лог — имя конфиг-файла + фактические ключи
     expect(first.stdout).toContain('opencode.json: written (mcp.wolf, default_agent=mr-wolf, subagent_depth=2)');
@@ -48,20 +52,29 @@ describe('wolf init CLI (спека §3 уровень 1; WP2 unpin: --model opt
     expect(readFileSync(join(xdg, 'wolf', 'projects.yaml'), 'utf-8')).toContain(project);
 
     const before = readFileSync(join(project, 'opencode.json'), 'utf-8');
-    const second = spawnSync('node', [cli, 'init', '--model', 'zai-coding-plan/glm-5.3'], {
-      cwd: project,
-      env: env(xdg),
-      encoding: 'utf-8',
-      timeout: 60_000,
-    });
+    const second = spawnSync(
+      'node',
+      [cli, 'init', '--full', '--platform', 'opencode', '--model', 'zai-coding-plan/glm-5.3'],
+      {
+        cwd: project,
+        env: env(xdg),
+        encoding: 'utf-8',
+        timeout: 60_000,
+      }
+    );
     expect(second.status).toBe(0);
     expect(second.stdout).toContain('opencode.json: unchanged');
     expect(readFileSync(join(project, 'opencode.json'), 'utf-8')).toBe(before);
   });
 
-  it('non-TTY без --model → завершается 0 (WP2 unpin: omit по умолчанию)', () => {
+  it('non-TTY без --model → завершается 0 (WP2 unpin: omit по умолчанию; WP1: --full для базового набора)', () => {
     const { project, xdg } = newProject('opencode');
-    const res = spawnSync('node', [cli, 'init'], { cwd: project, env: env(xdg), encoding: 'utf-8', timeout: 60_000 });
+    const res = spawnSync('node', [cli, 'init', '--full'], {
+      cwd: project,
+      env: env(xdg),
+      encoding: 'utf-8',
+      timeout: 60_000,
+    });
     expect(res.status).toBe(0);
     const agent = readFileSync(join(project, '.opencode/agents/mr-wolf.md'), 'utf-8');
     expect(agent).not.toMatch(/^model:\s+\S+/m);
@@ -80,14 +93,18 @@ describe('wolf init CLI (спека §3 уровень 1; WP2 unpin: --model opt
     expect(JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8')).mcp).toBeUndefined();
   });
 
-  it('no platform markers → opencode пишется безусловно (F4: факт рендера набора, не детекция)', () => {
+  it('--platform opencode on a bare project writes the config (WP1: дефолт конфиги не пишет)', () => {
     const { project, xdg } = newProject('none');
-    const res = spawnSync('node', [cli, 'init', '--model', 'zai-coding-plan/glm-5.3'], {
-      cwd: project,
-      env: env(xdg),
-      encoding: 'utf-8',
-      timeout: 60_000,
-    });
+    const res = spawnSync(
+      'node',
+      [cli, 'init', '--full', '--platform', 'opencode', '--model', 'zai-coding-plan/glm-5.3'],
+      {
+        cwd: project,
+        env: env(xdg),
+        encoding: 'utf-8',
+        timeout: 60_000,
+      }
+    );
     expect(res.status).toBe(0);
     expect(res.stdout).toContain('opencode.json: written');
     expect(res.stdout).toContain('wolf bootstrap'); // F7: «Дальше» называет следующий шаг

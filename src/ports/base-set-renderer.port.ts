@@ -22,6 +22,9 @@ export interface RenderBaseSetOptions {
   bake?: BakeResolver;
   /** ModelContext — явный --model (opt-in); 'omit' — model-строки вырезаются (WP2 unpin, спека 2.16 §5). */
   models?: ModelContext | 'omit';
+  /** WP1 (спека 2.16 §4): 'agents-md' — только AGENTS.md (минимальный init);
+   * 'full' (дефолт) — весь базовый набор. */
+  scope?: 'full' | 'agents-md';
 }
 
 export interface BaseSetRenderer {

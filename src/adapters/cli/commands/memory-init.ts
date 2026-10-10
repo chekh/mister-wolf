@@ -28,28 +28,12 @@ interface Rl {
   question(q: string): Promise<string>;
 }
 
-/** Платформы (§4.4 п.2): opencode всегда дефолт, найденные по маркерам — добавляются к предложению. */
-export async function askPlatformChoice(rl: Rl, baseDir: string): Promise<string[]> {
-  const detected = PLATFORM_ADAPTERS.filter((a) => a.id !== 'opencode' && a.detect(baseDir)).map((a) => a.id);
-  const offer = ['opencode', ...detected];
-  const hint = detected.length > 0 ? `; detected by markers: ${detected.join(', ')} — add ids comma-separated` : '';
-  const known = new Set(PLATFORM_ADAPTERS.map((a) => a.id));
-  for (;;) {
-    const ans = (
-      await rl.question(`Wolf MCP: platforms [${offer.join(', ')}] (comma-separated, Enter = opencode${hint}): `)
-    ).trim();
-    if (ans === '') return ['opencode'];
-    const ids = ans
-      .split(',')
-      .map((s) => s.trim())
-      .filter((s) => s !== '');
-    const unknown = ids.filter((id) => !known.has(id));
-    if (unknown.length > 0) {
-      console.log(`Unknown platform(s): ${unknown.join(', ')} (known: ${[...known].join(', ')})`);
-      continue;
-    }
-    if (ids.length > 0) return ids;
-  }
+/** WP1 (спека §4): единственный вопрос дефолтного интервью; Enter — пропустить. */
+export async function askPurpose(rl: Rl): Promise<string> {
+  const ans = await rl.question(
+    'Describe this project: purpose, stack, test commands, conventions (1-4 sentences; Enter to skip): '
+  );
+  return ans.trim();
 }
 
 /* ---------- вывод v2 (F5/F6/F7) ---------- */
@@ -111,8 +95,9 @@ export function memoryInitCommand(): Command {
       '--model <id>',
       'model for Mr.Wolf and its agents (<providerID>/<modelID>); opt-in — by default model lines are omitted'
     )
+    .option('--full', 'render the full base set (agents/skills/commands/plugins); default is the minimal set', false)
     .option('--recreate', 'backup a corrupted .wolf/config.yaml and re-create it from defaults', false)
-    .action(async (options: { platform?: string; model?: string; recreate?: boolean }) => {
+    .action(async (options: { platform?: string; model?: string; full?: boolean; recreate?: boolean }) => {
       // §2.5 (recreate-guard): init --recreate — единственный вход CLI в обход guard runCli;
       // поэтому cwd берём тоже под защитой (safeCwd: удалённый каталог → однострочный Error, не сырой ENOENT)
       const baseDir = safeCwd();
@@ -141,16 +126,17 @@ export function memoryInitCommand(): Command {
       }
 
       // WP2 unpin (спека 2.16 §5): модель не спрашиваем; пиннинг — opt-in через --model
+      // WP1 (спека 2.16 §4): платформы не спрашиваем — только --platform; TTY — один вопрос о назначении
       const isTty = Boolean(process.stdout.isTTY);
       const models: ModelContext | 'omit' =
         options.model !== undefined ? { primary: options.model, worker: options.model } : 'omit';
       const modelSource = options.model !== undefined ? ('flag' as const) : undefined;
+      let purpose: string | undefined;
       // npx try-out: пайплайн молчит (§4 п.6) — вопросы не задаём, ответы всё равно выброшены
-      if (isTty && platformChoice === undefined && !isNpxRun()) {
+      if (isTty && !isNpxRun()) {
         const rl = createInterface({ input: process.stdin, output: process.stdout });
         try {
-          platformChoice = await askPlatformChoice(rl, baseDir);
-          platformSource = 'tty';
+          purpose = await askPurpose(rl);
         } finally {
           rl.close();
         }
@@ -250,7 +236,7 @@ export function memoryInitCommand(): Command {
           },
         },
         baseDir,
-        { platformChoice, platformSource, models, modelSource }
+        { platformChoice, platformSource, models, modelSource, full: options.full, purpose }
       );
 
       console.log('# wolf init');

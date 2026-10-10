@@ -73,6 +73,13 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
   }
 
   async renderBaseSet(baseDir: string, opts?: RenderBaseSetOptions): Promise<RenderOutcome[]> {
+    // WP1 (спека 2.16 §4): минимальный init — только AGENTS.md (create wx / marker-append / skip)
+    if (opts?.scope === 'agents-md') {
+      const state = loadSyncState(baseDir);
+      const outcomes = await this.renderAgentsMd(baseDir, opts.models, state);
+      saveSyncState(baseDir, state);
+      return outcomes;
+    }
     const outcomes: RenderOutcome[] = [];
     const state = loadSyncState(baseDir);
     for (const f of this.templateFiles(baseDir)) {

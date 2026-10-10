@@ -5,11 +5,7 @@
 // юнит не пишет в рабочее дерево; содержимое профилей покрывают интеграционные юниты
 // (init-project-base-set.test.ts) и e2e (unpin-init.e2e.ts).
 import { describe, it, expect, vi } from 'vitest';
-import {
-  memoryInitCommand,
-  renderNextSteps,
-  askPlatformChoice,
-} from '../../../../src/adapters/cli/commands/memory-init.js';
+import { memoryInitCommand, renderNextSteps, askPurpose } from '../../../../src/adapters/cli/commands/memory-init.js';
 import { initProject } from '../../../../src/app/use-cases/init-project.js';
 
 vi.mock('../../../../src/app/use-cases/init-project.js', async (importOriginal) => {
@@ -50,16 +46,13 @@ function fakeRl(answers: string[]) {
   };
 }
 
-describe('askPlatformChoice (§4.4 п.2: opencode дефолт, найденные — в предложении)', () => {
-  it('Enter → opencode (дефолт)', async () => {
-    expect(await askPlatformChoice(fakeRl(['']), '/tmp')).toEqual(['opencode']);
+describe('askPurpose (WP1, спека 2.16 §4: единственный вопрос дефолтного интервью)', () => {
+  it('Enter → пустая строка (пропуск, note не сеется)', async () => {
+    expect(await askPurpose(fakeRl(['']))).toBe('');
   });
 
-  it('множественный выбор через запятую; неизвестный id — переспрос', async () => {
-    expect(await askPlatformChoice(fakeRl(['opencode,claude']), '/tmp')).toEqual(['opencode', 'claude']);
-    const rl = fakeRl(['vscode', 'claude']);
-    expect(await askPlatformChoice(rl, '/tmp')).toEqual(['claude']);
-    expect(rl.questions).toHaveLength(2);
+  it('ответ обрезается по краям', async () => {
+    expect(await askPurpose(fakeRl(['  wolf memory harness  ']))).toBe('wolf memory harness');
   });
 });
 

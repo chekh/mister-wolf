@@ -102,7 +102,7 @@ describe('initProject + baseSet (Task 6 + §4.5: модели — в ренде�
         return baseSet.render();
       },
     };
-    const result = await initProject(makeDeps(spyingBaseSet), dir, { models: MODELS });
+    const result = await initProject(makeDeps(spyingBaseSet), dir, { models: MODELS, full: true });
     expect(seen).toEqual([MODELS]);
     expect(result.baseSetOutcomes).toEqual([
       { file: '.opencode/agents/mr-wolf.md', action: 'created' },
@@ -149,7 +149,8 @@ function realBaseSet(): NonNullable<InitProjectDeps['baseSet']> {
 describe('WP2 unpin (спека 2.16 §5): init-рендер свежего контента', () => {
   it("'omit' — agent-профили без model-строк", async () => {
     writeFileSync(join(dir, 'package.json'), '{}');
-    await initProject(makeDeps(realBaseSet()), dir, { models: 'omit' });
+    // WP1 (спека 2.16 §4): профили — часть полного набора
+    await initProject(makeDeps(realBaseSet()), dir, { models: 'omit', full: true });
     const raw = readFileSync(join(dir, '.opencode/agents/mr-wolf.md'), 'utf-8');
     expect(raw).not.toMatch(/^[^\S\n]*model:[^\S\n]*\{\{model\./m);
     expect(raw).not.toMatch(/^model:\s+\S+/m);
@@ -157,7 +158,7 @@ describe('WP2 unpin (спека 2.16 §5): init-рендер свежего ко
 
   it('явный ModelContext — model-строка с подстановкой (opt-in)', async () => {
     writeFileSync(join(dir, 'package.json'), '{}');
-    await initProject(makeDeps(realBaseSet()), dir, { models: MODELS });
+    await initProject(makeDeps(realBaseSet()), dir, { models: MODELS, full: true });
     const raw = readFileSync(join(dir, '.opencode/agents/mr-wolf.md'), 'utf-8');
     expect(raw).toContain('model: zai-coding-plan/glm-5.3');
   });

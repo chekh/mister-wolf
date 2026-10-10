@@ -31,7 +31,10 @@ export interface BaseSetOutcome {
   reason?: string;
 }
 export interface BaseSetDeps {
-  render: (baseDir: string, opts?: { models?: ModelContext | 'omit' }) => Promise<BaseSetOutcome[]>;
+  render: (
+    baseDir: string,
+    opts?: { models?: ModelContext | 'omit'; scope?: 'full' | 'agents-md' }
+  ) => Promise<BaseSetOutcome[]>;
   seed: (baseDir: string) => Promise<BaseSetOutcome[]>;
 }
 
@@ -66,6 +69,10 @@ export interface InitProjectInput {
    * ModelContext — только явный --model (opt-in). */
   models: ModelContext | 'omit';
   modelSource?: 'flag' | 'tty';
+  /** true — полный базовый набор + playbook-seed; false/undefined — минимальный набор. */
+  full?: boolean;
+  /** Ответ TTY-интервью (спека §4): сеется как note+facet context; пусто/не-TTY — не сеется. */
+  purpose?: string;
 }
 
 export interface PlatformInitOutcome {
@@ -171,8 +178,10 @@ export async function initProject(
         reason: 'npx try-out does not write the base set (spec §7)',
       });
     } else {
-      baseSetOutcomes.push(...(await deps.baseSet.render(baseDir, { models: input.models })));
-      baseSetOutcomes.push(...(await deps.baseSet.seed(baseDir)));
+      baseSetOutcomes.push(
+        ...(await deps.baseSet.render(baseDir, { models: input.models, scope: input.full ? 'full' : 'agents-md' }))
+      );
+      if (input.full) baseSetOutcomes.push(...(await deps.baseSet.seed(baseDir)));
     }
   }
 
@@ -197,13 +206,7 @@ export async function initProject(
       }
     }
   } else {
-    // неинтерактивный дефолт (§4.4 п.3): opencode — безусловно, по факту рендера набора
-    // (D2: детекция не гейтит; F4); прочие платформы — по маркерам, не зависящим от рендера
-    for (const adapter of deps.adapters) {
-      if (adapter.id === 'opencode' || adapter.detect(baseDir)) {
-        platformOutcomes.push(await writePlatformOutcome(adapter, baseDir, deps.mcpCommand));
-      }
-    }
+    // WP1: без --platform платформенные конфиги не пишутся (минимальный путь, спека §4)
   }
 
   // §4 п.8: реестр проектов
@@ -229,6 +232,18 @@ export async function initProject(
       });
       initReport = { action: 'created', id: object.id };
     }
+  }
+
+  // WP1 (спека §4): ответ TTY-интервью сеется в память (note), не в governing-инструкцию
+  if (!deps.npx && input.purpose !== undefined && input.purpose !== '') {
+    await addMemoryObject(memDeps, {
+      type: 'note',
+      facet: 'context',
+      title: 'Project purpose and conventions (init)',
+      body: input.purpose,
+      createdBy: 'user:init',
+      tags: ['onboarding', 'project-purpose'],
+    });
   }
 
   return { npx: deps.npx, platformOutcomes, baseSetOutcomes, initReport };
