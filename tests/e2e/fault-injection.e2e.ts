@@ -4,8 +4,8 @@ import { join } from 'path';
 import { ensureBuilt, runCli, tmpProject } from './helpers.js';
 
 // Волна 0 (0.1, приёмка): fault-injection для error-полей mcp_call + обратная
-// совместимость старых jsonl-строк. Add с кривым полем (rule без обязательного
-// scope) → CLI завершается ошибкой, mcp_call-сигнал несёт outcome=error,
+// совместимость старых jsonl-строк. Add с кривым полем (note с facet вне
+// словаря) → CLI завершается ошибкой, mcp_call-сигнал несёт outcome=error,
 // detail.error.message и detail.error_class_id (classifyError). Старая v1-строка
 // (без detail/новых полей) читается без ошибок — malformedLines = 0.
 
@@ -39,28 +39,29 @@ describe('fault-injection: mcp_call error-поля + старые jsonl-стро
     if (dir) rmSync(dir, { recursive: true, force: true });
   });
 
-  it('add с кривым полем (rule без scope) → error-поля заполнены, exit != 0', () => {
+  it('add с кривым полем (note с невалидным facet) → error-поля заполнены, exit != 0', () => {
     const dir = tmpProject();
     dirs.push(dir);
     expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir).status).toBe(0);
 
-    // rule без обязательного scope: input-схему проходит, домен бросает
-    // UserFacingError «Type validation failed: scope ...» внутри action
-    const result = runCli(['add', '--type', 'rule', '--title', 'broken rule'], dir);
+    // note с facet вне словаря: домен бросает UserFacingError
+    // «Invalid facet "bogus" for type "note"» до zod-валидации (2.16: scope уже
+    // passthrough-строка, кривое поле — только enum)
+    const result = runCli(['add', '--type', 'note', '--title', 'broken note', '--facet', 'bogus'], dir);
     expect(result.status).not.toBe(0);
-    expect(result.stderr).toMatch(/scope/);
+    expect(result.stderr).toMatch(/facet/);
 
     const errors = readMcpCalls(dir).filter((s) => s.tool_name === 'add' && s.outcome === 'error');
     expect(errors).toHaveLength(1);
     const detail = errors[0].detail;
     // args_summary присутствует и не несёт body
     const args = detail.args_summary as Record<string, unknown>;
-    expect(args.type).toBe('rule');
-    expect(args.title).toBe('broken rule');
+    expect(args.type).toBe('note');
+    expect(args.title).toBe('broken note');
     expect('body' in args).toBe(false);
     // error-поля волны 0: message + классификация
     const err = detail.error as Record<string, unknown>;
-    expect(String(err.message)).toMatch(/scope/);
+    expect(String(err.message)).toMatch(/facet/);
     expect(typeof detail.error_class_id).toBe('string');
     expect(detail.error_class_id).not.toBe('');
   });

@@ -290,6 +290,7 @@ Options:
   --importance <n>                       Importance from 0 to 1
   --set <k=v>                            Extra field key=value (repeatable) (default: [])
   --created-by <actor>                   Creator actor (default: env WOLF_ACTOR, else user:cli)
+  --scope <scope>                        scope
   --applies-to <applies-to>              applies_to (comma-separated)
   --trigger <trigger>                    trigger
   --trigger-keywords <trigger-keywords>  trigger_keywords (comma-separated)

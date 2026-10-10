@@ -26,9 +26,16 @@ describe('generic add supports --scope for types that declare one', () => {
     expect(list.stdout).toContain('[rule] [active] Use strict mode');
   });
 
-  it('rejects invalid scope value', () => {
-    const r = runCli(['add', '--type', 'rule', '--title', 'Bad scope', '--body', 'B', '--scope', 'team'], cwd);
-    expect(r.status).not.toBe(0);
+  it('stores scope value as-is (2.16 §6.2: scope is a passthrough string, not an enum)', () => {
+    const r = runCli(
+      ['add', '--type', 'rule', '--title', 'Worktree scope', '--body', 'B', '--scope', 'worktree:wave-216'],
+      cwd
+    );
+    expect(r.status).toBe(0);
+    const id = r.stdout.match(/Created memory object: (\S+)/)![1];
+    const got = runCli(['get', id], cwd);
+    expect(got.status).toBe(0);
+    expect(got.stdout).toContain('"scope": "worktree:wave-216"');
   });
 
   it('rejects --scope on type without scope field', () => {
