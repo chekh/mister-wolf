@@ -58,14 +58,19 @@ export function memoryCallCommand(): Command {
           if (result.deduplicated > 0) {
             console.log(DEDUP_NOTICE(result.deduplicated));
           } else {
+            // WP5 (спека 2.16 §14.4): пустой call объясняет себя — приоритет
+            // причин: scope › пустой пул › topic; у каждой — следующий шаг.
             console.log('No active call injections.');
-            // WP3 §6.2, черновик (финальный текст — задача 8 WP5): пустой call
-            // из-за scope-фильтра называет активный scope и следующий шаг
+            console.log(`pool: ${result.poolSize} active delivery candidate(s)`);
             if (result.hidden) {
-              console.log(
-                `[wolf] scope filter hid ${result.hidden.count} active object(s); current scope: ${result.hidden.scope}`
-              );
-              console.log('[wolf] to deliver them after merge, run: wolf promote <worktree-name>');
+              console.log(`scope filter hid ${result.hidden.count} object(s) (current scope: ${result.hidden.scope})`);
+              console.log('next: merge delivers them — wolf promote <worktree-name>');
+            } else if (result.poolSize === 0) {
+              console.log('reason: no active delivery candidates in this project');
+              console.log('next: capture a fact — wolf add --type note --facet context --title "..."');
+            } else {
+              console.log('reason: nothing matched the --for topic filter');
+              console.log('next: retry with a broader topic or drop --for');
             }
           }
         } else {

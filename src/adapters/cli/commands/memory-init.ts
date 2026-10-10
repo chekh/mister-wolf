@@ -128,7 +128,10 @@ export function memoryInitCommand(): Command {
           const known = new Set(PLATFORM_ADAPTERS.map((a) => a.id));
           const unknown = platformChoice.filter((id) => !known.has(id));
           if (unknown.length > 0) {
-            throw new UserFacingError(`Unknown platform(s): ${unknown.join(', ')} (known: ${[...known].join(', ')})`);
+            // K2 (спека 2.16 §14): ошибка называет свой флаг (формат — прецедент re-init ниже)
+            throw new UserFacingError(
+              `Unknown platform(s): ${unknown.join(', ')} (known: ${[...known].join(', ')}); re-run: wolf init --platform <known-id>`
+            );
           }
           platformSource = 'flag';
         }
