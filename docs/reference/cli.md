@@ -781,6 +781,9 @@ Check all registered projects: binary vs schema version, platform configs,
 prune dead entries
 
 Options:
+  --repair    repair storage in the current project: rebuild index, backfill
+              memory.added events (default: false)
+  --dry-run   with --repair: print the plan without writing (default: false)
   -h, --help  display help for command
 ```
 

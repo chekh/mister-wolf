@@ -58,6 +58,8 @@ export interface InitProjectDeps {
   declarations?: readonly MemoryTypeDeclaration[];
   /** Версия wolf для секции found отчёта (§4.1); нет — строка версий опускается. */
   wolfVersion?: string;
+  /** WP4: ensure wolf-блока в .gitignore; не передан — шаг пропускается (юнит-фейки). */
+  ensureGitignore?: (baseDir: string) => Promise<'created' | 'appended' | 'kept'>;
 }
 
 /** Входы init: платформы известны до рендера; модели — opt-in (WP2 unpin, спека 2.16 §5). */
@@ -171,6 +173,7 @@ export interface InitProjectResult {
   platformOutcomes: PlatformInitOutcome[];
   baseSetOutcomes: BaseSetOutcome[];
   initReport: { action: 'created' | 'skipped'; id?: string };
+  gitignore: 'created' | 'appended' | 'kept' | 'skipped';
 }
 
 /** Теги init-отчёта — единственный машинный маркер (D4). */
@@ -237,6 +240,11 @@ export async function initProject(
 
   await deps.initializer.initialize(baseDir);
   await deps.markSchemaCurrent(baseDir);
+
+  // WP4 (спека §7): wolf-блок .gitignore — сразу после штампа схемы
+  const gitignore: InitProjectResult['gitignore'] = deps.ensureGitignore
+    ? await deps.ensureGitignore(baseDir)
+    : 'skipped';
 
   const memDeps = {
     store: deps.store,
@@ -326,7 +334,7 @@ export async function initProject(
     });
   }
 
-  return { npx: deps.npx, platformOutcomes, baseSetOutcomes, initReport };
+  return { npx: deps.npx, platformOutcomes, baseSetOutcomes, initReport, gitignore };
 }
 
 /** Тело init-отчёта (§4.1): made / found / needs-fix. */

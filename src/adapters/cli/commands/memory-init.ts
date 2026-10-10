@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { join } from 'path';
 import { readFileSync, readdirSync, existsSync } from 'fs';
-import { readFile } from 'fs/promises';
+import { readFile, writeFile } from 'fs/promises';
 import { createInterface } from 'node:readline/promises';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { ProjectsRegistry } from '../../../adapters/fs/projects-registry.js';
@@ -10,6 +10,7 @@ import { PLATFORM_ADAPTERS, CANONICAL_MCP_COMMAND } from '../../../adapters/plat
 import { writeSchemaVersionIfAbsent } from '../../../adapters/fs/schema-version.js';
 import { ensureCurrentSchema } from '../../../adapters/fs/schema-guard.js';
 import { initProject, planInit, recreateConfig } from '../../../app/use-cases/init-project.js';
+import { ensureGitignoreBlock } from '../../../app/use-cases/gitignore-block.js';
 import { OpencodeBaseSetRenderer } from '../../../adapters/render/opencode/opencode-renderer.js';
 import { templatesRoot, harnessTemplatesRoot, wolfVersion } from '../../../adapters/render/templates-root.js';
 import {
@@ -250,6 +251,15 @@ export function memoryInitCommand(): Command {
             mcpCommand: CANONICAL_MCP_COMMAND,
             npx: isNpxRun(),
             markSchemaCurrent: () => writeSchemaVersionIfAbsent(root),
+            ensureGitignore: (dir: string) =>
+              ensureGitignoreBlock(
+                {
+                  exists: async (p) => existsSync(p),
+                  readFile: async (p) => readFile(p, 'utf-8'),
+                  writeFile: async (p, c) => writeFile(p, c, 'utf-8'),
+                },
+                dir
+              ),
             store,
             log,
             clock,
