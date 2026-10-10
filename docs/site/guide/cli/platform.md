@@ -11,7 +11,7 @@ Usage: wolf init [options]
 Options:
 
 - `--platform <ids>` — explicit platform list (comma-separated: `opencode,claude`); replaces the current set
-- `--model <id>` — model for Mr. Wolf and its agents (`<providerID>/<modelID>`); opt-in — by default model lines are omitted and profiles inherit the platform default
+- `--model <id>` — model for Mr. Wolf and its agents (`<providerID>/<modelID>`); opt-in — by default model lines are omitted and the platform default applies
 - `--full` — render the full base set (agents/skills/commands/plugins) instead of the minimal set (default: false)
 - `--yes` — re-init: apply the plan without interactive confirmation (default: false)
 - `--recreate` — backup a corrupted `.wolf/config.yaml` and re-create it from defaults (default: false)
