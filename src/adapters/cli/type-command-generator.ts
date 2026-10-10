@@ -79,6 +79,10 @@ function typeAddCommand(decl: MemoryTypeDeclaration, baseDir: string): Command {
     if (name === 'scope' || name === 'facet') {
       if (spec.kind === 'enum') {
         cmd.addOption(new Option(`--${name} <${name}>`, name).choices([...spec.values]).makeOptionMandatory());
+      } else if (spec.kind === 'string') {
+        // 2.16 §6.2: scope — passthrough-строка (project|global|worktree:<имя>),
+        // обычная опция по декларации; в flagFields не идёт (маппинг options.scope ниже)
+        addFieldOption(cmd, name, spec);
       }
       continue;
     }

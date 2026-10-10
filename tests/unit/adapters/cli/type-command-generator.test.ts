@@ -43,6 +43,16 @@ describe('type namespaces generated from taxonomy (wave 2.13 §6.3)', () => {
     expect(facet.argChoices).toEqual([...DEFAULT_CHARACTER_FACETS]);
   });
 
+  // 2.16 §6.2: rule.scope сменил декларацию enum → string (passthrough worktree:<имя>) —
+  // флаг --scope остаётся на неймспейсе, но без choices и без mandatory
+  it('string scope becomes a plain optional flag (rule add --scope)', () => {
+    const add = typeNamespaceCommand('rule').commands.find((c) => c.name() === 'add')!;
+    const scope = add.options.find((o) => o.long === '--scope')!;
+    expect(scope).toBeDefined();
+    expect(scope.mandatory).toBe(false);
+    expect(scope.argChoices).toBeUndefined();
+  });
+
   it('complaint add exposes its required protocol fields', () => {
     const add = typeNamespaceCommand('complaint').commands.find((c) => c.name() === 'add')!;
     for (const flag of ['--about', '--rule', '--evidence', '--proposal']) {

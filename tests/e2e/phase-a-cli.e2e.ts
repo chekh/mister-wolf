@@ -66,9 +66,9 @@ describe('clean CLI errors (W4): одна строка Error:, exit 1, без с
     expectCleanError(r, /Unknown field "scope" for type "decision"/);
   });
 
-  it('invalid enum value: rule --scope team', () => {
-    const r = runCli(['add', '--type', 'rule', '--title', 'T', '--scope', 'team'], cwd);
-    expectCleanError(r, /Type validation failed:.*scope/);
+  it('invalid enum value: note --facet bogus', () => {
+    const r = runCli(['add', '--type', 'note', '--title', 'T', '--facet', 'bogus'], cwd);
+    expectCleanError(r, /Invalid facet "bogus" for type "note"/);
   });
 
   it('malformed id: supersede', () => {
