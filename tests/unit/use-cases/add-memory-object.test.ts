@@ -8,6 +8,7 @@ import { JsonlEventLog } from '../../../src/adapters/fs/jsonl-event-log.js';
 import { SystemClock } from '../../../src/adapters/fs/system-clock.js';
 import { HashIdGenerator } from '../../../src/adapters/fs/hash-id-generator.js';
 import { eventsPath } from '../../../src/adapters/fs/project-paths.js';
+import { UserFacingError } from '../../../src/domain/errors.js';
 
 describe('addMemoryObject', () => {
   let dir: string;
@@ -283,5 +284,75 @@ describe('addMemoryObject facet validation (note)', () => {
         { type: 'note', title: 'N', createdBy: 'u:test', extra: { facet: 'nope' } }
       )
     ).rejects.toThrow(/Invalid facet "nope"/);
+  });
+});
+
+// WP3 §6.3 (2.16): related.files/docs нормализуются в project-relative при записи
+describe('addMemoryObject related normalization (WP3 §6.3)', () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'wolf-rel-'));
+  });
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  function makeDeps(r: string) {
+    return {
+      store: new MarkdownMemoryStore(r),
+      log: new JsonlEventLog(eventsPath(r)),
+      clock: new SystemClock(),
+      idGen: new HashIdGenerator(),
+      projectRoot: r,
+    };
+  }
+
+  it('absolute path inside root is stored project-relative', async () => {
+    const { object } = await addMemoryObject(makeDeps(root), {
+      type: 'note',
+      facet: 'context',
+      title: 'rel inside',
+      createdBy: 'user:x',
+      related: { files: [join(root, 'src', 'a.ts')], docs: [], decisions: [] },
+    });
+    expect(object.related.files).toEqual(['src/a.ts']);
+  });
+
+  it('relative ./ paths normalize to plain project-relative', async () => {
+    const { object } = await addMemoryObject(makeDeps(root), {
+      type: 'note',
+      facet: 'context',
+      title: 'rel dot',
+      createdBy: 'user:x',
+      related: { files: ['./src/a.ts'], docs: [], decisions: [] },
+    });
+    expect(object.related.files).toEqual(['src/a.ts']);
+  });
+
+  it('absolute path outside root refuses and writes nothing', async () => {
+    const before = (await makeDeps(root).store.list()).length;
+    await expect(
+      addMemoryObject(makeDeps(root), {
+        type: 'note',
+        facet: 'context',
+        title: 'rel outside',
+        createdBy: 'user:x',
+        related: { files: ['/etc/passwd'], docs: [], decisions: [] },
+      })
+    ).rejects.toBeInstanceOf(UserFacingError);
+    expect((await makeDeps(root).store.list()).length).toBe(before);
+  });
+
+  it('decisions are kept as-is (ids, not paths)', async () => {
+    const { object } = await addMemoryObject(makeDeps(root), {
+      type: 'note',
+      facet: 'context',
+      title: 'rel decisions',
+      createdBy: 'user:x',
+      related: { files: [], docs: [], decisions: ['/abs/looks/like/path'] },
+    });
+    expect(object.related.decisions).toEqual(['/abs/looks/like/path']);
   });
 });

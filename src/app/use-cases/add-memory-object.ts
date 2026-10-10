@@ -10,6 +10,26 @@ import { governanceDefaults } from '../../domain/governance.js';
 import { getDeclaration, DEFAULT_CHARACTER_FACETS, type MemoryTypeDeclaration } from '../../domain/memory-types.js';
 import { buildTypeSchema, applyFacetEnum } from '../../domain/type-schema-builder.js';
 import { UserFacingError } from '../../domain/errors.js';
+import { isAbsolute, normalize, relative, sep } from 'path';
+
+/** WP3 §6.3: related.files/docs — project-relative posix-пути; абсолют вне root — отказ.
+ * Прецедент: tool-librarian.ts:151 (script_path хранится относительным).
+ * decisions не трогаем — это id, не пути. */
+export function normalizeRelatedPaths(
+  related: MemoryObject['related'] | undefined,
+  projectRoot: string | undefined
+): MemoryObject['related'] {
+  const base = related ?? { files: [], docs: [], decisions: [] };
+  if (projectRoot === undefined) return base; // legacy-вызовы/фейки без root — как сегодня
+  const norm = (p: string): string => {
+    const rel = isAbsolute(p) ? relative(projectRoot, p) : normalize(p);
+    if (rel.length === 0 || rel.startsWith('..') || isAbsolute(rel)) {
+      throw new UserFacingError(`related path escapes the project root: "${p}" (use a project-relative path)`);
+    }
+    return rel.split(sep).join('/');
+  };
+  return { files: base.files.map(norm), docs: base.docs.map(norm), decisions: base.decisions };
+}
 
 export interface AddMemoryObjectInput {
   type: MemoryObject['type'];
@@ -49,6 +69,8 @@ export async function addMemoryObject(
     facetCharacter?: readonly string[];
     /** WP3 §6.2: дефолт scope при записи из linked worktree ('worktree:<имя>'); нет — поле не ставится. */
     defaultScope?: string;
+    /** WP3 §6.3: корень проекта для нормализации related.files/docs в project-relative. */
+    projectRoot?: string;
   },
   input: AddMemoryObjectInput
 ): Promise<AddMemoryObjectResult> {
@@ -95,7 +117,7 @@ export async function addMemoryObject(
       created_by: input.createdBy,
       schema_version: 1,
       source: input.source ?? { kind: 'manual' },
-      related: input.related ?? { files: [], docs: [], decisions: [] },
+      related: normalizeRelatedPaths(input.related, deps.projectRoot),
       tags: input.tags ?? [],
       superseded_by: null,
       memory_class: input.memoryClass ?? defaults.memory_class,
