@@ -54,7 +54,7 @@ describe('wolf init CLI (спека §3 уровень 1; WP2 unpin: --model opt
     const before = readFileSync(join(project, 'opencode.json'), 'utf-8');
     const second = spawnSync(
       'node',
-      [cli, 'init', '--full', '--platform', 'opencode', '--model', 'zai-coding-plan/glm-5.3'],
+      [cli, 'init', '--full', '--platform', 'opencode', '--model', 'zai-coding-plan/glm-5.3', '--yes'],
       {
         cwd: project,
         env: env(xdg),
@@ -119,7 +119,8 @@ describe('wolf init CLI (спека §3 уровень 1; WP2 unpin: --model opt
     writeFileSync(join(project, '.wolf', 'config.yaml'), 'artifact_sources: []\n');
     writeFileSync(join(project, '.wolf', 'memory', 'objects', 'decision', 'mem_legacy.md'), legacyMd);
 
-    const res = spawnSync('node', [cli, 'init', '--recreate', '--model', 'zai-coding-plan/glm-5.3'], {
+    // K6: живой проект (непустой валидный конфиг) → гейт подтверждения; --yes применяет план
+    const res = spawnSync('node', [cli, 'init', '--recreate', '--yes', '--model', 'zai-coding-plan/glm-5.3'], {
       cwd: project,
       env: env(xdg),
       encoding: 'utf-8',

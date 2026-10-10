@@ -7,8 +7,10 @@ import {
   looksLikeProjectRoot,
   recreateConfig,
   findInitReport,
+  planInit,
   INIT_REPORT_TAGS,
   type InitProjectDeps,
+  type InitPlanEntry,
 } from '../../../src/app/use-cases/init-project.js';
 import { ProjectInitializer } from '../../../src/ports/project-initializer.port.js';
 import {
@@ -20,6 +22,7 @@ import {
 } from '../../../src/ports/platform-adapter.port.js';
 import type { ModelContext } from '../../../src/ports/base-set-renderer.port.js';
 import { CURRENT_SCHEMA_VERSION } from '../../../src/adapters/fs/schema-version.js';
+import { configPath } from '../../../src/adapters/fs/project-paths.js';
 import type { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
 
 /* ---------- fakes ---------- */
@@ -492,6 +495,69 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     expect(oc.writeCalls).toBe(0);
     expect(result.initReport.action).toBe('skipped');
     expect(store.objects).toHaveLength(0); // пайплайн «молчит» до полноценной установки
+  });
+});
+
+describe('planInit (спека 2.16 §4 K6: read-only план повторного init, ничего не пишет)', () => {
+  /** Фейковые deps на Map: путь → содержимое. */
+  function fsDeps(files: Map<string, string>) {
+    return {
+      exists: async (p: string) => files.has(p),
+      readFile: async (p: string) => files.get(p) ?? null,
+    };
+  }
+  const entry = (plan: { entries: InitPlanEntry[] }, c: InitPlanEntry['component']) =>
+    plan.entries.find((e) => e.component === c)!;
+
+  it('fresh: live=false, create-план; не-full/без --platform/без purpose — skip', async () => {
+    const plan = await planInit(fsDeps(new Map()), dir, { models: 'omit' });
+    expect(plan.live).toBe(false);
+    expect(entry(plan, 'skeleton').action).toBe('create');
+    expect(entry(plan, 'config').action).toBe('create');
+    expect(entry(plan, 'agents-md').action).toBe('create');
+    expect(entry(plan, 'memory-seed').action).toBe('create');
+    expect(entry(plan, 'gitignore').action).toBe('create');
+    expect(entry(plan, 'base-set').action).toBe('skip');
+    expect(entry(plan, 'platforms').action).toBe('skip');
+    expect(entry(plan, 'purpose-note').action).toBe('skip');
+  });
+
+  it('live (конфиг + маркер в AGENTS.md + штамп gitignore): skeleton/config/agents-md/gitignore — keep; --platform → update', async () => {
+    const files = new Map<string, string>([
+      [configPath(dir), 'schema_version: 2\n'],
+      [join(dir, 'AGENTS.md'), '# Own\n\n<!-- wolf:onboarding v2 -->\n'],
+      [join(dir, '.gitignore'), '# wolf-gitignore:v1\n.wolf/cache/\n'],
+    ]);
+    const plan = await planInit(fsDeps(files), dir, { models: 'omit', platformChoice: ['opencode'] });
+    expect(plan.live).toBe(true);
+    expect(entry(plan, 'skeleton').action).toBe('keep');
+    expect(entry(plan, 'config').action).toBe('keep');
+    expect(entry(plan, 'agents-md').action).toBe('keep');
+    expect(entry(plan, 'gitignore').action).toBe('keep');
+    expect(entry(plan, 'memory-seed').action).toBe('keep');
+    expect(entry(plan, 'platforms').action).toBe('update');
+    expect(entry(plan, 'platforms').detail).toBe('opencode');
+  });
+
+  it('live + full: base-set — keep, detail обещает fresh/mutated-skip (blind reseed запрещён)', async () => {
+    const files = new Map<string, string>([[configPath(dir), 'schema_version: 2\n']]);
+    const plan = await planInit(fsDeps(files), dir, { models: 'omit', full: true });
+    const baseSet = entry(plan, 'base-set');
+    expect(baseSet.action).toBe('keep');
+    expect(baseSet.detail).toContain('never rewritten');
+  });
+
+  it('краевой случай спеки §4: пустой после trim конфиг — первый запуск (live=false, config create)', async () => {
+    const files = new Map<string, string>([[configPath(dir), '  \n']]);
+    const plan = await planInit(fsDeps(files), dir, { models: 'omit' });
+    expect(plan.live).toBe(false);
+    expect(entry(plan, 'config').action).toBe('create');
+  });
+
+  it('битый непустой yaml остаётся под гейтом: live=true (P3 — подтверждение безопаснее молчаливого прохода)', async () => {
+    const files = new Map<string, string>([[configPath(dir), '{broken']]);
+    const plan = await planInit(fsDeps(files), dir, { models: 'omit' });
+    expect(plan.live).toBe(true);
   });
 });
 

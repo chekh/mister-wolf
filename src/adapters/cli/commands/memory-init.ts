@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { join } from 'path';
 import { readFileSync, readdirSync, existsSync } from 'fs';
+import { readFile } from 'fs/promises';
 import { createInterface } from 'node:readline/promises';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { ProjectsRegistry } from '../../../adapters/fs/projects-registry.js';
@@ -8,7 +9,7 @@ import { wolfUserConfigDir } from '../../../adapters/fs/user-config.js';
 import { PLATFORM_ADAPTERS, CANONICAL_MCP_COMMAND } from '../../../adapters/platforms/index.js';
 import { writeSchemaVersionIfAbsent } from '../../../adapters/fs/schema-version.js';
 import { ensureCurrentSchema } from '../../../adapters/fs/schema-guard.js';
-import { initProject, recreateConfig } from '../../../app/use-cases/init-project.js';
+import { initProject, planInit, recreateConfig } from '../../../app/use-cases/init-project.js';
 import { OpencodeBaseSetRenderer } from '../../../adapters/render/opencode/opencode-renderer.js';
 import { templatesRoot, harnessTemplatesRoot, wolfVersion } from '../../../adapters/render/templates-root.js';
 import {
@@ -96,171 +97,205 @@ export function memoryInitCommand(): Command {
       'model for Mr.Wolf and its agents (<providerID>/<modelID>); opt-in — by default model lines are omitted'
     )
     .option('--full', 'render the full base set (agents/skills/commands/plugins); default is the minimal set', false)
+    .option('--yes', 're-init: apply the plan without interactive confirmation', false)
     .option('--recreate', 'backup a corrupted .wolf/config.yaml and re-create it from defaults', false)
-    .action(async (options: { platform?: string; model?: string; full?: boolean; recreate?: boolean }) => {
-      // §2.5 (recreate-guard): init --recreate — единственный вход CLI в обход guard runCli;
-      // поэтому cwd берём тоже под защитой (safeCwd: удалённый каталог → однострочный Error, не сырой ENOENT)
-      const baseDir = safeCwd();
-      if (options.recreate) {
-        await recreateConfig(baseDir);
-        // восстановление = приведение к валидному СОСТОЯНИЮ, а не тихий штамп маркера ниже:
-        // легаси-схема (1/без маркера) мигрирует здесь (layout + маркер), иначе markSchemaCurrent
-        // дописал бы v2 без layout-миграции и objects/ остался бы осиротевшим навсегда;
-        // схема из будущего — честный отказ «обнови wolf» (спека §3), а не даунгрейд 99→2
-        await ensureCurrentSchema(baseDir);
-      }
-
-      let platformChoice: string[] | undefined;
-      let platformSource: 'flag' | 'tty' | 'default' | undefined;
-      if (options.platform !== undefined) {
-        platformChoice = options.platform
-          .split(',')
-          .map((s) => s.trim())
-          .filter((s) => s !== '');
-        const known = new Set(PLATFORM_ADAPTERS.map((a) => a.id));
-        const unknown = platformChoice.filter((id) => !known.has(id));
-        if (unknown.length > 0) {
-          throw new UserFacingError(`Unknown platform(s): ${unknown.join(', ')} (known: ${[...known].join(', ')})`);
+    .action(
+      async (options: { platform?: string; model?: string; full?: boolean; yes?: boolean; recreate?: boolean }) => {
+        // §2.5 (recreate-guard): init --recreate — единственный вход CLI в обход guard runCli;
+        // поэтому cwd берём тоже под защитой (safeCwd: удалённый каталог → однострочный Error, не сырой ENOENT)
+        const baseDir = safeCwd();
+        if (options.recreate) {
+          await recreateConfig(baseDir);
+          // восстановление = приведение к валидному СОСТОЯНИЮ, а не тихий штамп маркера ниже:
+          // легаси-схема (1/без маркера) мигрирует здесь (layout + маркер), иначе markSchemaCurrent
+          // дописал бы v2 без layout-миграции и objects/ остался бы осиротевшим навсегда;
+          // схема из будущего — честный отказ «обнови wolf» (спека §3), а не даунгрейд 99→2
+          await ensureCurrentSchema(baseDir);
         }
-        platformSource = 'flag';
-      }
 
-      // WP2 unpin (спека 2.16 §5): модель не спрашиваем; пиннинг — opt-in через --model
-      // WP1 (спека 2.16 §4): платформы не спрашиваем — только --platform; TTY — один вопрос о назначении
-      const isTty = Boolean(process.stdout.isTTY);
-      const models: ModelContext | 'omit' =
-        options.model !== undefined ? { primary: options.model, worker: options.model } : 'omit';
-      const modelSource = options.model !== undefined ? ('flag' as const) : undefined;
-      let purpose: string | undefined;
-      // npx try-out: пайплайн молчит (§4 п.6) — вопросы не задаём, ответы всё равно выброшены
-      if (isTty && !isNpxRun()) {
-        const rl = createInterface({ input: process.stdin, output: process.stdout });
-        try {
-          purpose = await askPurpose(rl);
-        } finally {
-          rl.close();
+        let platformChoice: string[] | undefined;
+        let platformSource: 'flag' | 'tty' | 'default' | undefined;
+        if (options.platform !== undefined) {
+          platformChoice = options.platform
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s !== '');
+          const known = new Set(PLATFORM_ADAPTERS.map((a) => a.id));
+          const unknown = platformChoice.filter((id) => !known.has(id));
+          if (unknown.length > 0) {
+            throw new UserFacingError(`Unknown platform(s): ${unknown.join(', ')} (known: ${[...known].join(', ')})`);
+          }
+          platformSource = 'flag';
         }
-      }
 
-      const { initializer, store, log, clock, idGen, index, lock, declarations } = createCliContainer(baseDir);
-      const registry = new ProjectsRegistry(wolfUserConfigDir());
-
-      const tplPlaybooks = join(templatesRoot(), 'playbooks');
-      const playbookFiles = new Map<string, string>();
-      if (existsSync(tplPlaybooks)) {
-        for (const f of readdirSync(tplPlaybooks)) {
-          if (f.endsWith('.md')) playbookFiles.set(f, readFileSync(join(tplPlaybooks, f), 'utf-8'));
+        // WP2 unpin (спека 2.16 §5): модель не спрашиваем; пиннинг — opt-in через --model
+        // WP1 (спека 2.16 §4): платформы не спрашиваем — только --platform; TTY — один вопрос о назначении
+        const isTty = Boolean(process.stdout.isTTY);
+        const models: ModelContext | 'omit' =
+          options.model !== undefined ? { primary: options.model, worker: options.model } : 'omit';
+        const modelSource = options.model !== undefined ? ('flag' as const) : undefined;
+        let purpose: string | undefined;
+        // npx try-out: пайплайн молчит (§4 п.6) — вопросы не задаём, ответы всё равно выброшены
+        if (isTty && !isNpxRun()) {
+          const rl = createInterface({ input: process.stdin, output: process.stdout });
+          try {
+            purpose = await askPurpose(rl);
+          } finally {
+            rl.close();
+          }
         }
-      }
-      // ListFilters поддерживает type (memory-store.port.ts) — фильтр на уровне порта (правка r2)
-      // wave13-a: playbook → note+facet howto; старые файлы читаются как note (alias)
-      const existing = (await store.list({ type: 'note' })).filter(
-        (o) =>
-          (o as { facet?: string }).facet === 'howto' || (o as { alias_origin?: string }).alias_origin === 'playbook'
-      );
-      const seededOwners = new Set(
-        existing.map((o) => (o as { owner_skill?: string }).owner_skill).filter((x): x is string => Boolean(x))
-      );
-      // wave13-a: guard полей addMemoryObject не пускает steps/owner_skill в extra
-      // note — сеем напрямую по window-compat паттерну (схема — PlaybookNoteSchema)
-      const addFn = (input: PlaybookNoteInput) => {
-        const now = clock.now();
-        const defaults = governanceDefaults(input.createdBy);
-        const object = {
-          id: idGen.generateMemoryId(now, input.title),
-          type: 'note' as const,
-          facet: 'howto' as const,
-          title: input.title,
-          body: input.body,
-          status: 'active' as const,
-          review_state: 'accepted' as const,
-          confidence: 'medium' as const,
-          importance: 0.5,
-          created_at: now.toISOString(),
-          updated_at: now.toISOString(),
-          created_by: input.createdBy,
-          schema_version: 1,
-          source: { kind: 'manual' as const },
-          related: { files: [], docs: [], decisions: [] },
-          tags: input.tags,
-          superseded_by: null,
-          memory_class: defaults.memory_class,
-          truth_role: defaults.truth_role,
-          lifetime: defaults.lifetime,
-          ...input.extra,
+
+        const input = { platformChoice, platformSource, models, modelSource, full: options.full, purpose };
+
+        // K6 (спека 2.16 §4): гейт повторного init — read-only план ДО любых записей
+        // (до createCliContainer); живой проект → diff + подтверждение, blind reseed запрещён
+        const plan = await planInit(
+          { exists: async (p) => existsSync(p), readFile: async (p) => readFile(p, 'utf-8').catch(() => null) },
+          baseDir,
+          input
+        );
+        if (plan.live) {
+          console.log('wolf init — re-init on a live project. Planned changes:');
+          for (const e of plan.entries) console.log(`  [${e.action}] ${e.component}: ${e.detail}`);
+          if (!isTty && options.yes !== true) {
+            throw new UserFacingError(
+              're-init needs confirmation; re-run: wolf init --yes (or confirm interactively in a TTY)'
+            );
+          }
+          if (isTty && options.yes !== true) {
+            const rl = createInterface({ input: process.stdin, output: process.stdout });
+            try {
+              const ans = (await rl.question('Proceed? [y/N] ')).trim().toLowerCase();
+              if (ans !== 'y' && ans !== 'yes') {
+                console.log('Init aborted — nothing was changed.');
+                return;
+              }
+            } finally {
+              rl.close();
+            }
+          }
+        }
+
+        const { initializer, store, log, clock, idGen, index, lock, declarations } = createCliContainer(baseDir);
+        const registry = new ProjectsRegistry(wolfUserConfigDir());
+
+        const tplPlaybooks = join(templatesRoot(), 'playbooks');
+        const playbookFiles = new Map<string, string>();
+        if (existsSync(tplPlaybooks)) {
+          for (const f of readdirSync(tplPlaybooks)) {
+            if (f.endsWith('.md')) playbookFiles.set(f, readFileSync(join(tplPlaybooks, f), 'utf-8'));
+          }
+        }
+        // ListFilters поддерживает type (memory-store.port.ts) — фильтр на уровне порта (правка r2)
+        // wave13-a: playbook → note+facet howto; старые файлы читаются как note (alias)
+        const existing = (await store.list({ type: 'note' })).filter(
+          (o) =>
+            (o as { facet?: string }).facet === 'howto' || (o as { alias_origin?: string }).alias_origin === 'playbook'
+        );
+        const seededOwners = new Set(
+          existing.map((o) => (o as { owner_skill?: string }).owner_skill).filter((x): x is string => Boolean(x))
+        );
+        // wave13-a: guard полей addMemoryObject не пускает steps/owner_skill в extra
+        // note — сеем напрямую по window-compat паттерну (схема — PlaybookNoteSchema)
+        const addFn = (input: PlaybookNoteInput) => {
+          const now = clock.now();
+          const defaults = governanceDefaults(input.createdBy);
+          const object = {
+            id: idGen.generateMemoryId(now, input.title),
+            type: 'note' as const,
+            facet: 'howto' as const,
+            title: input.title,
+            body: input.body,
+            status: 'active' as const,
+            review_state: 'accepted' as const,
+            confidence: 'medium' as const,
+            importance: 0.5,
+            created_at: now.toISOString(),
+            updated_at: now.toISOString(),
+            created_by: input.createdBy,
+            schema_version: 1,
+            source: { kind: 'manual' as const },
+            related: { files: [], docs: [], decisions: [] },
+            tags: input.tags,
+            superseded_by: null,
+            memory_class: defaults.memory_class,
+            truth_role: defaults.truth_role,
+            lifetime: defaults.lifetime,
+            ...input.extra,
+          };
+          PlaybookNoteSchema.parse(object);
+          return (async () => {
+            await store.save(object);
+            await log.append({
+              id: idGen.generateEventId(now),
+              type: 'memory.added',
+              timestamp: now.toISOString(),
+              actor: input.createdBy,
+              payload: { memory_id: object.id, type: object.type },
+            });
+            if (index) await index.indexObject(object);
+          })();
         };
-        PlaybookNoteSchema.parse(object);
-        return (async () => {
-          await store.save(object);
-          await log.append({
-            id: idGen.generateEventId(now),
-            type: 'memory.added',
-            timestamp: now.toISOString(),
-            actor: input.createdBy,
-            payload: { memory_id: object.id, type: object.type },
-          });
-          if (index) await index.indexObject(object);
-        })();
-      };
 
-      const result = await initProject(
-        {
-          initializer,
-          registry,
-          adapters: PLATFORM_ADAPTERS,
-          mcpCommand: CANONICAL_MCP_COMMAND,
-          npx: isNpxRun(),
-          markSchemaCurrent: (dir) => writeSchemaVersionIfAbsent(dir),
-          store,
-          log,
-          clock,
-          idGen,
-          index,
-          lock,
-          declarations,
-          wolfVersion: wolfVersion(),
-          baseSet: {
-            render: (dir, opts) =>
-              new OpencodeBaseSetRenderer(templatesRoot(), {
-                harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
-              }).renderBaseSet(dir, opts),
-            seed: () =>
-              seedBasePlaybooks({
-                files: playbookFiles,
-                add: async (i) => {
-                  await addFn(i);
-                  return {};
-                },
-                isSeeded: async (owner) => seededOwners.has(owner),
-              }),
+        const result = await initProject(
+          {
+            initializer,
+            registry,
+            adapters: PLATFORM_ADAPTERS,
+            mcpCommand: CANONICAL_MCP_COMMAND,
+            npx: isNpxRun(),
+            markSchemaCurrent: (dir) => writeSchemaVersionIfAbsent(dir),
+            store,
+            log,
+            clock,
+            idGen,
+            index,
+            lock,
+            declarations,
+            wolfVersion: wolfVersion(),
+            baseSet: {
+              render: (dir, opts) =>
+                new OpencodeBaseSetRenderer(templatesRoot(), {
+                  harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
+                }).renderBaseSet(dir, opts),
+              seed: () =>
+                seedBasePlaybooks({
+                  files: playbookFiles,
+                  add: async (i) => {
+                    await addFn(i);
+                    return {};
+                  },
+                  isSeeded: async (owner) => seededOwners.has(owner),
+                }),
+            },
           },
-        },
-        baseDir,
-        { platformChoice, platformSource, models, modelSource, full: options.full, purpose }
-      );
+          baseDir,
+          input
+        );
 
-      console.log('# wolf init');
-      console.log(`- memory skeleton: ensured (${join(baseDir, '.wolf')})`);
-      for (const o of result.baseSetOutcomes) console.log(formatBaseSetLine(o)); // F5: скиллы — [skill] имя → путь
-      for (const outcome of result.platformOutcomes) console.log(formatPlatformLine(outcome)); // F6: configFile + keys
-      console.log(
-        result.initReport.action === 'created'
-          ? `- init-report: created (${result.initReport.id})`
-          : '- init-report: already exists — not duplicating'
-      );
-      for (const line of renderNextSteps({
-        npx: result.npx,
-        mcpWritten: result.platformOutcomes.some((o) => o.action === 'written' || o.action === 'replaced'),
-        claudeConnected: result.platformOutcomes.some((o) => o.platform === 'claude' && o.action !== 'removed'),
-      })) {
-        console.log(line);
+        console.log('# wolf init');
+        console.log(`- memory skeleton: ensured (${join(baseDir, '.wolf')})`);
+        for (const o of result.baseSetOutcomes) console.log(formatBaseSetLine(o)); // F5: скиллы — [skill] имя → путь
+        for (const outcome of result.platformOutcomes) console.log(formatPlatformLine(outcome)); // F6: configFile + keys
+        console.log(
+          result.initReport.action === 'created'
+            ? `- init-report: created (${result.initReport.id})`
+            : '- init-report: already exists — not duplicating'
+        );
+        for (const line of renderNextSteps({
+          npx: result.npx,
+          mcpWritten: result.platformOutcomes.some((o) => o.action === 'written' || o.action === 'replaced'),
+          claudeConnected: result.platformOutcomes.some((o) => o.platform === 'claude' && o.action !== 'removed'),
+        })) {
+          console.log(line);
+        }
+        console.log(`Project registered: ${join(wolfUserConfigDir(), 'projects.yaml')}`);
+
+        // §3: ненулевой exit — только если при явном --platform не записано ни одного конфига
+        const wroteSomething = result.platformOutcomes.some((o) =>
+          ['written', 'replaced', 'unchanged'].includes(o.action)
+        );
+        if (platformChoice !== undefined && !wroteSomething) process.exitCode = 1;
       }
-      console.log(`Project registered: ${join(wolfUserConfigDir(), 'projects.yaml')}`);
-
-      // §3: ненулевой exit — только если при явном --platform не записано ни одного конфига
-      const wroteSomething = result.platformOutcomes.some((o) =>
-        ['written', 'replaced', 'unchanged'].includes(o.action)
-      );
-      if (platformChoice !== undefined && !wroteSomething) process.exitCode = 1;
-    });
+    );
 }

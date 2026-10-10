@@ -95,6 +95,14 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
         if (fresh === current) {
           state.files[rel] = sha256(fresh);
           outcomes.push({ file: rel, action: 'skipped', reason: 'content identical' });
+        } else if (state.files[rel] !== undefined && sha256(current) !== state.files[rel]) {
+          // K6 (спека 2.16 §4): локальная правка штампованного файла не перебивается
+          // re-init — тот же mutated-skip, что в syncBaseSet (T010); blind reseed запрещён
+          outcomes.push({
+            file: rel,
+            action: 'skipped',
+            reason: 'mutated after render — differs from recorded render and fresh render; left untouched',
+          });
         } else {
           await writeFile(f.target, fresh, 'utf-8');
           state.files[rel] = sha256(fresh);

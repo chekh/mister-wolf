@@ -78,7 +78,8 @@ describe('renderNextSteps (F6/F7: «Дальше»; restart — только п�
 
 describe('не-TTY без --model — успех (WP2 unpin: omit по умолчанию)', () => {
   it('init доходит до initProject без модельного гейта: models=omit, modelSource undefined', async () => {
-    await memoryInitCommand().parseAsync([], { from: 'user' });
+    // cwd прогона — живой проект волка: --yes проходит K6-гейт повторного init
+    await memoryInitCommand().parseAsync(['--yes'], { from: 'user' });
     expect(initProject).toHaveBeenCalledTimes(1);
     const input = vi.mocked(initProject).mock.calls[0][2];
     expect(input.models).toBe('omit');
@@ -86,7 +87,7 @@ describe('не-TTY без --model — успех (WP2 unpin: omit по умол�
   });
 
   it('явный --model — opt-in: ModelContext (worker = primary), modelSource=flag', async () => {
-    await memoryInitCommand().parseAsync(['--model', 'prov/model'], { from: 'user' });
+    await memoryInitCommand().parseAsync(['--model', 'prov/model', '--yes'], { from: 'user' });
     const input = vi.mocked(initProject).mock.calls.at(-1)![2];
     expect(input.models).toEqual({ primary: 'prov/model', worker: 'prov/model' });
     expect(input.modelSource).toBe('flag');

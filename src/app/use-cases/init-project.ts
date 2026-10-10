@@ -75,6 +75,86 @@ export interface InitProjectInput {
   purpose?: string;
 }
 
+/* ---------- K6 (спека 2.16 §4): read-only план init перед любыми записями ---------- */
+
+export interface InitPlanEntry {
+  component:
+    | 'skeleton'
+    | 'config'
+    | 'agents-md'
+    | 'base-set'
+    | 'platforms'
+    | 'memory-seed'
+    | 'purpose-note'
+    | 'gitignore';
+  action: 'create' | 'update' | 'keep' | 'skip';
+  detail: string;
+}
+
+export interface InitPlan {
+  /** true — повторный запуск на живом проекте (.wolf/config.yaml существует) — требуется подтверждение. */
+  live: boolean;
+  entries: InitPlanEntry[];
+}
+
+export interface PlanInitDeps {
+  exists: (p: string) => Promise<boolean>;
+  readFile: (p: string) => Promise<string | null>;
+}
+
+const ONBOARDING_MARKER_TEXT = '<!-- wolf:onboarding';
+
+/** K6 (спека 2.16 §4): read-only план init — ничего не пишет; CLI показывает его
+ * как diff и требует подтверждения на живом проекте. */
+export async function planInit(deps: PlanInitDeps, baseDir: string, input: InitProjectInput): Promise<InitPlan> {
+  const cfgPath = configPath(baseDir);
+  const cfgRaw = (await deps.exists(cfgPath)) ? await deps.readFile(cfgPath) : null;
+  // Краевой случай спеки §4 «пустой/битый конфиг — первый запуск»: пустой после trim
+  // конфиг = первый запуск; битый непустой остаётся под гейтом (P3: подтверждение
+  // безопаснее молчаливого прохода; ремонт — существующий --recreate).
+  const live = cfgRaw !== null && cfgRaw.trim() !== '';
+  const agentsRaw = (await deps.readFile(join(baseDir, 'AGENTS.md'))) ?? '';
+  const marker = agentsRaw.includes(ONBOARDING_MARKER_TEXT);
+  const gitignoreRaw = (await deps.readFile(join(baseDir, '.gitignore'))) ?? '';
+  const entries: InitPlanEntry[] = [
+    {
+      component: 'skeleton',
+      action: live ? 'keep' : 'create',
+      detail: '.wolf/{memory,threads,shared,briefs,cache} dirs',
+    },
+    { component: 'config', action: live ? 'keep' : 'create', detail: '.wolf/config.yaml (never overwritten)' },
+    {
+      component: 'agents-md',
+      action: marker ? 'keep' : 'create',
+      detail: 'AGENTS.md onboarding marker (marker-append if foreign content)',
+    },
+    {
+      component: 'base-set',
+      action: input.full ? (live ? 'keep' : 'create') : 'skip',
+      detail: input.full
+        ? 'full base set; existing stamped files are never rewritten (fresh/mutated-skip)'
+        : 'minimal set — use --full for agents/skills/commands/plugins',
+    },
+    {
+      component: 'platforms',
+      action: input.platformChoice !== undefined && input.platformChoice.length > 0 ? 'update' : 'skip',
+      detail: input.platformChoice !== undefined ? input.platformChoice.join(', ') : 'no --platform given',
+    },
+    { component: 'memory-seed', action: live ? 'keep' : 'create', detail: 'init report note (guard by tags)' },
+    {
+      component: 'purpose-note',
+      action: input.purpose ? (live ? 'keep' : 'create') : 'skip',
+      detail: input.purpose ? 'interview answer seeded as note' : 'no TTY answer',
+    },
+    {
+      component: 'gitignore',
+      action: gitignoreRaw.includes('# wolf-gitignore:v1') ? 'keep' : 'create',
+      detail: 'ignore machine-local (.wolf/cache, lock, backup); memory is committed',
+    },
+  ];
+  return { live, entries };
+}
+
 export interface PlatformInitOutcome {
   platform: string;
   action: 'written' | 'replaced' | 'unchanged' | 'skipped' | 'removed';

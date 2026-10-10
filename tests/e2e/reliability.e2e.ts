@@ -49,7 +49,8 @@ describe('reliability', () => {
   });
 
   it('broken relations.jsonl line is skipped tolerantly', () => {
-    const init = runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], cwd);
+    // повторный init на живом проекте — под K6-гейтом: --yes применяет план
+    const init = runCli(['init', '--model', 'zai-coding-plan/glm-5.3', '--yes'], cwd);
     expect(init.status).toBe(0);
 
     runCli(['add', '--type', 'note', '--facet', 'context', '--title', 'ObsRel'], cwd);

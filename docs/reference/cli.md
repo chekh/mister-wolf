@@ -23,6 +23,8 @@ Options:
                     opt-in — by default model lines are omitted
   --full            render the full base set (agents/skills/commands/plugins);
                     default is the minimal set (default: false)
+  --yes             re-init: apply the plan without interactive confirmation
+                    (default: false)
   --recreate        backup a corrupted .wolf/config.yaml and re-create it from
                     defaults (default: false)
   -h, --help        display help for command

@@ -83,7 +83,8 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
     const agentPath = join(dir, '.opencode/agents/mr-wolf.md');
     const before = readFileSync(agentPath, 'utf-8');
 
-    const again = runCli(['init', '--full', '--model', 'zai-coding-plan/glm-5.3'], dir);
+    // повторный init на живом проекте — под K6-гейтом подтверждения: --yes применяет план
+    const again = runCli(['init', '--full', '--model', 'zai-coding-plan/glm-5.3', '--yes'], dir);
     expect(again.status).toBe(0);
     expect(again.stdout).not.toMatch(/- base set: \S+ created/); // всё skipped (wx-политика)
     expect(again.stdout).toMatch(/- base set: \S+ skipped/);

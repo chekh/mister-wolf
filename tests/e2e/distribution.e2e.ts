@@ -125,7 +125,7 @@ describe('global install from tarball into isolated HOME (спека §3, §7)',
     });
     expect(first.status).toBe(0);
     const before = readFileSync(join(project, 'opencode.json'), 'utf-8');
-    const second = spawnSync(wolf, ['init', '--model', 'zai-coding-plan/glm-5.3'], {
+    const second = spawnSync(wolf, ['init', '--model', 'zai-coding-plan/glm-5.3', '--yes'], {
       cwd: project,
       env,
       encoding: 'utf-8',
