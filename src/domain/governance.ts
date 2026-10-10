@@ -76,5 +76,6 @@ export const ALLOWED_TRANSITIONS: Record<MemoryStatus, MemoryStatus[]> = {
 };
 
 export function canTransition(from: MemoryStatus, to: MemoryStatus): boolean {
-  return ALLOWED_TRANSITIONS[from].includes(to);
+  // T4 (спека 2.16 §10): unknown-статус из битых данных — false, не TypeError
+  return ALLOWED_TRANSITIONS[from]?.includes(to) ?? false;
 }

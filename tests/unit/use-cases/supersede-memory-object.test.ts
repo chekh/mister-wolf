@@ -124,4 +124,21 @@ describe('supersedeMemoryObject', () => {
     const loaded = await store.get(obj.object.id);
     expect(loaded?.status).toBe('active');
   });
+
+  it('supersede that would close a cycle refuses and writes nothing (T6)', async () => {
+    const a = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'note', facet: 'context', title: 'Cyc A', createdBy: 'user:t' }
+    );
+    const b = await addMemoryObject(
+      { store, log, clock, idGen },
+      { type: 'note', facet: 'context', title: 'Cyc B', createdBy: 'user:t' }
+    );
+    await supersedeMemoryObject({ store, log, clock, idGen }, a.object.id, b.object.id); // A -> B: ok
+    await expect(supersedeMemoryObject({ store, log, clock, idGen }, b.object.id, a.object.id)).rejects.toThrow(
+      /cycle/
+    );
+    const bAfter = await store.get(b.object.id);
+    expect(bAfter?.superseded_by).toBeNull(); // запись цикла не произведена
+  });
 });

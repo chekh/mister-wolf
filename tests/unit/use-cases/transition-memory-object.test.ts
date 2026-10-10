@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { transitionMemoryObject } from '../../../src/app/use-cases/transition-memory-object.js';
+import { UserFacingError } from '../../../src/domain/errors.js';
 import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
 import { JsonlEventLog } from '../../../src/adapters/fs/jsonl-event-log.js';
 import { SystemClock } from '../../../src/adapters/fs/system-clock.js';
@@ -238,6 +239,23 @@ describe('transitionMemoryObject', () => {
     await transitionMemoryObject({ store, log, clock, idGen }, added.object.id, 'answered');
     const updated = await store.get(added.object.id);
     expect(updated?.status).toBe('answered');
+  });
+
+  it('unknown stored status becomes UserFacingError, not TypeError (T4)', async () => {
+    const deps = {
+      log: new JsonlEventLog(eventsPath(dir)),
+      clock: new SystemClock(),
+      idGen: new HashIdGenerator(),
+      store: {
+        get: async () => ({ id: 'mem_20260101__x_abc123', type: 'note', status: 'bogus' }),
+        update: async () => {
+          throw new Error('store.update must not be reached on unknown status');
+        },
+      },
+    };
+    await expect(transitionMemoryObject(deps as never, 'mem_20260101__x_abc123', 'active')).rejects.toBeInstanceOf(
+      UserFacingError
+    );
   });
 
   it('rejects decision active -> answered outside type lifecycle', async () => {

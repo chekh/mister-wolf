@@ -43,6 +43,11 @@ describe('governance', () => {
     expect(canTransition('active', 'stale')).toBe(true);
   });
 
+  it('unknown from-status does not throw (T4)', () => {
+    expect(canTransition('bogus' as never, 'active')).toBe(false);
+    expect(canTransition('active' as never, 'bogus' as never)).toBe(false);
+  });
+
   it('disallows arbitrary transitions', () => {
     expect(canTransition('archived', 'active')).toBe(false);
   });

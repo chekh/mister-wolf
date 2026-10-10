@@ -609,4 +609,24 @@ describe('getCallInjections', () => {
     expect(result.hidden).toBeNull();
     expect(result.poolSize).toBe(1);
   });
+
+  // --- WP5 §14.4 (волна 2.16): пустой call объясняет себя — topic-кейс ---
+
+  it('WP5: topic-miss — blocks пуст при непустом пуле, hidden null', async () => {
+    await seed(
+      makeObj({
+        id: 'inj_topic',
+        type: 'call-injection',
+        status: 'active',
+        trigger_keywords: ['gitflow'],
+        title: 'Gitflow rule',
+        body: 'x'.repeat(200),
+      })
+    );
+
+    const result = await getCallInjections({ store, clock }, { topic: 'zzz-no-match' });
+    expect(result.blocks).toEqual([]);
+    expect(result.poolSize).toBe(1);
+    expect(result.hidden).toBeNull();
+  });
 });

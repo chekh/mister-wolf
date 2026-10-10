@@ -13,6 +13,10 @@ import { templatesRoot } from '../../../adapters/render/templates-root.js';
 import { PLATFORM_ADAPTERS } from '../../../adapters/platforms/index.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { safeCwd } from '../cli-entry.js';
+import { repairStorage } from '../../../app/use-cases/repair-storage.js';
+import { eventsPath } from '../../../adapters/fs/project-paths.js';
+import { maskSecrets } from '../../../domain/mask-secrets.js';
+import { UserFacingError } from '../../../domain/errors.js';
 
 /**
  * Песочницы (спека 2.14 §8.2): записи под os.tmpdir() чистим с пометкой sandbox.
@@ -47,7 +51,41 @@ async function readFileOrNull(p: string): Promise<string | null> {
 export function memoryDoctorCommand(): Command {
   return new Command('doctor')
     .description('Check all registered projects: binary vs schema version, platform configs, prune dead entries')
-    .action(async () => {
+    .option('--repair', 'repair storage in the current project: rebuild index, backfill memory.added events', false)
+    .option('--dry-run', 'with --repair: print the plan without writing', false)
+    .action(async (options: { repair?: boolean; dryRun?: boolean }) => {
+      if (options.dryRun && !options.repair) {
+        throw new UserFacingError('--dry-run is used with --repair: wolf doctor --repair --dry-run');
+      }
+      if (options.repair) {
+        const cwd = safeCwd();
+        const { store, log, clock, idGen, index, lock, memoryRoot } = createCliContainer(cwd);
+        const events = eventsPath(memoryRoot);
+        const report = await repairStorage(
+          {
+            store,
+            log,
+            clock,
+            idGen,
+            index,
+            lock,
+            readEventLines: async () => {
+              try {
+                return (await readFile(events, 'utf-8')).split('\n').filter((l) => l.trim() !== '');
+              } catch {
+                return [];
+              }
+            },
+          },
+          { dryRun: options.dryRun === true }
+        );
+        console.log(`# wolf doctor --repair${options.dryRun ? ' (dry-run)' : ''}`);
+        for (const a of report.actions) console.log(`- ${a}`);
+        console.log(
+          `reindexed: ${report.reindexed}, events backfilled: ${report.eventsAppended}, dangling events: ${report.danglingEvents}`
+        );
+        return;
+      }
       const registry = new ProjectsRegistry(wolfUserConfigDir());
       const report = await runDoctor({
         registry,
@@ -79,7 +117,7 @@ export function memoryDoctorCommand(): Command {
         if (e.status === 'missing') hint = ' — pruned (path no longer exists)';
         console.log(`- ${e.path}: ${e.status} (schema ${schema})${hint}`);
         for (const issue of e.issues) {
-          console.log(`  ! ${issue}`);
+          console.log(`  ! ${maskSecrets(issue)}`);
         }
       }
       if (report.pruned.length > 0) {
@@ -110,7 +148,7 @@ export function memoryDoctorCommand(): Command {
         if (findings.length > 0) {
           console.log();
           console.log('## Artifacts (docs/dev)');
-          for (const f of findings) console.log(`! ${f.file}: ${f.message}`);
+          for (const f of findings) console.log(`! ${f.file}: ${maskSecrets(f.message)}`);
         }
       }
 

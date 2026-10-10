@@ -33,6 +33,19 @@ export async function supersedeMemoryObject(
     if (!oldObject) throw new UserFacingError(`Memory object not found: ${oldId}`);
     const newObject = await deps.store.get(newId);
     if (!newObject) throw new UserFacingError(`Replacement memory object not found: ${newId}`);
+    // T6 (спека 2.16 §10): supersede не создаёт цикл в цепочке superseded_by
+    // (сегодня цикл ловится только при чтении — запись должна отказывать раньше)
+    const seen = new Set<string>([oldId, newId]);
+    let cursor: string | null = newObject.superseded_by ?? null;
+    while (cursor !== null) {
+      if (cursor === oldId) {
+        throw new UserFacingError(`Supersede would create a cycle: ${oldId} -> ${newId} -> ${oldId}`);
+      }
+      if (seen.has(cursor)) break; // уже существующий цикл дальше не разматываем
+      seen.add(cursor);
+      const cur = await deps.store.get(cursor);
+      cursor = cur?.superseded_by ?? null;
+    }
     const updated = await deps.store.update(oldId, { status: 'superseded', superseded_by: newId });
     await deps.log.append({
       id: deps.idGen.generateEventId(now),
