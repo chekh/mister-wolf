@@ -64,6 +64,22 @@ describe('detectUnaggregatedLessons', () => {
     expect(res.mature).toBe(0);
   });
 
+  it('агрегат type:lesson с живым ребром aggregates сам не неагрегирован', () => {
+    // реальный кейс: Стюард агрегирует уроки в урок-кластер; агрегат — тоже
+    // lesson и не должен оставаться в списке «неагрегированных»
+    const all = [mkObj('agg_l'), mkObj('lesson_1')];
+    const res = detectUnaggregatedLessons(all, [edge('agg_l', 'lesson_1')], NOW);
+    expect(res.total).toBe(0);
+    expect(res.mature).toBe(0);
+  });
+
+  it('урок без ребра aggregates остаётся неагрегированным (фикс не прореживает список)', () => {
+    // живое ребро только у lesson_1; lesson_2 без ребра остаётся в списке
+    const all = [mkObj('agg_l'), mkObj('lesson_1'), mkObj('lesson_2')];
+    const res = detectUnaggregatedLessons(all, [edge('agg_l', 'lesson_1')], NOW);
+    expect(res.total).toBe(1);
+  });
+
   it('ребро от rejected агрегата игнорируется — кластер снова неагрегирован', () => {
     const all = [
       mkObj('agg_r', { type: 'note', status: 'rejected' }),

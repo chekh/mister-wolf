@@ -19,7 +19,9 @@ export interface UnaggregatedLessons {
  * Неагрегированный = lesson в active без «живого» ребра пары агрегации:
  * для урока L ребро — строка relations, где (aggregated_in && subject===L.id)
  * или (aggregates && object===L.id); второй конец — id агрегата. Ребро живое
- * ⇔ агрегат найден в `all` и его статус proposed|active. Рёбра от
+ * ⇔ агрегат найден в `all` и его статус proposed|active. Живое ребро
+ * исключает ОБА конца — урок и сам агрегат: агрегат кластера тоже объект
+ * типа lesson и иначе оставался бы в списке (баннер Стюарда не гас). Рёбра от
  * rejected/archived агрегатов и рёбра с отсутствующим агрегатом игнорируются —
  * отклонённый кластер снова виден как неагрегированный («отказ бесплатен»).
  *
@@ -39,7 +41,9 @@ export function detectUnaggregatedLessons(all: MemoryObject[], relations: Relati
     if (!isForward && !isInverse) continue;
     const agg = byId.get(isForward ? r.subject : r.object);
     if (agg && (agg.status === 'proposed' || agg.status === 'active')) {
-      aggregated.add(isForward ? r.object : r.subject);
+      // живое ребро исключает оба конца: урок и сам агрегат
+      aggregated.add(r.subject);
+      aggregated.add(r.object);
     }
   }
   const lessons = all.filter((o) => o.type === 'lesson' && o.status === 'active' && !aggregated.has(o.id));
