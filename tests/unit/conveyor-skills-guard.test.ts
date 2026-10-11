@@ -66,6 +66,8 @@ describe('conveyor skills guard (2.15)', () => {
     expect(sdd).toContain('scope: worktree:<name>');
     expect(sdd).not.toContain('task-local');
     expect(sdd).toContain('из test-plan');
+    expect(read('using-git-worktrees')).toContain('scope: worktree:<name>');
+    expect(read('using-git-worktrees')).not.toContain('task-local');
     const exec = read('wolf-execute');
     expect(exec).toContain('TASK/RESULT/EVIDENCE');
     expect(exec).toContain('диспетчеризация недоступна');
