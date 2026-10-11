@@ -70,7 +70,7 @@ Two axes grow the skill set around the pipeline:
 - **Artifact axis** — a new artifact type gets its own skill that teaches agents how to produce it.
 - **Disciplinary axis** — a repeatedly breached discipline gets an enforcement skill; the detector is the complaint loop ([Learning Loop](/guide/feedback)).
 
-The default set ships 18 skills (verified against `templates/base/skills` in the package; the set itself is described in [Base Set](/guide/base-set)):
+The default set ships 19 skills (verified against `templates/base/skills` in the package; the set itself is described in [Base Set](/guide/base-set)):
 
 | Skill                            | Axis         | Purpose                                                             |
 | -------------------------------- | ------------ | ------------------------------------------------------------------- |
@@ -84,10 +84,11 @@ The default set ships 18 skills (verified against `templates/base/skills` in the
 | `verification-before-completion` | disciplinary | run the checks before any "done" claim                              |
 | `using-git-worktrees`            | disciplinary | isolated worktrees for feature work                                 |
 | `finishing-a-development-branch` | disciplinary | choose the integration: merge, PR or cleanup                        |
-| `using-skills`                   | workflow     | meta-skill: the 1% rule for finding and applying skills             |
+| `using-skills`                   | workflow     | load the process skill before responding or acting                  |
 | `requesting-code-review`         | workflow     | verify work against requirements before merging                     |
 | `wolf-debug`                     | workflow     | root-cause before fixes                                             |
 | `wolf-execute`                   | workflow     | flat linear execution fallback                                      |
+| `wolf-explain`                   | disciplinary | clear explanations of results and limitations to the user           |
 | `wolf-handoff`                   | workflow     | continue in a fresh session without losing progress                 |
 | `wolf-review`                    | workflow     | multi-lens document review                                          |
 | `wolf-sdd`                       | workflow     | subagent-driven development                                         |

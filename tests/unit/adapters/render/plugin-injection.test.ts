@@ -7,8 +7,10 @@
 // вызывает КАЖДЫЙ export файла плагина как фабрику — лишние экспорты
 // валили загрузку всего плагина), поэтому тестируем через хуки фабрики.
 import { describe, expect, it, vi } from 'vitest';
-import { readFileSync, readdirSync, rmSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { readFileSync, readdirSync, rmSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 const { execFileMock } = vi.hoisted(() => {
   const execFileMock = vi.fn((_file: unknown, _args: string[], _opts: unknown, cb?: unknown) => {
@@ -123,6 +125,19 @@ describe('wolf-session-start: контракт загрузчика opencode (д
 });
 
 describe('wolf-session-start: инъекция (спека §5.4)', () => {
+  it('доставляет полное тело using-skills из единого источника, не пересказ', async () => {
+    await setAgent('mr-wolf');
+    const out = { messages: fresh.map((m) => ({ ...m, parts: [...m.parts] })) };
+    await transform({}, out);
+    const source = readFileSync(
+      fileURLToPath(new URL('../../../../templates/base/skills/using-skills/SKILL.md', import.meta.url)),
+      'utf8'
+    );
+    const body = source.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '').trim();
+    expect(textOf(out.messages[0])).toContain(body);
+    expect(textOf(out.messages[0])).toContain('полный текст уже загружен');
+  });
+
   it('маркер в транскрипте → инъекции нет (H3: идемпотентность)', async () => {
     await setAgent('mr-wolf');
     const out = { messages: withMarker.map((m) => ({ ...m, parts: [...m.parts] })) };
@@ -190,6 +205,40 @@ const contentText = (event: { messages: Array<{ content: Array<{ text?: string }
   event.messages[0].content.map((p) => String(p.text ?? '')).join('\n');
 
 describe('wolf-session-start: v2 setup (context hook)', () => {
+  it('читает установленный скилл целевого проекта, сохраняя актуальные локальные правки', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wolf-bootstrap-source-'));
+    try {
+      const plugins = join(dir, '.opencode', 'plugins');
+      const skillDir = join(dir, '.opencode', 'skills', 'using-skills');
+      mkdirSync(plugins, { recursive: true });
+      mkdirSync(skillDir, { recursive: true });
+      const local = '---\r\nname: using-skills\r\ndescription: local\r\n---\r\n# Local process\r\nLOCAL_RULE_ONE';
+      writeFileSync(join(skillDir, 'SKILL.md'), local);
+      const entry = join(plugins, 'wolf-session-start.mjs');
+      writeFileSync(entry, readFileSync(templatePath('wolf-session-start.js'), 'utf8'));
+      const plugin = (await import(pathToFileURL(entry).href)).default;
+      const ctx = makeCtx();
+      await plugin.setup(ctx);
+      const first = v2Event('mr-wolf');
+      await ctx.sessionHooks['context'](first);
+      expect(contentText(first)).toContain('LOCAL_RULE_ONE');
+      expect(contentText(first)).not.toContain('name: using-skills');
+      writeFileSync(join(skillDir, 'SKILL.md'), local.replace('LOCAL_RULE_ONE', 'LOCAL_RULE_TWO'));
+      const afterClear = v2Event('mr-wolf');
+      await ctx.sessionHooks['context'](afterClear);
+      expect(contentText(afterClear)).toContain('LOCAL_RULE_TWO');
+      expect(contentText(afterClear)).not.toContain('LOCAL_RULE_ONE');
+      rmSync(join(skillDir, 'SKILL.md'));
+      const missing = v2Event('mr-wolf');
+      await ctx.sessionHooks['context'](missing);
+      expect(contentText(missing)).toContain('FALLBACK');
+      expect(contentText(missing)).toContain('НЕ загружен');
+      expect(contentText(missing)).not.toContain('полный текст уже загружен');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('инъекция в messages[].content; полный governance-набор для L0/L1 (H2)', async () => {
     const ctx = makeCtx();
     await (WolfSessionStartPlugin.setup as (c: unknown) => Promise<void>)(ctx);
