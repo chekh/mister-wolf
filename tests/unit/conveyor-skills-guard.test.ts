@@ -62,7 +62,9 @@ describe('conveyor skills guard (2.15)', () => {
   it('wolf-sdd/wolf-execute keep worker-no-commit and linear fallback semantics', () => {
     const sdd = read('wolf-sdd');
     expect(sdd).toContain('Воркер не коммитит; L1 фиксирует результат');
-    expect(sdd).toContain('task-local');
+    // модель памяти 2.16.0: общий .wolf/ через common-dir, scope по умолчанию, promote
+    expect(sdd).toContain('scope: worktree:<name>');
+    expect(sdd).not.toContain('task-local');
     expect(sdd).toContain('из test-plan');
     const exec = read('wolf-execute');
     expect(exec).toContain('TASK/RESULT/EVIDENCE');
