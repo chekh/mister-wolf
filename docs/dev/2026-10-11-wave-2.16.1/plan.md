@@ -76,8 +76,8 @@ created: 2026-10-11
   `src/app/use-cases/detect-unaggregated-lessons.ts` (не в вызовах get-call-injections /
   generate-recap): субъект живого ребра aggregates не считается неагрегированным.
 - Тесты (TDD, RED→GREEN; `tests/unit/use-cases/detect-unaggregated-lessons.test.ts`):
-  1) агрегат с живым ребром — НЕ в списке;
-  2) урок без ребра — остаётся в списке.
+  1. агрегат с живым ребром — НЕ в списке;
+  2. урок без ребра — остаётся в списке.
 - Фактический прогон до/после на памяти проекта (read-only; `.wolf/` из worktree резолвится в
   общий main-чекоут): числа «до» (ожидаемо 29 по баннеру; разбор упоминал 31/28 агрегатов —
   зафиксировать фактические) и «после».
@@ -100,13 +100,13 @@ created: 2026-10-11
 2. `npx vitest run --maxWorkers=2 --minWorkers=1` → exit 0
 3. `npx vitest run` → exit 0
 4. `npm run e2e` → exit 0
-Все — в worktree на итоговом состоянии; после merge повтор на main (AC3).
+   Все — в worktree на итоговом состоянии; после merge повтор на main (AC3).
 
 ### [ ] T8 — независимое ревью — worker-reviewer (два мандата, по порядку)
 
 - Мандат 1 (соответствие): `git diff bec0f02..HEAD` — ровно 28 файлов патча + правки W1–W5
-  + обвязка W6 (package.json, package-lock, CHANGELOG, docs/site changelog, план волны);
-  ничего лишнего; соответствие вердиктам и рекомендациям разбора §5.
+  - обвязка W6 (package.json, package-lock, CHANGELOG, docs/site changelog, план волны);
+    ничего лишнего; соответствие вердиктам и рекомендациям разбора §5.
 - Мандат 2 (качество): тексты W1–W4 (точность модели 2.16.0, стиль, зеркальность), тесты
   детектора (сила ассертов, RED-обоснованность).
 - Правки циклом с finding IDs; вердикт APPROVED / CHANGES_REQUIRED / INCONCLUSIVE.
@@ -138,24 +138,24 @@ created: 2026-10-11
 
 ## Трассировка вердиктов разбора → задачи
 
-| Finding | Задача | Примечание |
-|---|---|---|
-| MAJOR-1 | T1 | обязательно |
-| MAJOR-2 | база `bec0f02` | мерж уже в базе |
-| MINOR-3 | T4 | |
-| MINOR-4 | T2 | решение владельца |
-| MINOR-5 | — | формулировка, владелец не включил в объём |
-| MINOR-6 | T3 | решение владельца |
-| MINOR-7/8/9 | — | разбор §5.4: сейчас не трогать |
+| Finding     | Задача         | Примечание                                |
+| ----------- | -------------- | ----------------------------------------- |
+| MAJOR-1     | T1             | обязательно                               |
+| MAJOR-2     | база `bec0f02` | мерж уже в базе                           |
+| MINOR-3     | T4             |                                           |
+| MINOR-4     | T2             | решение владельца                         |
+| MINOR-5     | —              | формулировка, владелец не включил в объём |
+| MINOR-6     | T3             | решение владельца                         |
+| MINOR-7/8/9 | —              | разбор §5.4: сейчас не трогать            |
 
 ## Decomposition
 
-| # | Задача | Класс | Исполнитель |
-|---|---|---|---|
-| T1–T3 | тексты скиллов | SIMPLE | worker-implementer A |
-| T4 | docs/README 18→19 | TRIVIAL | lead |
-| T5 | фикс детектора + тесты | SIMPLE | worker-implementer B |
-| T6 | версия + CHANGELOG + сайт | TRIVIAL | lead |
-| T7 | гейты | TRIVIAL | lead |
-| T8 | ревью ×2 мандата | REVIEW | worker-reviewer |
-| T9 | merge в main | TRIVIAL | lead |
+| #     | Задача                    | Класс   | Исполнитель          |
+| ----- | ------------------------- | ------- | -------------------- |
+| T1–T3 | тексты скиллов            | SIMPLE  | worker-implementer A |
+| T4    | docs/README 18→19         | TRIVIAL | lead                 |
+| T5    | фикс детектора + тесты    | SIMPLE  | worker-implementer B |
+| T6    | версия + CHANGELOG + сайт | TRIVIAL | lead                 |
+| T7    | гейты                     | TRIVIAL | lead                 |
+| T8    | ревью ×2 мандата          | REVIEW  | worker-reviewer      |
+| T9    | merge в main              | TRIVIAL | lead                 |
