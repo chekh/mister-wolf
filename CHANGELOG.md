@@ -14,7 +14,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ### Upgrade notes
 
-- Migrations: none. Run `wolf sync` after upgrading to receive the fixed agent templates. Affected: every project where wolf rendered agents — until then, Task-spawn of `executor-lead`/`worker-*` keeps failing there with "cannot run as a subagent"; the direct `opencode run --agent …` path is unaffected.
+- Migrations: none. Run `wolf sync` after upgrading to receive the fixed agent templates. Affected: every project where wolf rendered agents — until then, Task-spawn of `executor-lead`/`worker-*` keeps failing there with "cannot run as a subagent"; the direct `opencode run --agent …` path is unaffected. Caveat: if `wolf sync` reports an agent file as "mutated after render" (local edits on top of the render, like the steward case fixed here), it deliberately skips that file — resolve the local delta and re-sync, otherwise the fix silently does not reach that agent.
 
 ## [2.16.2] - 2026-10-12
 

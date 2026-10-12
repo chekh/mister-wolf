@@ -48,9 +48,11 @@ describe('agents templates mode guard (hotfix 2.16.3, C2)', () => {
     expect(VALID_MODES.has(mode), `${name}: mode "${mode}" not in ${[...VALID_MODES].join('/')}`).toBe(true);
   });
 
-  it.each(files.filter((f) => TASK_CHAIN.some((re) => re.test(f))))('%s (Task-chain) must not be primary', (name) => {
+  it.each(files.filter((f) => TASK_CHAIN.some((re) => re.test(f))))('%s (Task-chain) must be mode:all', (name) => {
     const mode = modeOf(name);
     if (mode === null) throw new Error(`${name}: Task-chain agent must declare mode explicitly`);
-    expect(mode, `${name}: primary agents cannot run as subagents (OpenCode v2 gate)`).not.toBe('primary');
+    // 'all', не просто «не primary»: subagent чинит Task-спавн, но ломает
+    // прямой `opencode run --agent …` — решение владельца сохраняет обе площадки (REQ-01)
+    expect(mode, `${name}: Task-chain agents must be mode:all (Task-spawn + direct CLI)`).toBe('all');
   });
 });
