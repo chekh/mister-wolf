@@ -1,7 +1,7 @@
 ---
 description: Проверка — нет ли placeholder'ов, TBD, неполных шагов в плане
 mode: primary
-model: opencode/big-pickle
+# model:opencode/big-pickle
 temperature: 0.1
 permission:
   edit: deny

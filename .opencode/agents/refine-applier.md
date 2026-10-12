@@ -1,7 +1,7 @@
 ---
 description: Исполнитель — применяет согласованные изменения к плану/документам
 mode: primary
-model: opencode/big-pickle
+# model:opencode/big-pickle
 temperature: 0.1
 permission:
   edit: allow

@@ -1,7 +1,7 @@
 ---
 description: Подмастерье с доставкой контекста плагином (PoC #4). Содержимое методики приходит из памяти Wolf через wolf-router плагин — в рамке протокола НЕТ.
 mode: all
-model: zai-coding-plan/glm-5.3
+# model:zai-coding-plan/glm-5.3
 temperature: 0.2
 ---
 

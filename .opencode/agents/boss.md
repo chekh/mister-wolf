@@ -1,7 +1,7 @@
 ---
 description: Стратегическое управление — обсуждает с пользователем, планирует стадии, делегирует через bash-скрипты, контролирует гейты
 mode: primary
-model: opencode/big-pickle
+# model:opencode/big-pickle
 permission:
   edit: deny
   bash: allow

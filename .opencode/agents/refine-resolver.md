@@ -1,7 +1,7 @@
 ---
 description: Сводчик — объединяет находки всех проверщиков, разрешает конфликты, приоритизирует
 mode: primary
-model: opencode/big-pickle
+# model:opencode/big-pickle
 temperature: 0.1
 permission:
   edit: deny

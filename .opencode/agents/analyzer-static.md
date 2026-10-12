@@ -1,7 +1,7 @@
 ---
 description: "Analyzer-static: контрольная группа PoC #3 — та же методика, что у apprentice, но в статичном промпте (без памяти Wolf)"
 mode: all
-model: zai-coding-plan/glm-5.3
+# model:zai-coding-plan/glm-5.3
 temperature: 0.2
 permission:
   task: deny

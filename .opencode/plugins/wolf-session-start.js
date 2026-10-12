@@ -1,4 +1,4 @@
-// wolf:rendered base=wolf-session-start.js set=2.16.0
+// wolf:rendered base=wolf-session-start.js set=2.16.1
 /**
  * Mr.Wolf session-start plugin (шаблон базового набора, спека §5.4).
  *
@@ -14,6 +14,7 @@
  * подстановка {{tool.*}} и штамп ` */
 
 import path from 'path';
+import { readFileSync } from 'fs';
 import { execFile } from 'child_process';
 import { randomUUID } from 'crypto';
 import { promisify } from 'util';
@@ -33,25 +34,51 @@ const MARKER = 'Mr.Wolf session bootstrap';
 // [ \t] вместо \s: \s съедает переводы строк и вытаскивает id с чужой строки.
 const AGENT_ID_RE = /^agent-id:[ \t]*([\w-]+)[ \t]*$/m;
 
-const FULL_BODY = `## Протокол сессии Wolf (L0/L1)
+const SESSION_BODY = `## Протокол сессии Wolf (L0/L1)
 
 - Начало сессии и после /clear: \`wolf call\` и \`wolf brief\` — активное руководство проекта; они приоритетнее статических файлов.
 - Значимое фиксируй в памяти: решения — \`wolf add --type decision\`, уроки — \`--type lesson\`, блокеры — thread со статусом blocked; устаревшее — \`wolf supersede\`.
-- Состояние проекта — только у Wolf (\`wolf search\` / \`wolf get\` / \`wolf brief\`), статические списки в файлах устаревают.
+- Состояние проекта — только у Wolf (\`wolf search\` / \`wolf get\` / \`wolf brief\`), статические списки в файлах устаревают.`;
 
-## using-skills: governance-набор (H2)
+// Один источник процессной дисциплины: полный установленный SKILL.md.
+// Чтение происходит только при реально нужной инъекции, не на каждый ход.
+// В source-tree тестах доступен base-шаблон; в целевом проекте — только
+// установленный скилл (не случайный project/base каталог).
+function governanceBody() {
+  const candidates = [path.join(__dirname, '..', 'skills', 'using-skills', 'SKILL.md')];
+  if (path.basename(path.resolve(__dirname, '..', '..')) === 'templates') {
+    candidates.push(path.join(__dirname, '..', '..', 'base', 'skills', 'using-skills', 'SKILL.md'));
+  }
+  for (const candidate of candidates) {
+    try {
+      const raw = readFileSync(candidate, 'utf8');
+      const match = raw.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n([\s\S]*)$/);
+      const body = match?.[1]?.trim();
+      if (body) {
+        return `## using-skills: полный текст уже загружен\n\nНе вызывай using-skills повторно ради загрузки. Другие методики загружай отдельно до их выполнения.\n\n${body}`;
+      }
+    } catch {
+      // Missing/unreadable skill is a visible degraded mode, not a fake load.
+    }
+  }
+  return `## using-skills: FALLBACK — полный текст недоступен
 
-- **Полномочия**: L0 держит цель и принимает результат; L1 декомпозирует, управляет L2 и выполняет разрешённые git-операции; L2 — одна подзадача, allowlist, без спавна агентов и коммитов.
-- **Процессные скиллы — по типу ситуации, а не по оценке**: новая или изменённая потребность — wolf-brainstorm; баг или неожиданное поведение — wolf-debug; заявление о завершении — verification-before-completion.
-- **Break-glass**: если сомневаешься, применим ли скилл, — загрузи и проверь, а неподходящий скилл использовать не обязан.
-- **Маршрут**: утверждённые requirements+design → wolf-plan/wolf-testplan → wolf-sdd (или wolf-execute без диспетчеризации); передача состояния — wolf-handoff; завершение git-работы — finishing-a-development-branch.
-- **Масштаб**: FULL/LITE/FIX; режим фиксирует L1; при вскрытии новых контрактов или второго компонента в LITE/FIX — остановка и переклассификация L1 в FULL.
-- **Контракты**: TASK / RESULT (DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED) / EVIDENCE / ACCEPTANCE.
-- **Приоритет**: ограничения платформы → явные указания пользователя → политика проекта и активная память → назначенная методика → дефолт.`;
+Полный using-skills НЕ загружен. Попробуй доступный механизм скиллов;
+при неудаче обозначь ограничение, не имитируй загрузку.
+Полномочия: L0 координирует, L1 исполняет и управляет, L2 не спавнит и не коммитит.
+До вопросов и действий: новая разработка — wolf-brainstorm; баг — wolf-debug;
+заявление о готовности — verification-before-completion. Названный скилл загрузи явно.
+Утверждённые входы: wolf-plan/wolf-testplan → wolf-sdd либо разрешённый wolf-execute.
+Смена сессии: wolf-handoff. Git-финал: finishing-a-development-branch.
+Режим FULL/LITE/FIX фиксирует L1; TASK/RESULT/EVIDENCE/ACCEPTANCE сохраняют свои контракты.
+Не переходи через неподтверждённый обязательный этап; разговор и сбор недостающего контекста возможны.`;
+}
 
 const WORKER_BODY = `## using-skills: пассивный режим воркера (L2)
 
 - Работаешь ровно одну подзадачу: читаешь назначенные скиллы, каталог сам не перебираешь.
+- Методики загружай до исполнения. Блокер и недостающие входы передай L1;
+  не начинай продуктовый discovery и новый тред вместо назначенной задачи.
 - Не спавнишь агентов и не коммитишь.
 - Отчёт по контракту RESULT/EVIDENCE с task_id.`;
 
@@ -70,7 +97,7 @@ function computeInjection(messages, agentId) {
     );
     if (seen) return null;
     // MAJ-4: worker-* → усечённое тело (без диспетчерского контура using-skills).
-    return /^worker-/.test(String(agentId ?? '')) ? WORKER_BODY : FULL_BODY;
+    return /^worker-/.test(String(agentId ?? '')) ? WORKER_BODY : `${SESSION_BODY}\n\n${governanceBody()}`;
   } catch {
     return null;
   }
