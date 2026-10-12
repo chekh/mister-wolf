@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.16.3] - 2026-10-13
+
+### Fixed — Agent spawn regression on OpenCode v2 (default mode: primary)
+
+- Base-set agent templates `executor-lead`, `worker-implementer`, `worker-researcher`, and `worker-reviewer` now declare `mode: all` explicitly. The templates never carried a `mode` field; OpenCode v1 compensated with its `all` default, while v2 defaults agent frontmatter to `primary` and gates the subagent tool ("Agent X cannot run as a subagent") — silently killing the whole Wolf Task-chain (L0 → L1 → L2). `all` keeps both live scenarios: Task-spawn by coordinators and direct `opencode run --agent …` CLI invocations (the current pipeline workaround).
+- New unit guard `agents-mode-guard`: `npm run check` fails when any `templates/base/agents/*.md` lacks a valid `mode` (`primary | all | subagent`) or when a Task-chain agent (`executor-lead`, `worker-*`) is `primary` — protection against the next platform default change.
+- `steward` template: the hardcoded `model: zai-coding-plan/glm-5.3` literal is replaced with `{{model.primary}}` (projects without model context omit the line → platform default model). In the wolf repo itself the stale 2.16.1 render — locally mutated to comment the literal out, which had permanently triggered the sync mutated-skip (T010) — was consciously superseded and re-created by `wolf sync`; the stamp now tracks the current set.
+
+### Upgrade notes
+
+- Migrations: none. Run `wolf sync` after upgrading to receive the fixed agent templates. Affected: every project where wolf rendered agents — until then, Task-spawn of `executor-lead`/`worker-*` keeps failing there with "cannot run as a subagent"; the direct `opencode run --agent …` path is unaffected.
+
 ## [2.16.2] - 2026-10-12
 
 ### Added — Platform lifecycle: v1→v2 repair & uninstall

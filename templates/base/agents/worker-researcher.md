@@ -1,5 +1,6 @@
 ---
 description: "Worker-researcher (L2): исследует код, документы и веб по одному вопросу; возвращает findings с источниками и confidence."
+mode: all
 model: {{model.primary}}
 temperature: 0.2
 permission:
