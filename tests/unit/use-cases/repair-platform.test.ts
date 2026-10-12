@@ -9,6 +9,8 @@ function makeDeps(over: Partial<RepairPlatformDeps> = {}): RepairPlatformDeps {
     baseDir: '/proj',
     detect: () => true,
     syncStateFiles: () => ({ '.opencode/plugins/wolf-router.ts': 'x' }),
+    readFile: () => null,
+    listFiles: () => [],
     mismatch: async () => ['opencode: installed under v1 (set 2.14.0 < 2.14.1), runtime v2 — run wolf doctor --repair'],
     syncBaseSet: async () => ({
       outcomes: [
@@ -73,9 +75,28 @@ describe('repairPlatform (REQ-02, design §C3)', () => {
   });
 
   it('R-4b/F-10: установка есть, wolf-контента нет → skip «no wolf-managed content»', async () => {
-    const r = await repairPlatform(makeDeps({ syncStateFiles: () => null }), { dryRun: false });
+    const r = await repairPlatform(
+      makeDeps({ syncStateFiles: () => null, listFiles: () => [], readFile: () => null }),
+      { dryRun: false }
+    );
     expect(r.skipped).toBe('no wolf-managed content in .opencode');
     expect(r.actions).toEqual([]);
+  });
+
+  it('R-4c (C-02): легаси — нет state, штампованные на диске → repair по fallback-скану', async () => {
+    const r = await repairPlatform(
+      makeDeps({
+        syncStateFiles: () => null,
+        listFiles: (root) =>
+          root.endsWith('.opencode/plugins') ? ['/proj/.opencode/plugins/wolf-router.ts'] : [],
+        readFile: (abs) =>
+          abs.endsWith('wolf-router.ts') ? `// wolf:rendered base=wolf-router.ts set=2.14.0\n` : null,
+      }),
+      { dryRun: false }
+    );
+    expect(r.skipped).toBeNull();
+    expect(r.plan).toContainEqual('- .opencode/plugins/wolf-router.ts (identified by stamp, no sync-state)');
+    expect(r.actions).toContainEqual(expect.stringContaining('wolf-router.ts — updated'));
   });
 
   it('R-5/F-02: orphaned попадает в отчёт с рекомендацией, не удаляется', async () => {

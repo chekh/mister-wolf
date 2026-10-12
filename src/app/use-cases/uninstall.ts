@@ -18,8 +18,8 @@ const ROOT_DOCS = new Set(['AGENTS.md', 'CLAUDE.md']);
 
 export interface UninstallDeps {
   baseDir: string;
-  /** Записи wolf-sync-state; null — файла/свидетельства нет (битый JSON = null). */
-  syncStateFiles: () => Record<string, string> | null;
+  /** Записи wolf-sync-state; null — файла нет; 'broken' — битый JSON (F-11: без fallback). */
+  syncStateFiles: () => Record<string, string> | null | 'broken';
   readFile: (abs: string) => string | null;
   exists: (abs: string) => boolean;
   listFiles: (dir: string) => string[];
@@ -51,9 +51,17 @@ export interface UninstallResult {
 export async function planUninstall(deps: UninstallDeps): Promise<UninstallPlan> {
   const entries: UninstallEntry[] = [];
   const state = deps.syncStateFiles();
-  const stateEmpty = state === null || Object.keys(state).length === 0;
+  const stateBroken = state === 'broken';
+  const stateEmpty = stateBroken || state === null || Object.keys(state).length === 0;
 
-  if (stateEmpty) {
+  if (stateBroken) {
+    // F-11: битый state не даёт права считать чужие файлы своими — fallback-скан не запускаем.
+    entries.push({
+      target: STATE_REL,
+      kind: 'skip',
+      detail: 'sync-state is unreadable (broken JSON) — stamp fallback disabled, remove manually after inspection',
+    });
+  } else if (stateEmpty) {
     // Fallback (F-03): легаси без state — штамп = wolf-owned.
     for (const root of SCAN_ROOTS) {
       for (const f of deps.listFiles(join(deps.baseDir, root))) {
@@ -64,7 +72,8 @@ export async function planUninstall(deps: UninstallDeps): Promise<UninstallPlan>
       }
     }
   } else {
-    for (const relPath of Object.keys(state)) {
+    const recorded = new Set(Object.keys(state));
+    for (const relPath of recorded) {
       if (ROOT_DOCS.has(relPath)) {
         entries.push({
           target: relPath,
@@ -74,7 +83,11 @@ export async function planUninstall(deps: UninstallDeps): Promise<UninstallPlan>
         continue;
       }
       const abs = join(deps.baseDir, relPath);
-      if (!deps.exists(abs)) continue;
+      if (!deps.exists(abs)) {
+        // C-03: отсутствие файла — тоже отчётная строка, не тихий continue.
+        entries.push({ target: relPath, kind: 'skip', detail: 'recorded in sync-state but missing on disk' });
+        continue;
+      }
       const raw = deps.readFile(abs);
       if (raw !== null && parseStamp(raw) === null) {
         entries.push({
@@ -86,10 +99,21 @@ export async function planUninstall(deps: UninstallDeps): Promise<UninstallPlan>
       }
       entries.push({ target: relPath, kind: 'file' });
     }
+    // C-04: штампованный, но не записанный в state — отчётная skip-строка (не удаляем).
+    for (const root of SCAN_ROOTS) {
+      for (const f of deps.listFiles(join(deps.baseDir, root))) {
+        const relPath = rel(deps.baseDir, f);
+        if (recorded.has(relPath)) continue;
+        const raw = deps.readFile(f);
+        if (raw !== null && parseStamp(raw) !== null) {
+          entries.push({ target: relPath, kind: 'skip', detail: 'stamped but unrecorded — not in sync-state' });
+        }
+      }
+    }
   }
 
-  // Сам реестр штампов — тоже след Wolf.
-  if (deps.exists(join(deps.baseDir, STATE_REL))) {
+  // Сам реестр штампов — тоже след Wolf (кроме случая broken: предупреждающая строка уже в плане).
+  if (!stateBroken && deps.exists(join(deps.baseDir, STATE_REL))) {
     entries.push({ target: STATE_REL, kind: 'file' });
   }
 
@@ -142,13 +166,16 @@ export async function executeUninstall(
     }
   }
   // Пустые каталоги набора убираем снизу вверх; непустые (чужой контент) не трогаем.
-  for (const root of SCAN_ROOTS) {
-    const abs = join(deps.baseDir, root);
-    const dirs = deps.listDirs(abs);
-    for (const d of [...dirs].sort((a, b) => b.length - a.length)) {
-      if (await deps.removeDirIfEmpty(d)) actions.push(`${rel(deps.baseDir, d)} — removed (empty)`);
+  // Q-02: только когда реально удаляли wolf-файлы — пустые пользовательские каталоги не трогаем.
+  if (fileTargets.length > 0) {
+    for (const root of SCAN_ROOTS) {
+      const abs = join(deps.baseDir, root);
+      const dirs = deps.listDirs(abs);
+      for (const d of [...dirs].sort((a, b) => b.length - a.length)) {
+        if (await deps.removeDirIfEmpty(d)) actions.push(`${rel(deps.baseDir, d)} — removed (empty)`);
+      }
+      if (await deps.removeDirIfEmpty(abs)) actions.push(`${root} — removed (empty)`);
     }
-    if (await deps.removeDirIfEmpty(abs)) actions.push(`${root} — removed (empty)`);
   }
   for (const e of plan.entries.filter((x) => x.kind === 'config')) {
     const id = e.target.slice('config:'.length);

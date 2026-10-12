@@ -30,8 +30,10 @@ function makeDeps(over: Partial<UninstallDeps> = {}): UninstallDeps {
       try {
         const parsed = JSON.parse(readFileSync(join(dir, '.opencode/wolf-sync-state.json'), 'utf-8'));
         return parsed.files as Record<string, string>;
-      } catch {
-        return null;
+      } catch (err) {
+        // C-01: битый JSON ≠ отсутствующий файл
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+        return 'broken';
       }
     },
     readFile: (abs) => {
@@ -216,6 +218,36 @@ describe('planUninstall/executeUninstall (REQ-03)', () => {
     expect(plan2.entries.filter((e) => e.kind === 'file' || e.kind === 'purge')).toEqual([]);
     const r2 = await executeUninstall(deps, plan2, { yes: true, purge: false });
     expect(r2.actions.join('\n')).toContain('nothing to remove');
+  });
+
+  it('U-12 (C-01): битый sync-state — без fallback-скана, предупреждение в плане', async () => {
+    seedSyncedProject();
+    writeFileSync(join(dir, '.opencode/wolf-sync-state.json'), '{not json');
+    const deps = makeDeps({ adapters: ADAPTERS });
+    const plan = await planUninstall(deps);
+    expect(plan.entries.filter((e) => e.kind === 'file')).toEqual([]);
+    expect(plan.entries.some((e) => (e.detail ?? '').includes('broken JSON'))).toBe(true);
+  });
+
+  it('U-13 (C-03): запись state без файла на диске — skip-строка с причиной', async () => {
+    seedSyncedProject();
+    rmSync(join(dir, '.opencode/agents/mr-wolf.md'));
+    const deps = makeDeps({ adapters: ADAPTERS });
+    const plan = await planUninstall(deps);
+    const missing = plan.entries.find((e) => e.target === '.opencode/agents/mr-wolf.md');
+    expect(missing?.kind).toBe('skip');
+    expect(missing?.detail).toContain('missing on disk');
+  });
+
+  it('U-14 (C-04): штампованный вне state при непустом state — skip, не удаление', async () => {
+    seedSyncedProject();
+    mkdirSync(join(dir, '.opencode/skills/extra'), { recursive: true });
+    writeFileSync(join(dir, '.opencode/skills/extra/SKILL.md'), STAMP);
+    const deps = makeDeps({ adapters: ADAPTERS });
+    const plan = await planUninstall(deps);
+    const extra = plan.entries.find((e) => e.target.includes('extra'));
+    expect(extra?.kind).toBe('skip');
+    expect(extra?.detail).toContain('not in sync-state');
   });
 
   it('U-11: частичный сбой (read-only файл) → ошибка в отчёте, остальные удалены', async () => {

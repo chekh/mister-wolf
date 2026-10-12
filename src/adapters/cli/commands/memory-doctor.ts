@@ -116,6 +116,20 @@ export function memoryDoctorCommand(): Command {
               baseDir: cwd,
               detect: () => oc.detect(cwd),
               syncStateFiles: () => loadSyncStateFiles(cwd),
+              readFile: readFileSyncOrNull,
+              listFiles: (root) => {
+                if (!existsSync(root)) return [];
+                const out: string[] = [];
+                const walk = (d: string) => {
+                  for (const e of readdirSync(d, { withFileTypes: true })) {
+                    const p = join(d, e.name);
+                    if (e.isDirectory()) walk(p);
+                    else out.push(p);
+                  }
+                };
+                walk(root);
+                return out;
+              },
               mismatch: () => makeDetectMismatch([oc])(cwd),
               syncBaseSet: () =>
                 syncBaseSet(

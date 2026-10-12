@@ -15,6 +15,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ### Changed
 
 - `AGENTS.md` base template now carries the versioning discipline rule: version numbers are always full X.Y.Z (plans, threads, waves, tags, conversation); a bare minor ("2.16") is not a release name. Initialized projects receive it through the regular sync delivery.
+- `--help` output budget raised 33 → 34 lines to accommodate the new `uninstall` command (C-06).
 
 ### Upgrade notes
 

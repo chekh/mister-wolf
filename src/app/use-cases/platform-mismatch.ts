@@ -59,10 +59,13 @@ export async function detectPlatformMismatch(deps: MismatchDeps): Promise<Platfo
     sets.push(stamp.set);
   }
   if (sets.length === 0) return null;
-  const min = sets.reduce((acc, s) => {
+  // Q-01: не-семверные штампы исключаем до reduce — порядок записей не влияет на результат.
+  const parseable = sets.filter((s) => compareSemver(s, '0.0.0') !== null);
+  if (parseable.length === 0) return null;
+  const min = parseable.reduce((acc, s) => {
     const c = compareSemver(s, acc);
     return c !== null && c < 0 ? s : acc;
-  }, sets[0]);
+  }, parseable[0]);
   const cmp = compareSemver(min, DUAL_SINCE);
   if (cmp === null || cmp >= 0) return null;
   return {

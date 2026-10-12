@@ -13,12 +13,13 @@ function makeDeps(baseDir: string): UninstallDeps {
     baseDir,
     syncStateFiles: () => {
       try {
-        const raw = readStateRaw(baseDir);
-        if (raw === null) return null;
+        const raw = readFileSync(join(baseDir, '.opencode', 'wolf-sync-state.json'), 'utf-8');
         const parsed = JSON.parse(raw) as { files?: Record<string, string> };
-        return parsed.files && typeof parsed.files === 'object' ? parsed.files : null;
-      } catch {
-        return null; // битый state — свидетельства нет
+        return parsed.files && typeof parsed.files === 'object' ? parsed.files : 'broken';
+      } catch (err) {
+        // Битый JSON ≠ отсутствующий файл: различаем для fallback-решения (F-11).
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+        return 'broken';
       }
     },
     readFile: (abs) => {
@@ -66,14 +67,6 @@ function makeDeps(baseDir: string): UninstallDeps {
     removeTree: async (abs) => rm(abs, { recursive: true, force: true }),
     adapters: PLATFORM_ADAPTERS,
   };
-}
-
-function readStateRaw(baseDir: string): string | null {
-  try {
-    return readFileSync(join(baseDir, '.opencode', 'wolf-sync-state.json'), 'utf-8');
-  } catch {
-    return null;
-  }
 }
 
 export function memoryUninstallCommand(): Command {

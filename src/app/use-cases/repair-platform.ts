@@ -1,8 +1,10 @@
 // REQ-02 (2.16.2): ремонт платформы «установлено под v1, рантайм v2» — перерендер
 // штампованных файлов (syncBaseSet) + канонизация конфига (writeConfig).
 // Гвард (F-01/F-10): без установки или без wolf-контента — честный skip, ноль записей.
+import { join } from 'path';
 import type { RenderOutcome } from '../../ports/base-set-renderer.port.js';
 import type { PlatformWriteResult } from '../../ports/platform-adapter.port.js';
+import { parseStamp } from '../../adapters/render/stamp.js';
 
 export interface RepairPlatformDeps {
   baseDir: string;
@@ -10,6 +12,10 @@ export interface RepairPlatformDeps {
   detect: () => boolean;
   /** Записи wolf-sync-state; null — файла нет. */
   syncStateFiles: () => Record<string, string> | null;
+  /** Прочитать файл проекта; null — нет/нечитаем (C-02: fallback-скан штампов). */
+  readFile: (abs: string) => string | null;
+  /** Файлы в каталоге (любая глубина); пусто — каталога нет. */
+  listFiles: (dir: string) => string[];
   /** Строки несоответствия (detectPlatformMismatch) — для плана. */
   mismatch: () => Promise<string[]>;
   /** Штатный перерендер штампованных файлов (mutated-skip внутри). */
@@ -37,13 +43,32 @@ export async function repairPlatform(
   const empty: RepairPlatformReport = { plan: [], actions: [], orphaned: [], orphanedNote: '', skipped: null };
   if (!deps.detect()) return { ...empty, skipped: 'no opencode install' };
   const state = deps.syncStateFiles();
-  if (state === null || Object.keys(state).length === 0) {
+  // C-02: при пустом/отсутствующем state wolf-контент опознаём по штампу на диске
+  // (syncBaseSet рендерит по штампам, state не источник) — легаси <2.11.0 ремонтопригоден.
+  const stateFiles = state === null || Object.keys(state).length === 0 ? null : state;
+  let owned: string[] = stateFiles ? Object.keys(stateFiles) : [];
+  let viaFallback = false;
+  if (stateFiles === null) {
+    owned = [];
+    for (const root of ['.opencode/agents', '.opencode/skills', '.opencode/command', '.opencode/plugins']) {
+      for (const f of deps.listFiles(join(deps.baseDir, root))) {
+        const raw = deps.readFile(f);
+        if (raw !== null && parseStamp(raw) !== null) owned.push(relPath(deps.baseDir, f));
+      }
+    }
+    viaFallback = true;
+  }
+  if (owned.length === 0) {
     return { ...empty, skipped: 'no wolf-managed content in .opencode' };
   }
   const mismatchLines = await deps.mismatch();
+  const fileList = viaFallback
+    ? owned.map((f) => `- ${f} (identified by stamp, no sync-state)`)
+    : owned.map((f) => `- ${f}`);
   const plan = [
     ...mismatchLines.map((m) => `mismatch: ${m}`),
-    `syncBaseSet: re-render ${Object.keys(state).length} stamped file(s) under current templates`,
+    `syncBaseSet: re-render ${owned.length} stamped file(s) under current templates:`,
+    ...fileList,
     'writeConfig: canonicalize mcp.wolf / default_agent / subagent_depth',
   ];
   if (opts.dryRun) return { ...empty, plan };
@@ -61,4 +86,8 @@ export async function repairPlatform(
         : '',
     skipped: null,
   };
+}
+
+function relPath(baseDir: string, abs: string): string {
+  return abs.startsWith(baseDir + '/') ? abs.slice(baseDir.length + 1) : abs;
 }

@@ -36,7 +36,6 @@ describe('wolf uninstall e2e (REQ-03)', () => {
     // Чужой файл в зоне Wolf — неприкосновенен (NFR-02).
     mkdirSync(join(project, '.opencode/plugins'), { recursive: true });
     writeFileSync(join(project, '.opencode/plugins/my-own.ts'), '// my own plugin\n');
-    writeFileSync(join(project, 'AGENTS.md'), readFileSync(join(project, 'AGENTS.md'), 'utf-8'));
   });
   afterAll(() => {
     rmSync(project, { recursive: true, force: true });
