@@ -124,7 +124,10 @@ describe('adapter registry', () => {
 
 describe('ClaudeAdapter.removeWolfKeys (2.16.2 uninstall)', () => {
   it('CL-K1: удаляет mcpServers.wolf, чужие ключи сохраняет', async () => {
-    writeFileSync(join(dir, '.mcp.json'), JSON.stringify({ mcpServers: { wolf: { command: 'wolf', args: ['mcp'] }, other: {} } }));
+    writeFileSync(
+      join(dir, '.mcp.json'),
+      JSON.stringify({ mcpServers: { wolf: { command: 'wolf', args: ['mcp'] }, other: {} } })
+    );
     const r = await new ClaudeAdapter().removeWolfKeys(dir);
     expect(r.action).toBe('removed');
     const cfg = JSON.parse(readFileSync(join(dir, '.mcp.json'), 'utf-8'));

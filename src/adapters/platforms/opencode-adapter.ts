@@ -172,7 +172,12 @@ export class OpencodeAdapter implements PlatformAdapter {
       removed.push(`subagent_depth=${SUBAGENT_DEPTH}`);
     }
     if (removed.length === 0) {
-      return { action: 'unchanged', reason: 'no wolf keys with our exact values', configFile: basename(file), keys: [] };
+      return {
+        action: 'unchanged',
+        reason: 'no wolf keys with our exact values',
+        configFile: basename(file),
+        keys: [],
+      };
     }
     await writeFileAtomic(file, JSON.stringify(cfg, null, 2) + '\n');
     return { action: 'removed', configFile: basename(file), keys: removed };

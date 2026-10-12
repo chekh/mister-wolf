@@ -52,9 +52,9 @@ Baseline: main e44e5f8, ветка wave-2.16.2, cwd = worktree .worktrees/wave-2
   - Зависимости: T-02, T-03.
 - [ ] T-05 — REQ-03: uninstall use-case
   - Цель: src/app/use-cases/uninstall.ts — planUninstall/executeUninstall по design.md §C4
-    + ADR-2 (sync-state primary, fallback штамп при пустом/отсутствующем state, исключение
-    AGENTS.md/CLAUDE.md, конфиги по точным значениям, .wolf/ keep, --purge, подсказка
-    npm uninstall -g mister-wolf).
+    - ADR-2 (sync-state primary, fallback штамп при пустом/отсутствующем state, исключение
+      AGENTS.md/CLAUDE.md, конфиги по точным значениям, .wolf/ keep, --purge, подсказка
+      npm uninstall -g mister-wolf).
   - AC (юнит, tmp-фикстуры): план без --yes ничего не меняет; --yes удаляет штампованное
     из state, чужой файл в .opencode/plugins не тронут; легаси (без state) — штампованные
     в плане; AGENTS.md не в entries (skip-строка); opencode.json: mcp.wolf/default_agent/

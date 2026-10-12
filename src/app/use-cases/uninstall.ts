@@ -98,9 +98,17 @@ export async function planUninstall(deps: UninstallDeps): Promise<UninstallPlan>
     if (typeof adapter.removeWolfKeys !== 'function' || !adapter.detect(deps.baseDir)) continue;
     const cfg = await adapter.readConfig(deps.baseDir).catch(() => null);
     if (cfg === null) {
-      entries.push({ target: `config:${adapter.id}`, kind: 'config', detail: 'no config file — will be skipped with reason' });
+      entries.push({
+        target: `config:${adapter.id}`,
+        kind: 'config',
+        detail: 'no config file — will be skipped with reason',
+      });
     } else {
-      entries.push({ target: `config:${adapter.id}`, kind: 'config', detail: 'wolf keys with our exact values will be removed' });
+      entries.push({
+        target: `config:${adapter.id}`,
+        kind: 'config',
+        detail: 'wolf keys with our exact values will be removed',
+      });
     }
   }
 

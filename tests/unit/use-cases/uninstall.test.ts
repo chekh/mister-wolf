@@ -5,11 +5,7 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync, existsSync, readdirSync, chmodSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import {
-  planUninstall,
-  executeUninstall,
-  type UninstallDeps,
-} from '../../../src/app/use-cases/uninstall.js';
+import { planUninstall, executeUninstall, type UninstallDeps } from '../../../src/app/use-cases/uninstall.js';
 import type { PlatformAdapter } from '../../../../src/ports/platform-adapter.port.js';
 
 let dir: string;
@@ -104,7 +100,12 @@ function seedSyncedProject(): void {
   writeFileSync(join(dir, '.opencode/plugins/wolf-router.ts'), STAMP);
   writeFileSync(join(dir, '.opencode/plugins/foreign.ts'), '// no stamp\n');
   writeFileSync(join(dir, 'AGENTS.md'), '<!-- wolf:onboarding v2 -->\ncontent\n');
-  writeFileSync(join(dir, '.opencode/wolf-sync-state.json'), JSON.stringify({ files: { '.opencode/agents/mr-wolf.md': 'x', '.opencode/plugins/wolf-router.ts': 'y', 'AGENTS.md': 'z' } }));
+  writeFileSync(
+    join(dir, '.opencode/wolf-sync-state.json'),
+    JSON.stringify({
+      files: { '.opencode/agents/mr-wolf.md': 'x', '.opencode/plugins/wolf-router.ts': 'y', 'AGENTS.md': 'z' },
+    })
+  );
 }
 
 describe('planUninstall/executeUninstall (REQ-03)', () => {

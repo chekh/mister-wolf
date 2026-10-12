@@ -95,7 +95,9 @@ describe('runDoctor (спека §3: версия бинаря vs схема, в
   it('D-7: detectMismatch добавляет issue-строки в entry', async () => {
     const deps = {
       ...makeDeps([{ path: '/a', schema_version: CURRENT_SCHEMA_VERSION }], ['/a']),
-      detectMismatch: async () => ['opencode: installed under v1 (set 2.14.0 < 2.14.1), runtime v2 — run wolf doctor --repair'],
+      detectMismatch: async () => [
+        'opencode: installed under v1 (set 2.14.0 < 2.14.1), runtime v2 — run wolf doctor --repair',
+      ],
     };
     const report = await runDoctor(deps);
     expect(report.entries[0].issues).toContainEqual(expect.stringContaining('--repair'));

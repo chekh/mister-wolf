@@ -64,7 +64,8 @@ export const COMMANDS: CommandSpec[] = [
   },
   {
     name: 'uninstall',
-    description: 'Remove wolf-managed files from this project (prints plan first; --yes executes, --purge erases .wolf/)',
+    description:
+      'Remove wolf-managed files from this project (prints plan first; --yes executes, --purge erases .wolf/)',
     usage: '[options]',
     load: () => import('./commands/memory-uninstall.js').then((m) => m.memoryUninstallCommand()),
   },

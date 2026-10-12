@@ -43,10 +43,7 @@ describe('platform repair v1→v2 (REQ-02, e2e)', () => {
     // Важно: это НЕ локальная правка поверх текущего рендера — state-хэш синхронно
     // перезаписан под v1-файл (иначе mutated-skip защищает файл, и это другой сценарий).
     const plugin = join(project, '.opencode/plugins/wolf-router.ts');
-    const v1Body = readFileSync(plugin, 'utf-8').replace(
-      /\/\/ wolf:rendered base=\S+ set=\S+/,
-      V1_STAMP
-    );
+    const v1Body = readFileSync(plugin, 'utf-8').replace(/\/\/ wolf:rendered base=\S+ set=\S+/, V1_STAMP);
     writeFileSync(plugin, v1Body);
     const statePath = join(project, '.opencode/wolf-sync-state.json');
     const state = JSON.parse(readFileSync(statePath, 'utf-8'));

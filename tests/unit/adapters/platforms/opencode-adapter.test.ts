@@ -343,10 +343,7 @@ describe('OpencodeAdapter.removeWolfKeys (2.16.2 uninstall, F-07: точные �
   });
 
   it('OC-K2: пользовательский subagent_depth=5 и чужой default_agent сохраняются', async () => {
-    writeFileSync(
-      join(dir, 'opencode.json'),
-      JSON.stringify({ default_agent: 'my-agent', subagent_depth: 5 })
-    );
+    writeFileSync(join(dir, 'opencode.json'), JSON.stringify({ default_agent: 'my-agent', subagent_depth: 5 }));
     const r = await new OpencodeAdapter().removeWolfKeys(dir);
     expect(r.action).toBe('unchanged');
     const cfg = JSON.parse(readFileSync(join(dir, 'opencode.json'), 'utf-8'));

@@ -80,7 +80,8 @@ describe('repairPlatform (REQ-02, design §C3)', () => {
 
   it('R-5/F-02: orphaned попадает в отчёт с рекомендацией, не удаляется', async () => {
     const r = await repairPlatform(
-      makeDeps({ syncBaseSet: async () => ({ outcomes: [], orphaned: ['.opencode/plugins/old.ts'] }) }), { dryRun: false }
+      makeDeps({ syncBaseSet: async () => ({ outcomes: [], orphaned: ['.opencode/plugins/old.ts'] }) }),
+      { dryRun: false }
     );
     expect(r.orphaned).toContain('.opencode/plugins/old.ts');
     expect(r.orphanedNote).toContain('wolf uninstall');

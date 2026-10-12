@@ -85,13 +85,16 @@ export function memoryUninstallCommand(): Command {
       const baseDir = safeCwd();
       const deps = makeDeps(baseDir);
       const plan = await planUninstall(deps);
-      console.log(`# wolf uninstall${options.purge ? ' --purge' : ''}${options.yes ? ' (executing)' : ' (plan only — pass --yes to execute)'}`);
+      console.log(
+        `# wolf uninstall${options.purge ? ' --purge' : ''}${options.yes ? ' (executing)' : ' (plan only — pass --yes to execute)'}`
+      );
       if (plan.entries.length === 0) {
         console.log('nothing to remove — no wolf-managed files found');
         return;
       }
       for (const e of plan.entries) {
-        const mark = e.kind === 'file' ? 'remove' : e.kind === 'config' ? 'config' : e.kind === 'purge' ? 'purge' : 'keep';
+        const mark =
+          e.kind === 'file' ? 'remove' : e.kind === 'config' ? 'config' : e.kind === 'purge' ? 'purge' : 'keep';
         console.log(`- [${mark}] ${e.target}${e.detail ? ` — ${e.detail}` : ''}`);
       }
       if (options.purge && !options.yes) {

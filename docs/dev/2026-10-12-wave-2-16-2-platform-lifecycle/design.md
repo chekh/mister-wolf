@@ -34,12 +34,14 @@ Baseline: main e44e5f8. Требования: requirements.md (approved). Исс
 ## 3. Компоненты и ответственность
 
 ### C1. AGENTS.md-шаблон (REQ-01)
+
 - templates/base/AGENTS.md — добавить пункт правила версий (полный X.Y.Z) в «Указатели».
 - Доставка — существующий syncBaseSet (штампованный AGENTS.md обновится «updated»).
 - Ответственность: контент-правка, без кода. Покрытие: существующие тесты стампов +
   тест на содержание маркер-фразы правила (запятая-инвариант «2.16.2», не «2.16»).
 
 ### C2. Doctor mismatch-детект (REQ-02, детект)
+
 - Новый модуль src/app/use-cases/platform-mismatch.ts.
 - Контракт:
   ```ts
@@ -52,7 +54,7 @@ Baseline: main e44e5f8. Требования: requirements.md (approved). Исс
   detectPlatformMismatch(deps, projectRoot): Promise<PlatformMismatch | null>
   ```
 - Логика: только для adapter.detect && typeof adapter.detectVersion === 'function';
-  installedSet = min set по записям wolf-sync-state, относящимся к .opencode/plugins/**
+  installedSet = min set по записям wolf-sync-state, относящимся к .opencode/plugins/\*\*
   (с cross-check parseStamp на файле; запись без штампа исключается). По скану диска,
   включая сироты, installedSet НЕ считается: сироты syncBaseSet не перерендеривает,
   и ремонт по ним зациклился бы (F-02). Mismatch: runtime=v2 && installedSet < DUAL_SINCE
@@ -64,6 +66,7 @@ Baseline: main e44e5f8. Требования: requirements.md (approved). Исс
   через deps платформенных адаптеров — расширение DoctorDeps: detectMismatch?).
 
 ### C3. Doctor --repair платформы (REQ-02, repair)
+
 - Новый use-case src/app/use-cases/repair-platform.ts:
   ```ts
   repairPlatform(deps, projectRoot, { dryRun }): Promise<{ plan: string[]; actions: string[] }>
@@ -86,6 +89,7 @@ Baseline: main e44e5f8. Требования: requirements.md (approved). Исс
   → «unchanged».
 
 ### C4. wolf uninstall (REQ-03)
+
 - Новый use-case src/app/use-cases/uninstall.ts + CLI src/adapters/cli/commands/memory-uninstall.ts.
 - planUninstall(deps, baseDir): read-only → UninstallPlan { entries: {target, kind, reason}[], purgeEntries, keptForeign }.
   Первичный источник — wolf-sync-state (.opencode/wolf-sync-state.json): rel-пути
@@ -110,6 +114,7 @@ Baseline: main e44e5f8. Требования: requirements.md (approved). Исс
   запуск → пустой план, «nothing to remove», exit 0.
 
 ### C5. CLI-регистрация
+
 - cli-entry.ts: команда uninstall в реестр (влияет на --help и cli-reference → docs:build).
 
 ## 4. Контракты (сводно)
@@ -124,6 +129,7 @@ Baseline: main e44e5f8. Требования: requirements.md (approved). Исс
 ## 5. ADR
 
 ### ADR-1: детект по штампу set, а не по истории установок
+
 - Контекст: «под чем установлено» нигде не фиксируется машиночитаемо; dual-шаблоны с
   2.14.1 совместимы с обоими рантаймами.
 - Альтернативы: (а) фиксировать версию рантайма при init в новом поле sync-state —
@@ -137,6 +143,7 @@ Baseline: main e44e5f8. Требования: requirements.md (approved). Исс
 - Проверка допущения: тест на плагин set=2.14.0 (v1-only) → mismatch; set=2.14.1 → clean.
 
 ### ADR-2: uninstall владеет wolf-sync-state, fallback — штамп
+
 - Контекст: бриф фиксирует критерий принадлежности — штампы wolf-sync-state; установки
   старее 2.11.0 (введение T010 sync-state) state не имеют.
 - Выбор: primary — записи sync-state с cross-check штампа на файле; при отсутствии/пустоте
@@ -152,6 +159,7 @@ Baseline: main e44e5f8. Требования: requirements.md (approved). Исс
   «легаси без sync-state: штампованные файлы попадают в план».
 
 ### ADR-3: --repair расширяется платформенной зоной до storage-зоны
+
 - Контекст: repair-зона doctor существует (repairStorage, cwd).
 - Выбор: `wolf doctor --repair` = repairPlatform(cwd) + repairStorage(cwd), общий отчёт,
   --dry-run покрывает обе. Порядок фиксирован (рендер не зависит от storage).
