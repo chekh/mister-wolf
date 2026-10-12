@@ -108,10 +108,12 @@ export async function runDoctor(deps: DoctorDeps): Promise<DoctorReport> {
     entries.push({ path: proj.path, status, schemaVersion, issues });
   }
   // призрак-детект cwd (§8.2): незарегистрированный cwd проверяется тоже; запись
-  // добавляем только при наличии issue — чистый cwd не шумит в отчёте
+  // добавляем только при наличии issue — чистый cwd не шумит в отчёте.
+  // 2.16.2 (REQ-02): mismatch «установлено под v1, рантайм v2» — тоже cwd-проверка:
+  // проект в tmp-реестре может быть pruned как sandbox, но mismatch от платформы не зависит.
   const cwd = deps.cwd;
   if (cwd && !entries.some((e) => e.path === cwd) && (await deps.exists(cwd))) {
-    const issues = await ghostIssues(deps, cwd);
+    const issues = [...(await ghostIssues(deps, cwd)), ...((await deps.detectMismatch?.(cwd)) ?? [])];
     if (issues.length > 0) {
       const { status, schemaVersion } = classify(await deps.readSchema(cwd));
       entries.push({ path: cwd, status, schemaVersion, issues });

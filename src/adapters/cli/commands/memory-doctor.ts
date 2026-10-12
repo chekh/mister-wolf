@@ -73,7 +73,7 @@ function loadSyncStateFiles(baseDir: string): Record<string, string> | null {
 }
 
 /** 2.16.2 (REQ-02): строки несоответствия «установлено под v1, рантайм v2» для runDoctor. */
-function makeDetectMismatch(adapters: PlatformAdapter[]): (path: string) => Promise<string[]> {
+export function makeDetectMismatch(adapters: PlatformAdapter[]): (path: string) => Promise<string[]> {
   return async (path: string): Promise<string[]> => {
     const issues: string[] = [];
     for (const adapter of adapters) {

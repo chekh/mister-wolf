@@ -59,6 +59,21 @@ function makeDeps(over: Partial<UninstallDeps> = {}): UninstallDeps {
       walk(root);
       return out;
     },
+    listDirs: (root) => {
+      if (!existsSync(root)) return [];
+      const out: string[] = [];
+      const walk = (d: string) => {
+        for (const e of readdirSync(d, { withFileTypes: true })) {
+          const p = join(d, e.name);
+          if (e.isDirectory()) {
+            out.push(p);
+            walk(p);
+          }
+        }
+      };
+      walk(root);
+      return out;
+    },
     removeFile: async (abs) => rmSync(abs),
     removeDirIfEmpty: async (abs) => {
       if (!existsSync(abs)) return false;

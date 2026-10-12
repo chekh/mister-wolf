@@ -23,6 +23,8 @@ export interface UninstallDeps {
   readFile: (abs: string) => string | null;
   exists: (abs: string) => boolean;
   listFiles: (dir: string) => string[];
+  /** Подкаталоги root (любая глубина), без самого root. */
+  listDirs: (root: string) => string[];
   removeFile: (abs: string) => Promise<void>;
   removeDirIfEmpty: (abs: string) => Promise<boolean>;
   removeTree: (abs: string) => Promise<void>;
@@ -131,9 +133,13 @@ export async function executeUninstall(
       errors.push(`${e.target} — remove failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
-  // Пустые каталоги набора убираем только если внутри не осталось чужого контента.
+  // Пустые каталоги набора убираем снизу вверх; непустые (чужой контент) не трогаем.
   for (const root of SCAN_ROOTS) {
     const abs = join(deps.baseDir, root);
+    const dirs = deps.listDirs(abs);
+    for (const d of [...dirs].sort((a, b) => b.length - a.length)) {
+      if (await deps.removeDirIfEmpty(d)) actions.push(`${rel(deps.baseDir, d)} — removed (empty)`);
+    }
     if (await deps.removeDirIfEmpty(abs)) actions.push(`${root} — removed (empty)`);
   }
   for (const e of plan.entries.filter((x) => x.kind === 'config')) {
