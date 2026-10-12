@@ -87,8 +87,7 @@ describe('repairPlatform (REQ-02, design §C3)', () => {
     const r = await repairPlatform(
       makeDeps({
         syncStateFiles: () => null,
-        listFiles: (root) =>
-          root.endsWith('.opencode/plugins') ? ['/proj/.opencode/plugins/wolf-router.ts'] : [],
+        listFiles: (root) => (root.endsWith('.opencode/plugins') ? ['/proj/.opencode/plugins/wolf-router.ts'] : []),
         readFile: (abs) =>
           abs.endsWith('wolf-router.ts') ? `// wolf:rendered base=wolf-router.ts set=2.14.0\n` : null,
       }),
