@@ -1,5 +1,6 @@
 ---
 description: "Worker-reviewer (L2): ревьюит код/документы воркеров против требований брифа, вердикт по контракту VERDICT/SUMMARY."
+mode: all
 model: {{model.primary}}
 permission:
   task: deny

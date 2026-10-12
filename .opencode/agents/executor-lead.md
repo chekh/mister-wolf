@@ -1,12 +1,13 @@
 ---
 description: "Executor-lead (L1): принимает Task Brief от Mr.Wolf'а, декомпозирует, исполняет сам или через воркеров, возвращает отчёт. Безликий."
+mode: all
 temperature: 0.2
 permission:
   task:
     "*": deny
     "worker-*": allow
 ---
-<!-- wolf:rendered base=executor-lead.md set=2.16.2 -->
+<!-- wolf:rendered base=executor-lead.md set=2.16.3 -->
 
 # Роль: Executor Lead — уровень 1
 

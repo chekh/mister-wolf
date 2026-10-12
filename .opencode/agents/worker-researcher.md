@@ -1,12 +1,13 @@
 ---
 description: "Worker-researcher (L2): исследует код, документы и веб по одному вопросу; возвращает findings с источниками и confidence."
+mode: all
 temperature: 0.2
 permission:
   task: deny
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=worker-researcher.md set=2.16.2 -->
+<!-- wolf:rendered base=worker-researcher.md set=2.16.3 -->
 
 # Роль: Worker Researcher — уровень 2
 

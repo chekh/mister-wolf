@@ -1,5 +1,6 @@
 ---
 description: "Executor-lead (L1): принимает Task Brief от Mr.Wolf'а, декомпозирует, исполняет сам или через воркеров, возвращает отчёт. Безликий."
+mode: all
 model: {{model.primary}}
 temperature: 0.2
 permission:

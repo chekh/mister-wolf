@@ -2,7 +2,7 @@
 name: finishing-a-development-branch
 description: "Применять после проверки поставки перед согласованным merge, push/PR, сохранением ветки или уборкой worktree; также при выяснении неизвестного исхода этих действий."
 ---
-<!-- wolf:rendered base=SKILL.md set=2.16.2 -->
+<!-- wolf:rendered base=SKILL.md set=2.16.3 -->
 
 # Завершение git-поставки
 

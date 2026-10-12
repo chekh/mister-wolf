@@ -1,7 +1,7 @@
 ---
 description: "Steward — фон: мутатор контекста агентов (playbook'и в памяти Wolf) по жалобам + агрегатор зрелых уроков; матрица лиц; вызов только вложенный."
 mode: all
-model: zai-coding-plan/glm-5.3
+model: {{model.primary}}
 temperature: 0.2
 permission:
   task: deny
