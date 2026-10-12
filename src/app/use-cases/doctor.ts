@@ -30,6 +30,8 @@ export interface DoctorDeps {
   isSandbox?: (p: string) => boolean;
   /** Чтение файла для маркера onboarding; null — файла нет. */
   readFile?: (p: string) => Promise<string | null>;
+  /** 2.16.2 (REQ-02): строки несоответствия платформы (v1→v2) для пути; нет — проверка отключена. */
+  detectMismatch?: (path: string) => Promise<string[]>;
 }
 
 /** Маркер onboarding-блока, который wolf init/sync штампует в AGENTS.md/CLAUDE.md. */
@@ -99,6 +101,8 @@ export async function runDoctor(deps: DoctorDeps): Promise<DoctorReport> {
           issues.push(`${adapter.id}: wolf entry missing — run wolf init`);
         }
       }
+      // 2.16.2 (REQ-02): несоответствие «установлено под v1, рантайм v2» (design §C2)
+      issues.push(...((await deps.detectMismatch?.(proj.path)) ?? []));
     }
     issues.push(...(await ghostIssues(deps, proj.path)));
     entries.push({ path: proj.path, status, schemaVersion, issues });

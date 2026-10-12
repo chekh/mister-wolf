@@ -1,16 +1,21 @@
 import { Command } from 'commander';
 import { join, sep } from 'path';
-import { existsSync, readdirSync, realpathSync } from 'fs';
+import { existsSync, readdirSync, realpathSync, readFileSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { runDoctor } from '../../../app/use-cases/doctor.js';
 import { runArtifactLint } from '../../../app/use-cases/lint-artifacts.js';
+import { detectPlatformMismatch } from '../../../app/use-cases/platform-mismatch.js';
+import { repairPlatform } from '../../../app/use-cases/repair-platform.js';
+import { syncBaseSet } from '../../../app/use-cases/sync-base-set.js';
 import { ProjectsRegistry } from '../../../adapters/fs/projects-registry.js';
 import { wolfUserConfigDir } from '../../../adapters/fs/user-config.js';
 import { readSchemaVersion } from '../../../adapters/fs/schema-version.js';
 import { artifactFs } from '../../../adapters/fs/artifact-fs.js';
-import { templatesRoot } from '../../../adapters/render/templates-root.js';
-import { PLATFORM_ADAPTERS } from '../../../adapters/platforms/index.js';
+import { templatesRoot, harnessTemplatesRoot } from '../../../adapters/render/templates-root.js';
+import { OpencodeBaseSetRenderer } from '../../../adapters/render/opencode/opencode-renderer.js';
+import { PLATFORM_ADAPTERS, CANONICAL_MCP_COMMAND } from '../../../adapters/platforms/index.js';
+import type { PlatformAdapter } from '../../../ports/platform-adapter.port.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { safeCwd } from '../cli-entry.js';
 import { repairStorage } from '../../../app/use-cases/repair-storage.js';
@@ -48,6 +53,47 @@ async function readFileOrNull(p: string): Promise<string | null> {
   }
 }
 
+function readFileSyncOrNull(p: string): string | null {
+  try {
+    return readFileSync(p, 'utf-8');
+  } catch {
+    return null;
+  }
+}
+
+function loadSyncStateFiles(baseDir: string): Record<string, string> | null {
+  const raw = readFileSyncOrNull(join(baseDir, '.opencode', 'wolf-sync-state.json'));
+  if (raw === null) return null;
+  try {
+    const parsed = JSON.parse(raw) as { files?: Record<string, string> };
+    return parsed.files && typeof parsed.files === 'object' ? parsed.files : null;
+  } catch {
+    return null;
+  }
+}
+
+/** 2.16.2 (REQ-02): строки несоответствия «установлено под v1, рантайм v2» для runDoctor. */
+function makeDetectMismatch(adapters: PlatformAdapter[]): (path: string) => Promise<string[]> {
+  return async (path: string): Promise<string[]> => {
+    const issues: string[] = [];
+    for (const adapter of adapters) {
+      if (adapter.id !== 'opencode' || !adapter.detectVersion || !adapter.detect(path)) continue;
+      const runtime = await adapter.detectVersion(path);
+      const found = await detectPlatformMismatch({
+        baseDir: path,
+        runtime: () => runtime,
+        readSyncState: () => {
+          const files = loadSyncStateFiles(path);
+          return files ? { files } : null;
+        },
+        readFile: readFileSyncOrNull,
+      });
+      if (found) issues.push(found.issue);
+    }
+    return issues;
+  };
+}
+
 export function memoryDoctorCommand(): Command {
   return new Command('doctor')
     .description('Check all registered projects: binary vs schema version, platform configs, prune dead entries')
@@ -61,6 +107,28 @@ export function memoryDoctorCommand(): Command {
         const cwd = safeCwd();
         const { store, log, clock, idGen, index, lock, memoryRoot } = createCliContainer(cwd);
         const events = eventsPath(memoryRoot);
+        // 2.16.2 (REQ-02, ADR-3): платформенная зона ремонта до storage-зоны, общий отчёт.
+        const oc = PLATFORM_ADAPTERS.find((a) => a.id === 'opencode');
+        let platformReport: Awaited<ReturnType<typeof repairPlatform>> | null = null;
+        if (oc) {
+          platformReport = await repairPlatform(
+            {
+              baseDir: cwd,
+              detect: () => oc.detect(cwd),
+              syncStateFiles: () => loadSyncStateFiles(cwd),
+              mismatch: () => makeDetectMismatch([oc])(cwd),
+              syncBaseSet: () =>
+                syncBaseSet(
+                  new OpencodeBaseSetRenderer(templatesRoot(), {
+                    harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
+                  }),
+                  cwd
+                ),
+              writeConfig: () => oc.writeConfig(cwd, CANONICAL_MCP_COMMAND),
+            },
+            { dryRun: options.dryRun === true }
+          );
+        }
         const report = await repairStorage(
           {
             store,
@@ -80,6 +148,22 @@ export function memoryDoctorCommand(): Command {
           { dryRun: options.dryRun === true }
         );
         console.log(`# wolf doctor --repair${options.dryRun ? ' (dry-run)' : ''}`);
+        if (platformReport) {
+          if (platformReport.skipped) {
+            console.log(`## Platform: skipped — ${platformReport.skipped}`);
+          } else if (options.dryRun) {
+            console.log('## Platform (plan)');
+            for (const p of platformReport.plan) console.log(`- ${p}`);
+          } else {
+            console.log('## Platform');
+            for (const a of platformReport.actions) console.log(`- ${a}`);
+            for (const m of platformReport.plan.filter((p) => p.startsWith('mismatch: '))) {
+              console.log(`  ! ${m.slice('mismatch: '.length)}`);
+            }
+            if (platformReport.orphanedNote) console.log(`  ! ${platformReport.orphanedNote}`);
+          }
+        }
+        console.log('## Storage');
         for (const a of report.actions) console.log(`- ${a}`);
         console.log(
           `reindexed: ${report.reindexed}, events backfilled: ${report.eventsAppended}, dangling events: ${report.danglingEvents}`
@@ -95,6 +179,7 @@ export function memoryDoctorCommand(): Command {
         cwd: safeCwd(),
         isSandbox: isSandboxPath,
         readFile: readFileOrNull,
+        detectMismatch: makeDetectMismatch(PLATFORM_ADAPTERS),
       });
 
       console.log(`# wolf doctor — binary schema v${report.binarySchemaVersion}`);
