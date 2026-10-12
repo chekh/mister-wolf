@@ -63,6 +63,12 @@ export const COMMANDS: CommandSpec[] = [
     load: () => import('./commands/memory-sync.js').then((m) => m.memorySyncCommand()),
   },
   {
+    name: 'uninstall',
+    description: 'Remove wolf-managed files from this project (prints plan first; --yes executes, --purge erases .wolf/)',
+    usage: '[options]',
+    load: () => import('./commands/memory-uninstall.js').then((m) => m.memoryUninstallCommand()),
+  },
+  {
     name: 'add',
     description: 'Add a memory object',
     usage: '[options]',

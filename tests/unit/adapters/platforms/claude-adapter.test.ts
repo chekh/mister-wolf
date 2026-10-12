@@ -121,3 +121,17 @@ describe('adapter registry', () => {
     expect(PLATFORM_ADAPTERS.map((a) => a.id).sort()).toEqual(['claude', 'opencode']);
   });
 });
+
+describe('ClaudeAdapter.removeWolfKeys (2.16.2 uninstall)', () => {
+  it('CL-K1: удаляет mcpServers.wolf, чужие ключи сохраняет', async () => {
+    writeFileSync(join(dir, '.mcp.json'), JSON.stringify({ mcpServers: { wolf: { command: 'wolf', args: ['mcp'] }, other: {} } }));
+    const r = await new ClaudeAdapter().removeWolfKeys(dir);
+    expect(r.action).toBe('removed');
+    const cfg = JSON.parse(readFileSync(join(dir, '.mcp.json'), 'utf-8'));
+    expect(cfg.mcpServers).toEqual({ other: {} });
+  });
+
+  it('CL-K2: нет конфига → skipped', async () => {
+    expect((await new ClaudeAdapter().removeWolfKeys(dir)).action).toBe('skipped');
+  });
+});

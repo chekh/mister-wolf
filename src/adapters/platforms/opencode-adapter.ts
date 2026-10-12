@@ -146,6 +146,37 @@ export class OpencodeAdapter implements PlatformAdapter {
     await writeFileAtomic(file, JSON.stringify(cfg, null, 2) + '\n');
     return true;
   }
+
+  /**
+   * 2.16.2 (uninstall, F-07): только wolf-ключи с точным нашим значением.
+   * Пользовательские default_agent/subagent_depth (не наши точные значения) не трогаем.
+   */
+  async removeWolfKeys(projectRoot: string): Promise<PlatformWriteResult> {
+    const file = this.configFile(projectRoot);
+    const cfg = await this.readConfig(projectRoot).catch(() => null);
+    if (cfg === null) return { action: 'skipped', reason: `no ${basename(file)}`, configFile: basename(file) };
+    const removed: string[] = [];
+    const mcp = asRecord(cfg.mcp);
+    if (mcp !== undefined && mcp.wolf !== undefined) {
+      delete mcp.wolf;
+      if (Object.keys(mcp).length === 0) delete cfg.mcp;
+      else cfg.mcp = mcp;
+      removed.push('mcp.wolf');
+    }
+    if (cfg.default_agent === DEFAULT_AGENT) {
+      delete cfg.default_agent;
+      removed.push(`default_agent=${DEFAULT_AGENT}`);
+    }
+    if (cfg.subagent_depth === SUBAGENT_DEPTH) {
+      delete cfg.subagent_depth;
+      removed.push(`subagent_depth=${SUBAGENT_DEPTH}`);
+    }
+    if (removed.length === 0) {
+      return { action: 'unchanged', reason: 'no wolf keys with our exact values', configFile: basename(file), keys: [] };
+    }
+    await writeFileAtomic(file, JSON.stringify(cfg, null, 2) + '\n');
+    return { action: 'removed', configFile: basename(file), keys: removed };
+  }
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {

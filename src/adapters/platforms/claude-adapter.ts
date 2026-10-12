@@ -64,6 +64,16 @@ export class ClaudeAdapter implements PlatformAdapter {
     await writeFileAtomic(file, JSON.stringify(cfg, null, 2) + '\n');
     return true;
   }
+
+  /** 2.16.2 (uninstall): у Claude wolf-контент в конфиге — только mcpServers.wolf. */
+  async removeWolfKeys(projectRoot: string): Promise<PlatformWriteResult> {
+    const cfg = await this.readConfig(projectRoot).catch(() => null);
+    if (cfg === null) return { action: 'skipped', reason: 'no .mcp.json', configFile: '.mcp.json' };
+    const removed = await this.removeWolf(projectRoot);
+    return removed
+      ? { action: 'removed', configFile: '.mcp.json', keys: ['mcpServers.wolf'] }
+      : { action: 'unchanged', reason: 'no mcpServers.wolf', configFile: '.mcp.json', keys: [] };
+  }
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {

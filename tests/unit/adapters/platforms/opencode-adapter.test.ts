@@ -320,3 +320,42 @@ describe('OpencodeAdapter.removeWolf', () => {
     expect(cfg.mcp).toBeUndefined();
   });
 });
+
+describe('OpencodeAdapter.removeWolfKeys (2.16.2 uninstall, F-07: точные наши значения)', () => {
+  it('OC-K1: удаляет mcp.wolf + default_agent=mr-wolf + subagent_depth=2, чужой сервер сохраняет', async () => {
+    writeFileSync(
+      join(dir, 'opencode.json'),
+      JSON.stringify({
+        mcp: { wolf: WOLF_ENTRY, other: { type: 'local', command: ['x'] } },
+        default_agent: 'mr-wolf',
+        subagent_depth: 2,
+        model: 'local/coder',
+      })
+    );
+    const r = await new OpencodeAdapter().removeWolfKeys(dir);
+    expect(r.action).toBe('removed');
+    expect(r.keys).toEqual(['mcp.wolf', 'default_agent=mr-wolf', 'subagent_depth=2']);
+    const cfg = JSON.parse(readFileSync(join(dir, 'opencode.json'), 'utf-8'));
+    expect(cfg.mcp).toEqual({ other: { type: 'local', command: ['x'] } });
+    expect(cfg.default_agent).toBeUndefined();
+    expect(cfg.subagent_depth).toBeUndefined();
+    expect(cfg.model).toBe('local/coder');
+  });
+
+  it('OC-K2: пользовательский subagent_depth=5 и чужой default_agent сохраняются', async () => {
+    writeFileSync(
+      join(dir, 'opencode.json'),
+      JSON.stringify({ default_agent: 'my-agent', subagent_depth: 5 })
+    );
+    const r = await new OpencodeAdapter().removeWolfKeys(dir);
+    expect(r.action).toBe('unchanged');
+    const cfg = JSON.parse(readFileSync(join(dir, 'opencode.json'), 'utf-8'));
+    expect(cfg).toEqual({ default_agent: 'my-agent', subagent_depth: 5 });
+  });
+
+  it('OC-K3: нет конфига → skipped с причиной', async () => {
+    const r = await new OpencodeAdapter().removeWolfKeys(dir);
+    expect(r.action).toBe('skipped');
+    expect(r.reason).toContain('no opencode.json');
+  });
+});
