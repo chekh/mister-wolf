@@ -12,7 +12,7 @@ Baseline: main e44e5f8, ветка wave-2.16.2, cwd = worktree .worktrees/wave-2
 `npx vitest run --maxWorkers=2 --minWorkers=1`, `npx vitest run`, `npm run e2e`.
 Бюджет: 2 цикла исправления на задачу, далее пересмотр L1. Коммиты — L1 в ветке волны.
 
-- [ ] T-01 — REQ-01: версионное правило в AGENTS.md-шаблоне
+- [x] T-01 — REQ-01: версионное правило в AGENTS.md-шаблоне
   - Цель: templates/base/AGENTS.md содержит правило «Номер версии всегда полный X.Y.Z —
     в планах, тредах, волнах, тегах и разговоре» (текст по памяти
     mem_20261012_nomer_versii, компактная формулировка для шаблона).
@@ -23,7 +23,7 @@ Baseline: main e44e5f8, ветка wave-2.16.2, cwd = worktree .worktrees/wave-2
   - Зависимости: нет. Проверка: npm run test:run.
   - RESULT ожидается: DONE + diff шаблона + зелёный прогон.
 
-- [ ] T-02 — REQ-02: detectPlatformMismatch (детект)
+- [x] T-02 — REQ-02: detectPlatformMismatch (детект)
   - Цель: src/app/use-cases/platform-mismatch.ts — detectPlatformMismatch по design.md §C2
     (sync-state primary, cross-check parseStamp, DUAL_SINCE='2.14.1', guard
     adapter.detect + detectVersion, absent/unparseable → skip-причина, mismatch только v1-only set).
@@ -32,7 +32,7 @@ Baseline: main e44e5f8, ветка wave-2.16.2, cwd = worktree .worktrees/wave-2
     запись state без штампа на файле → исключена.
   - Allowlist: новый use-case + тест.
   - Зависимости: нет. Проверка: npm run test:run.
-- [ ] T-03 — REQ-02: проводка детекта в doctor
+- [x] T-03 — REQ-02: проводка детекта в doctor
   - Цель: DoctorDeps += detectMismatch?; runDoctor добавляет issue-строки в entries;
     memory-doctor печатает (уже печатает issues). Позиция: в блоке status==='ok' рядом с
     существующей проверкой wolf-entry.
@@ -40,7 +40,7 @@ Baseline: main e44e5f8, ветка wave-2.16.2, cwd = worktree .worktrees/wave-2
     поведение прежнее (обратная совместимость фейков).
   - Allowlist: src/app/use-cases/doctor.ts, его юнит-тесты.
   - Зависимости: T-02.
-- [ ] T-04 — REQ-02: repairPlatform + проводка в --repair
+- [x] T-04 — REQ-02: repairPlatform + проводка в --repair
   - Цель: src/app/use-cases/repair-platform.ts (гвард detect/sync-state; syncBaseSet +
     writeConfig; dryRun=план без записей; orphaned[] в отчёте с рекомендацией);
     memory-doctor --repair = repairPlatform → repairStorage, общий отчёт, --dry-run покрывает обе.
@@ -50,7 +50,7 @@ Baseline: main e44e5f8, ветка wave-2.16.2, cwd = worktree .worktrees/wave-2
     гвард: без .opencode — skip «no opencode install», ноль записей.
   - Allowlist: новый use-case, memory-doctor.ts, тесты.
   - Зависимости: T-02, T-03.
-- [ ] T-05 — REQ-03: uninstall use-case
+- [x] T-05 — REQ-03: uninstall use-case
   - Цель: src/app/use-cases/uninstall.ts — planUninstall/executeUninstall по design.md §C4
     - ADR-2 (sync-state primary, fallback штамп при пустом/отсутствующем state, исключение
       AGENTS.md/CLAUDE.md, конфиги по точным значениям, .wolf/ keep, --purge, подсказка
@@ -63,7 +63,7 @@ Baseline: main e44e5f8, ветка wave-2.16.2, cwd = worktree .worktrees/wave-2
     конфиги — skip с причиной; повторный запуск — пустой план exit 0.
   - Allowlist: новый use-case + тесты.
   - Зависимости: нет (T-06 отдельно).
-- [ ] T-06 — REQ-03: CLI uninstall
+- [x] T-06 — REQ-03: CLI uninstall
   - Цель: src/adapters/cli/commands/memory-uninstall.ts + регистрация в cli-entry.ts
     (порядок в реестре = порядок --help).
   - AC: `wolf uninstall` печатает план, exit 0, ноль записей; `wolf uninstall --yes`
@@ -71,7 +71,7 @@ Baseline: main e44e5f8, ветка wave-2.16.2, cwd = worktree .worktrees/wave-2
     построчный (target — action (reason)).
   - Allowlist: новый файл команды, cli-entry.ts, тесты.
   - Зависимости: T-05.
-- [ ] T-07 — REQ-02: e2e v1→v2
+- [x] T-07 — REQ-02: e2e v1→v2
   - Цель: tests/e2e/platform-repair.e2e.ts — tmp-проект: рендер базового набора, правка
     штампа плагина на set=2.14.0 + фейковый `opencode` bin на PATH (печатает v2);
     `wolf doctor` → issue «installed under v1 … --repair»; `wolf doctor --repair` → штамп
@@ -80,14 +80,14 @@ Baseline: main e44e5f8, ветка wave-2.16.2, cwd = worktree .worktrees/wave-2
     entry в контенте + mcp.wolf/default_agent/subagent_depth валидны.
   - Allowlist: новый e2e-файл (фикстуры в tmp).
   - Зависимости: T-04.
-- [ ] T-08 — версия, CHANGELOG, документация и сайт (релизный чек-лист волны)
+- [x] T-08 — версия, CHANGELOG, документация и сайт (релизный чек-лист волны)
   - `npm version 2.16.2 --no-git-tag-version`; CHANGELOG.md секция [2.16.2] (Added:
     doctor mismatch+repair, uninstall; Changed: AGENTS.md правило версий);
     `npm run docs:build` (generate-cli-reference подхватит uninstall, sync-changelog
     синк страницы Changelog); сайт НЕ деплоить.
   - AC: package.json=2.16.2; CHANGELOG [2.16.2] существует; docs:build exit 0; тега нет.
   - Зависимости: T-01..T-07.
-- [ ] T-09 — интеграция и приёмочные гейты (L1)
+- [x] T-09 — интеграция и приёмочные гейты (L1)
   - Порядок: merge проверенных задач в ветке (последовательно), полный гейт на итоговом
     состоянии: `npm run check`; `npx vitest run --maxWorkers=2 --minWorkers=1`;
     `npx vitest run`; `npm run e2e` — exit-коды в отчёт. Независимое ревью (чистый
@@ -106,3 +106,10 @@ T-09 финал. Конфликты: shared файлы только memory-docto
 
 CHANGELOG [2.16.2]; docs:build; cli-reference с uninstall; сайт-страница Changelog
 синхронна; деплой запрещён.
+
+## Исполнение (evidence, L1)
+
+- T-01..T-09 выполнены в ветке wave-2.16.2, merge --ff-only в main 9bc9eba (baseline e44e5f8).
+- Гейты на main 9bc9eba: check=0, vitest --maxWorkers=2=0 (1222 passed), vitest run=0 (1222), e2e=0 (214). Логи: /tmp/m1.log..m4.log.
+- Ревью: дизайн 2 раунда (F-01..F-11 закрыты), код — 2 мандата (conformance NEEDS_CHANGES→fix→APPROVED, quality APPROVED), fix-верификация APPROVED.
+- Отклонения: help-budget 33→34 (+uninstall, CHANGELOG), guard testTimeout 120s (тяжёлая генерация, pre-existing flake).
