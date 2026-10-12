@@ -9,7 +9,9 @@ import { describe, it, expect } from 'vitest';
  * Расхождение = реестр (или справочник) изменился без регенерации.
  */
 describe('guard: docs/reference/cli.md is generated from the CLI registry (P224)', () => {
-  it('file on disk equals regenerated reference', async () => {
+  // Генерация спавнит полный реестр commander (~25s на нагруженной машине) —
+  // дефолтный testTimeout 5s даёт стабильный флейк в полном прогоне.
+  it('file on disk equals regenerated reference', { timeout: 120_000 }, async () => {
     const { generateReference } = await import('../../scripts/generate-cli-reference.mjs');
     const expected = await generateReference();
     const onDisk = readFileSync(join(process.cwd(), 'docs/reference/cli.md'), 'utf8');
