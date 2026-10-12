@@ -2,7 +2,7 @@
 name: wolf-review
 description: "Применять перед утверждением requirements, design, plan, test-plan или приёмочного отчёта; при повторном ревью изменённой версии и при противоречивых выводах проверяющих."
 ---
-<!-- wolf:rendered base=SKILL.md set=2.16.1 -->
+<!-- wolf:rendered base=SKILL.md set=2.16.2 -->
 
 # Ревью артефактов
 

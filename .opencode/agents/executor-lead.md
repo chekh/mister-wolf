@@ -6,7 +6,7 @@ permission:
     "*": deny
     "worker-*": allow
 ---
-<!-- wolf:rendered base=executor-lead.md set=2.16.1 -->
+<!-- wolf:rendered base=executor-lead.md set=2.16.2 -->
 
 # Роль: Executor Lead — уровень 1
 
