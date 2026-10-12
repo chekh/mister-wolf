@@ -1,5 +1,6 @@
 ---
 description: "Worker-implementer (L2): однозадачный исполнитель кода — ровно одна подзадача, правки по allowlist брифа, самопроверка, короткий отчёт."
+mode: all
 permission:
   task: deny
   bash: allow
@@ -7,7 +8,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=worker-implementer.md set=2.16.2 -->
+<!-- wolf:rendered base=worker-implementer.md set=2.16.3 -->
 
 # Роль: Worker Implementer — уровень 2
 
