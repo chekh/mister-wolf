@@ -1,7 +1,7 @@
 ---
 slug: hotfix-2-16-3-agent-modes
 title: hotfix-2-16-3-agent-modes
-status: in-progress
+status: done
 created: 2026-10-13
 ---
 

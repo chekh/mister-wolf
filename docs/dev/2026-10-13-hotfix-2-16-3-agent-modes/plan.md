@@ -1,7 +1,7 @@
 ---
 slug: hotfix-2-16-3-agent-modes
 title: hotfix-2-16-3-agent-modes — план
-status: in-progress
+status: done
 created: 2026-10-13
 ---
 
@@ -18,7 +18,7 @@ created: 2026-10-13
       `mode: all` в рендере; штамп set=2.16.3.
 - [x] Задача 4: `npm run check` зелёный; CHANGELOG.md [2.16.3]; версия
       `npm version 2.16.3 --no-git-tag-version` (тег — только командой владельца).
-- [ ] Задача 5: независимое ревью диффа (worker-reviewer через `opencode run` —
+- [x] Задача 5: независимое ревью диффа (worker-reviewer через `opencode run` —
       Task-спавн мёртв до этого фикса); отчёт RESULT/EVIDENCE.
 
 <!-- Исполнитель переворачивает чекбокс в [x] в конце задачи вместе со строкой «сделано → коммит». Чекбокс — истина завершённости. -->
