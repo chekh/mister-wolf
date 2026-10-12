@@ -8,6 +8,22 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.16.2] - 2026-10-12
+
+### Added — Platform lifecycle: v1→v2 repair & uninstall
+
+- `wolf doctor` detects the "installed under OpenCode v1, runtime v2" mismatch: the minimal plugin stamp recorded in `wolf-sync-state.json` below 2.14.1 (the v1-only plugin era) against a v2 runtime; the issue names `wolf doctor --repair`. The check runs for registry projects and for the current directory; without sync-state evidence it stays silent (no disk guessing). The reverse direction (v2-only render on v1) is covered by the same comparison and activates once a v2-only release exists.
+- `wolf doctor --repair` now covers the platform zone before the storage zone: it re-renders stamped files under the current templates (local edits stay protected by mutated-skip), canonicalizes `opencode.json` (`mcp.wolf`, `default_agent`, `subagent_depth`), reports orphaned stamped files with a recommendation (repair never deletes them), and honors `--dry-run` (plan only, zero writes). A project without an OpenCode install gets an honest skip line.
+- `wolf uninstall` removes wolf-managed content from a project: plan first (default run writes nothing), `--yes` executes, `--purge` additionally erases `.wolf/`. Ownership is identified by `wolf-sync-state` records cross-checked against stamps; projects installed before sync-state existed (pre-2.11.0) fall back to stamp scanning. Foreign files, foreign MCP servers, and user-configured `default_agent`/`subagent_depth` (exact-value criterion) are never touched; `AGENTS.md`/`CLAUDE.md` wolf blocks are kept by design and reported as manual cleanup; empty wolf-owned directories are pruned; the final hint points to `npm uninstall -g mister-wolf`. Idempotent: a second run reports "nothing to remove".
+
+### Changed
+
+- `AGENTS.md` base template now carries the versioning discipline rule: version numbers are always full X.Y.Z (plans, threads, waves, tags, conversation); a bare minor ("2.16") is not a release name. Initialized projects receive it through the regular sync delivery.
+
+### Upgrade notes
+
+- Migrations: none. Run `wolf doctor --repair` once after upgrading OpenCode v1 → v2; run `wolf sync` to receive the AGENTS.md versioning rule.
+
 ## [2.16.1] - 2026-10-11
 
 ### Changed — 19-skill base set: skills-superpowers integration

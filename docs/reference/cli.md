@@ -41,6 +41,20 @@ Options:
   -h, --help  display help for command
 ```
 
+### wolf uninstall
+
+```text
+Usage: wolf uninstall [options]
+
+Remove wolf-managed files from this project (prints plan first; --yes executes)
+
+Options:
+  --yes       execute the plan (without it — plan only, nothing is written)
+              (default: false)
+  --purge     with --yes: also erase .wolf/ (project memory) (default: false)
+  -h, --help  display help for command
+```
+
 ### wolf add
 
 ```text
