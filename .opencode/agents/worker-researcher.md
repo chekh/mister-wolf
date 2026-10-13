@@ -7,7 +7,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=worker-researcher.md set=2.16.3 -->
+<!-- wolf:rendered base=worker-researcher.md set=2.17.0 -->
 
 # Роль: Worker Researcher — уровень 2
 
