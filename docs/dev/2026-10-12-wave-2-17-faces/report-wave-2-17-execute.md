@@ -228,3 +228,37 @@ updated: 2026-10-13
 - Независимое ревью T-10: worker-reviewer ses_ecaec4a54ffeoVixgg5DVHovuU — VERDICT: APPROVED (0 crit/major; 2 minor + 1 docs-minor + 2 nit). Evidence ревью: face-router 3/3, targeted 33/33, канон RENDER-IN-SYNC.
 - Обработка findings: F1 (sessionInject без TTL — потолок варианта Б) и F2 (окно полу-миграции без самолечения) → зафиксированы как остаточные риски в docs/dev/roadmap/wave-2.17.md, решение за владельцем/бэклог; F3 (чекбоксы плана) → T-01…T-10 перевёрнуты; F4 (proposal-фасет формально на face — публично недостижим, guard выше) и F5 (raw-diff канона ловит штамп рендера — пре-существующее) → отклонены аргументированно.
 - Прочее: prettier-нормализация журнала (запись T-10 выше нарушала формат:check); INDEX.md не менялся (генерируется wolf sync, волна зарегистрирована).
+
+### T-11 (2026-10-13, 168e176)
+- `npm version 2.17.0 --no-git-tag-version` — версия в package.json (единственный источник), ТЕГА НЕТ (тег — шаг 6 релизного чек-листа, отдельный запуск).
+- CHANGELOG.md — запись [2.17.0] - 2026-10-13 (EN, Keep-a-Changelog) + compare-link v2.16.3...v2.17.0.
+- README.md/README.ru.md (таксономия 8, wolf face/propose, Steward-абзац), docs/site/guide delivery/memory/base-set/feedback/cli + RU-зеркала, changelog-страницы EN+RU регенерированы sync-changelog.
+- `npm run docs:build` — exit 0; `npm run check` — ЗЕЛЁНЫЙ 173/1312 (прогон воркера T-11 на итоговом состоянии).
+- Релизный чек-лист: пункты 1–5 закрыты локально; 6–8 (тег v2.17.0 + GitHub Release, npm publish, wolf sync) — релизный запуск с владельцем после приёмки L0. ЗАПРЕЩЁННЫЕ действия (push/тег/publish/деплой) НЕ выполнялись.
+
+## Финальная сводка (EXECUTION COMPLETE)
+
+- Все T-01…T-11 закрыты; полный гейт зелёный: `npm run check` = 173 test files / 1312 tests (baseline 164/1233, +9/+79), exit 0.
+- Ревью: T-08 — worker-reviewer APPROVED (0 crit/major, 2 minor: 1 закрыт фиксом, 1 отклонён аргументированно — потолок варианта Б на уровне дизайна); финальное волны — ДВА независимых ревью APPROVED (ses_ecaf1c8fbffexHDXsUKqP8vAuJ от исходной сессии; ses_ecaec4a54ffeoVixgg5DVHovuU от continuation-сессии), 0 critical / 0 major, findings minor/nit обработаны или аргументированно отклонены (см. записи T-10).
+- ИНЦИДЕНТ ДУБЛЬ-ДИСПЕТЧЕРИЗАЦИИ (ESCALATION к L0): после рестартов платформы диспетчер выдал TASK волны ДВУМ L1-сессиям (исходной — этот журнал T-01…T-09, и continuation-сессии wave-2-17-execute-continue). Обе работали в одном worktree .worktrees/wave-2.17-faces с ~13:36 до ~15:00: пересекающиеся коммиты журнала, «параллельный агент» в наблюдениях воркеров, один коммит-захват (f73fb1a вобрал правки T-11 в работе — потерь нет, всё на диске верно). Состояние не пострадало: обе сессии независимо прогнали зелёный гейт на одном дереве, результаты слились без конфликтов. Требование к диспетчеру: перед повторной диспетчеризацией незавершённого TASK — проверка живости предыдущей сессии (heartbeat/журнал/HEAD drift-check), ps=0 недостаточен (урок в памяти Wolf).
+- COMPLAINT-TRIAGE: seen 0 → resolved 0 / rejected 0 / escalated 0 / open 0.
+- Осталось до публикации (релизный запуск с владельцем): тег v2.17.0 + GitHub Release; npm publish (trusted publishing); wolf sync в потребители; деплой сайта; докат ru/en доков уже в ветке.
+
+## Workers Used — финал
+
+| Задача | Воркер | Исход |
+|---|---|---|
+| T-01 | worker-implementer ses_ecbe897e1ffeAksUlbNbPzBlNt | DONE_WITH_CONCERNS → принято L1 |
+| T-02 | worker-implementer ses_ecbd3562bffepUfj7RRMimvvyy | DONE_WITH_CONCERNS → FINDING-1 фикс → DONE |
+| T-08 | worker-implementer ses_ecbd35627ffeQDRwFQlB7KklEK | DONE → минор-фикс по ревью DONE |
+| Ревью T-08 | worker-reviewer ses_ecbc13f2dffeLWqLnIZJnlUzIk | APPROVED |
+| T-03 | worker-implementer ses_ecbb4faa2ffefj4S3ks2dlKCyR | DONE_WITH_CONCERNS → принято L1 |
+| T-04 | worker-implementer ses_ecba36c95ffeGn3gI0JL23DXNz | DONE_WITH_CONCERNS → принято L1 |
+| T-05 | worker-implementer ses_ecb85794bffe3ArHJhyZmgFSPk | DONE → принято L1 |
+| T-07 | worker-implementer ses_ecb651657ffeqm2A4Z9ML2c9Xg | прерван рестартом → возобновлён → DONE |
+| T-06 | worker-implementer ses_ecb52fed0ffek61XJtSb48hZS6 | перезапуск после сбоя → DONE |
+| T-09 | worker-implementer ses_ecb427e56ffeaVXeQZdKW2109a | DONE (вскрыл и закрыл регрессию T-07) |
+| T-10 | worker-implementer ses_ecb2e3a87ffeiIfFJ1H0142F5d | DONE (гейт 173/1312) |
+| Ревью волны | worker-reviewer ses_ecaf1c8fbffexHDXsUKqP8vAuJ | APPROVED (0 crit/major) |
+| T-11 | worker-implementer ses_ecae8f5ddffeU394e1lvXsyzdD | DONE (без публикации) |
+| (continuation-сессия) | воркеры её диспетчеризации, вкл. ревью ses_ecaec4a54ffeoVixgg5DVHovuU | APPROVED |
