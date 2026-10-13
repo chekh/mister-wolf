@@ -25,7 +25,7 @@ worktree `.worktrees/<имя-задачи>` (правило `mem_20260827`). Т�
 
 <!-- Исполнитель переворачивает чекбокс в [x] в конце задачи вместе со строкой «сделано → коммит». Чекбокс — истина завершённости. -->
 
-- [ ] **T-01: Схемный фундамент `face` + `proposal`** — design §Контракты («Тип face»,
+- [x] **T-01: Схемный фундамент `face` + `proposal`** — design §Контракты («Тип face»,
       «Proposal»), §Схемные изменения п.1–4, ADR-3, ADR-6. Декларация `face` в
       `CORE_TAXONOMY_DECLS`, `DEFAULT_CHARACTER_FACETS` += `'proposal'` (7→8),
       сигнал-словарь `['proposal']` для прочих core-типов (`src/domain/memory-types.ts`);
@@ -37,7 +37,7 @@ worktree `.worktrees/<имя-задачи>` (правило `mem_20260827`). Т�
       every entry» — пополнение состава, F-02 ревью плана). AC: REQ-01 (тип
       объявлен, контракт един), REQ-08 AC2/AC3. Проверки: unit domain (test-plan
       §REQ-01, §REQ-08). Зависимости: нет.
-- [ ] **T-02: Use-case `createFaceVersion` + guard** — design §Затронутые модули п.9,
+- [x] **T-02: Use-case `createFaceVersion` + guard** — design §Затронутые модули п.9,
       ADR-1, §Отказов (MemoryLock-сериализация, паттерн `tool-librarian.ts:167`).
       Новый `src/app/use-cases/create-face-version.ts`: версионирующий путь (новая запись +
       supersede прежней), lock на owner_skill, номер версии под lock, события
@@ -46,19 +46,19 @@ worktree `.worktrees/<имя-задачи>` (правило `mem_20260827`). Т�
       guard доступа (Стюард; отказ при агентской WOLF_SESSION / `--created-by`),
       reason обязателен (REQ-04 AC2). AC: REQ-03, REQ-04.
       Проверки: unit use-cases (test-plan §REQ-03, §REQ-04). Зависимость: T-01.
-- [ ] **T-03: G17-запись мутации Стюарда** — design ADR-2, REQ-06. Мутация Стюарда
+- [x] **T-03: G17-запись мутации Стюарда** — design ADR-2, REQ-06. Мутация Стюарда
       создаёт атомарно note(history) c полями G17 + relation `mutates` → версия лица;
       шаблон неопционален (без обязательных полей операция не завершается успехом);
       поле «границы» фиксирует, что не меняется. AC: REQ-06. Проверки: unit use-cases
       (test-plan §REQ-06). Зависимость: T-02.
-- [ ] **T-04: CLI-группа `wolf face`** — design таблица (CLI `wolf face`),
+- [x] **T-04: CLI-группа `wolf face`** — design таблица (CLI `wolf face`),
       REQ-03/04/05/07/10. Новый файл в `src/adapters/cli/commands/`: подкоманды
       new / restore / breakglass / list / history / show; breakglass — только владелец,
       журнал в составе операции (REQ-07 AC2), без вызова Стюарда; restore = новая версия
       с based_on (REQ-05 AC1); запрет `--created-by` (ADR-5). AC: REQ-10, REQ-07, REQ-05.
       Проверки: unit adapters/cli (test-plan §REQ-10, §REQ-07, §REQ-05-restore).
       Зависимость: T-03 (G17-контракт в пути new от Стюарда).
-- [ ] **T-05: Миграция + alias-чтение + seed** — design ADR-4, §Затронутые модули
+- [x] **T-05: Миграция + alias-чтение + seed** — design ADR-4, §Затронутые модули
       п.6, REQ-02. Use-case `migrateFaces` + подкоманда `wolf face migrate` в CLI-группу
       T-04: физическая миграция с дословным переносом title/тегов/owner_skill,
       поэтапная (падение на N-м не откатывает N-1, повторный запуск идемпотентен —
@@ -67,21 +67,21 @@ worktree `.worktrees/<имя-задачи>` (правило `mem_20260827`). Т�
       переходят на face, `isPlaybookNote` (`scaffold-agent.ts:28`) распознаёт
       `type: 'face'`. AC: REQ-02. Проверки: unit + e2e migrate-taxonomy/taxonomy-alias
       (test-plan §REQ-02). Зависимости: T-04, T-01.
-- [ ] **T-06: doctor-проверки NFR-02 + memory-sync** — design §Затронутые модули
+- [x] **T-06: doctor-проверки NFR-02 + memory-sync** — design §Затронутые модули
       п.7–8, NFR-02. `memory-doctor.ts`: дубликат канонического лица, face вне
       контракта, битый `based_on`, legacy+face одновременно (по образцу
       `memory-doctor.ts:236`); `memory-sync.ts:37` — сообщение Стюард-зоны указывает на
       `wolf face *`. Формат вывода `! <file>: <issue>` сохраняется. AC: NFR-02.
       Проверки: unit + e2e doctor-hygiene (test-plan §NFR-02). Зависимость: T-05
       (проверка legacy+face осмысленна после миграции).
-- [ ] **T-07: Guard прямого `wolf add`** — design §Затронутые модули п.5, REQ-01 AC3,
+- [x] **T-07: Guard прямого `wolf add`** — design §Затронутые модули п.5, REQ-01 AC3,
       REQ-08 AC3. `src/app/use-cases/add-memory-object.ts`: отказ `--type face` с
       указанием на `wolf face *` (прецедент rule-guard `add-memory-object.ts:80`);
       расширение facet-guard — `facet='proposal'` разрешён на типах с сигнал-словарём
       (сейчас бросает «only valid for type note», `add-memory-object.ts:96`),
       character-фасеты по-прежнему только note. Проверки: unit use-cases + e2e
       add-collision-guard (test-plan §REQ-01, §REQ-08). Зависимость: T-01.
-- [ ] **T-08: wolf-router вариант Б + переработка TTL-теста** — design §Отказов
+- [x] **T-08: wolf-router вариант Б + переработка TTL-теста** — design §Отказов
       («Не переключение посередине задания — вариант Б», CR-2026-10-13-02), NFR-01 AC2,
       REQ-05 AC2 + усиленный AC. `.opencode/plugins/wolf-router.ts` (единственные файлы
       задачи — плагин и его тест): (а) мемоизация инъекции по opencode-сессии
@@ -96,7 +96,7 @@ worktree `.worktrees/<имя-задачи>` (правило `mem_20260827`). Т�
       AC: REQ-05 (AC2, усиленный), NFR-01 AC2.
       Проверки: `npx vitest run tests/unit/wolf-router-plugin.test.ts` (test-plan
       §REQ-05, §NFR-01). Зависимости: нет — параллельно с T-01 (изолированная запись).
-- [ ] **T-09: Предложения: save/deliver + CLI `wolf propose`** — design §Затронутые
+- [x] **T-09: Предложения: save/deliver + CLI `wolf propose`** — design §Затронутые
       модули п.9, таблица (CLI `wolf propose`), REQ-08/REQ-09. Новые use-cases
       `save-proposal.ts` (пиннинг автора env-атрибуцией, контрактные поля обязательны,
       вкл. `applicability_bounds`), `deliver-proposal.ts` (императивный текст не
@@ -105,7 +105,7 @@ worktree `.worktrees/<имя-задачи>` (правило `mem_20260827`). Т�
       `add` — та же валидация контракта (v1, обёртки face/propose — бэклог).
       Проверки: unit use-cases/adapters (test-plan §REQ-08, §REQ-09). Зависимости:
       T-07 (facet-guard).
-- [ ] **T-10: Интеграция + e2e волны + полный гейт** — design ADR-4 (проверки),
+- [x] **T-10: Интеграция + e2e волны + полный гейт** — design ADR-4 (проверки),
       §Отказов. Порядок объединения: T-01→T-02→T-03→T-04→T-05→T-06, параллельные ветви
       T-07→T-09 и T-08 вливаются до T-10. E2E-сценарии волны: «мутация лица в живом
       чате не меняет доставленный текст» (усиленная механика T-08, не допущение);
