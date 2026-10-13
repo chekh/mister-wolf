@@ -90,4 +90,20 @@ F1 add_face / F2 g17_record / F3 proposal_relation → «не применено
 - Полный гейт после интеграции: `npm run check` GREEN — 1365 тестов на main
 - Отклонения исполнителя: same-input=resume (выведено из AC-2, обосновано ревьюером, теперь покрыто тестом); prettier-only правка отчёта фазы; +memory.transitioned на activate/abort (консистентно с объектным журналом)
 
-## T3 ∥ T4 — в исполнении (параллель по плану: разные файлы, раздельные worktree)
+## Промежуточный отчёт 3: T3 + T4 (T4 — после проводки)
+
+### T3: COMPLETE (принято L1, интегрировано b3df701)
+
+- Исполнение: воркер → NEEDS_CONTEXT (2 пункта) → решение L1 (allowlist+face-operation.ts) → DONE → ревью 1: CHANGES_REQUIRED (M1 seed-гейт §3.6, m1-m3) → фикс-раунд 2: DONE.
+- M1 был сквозным: без него популяция 2.16.3 (§3.6) получала seed без поглощения legacy → вечный reason-mismatch. Закрыт (seed+migrate гейт, RED→GREEN).
+- Guards: generic transition/supersede/edit на face отклонены в use-case слое (PROOF перевёрнуты). Аудит-документ: face-change-paths-audit.md (все пути §7 + открытый пробел `wolf update --tags` — вне REQ-04, помечен).
+- F9: supersede_legacy — шаг той же операции (позиция/идемпотентность/head погашен операцией) — по букве design.
+- Healing/resume под MemoryLock; body не пишется (S-35).
+- Evidence: 81/81 точечно, 1388/1388 полный test:run, tsc чист.
+
+### T4: принят ревью (APPROVED) + minor-правки L1; проводка seed-пути на общий механизм — в исполнении
+
+- Ревью T4: 0 major, 3 minor (док-строки) — правки внесены L1 (steward.md авторство/шаг 6 через `wolf relation add outcome_of`, complaint-protocol resolution-формат), guard-тесты зелёные.
+- Проводка: фолбэк supersedeMemoryObject в seed-пути → одна журналируемая операция seed с legacyHeadId (стало возможно после T3/M1) — воркер в ветке T4.
+
+## T5, T6 — впереди; T7 — интеграция + e2e
