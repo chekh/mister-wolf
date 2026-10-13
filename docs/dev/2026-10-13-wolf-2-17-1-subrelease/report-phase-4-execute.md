@@ -140,4 +140,18 @@ F1 add_face / F2 g17_record / F3 proposal_relation → «не применено
 - Живой CLI: acquire (процесс A) → scaffold (процесс B, та же сессия) exit=0 + 4 файла; конкурент — отказ «Claim already held», след не создан; повторный scaffold — «already exists».
 - Полный гейт на main после merge: `npm run check` GREEN — 183 файла / 1442 теста; целевой e2e (scaffold-artifact + artifact-index) 7/7.
 
-## T6, T7 — в исполнении; финальный пакет приёмки — в конце фазы
+## Промежуточный отчёт 5: T6 (после интеграции; продолжение после смены конвейера)
+
+### T6: COMPLETE (принято L1, интегрировано 290914f)
+
+- **base_sha**: 9b157e2 → merge main (d3eeb41) → коммит 8882eb4 в ветке t6.
+- **Контекст**: работа начата погибшим конвейером (11 файлов незакоммичено: два пути на главной/getting-started, read-isolation EN/RU + config, статусы отчёта/roadmap, README-пары). Новый конвейер: merge main в t6, гейты (check 184/1447 GREEN, docs:build GREEN), верификация и доводка воркером.
+- **Доводка воркером (12 правок в 10 файлах)**: mcp.md restart+platform-подключение, troubleshooting npx-fix, delivery/organization/base-set — «--full сеет лица» (проверено чистым запуском); NEEDS_CONTEXT-пунктов по коду нет.
+- **Ревью: APPROVED** (0 critical / 0 major / 3 minor): allowlist соблюдён (19+3 файла), append-only отчёта 2.17 сохранён (только frontmatter + 2 ячейки статусов), чистые запуски Path A/B сверканы дословно (6/19/3/2 = templates/base), maturity-формулировки честны (council DESIGNED, learn removed), NFR-03-список на месте + юнит-тест 5/5.
+- **Minor-исходы**: Minor-3 устранён L1 (сентинелы `wolf brief`/`owner_skill`/`mr-wolf_brief` в doc-тест); Minor-1 (frontmatter `updated:` — гигиенически корректно) и Minor-2 (страница опускает `show` из списка — top-level `wolf show` не существует, страница права; design §6 упоминает `mr-wolf.call`, которого в каталоге нет — расхождение в сторону факта) приняты как есть, зафиксированы для сведения владельца.
+- **Evidence (S-49…S-55)**: docs:build exit 0; Path A `wolf init` — вывод дословно из дока, на диске только `.wolf/` + `AGENTS.md`; Path B `--full --platform opencode` — 6 агентов/19 скиллов/3 команды/2 плагина (= templates/base), opencode.json = обещанию; npx try-out — «base set skipped / platform configs: skipped»; S-54 (нумерация тест-плана) — реальная сцена 2.16.3 (npm pack) → re-init: сет 6/19/3/2, playbook-лица с `superseded legacy howto` (популяция §3.6 работает на живом обновлении); S-55 (нумерация тест-плана) — sync: mutated → `skipped — mutated after render`, unstamped → `conflict`, НЕ «updated».
+- **Санкции L1**: tests/unit/read-isolation-doc.test.ts (тест замороженного списка NFR-03 в docs-зоне задачи); сентинел-ассерты внесены L1 после ревью (Minor-3).
+- **Гейт после merge**: `npm run check` GREEN — 184 файла / 1447 теста на main.
+- Примечание: нумерация S-54/S-55 в TASK-брифе T6 была переставлена относительно тест-плана; воркер корректно следовал тест-плану (отклонение брифа, не исполнения). Расхождение R2-02 test-plan (`.opencode/agent` vs `agents`) — в бэклог тест-плана (не блокер, путь в факте верный).
+
+## T7 — в исполнении; финальный пакет приёмки — в конце фазы
