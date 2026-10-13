@@ -84,7 +84,7 @@ tags: complaint,playbook
    - **steward-mutation** — правило систематически плохое: вложенный
      вызов Стюарда `opencode run --agent steward` (вход = id жалобы);
      после его отчёта `resolved` +
-     `resolution="мутация: <supersede-пара id>"`;
+     `resolution="мутация: <face-id> v<N> через wolf face new"`;
    - **reject** — необоснована (автор ошибся): `rejected` + причина в
      resolution, разъяснение автору в следующем промпте;
    - **obsolete** — правило-цель исчезло (playbook superseded и т.п.):
