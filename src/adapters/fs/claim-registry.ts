@@ -177,7 +177,11 @@ export function acquireClaim(
     // write), не порча: takeover запрещён, короткое ожидание и повтор
     if (raw !== null && raw.trim() === '') {
       if (attempt >= 60) {
-        throw new ClaimHeldError(path, 'unknown', 'claim file exists but stays empty (in-flight write?) — if it persists, remove it manually');
+        throw new ClaimHeldError(
+          path,
+          'unknown',
+          'claim file exists but stays empty (in-flight write?) — if it persists, remove it manually'
+        );
       }
       (deps.wait ?? sleepMs)(10);
       continue;
