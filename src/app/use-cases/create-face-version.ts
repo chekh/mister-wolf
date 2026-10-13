@@ -1,20 +1,18 @@
 // src/app/use-cases/create-face-version.ts
-import { MemoryStore } from '../../ports/memory-store.port.js';
-import { EventLog } from '../../ports/event-log.port.js';
 import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
 import { MemoryLock } from '../../ports/memory-lock.port.js';
+import { MemoryStore } from '../../ports/memory-store.port.js';
+import { EventLog } from '../../ports/event-log.port.js';
 import { RelationLog } from '../../ports/relation-log.port.js';
 import { MemoryTypeDeclaration } from '../../domain/memory-types.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import { MemoryEvent } from '../../domain/schemas/memory-event-schema.js';
 import { resolveCreatedBy, resolveSessionId } from '../../domain/actor.js';
 import { UserFacingError } from '../../domain/errors.js';
-import { addMemoryObject } from './add-memory-object.js';
-import { supersedeMemoryObject } from './supersede-memory-object.js';
-import { createMutationRecord, missingG17Field, type MutationG17Input } from './create-mutation-record.js';
-import { recordRelation } from './record-relation.js';
+import { missingG17Field, type MutationG17Input } from './create-mutation-record.js';
+import { resolveBase, runFaceMutation, type FaceFaultInjector } from './face-operation.js';
 
 /** Волна 2.17 REQ-03/REQ-04 (design §«Механика версий», §Guard): единая
  * версионирующая механика лиц — guard, номер версии, supersede head, журнал;
@@ -24,19 +22,27 @@ import { recordRelation } from './record-relation.js';
  * 'steward') атомарно создаёт G17-запись + relation 'mutates' → версия.
  * T-05: 'migrate'/'seed' — служебные пути (вход migrateFaces/посева base-set,
  * design §Guard «посев идёт внутренним путём с initiator: 'seed'»): guard
- * полномочий не применяется, содержание задаёт вызывающий. */
+ * полномочий не применяется, содержание задаёт вызывающий.
+ *
+ * 2.17.1 REQ-03 (R04, design §3.3/ADR-3): сама цепочка — журналируемая
+ * операция в face-operation.ts (add_face(candidate) → G17 → relations →
+ * activate(commit) → supersede_prev → announce → op_committed) с resume
+ * по opId, авто-resume и abort; этот файл — валидация входа и guard
+ * (guard — до op_started, под lock). */
 export type FaceCommand = 'new' | 'restore' | 'breakglass' | 'migrate' | 'seed';
 export type FaceInitiator = 'steward' | 'owner' | 'breakglass' | 'migration' | 'seed';
 
 /** Поля типа face поверх MemoryObject (декларация — memory-types.ts, T-01). */
 export interface FaceFields {
   owner_skill: string;
-  /** '1','2',… — номер назначает эта команда под lock. */
+  /** '1','2',… — номер назначает операция add_face под lock. */
   version: string;
   /** id версии-основы; отсутствует у первой версии (optional, не null). */
   based_on?: string;
   reason: string;
   initiator: FaceInitiator;
+  /** 2.17.1 REQ-03 (§3.3): привязка к операции — правило усыновления candidate. */
+  op_id?: string;
 }
 
 export type FaceObject = MemoryObject & FaceFields;
@@ -54,6 +60,9 @@ export interface CreateFaceVersionDeps {
    * Параметра-актёра у API нет: подмена инициатора (--created-by-подобная)
    * исключена структурно (design §Guard, F-04). */
   env?: NodeJS.ProcessEnv;
+  /** Тестовый seam (test-plan REQ-03): fault(point) бросается после завершения
+   * шага операции; прод-код не задаёт. */
+  fault?: FaceFaultInjector;
 }
 
 export interface CreateFaceVersionInput {
@@ -79,6 +88,9 @@ export interface CreateFaceVersionInput {
    * версию — записывает relation ('proposes', proposal, faceNew). Связь только
    * фиксируется: применение предложения остаётся решением Стюарда (REQ-09). */
   fromProposal?: string;
+  /** 2.17.1 REQ-03 (§3.3): идентификатор операции — resume/идемпотентный
+   * повтор; при отсутствии генерируется faceop-<ts>-<rand4> (в результате). */
+  opId?: string;
 }
 
 export interface CreateFaceVersionResult {
@@ -88,45 +100,8 @@ export interface CreateFaceVersionResult {
   /** G17-запись мутации (REQ-06): id note(history); null, если мутация не
    * Стюардом (restore/breakglass). */
   mutationRecordId: string | null;
-}
-
-const INITIATOR_BY_COMMAND: Record<FaceCommand, FaceInitiator> = {
-  new: 'steward',
-  restore: 'owner',
-  breakglass: 'breakglass',
-  migrate: 'migration',
-  seed: 'seed',
-};
-
-function asFace(obj: MemoryObject): FaceObject {
-  return obj as FaceObject;
-}
-
-async function facesOfOwner(store: MemoryStore, ownerSkill: string): Promise<FaceObject[]> {
-  return (await store.list({ type: 'face' })).filter((o) => asFace(o).owner_skill === ownerSkill).map(asFace);
-}
-
-/** Активная (head) версия владельца; null — владельца ещё нет. Дубликаты активных
- * ловит doctor (NFR-02); здесь детерминированно берётся старшая версия. */
-async function activeFace(store: MemoryStore, ownerSkill: string): Promise<FaceObject | null> {
-  const active = (await facesOfOwner(store, ownerSkill)).filter((f) => f.status === 'active');
-  if (active.length === 0) return null;
-  return active.sort((a, b) => Number(b.version) - Number(a.version))[0]!;
-}
-
-/** Резолв ссылки на основу: mem_-id напрямую, иначе номер версии ('v2'/'2'). */
-async function resolveBase(store: MemoryStore, ownerSkill: string, ref: string): Promise<FaceObject> {
-  if (ref.startsWith('mem_')) {
-    const obj = await store.get(ref);
-    if (!obj || obj.type !== 'face' || asFace(obj).owner_skill !== ownerSkill) {
-      throw new UserFacingError(`Face version not found for ${ownerSkill}: ${ref}`);
-    }
-    return asFace(obj);
-  }
-  const n = ref.replace(/^v/, '');
-  const found = (await facesOfOwner(store, ownerSkill)).filter((f) => f.version === n);
-  if (found.length === 0) throw new UserFacingError(`Face version not found for ${ownerSkill}: ${ref}`);
-  return found.sort((a, b) => Number(b.version) - Number(a.version))[0]!;
+  /** 2.17.1 REQ-03: id журналируемой операции (печатают CLI/MCP для recover). */
+  opId: string;
 }
 
 /** Guard (design §Guard): new — строго agent:steward; restore/breakglass — user:*;
@@ -229,125 +204,15 @@ export async function createFaceVersion(
       }
     }
 
-    // Номер версии и head — строго под lock: параллельные вызовы сериализуются.
-    const cur = await activeFace(deps.store, input.ownerSkill);
-    const base = input.from ? await resolveBase(deps.store, input.ownerSkill, input.from) : cur;
-    const nextVersion =
-      (await facesOfOwner(deps.store, input.ownerSkill)).reduce((m, f) => Math.max(m, Number(f.version) || 0), 0) + 1;
-
-    const restoreLike = input.command === 'restore' || input.command === 'breakglass';
-    const source = restoreLike ? base : null;
-    const title = restoreLike ? source!.title : (input.title ?? `Face: ${input.ownerSkill}`);
-    const body = restoreLike ? source!.body : input.body!;
-    const tags = restoreLike ? source!.tags : (input.tags ?? []);
-
-    const extra: Record<string, unknown> = {
-      owner_skill: input.ownerSkill,
-      version: String(nextVersion),
-      reason: input.reason,
-      initiator: INITIATOR_BY_COMMAND[input.command],
-    };
-    if (base) extra.based_on = base.id;
-
-    // lock не передаём: мы уже внутри deps.lock.withLock (FsMemoryLock не реентерабелен)
-    const { object } = await addMemoryObject(
-      {
-        store: deps.store,
-        log: deps.log,
-        clock: deps.clock,
-        idGen: deps.idGen,
-        index: deps.index,
-        declarations: deps.declarations,
-      },
-      { type: 'face', title, body, tags, createdBy: actor, extra, internalFacePath: true }
-    );
-    const face = asFace(object);
-
-    let supersededId: string | null = null;
-    if (cur && cur.id !== face.id) {
-      await supersedeMemoryObject(
-        { store: deps.store, log: deps.log, clock: deps.clock, idGen: deps.idGen, index: deps.index },
-        cur.id,
-        face.id
-      );
-      supersededId = cur.id;
+    // Основа (restore/breakglass) проверяется до op_started: битая ссылка не
+    // оставляет незавершённую операцию в журнале (fail fast).
+    if (input.from) {
+      await resolveBase(deps.store, input.ownerSkill, input.from);
     }
 
-    // REQ-06 (design §«Механика версий»): initiator 'steward' → атомарно
-    // G17-запись note(history) + relation 'mutates' → версия; та же
-    // lock-транзакция (внутренние вызовы без lock).
-    let mutationRecordId: string | null = null;
-    if (INITIATOR_BY_COMMAND[input.command] === 'steward') {
-      const note = await createMutationRecord(
-        {
-          store: deps.store,
-          log: deps.log,
-          clock: deps.clock,
-          idGen: deps.idGen,
-          index: deps.index,
-          relations: deps.relations,
-        },
-        {
-          ownerSkill: input.ownerSkill,
-          version: face.version,
-          faceId: face.id,
-          createdBy: actor,
-          reason: g17.reason!,
-          minimalChange: g17.minimalChange!,
-          boundaries: g17.boundaries!,
-          exampleHelps: g17.exampleHelps!,
-          exampleKeep: g17.exampleKeep!,
-          verification: g17.verification!,
-          rollback: g17.rollback!,
-        }
-      );
-      mutationRecordId = note.id;
-    }
-
-    // T-09 (design §«Механика версий», строка 88): --from-proposal → relation
-    // ('proposes', proposal, faceNew); только связь, не применение (REQ-09)
-    if (input.fromProposal !== undefined) {
-      await recordRelation(
-        { relations: deps.relations, idGen: deps.idGen },
-        deps.clock.now(),
-        input.fromProposal,
-        'proposes',
-        face.id,
-        'system'
-      );
-    }
-
-    // Design §События журнала: versioned — на КАЖДУЮ версию (включая breakglass,
-    // REQ-07 «результат = новая версия»); breakglass дополнительно журналируется
-    // own-событием в составе самой операции (REQ-07 AC2). Порядок: versioned, затем breakglass.
-    const now = deps.clock.now();
-    const versionPayload = {
-      owner_skill: input.ownerSkill,
-      from: supersededId,
-      new: face.id,
-      initiator: INITIATOR_BY_COMMAND[input.command],
-      reason: input.reason,
-    };
-    const versioned: MemoryEvent = {
-      id: deps.idGen.generateEventId(now),
-      type: 'memory.face.versioned',
-      timestamp: now.toISOString(),
-      actor,
-      payload: versionPayload,
-    };
-    await deps.log.append(versioned);
-    if (input.command === 'breakglass') {
-      const breakglass: MemoryEvent = {
-        id: deps.idGen.generateEventId(now),
-        type: 'memory.face.breakglass',
-        timestamp: now.toISOString(),
-        actor,
-        payload: versionPayload,
-      };
-      await deps.log.append(breakglass);
-    }
-
-    return { face, supersededId, mutationRecordId };
+    // 2.17.1 REQ-03: цепочка шагов — журналируемая операция (face-operation.ts);
+    // мы уже под lock, engine его не пере-берёт.
+    return runFaceMutation(deps, { input, actor });
   };
   return deps.lock ? deps.lock.withLock(run) : run();
 }

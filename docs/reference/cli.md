@@ -605,6 +605,9 @@ Commands:
                                       (owner; linear history, REQ-05)
   breakglass [options] <owner_skill>  Emergency rollback by the owner (steward
                                       not involved; logged, REQ-07)
+  recover [options] <op_id>           Resume an interrupted face operation by
+                                      op id (--abort: archive the candidate,
+                                      pre-activation only)
   migrate [options]                   Migrate legacy playbook notes to faces
                                       (idempotent, REQ-02)
   list [options]                      List faces: owner_skill, current version,
@@ -633,6 +636,8 @@ Options:
   --title <title>       Face title (default: "Face: <owner_skill>")
   --tags <tags>         Comma-separated tags
   --from-proposal <id>  Link the new version to a proposal (relation: proposes)
+  --op-id <id>          Operation id: resume an interrupted mutation (default:
+                        generated faceop-<ts>-<rand4>)
   --minimal-change <t>  G17: what exactly changes (REQ-06)
   --boundaries <t>      G17: what does NOT change (essence/frame)
   --example-helps <t>   G17: example that benefits from the change
@@ -672,6 +677,22 @@ Options:
   --from <id|vN>  Base version: memory id or version number (v2|2)
   --reason <t>    Why this version exists (REQ-04)
   -h, --help      display help for command
+```
+
+#### wolf face recover
+
+```text
+Usage: wolf face recover [options] <op_id>
+
+Resume an interrupted face operation by op id (--abort: archive the candidate,
+pre-activation only)
+
+Arguments:
+  op_id       Operation id (printed by face new; also wolf doctor)
+
+Options:
+  --abort     Abort the operation instead of resuming (only before activation)
+  -h, --help  display help for command
 ```
 
 #### wolf face migrate

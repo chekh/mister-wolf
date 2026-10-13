@@ -92,7 +92,8 @@ describe('CORE_TAXONOMY (волна 2.13 §5.1)', () => {
 describe('face: декларация core-типа (волна 2.17 REQ-01, design §Контракты)', () => {
   it('контракт лица дословно по design', () => {
     const d = getDeclaration('face');
-    expect(d.lifecycle).toEqual(['active', 'superseded', 'archived']); // T18: существующие статусы
+    // 2.17.1 REQ-03 (ADR-3): +candidate — staging до activation (точка commit)
+    expect(d.lifecycle).toEqual(['active', 'superseded', 'archived', 'candidate']);
     expect(d.subdirThread).toBeNull();
     expect(d.subdirShared).toBe('faces');
     expect(d.fields).toEqual({
@@ -101,6 +102,8 @@ describe('face: декларация core-типа (волна 2.17 REQ-01, desi
       based_on: { kind: 'string', optional: true },
       reason: { kind: 'string', required: true, min: 1 },
       initiator: { kind: 'enum', values: ['steward', 'owner', 'breakglass', 'migration', 'seed'] },
+      // 2.17.1 REQ-03 (§3.3): привязка объект↔операция (правило усыновления)
+      op_id: { kind: 'string', optional: true },
     });
   });
 

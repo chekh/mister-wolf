@@ -205,8 +205,9 @@ const CORE_TAXONOMY_DECLS = [
     // записей-версий через существующий supersede (ADR-1). Создание — только
     // версионирующим путём (guard в use-case, T-02/T-07).
     name: 'face',
-    // T18: только существующие статусы
-    lifecycle: ['active', 'superseded', 'archived'],
+    // T18: только существующие статусы; 2.17.1 REQ-03 (ADR-3): +candidate —
+    // staging-статус до activation (точка commit операции, design §3.3)
+    lifecycle: ['active', 'superseded', 'archived', 'candidate'],
     subdirThread: null,
     subdirShared: 'faces',
     fields: {
@@ -219,6 +220,9 @@ const CORE_TAXONOMY_DECLS = [
       reason: { kind: 'string', required: true, min: 1 },
       // ADR-6: seed — посев первых версий (wolf init)
       initiator: { kind: 'enum', values: ['steward', 'owner', 'breakglass', 'migration', 'seed'] },
+      // 2.17.1 REQ-03 (design §3.3): привязка объект↔операция независимо от
+      // журнала — правило усыновления candidate по совпадающему op_id
+      op_id: { kind: 'string', optional: true },
     },
   },
 ] as const;
