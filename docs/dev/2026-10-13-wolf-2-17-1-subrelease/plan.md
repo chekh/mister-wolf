@@ -47,7 +47,7 @@ T7 REQ-06 (R08) + интеграция ← T1–T6 (полный гейт + e2e)
   - Ожидаемый RESULT: DONE + evidence (запуски сценариев S-10…S-18).
 - [ ] **T2 — REQ-03 (R04): восстанавливаемый commit мутации лица** — design §3.3, ADR-3; базлайн `src/app/use-cases/create-face-version.ts:193–353`, `src/domain/schemas/memory-event-schema.ts`, `src/app/use-cases/doctor.ts`
   - Цель: операция лица (staging + activation): события `memory.face.op_*`, цепочка шагов §3.3 под журналом, resume по `--op-id` (идемпотентные шаги), `wolf face recover <opId> --abort` (только до activation), `op_id` в extra face-объекта + правило усыновления, авто-resume, doctor «неполный след мутации», candidate скрыт от доставки.
-  - AC: REQ-03 AC-1…AC-5. Проверки: матрица S-20…S-30.
+  - AC: REQ-03 AC-1…AC-5 + NFR-02 (полный след читаем после каждого восстановления — матрица F1–F9, S-30; вклады T5/S-42 и T6/S-52 — карта покрытия test-plan). Проверки: сценарии S-20…S-30.
   - base_sha: HEAD main после вливания T1 (не ранее `8ca53af`).
   - worktree: `.worktrees/2-17-1-t2-req03-face-op`
   - allowlist: новый `src/app/use-cases/face-operation.ts`, `src/domain/schemas/memory-event-schema.ts`, `src/app/use-cases/create-face-version.ts`, `src/app/use-cases/doctor.ts` + `src/adapters/cli/commands/memory-doctor.ts` (по факту), `src/adapters/cli/commands/face.ts`, новые тесты (`tests/unit`, `tests/integration`).
@@ -82,15 +82,15 @@ T7 REQ-06 (R08) + интеграция ← T1–T6 (полный гейт + e2e)
   - AC: REQ-07 AC-1…AC-7. Проверки: S-49…S-55.
   - base_sha: HEAD main после вливания T4 (примеры сверяются с фактическим init после T4).
   - worktree: `.worktrees/2-17-1-t6-req07-docs`
-  - allowlist: `README.md`, `README.ru.md`, `docs/site/**`, `docs/**` (отчёт 2.17, roadmap; НЕ трогает `face-change-paths-audit.md` — файл задачи T3), код `src/**` НЕ трогать (расхождение кода → эскалация L0, не правка молча).
+  - allowlist: `README.md`, `README.ru.md`, `docs/site/**`, `docs/dev/2026-10-12-wave-2-17-faces/report-wave-2-17-execute.md`, `docs/dev/roadmap/wave-2.17.md` (явные цели T6, без общих масок); каталог артефактов подрелиза `docs/dev/2026-10-13-wolf-2-17-1-subrelease/**` НЕ трогать (зона T7/L1; в т.ч. `face-change-paths-audit.md` — файл задачи T3); прочие пути `docs/**` не входят; код `src/**` НЕ трогать (расхождение кода → эскалация L0, не правка молча).
   - Проверки: `npm run docs:build` + сквозная сверка примеров S-51 + `npm run check`.
   - Ожидаемый RESULT: DONE + evidence (чистые запуски, build-лог).
 - [ ] **T7 — REQ-06 (R08): интеграционные проверки + 2 сквозных сценария + интеграция** — design ADR-2/ADR-3/ADR-4/ADR-5/ADR-6; требования REQ-06 AC
-  - Цель: (а) интеграционные тесты на реальном хранилище/CLI для каждого изменённого пути: face-мутация (T2/T4), scope-доставка (T1), claim (T5), миграция (T3), установка (T4); (б) e2e сценарий 1 «Стюард-мутация с G17 → новое задание получает новую версию, активное — прежнюю» и сценарий 2 «доставка между рабочими копиями (своё/чужое/promote)» с сохранёнными tool traces в папке артефактов (revision + команды; критерии засчитывания — test-plan S-45/S-46); (в) интеграция: вливание остатков T3/T4/T5/T6 в main, полный гейт `npm run check` + e2e-набор, разрешение конфликтов по правилу раздела «Порядок», фиксация [x] в плане.
+  - Цель: (а) интеграционные тесты на реальном хранилище/CLI для каждого изменённого пути: face-мутация (T2/T4), scope-доставка (T1), claim (T5), миграция (T3), установка (T4); (б) e2e сценарий 1 «Стюард-мутация с G17 → новое задание получает новую версию, активное — прежнюю» и сценарий 2 «доставка между рабочими копиями (своё/чужое/promote)» с сохранёнными tool traces в папке артефактов (revision + команды; критерии засчитывания — test-plan S-45/S-46); (в) интеграция: вливание остатков T3/T4/T5/T6 в main, полный гейт `npm run check` + e2e-набор, разрешение конфликтов по правилу раздела «Порядок». Write-зоны: исполнитель T7 пишет только traces/отчёт фазы в `artifacts/`; `[x]` в общем плане после приёмки ставит L1 (раздел «Отчётность и чекбоксы»), сам план меняет только L1.
   - AC: REQ-06 AC-1…AC-4; пакет приёмки: полный `npm run check` + e2e.
   - base_sha: HEAD main после вливания T1–T6.
   - worktree: `.worktrees/2-17-1-t7-req06-e2e` (сценарии ведут traces сюда же: `artifacts/` в папке задачи).
-  - allowlist: тесты (`tests/integration`, `tests/e2e`), e2e-скрипты (по конвенции репозитория), `docs/dev/2026-10-13-wolf-2-17-1-subrelease/**` (traces/отчёт фазы), правки интеграции в файлах задач только по итогам проверок.
+  - allowlist: тесты (`tests/integration`, `tests/e2e`), e2e-скрипты (по конвенции репозитория), `docs/dev/2026-10-13-wolf-2-17-1-subrelease/artifacts/**` и отчёт фазы T7 (только эти пути каталога подрелиза; `plan.md` и чекбоксы — зона L1), правки интеграции в файлах задач только по итогам проверок.
   - Проверки: `npx vitest run <интеграционные>` + e2e сценарии 1–2 + `npm run check` (полный, финальный).
   - Ожидаемый RESULT: DONE + evidence (traces, логи, SHA всех коммитов).
 
