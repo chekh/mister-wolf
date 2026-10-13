@@ -14,7 +14,8 @@ const MEMORY_ID_RE = /^mem_\d{8}[a-z0-9_]*_[0-9a-f]{6}$/;
 export async function supersedeMemoryObject(
   deps: { store: MemoryStore; log: EventLog; clock: Clock; idGen: IdGenerator; index?: SearchIndex; lock?: MemoryLock },
   oldId: string,
-  newId: string
+  newId: string,
+  opts?: { internalFacePath?: boolean }
 ): Promise<void> {
   const run = async (): Promise<void> => {
     if (oldId === newId) {
@@ -31,6 +32,15 @@ export async function supersedeMemoryObject(
     const now = deps.clock.now();
     const oldObject = await deps.store.get(oldId);
     if (!oldObject) throw new UserFacingError(`Memory object not found: ${oldId}`);
+    // 2.17.1 REQ-04 (R05, design §7): generic supersede на face запрещён —
+    // лицо гасится только шагом face-операции §3.3; внутренний вызов
+    // (supersede_prev/supersede_legacy) помечен internalFacePath — прецедент
+    // add-memory-object.ts. Legacy-head миграции есть note — идёт мимо guard.
+    if (oldObject.type === 'face' && opts?.internalFacePath !== true) {
+      throw new UserFacingError(
+        'type "face" cannot be superseded generically: faces are versioned, use "wolf face" commands (new | restore | breakglass | recover)'
+      );
+    }
     const newObject = await deps.store.get(newId);
     if (!newObject) throw new UserFacingError(`Replacement memory object not found: ${newId}`);
     // T6 (спека 2.16 §10): supersede не создаёт цикл в цепочке superseded_by

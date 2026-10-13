@@ -91,6 +91,11 @@ export interface CreateFaceVersionInput {
   /** 2.17.1 REQ-03 (§3.3): идентификатор операции — resume/идемпотентный
    * повтор; при отсутствии генерируется faceop-<ts>-<rand4> (в результате). */
   opId?: string;
+  /** 2.17.1 REQ-04 (design §3.4, F9): id активного legacy-head волны 2.17 —
+   * добавляет шаг supersede_legacy операции (между supersede_prev и announce).
+   * Служебный вход migrateFaces и посева 2.16.3 (§3.6); resume берёт значение
+   * из op_started input. */
+  legacyHeadId?: string;
 }
 
 export interface CreateFaceVersionResult {
