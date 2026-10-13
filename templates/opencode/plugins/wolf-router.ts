@@ -59,7 +59,10 @@ const FALLBACK_PLAYBOOK = `# Универсальный playbook (fallback)
 // [ \t] вместо \s: \s съедает переводы строк и вытаскивает id с чужой строки.
 const AGENT_ID_RE = /^agent-id:[ \t]*([\w-]+)[ \t]*$/m;
 // Спека A2: playbook — canonical-память, Стюард мутирует редко → TTL 5 минут.
-// Негативный кэш (null) живёт тем же TTL — повторный miss не спавнит CLI.
+// Вариант Б: барьер свежести — search живой раз на новую сессию (мемоизация
+// в deliverPlaybook); TTL-кэш экономит только get-спавн при совпадении head,
+// не search. Негативная запись (null) в гвард hit?.value не попадает —
+// повторный miss новой сессии снова спавнит search.
 const CACHE_TTL_MS = 300_000;
 
 // agent-id последней рамки, пропущенной через system.transform (для skill-метрики B3)

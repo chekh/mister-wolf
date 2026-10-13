@@ -312,8 +312,10 @@ describe('P106: TTL 5 мин / ранний стоп / негативный кэ
     expect(getCalls()).toHaveLength(1);
   });
 
-  // негативный кэш: null кэшируется тем же TTL — повторный miss без спавнов
-  it('negative cache: miss → только search (0 get); повтор → ноль новых спавнов', async () => {
+  // вариант Б: miss канона → fallback (0 get — только search); повторный вызов
+  // в той же сессии — ноль спавнов через сессийную мемоизацию, не через
+  // TTL-кэш: search живой раз на новую сессию, null-запись не консультируется
+  it('miss → только search (0 get); повтор в той же сессии — ноль спавнов (мемоизация сессии)', async () => {
     execFileMock.mockClear();
     const plugin = await WolfPlaybookPlugin.server();
     const transform = plugin['experimental.chat.system.transform'];
@@ -326,7 +328,7 @@ describe('P106: TTL 5 мин / ранний стоп / негативный кэ
 
     const out2 = makeSystemOutput('agent-id: neg-cache-p106\n\nНеизвестный агент.');
     await transform({}, out2);
-    expect(execFileMock.mock.calls.length).toBe(afterFirst); // null из кэша, спавнов нет
+    expect(execFileMock.mock.calls.length).toBe(afterFirst); // мемоизация сессии, спавнов нет
     expect(playbookParts(out2)).toHaveLength(1);
   });
 
