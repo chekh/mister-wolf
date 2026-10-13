@@ -1,6 +1,7 @@
 import { Command, Argument } from 'commander';
 import { scaffoldFrame, SCAFFOLD_KINDS, type ScaffoldKind } from '../../../app/use-cases/scaffold-agent.js';
 import { scaffoldArtifact } from '../../../app/use-cases/scaffold-artifact.js';
+import { makeClaimGuard } from '../../../app/use-cases/claim-artifact.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { resolveCreatedBy, resolveSessionId } from '../../../domain/actor.js';
 import { UserFacingError } from '../../../domain/errors.js';
@@ -31,7 +32,7 @@ export function memoryScaffoldCommand(): Command {
           }
           const { clock, fs } = createCliContainer(process.cwd());
           const res = await scaffoldArtifact(
-            { clock, fs, baseDir: process.cwd() },
+            { clock, fs, baseDir: process.cwd(), claims: makeClaimGuard({ baseDir: process.cwd() }) },
             { slug: name, fix: options.fix === true }
           );
           for (const f of res.files) console.log(`Created artifact: ${f}`);

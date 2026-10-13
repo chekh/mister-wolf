@@ -29,7 +29,13 @@ function deps(base = '/proj') {
   const m = memFs();
   return {
     ...m,
-    deps: { clock: { now: () => new Date('2026-10-08T10:00:00Z') }, fs: m.fs, baseDir: base },
+    // 2.17.1 REQ-05: guard claim отключён — юнит тестирует шаблоны, guard — в claim-workflow
+    deps: {
+      clock: { now: () => new Date('2026-10-08T10:00:00Z') },
+      fs: m.fs,
+      baseDir: base,
+      claims: { requireClaim: () => {} },
+    },
   };
 }
 
