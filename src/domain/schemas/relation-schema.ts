@@ -29,6 +29,10 @@ export const RELATION_PREDICATES = [
   // инверсия — aggregated_in от исходника к агрегату)
   'aggregates',
   'aggregated_in',
+  // 2.17 REQ-06 (design §«Запись мутации Стюарда»): G17-запись -mutates->
+  // версия лица (пара, прецедент complain/complained_by)
+  'mutates',
+  'mutated_by',
 ] as const;
 
 export const RelationSchema = z.object({

@@ -5,6 +5,7 @@ import { Clock } from '../../ports/clock.port.js';
 import { IdGenerator } from '../../ports/id-generator.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
 import { MemoryLock } from '../../ports/memory-lock.port.js';
+import { RelationLog } from '../../ports/relation-log.port.js';
 import { MemoryTypeDeclaration } from '../../domain/memory-types.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import { MemoryEvent } from '../../domain/schemas/memory-event-schema.js';
@@ -12,11 +13,14 @@ import { resolveCreatedBy, resolveSessionId } from '../../domain/actor.js';
 import { UserFacingError } from '../../domain/errors.js';
 import { addMemoryObject } from './add-memory-object.js';
 import { supersedeMemoryObject } from './supersede-memory-object.js';
+import { createMutationRecord, missingG17Field, type MutationG17Input } from './create-mutation-record.js';
 
 /** Волна 2.17 REQ-03/REQ-04 (design §«Механика версий», §Guard): единая
  * версионирующая механика лиц — guard, номер версии, supersede head, журнал;
  * всё под внешним MemoryLock (прецедент tool-librarian.ts:167: вложенные
- * addMemoryObject/supersedeMemoryObject идут с lock: undefined). */
+ * addMemoryObject/supersedeMemoryObject идут с lock: undefined).
+ * REQ-06 (design §«Запись мутации Стюарда»): мутация Стюарда (initiator
+ * 'steward') атомарно создаёт G17-запись + relation 'mutates' → версия. */
 export type FaceCommand = 'new' | 'restore' | 'breakglass';
 export type FaceInitiator = 'steward' | 'owner' | 'breakglass' | 'migration' | 'seed';
 
@@ -40,6 +44,7 @@ export interface CreateFaceVersionDeps {
   idGen: IdGenerator;
   index?: SearchIndex;
   lock?: MemoryLock;
+  relations?: RelationLog;
   declarations?: readonly MemoryTypeDeclaration[];
   /** Атрибуция только из env (WOLF_ACTOR / WOLF_SESSION), по умолчанию process.env.
    * Параметра-актёра у API нет: подмена инициатора (--created-by-подобная)
@@ -58,12 +63,23 @@ export interface CreateFaceVersionInput {
   tags?: string[];
   /** Основа: id записи или номер версии ('v2'/'2'). Обязателен для restore/breakglass. */
   from?: string;
+  /** REQ-06 (G17): обязательны для command='new' (мутация Стюарда); для
+   * restore/breakglass шаблон не применяется (ADR-2: только мутации Стюарда). */
+  minimalChange?: string;
+  boundaries?: string;
+  exampleHelps?: string;
+  exampleKeep?: string;
+  verification?: string;
+  rollback?: string;
 }
 
 export interface CreateFaceVersionResult {
   face: FaceObject;
   /** Прежняя активная версия, superseded этой операцией; null у первой версии. */
   supersededId: string | null;
+  /** G17-запись мутации (REQ-06): id note(history); null, если мутация не
+   * Стюардом (restore/breakglass). */
+  mutationRecordId: string | null;
 }
 
 const INITIATOR_BY_COMMAND: Record<FaceCommand, FaceInitiator> = {
@@ -169,6 +185,26 @@ export async function createFaceVersion(
       throw new UserFacingError(deny);
     }
 
+    // REQ-06 AC2: шаблон G17 неопционален для мутации Стюарда — проверка ДО
+    // любых записей: без обязательных полей операция целиком не выполняется.
+    const g17: Partial<MutationG17Input> = {
+      reason: input.reason,
+      minimalChange: input.minimalChange,
+      boundaries: input.boundaries,
+      exampleHelps: input.exampleHelps,
+      exampleKeep: input.exampleKeep,
+      verification: input.verification,
+      rollback: input.rollback,
+    };
+    if (input.command === 'new') {
+      const missing = missingG17Field(g17);
+      if (missing !== null) {
+        throw new UserFacingError(
+          `Face mutation requires G17 field "${missing}" (REQ-06: the template is not optional)`
+        );
+      }
+    }
+
     // Номер версии и head — строго под lock: параллельные вызовы сериализуются.
     const cur = await activeFace(deps.store, input.ownerSkill);
     const base = input.from ? await resolveBase(deps.store, input.ownerSkill, input.from) : cur;
@@ -213,6 +249,30 @@ export async function createFaceVersion(
       supersededId = cur.id;
     }
 
+    // REQ-06 (design §«Механика версий»): initiator 'steward' → атомарно
+    // G17-запись note(history) + relation 'mutates' → версия; та же
+    // lock-транзакция (внутренние вызовы без lock).
+    let mutationRecordId: string | null = null;
+    if (INITIATOR_BY_COMMAND[input.command] === 'steward') {
+      const note = await createMutationRecord(
+        { store: deps.store, log: deps.log, clock: deps.clock, idGen: deps.idGen, index: deps.index, relations: deps.relations },
+        {
+          ownerSkill: input.ownerSkill,
+          version: face.version,
+          faceId: face.id,
+          createdBy: actor,
+          reason: g17.reason!,
+          minimalChange: g17.minimalChange!,
+          boundaries: g17.boundaries!,
+          exampleHelps: g17.exampleHelps!,
+          exampleKeep: g17.exampleKeep!,
+          verification: g17.verification!,
+          rollback: g17.rollback!,
+        }
+      );
+      mutationRecordId = note.id;
+    }
+
     // Design §События журнала: versioned — на КАЖДУЮ версию (включая breakglass,
     // REQ-07 «результат = новая версия»); breakglass дополнительно журналируется
     // own-событием в составе самой операции (REQ-07 AC2). Порядок: versioned, затем breakglass.
@@ -243,7 +303,7 @@ export async function createFaceVersion(
       await deps.log.append(breakglass);
     }
 
-    return { face, supersededId };
+    return { face, supersededId, mutationRecordId };
   };
   return deps.lock ? deps.lock.withLock(run) : run();
 }

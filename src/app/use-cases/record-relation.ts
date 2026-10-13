@@ -28,6 +28,9 @@ const INVERSE: Record<RelationPredicate, RelationPredicate> = {
   outcome_of: 'outcome',
   aggregates: 'aggregated_in',
   aggregated_in: 'aggregates',
+  // 2.17 REQ-06: G17-запись мутации → версия лица
+  mutates: 'mutated_by',
+  mutated_by: 'mutates',
 };
 
 export async function recordRelation(

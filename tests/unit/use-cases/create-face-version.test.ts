@@ -19,6 +19,17 @@ const OWNER_CLI = { WOLF_ACTOR: 'user:owner', WOLF_SESSION: 'cli-unit' } as Node
 const OWNER_IN_AGENT_SESSION = { WOLF_ACTOR: 'user:owner', WOLF_SESSION: 'opc-1234' } as NodeJS.ProcessEnv;
 const AGENT_WORKER = { WOLF_ACTOR: 'agent:worker', WOLF_SESSION: 'opc-1234' } as NodeJS.ProcessEnv;
 
+/** T-03: G17-шаблон обязателен для мутаций Стюарда (REQ-06 AC2) — fixture
+ * для steward-'new' вызовов; restore/breakglass его не требуют. */
+const G17 = {
+  minimalChange: 'only triage wording',
+  boundaries: 'essence, frame and T18 statuses are out of the mutation',
+  exampleHelps: 'agent sorts docs faster',
+  exampleKeep: 'agent still never edits rules',
+  verification: 'wolf face history shows the new version',
+  rollback: 'wolf face restore <owner> --from <prev>',
+};
+
 describe('createFaceVersion (T-02: REQ-03 guard, REQ-04 версии)', () => {
   let dir: string;
   let store: MarkdownMemoryStore;
@@ -55,6 +66,7 @@ describe('createFaceVersion (T-02: REQ-03 guard, REQ-04 версии)', () => {
       reason: 'initial face',
       body: '# Demo playbook',
       title: 'Demo face',
+      ...G17,
     });
 
     expect(result.face.type).toBe('face');
@@ -86,12 +98,14 @@ describe('createFaceVersion (T-02: REQ-03 guard, REQ-04 версии)', () => {
       ownerSkill: 'skill:demo',
       reason: 'initial face',
       body: 'body-v1',
+      ...G17,
     });
     const v2 = await createFaceVersion(deps(STEWARD_CLI), {
       command: 'new',
       ownerSkill: 'skill:demo',
       reason: 'clarify triage',
       body: 'body-v2',
+      ...G17,
     });
 
     expect(v2.face.version).toBe('2');
@@ -156,12 +170,14 @@ describe('createFaceVersion (T-02: REQ-03 guard, REQ-04 версии)', () => {
       reason: 'initial face',
       body: 'body-v1',
       title: 'Demo face',
+      ...G17,
     });
     const v2 = await createFaceVersion(deps(STEWARD_CLI), {
       command: 'new',
       ownerSkill: 'skill:demo',
       reason: 'clarify',
       body: 'body-v2',
+      ...G17,
     });
 
     const restored = await createFaceVersion(deps(OWNER_CLI), {
@@ -192,6 +208,7 @@ describe('createFaceVersion (T-02: REQ-03 guard, REQ-04 версии)', () => {
       ownerSkill: 'skill:demo',
       reason: 'initial face',
       body: 'b',
+      ...G17,
     });
     await expect(
       createFaceVersion(deps(STEWARD_CLI), {
@@ -212,6 +229,7 @@ describe('createFaceVersion (T-02: REQ-03 guard, REQ-04 версии)', () => {
       ownerSkill: 'skill:demo',
       reason: 'initial face',
       body: 'b',
+      ...G17,
     });
     await expect(
       createFaceVersion(deps(OWNER_IN_AGENT_SESSION), {
@@ -236,12 +254,14 @@ describe('createFaceVersion (T-02: REQ-03 guard, REQ-04 версии)', () => {
       ownerSkill: 'skill:demo',
       reason: 'initial face',
       body: 'body-v1',
+      ...G17,
     });
     await createFaceVersion(deps(STEWARD_CLI), {
       command: 'new',
       ownerSkill: 'skill:demo',
       reason: 'clarify',
       body: 'body-v2',
+      ...G17,
     });
 
     // ссылка на основу номером версии (CLI-форма vN)
@@ -274,8 +294,8 @@ describe('createFaceVersion (T-02: REQ-03 guard, REQ-04 версии)', () => {
   it('параллельные вызовы сериализуются: версии без дыр и дублей, одна активная', async () => {
     const d = deps(STEWARD_CLI);
     const results = await Promise.all([
-      createFaceVersion(d, { command: 'new', ownerSkill: 'skill:demo', reason: 'r1', body: 'b1' }),
-      createFaceVersion(d, { command: 'new', ownerSkill: 'skill:demo', reason: 'r2', body: 'b2' }),
+      createFaceVersion(d, { command: 'new', ownerSkill: 'skill:demo', reason: 'r1', body: 'b1', ...G17 }),
+      createFaceVersion(d, { command: 'new', ownerSkill: 'skill:demo', reason: 'r2', body: 'b2', ...G17 }),
     ]);
     const versions = results.map((r) => r.face.version).sort();
     expect(versions).toEqual(['1', '2']);
