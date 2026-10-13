@@ -1,6 +1,6 @@
 # Base Set
 
-The base set is the agent harness Mr. Wolf delivers into a project: agents, skills, commands, opencode plugins and playbooks. The source of truth is the `templates/` directory of the `mister-wolf` npm package: `wolf init` renders the set into the project, and `wolf sync` re-renders it later (see [Platform & Maintenance — wolf sync](/guide/cli/platform#wolf-sync)). The set also appends an onboarding block to the project root `AGENTS.md` (marked `<!-- wolf:onboarding v2 -->`; foreign content is untouched).
+The base set is the agent harness Mr. Wolf delivers into a project: agents, skills, commands, opencode plugins and playbooks. The source of truth is the `templates/` directory of the `mister-wolf` npm package: `wolf init --full` renders the set into the project, and `wolf sync` re-renders it later (see [Platform & Maintenance — wolf sync](/guide/cli/platform#wolf-sync)). The set also appends an onboarding block to the project root `AGENTS.md` (marked `<!-- wolf:onboarding v2 -->`; foreign content is untouched).
 
 The composition below is the catalog of `templates/base/` in the package.
 
@@ -58,7 +58,7 @@ Plugins ship with the opencode harness layer of the package (`templates/opencode
 
 ## Playbooks — 6 → seeded into Wolf memory
 
-Playbooks are the odd one out: they are **not** stamped files. Since 2.13 they are no longer a `playbook` type: `wolf init` seeds them into `.wolf/` memory — since 2.17 as `face` objects (a versioned core type with `owner_skill`; skipped when a live face or a legacy note with the same `owner_skill` is already seeded). From that moment they are memory — mutations go through the complaint loop and the Steward (`wolf face` versions with a mandatory mutation record), and `wolf sync` never touches them. Legacy seeded notes migrate with `wolf face migrate`. See [Memory Model](/guide/memory).
+Playbooks are the odd one out: they are **not** stamped files. Since 2.13 they are no longer a `playbook` type: `wolf init --full` seeds them into `.wolf/` memory — since 2.17 as `face` objects (a versioned core type with `owner_skill`; skipped when a live face or a legacy note with the same `owner_skill` is already seeded). From that moment they are memory — mutations go through the complaint loop and the Steward (`wolf face` versions with a mandatory mutation record), and `wolf sync` never touches them. Legacy seeded notes migrate with `wolf face migrate`. See [Memory Model](/guide/memory).
 
 | Playbook                      | Content                                          | Owner                |
 | ----------------------------- | ------------------------------------------------ | -------------------- |

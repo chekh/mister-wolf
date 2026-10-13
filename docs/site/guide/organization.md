@@ -18,7 +18,7 @@ The hierarchy is small on purpose. Each level owns one thing and is explicitly f
 
 Escalation goes **up** (L2 → L1 → L0) or **sideways** to the Council — never around the structure. L0 is the only level that talks to the project owner; L1 is the only level that talks to workers. Each brief carries just what the next level needs, so every session stays small, focused and replaceable. The prohibitions are not honor code: every call in the topology has a machine-checkable justification.
 
-These roles are not a metaphor: they map to concrete agents delivered by `wolf init` — see [Base Set](/guide/base-set).
+These roles are not a metaphor: they map to concrete agents delivered by `wolf init --full` — see [Base Set](/guide/base-set).
 
 Constraint is half of the design; compensation is the other half. The hierarchy deliberately limits each agent's context and authority. Typed memory compensates for what gets lost at every handoff. The Council compensates for the one-sidedness of a vertical chain. Checkpoints compensate for drift during long-running work. None of this lives inside an agent's head — all of it lives in the project.
 

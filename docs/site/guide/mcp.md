@@ -6,9 +6,9 @@ The [Model Context Protocol](https://modelcontextprotocol.io) is a standard way 
 
 ## Setup
 
-`wolf init` writes the MCP config for each detected platform automatically (detection is automatic; explicit: `wolf init --platform opencode,claude`). Platforms supported in v1: **opencode** and **Claude Code**.
+Platform MCP configs are opt-in: `wolf init --platform opencode,claude` writes them (the list replaces the current set); a plain `wolf init` writes none. Platforms supported in v1: **opencode** and **Claude Code**.
 
-The canonical server command everywhere is the global binary — `{ command: 'wolf', args: ['mcp'] }` — **never npx**. Restart your agent platform after `wolf init`; Claude Code will ask you to approve the project-scope MCP server on first start.
+The canonical server command everywhere is the global binary — `{ command: 'wolf', args: ['mcp'] }` — **never npx**. Restart your agent platform after an init that wrote MCP configs; Claude Code will ask you to approve the project-scope MCP server on first start.
 
 ### opencode
 
@@ -26,7 +26,7 @@ Written to `.mcp.json`, key `mcpServers.wolf`:
 { "mcpServers": { "wolf": { "command": "wolf", "args": ["mcp"] } } }
 ```
 
-Note: try-out mode (`npx mister-wolf init`) never writes MCP configs — install globally and run `wolf init` to connect a platform.
+Note: try-out mode (`npx mister-wolf init`) never writes MCP configs — install globally and run `wolf init --platform opencode,claude` to connect your platforms.
 
 ## All tools
 

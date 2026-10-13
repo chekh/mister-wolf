@@ -74,7 +74,7 @@ The log's place in telemetry is covered in [Telemetry](/guide/telemetry), the me
 
 `wolf scaffold agent` does both steps for you: it stamps the marker into the frame body and creates the face (see [Platform & Maintenance](/guide/cli/platform#wolf-scaffold)).
 
-The base-set agents carry their markers out of the box (`worker-implementer`, `worker-researcher`, `worker-reviewer`, `executor-lead`, `steward`, `mr-wolf`), and `wolf init` seeds canonical faces for them — including the executor-lead dispatcher.
+The base-set agents carry their markers out of the box (`worker-implementer`, `worker-researcher`, `worker-reviewer`, `executor-lead`, `steward`, `mr-wolf`), and `wolf init --full` seeds canonical faces for them — including the executor-lead dispatcher.
 
 ## Trust
 

@@ -14,21 +14,28 @@ Mr. Wolf is a permanent project organization for temporary AI agents: a coordina
 The package is named exactly **`mister-wolf`** ([on npm](https://www.npmjs.com/package/mister-wolf)). The `mr-wolf` package on npm belongs to someone else (a work-queue library). Check the name letter by letter before installing — see [Troubleshooting](/guide/troubleshooting).
 :::
 
-Installation is three commands:
+Installation is the binary plus one of two explicit paths:
 
 ```bash
 npm install -g mister-wolf   # 1) machine: the wolf binary
-cd my-project && wolf init   # 2) project: .wolf/ skeleton + platform MCP configs
-wolf bootstrap               # 3) memory: starting content drafted from project documents
 ```
 
-What each step does:
+```bash
+# Path A — memory: the minimal set
+cd my-project && wolf init   # .wolf/ skeleton + AGENTS.md; no platform configs, no base set
+wolf bootstrap               # memory: starting content drafted from project documents
+
+# Path B — OpenCode organization: the full base set + MCP
+cd my-project && wolf init --full --platform opencode
+wolf bootstrap
+```
+
+What each path does:
 
 1. `npm install -g mister-wolf` installs the global `wolf` binary.
-2. `wolf init` creates the `.wolf/` skeleton in the project (platform MCP configs are opt-in: `wolf init --platform opencode,claude` writes them; the list replaces the current set). The first run decides nothing for you: a minimal file set by default (`--full` renders the complete base set), one interview question in a TTY (project purpose — Enter to skip), no model pinning (`--model` is opt-in; model lines are omitted and the platform default applies). Re-init on a live project shows the plan and asks for confirmation (`--yes` skips it).
-3. `wolf bootstrap` scans the project and drafts starting memory: proposed rules and a work thread.
-
-After `wolf init` **restart your agent platform** — the Wolf MCP server connects at startup. Claude Code will ask you to approve the project-scope MCP server on first start; that is expected.
+2. **Path A — memory:** `wolf init` connects the project minimally — the `.wolf/` skeleton and `AGENTS.md`. A clean run prints `memory skeleton: ensured`, `base set: AGENTS.md created` and the init-report id; it writes no platform configs and no base set. The first run decides nothing else for you: one interview question in a TTY (project purpose — Enter to skip), no model pinning (`--model` is opt-in; model lines are omitted and the platform default applies). Re-init on a live project shows the plan and asks for confirmation (`--yes` skips it).
+3. **Path B — OpenCode organization:** `wolf init --full --platform opencode` renders the full base set — 6 agent frames, 19 skills, 3 commands, 2 plugins, seeded playbook faces — and writes `opencode.json` (`mcp.wolf`, `default_agent=mr-wolf`, `subagent_depth=2`). Platform configs are opt-in: `wolf init --platform opencode,claude` (the list replaces the current set). **Restart opencode** after an init that wrote MCP configs — the server and the default agent connect at startup. Claude Code will ask you to approve the project-scope MCP server on first start; that is expected.
+4. `wolf bootstrap` scans the project and drafts starting memory: proposed rules and a work thread.
 
 An init counts as completed when `wolf doctor` reports 0 issues on the project; the activation metric and the acceptance window are defined in the wave spec (`docs/superpowers/specs/2026-10-10-wave-2.16-init2-unpin-hygiene-design.md`, §11).
 
@@ -38,7 +45,7 @@ An init counts as completed when `wolf doctor` reports 0 issues on the project; 
 npx mister-wolf init
 ```
 
-Try-out mode creates project memory but **never writes MCP configs** — npx mode does not touch platform configuration. Like it? `npm install -g mister-wolf` and run `wolf init` again.
+Try-out mode creates the `.wolf/` memory skeleton but **never writes MCP configs or the base set** — npx mode does not touch platform configuration. Like it? `npm install -g mister-wolf` and run `wolf init` again.
 
 ## Your first session
 

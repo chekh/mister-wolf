@@ -14,11 +14,11 @@ npm install -g mister-wolf
 
 - **Symptom:** ran `npx mister-wolf init`; project memory was created, but the agent platform has no Wolf MCP server.
 - **Cause:** npx try-out mode never writes MCP configs — by design.
-- **Fix:** install globally and initialize again, then restart the platform:
+- **Fix:** install globally and initialize with an explicit platform, then restart the platform:
 
 ```bash
 npm install -g mister-wolf
-cd my-project && wolf init
+cd my-project && wolf init --platform opencode
 ```
 
 ## 3. Broken `.wolf/config.yaml`

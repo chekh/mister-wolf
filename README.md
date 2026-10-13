@@ -34,19 +34,28 @@ Mr. Wolf is a permanent project organization assembled from temporary AI agents:
 > [!WARNING]
 > The package is named **`mister-wolf`** ([on npm](https://www.npmjs.com/package/mister-wolf)) — exactly that. The `mr-wolf` package on npm **belongs to someone else** (a work-queue library): `npm install mr-wolf` installs third-party code and runs its install scripts. Check the name letter by letter before installing.
 
-Installation is three commands:
+Installation is the binary plus one of two explicit paths:
 
 ```bash
 npm install -g mister-wolf   # 1) машина: бинарь wolf (уровень 0)
-cd my-project && wolf init   # 2) проект: скелет .wolf/ + MCP-конфиги платформ
-wolf bootstrap               # 3) память: стартовое наполнение из документов проекта
 ```
 
-After `wolf init` **restart your agent platform** — the Wolf MCP server connects at startup. Claude Code will ask you to approve the project-scope MCP server on first start — that is expected.
+```bash
+# Путь А — память: минимальный набор
+cd my-project && wolf init   # скелет .wolf/ + AGENTS.md; без платформенных конфигов и базового сета
+wolf bootstrap               # память: стартовое наполнение из документов проекта
 
-- **Try it without installing:** `npx mister-wolf init` — creates project memory but never writes MCP configs (try-out mode). Like it? `npm install -g mister-wolf` and run `wolf init` again.
-- **Updating:** `wolf upgrade` — compares the installed version with the npm registry and runs `npm install -g mister-wolf@latest` (`--check` only reports, dev/linked installs are refused honestly). Manual path: `npm i -g mister-wolf@latest`.
-- **Platforms v1:** opencode, Claude Code. Platform MCP configs are opt-in: `wolf init --platform opencode,claude` (the list replaces the current set); without the flag no platform configs are written. If no platform markers are found, init warns you honestly and suggests `--platform`.
+# Путь Б — организация OpenCode: полный базовый набор + MCP
+cd my-project && wolf init --full --platform opencode
+wolf bootstrap
+```
+
+- **Path A — memory:** `wolf init` connects the project minimally — the `.wolf/` skeleton and `AGENTS.md`; it writes no platform configs and no base set. What a clean run prints: `memory skeleton: ensured`, `base set: AGENTS.md created`, the init-report id.
+- **Path B — OpenCode organization:** `wolf init --full --platform opencode` renders the full base set (6 agent frames, 19 skills, 3 commands, 2 plugins, seeded playbook faces) and writes `opencode.json` (`mcp.wolf`, `default_agent=mr-wolf`, `subagent_depth=2`). **Restart opencode** after it — the MCP server and the default agent connect at startup. Claude Code will ask you to approve the project-scope MCP server on first start — that is expected.
+
+- **Try it without installing:** `npx mister-wolf init` — try-out mode: creates the `.wolf/` memory skeleton but never writes MCP configs or the base set. Like it? `npm install -g mister-wolf` and run `wolf init` again.
+- **Updating:** `wolf upgrade` — compares the installed version with the npm registry and runs `npm install -g mister-wolf@latest` (`--check` only reports, dev/linked installs are refused honestly). Manual path: `npm i -g mister-wolf@latest`. After updating, re-run `wolf init --yes` in your projects: base-set templates and seeded faces update through re-init (`wolf sync` never touches memory).
+- **Platforms v1:** opencode, Claude Code. Platform MCP configs are opt-in: `wolf init --platform opencode,claude` (the list replaces the current set); without the flag no platform configs are written.
 - **First run without barriers:** `wolf init` decides nothing for you — a minimal file set by default (`--full` for the complete base set), one interview question in a TTY (Enter to skip), no model pinning (`--model` is opt-in; model lines are omitted and the platform default applies). Re-init on a live project shows the plan and needs a confirmation (`--yes` skips it).
 - **OS/runtime:** macOS and Linux (glibc) on Node 22/24. Alpine/musl is not supported in v1; Windows is best-effort, not claimed. The native dependency better-sqlite3 installs from prebuilds — that is the dependency's own behavior; mister-wolf ships no install scripts of its own.
 - **If installation fails on better-sqlite3 — two different situations:**
@@ -150,6 +159,10 @@ The standalone self-learning pipeline (`wolf learn …`) was removed by owner de
 - `wolf analytics` — the single analytics surface: ledgers (memory/tools/rules/agents), memory lifecycle & attribution, campaigns with/without memory + per-memory ROI, coordination, data-quality, console dashboard (`--view dashboard`), experiment readiness; honest metrics (`n/a` + reason, never invented numbers). The former standalone `wolf effectiveness` / `wolf dashboard` / `wolf insights` commands are views of `wolf analytics`.
 - `wolf task-eval --verdict accepted|rejected|partial|inconclusive` — task verdicts: acceptance, coverage, cost per accepted task; `--campaign` groups runs into A/B cohorts.
 - Benchmarks: `scripts/bench/` (b1-repeat-debug, b2-bootstrap, b3-retrospective).
+
+## Read isolation
+
+Memory scoped to a linked worktree (`worktree:<id>`) is filtered on exactly one path — the delivery path, `wolf call`, in all modes (default, `--for <topic>`, `--thread <id>`); the MCP channel mirrors the CLI list and a `call` tool there would inherit the same isolation. Every other read — `wolf search`/`get`/`list`, `brief`, `recap`, `think`/`solve`, `doctor`, relation/analytics paths, `wolf face *` (faces filter by `owner_skill`, not scope) — sees the whole project memory. This composition is a frozen contract (NFR-03): extending it is a requirements change, guarded by a doc-test. Details: [Read Isolation](https://chekh.github.io/mister-wolf/guide/read-isolation).
 
 ## Demos
 
