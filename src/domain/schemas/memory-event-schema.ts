@@ -8,6 +8,13 @@ const EVENT_PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
   'memory.face.breakglass': ['owner_skill', 'from', 'new', 'initiator', 'reason'],
   'memory.face.denied': ['owner_skill', 'actor', 'command'],
   'memory.proposal.delivered': ['id', 'addressee'],
+  // 2.17.1 REQ-03 (R04, design §3.3): журнал операции лица. op_started несёт
+  // полный план шагов и полный набор аргументов (resume детерминирован из него);
+  // op_step detail (id созданных объектов) — необязателен; op_aborted — by+reason.
+  'memory.face.op_started': ['opId', 'command', 'owner_skill', 'plan', 'input'],
+  'memory.face.op_step': ['opId', 'step'],
+  'memory.face.op_committed': ['opId'],
+  'memory.face.op_aborted': ['opId', 'by', 'reason'],
 };
 
 export const MemoryEventSchema = z
@@ -29,6 +36,11 @@ export const MemoryEventSchema = z
       'memory.face.breakglass',
       'memory.face.denied',
       'memory.proposal.delivered',
+      // 2.17.1 REQ-03 (R04): журналируемая цепочка шагов мутации лица (design §3.3)
+      'memory.face.op_started',
+      'memory.face.op_step',
+      'memory.face.op_committed',
+      'memory.face.op_aborted',
     ]),
     timestamp: z.string().datetime(),
     actor: z.string().min(1),

@@ -4,6 +4,7 @@ import { existsSync, readdirSync, realpathSync, readFileSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { runDoctor } from '../../../app/use-cases/doctor.js';
+import { incompleteFaceOperations } from '../../../app/use-cases/face-operation.js';
 import { runArtifactLint } from '../../../app/use-cases/lint-artifacts.js';
 import { detectPlatformMismatch } from '../../../app/use-cases/platform-mismatch.js';
 import { repairPlatform } from '../../../app/use-cases/repair-platform.js';
@@ -295,7 +296,7 @@ export function memoryDoctorCommand(): Command {
       const cwd = safeCwd();
       // Контейнер общий для артефакт- и осиротевшей-секций (WP3 §6.2):
       // store + memoryRoot (поле из задачи 4), resolveMemoryRoot тут не нужен.
-      const { store, memoryRoot } = createCliContainer(cwd);
+      const { store, log, memoryRoot } = createCliContainer(cwd);
       if (existsSync(join(cwd, 'docs', 'dev'))) {
         const toolOwners = new Set<string>();
         for (const t of await store.list({ type: 'tool' })) {
@@ -352,6 +353,21 @@ export function memoryDoctorCommand(): Command {
         console.log();
         console.log('## Faces (canonical playbooks)');
         for (const f of faceFindings) console.log(`! ${f.file}: ${maskSecrets(f.issue)}`);
+      }
+
+      // 2.17.1 REQ-03 (R04, design §3.3): незавершённые операции лица — issue
+      // «неполный след мутации» с opId и подсказкой recover; авто-healing
+      // doctor не делает (AC-5: обнаружение; исполнение — явная команда).
+      const incompleteOps = incompleteFaceOperations(await log.readAll());
+      if (incompleteOps.length > 0) {
+        console.log();
+        console.log('## Face operations (recoverable mutations)');
+        for (const o of incompleteOps) {
+          const state = o.activated ? 'applied, trail incomplete' : 'not applied';
+          console.log(
+            `! ${o.opId}: incomplete face mutation trail (${o.command} ${o.ownerSkill}, ${state}) — wolf face recover ${o.opId} [--abort]`
+          );
+        }
       }
     });
 }

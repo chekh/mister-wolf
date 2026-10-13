@@ -3,6 +3,7 @@ import { Command, Option } from 'commander';
 import { readFileSync } from 'fs';
 import { safeCwd } from '../cli-entry.js';
 import { createFaceVersion, type FaceObject } from '../../../app/use-cases/create-face-version.js';
+import { abortFaceOperation, resumeFaceOperation } from '../../../app/use-cases/face-operation.js';
 import { migrateFaces } from '../../../app/use-cases/migrate-faces.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { MemoryStore } from '../../../ports/memory-store.port.js';
@@ -54,6 +55,14 @@ interface NewOptions {
   rollback: string;
   /** T-09: id предложения, породившего версию (relation proposes; не применение). */
   fromProposal?: string;
+  /** 2.17.1 REQ-03: id операции — resume/идемпотентный повтор (design §3.3). */
+  opId?: string;
+  createdBy?: string;
+}
+
+interface RecoverOptions {
+  /** abort: candidate → archived + op_aborted; только до activation (§3.3). */
+  abort?: boolean;
   createdBy?: string;
 }
 
@@ -92,6 +101,7 @@ export function faceCommand(baseDir: string = safeCwd()): Command {
         .option('--title <title>', 'Face title (default: "Face: <owner_skill>")')
         .option('--tags <tags>', 'Comma-separated tags')
         .option('--from-proposal <id>', 'Link the new version to a proposal (relation: proposes)')
+        .option('--op-id <id>', 'Operation id: resume an interrupted mutation (default: generated faceop-<ts>-<rand4>)')
     )
   ).action(async (ownerSkill: string, options: NewOptions) => {
     denyCreatedBy(options);
@@ -118,10 +128,12 @@ export function faceCommand(baseDir: string = safeCwd()): Command {
       verification: options.verification,
       rollback: options.rollback,
       fromProposal: options.fromProposal,
+      opId: options.opId,
     });
     const superseded = result.supersededId ? ` (superseded ${result.supersededId})` : '';
     const mutation = result.mutationRecordId ? `; mutation record ${result.mutationRecordId}` : '';
     console.log(`Created face ${ownerSkill} v${result.face.version} ${result.face.id}${superseded}${mutation}`);
+    console.log(`operation ${result.opId}`); // REQ-03: печатается для wolf face recover
   });
 
   // restore и breakglass — один и тот же версионирующий путь (REQ-05: новая
@@ -151,6 +163,32 @@ export function faceCommand(baseDir: string = safeCwd()): Command {
   };
   restoreLike('restore', 'Restore an old version as a NEW one (owner; linear history, REQ-05)');
   restoreLike('breakglass', 'Emergency rollback by the owner (steward not involved; logged, REQ-07)');
+
+  // 2.17.1 REQ-03 (design §3.3): восстановление операции по opId. Без флага —
+  // дозавершение оставшихся шагов (идемпотентно); --abort — только до
+  // activation: candidate → archived + op_aborted, история не уничтожается.
+  createdByTrap(
+    cmd
+      .command('recover')
+      .description(
+        'Resume an interrupted face operation by op id (--abort: archive the candidate, pre-activation only)'
+      )
+      .argument('<op_id>', 'Operation id (printed by face new; also wolf doctor)')
+      .option('--abort', 'Abort the operation instead of resuming (only before activation)')
+  ).action(async (opId: string, options: RecoverOptions) => {
+    denyCreatedBy(options);
+    const container = createCliContainer(baseDir);
+    if (options.abort) {
+      const result = await abortFaceOperation(container, opId);
+      const face = result.archivedFaceId ? ` (candidate ${result.archivedFaceId} archived)` : '';
+      console.log(`Aborted face operation ${opId}${face}`);
+      return;
+    }
+    const result = await resumeFaceOperation(container, opId);
+    console.log(
+      `Recovered face operation ${opId}: ${result.face.owner_skill} v${result.face.version} ${result.face.id}`
+    );
+  });
 
   // T-05 (REQ-02, design §Миграция): идемпотентная физическая миграция
   // legacy-playbook → face; вся механика (поэтапность, skip, отчёт) — в
@@ -191,8 +229,13 @@ export function faceCommand(baseDir: string = safeCwd()): Command {
       for (const obj of await store.list({ type: 'face' })) {
         const f = obj as FaceObject;
         const cur = heads.get(f.owner_skill);
-        // дубль активных — территория doctor (NFR-02); здесь детерминированно старшая
-        if (!cur || Number(f.version) > Number(cur.version)) heads.set(f.owner_skill, f);
+        // REQ-03: candidate (неполный канон) скрыт из головы — активная версия
+        // канона; дубль активных — территория doctor (NFR-02), здесь старшая.
+        const fActive = f.status === 'active';
+        const cActive = cur?.status === 'active';
+        const better =
+          !cur || (fActive && !cActive) || (fActive === cActive && Number(f.version) > Number(cur.version));
+        if (better) heads.set(f.owner_skill, f);
       }
       if (heads.size === 0) {
         console.log('No faces.');

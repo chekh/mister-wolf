@@ -2,8 +2,19 @@
 // Волна 2.17 T-06 (test-plan §NFR-02): lintFaces — чистая механика doctor-проверок
 // лиц: дубликат канонического face, битый based_on, legacy+face одновременно,
 // face вне контракта (записи, отбракованные парсером store — вход faceProblems).
-import { describe, it, expect } from 'vitest';
+//
+// 2.17.1 REQ-03 (R04, AC-5): секция doctor «Face operations (recoverable
+// mutations)» — незавершённая операция с opId и подсказкой recover; после
+// recover секции нет. Паттерн face-recover-cli.test.ts: мок cwd + env.
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { lintFaces } from '../../../../src/adapters/cli/commands/memory-doctor.js';
+import { ProjectsRegistry } from '../../../../src/adapters/fs/projects-registry.js';
+import { createCliContainer } from '../../../../src/bootstrap/container.js';
+import { createFaceVersion } from '../../../../src/app/use-cases/create-face-version.js';
+import { resumeFaceOperation, type FaceFaultInjector } from '../../../../src/app/use-cases/face-operation.js';
 import type { MemoryObject } from '../../../../src/domain/schemas/memory-object-schema.js';
 
 type Fm = Record<string, unknown>;
@@ -96,5 +107,77 @@ describe('lintFaces (2.17 NFR-02: гигиена канонических лиц
     expect(findings).toHaveLength(1);
     expect(findings[0]!.file).toBe('shared/faces/mem_broken.md');
     expect(findings[0]!.issue).toContain('face does not match its contract');
+  });
+});
+
+describe('wolf doctor: незавершённые операции лица (2.17.1 REQ-03 AC-5)', () => {
+  const G17 = {
+    minimalChange: 'triage wording only',
+    boundaries: 'essence and frame are out',
+    exampleHelps: 'faster doc sorting',
+    exampleKeep: 'agent never edits rules',
+    verification: 'wolf face history',
+    rollback: 'wolf face restore',
+  };
+  const OP_ID = 'faceop-doc-0001';
+  let dir: string;
+  let sb: string;
+  let cwdMock: ReturnType<typeof vi.spyOn>;
+  let logs: string[];
+
+  beforeEach(async () => {
+    dir = mkdtempSync(join(tmpdir(), 'wolf-doc-faceop-'));
+    // реестр изолирован песочницей (WOLF_SANDBOX) — живой ~/.config/wolf не трогаем
+    sb = mkdtempSync(join(tmpdir(), 'wolf-doc-faceop-sb-'));
+    mkdirSync(join(dir, '.wolf', 'memory'), { recursive: true });
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), 'schema_version: 2\n');
+    vi.stubEnv('WOLF_SANDBOX', sb);
+    // без записи реестра doctor уходит в ранний return «No registered projects»
+    await new ProjectsRegistry(join(sb, '.config', 'wolf')).register(dir, 2);
+    cwdMock = vi.spyOn(process, 'cwd').mockReturnValue(dir);
+    logs = [];
+    vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      logs.push(args.map(String).join(' '));
+    });
+  });
+
+  afterEach(() => {
+    cwdMock.mockRestore();
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(sb, { recursive: true, force: true });
+  });
+
+  async function runDoctor(): Promise<string> {
+    logs = []; // вывод только этого запуска (mock пишет в текущий массив)
+    const { memoryDoctorCommand } = await import('../../../../src/adapters/cli/commands/memory-doctor.js');
+    await memoryDoctorCommand().exitOverride().parseAsync([], { from: 'user' });
+    return logs.join('\n');
+  }
+
+  it('незавершённая операция → секция с opId и подсказкой recover; после recover секции нет', async () => {
+    const fault: FaceFaultInjector = (p) => {
+      if (p === 'g17_record') throw new Error(`injected fault at ${p}`);
+    };
+    await expect(
+      createFaceVersion(
+        { ...createCliContainer(dir), fault, env: { WOLF_ACTOR: 'agent:steward' } },
+        { command: 'new', ownerSkill: 'skill:demo', reason: 'clarify triage', body: 'body-v2', ...G17, opId: OP_ID }
+      )
+    ).rejects.toThrow(/injected fault/);
+
+    const out = await runDoctor();
+    expect(out).toContain('## Face operations (recoverable mutations)');
+    expect(out).toContain(`! ${OP_ID}: incomplete face mutation trail (new skill:demo, not applied)`);
+    expect(out).toContain(`wolf face recover ${OP_ID}`);
+
+    // recover закрывает след — секция исчезает (запись реестра возвращена:
+    // createCliContainer самолечением, иначе ранний return дал бы ложную пустоту)
+    await resumeFaceOperation(createCliContainer(dir), OP_ID, 'agent:steward');
+    await new ProjectsRegistry(join(sb, '.config', 'wolf')).register(dir, 2);
+    const after = await runDoctor();
+    expect(after).toContain('sandbox — pruned'); // доктор дошёл до конца, не ранний return
+    expect(after).not.toContain('## Face operations (recoverable mutations)');
   });
 });
