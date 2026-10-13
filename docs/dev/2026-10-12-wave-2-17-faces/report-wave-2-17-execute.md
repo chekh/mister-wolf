@@ -29,7 +29,7 @@ updated: 2026-10-13
 | T-03 G17-запись мутации | DONE (принято L1) | (см. ниже) |
 | T-04 CLI `wolf face` | DONE (принято L1) | 45ecd46 |
 | T-05 миграция + alias + seed | DONE (принято L1) | см. ниже |
-| T-06 doctor NFR-02 + memory-sync | pending | — |
+| T-06 doctor NFR-02 + memory-sync | DONE (принято L1) | см. ниже |
 | T-07 guard `wolf add` | DONE (принято L1) | ff10f7f |
 | T-08 wolf-router вариант Б | DONE (принято L1 + ревью APPROVED + минор-фикс) | c45b66e, 51e2477 |
 | T-09 proposals save/deliver + CLI | pending | — |
@@ -151,3 +151,13 @@ updated: 2026-10-13
 - generic-add: CREATABLE_TYPES = MEMORY_TYPES кроме face + тест «face direct add is refused».
 Отклонение (принято L1): allowance контрактных полей — расширение внутри назначенного файла, без него контракт proposal невыполним.
 Передачи: хинт `--facet` в memory-add.ts:108 не упоминает proposal (design: «справка дописывает proposal») — кандидат T-09/T-10; сообщение «facet only valid for note» для не-core типов чуть неточное — якорь сохранён, риск принят.
+
+### T-06 (2026-10-13)
+- `vitest run memory-doctor.test.ts memory-sync.test.ts` — ✅ 7/7 (L1 повторил; TDD RED 6 failed → GREEN).
+- e2e doctor-hygiene — ✅ 6/6 (L1 повторил); `tsc --noEmit` — ✅; prettier — ✅.
+
+### T-06 — doctor NFR-02 + memory-sync
+Файлы: src/adapters/cli/commands/memory-doctor.ts (lintFaces: дубликат канона / based_on не существует / legacy+face — указание wolf face migrate / face вне контракта из faceProblems; общая секция `## Faces`, формат `! <file>: <issue>` + maskSecrets), memory-sync.ts:37 (Стюард-зона → `wolf face *`), tests/unit/adapters/cli/memory-doctor.test.ts (черновик после сбоя доработан), tests/unit/adapters/cli/memory-sync.test.ts (НОВЫЙ — unit-теста не существовало, бриф предусматривал), doctor-hygiene.e2e.ts (+2 сценария: все 4 грязных состояния разом; чистые лица не шумят).
+- face вне контракта: единственный источник — store.scanProblems() (файлы молча выпадают из store.list; прецедент memory-validate.ts:91), гейт existsSync(shared/faces) — проекты без лиц не платят.
+- Асимптотика: один проход store.list для lint; scanProblems — отдельный линейный обход.
+Отклонения: новый unit-тест memory-sync (разрешено брифом). Риски: scanProblems удваивает IO-обход для проектов с лицами (линейно, гейт смягчает); based_on на face ДРУГОГО владельца не флагуется (design требует только существование).
