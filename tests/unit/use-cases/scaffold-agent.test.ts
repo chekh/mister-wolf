@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, existsSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { scaffoldFrame } from '../../../src/app/use-cases/scaffold-agent.js';
+import { createFaceVersion, type FaceObject } from '../../../src/app/use-cases/create-face-version.js';
 import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
 import { JsonlEventLog } from '../../../src/adapters/fs/jsonl-event-log.js';
 import { JsonlRelationLog } from '../../../src/adapters/fs/jsonl-relation-log.js';
@@ -39,19 +40,21 @@ describe('scaffoldFrame', () => {
     };
   }
 
-  it('scaffold agent: создаёт playbook + рамку с маркером agent-id и frontmatter', async () => {
+  it('scaffold agent: создаёт лицо (face, initiator=seed) + рамку с маркером agent-id', async () => {
     const result = await scaffoldFrame(makeDeps(), { kind: 'agent', name: 'demo-agent', createdBy: 'user:test' });
     expect(result.playbookId).toMatch(/^mem_/);
     expect(result.ownerSkill).toBe('demo-agent');
     expect(result.framePath).toBe(join('.opencode', 'agents', 'demo-agent.md'));
 
     const pb = await store.get(result.playbookId);
-    expect(pb?.type).toBe('note'); // wave13-a: playbook → note+facet howto
-    expect((pb as { facet?: string }).facet).toBe('howto');
-    const extra = pb as { owner_skill?: string; version?: string; steps?: string[] };
-    expect(extra.owner_skill).toBe('demo-agent');
-    expect(extra.version).toBe('v1');
-    expect(extra.steps).toHaveLength(1);
+    expect(pb?.type).toBe('face'); // T-05: лицо — face-контракт, не note+howto
+    const face = pb as FaceObject;
+    expect(face.owner_skill).toBe('demo-agent');
+    expect(face.version).toBe('1');
+    expect(face.initiator).toBe('seed');
+    expect(face.title).toBe('Playbook: demo-agent');
+    expect(face.reason).toMatch(/scaffold stub for agent:demo-agent/);
+    expect(face.body).toContain('Scaffold stub');
 
     const frame = readFileSync(join(dir, result.framePath), 'utf-8');
     expect(frame).toContain('agent-id: demo-agent');
@@ -77,7 +80,7 @@ describe('scaffoldFrame', () => {
     expect(frame).toContain('model: test/model-x');
   });
 
-  it('идемпотентность: существующая рамка → UserFacingError, playbook не дублируется', async () => {
+  it('идемпотентность: существующая рамка → UserFacingError, лицо не дублируется', async () => {
     const deps = makeDeps();
     const first = await scaffoldFrame(deps, { kind: 'agent', name: 'demo-agent', createdBy: 'user:test' });
     await expect(scaffoldFrame(deps, { kind: 'agent', name: 'demo-agent', createdBy: 'user:test' })).rejects.toThrow(
@@ -86,12 +89,12 @@ describe('scaffoldFrame', () => {
     await expect(scaffoldFrame(deps, { kind: 'agent', name: 'demo-agent', createdBy: 'user:test' })).rejects.toThrow(
       /already exists/
     );
-    const playbooks = (await store.list({ type: 'note' })).filter((o) => (o as { facet?: string }).facet === 'howto');
-    expect(playbooks).toHaveLength(1);
-    expect(playbooks[0]?.id).toBe(first.playbookId);
+    const faces = await store.list({ type: 'face' });
+    expect(faces).toHaveLength(1);
+    expect(faces[0]?.id).toBe(first.playbookId);
   });
 
-  it('--from-playbook: использует существующий playbook, новый не создаётся, маркер = owner_skill', async () => {
+  it('--from-playbook: face-id распознаётся (isPlaybookNote, REQ-02) — владелец и id переиспользуются', async () => {
     const deps = makeDeps();
     const first = await scaffoldFrame(deps, { kind: 'agent', name: 'orig-agent', createdBy: 'user:test' });
     const second = await scaffoldFrame(deps, {
@@ -104,11 +107,44 @@ describe('scaffoldFrame', () => {
     expect(second.ownerSkill).toBe('orig-agent');
     const frame = readFileSync(join(dir, second.framePath), 'utf-8');
     expect(frame).toContain('agent-id: orig-agent');
-    expect(
-      (await store.list({ type: 'note' })).filter((o) => (o as { facet?: string }).facet === 'howto')
-    ).toHaveLength(1);
+    expect(await store.list({ type: 'face' })).toHaveLength(1);
     const rels = await relations.list({ subject: first.playbookId, predicate: 'owner_skill' });
     expect(rels.map((r) => r.object)).toContain('agent:new-frame');
+  });
+
+  it('--from-playbook: лицо, созданное версионирующим путём (не scaffold) — тоже источник', async () => {
+    const deps = makeDeps();
+    const created = await createFaceVersion(
+      {
+        store: deps.store,
+        log: deps.log,
+        clock: deps.clock,
+        idGen: deps.idGen,
+        env: { WOLF_ACTOR: 'agent:steward' },
+      },
+      {
+        command: 'new',
+        ownerSkill: 'skill:migrated',
+        reason: 'initial',
+        body: 'Migrated body.',
+        minimalChange: 'w',
+        boundaries: 'b',
+        exampleHelps: 'h',
+        exampleKeep: 'k',
+        verification: 'v',
+        rollback: 'r',
+      }
+    );
+
+    const result = await scaffoldFrame(deps, {
+      kind: 'agent',
+      name: 'frame-two',
+      fromPlaybook: created.face.id,
+      createdBy: 'user:test',
+    });
+
+    expect(result.playbookId).toBe(created.face.id);
+    expect(result.ownerSkill).toBe('skill:migrated');
   });
 
   it('--from-playbook: несуществующий id → UserFacingError без побочных эффектов', async () => {
@@ -121,7 +157,7 @@ describe('scaffoldFrame', () => {
         createdBy: 'user:test',
       })
     ).rejects.toThrow(/Playbook not found/);
-    expect(await store.list({ type: 'note' })).toHaveLength(0);
+    expect(await store.list({ type: 'face' })).toHaveLength(0);
   });
 
   it('skill и command пишутся в правильные каталоги', async () => {

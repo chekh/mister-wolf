@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildTypeSchema, applyFacetEnum } from '../../../src/domain/type-schema-builder.js';
+import { buildTypeSchema, applyFacetEnum, PROPOSAL_CONTRACT_FIELDS } from '../../../src/domain/type-schema-builder.js';
 import { getDeclaration } from '../../../src/domain/memory-types.js';
 
 const minimalBase = {
@@ -55,5 +55,107 @@ describe('buildTypeSchema', () => {
     });
     expect(parsed.impact).toBe('CI is down');
     expect(parsed.legacy_field).toEqual({ nested: true });
+  });
+});
+
+describe('face: контракт типа (волна 2.17 REQ-01)', () => {
+  const faceBase = {
+    ...minimalBase,
+    type: 'face',
+    status: 'active',
+    owner_skill: 'worker-implementer',
+    version: '1',
+    reason: 'seed base face',
+    initiator: 'seed',
+  };
+
+  it('полный контракт проходит; based_on опционален', () => {
+    const s = buildTypeSchema(getDeclaration('face'));
+    expect(s.safeParse(faceBase).success).toBe(true);
+    expect(s.safeParse({ ...faceBase, based_on: 'mem_0' }).success).toBe(true);
+  });
+
+  it('отсутствие обязательного поля или initiator вне enum — отказ', () => {
+    const s = buildTypeSchema(getDeclaration('face'));
+    for (const field of ['owner_skill', 'version', 'reason', 'initiator']) {
+      const o: Record<string, unknown> = { ...faceBase };
+      delete o[field];
+      expect(s.safeParse(o).success, field).toBe(false);
+    }
+    expect(s.safeParse({ ...faceBase, initiator: 'rogue' }).success).toBe(false);
+  });
+});
+
+describe('proposal: сигнал-фасет + контракт (волна 2.17 REQ-08)', () => {
+  const contract = {
+    addressee: 'agent:steward',
+    basis: 'observed friction in daily runs',
+    proposed_change: 'add a shortcut section',
+    expected_benefit: 'fresher injections',
+    applicability_bounds: 'only for coding agents',
+  };
+
+  it('полный контракт на note — успех', () => {
+    const s = buildTypeSchema(getDeclaration('note'));
+    expect(
+      s.safeParse({ ...minimalBase, type: 'note', status: 'active', facet: 'proposal', ...contract }).success
+    ).toBe(true);
+  });
+
+  it('полный контракт на не-note core-типах (decision, face) — успех', () => {
+    const decision = buildTypeSchema(getDeclaration('decision'));
+    expect(
+      decision.safeParse({ ...minimalBase, type: 'decision', status: 'active', facet: 'proposal', ...contract }).success
+    ).toBe(true);
+    const face = buildTypeSchema(getDeclaration('face'));
+    expect(
+      face.safeParse({
+        ...minimalBase,
+        type: 'face',
+        status: 'active',
+        owner_skill: 'agent:x',
+        version: '1',
+        reason: 'r',
+        initiator: 'migration',
+        facet: 'proposal',
+        ...contract,
+      }).success
+    ).toBe(true);
+  });
+
+  it('отсутствие любого поля контракта (вкл. applicability_bounds) — отказ', () => {
+    const s = buildTypeSchema(getDeclaration('note'));
+    expect(PROPOSAL_CONTRACT_FIELDS).toContain('applicability_bounds'); // CR-2026-10-13-01
+    for (const field of PROPOSAL_CONTRACT_FIELDS) {
+      const partial = { ...contract };
+      delete partial[field as keyof typeof partial];
+      const r = s.safeParse({ ...minimalBase, type: 'note', status: 'active', facet: 'proposal', ...partial });
+      expect(r.success, field).toBe(false);
+    }
+  });
+
+  it('пустое значение поля контракта — отказ (min 1)', () => {
+    const s = buildTypeSchema(getDeclaration('note'));
+    const r = s.safeParse({
+      ...minimalBase,
+      type: 'note',
+      status: 'active',
+      facet: 'proposal',
+      ...contract,
+      addressee: '',
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it('сигнал-словарь не-note core-типов: facet опционален, только proposal', () => {
+    const s = buildTypeSchema(getDeclaration('decision'));
+    expect(s.safeParse({ ...minimalBase, type: 'decision', status: 'active' }).success).toBe(true);
+    // character-фасеты note не протекают в сигнал-словарь
+    expect(s.safeParse({ ...minimalBase, type: 'decision', status: 'active', facet: 'howto' }).success).toBe(false);
+  });
+
+  it('facet≠proposal не триггерит контракт (note howto без полей предложения — успех)', () => {
+    const s = buildTypeSchema(getDeclaration('note'));
+    expect(s.safeParse({ ...minimalBase, type: 'note', status: 'active', facet: 'howto' }).success).toBe(true);
   });
 });

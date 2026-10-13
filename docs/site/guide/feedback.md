@@ -44,7 +44,7 @@ Resolved complaints without an outgoing `outcome` edge are counted there. The co
 
 ## Escalation: behavioral → Steward
 
-The triage tree (duplicate / need-info / fix-instruction / steward-mutation / reject / obsolete) gains one rule: a **behavioral** complaint that was resolved with a "secured" outcome goes down the steward-mutation branch — the dispatcher makes a nested Steward call with the complaint id and the artifact id. The Steward then mutates the playbook through memory (`wolf supersede`), never the stamped file.
+The triage tree (duplicate / need-info / fix-instruction / steward-mutation / reject / obsolete) gains one rule: a **behavioral** complaint that was resolved with a "secured" outcome goes down the steward-mutation branch — the dispatcher makes a nested Steward call with the complaint id and the artifact id. The Steward then mutates the playbook through memory — since 2.17 as a new face version (`wolf face new`), every version carrying its mutation record (reason, minimal change, boundaries, examples, verification, rollback) — never the stamped file.
 
 Technical complaints follow the existing path: the dispatch queue with `dispatch_ages` and the SLA.
 
@@ -73,7 +73,7 @@ The Steward's faces — Mentor, Librarian, Archivist — and the frame/face/muta
 3. writes `wolf relation add <aggregate-id> aggregates <source-id>` for every source;
 4. carries the sources' `trigger_keywords` into the aggregate — it must trigger everywhere they did.
 
-For a frame mutation the Steward prepares a new proposed playbook version (with an `outcome_of` edge to the causing complaint/lessons); the owner applies it with `wolf supersede`. Nothing auto-applies.
+For a frame mutation the Steward prepares a proposal (`wolf propose add` — the 5-field contract: addressee, basis, proposed change, expected benefit, applicability bounds) and, once delivered (`wolf propose deliver`), a new face version (`wolf face new --from-proposal <id>`, with an `outcome_of` edge to the causing complaint/lessons). Nothing auto-applies: the owner's levers are `wolf face restore` (roll back to a version) and `wolf face breakglass` (an emergency override, refused inside live agent sessions).
 
 **Step 2 — the owner confirms.** The confirmation queue is memory itself: proposed aggregates are visible via `wolf list --type lesson --status proposed` and counted in `wolf recap`. Applying is one command, `wolf aggregate apply <aggregate-id>`: atomically, under a lock, the aggregate goes `proposed → active`, every source goes `→ archived`, and a `memory.aggregated` event lands in the log — double delivery is excluded by the same transaction. A repeated `apply` after a partial failure finishes the job. **Rejection is free:** `wolf transition <aggregate-id> rejected` — the sources stay `active`, the cluster shows up again as unaggregated; a false cluster costs nothing but the Steward's time.
 

@@ -3,8 +3,9 @@ import { rmSync } from 'fs';
 import { ensureBuilt, runCli, tmpProject } from './helpers.js';
 
 /**
- * P224 (спека 2.13 §6.6/§10.2): `wolf --help` ≤ 33 строки (2.14 §8.1: +1 видимая
- * `projects`; 2.16: +promote); plumbing скрыт из help, но работает. Бюджет:
+ * P224 (спека 2.13 §6.6/§10.2): `wolf --help` ≤ 36 строк (2.14 §8.1: +1 видимая
+ * `projects`; 2.16: +promote; 2.17: +face, +propose); plumbing скрыт из help,
+ * но работает. Бюджет:
  * видимые команды + 7 строк шапки, каждая команда — ровно одна строка
  * (описания стабов ≤ 52 симв., колонка 80−2−24−2).
  */
@@ -27,12 +28,12 @@ describe('help budget: wolf --help <= 33 lines, plumbing hidden but alive (P224)
     return dir;
   }
 
-  it('--help fits the 34-line budget (2.16: +promote; 2.16.2: +uninstall)', () => {
+  it('--help fits the 36-line budget (2.16: +promote; 2.16.2: +uninstall; 2.17: +face, +propose)', () => {
     const dir = newProject();
     const help = runCli(['--help'], dir);
     expect(help.status).toBe(0);
     const lines = help.stdout.replace(/\n+$/, '').split('\n');
-    expect(lines.length).toBeLessThanOrEqual(34);
+    expect(lines.length).toBeLessThanOrEqual(36);
   });
 
   it('hidden plumbing works: think --help answers, scan runs, session wrap-up --help answers', () => {
@@ -101,6 +102,8 @@ describe('help budget: wolf --help <= 33 lines, plumbing hidden but alive (P224)
       'thread',
       'complaint',
       'note',
+      'face',
+      'propose',
       'tool',
       'complain',
       'upgrade',

@@ -5,8 +5,8 @@ An agent's behavior has two halves — the static **frame** and the mutable **fa
 ## The model
 
 - **Frame** — the stamped agent file (`.opencode/agents/<name>.md`): role, boundaries, prohibitions. Static: `wolf sync` re-renders it, and hands off — it never carries the methodology.
-- **Face** — the playbook: a memory object in Wolf (since 2.13 a `note` with facet `howto` plus `owner_skill`/`version`/`steps`). Mutable: it evolves through the complaint loop, not by editing files.
-- **Mutator** — the Steward, and only the Steward. Agents file complaints (`wolf complain`); playbook mutations go through [the Learning Loop](/guide/feedback) and `wolf supersede`. Nobody edits a face in place.
+- **Face** — the playbook as a memory object in Wolf. Since 2.17 it is a core type (`face`) with its own versioning: new versions are created only through `wolf face` (`new` by the Steward, `restore`/`breakglass` by the owner), each Steward version leaves a structured mutation record (the G17 template: reason, minimal change, boundaries, examples, verification, rollback), and versions chain through supersede. Legacy playbook notes (`note` + facet `howto` + `owner_skill`, the 2.13–2.16 form) remain readable and migrate with `wolf face migrate`. Mutable: it evolves through the complaint loop, not by editing files.
+- **Mutator** — the Steward, and only the Steward. Agents file complaints (`wolf complain`); playbook mutations go through [the Learning Loop](/guide/feedback) as face versions. Nobody edits a face in place; the owner's emergency lever is `wolf face breakglass`, which is refused inside live agent sessions.
 - **Delivery** — the channel that puts the resolved playbook body into the system prompt. Three channels, one primary.
 
 ## Three delivery channels
@@ -24,11 +24,11 @@ The plugin is what makes delivery deterministic instead of hoping the agent reme
 The router is the `wolf-router` opencode plugin — a stamped file (`.opencode/plugins/wolf-router.ts`) from the Wolf base set. On every message it:
 
 1. Reads the `agent-id: <id>` marker from the agent frame **body**. The marker must live in the body, not in frontmatter — frontmatter never reaches the system prompt (a known opencode trap).
-2. Runs `wolf search <id> playbook --hide-superseded` and fetches candidates with `wolf get` — stopping early: the first candidate that passes the ownership guard wins (search relevance already ranks them, and `--hide-superseded` cuts old versions), so a cache miss costs a single `get` instead of K sequential fetches. Since 2.13 a playbook is not a type, so the search is by keywords with no `--type` filter — the word `playbook` narrows the candidates by title/tags, and the legacy `playbook` type reads as `note` + facet `howto`.
+2. Runs `wolf search <id> playbook --hide-superseded` and fetches candidates with `wolf get` — stopping early: the first candidate that passes the ownership guard wins (search relevance already ranks them, and `--hide-superseded` cuts old versions), so a cache miss costs a single `get` instead of K sequential fetches. The canonical playbook form since 2.17 is a `face`; legacy playbook notes (the pre-2.17 `note` + facet `howto`) still resolve through the alias path — the word `playbook` narrows the candidates by title/tags on both forms.
 3. Guards ownership: only candidates with `owner_skill === agentId` (legacy `skill:<agentId>` also accepted) are eligible. The guard, not a type filter, is what decides canonicity.
 4. Injects the playbook body into the system prompt under the header `# Актуальный playbook`.
 
-Resolved playbooks are cached per agent-id for 5 minutes (a negative result is cached too — a project without a playbook doesn't spawn a CLI on every turn). The playbook is canonical memory that the Steward mutates rarely, so minutes-level freshness is enough; a session restart picks up changes immediately.
+Resolved playbooks are cached twice (variant B, since 2.17). **Per session:** the delivered text is memoized under the session key (`WOLF_SESSION` + agent-id) — a repeated delivery in the same session returns the sealed text without spawning a CLI, and a face mutated mid-chat does not change what that session already reads. **Across sessions:** a TTL cache (5 minutes) saves only the `get` spawn and is served only when the cached id still matches the current head — a stale version is never delivered; every new session runs one fresh search as the freshness barrier. Face versions are canonical memory that the Steward mutates rarely, so minutes-level freshness is enough; the session memo picks up changes on the next session regardless.
 
 Injection is idempotent — the header is checked, so the playbook is never injected twice. The plugin is fail-safe: any error is swallowed; it has no right to break the session. The registry of deliveries is the playbook objects themselves, via `owner_skill` — there is no separate router config.
 
@@ -70,11 +70,11 @@ The log's place in telemetry is covered in [Telemetry](/guide/telemetry), the me
    agent-id: my-agent
    ```
 
-2. Create a playbook owned by that id — since 2.13, a `note` object with facet `howto` and the fields `owner_skill: my-agent`, `version` and `steps`. A higher `version` supersedes the older ones; the tag, `owner_skill` and agent-id should match (the plugin-delivery contract).
+2. Create a playbook owned by that id — since 2.17 a `face` version via `wolf face new <owner_skill>` (run as the Steward; every version requires the mutation-record fields). The pre-2.17 form — a `note` with facet `howto` and `owner_skill` — still resolves; `wolf face migrate` converts existing notes into versioned faces, and `wolf doctor` flags owners where both forms coexist. A higher version supersedes the older ones; the `owner_skill` and agent-id should match (the plugin-delivery contract).
 
-`wolf scaffold agent` does both steps for you: it stamps the marker into the frame body and creates the playbook (see [Platform & Maintenance](/guide/cli/platform#wolf-scaffold)).
+`wolf scaffold agent` does both steps for you: it stamps the marker into the frame body and creates the face (see [Platform & Maintenance](/guide/cli/platform#wolf-scaffold)).
 
-The base-set agents carry their markers out of the box (`worker-implementer`, `worker-researcher`, `worker-reviewer`, `executor-lead`, `steward`, `mr-wolf`), and `wolf init` seeds canonical playbooks for them — including the executor-lead dispatcher.
+The base-set agents carry their markers out of the box (`worker-implementer`, `worker-researcher`, `worker-reviewer`, `executor-lead`, `steward`, `mr-wolf`), and `wolf init` seeds canonical faces for them — including the executor-lead dispatcher.
 
 ## Trust
 

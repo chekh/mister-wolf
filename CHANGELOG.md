@@ -4,6 +4,27 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.17.0] - 2026-10-13
+
+### Added — Faces: versioned agent playbooks (wave 2.17)
+
+- `face` is a core type — the canonical playbook of an agent as a first-class memory object (the taxonomy grows 7 → 8 types). Required fields: `owner_skill`, `version`, `reason`; optional `based_on` (the previous version id); `initiator` records who created the version (`steward` | `owner` | `breakglass` | `migration` | `seed`). Versions live in `shared/faces/` and chain through the existing supersede mechanism; direct `wolf add --type face` is refused with a pointer to `wolf face` (the versioning path is the only door, for CLI and MCP alike).
+- `wolf face` command group: `new` (Steward only — requires the G17 mutation fields), `restore`/`breakglass` (owner only; breakglass refuses to run inside a live agent session), `migrate` (legacy playbook notes → face v1, idempotent, per-owner report, exit 1 on partial failure), `list`/`history`/`show` (read views resolve duplicates by highest version).
+- G17 mutation records: every Steward face version leaves a `note` (facet `history`, title `mutation: <owner_skill> v<N>`) with the seven design fields — `reason`, `minimal_change`, `boundaries`, `example_helps`, `example_keep`, `verification`, `rollback` — linked to the version by a `mutates` relation. The template is mandatory: a version without the record is refused before anything is written.
+- `wolf propose` (`add`/`deliver`/`list`) and the `proposal` signal facet: a structured proposal on any core type carries a 5-field contract (`addressee`, `basis`, `proposed_change`, `expected_benefit`, `applicability_bounds`); `deliver` stamps `delivered_at`; `wolf face new --from-proposal <id>` links the new version to its proposal (`proposes` relation). The `--facet` help in `add`/`list`/`search` mentions `proposal`.
+- `wolf doctor` gains a `## Faces` section: duplicate canon per `owner_skill`, a `based_on` that points nowhere, legacy note + live face for the same owner (hint: `wolf face migrate`), and faces outside the contract (files silently dropped by the store).
+- Router variant B (`.opencode/plugins/wolf-router.ts`): delivery is memoized per session — the injected playbook text is sealed for the whole session, so a mid-chat mutation cannot change what the session already reads — while the TTL cache is now version-guarded: a cached entry is served only when its id still matches the current head, so a stale version is never delivered; every new session runs one fresh search as the freshness barrier.
+
+### Changed
+
+- Seeding and scaffolding go through the face contract: `wolf init` seeds base-set playbooks as faces (skipped when a live face or a legacy note exists for the owner), and `wolf scaffold agent` creates the face instead of a playbook note (`--from-playbook` accepts face ids).
+- `wolf sync` Steward-zone hint now points face maintenance at `wolf face *` instead of generic supersede.
+- README and site guides updated for the 8-type taxonomy, the face model of delivery, `wolf propose`, and the `proposal` facet; CLI reference regenerated (`wolf face`, `wolf propose`).
+
+### Upgrade notes
+
+- Migrations: none forced. Legacy playbook notes (`note` + `facet: howto` + `owner_skill`) remain readable through the alias path; run `wolf face migrate` to convert them into versioned faces — idempotent, safe to re-run, `wolf doctor` flags owners where both forms coexist. Run `wolf sync` after upgrading to receive the updated wolf-router plugin (variant B).
+
 ## [2.16.3] - 2026-10-13
 
 ### Fixed — Agent spawn regression on OpenCode v2 (default mode: primary)
@@ -444,6 +465,7 @@ First public release on npm.
 - Normalized the bin path in `package.json` — `npm publish` stripped the binary from the package (2cb1d05).
 
 [Unreleased]: https://github.com/chekh/mister-wolf/compare/v2.9.0...HEAD
+[2.17.0]: https://github.com/chekh/mister-wolf/compare/v2.16.3...v2.17.0
 [2.0.0]: https://github.com/chekh/mister-wolf/compare/v1.1.0...v2.0.0
 [1.1.0]: https://github.com/chekh/mister-wolf/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/chekh/mister-wolf/compare/v1.0.2...v1.0.3

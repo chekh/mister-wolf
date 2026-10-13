@@ -20,10 +20,7 @@ export function memorySearchCommand(): Command {
     .description('Search memory objects')
     .argument('<query>', 'Search query')
     .option('--type <type>', 'Filter by type')
-    .option(
-      '--facet <facet>',
-      'Filter notes by character facet (howto|pitfall|context|metric|history|legacy|constraint)'
-    )
+    .option('--facet <facet>', 'Filter by facet (howto|pitfall|context|metric|history|legacy|constraint|proposal)')
     .option('--status <status>', 'Filter by status')
     .option('--tag <tag>', 'Filter by tag (repeatable)', collect, [])
     .option('--confidence <confidence>', 'Filter by confidence (low|medium|high)')

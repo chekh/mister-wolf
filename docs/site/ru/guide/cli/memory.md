@@ -20,7 +20,7 @@ wolf add [options]
 | `--importance <n>`          | Важность от 0 до 1                                                                                                                                                                                                                                         |
 | `--set <k=v>`               | Доп. поле key=value (повторяемый; значение «[a,b]» — строковый массив)                                                                                                                                                                                     |
 | `--scope <scope>`           | Поле scope для типов с ним (rule: project\|global); также `main` и `worktree:<имя>` — записи из linked worktree получают `worktree:<имя>` по умолчанию, `--scope main` исключает это (см. [память в git worktree](/ru/guide/memory#память-в-git-worktree)) |
-| `--facet <facet>`           | Фасет note. Обязателен для `note`: howto\|pitfall\|context\|metric\|history\|legacy\|constraint. Свободный ввод — ошибка: словарь фасетов закрыт                                                                                                           |
+| `--facet <facet>`           | Фасет note. Обязателен для `note`: howto\|pitfall\|context\|metric\|history\|legacy\|constraint\|proposal. Свободный ввод — ошибка: словарь фасетов закрыт                                                                                                 |
 | `--created-by <actor>`      | Автор (дефолт: env WOLF_ACTOR, иначе user:cli)                                                                                                                                                                                                             |
 
 ```bash
@@ -39,12 +39,12 @@ wolf add --type note --title "Ловушка кэша CI" --body "vitest нуж�
 wolf list [options]
 ```
 
-| Опция               | Описание                                               |
-| ------------------- | ------------------------------------------------------ |
-| `--type <type>`     | Фильтр по типу                                         |
-| `--status <status>` | Фильтр по статусу                                      |
-| `--stale`           | Только stale-объекты (не обновлялись 30 дней)          |
-| `--facet <facet>`   | Фильтр notes по характеру (howto\|pitfall\|context\|…) |
+| Опция               | Описание                                                         |
+| ------------------- | ---------------------------------------------------------------- |
+| `--type <type>`     | Фильтр по типу                                                   |
+| `--status <status>` | Фильтр по статусу                                                |
+| `--stale`           | Только stale-объекты (не обновлялись 30 дней)                    |
+| `--facet <facet>`   | Фильтр notes по характеру (howto\|pitfall\|context\|…\|proposal) |
 
 `list` — перечисление с фильтрами; нужен полнотекстовый запрос — бери `search`, дублей опций у пары нет.
 
@@ -78,7 +78,7 @@ wolf search <query> [options]
 | Опция                                              | Описание                                                              |
 | -------------------------------------------------- | --------------------------------------------------------------------- |
 | `--type <type>` / `--status <status>`              | Фильтры по типу / статусу                                             |
-| `--facet <facet>`                                  | Фильтр notes по характеру (howto\|pitfall\|context\|…)                |
+| `--facet <facet>`                                  | Фильтр notes по характеру (howto\|pitfall\|context\|…\|proposal)      |
 | `--tag <tag>`                                      | Фильтр по тегу (повторяемый)                                          |
 | `--confidence <confidence>`                        | low\|medium\|high                                                     |
 | `--min-importance <n>` / `--max-importance <n>`    | Границы важности                                                      |

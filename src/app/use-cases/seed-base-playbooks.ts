@@ -1,7 +1,12 @@
 // src/app/use-cases/seed-base-playbooks.ts
-import { z } from 'zod';
-import { buildTypeSchema } from '../../domain/type-schema-builder.js';
-import { getDeclaration } from '../../domain/memory-types.js';
+import { MemoryStore } from '../../ports/memory-store.port.js';
+import { EventLog } from '../../ports/event-log.port.js';
+import { Clock } from '../../ports/clock.port.js';
+import { IdGenerator } from '../../ports/id-generator.port.js';
+import { SearchIndex } from '../../ports/search-index.port.js';
+import { MemoryLock } from '../../ports/memory-lock.port.js';
+import { MemoryTypeDeclaration } from '../../domain/memory-types.js';
+import { createFaceVersion, type FaceObject } from './create-face-version.js';
 
 export interface SeedOutcome {
   file: string;
@@ -9,30 +14,20 @@ export interface SeedOutcome {
   reason?: string;
 }
 
-// wave13-a: playbook поглощён note+facet howto (карта §5.4 2.13); спец-поля
-// (owner_skill/version/steps) живут в passthrough — как у article/blocker
-export const PlaybookNoteSchema = buildTypeSchema(getDeclaration('note'), {
-  owner_skill: z.string(),
-  version: z.string().default('1'),
-  steps: z.array(z.string()).default([]),
-});
-export type PlaybookNoteInput = {
-  type: 'note';
-  facet: 'howto';
-  title: string;
-  body: string;
-  createdBy: string;
-  tags: string[];
-  extra: { owner_skill: string; version: string; steps: string[] };
-};
-
-export type SeedAddFn = (input: PlaybookNoteInput) => Promise<unknown>;
-
+// Волна 2.17 T-05 (design §«seedBasePlaybooks», ADR-6): посев base-set — лица
+// через face-контракт createFaceVersion с initiator='seed' (внутренний путь,
+// guard не применяется). Тайтл/теги/owner_skill переносятся из шаблона;
+// version назначает команда ('1'), steps face-контрактом не предусмотрен
+// (миграция 2.17 переносит ровно так же — design §Миграция).
 export interface SeedDeps {
   files: Map<string, string>;
-  add: SeedAddFn;
-  /** Опциональный предикат «этот owner_skill уже посеян» (по умолчанию — нет, т.к. add сам валидирует). */
-  isSeeded?: (ownerSkill: string) => Promise<boolean>;
+  store: MemoryStore;
+  log: EventLog;
+  clock: Clock;
+  idGen: IdGenerator;
+  index?: SearchIndex;
+  lock?: MemoryLock;
+  declarations?: readonly MemoryTypeDeclaration[];
 }
 
 function parseFrontmatter(raw: string): { meta: Record<string, string>; body: string } {
@@ -46,34 +41,41 @@ function parseFrontmatter(raw: string): { meta: Record<string, string>; body: st
   return { meta, body: m[2] };
 }
 
-/** Посев (спека §7): скип по owner_skill (MAJ-3/C2), не по пересечению тегов. */
+/** Посев (спека §7): скип по owner_skill (MAJ-3/C2) — живое лицо (face) или
+ * legacy-запись владельца в памяти, не пересечение тегов; дублей нет (REQ-02 AC3). */
 export async function seedBasePlaybooks(deps: SeedDeps): Promise<SeedOutcome[]> {
   const outcomes: SeedOutcome[] = [];
-  // ponytail: без .sort() — план-тест ожидает порядок вставки Map (added[0]=steward); порядок посева функционально не важен
+  const seededOwners = new Set<string>();
+  for (const obj of await deps.store.list({ type: 'face' })) {
+    const owner = (obj as FaceObject).owner_skill;
+    if (typeof owner === 'string' && owner !== '') seededOwners.add(owner);
+  }
+  // legacy: note+facet howto c owner_skill (вкл. alias-резолв старого type playbook)
+  for (const obj of await deps.store.list({ type: 'note', facet: 'howto' })) {
+    const owner = (obj as { owner_skill?: unknown }).owner_skill;
+    if (typeof owner === 'string' && owner.trim() !== '') seededOwners.add(owner);
+  }
+  // ponytail: без .sort() — порядок вставки Map функционально не важен
   for (const [file, raw] of deps.files) {
     const { meta, body } = parseFrontmatter(raw);
     const ownerSkill = meta.owner_skill ?? '';
-    if (deps.isSeeded && (await deps.isSeeded(ownerSkill))) {
+    if (seededOwners.has(ownerSkill)) {
       outcomes.push({ file, action: 'skipped', reason: `owner_skill=${ownerSkill} already in memory (R2-M3)` });
       continue;
     }
-    const steps = (meta.steps ?? '')
-      .split('|')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    await deps.add({
-      type: 'note', // wave13-a: playbook → note+facet howto
-      facet: 'howto',
+    await createFaceVersion(deps, {
+      command: 'seed',
+      ownerSkill,
+      reason: `base-set seed: ${file}`,
       title: meta.title ?? file,
       body,
-      createdBy: 'wolf-init',
       tags: (meta.tags ?? '')
         .split(',')
         .map((t) => t.trim())
         .filter(Boolean),
-      extra: { owner_skill: ownerSkill, version: meta.version ?? '1', steps },
     });
     outcomes.push({ file, action: 'created' });
+    seededOwners.add(ownerSkill); // два шаблона одного владельца — тоже дубль
   }
   return outcomes;
 }

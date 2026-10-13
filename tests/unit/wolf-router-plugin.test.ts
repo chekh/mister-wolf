@@ -5,7 +5,7 @@ import { readFileSync, rmSync } from 'fs';
 // ни от .wolf/-памяти репо (gitignored, есть только на дев-машине), ни от dist.
 const ROUTER_LOG = '/tmp/wolf-router-plugin-test/router.log';
 const SKILL_LOG = '/tmp/wolf-router-plugin-test/skill-invocations.jsonl';
-const { execFileMock } = vi.hoisted(() => {
+const { execFileMock, publishVersion, TTL_PLAYBOOK, TTL_PLAYBOOK_V2, TTL_PLAYBOOK_V3 } = vi.hoisted(() => {
   // WOLF_ROUTER_LOG-шов: лог пишется в tmp-файл, а не в живой .wolf/router.log
   // репо (иначе тесты после мержа в main загрязняли бы dogfood-аналитику владельца).
   process.env.WOLF_ROUTER_LOG = '/tmp/wolf-router-plugin-test/router.log';
@@ -30,12 +30,35 @@ const { execFileMock } = vi.hoisted(() => {
   // плагина это Map на уровне модуля, общий на весь тест-файл.
   const TTL_AGENT = 'ttl-probe-p106';
   const TTL_PLAYBOOK_ID = 'mem_fixture_playbook_ttl_v1';
+  // тела с непересекающимися маркерами: alpha/beta/gamma — чтобы toContain
+  // одной версии не ложно совпадал с другой (v1 — префикс v2 иначе)
   const TTL_PLAYBOOK = {
     id: TTL_PLAYBOOK_ID,
     type: 'playbook',
     owner_skill: TTL_AGENT,
     version: 'v1',
-    body: '# ttl probe body',
+    body: '# ttl probe body alpha',
+  };
+  // Вариант Б (CR-2026-10-13-02): публикация новой версии — head в search
+  // меняется (старая superseded и скрыта --hide-superseded), get отдаёт новую.
+  const TTL_PLAYBOOK_V2 = {
+    id: 'mem_fixture_playbook_ttl_v2',
+    type: 'playbook',
+    owner_skill: TTL_AGENT,
+    version: 'v2',
+    body: '# ttl probe body beta',
+  };
+  const TTL_PLAYBOOK_V3 = {
+    id: 'mem_fixture_playbook_ttl_v3',
+    type: 'playbook',
+    owner_skill: TTL_AGENT,
+    version: 'v3',
+    body: '# ttl probe body gamma',
+  };
+  // хелпер «Стюард опубликовал новую версию»: подменяет head в моке поиска
+  const publishVersion = (obj: { id: string; owner_skill: string; version: string; body: string }) => {
+    SEARCH_HITS[obj.owner_skill] = `${obj.id} [playbook] # head v${obj.version}\n`;
+    GET_OBJECTS[obj.id] = obj;
   };
   const STOP_AGENT = 'early-stop-p106';
   const STOP_A_ID = 'mem_fixture_playbook_stop_a_v1';
@@ -93,7 +116,7 @@ const { execFileMock } = vi.hoisted(() => {
     }
     return done(new Error(`unexpected CLI call: ${JSON.stringify(args)}`));
   });
-  return { execFileMock };
+  return { execFileMock, publishVersion, TTL_PLAYBOOK, TTL_PLAYBOOK_V2, TTL_PLAYBOOK_V3 };
 });
 vi.mock('child_process', () => ({ execFile: execFileMock }));
 
@@ -214,31 +237,65 @@ describe('wolf-router plugin', () => {
 });
 
 describe('P106: TTL 5 мин / ранний стоп / негативный кэш / ms-bytes / WOLF_SESSION / skill-метрика', () => {
-  // (а) TTL 5 минут: между 2.5с (старый TTL) и 5мин — кэш обязан жить
-  it('TTL: respawn только после 5 мин, не после 2.5с', async () => {
+  // (а) Вариант Б (CR-2026-10-13-02), переработка TTL-теста — три ожидания:
+  //     1. respawn (новая сессия) после истечения TTL → доставлена АКТУАЛЬНАЯ версия;
+  //     2. повторная инъекция в ТОЙ ЖЕ сессии → без нового содержания
+  //        (мемоизация по session-id, независимо от пересборки system);
+  //     3. НОВАЯ сессия в пределах TTL после публикации новой версии →
+  //        АКТУАЛЬНАЯ версия (версионированный кэш не отдаёт устаревшую —
+  //        остаточный случай №1, F-01 ревью плана).
+  // Граница сессии для плагина — WOLF_SESSION (ключ opencode-процесса):
+  // respawn моделируется сменой ключа + новой фабрикой server().
+  it('вариант Б: мемоизация сессии пиннит версию; новая сессия (даже в пределах TTL) получает актуальную', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
+    const savedSession = process.env.WOLF_SESSION;
     try {
       execFileMock.mockClear();
+      // --- сессия A: первая доставка v1 ---
+      process.env.WOLF_SESSION = 'sess-ttl-a';
       const plugin = await WolfPlaybookPlugin.server();
       const transform = plugin['experimental.chat.system.transform'];
-      const out1 = makeSystemOutput('agent-id: ttl-probe-p106\n\nТы — проба TTL.');
-      await transform({}, out1);
-      expect(playbookParts(out1)).toHaveLength(1);
-      const afterFirst = execFileMock.mock.calls.length;
-      expect(afterFirst).toBeGreaterThan(0);
+      const outA1 = makeSystemOutput('agent-id: ttl-probe-p106\n\nТы — проба TTL.');
+      await transform({}, outA1);
+      expect(playbookParts(outA1)).toHaveLength(1);
+      expect(playbookParts(outA1)[0]).toContain(TTL_PLAYBOOK.body);
+      const spawnsA = execFileMock.mock.calls.length;
+      expect(spawnsA).toBeGreaterThan(0);
 
+      // --- (2) ТО ЖЕ сессия, публикация v2 + пересборка system (< TTL):
+      //     нового содержания нет — запечатана v1, спавнов ноль ---
+      publishVersion(TTL_PLAYBOOK_V2);
       vi.advanceTimersByTime(4 * 60_000); // 4 мин < TTL 5 мин
-      const out2 = makeSystemOutput('agent-id: ttl-probe-p106\n\nТы — проба TTL.');
-      await transform({}, out2);
-      expect(execFileMock.mock.calls.length).toBe(afterFirst); // кэш жив, спавнов нет
-      expect(playbookParts(out2)).toHaveLength(1);
+      const outA2 = makeSystemOutput('agent-id: ttl-probe-p106\n\nТы — проба TTL.'); // пересобран, без заголовка
+      await transform({}, outA2);
+      expect(execFileMock.mock.calls.length).toBe(spawnsA); // мемоизация: ре-резолва нет
+      expect(playbookParts(outA2)).toHaveLength(1);
+      expect(playbookParts(outA2)[0]).toContain(TTL_PLAYBOOK.body); // та же версия
+      expect(playbookParts(outA2)[0]).not.toContain(TTL_PLAYBOOK_V2.body);
 
-      vi.advanceTimersByTime(6 * 60_000); // 10 мин от первого → TTL истёк
-      const out3 = makeSystemOutput('agent-id: ttl-probe-p106\n\nТы — проба TTL.');
-      await transform({}, out3);
-      expect(execFileMock.mock.calls.length).toBeGreaterThan(afterFirst); // respawn был
-      expect(playbookParts(out3)).toHaveLength(1);
+      // --- (3) НОВАЯ сессия в пределах TTL после публикации v2 → актуальная v2 ---
+      process.env.WOLF_SESSION = 'sess-ttl-b';
+      const outB = makeSystemOutput('agent-id: ttl-probe-p106\n\nТы — проба TTL.');
+      await transform({}, outB);
+      expect(execFileMock.mock.calls.length).toBeGreaterThan(spawnsA); // кэш v1 не отдан
+      expect(playbookParts(outB)).toHaveLength(1);
+      expect(playbookParts(outB)[0]).toContain(TTL_PLAYBOOK_V2.body);
+      expect(playbookParts(outB)[0]).not.toContain(TTL_PLAYBOOK.body);
+      const spawnsB = execFileMock.mock.calls.length;
+
+      // --- (1) respawn после истечения TTL → актуальная версия (v3) ---
+      vi.advanceTimersByTime(6 * 60_000); // 10 мин от первой кэш-записи → TTL истёк
+      publishVersion(TTL_PLAYBOOK_V3);
+      process.env.WOLF_SESSION = 'sess-ttl-c';
+      const outC = makeSystemOutput('agent-id: ttl-probe-p106\n\nТы — проба TTL.');
+      await transform({}, outC);
+      expect(execFileMock.mock.calls.length).toBeGreaterThan(spawnsB); // respawn был
+      expect(playbookParts(outC)).toHaveLength(1);
+      expect(playbookParts(outC)[0]).toContain(TTL_PLAYBOOK_V3.body);
+      expect(playbookParts(outC)[0]).not.toContain(TTL_PLAYBOOK_V2.body);
     } finally {
+      if (savedSession === undefined) delete process.env.WOLF_SESSION;
+      else process.env.WOLF_SESSION = savedSession;
       vi.useRealTimers();
     }
   });
@@ -255,8 +312,10 @@ describe('P106: TTL 5 мин / ранний стоп / негативный кэ
     expect(getCalls()).toHaveLength(1);
   });
 
-  // негативный кэш: null кэшируется тем же TTL — повторный miss без спавнов
-  it('negative cache: miss → только search (0 get); повтор → ноль новых спавнов', async () => {
+  // вариант Б: miss канона → fallback (0 get — только search); повторный вызов
+  // в той же сессии — ноль спавнов через сессийную мемоизацию, не через
+  // TTL-кэш: search живой раз на новую сессию, null-запись не консультируется
+  it('miss → только search (0 get); повтор в той же сессии — ноль спавнов (мемоизация сессии)', async () => {
     execFileMock.mockClear();
     const plugin = await WolfPlaybookPlugin.server();
     const transform = plugin['experimental.chat.system.transform'];
@@ -269,7 +328,7 @@ describe('P106: TTL 5 мин / ранний стоп / негативный кэ
 
     const out2 = makeSystemOutput('agent-id: neg-cache-p106\n\nНеизвестный агент.');
     await transform({}, out2);
-    expect(execFileMock.mock.calls.length).toBe(afterFirst); // null из кэша, спавнов нет
+    expect(execFileMock.mock.calls.length).toBe(afterFirst); // мемоизация сессии, спавнов нет
     expect(playbookParts(out2)).toHaveLength(1);
   });
 

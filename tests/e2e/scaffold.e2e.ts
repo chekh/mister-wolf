@@ -33,11 +33,11 @@ describe('wolf scaffold (B1)', () => {
 
     const got = runCli(['get', id!], cwd);
     expect(got.status).toBe(0);
-    // 2.13: плейбуки base set — notes (type: note, facet: howto)
-    expect(got.stdout).toContain('"type": "note"');
-    expect(got.stdout).toContain('"facet": "howto"');
+    // 2.17 T-05: лицо scaffold — face-контракт (initiator=seed, version '1')
+    expect(got.stdout).toContain('"type": "face"');
     expect(got.stdout).toContain('"owner_skill": "demo-agent"');
-    expect(got.stdout).toContain('"version": "v1"');
+    expect(got.stdout).toContain('"version": "1"');
+    expect(got.stdout).toContain('"initiator": "seed"');
 
     const relations = readFileSync(join(cwd, '.wolf', 'memory', 'relations.jsonl'), 'utf-8');
     expect(relations).toContain('"predicate":"owner_skill"');

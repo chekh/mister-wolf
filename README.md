@@ -54,7 +54,7 @@ After `wolf init` **restart your agent platform** — the Wolf MCP server connec
   `gyp ERR!` / `node-gyp` / a from-source build failed — there is no prebuild for your Node version or it did not download. Install the node-gyp prerequisites (python3, make, a C++ toolchain) and retry `npm rebuild better-sqlite3` — this one is fixable, unlike musl.
 - **Dev path (from a cloned repo):** `npm install && npm run build`, then `alias wolf="node dist/bootstrap/cli.js"`. With a global `mister-wolf` installed at the same time, mind PATH shadowing: which `wolf` runs is decided by the order of directories in your PATH. npm also carries a third-party `wolf` package (Wolfram CLI) — installing both globally conflicts over the binary name and resolves by the same PATH order.
 
-Connecting an agent is one command: `wolf scaffold agent <name>` creates a thin frame in `.opencode/agents/<name>.md`, a playbook object in memory, and a relation between them. Playbook delivery into the session is done by the `.opencode/plugins/wolf-router.ts` plugin — see [Integrations](#integrations).
+Connecting an agent is one command: `wolf scaffold agent <name>` creates a thin frame in `.opencode/agents/<name>.md`, a face — the agent's playbook as a versioned memory object — and a relation between them. Playbook delivery into the session is done by the `.opencode/plugins/wolf-router.ts` plugin — see [Integrations](#integrations).
 
 `bootstrap` finishes by invoking the Steward to fold the startup-memory drafts — protocol: [steward bootstrap (RU)](docs/guide/steward-bootstrap.md).
 
@@ -83,7 +83,7 @@ Details: [architecture guide (RU)](docs/guide/architecture.md) · [concept v3 (R
 
 ### Memory
 
-Everything is memory: 7 core types (`rule`, `lesson`, `decision`, `thread`, `complaint`, `tool`, `note`) plus facets, versions, relations, attribution.
+Everything is memory: 8 core types (`rule`, `lesson`, `decision`, `thread`, `complaint`, `tool`, `note`, `face`) plus facets, versions, relations, attribution. A `face` is an agent's playbook as its own versioned type — new versions via `wolf face` (the Steward's mutations leave a structured mutation record), emergency owner rollback via `wolf face breakglass`; structured proposals travel as `wolf propose`.
 
 ```bash
 wolf add --type lesson --title "..." --body "..." --tags "vitest,ci" --confidence medium
@@ -123,9 +123,9 @@ Wolf works as a permanent project organization from temporary agents: a **coordi
 
 ### Agents
 
-- `wolf scaffold agent|skill|command <name>` — a platform frame + a playbook in memory + a relation, all in one command; `--persona` and `--model` for agents, `--from-playbook <id>` to reuse an existing playbook.
+- `wolf scaffold agent|skill|command <name>` — a platform frame + a face (the agent's playbook) in memory + a relation, all in one command; `--persona` and `--model` for agents, `--from-playbook <id>` to reuse an existing playbook.
 - Playbook delivery is plugin injection into the system prompt (delivery layer #1): `.opencode/plugins/wolf-router.ts`.
-- **Steward** — the loop's background agent with faces: **Mentor** (methodology, handles complaints), **Librarian** (tools), **Archivist** (knowledge). A new face = a new playbook, not a new agent. Since 2.14 the Steward also aggregates mature lessons into single replacements — proposed, then owner-confirmed.
+- **Steward** — the loop's background agent with faces: **Mentor** (methodology, handles complaints), **Librarian** (tools), **Archivist** (knowledge). A new face = a new playbook, not a new agent — since 2.17 a face is a core type: versioned through `wolf face` with a mandatory mutation record per Steward version, migratable from legacy playbook notes (`wolf face migrate`). Since 2.14 the Steward also aggregates mature lessons into single replacements — proposed, then owner-confirmed.
 
 ### Tools
 

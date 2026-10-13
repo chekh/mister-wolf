@@ -58,7 +58,7 @@ Plugins ship with the opencode harness layer of the package (`templates/opencode
 
 ## Playbooks — 6 → seeded into Wolf memory
 
-Playbooks are the odd one out: they are **not** stamped files. Since 2.13 they are no longer a `playbook` type: `wolf init` seeds them into `.wolf/` memory as `note` objects with `facet: howto` and an `owner_skill` field (skipped when the same `owner_skill` is already seeded). From that moment they are memory — mutations go through the complaint loop and the Steward, and `wolf sync` never touches them. See [Memory Model](/guide/memory).
+Playbooks are the odd one out: they are **not** stamped files. Since 2.13 they are no longer a `playbook` type: `wolf init` seeds them into `.wolf/` memory — since 2.17 as `face` objects (a versioned core type with `owner_skill`; skipped when a live face or a legacy note with the same `owner_skill` is already seeded). From that moment they are memory — mutations go through the complaint loop and the Steward (`wolf face` versions with a mandatory mutation record), and `wolf sync` never touches them. Legacy seeded notes migrate with `wolf face migrate`. See [Memory Model](/guide/memory).
 
 | Playbook                      | Content                                          | Owner                |
 | ----------------------------- | ------------------------------------------------ | -------------------- |

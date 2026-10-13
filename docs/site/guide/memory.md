@@ -2,25 +2,26 @@
 
 This page is the single source of truth for Wolf's memory taxonomy.
 
-Since 2.13 Wolf's taxonomy is **seven types** — down from 26. The point is not renaming but redistributing responsibility:
+Since 2.13 Wolf's taxonomy is **eight types** — down from 26, plus `face` in 2.17. The point is not renaming but redistributing responsibility:
 
-- **7 types instead of 26.** Deciding where to write something is now a one-second choice, not a taxonomy exam.
-- A **facet** is the character of a record, chosen from a closed list at add time. Free input is rejected; facets exist only on notes.
+- **8 types instead of 26.** Deciding where to write something is now a one-second choice, not a taxonomy exam.
+- A **facet** is the character of a record, chosen from a closed list at add time. Free input is rejected; facets exist on notes (the `proposal` signal facet is the one exception — it marks a structured proposal on any core type).
 - **Colors are highlighting only.** They mark facets in terminal output and never carry meaning by themselves.
-- **`note` is the universal type.** Anything that is not a rule, lesson, decision, thread, complaint or tool is a note with a facet.
+- **`note` is the universal type.** Anything that is not a rule, lesson, decision, thread, complaint, tool or face is a note with a facet.
 - `blocker`, `info-request` and `open-question` are **no longer types** — they are statuses of a thread.
 
-## The seven types
+## The eight types
 
-| Type        | What it represents                                     | Where it lives (thread / shared) | Lifecycle                                                            | Fields beyond the basics                                                                             |
-| ----------- | ------------------------------------------------------ | -------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `rule`      | a standing instruction the agent follows               | — / `shared/rules`               | active, superseded, obsolete, proposed, accepted, rejected, archived | `scope` (project\|global), `applies_to`, `trigger`, `trigger_keywords`                               |
-| `lesson`    | a pitfall or practice that should resurface later      | `lessons/` / `lessons/`          | full set (active, open, resolved, stale, conflicting, paused, …)     | `trigger_keywords`                                                                                   |
-| `decision`  | a chosen option and the alternatives it beat           | `decisions/` / `decisions/`      | active, superseded, rejected, obsolete                               | `thread` (optional)                                                                                  |
-| `thread`    | multi-step work in progress                            | `threads/<tid>/WORK-THREAD.md`   | active, paused, blocked, waiting_answer, open, completed, archived   | `goal` (required), `current_state`, `next_steps`                                                     |
-| `complaint` | a filed complaint about a rule or playbook             | `notes/` / `shared/complaints`   | open, resolved, rejected, archived                                   | `about`, `rule`, `evidence`, `proposal`, `triage`, `resolution`, `dispatch_ages`, `corroborations`   |
-| `tool`      | a registered script for reuse                          | — / `shared/tools`               | candidate, active, deprecated, archived                              | `name`, `script_path`, `language`, `contract_*`, `usage_count`, `last_used_at`, `deprecation_reason` |
-| `note`      | everything else: observation, context, metric, history | `notes/` / `shared/notes`        | full set                                                             | `facet` (enum, required at add)                                                                      |
+| Type        | What it represents                                     | Where it lives (thread / shared) | Lifecycle                                                            | Fields beyond the basics                                                                              |
+| ----------- | ------------------------------------------------------ | -------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `rule`      | a standing instruction the agent follows               | — / `shared/rules`               | active, superseded, obsolete, proposed, accepted, rejected, archived | `scope` (project\|global), `applies_to`, `trigger`, `trigger_keywords`                                |
+| `lesson`    | a pitfall or practice that should resurface later      | `lessons/` / `lessons/`          | full set (active, open, resolved, stale, conflicting, paused, …)     | `trigger_keywords`                                                                                    |
+| `decision`  | a chosen option and the alternatives it beat           | `decisions/` / `decisions/`      | active, superseded, rejected, obsolete                               | `thread` (optional)                                                                                   |
+| `thread`    | multi-step work in progress                            | `threads/<tid>/WORK-THREAD.md`   | active, paused, blocked, waiting_answer, open, completed, archived   | `goal` (required), `current_state`, `next_steps`                                                      |
+| `complaint` | a filed complaint about a rule or playbook             | `notes/` / `shared/complaints`   | open, resolved, rejected, archived                                   | `about`, `rule`, `evidence`, `proposal`, `triage`, `resolution`, `dispatch_ages`, `corroborations`    |
+| `tool`      | a registered script for reuse                          | — / `shared/tools`               | candidate, active, deprecated, archived                              | `name`, `script_path`, `language`, `contract_*`, `usage_count`, `last_used_at`, `deprecation_reason`  |
+| `face`      | an agent's playbook as a versioned canon (since 2.17)  | — / `shared/faces`               | active, superseded, archived                                         | `owner_skill`, `version`, `reason` (required), `based_on`, `initiator` — created only via `wolf face` |
+| `note`      | everything else: observation, context, metric, history | `notes/` / `shared/notes`        | full set                                                             | `facet` (enum, required at add)                                                                       |
 
 ## Which type do I need?
 
@@ -32,11 +33,12 @@ Since 2.13 Wolf's taxonomy is **seven types** — down from 26. The point is not
 | "Multi-step work is underway"                                           | `thread`       |
 | "Something is wrong with a rule or playbook"                            | `complaint`    |
 | "Registering a script for reuse"                                        | `tool`         |
+| "An agent's playbook needs a new version"                               | `wolf face`    |
 | Everything else — an observation, context, a metric, a piece of history | `note` + facet |
 
 ## Facets
 
-A facet is the **character of a record**. The default vocabulary is closed — seven values: `howto`, `pitfall`, `context`, `metric`, `history`, `legacy`, `constraint`.
+A facet is the **character of a record**. The default vocabulary is closed — eight values: `howto`, `pitfall`, `context`, `metric`, `history`, `legacy`, `constraint`, `proposal`.
 
 | Facet        | Character of the record         |
 | ------------ | ------------------------------- |
@@ -47,11 +49,14 @@ A facet is the **character of a record**. The default vocabulary is closed — s
 | `history`    | how things came to be           |
 | `legacy`     | outdated but still load-bearing |
 | `constraint` | a boundary to respect           |
+| `proposal`   | a structured proposal           |
+
+`proposal` doubles as the **signal facet**: on non-note core types it marks a structured proposal (`wolf propose`) with a mandatory 5-field contract — `addressee`, `basis`, `proposed_change`, `expected_benefit`, `applicability_bounds`.
 
 Mechanics:
 
 - A facet is **picked from a list** at add time (`--facet`); free input is rejected, and the error enumerates the valid values: `Error: Invalid facet "x" for type "note" (valid values: …)`.
-- `facet` is **required for `note`** and **forbidden for every other type**.
+- `facet` is **required for `note`**; on other core types the only allowed value is the `proposal` signal facet.
 - The vocabulary is configurable: `facets.character` in `.wolf/config.yaml` accepts 7–10 values — see [Configuration](/guide/configuration).
 
 ## Facet colors

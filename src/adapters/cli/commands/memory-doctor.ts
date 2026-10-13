@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { join, sep } from 'path';
+import { join, relative, sep } from 'path';
 import { existsSync, readdirSync, realpathSync, readFileSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { tmpdir } from 'os';
@@ -19,9 +19,10 @@ import type { PlatformAdapter } from '../../../ports/platform-adapter.port.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { safeCwd } from '../cli-entry.js';
 import { repairStorage } from '../../../app/use-cases/repair-storage.js';
-import { eventsPath } from '../../../adapters/fs/project-paths.js';
+import { eventsPath, memoryDir, sharedDir } from '../../../adapters/fs/project-paths.js';
 import { maskSecrets } from '../../../domain/mask-secrets.js';
 import { UserFacingError } from '../../../domain/errors.js';
+import type { MemoryObject } from '../../../domain/schemas/memory-object-schema.js';
 
 /**
  * Песочницы (спека 2.14 §8.2): записи под os.tmpdir() чистим с пометкой sandbox.
@@ -92,6 +93,73 @@ export function makeDetectMismatch(adapters: PlatformAdapter[]): (path: string) 
     }
     return issues;
   };
+}
+
+/** Волна 2.17 NFR-02 (design §Проверка целостности): находка гигиены лиц. */
+export interface FaceLintFinding {
+  file: string;
+  issue: string;
+}
+
+function ownerSkillOf(o: MemoryObject): string | null {
+  const v = (o as { owner_skill?: unknown }).owner_skill;
+  return typeof v === 'string' && v !== '' ? v : null;
+}
+
+/**
+ * Волна 2.17 NFR-02: гигиена канонических лиц за один проход по store.list
+ * (без вложенных полных проходов): (а) >1 активной face одного owner_skill;
+ * (в) based_on указывает на несуществующий id; (г) активная legacy-playbook
+ * (note + facet howto + owner_skill) рядом с активной face того же владельца.
+ * (б) face вне контракта — файлы shared/faces/, отбракованные парсером store
+ * (faceProblems): в list() они молча выпадают, поэтому идут отдельным входом.
+ * Активная face = status 'active' (та же семантика, что у activeFace в
+ * create-face-version.ts); superseded/archived legacy гасят проверку (г).
+ */
+export function lintFaces(objects: MemoryObject[], faceProblems: { path: string; error: string }[]): FaceLintFinding[] {
+  const findings: FaceLintFinding[] = [];
+  const faceIds = new Set<string>();
+  const activeFaces: { id: string; owner: string }[] = [];
+  for (const o of objects) {
+    if (o.type !== 'face') continue;
+    faceIds.add(o.id);
+    const owner = ownerSkillOf(o);
+    if (o.status === 'active' && owner !== null) activeFaces.push({ id: o.id, owner });
+  }
+  const activeByOwner = new Map<string, number>();
+  for (const f of activeFaces) activeByOwner.set(f.owner, (activeByOwner.get(f.owner) ?? 0) + 1);
+  for (const f of activeFaces) {
+    const n = activeByOwner.get(f.owner) ?? 0;
+    if (n > 1) {
+      findings.push({
+        file: f.id,
+        issue: `duplicate canonical face for ${f.owner} (${n} active — exactly one allowed)`,
+      });
+    }
+  }
+  for (const o of objects) {
+    if (o.type !== 'face') continue;
+    const based = (o as { based_on?: unknown }).based_on;
+    if (typeof based === 'string' && based !== '' && !faceIds.has(based)) {
+      findings.push({ file: o.id, issue: `based_on ${based} does not exist` });
+    }
+  }
+  const activeFaceOwners = new Set(activeFaces.map((f) => f.owner));
+  for (const o of objects) {
+    if (o.type !== 'note' || (o as { facet?: unknown }).facet !== 'howto') continue;
+    const owner = ownerSkillOf(o);
+    if (owner === null || o.status === 'superseded' || o.status === 'archived') continue;
+    if (activeFaceOwners.has(owner)) {
+      findings.push({
+        file: o.id,
+        issue: `active legacy playbook for ${owner} alongside a face — run wolf face migrate / supersede the legacy note`,
+      });
+    }
+  }
+  for (const p of faceProblems) {
+    findings.push({ file: p.path, issue: `face does not match its contract: ${p.error}` });
+  }
+  return findings;
 }
 
 export function memoryDoctorCommand(): Command {
@@ -255,7 +323,9 @@ export function memoryDoctorCommand(): Command {
       const worktreesDir = join(memoryRoot, '.git', 'worktrees');
       const live = existsSync(worktreesDir) ? readdirSync(worktreesDir) : [];
       const orphan = new Map<string, number>();
-      for (const o of await store.list()) {
+      // один проход store.list — общий для orphan-проверки (WP3) и гигиены лиц (2.17 NFR-02)
+      const objects = await store.list();
+      for (const o of objects) {
         const s = (o as { scope?: string }).scope;
         if (typeof s === 'string' && s.startsWith('worktree:') && !live.includes(s.slice('worktree:'.length))) {
           orphan.set(s, (orphan.get(s) ?? 0) + 1);
@@ -265,6 +335,23 @@ export function memoryDoctorCommand(): Command {
         console.log();
         console.log('## Orphaned worktree scopes (manual cleanup — promote or edit)');
         for (const [scope, n] of orphan) console.log(`! ${scope}: ${n} object(s) — worktree no longer exists`);
+      }
+
+      // 2.17 NFR-02: гигиена канонических лиц. Файлы faces/, не прошедшие
+      // контрактную валидацию, в store.list молча выпадают — их видит только
+      // scanProblems (прецедент memory-validate.ts); прогон только при
+      // существующем каталоге faces, чтобы doctor без лиц не замедлялся.
+      const facesSubdir = join(sharedDir(memoryRoot), 'faces');
+      const faceProblems = existsSync(facesSubdir)
+        ? (await store.scanProblems())
+            .filter((p) => p.path.startsWith(facesSubdir + sep))
+            .map((p) => ({ path: relative(memoryDir(memoryRoot), p.path), error: p.error }))
+        : [];
+      const faceFindings = lintFaces(objects, faceProblems);
+      if (faceFindings.length > 0) {
+        console.log();
+        console.log('## Faces (canonical playbooks)');
+        for (const f of faceFindings) console.log(`! ${f.file}: ${maskSecrets(f.issue)}`);
       }
     });
 }
