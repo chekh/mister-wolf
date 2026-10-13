@@ -50,7 +50,7 @@ T7 REQ-06 (R08) + интеграция ← T1–T6 (полный гейт + e2e)
   - AC: REQ-03 AC-1…AC-5 + NFR-02 (полный след читаем после каждого восстановления — матрица F1–F9, S-30; вклады T5/S-42 и T6/S-52 — карта покрытия test-plan). Проверки: сценарии S-20…S-30.
   - base_sha: HEAD main после вливания T1 (не ранее `8ca53af`).
   - worktree: `.worktrees/2-17-1-t2-req03-face-op`
-  - allowlist: новый `src/app/use-cases/face-operation.ts`, `src/domain/schemas/memory-event-schema.ts`, `src/app/use-cases/create-face-version.ts`, `src/app/use-cases/doctor.ts` + `src/adapters/cli/commands/memory-doctor.ts` (по факту), `src/adapters/cli/commands/face.ts`, новые тесты (`tests/unit`, `tests/integration`).
+  - allowlist: новый `src/app/use-cases/face-operation.ts`, `src/domain/schemas/memory-event-schema.ts`, `src/app/use-cases/create-face-version.ts`, `src/app/use-cases/doctor.ts` + `src/adapters/cli/commands/memory-doctor.ts` (по факту), `src/adapters/cli/commands/face.ts`, новые тесты (`tests/unit`, `tests/integration`). Расширение L1 по NEEDS_CONTEXT 2026-10-13 (контракты design §3.3/ADR-3 вне исходного allowlist, доказано воркером): `src/domain/memory-types.ts` (lifecycle face += `candidate`, fields face += `op_id`), `docs/reference/cli.md` (только регенерация `node scripts/generate-cli-reference.mjs` после новых команд/флагов face).
   - Проверки: `npx vitest run tests/<fault-injection>` + `npm run check`.
   - Ожидаемый RESULT: DONE + evidence (матрица fault-injection зелёная).
 - [ ] **T3 — REQ-04 (R05): миграция на общей операции + healing + аудит путей изменения face** — design §3.4, ADR-4, §7 (аудит); базлайн `src/app/use-cases/migrate-faces.ts:75,95,96–106`
@@ -74,7 +74,7 @@ T7 REQ-06 (R08) + интеграция ← T1–T6 (полный гейт + e2e)
   - AC: REQ-05 AC-1…AC-3. Проверки: S-38…S-42.
   - base_sha: HEAD main после вливания T1.
   - worktree: `.worktrees/2-17-1-t5-req05-claim`
-  - allowlist: новые `src/adapters/fs/claim-registry.ts`, `src/app/use-cases/claim-artifact.ts`, `src/adapters/cli/commands/claim.ts` (путь по конвенции CLI), точки `requireClaim` в затронутых use-cases записи артефактов (кандидаты: `scaffold-artifact.ts`, sync-artifact-путь — связать по факту), новые тесты (`tests/unit`, `tests/integration`).
+  - allowlist: новые `src/adapters/fs/claim-registry.ts`, `src/app/use-cases/claim-artifact.ts`, `src/adapters/cli/commands/claim.ts` (путь по конвенции CLI), точки `requireClaim` в затронутых use-cases записи артефактов (кандидаты: `scaffold-artifact.ts`, sync-artifact-путь — связать по факту), новые тесты (`tests/unit`, `tests/integration`); расширение L1 по аналогии с T2 (NEEDS_CONTEXT 2026-10-13): `docs/reference/cli.md` (только регенерация после новых команд claim) + `src/domain/memory-types.ts` / таксономия — только если requireClaim затрагивает декларации типов (ожидается: нет).
   - Проверки: `npx vitest run tests/<claim>` + `npm run check`.
   - Ожидаемый RESULT: DONE + evidence (два одновременных claim — ровно один успешен).
 - [ ] **T6 — REQ-07 (R07): установка и документы по факту** — design §6 (NFR-03 список), требования REQ-07 AC; базлайн `README.md:41,49`, `README.ru.md:43`, `docs/site/**` (HomeInstall.vue:23–28,47, `guide/mcp.md:9`), отчёт 2.17 (`report-wave-2-17-execute.md:4`), roadmap (`wave-2.17.md:72`)
