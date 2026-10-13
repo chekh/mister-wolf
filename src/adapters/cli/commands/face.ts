@@ -3,6 +3,7 @@ import { Command, Option } from 'commander';
 import { readFileSync } from 'fs';
 import { safeCwd } from '../cli-entry.js';
 import { createFaceVersion, type FaceObject } from '../../../app/use-cases/create-face-version.js';
+import { migrateFaces } from '../../../app/use-cases/migrate-faces.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { MemoryStore } from '../../../ports/memory-store.port.js';
 import { UserFacingError } from '../../../domain/errors.js';
@@ -146,6 +147,37 @@ export function faceCommand(baseDir: string = safeCwd()): Command {
   };
   restoreLike('restore', 'Restore an old version as a NEW one (owner; linear history, REQ-05)');
   restoreLike('breakglass', 'Emergency rollback by the owner (steward not involved; logged, REQ-07)');
+
+  // T-05 (REQ-02, design §Миграция): идемпотентная физическая миграция
+  // legacy-playbook → face; вся механика (поэтапность, skip, отчёт) — в
+  // use-case migrateFaces, CLI только печатает отчёт.
+  createdByTrap(
+    cmd.command('migrate').description('Migrate legacy playbook notes to faces (idempotent, REQ-02)')
+  ).action(async (options: ObserveOptions) => {
+    denyCreatedBy(options);
+    const report = await migrateFaces(createCliContainer(baseDir));
+    for (const o of report.outcomes) {
+      if (o.action === 'migrated') {
+        console.log(`Migrated ${o.ownerSkill} -> ${o.faceId} (superseded legacy head ${o.headId})`);
+      } else {
+        console.log(`Skipped ${o.ownerSkill}: ${o.reason}`);
+      }
+    }
+    if (report.skippedHowtoIds.length > 0) {
+      console.log(
+        `Skipped ${report.skippedHowtoIds.length} howto note(s) without owner_skill (not every howto is a face): ` +
+          report.skippedHowtoIds.join(', ')
+      );
+    }
+    // §Отказов: падение на N-м не откатывает N-1 — честный ненулевой exit
+    for (const f of report.failed) {
+      console.error(`! ${f.ownerSkill}: ${f.error}`);
+    }
+    if (report.failed.length > 0) process.exitCode = 1;
+    if (report.outcomes.length === 0 && report.skippedHowtoIds.length === 0 && report.failed.length === 0) {
+      console.log('Nothing to migrate.');
+    }
+  });
 
   createdByTrap(cmd.command('list').description('List faces: owner_skill, current version, id, status')).action(
     async (options: ObserveOptions) => {

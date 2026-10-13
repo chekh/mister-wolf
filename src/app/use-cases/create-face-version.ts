@@ -20,8 +20,11 @@ import { createMutationRecord, missingG17Field, type MutationG17Input } from './
  * всё под внешним MemoryLock (прецедент tool-librarian.ts:167: вложенные
  * addMemoryObject/supersedeMemoryObject идут с lock: undefined).
  * REQ-06 (design §«Запись мутации Стюарда»): мутация Стюарда (initiator
- * 'steward') атомарно создаёт G17-запись + relation 'mutates' → версия. */
-export type FaceCommand = 'new' | 'restore' | 'breakglass';
+ * 'steward') атомарно создаёт G17-запись + relation 'mutates' → версия.
+ * T-05: 'migrate'/'seed' — служебные пути (вход migrateFaces/посева base-set,
+ * design §Guard «посев идёт внутренним путём с initiator: 'seed'»): guard
+ * полномочий не применяется, содержание задаёт вызывающий. */
+export type FaceCommand = 'new' | 'restore' | 'breakglass' | 'migrate' | 'seed';
 export type FaceInitiator = 'steward' | 'owner' | 'breakglass' | 'migration' | 'seed';
 
 /** Поля типа face поверх MemoryObject (декларация — memory-types.ts, T-01). */
@@ -86,6 +89,8 @@ const INITIATOR_BY_COMMAND: Record<FaceCommand, FaceInitiator> = {
   new: 'steward',
   restore: 'owner',
   breakglass: 'breakglass',
+  migrate: 'migration',
+  seed: 'seed',
 };
 
 function asFace(obj: MemoryObject): FaceObject {
@@ -93,9 +98,7 @@ function asFace(obj: MemoryObject): FaceObject {
 }
 
 async function facesOfOwner(store: MemoryStore, ownerSkill: string): Promise<FaceObject[]> {
-  return (await store.list({ type: 'face' }))
-    .filter((o) => asFace(o).owner_skill === ownerSkill)
-    .map(asFace);
+  return (await store.list({ type: 'face' })).filter((o) => asFace(o).owner_skill === ownerSkill).map(asFace);
 }
 
 /** Активная (head) версия владельца; null — владельца ещё нет. Дубликаты активных
@@ -123,8 +126,11 @@ async function resolveBase(store: MemoryStore, ownerSkill: string, ref: string):
 
 /** Guard (design §Guard): new — строго agent:steward; restore/breakglass — user:*;
  * breakglass дополнительно отказывает из агент-сессии (WOLF_SESSION=opc-*).
+ * migrate/seed — служебные пути (T-05): без проверки полномочий — вход
+ * внутренний (migrateFaces / посев base-set), содержание переносится дословно.
  * null — доступ разрешён. */
 function guardFailure(command: FaceCommand, actor: string, sessionId: string | null): string | null {
+  if (command === 'migrate' || command === 'seed') return null;
   if (command === 'new') {
     if (actor !== 'agent:steward') {
       return `Face mutation is steward-only: actor "${actor}" is not agent:steward (attribution is env-only, WOLF_ACTOR)`;
@@ -174,8 +180,9 @@ export async function createFaceVersion(
   if ((input.command === 'restore' || input.command === 'breakglass') && !input.from) {
     throw new UserFacingError(`face ${input.command} requires the base version (--from <id|vN>)`);
   }
-  if (input.command === 'new' && (input.body === undefined || input.body.trim() === '')) {
-    throw new UserFacingError('face new requires a body');
+  const restoreLikeCommand = input.command === 'restore' || input.command === 'breakglass';
+  if (!restoreLikeCommand && (input.body === undefined || input.body.trim() === '')) {
+    throw new UserFacingError(`face ${input.command} requires a body`);
   }
 
   const run = async (): Promise<CreateFaceVersionResult> => {
@@ -211,7 +218,7 @@ export async function createFaceVersion(
     const nextVersion =
       (await facesOfOwner(deps.store, input.ownerSkill)).reduce((m, f) => Math.max(m, Number(f.version) || 0), 0) + 1;
 
-    const restoreLike = input.command !== 'new';
+    const restoreLike = input.command === 'restore' || input.command === 'breakglass';
     const source = restoreLike ? base : null;
     const title = restoreLike ? source!.title : (input.title ?? `Face: ${input.ownerSkill}`);
     const body = restoreLike ? source!.body : input.body!;
@@ -255,7 +262,14 @@ export async function createFaceVersion(
     let mutationRecordId: string | null = null;
     if (INITIATOR_BY_COMMAND[input.command] === 'steward') {
       const note = await createMutationRecord(
-        { store: deps.store, log: deps.log, clock: deps.clock, idGen: deps.idGen, index: deps.index, relations: deps.relations },
+        {
+          store: deps.store,
+          log: deps.log,
+          clock: deps.clock,
+          idGen: deps.idGen,
+          index: deps.index,
+          relations: deps.relations,
+        },
         {
           ownerSkill: input.ownerSkill,
           version: face.version,

@@ -5,9 +5,10 @@
 // чтения файлов памяти напрямую. Паттерн D12/Q11 (memory-facet-cli.test.ts):
 // vitest-воркеры не умеют process.chdir — мокаем cwd.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'fs';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import yaml from 'js-yaml';
 import { createCliContainer } from '../../../../src/bootstrap/container.js';
 import { createFaceVersion, type FaceObject } from '../../../../src/app/use-cases/create-face-version.js';
 import type { MemoryEvent } from '../../../../src/domain/schemas/memory-event-schema.js';
@@ -24,6 +25,34 @@ const G17 = {
   verification: 'wolf face history shows the new version',
   rollback: 'wolf face restore <owner> --from <prev>',
 };
+
+/** T-05: legacy-запись в .wolf/memory (старый тип playbook / note+howto). */
+function writeLegacy(baseDir: string, rel: string, fm: Record<string, unknown> & { id: string; body: string }): void {
+  const abs = join(baseDir, '.wolf', 'memory', rel);
+  mkdirSync(dirname(abs), { recursive: true });
+  const { body, ...frontmatter } = fm;
+  writeFileSync(
+    abs,
+    `---\n${yaml
+      .dump({
+        title: 'Legacy',
+        status: 'active',
+        review_state: 'accepted',
+        confidence: 'medium',
+        importance: 0.5,
+        created_at: '2026-09-20T10:00:00Z',
+        updated_at: '2026-09-20T10:00:00Z',
+        created_by: 'wolf-init',
+        schema_version: 1,
+        source: { kind: 'manual' },
+        related: { files: [], docs: [], decisions: [] },
+        tags: [],
+        superseded_by: null,
+        ...frontmatter,
+      })
+      .trimEnd()}\n---\n\n${body}`
+  );
+}
 
 describe('wolf face (T-04: REQ-10 наблюдаемость, REQ-07 breakglass, REQ-05 restore)', () => {
   let dir: string;
@@ -269,6 +298,56 @@ describe('wolf face (T-04: REQ-10 наблюдаемость, REQ-07 breakglass,
       await expect(runFace(args)).rejects.toThrow(/--created-by.*env/i);
     }
     expect(await eventsOf('memory.face.versioned')).toHaveLength(0);
+  });
+
+  it('REQ-02: wolf face migrate — миграция legacy playbook → face, повтор идемпотентен', async () => {
+    writeLegacy(dir, 'shared/playbooks/steward.md', {
+      id: 'mem_20260920_steward_ab12cd',
+      type: 'playbook',
+      title: 'Наставник v1',
+      tags: ['steward:nastavnik', 'playbook'],
+      owner_skill: 'steward',
+      body: 'Протокол мутации.',
+    });
+
+    const out1 = await runFace(['migrate']);
+
+    const faces = (await createCliContainer(dir).store.list({ type: 'face' })) as FaceObject[];
+    expect(faces).toHaveLength(1);
+    expect(faces[0]!.owner_skill).toBe('steward');
+    expect(faces[0]!.initiator).toBe('migration');
+    expect(out1).toContain('Migrated steward');
+    expect(out1).toContain(faces[0]!.id);
+    // head скрыт: legacy-запись superseded → face (семантика hide-superseded)
+    const head = await createCliContainer(dir).store.get('mem_20260920_steward_ab12cd');
+    expect(head?.status).toBe('superseded');
+    expect(head?.superseded_by).toBe(faces[0]!.id);
+
+    const out2 = await runFace(['migrate']);
+    expect(out2).toContain('Skipped steward');
+    expect((await createCliContainer(dir).store.list({ type: 'face' })).length).toBe(1); // дублей нет
+  });
+
+  it('REQ-02 AC4: wolf face migrate — howto без owner_skill не мигрируется (отчёт)', async () => {
+    writeLegacy(dir, 'shared/notes/plain.md', {
+      id: 'mem_20260920_plain_de14ef',
+      type: 'note',
+      facet: 'howto',
+      title: 'Just a howto',
+      body: 'Plain steps.',
+    });
+
+    const out = await runFace(['migrate']);
+
+    expect(out).toMatch(/1 howto note\(s\) without owner_skill/);
+    expect(out).toContain('mem_20260920_plain_de14ef');
+    expect((await createCliContainer(dir).store.list({ type: 'face' })).length).toBe(0);
+  });
+
+  it('REQ-02: wolf face migrate без кандидатов — чистый пустой ответ; --created-by отвергнут', async () => {
+    const out = await runFace(['migrate']);
+    expect(out).toContain('Nothing to migrate');
+    await expect(runFace(['migrate', '--created-by', 'user:evil'])).rejects.toThrow(/--created-by.*env/i);
   });
 
   it('face list без лиц — пустой ответ без ошибки', async () => {
