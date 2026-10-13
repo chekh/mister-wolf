@@ -165,7 +165,7 @@ interface ClaimRecord {
 ```
 
 - **Захват**: `openSync(path, 'wx')` — атомарно на уровне ФС (прецедент FsMemoryLock tryAcquire). Файл занят и fresh → `ClaimHeldError` с полем owner (AC: второй писатель получает отказ с идентификатором владельца).
-- **Stale**: PID мёртв (`process.kill(pid, 0)` → ESRCH) ИЛИ возраст > CLAIM_TTL (константа 24h, локальный-first: heartbeat не вводим). Stale → перехват: старый файл переименовывается в `<slug>.<epochMs>.json` (append-only след, NFR-02), пишется новый.
+- **Stale**: PID мёртв (`process.kill(pid, 0)` → ESRCH) ИЛИ возраст > CLAIM_TTL (константа 24h, локальный-first: heartbeat не вводим). Stale → перехват: старый файл уходит в след `<slug>.<epochMs>.json` через атомарный hard-link + unlink (append-only след, NFR-02; наблюдаемое поведение эквивалентно переименованию), пишется новый.
 - **Освобождение**: `wolf claim release` — только владелец (owner+session+pid совпадение) либо явная передача `--transfer-to <actor>` (AC: передача — явной процедурой).
 - **Проверяемость**: `wolf claim list` читает реестр; запись владения — файл с who/when/what, не соглашение в брифе (AC-2).
 - **Enforcement**: use-cases записи общих артефактов (TASK-бриф, план, отчёт, артефакты worktree) вызывают `requireClaim(artifact)` до записи; отказ = UserFacingError с именем владельца и путём claim-файла (AC-3: защита в use-case, не только CLI).
@@ -236,7 +236,7 @@ interface ClaimRecord {
 
 - **Контекст**: OQ-02 — где живёт владелец. AC: атомарность, проверяемость, отказ второму, защита в use-case.
 - **Альтернативы**: (а) claim как объект памяти — нужен новый тип/фасет (схема, english-surface, гейт), попадает в пул доставки (пришлось бы фильтровать), жизненный цикл через transition тяжеловесен; (б) только текстовые предупреждения — отвергнуто ревью R06 (инцидент 2.17.0).
-- **Решение**: JSON-файлы в `<root>/.wolf/shared/claims/`, атомарный `wx`-create (механика FsMemoryLock), stale по PID-живости+TTL, перехват с сохранением следа (переименование), CLI `wolf claim acquire/release/list`, `requireClaim` в use-cases записи артефактов.
+- **Решение**: JSON-файлы в `<root>/.wolf/shared/claims/`, атомарный `wx`-create (механика FsMemoryLock), stale по PID-живости+TTL (для сессионных держателей pid 0 — только TTL), перехват с сохранением следа (hard-link + unlink — наблюдаемо эквивалентно переименованию), CLI `wolf claim acquire/release/list`, `requireClaim` в use-cases записи артефактов.
 - **Последствия**: +0 к схеме памяти и доставке; cross-copy видимость бесплатно (общий .wolf); − прямые git-записи не защищаются (документированная граница).
 - **Риск**: ручная порча/удаление claim-файла — реестр не криптографический; локальный-first уровень доверия тот же, что у lock. **Проверка**: два одновременных claim → ровно один успешен (AC-1 REQ-05).
 

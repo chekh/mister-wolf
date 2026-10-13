@@ -369,7 +369,7 @@ export const COMMANDS: CommandSpec[] = [
     // 2.17.1 REQ-05 (R06): атомарный claim владения общими артефактами —
     // один активный писатель; guard записи — в use-cases (requireClaim)
     name: 'claim',
-    description: 'Single-writer claims on shared artifacts (acquire/release/list)',
+    description: 'Single-writer claims on shared artifacts',
     usage: '',
     load: () => import('./commands/claim.js').then((m) => m.claimCommand()),
   },
