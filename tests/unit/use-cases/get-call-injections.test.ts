@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, dirname } from 'path';
@@ -567,31 +567,43 @@ describe('getCallInjections', () => {
     expect(result.deduplicated).toBe(0);
   });
 
-  // --- WP3 §6.2 (волна 2.16): scope-гейтинг доставки ---
+  // --- 2.17.1 REQ-02 (R02): WT-ID + предикат isVisible во всех ветвях отбора (design §3.2) ---
 
-  it('WP3: worktree-scoped объект скрыт из main и доставлен в своей ворктрии', async () => {
-    // «подходящая в пул» — фикс типа call-injection: seed() пишет легаси-md,
-    // alias-резолвер читает как note+alias_origin (как в существующих фикстурах файла)
+  /** Валидный WT-ID-токен (12 hex) — как его вычисляет resolveMemoryRoot().worktree. */
+  const OWN_HASH = 'w-0123456789ab';
+
+  it('WT-ID-scoped объект доставлен в своей копии (bare и полный токен), скрыт из main и чужой копии', async () => {
     await seed(
       makeObj({
         id: 'inj_wt',
         type: 'call-injection',
         status: 'active',
-        scope: 'worktree:a',
+        scope: `worktree:${OWN_HASH}`,
         title: 'Worktree only',
         body: 'x'.repeat(200),
       })
     );
 
+    const bare = await getCallInjections({ store, clock }, { currentScope: OWN_HASH });
+    expect(bare.deliveredIds).toEqual(['inj_wt']);
+    expect(bare.hidden).toBeNull();
+
+    const full = await getCallInjections({ store, clock }, { currentScope: `worktree:${OWN_HASH}` });
+    expect(full.deliveredIds).toEqual(['inj_wt']);
+
     const fromMain = await getCallInjections({ store, clock }, { currentScope: 'main' });
     expect(fromMain.blocks).toEqual([]);
-    expect(fromMain.deliveredIds).toEqual([]);
     expect(fromMain.hidden).toEqual({ scope: 'main', count: 1 });
     expect(fromMain.poolSize).toBe(1);
 
-    const fromWorktree = await getCallInjections({ store, clock }, { currentScope: 'worktree:a' });
-    expect(fromWorktree.deliveredIds).toEqual(['inj_wt']);
-    expect(fromWorktree.hidden).toBeNull();
+    // R2-01 fallthrough: чужой хеш уходит в legacy-разбор — seam держит тест
+    // герметичным (без реального git worktree list в process.cwd())
+    const otherCopy = await getCallInjections(
+      { store, clock, resolveIdentity: () => ident('wt-copy', true) },
+      { currentScope: 'w-fedcba987654' }
+    );
+    expect(otherCopy.blocks).toEqual([]);
+    expect(otherCopy.hidden).toEqual({ scope: 'w-fedcba987654', count: 1 });
 
     // currentScope не передан (MCP-канал) — трактуется как main
     const noScope = await getCallInjections({ store, clock }, {});
@@ -608,6 +620,248 @@ describe('getCallInjections', () => {
     expect(result.blocks).toHaveLength(1);
     expect(result.hidden).toBeNull();
     expect(result.poolSize).toBe(1);
+  });
+
+  // --- 2.17.1 REQ-02 (R02), NFR-01: legacy-токен worktree:<name> через identity ---
+
+  const ident = (legacyName: string, legacyUnique: boolean) => ({
+    id: `worktree:${OWN_HASH}`,
+    legacyName,
+    legacyUnique,
+  });
+
+  it('NFR-01/S-10: однозначный legacy-токен доставлен своей копии, чужое legacy-имя скрыто', async () => {
+    await seed(
+      makeObj({
+        id: 'inj_legacy_own',
+        type: 'call-injection',
+        status: 'active',
+        scope: 'worktree:wt-a',
+        title: 'Own legacy fact',
+        body: 'x'.repeat(100),
+      }),
+      makeObj({
+        id: 'inj_legacy_foreign',
+        type: 'call-injection',
+        status: 'active',
+        scope: 'worktree:wt-b',
+        title: 'Foreign legacy fact',
+        body: 'y'.repeat(100),
+      })
+    );
+
+    const inW = await getCallInjections(
+      { store, clock, resolveIdentity: () => ident('wt-a', true) },
+      { currentScope: OWN_HASH }
+    );
+    expect(inW.deliveredIds).toEqual(['inj_legacy_own']);
+    expect(inW.scopeConflicts).toEqual([]);
+  });
+
+  it('S-13/S-16: неоднозначное legacy-имя — скрыто, конфликт в scopeConflicts + stderr', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await seed(
+        makeObj({
+          id: 'inj_amb',
+          type: 'call-injection',
+          status: 'active',
+          scope: 'worktree:task',
+          title: 'Ambiguous legacy fact',
+          body: 'x'.repeat(100),
+        })
+      );
+
+      const r = await getCallInjections(
+        { store, clock, resolveIdentity: () => ident('task', false) },
+        { currentScope: OWN_HASH }
+      );
+      expect(r.blocks).toEqual([]);
+      expect(r.hidden).toEqual({ scope: OWN_HASH, count: 1 });
+      expect(r.scopeConflicts).toEqual(['worktree:task']);
+      expect(err).toHaveBeenCalledWith(expect.stringContaining('worktree:task'));
+    } finally {
+      err.mockRestore();
+    }
+  });
+
+  it('S-14: identity null при legacy-токене — fail-closed, доставки нет + предупреждение (design §5)', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await seed(
+        makeObj({
+          id: 'inj_legacy',
+          type: 'call-injection',
+          status: 'active',
+          scope: 'worktree:wt-a',
+          title: 'Legacy fact',
+          body: 'x'.repeat(100),
+        })
+      );
+
+      const r = await getCallInjections({ store, clock, resolveIdentity: () => null }, { currentScope: OWN_HASH });
+      expect(r.blocks).toEqual([]);
+      expect(r.scopeConflicts).toEqual([]);
+      // MINOR-2 (design §5): fs-парс .git успешен (WT-ID копии известен), но
+      // git worktree list упал → fail-closed скрытие обязано предупреждать, не молчать
+      expect(err).toHaveBeenCalledWith(expect.stringContaining('metadata unavailable'));
+    } finally {
+      err.mockRestore();
+    }
+  });
+
+  // --- 2.17.1 REQ-02 (R02), design §3.2 R2-01: чужой WT-ID-токен — общий legacy-разбор ---
+
+  it('R2-01: чужой WT-ID-токен маппится по basename (каталог, названный w-<12hex>), не скрыт молча', async () => {
+    await seed(
+      makeObj({
+        id: 'inj_hash_named',
+        type: 'call-injection',
+        status: 'active',
+        scope: 'worktree:w-fedcba987654',
+        title: 'Hash-named dir fact',
+        body: 'x'.repeat(100),
+      })
+    );
+
+    // копия живёт в каталоге w-fedcba987654 — легаси-разбор видит совпадение basename
+    const r = await getCallInjections(
+      { store, clock, resolveIdentity: () => ident('w-fedcba987654', true) },
+      { currentScope: OWN_HASH }
+    );
+    expect(r.deliveredIds).toEqual(['inj_hash_named']);
+    expect(r.scopeConflicts).toEqual([]);
+  });
+
+  it('R2-01: чужой WT-ID-токен при неоднозначном basename — честный конфликт, не тихое скрытие', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await seed(
+        makeObj({
+          id: 'inj_hash_amb',
+          type: 'call-injection',
+          status: 'active',
+          scope: 'worktree:w-fedcba987654',
+          title: 'Ambiguous hash-named fact',
+          body: 'x'.repeat(100),
+        })
+      );
+
+      const r = await getCallInjections(
+        { store, clock, resolveIdentity: () => ident('w-fedcba987654', false) },
+        { currentScope: OWN_HASH }
+      );
+      expect(r.blocks).toEqual([]);
+      expect(r.scopeConflicts).toEqual(['worktree:w-fedcba987654']);
+      expect(err).toHaveBeenCalledWith(expect.stringContaining('worktree:w-fedcba987654'));
+    } finally {
+      err.mockRestore();
+    }
+  });
+
+  // --- 2.17.1 REQ-02 (R02), ADR-2: чужой объект не доходит НИ ОДНОЙ ветвью отбора ---
+
+  it('S-12: 5 ветвей отбора — чужой worktree-scoped объект скрыт в каждой; позитивный контроль доставляется', async () => {
+    const FOREIGN = 'worktree:w-fedcba987654';
+    await seed(
+      // ветвь 1: call-injections/alias-note
+      makeObj({
+        id: 'inj_foreign',
+        type: 'call-injection',
+        status: 'active',
+        scope: FOREIGN,
+        trigger_keywords: ['deploy'],
+        title: 'Foreign injection',
+        body: 'x'.repeat(100),
+      }),
+      // ветвь 2: keyword-уроки
+      makeObj({
+        id: 'lesson_foreign',
+        type: 'lesson',
+        status: 'active',
+        scope: FOREIGN,
+        trigger_keywords: ['deploy'],
+        title: 'Foreign lesson',
+        body: '',
+      }),
+      // ветвь 3: keyword-правила
+      makeObj({
+        id: 'rule_kw_foreign',
+        type: 'rule',
+        status: 'active',
+        scope: FOREIGN,
+        trigger_keywords: ['deploy'],
+        title: 'Foreign keyword rule',
+        body: '',
+      }),
+      // ветвь 4 (fallback): правило без keywords
+      makeObj({
+        id: 'rule_fallback_foreign',
+        type: 'rule',
+        status: 'active',
+        scope: FOREIGN,
+        title: 'Foreign fallback rule',
+        body: '',
+      }),
+      // ветвь 5: thread-блокер
+      makeObj({
+        id: 'blocker_foreign',
+        type: 'note',
+        facet: 'pitfall',
+        status: 'active',
+        scope: FOREIGN,
+        thread: 'mem_t1',
+        title: 'Foreign blocker',
+        impact: 'blocks work',
+        body: '',
+      }),
+      // позитивные контроли (AC-4): main/project-scoped доставляются как раньше
+      makeObj({
+        id: 'rule_project',
+        type: 'rule',
+        status: 'active',
+        scope: 'project',
+        title: 'Project rule',
+        body: '',
+      }),
+      makeObj({
+        id: 'blocker_own',
+        type: 'note',
+        facet: 'pitfall',
+        status: 'active',
+        thread: 'mem_t1',
+        title: 'Own thread blocker',
+        impact: 'blocks work',
+        body: '',
+      })
+    );
+
+    const inCopy = await getCallInjections(
+      { store, clock, resolveIdentity: () => ident('wt-copy', true) },
+      { topic: 'deploy', thread: 'mem_t1', currentScope: OWN_HASH }
+    );
+    const all = inCopy.blocks.join('\n');
+    expect(all).not.toContain('inj_foreign');
+    expect(all).not.toContain('lesson_foreign');
+    expect(all).not.toContain('rule_kw_foreign');
+    expect(all).not.toContain('blocker_foreign');
+    expect(all).toContain('rule_project');
+    expect(all).toContain('blocker_own');
+
+    // fallback-ветвь: топик без совпадений — чужое правило не подтягивается, своё — да
+    const fallback = await getCallInjections(
+      { store, clock, resolveIdentity: () => ident('wt-copy', true) },
+      { topic: 'zzz-no-match', currentScope: OWN_HASH }
+    );
+    expect(fallback.blocks.join('\n')).not.toContain('rule_fallback_foreign');
+    expect(fallback.blocks.join('\n')).toContain('rule_project');
+
+    // из main чужие объекты тоже не видны
+    const fromMain = await getCallInjections({ store, clock }, { topic: 'deploy', thread: 'mem_t1' });
+    const mainAll = fromMain.blocks.join('\n');
+    expect(mainAll).not.toContain('foreign');
+    expect(mainAll).toContain('rule_project');
+    expect(mainAll).toContain('blocker_own');
   });
 
   // --- WP5 §14.4 (волна 2.16): пустой call объясняет себя — topic-кейс ---
