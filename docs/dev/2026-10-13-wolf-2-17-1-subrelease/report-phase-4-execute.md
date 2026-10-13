@@ -63,8 +63,9 @@ test-plan: docs/dev/2026-10-13-wolf-2-17-1-subrelease/test-plan.md
 - **Исполнение**: worker-implementer: NEEDS_CONTEXT (2 контракта вне allowlist, доказано PROOF-тестами) → L1 расширил allowlist (memory-types.ts, cli.md-регенерация; урок зафиксирован) → перезапуск: DONE → ревью worker-reviewer: CHANGES_REQUIRED (M1 + 3 minor) → фикс-раунд: DONE.
 
 ### Изменения (12 файлов, allowlist соблюдён)
+
 - `src/app/use-cases/face-operation.ts` (новый) — механизм операций §3.3: op_started/op_step/op_committed/op_aborted, цепочка add_face→g17_record→proposal_relation→activate→supersede_prev→announce→op_committed, reconcile по store, resume/abort, усыновление по op_id, авто-resume, doctor-API, fault-seam, safeIndex
-- `src/domain/schemas/memory-event-schema.ts` — 4 события memory.face.op_*
+- `src/domain/schemas/memory-event-schema.ts` — 4 события memory.face.op\_\*
 - `src/domain/memory-types.ts` — face lifecycle += candidate, fields += op_id (ADR-3, санкционировано L1)
 - `src/app/use-cases/create-face-version.ts` — guard/валидация до op_started под lock → делегирование runFaceMutation
 - `src/adapters/cli/commands/face.ts` — --op-id, recover <opId> [--abort], list скрывает candidate
@@ -73,18 +74,20 @@ test-plan: docs/dev/2026-10-13-wolf-2-17-1-subrelease/test-plan.md
 - тесты: integration face-operation-recovery (16), unit face-operation (8), unit face-recover-cli (5), memory-doctor (7), taxonomy-пин обновлён
 
 ### Fault-матрица F1–F8 (T2-часть): все GREEN
+
 F1 add_face / F2 g17_record / F3 proposal_relation → «не применено», resume доводит, candidate скрыт (canon=null до activation); F4 activate / F5 supersede_prev / F6 announce / F7 op_committed → «применено, требуется восстановление следа», resume дописывает ровно недостающее (идемпотентно); F8 FTS → операция успешна (индекс производный), rebuild лечит. Общие проверки матрицы (1)–(4) в каждом F; S-28 усыновление (3 случая), S-29 авто-resume (иной input + same-input), S-30 abort/doctor-матрица.
 
 ### Ревью: находки → исход
+
 - M1 (major): ветка same-input авто-resume не покрыта тестом → integration-тест добавлен, RED-чувствительность доказана (ветка отключалась → тест ловит дубль версий; восстановлена байт-в-байт)
 - m1: doctor-CLI печать под ассертом (7/7)
 - m3: canon/доставка-ассерты добавлены в F2/F3/F8
 - m2: recover без guard по актору — по design не требуется; путь включён в аудит T3 (S-36), передано
 
 ### Evidence
+
 - Верификация L1: integration 16/16, tsc чист, allowlist-проверка
 - Полный гейт после интеграции: `npm run check` GREEN — 1365 тестов на main
 - Отклонения исполнителя: same-input=resume (выведено из AC-2, обосновано ревьюером, теперь покрыто тестом); prettier-only правка отчёта фазы; +memory.transitioned на activate/abort (консистентно с объектным журналом)
 
 ## T3 ∥ T4 — в исполнении (параллель по плану: разные файлы, раздельные worktree)
-

@@ -210,11 +210,12 @@ describe('migrateFaces (T-05: REQ-02 миграция playbook → face)', () =>
     const boomHead = await store.get('mem_20260920_boom_def456');
     expect(boomHead?.status).toBe('active'); // сбой до supersede — head жив
 
-    // повторный запуск (диск починен): ok — skip, boom — мигрирован, дублей нет
+    // повторный запуск (диск починен): ok — idempotent-skip, boom — дозавершён
+    // (2.17.1 REQ-04: разбор resume вместо повторного создания), дублей нет
     const r2 = await migrateFaces(deps());
     expect(r2.failed).toEqual([]);
     expect(r2.outcomes.find((o) => o.ownerSkill === 'skill:ok')?.action).toBe('skipped');
-    expect(r2.outcomes.find((o) => o.ownerSkill === 'skill:boom')?.action).toBe('migrated');
+    expect(r2.outcomes.find((o) => o.ownerSkill === 'skill:boom')?.action).toBe('resumed');
     expect(await facesOf('skill:ok')).toHaveLength(1);
     expect(await facesOf('skill:boom')).toHaveLength(1);
   });
@@ -245,7 +246,9 @@ describe('migrateFaces (T-05: REQ-02 миграция playbook → face)', () =>
     expect((rec as { facet?: string }).facet).toBe('howto');
   });
 
-  it('активное лицо уже есть → skip: повторный запуск безопасен, legacy head не трогается', async () => {
+  // 2.17.1 REQ-04 (R05, design §3.4): skip по факту «любое лицо» заменён
+  // разбором — лицо + активный legacy head без доказуемой связи = конфликт.
+  it('лицо есть + активный legacy head, reason не матчится → конфликт, записи не изменены', async () => {
     await createFaceVersion(deps({ env: STEWARD_ENV }), {
       command: 'seed',
       ownerSkill: 'skill:demo',
@@ -265,11 +268,40 @@ describe('migrateFaces (T-05: REQ-02 миграция playbook → face)', () =>
 
     const report = await migrateFaces(deps());
 
-    expect(report.outcomes).toHaveLength(1);
-    expect(report.outcomes[0]).toMatchObject({ ownerSkill: 'skill:demo', action: 'skipped' });
-    expect(report.outcomes[0]!.reason).toMatch(/face already exists/i);
+    expect(report.outcomes).toEqual([]); // «успех» не объявляется
+    expect(report.conflicts).toHaveLength(1);
+    expect(report.conflicts[0]).toMatchObject({ ownerSkill: 'skill:demo' });
+    expect(report.failed).toHaveLength(1); // параллельно в failed → CLI exit ≠ 0
     expect(await facesOf('skill:demo')).toHaveLength(1); // дублей нет
     const head = await store.get('mem_20260920_head_cc33dd');
     expect(head?.status).toBe('active');
+  });
+
+  it('лицо есть, активного legacy head нет → idempotent-skip (полный случай)', async () => {
+    await createFaceVersion(deps({ env: STEWARD_ENV }), {
+      command: 'seed',
+      ownerSkill: 'skill:demo',
+      reason: 'seeded earlier',
+      body: 'Face body.',
+    });
+    // legacy-цепочка владельца есть, но head уже погашен — конфликта нет
+    writeMemory(
+      join('.wolf', 'memory', 'shared', 'notes', 'head.md'),
+      legacyFm('mem_20260920_head_cc33dd', {
+        type: 'note',
+        facet: 'howto',
+        title: 'Demo playbook v2',
+        owner_skill: 'skill:demo',
+        status: 'superseded',
+        superseded_by: 'mem_20260920_other_ffffff',
+      }),
+      'Body v2.'
+    );
+
+    const report = await migrateFaces(deps());
+
+    expect(report.outcomes).toHaveLength(1);
+    expect(report.outcomes[0]).toMatchObject({ ownerSkill: 'skill:demo', action: 'skipped' });
+    expect(await facesOf('skill:demo')).toHaveLength(1);
   });
 });
