@@ -305,6 +305,31 @@ describe('T4 REQ-01: live-лица — установка и re-init (§3.6)', (
           (e['payload'] as { old_id?: string })?.old_id === 'mem_20260115_legacy_ab12cd'
       )
     ).toBe(true);
+
+    // T4-проводка: поглощение — ОДНА журналируемая операция (op_started с
+    // legacyHeadId → шаги, вкл. supersede_legacy → op_committed): окно «лицо
+    // есть, head жив» между созданием и поглощением закрыто журналом
+    const events = readEvents(dir);
+    const started = events.find(
+      (e) =>
+        e['type'] === 'memory.face.op_started' &&
+        String((e['payload'] as { input?: { reason?: string } }).input?.reason ?? '') ===
+          'base-set seed: steward-nastavnik.md'
+    )!;
+    expect(started).toBeDefined();
+    const startedPayload = started['payload'] as { command?: string; opId?: string; plan?: string[] };
+    expect(startedPayload['command']).toBe('seed');
+    expect(((started['payload'] as { input?: { legacyHeadId?: string } }).input ?? {}).legacyHeadId).toBe(
+      'mem_20260115_legacy_ab12cd'
+    );
+    expect(startedPayload['plan']).toEqual(['add_face', 'activate', 'supersede_prev', 'supersede_legacy', 'announce']);
+    const steps = events.filter(
+      (e) => e['type'] === 'memory.face.op_step' && e['payload']['opId'] === startedPayload['opId']
+    );
+    expect(steps.map((e) => e['payload']['step'])).toContain('supersede_legacy');
+    expect(
+      events.some((e) => e['type'] === 'memory.face.op_committed' && e['payload']['opId'] === startedPayload['opId'])
+    ).toBe(true);
   }, 120_000);
 
   it('S-06: 2.17.0 → re-init — template update через журналируемый механизм §3.3', async () => {

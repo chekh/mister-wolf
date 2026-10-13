@@ -6,8 +6,7 @@ import { IdGenerator } from '../../ports/id-generator.port.js';
 import { SearchIndex } from '../../ports/search-index.port.js';
 import { MemoryLock } from '../../ports/memory-lock.port.js';
 import { MemoryTypeDeclaration } from '../../domain/memory-types.js';
-import { createFaceVersion, type FaceObject } from './create-face-version.js';
-import { supersedeMemoryObject } from './supersede-memory-object.js';
+import { createFaceVersion } from './create-face-version.js';
 import { activeFace } from './face-operation.js';
 
 export interface SeedOutcome {
@@ -26,10 +25,9 @@ export interface SeedOutcome {
 // (reason "template update: <файл> (2.17.1)"); steward/owner/breakglass →
 // diverged-отчёт, лицо не трогаем (мутации Стюарда старше шаблона, D4).
 // Популяция 2.16.3 (нет лица + активный legacy howto) — посев телом ШАБЛОНА +
-// поглощение legacy-head. shortcut: supersede_legacy как ЖУРНАЛИРУЕМЫЙ шаг
-// операции (input.legacyHeadId, «тот же, что у migrate» §3.4) появится с T3 —
-// до его вливания head поглощается supersedeMemoryObject (след —
-// memory.superseded); перевести на journaled-шаг при интеграции T3→T7.
+// поглощение legacy-head: ОДНА журналируемая операция seed с legacyHeadId
+// (шаг supersede_legacy внутри операции, между supersede_prev и announce —
+// design §3.4/§3.6, «тот же, что у migrate»); атомарность обеспечивает журнал.
 export interface SeedDeps {
   files: Map<string, string>;
   store: MemoryStore;
@@ -87,7 +85,7 @@ export async function seedBasePlaybooks(deps: SeedDeps): Promise<SeedOutcome[]> 
     // лица нет: свежий посев, либо популяция 2.16.3 (legacy howto → поглощение)
     if (active === null) {
       const legacyHead = await activeLegacyHead(deps.store, ownerSkill);
-      const { face } = await createFaceVersion(deps, {
+      await createFaceVersion(deps, {
         command: 'seed',
         ownerSkill,
         reason: `base-set seed: ${file}`,
@@ -97,17 +95,17 @@ export async function seedBasePlaybooks(deps: SeedDeps): Promise<SeedOutcome[]> 
           .split(',')
           .map((t) => t.trim())
           .filter(Boolean),
+        legacyHeadId: legacyHead?.id,
       });
-      if (legacyHead !== null) {
-        await supersedeMemoryObject(deps, legacyHead.id, face.id);
-        outcomes.push({
-          file,
-          action: 'created',
-          reason: `seeded from template; superseded legacy howto ${legacyHead.id}`,
-        });
-      } else {
-        outcomes.push({ file, action: 'created' });
-      }
+      outcomes.push(
+        legacyHead !== null
+          ? {
+              file,
+              action: 'created',
+              reason: `seeded from template; superseded legacy howto ${legacyHead.id}`,
+            }
+          : { file, action: 'created' }
+      );
       continue;
     }
 

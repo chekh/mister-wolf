@@ -246,6 +246,40 @@ describe('seedBasePlaybooks (T-05: face-контракт, initiator=seed)', () =
     expect((head as { superseded_by?: string } | null)?.superseded_by).toBe(faces[0]!.id);
   });
 
+  it('S-05: поглощение legacy — ОДНА журналируемая операция (след op_started→supersede_legacy→op_committed)', async () => {
+    writeLegacyHowto('mem_20260920_legacy_ab12cd', 'steward');
+
+    await seedBasePlaybooks(deps()); // steward → seed+поглощение, mr-wolf → обычный посев
+
+    const events = await log.readAll();
+    const started = events.find(
+      (e) =>
+        e.type === 'memory.face.op_started' &&
+        (e.payload['input'] as { reason?: string })?.reason === 'base-set seed: steward-nastavnik.md'
+    )!;
+    expect(started.payload['command']).toBe('seed');
+    expect((started.payload['input'] as { legacyHeadId?: string }).legacyHeadId).toBe('mem_20260920_legacy_ab12cd');
+    expect(started.payload['plan']).toEqual(['add_face', 'activate', 'supersede_prev', 'supersede_legacy', 'announce']);
+    // head погашен ТОЙ ЖЕ операцией: шаг supersede_legacy — её opId
+    const steps = events.filter(
+      (e) => e.type === 'memory.face.op_step' && e.payload['opId'] === started.payload['opId']
+    );
+    expect(steps.map((e) => e.payload['step'])).toContain('supersede_legacy');
+    const legacyStep = steps.find((e) => e.payload['step'] === 'supersede_legacy')!;
+    expect((legacyStep.payload['detail'] as { head_id?: string }).head_id).toBe('mem_20260920_legacy_ab12cd');
+    // атомарность журналом: операция закрыта commit'ом — окна «лицо есть, head жив» нет
+    expect(
+      events.some((e) => e.type === 'memory.face.op_committed' && e.payload['opId'] === started.payload['opId'])
+    ).toBe(true);
+    // посев WITHOUT legacy идёт без шага (план §3.3 базовый)
+    const plainStarted = events.find(
+      (e) =>
+        e.type === 'memory.face.op_started' &&
+        (e.payload['input'] as { reason?: string })?.reason === 'base-set seed: complaint-protocol.md'
+    )!;
+    expect(plainStarted.payload['plan']).toEqual(['add_face', 'activate', 'supersede_prev', 'announce']);
+  });
+
   it('§3.6: legacy-цепочка без активного head — обычный посев, superseded-запись не трогается', async () => {
     writeLegacyHowto('mem_20260920_legacy_ab12cd', 'steward', 'superseded');
 
