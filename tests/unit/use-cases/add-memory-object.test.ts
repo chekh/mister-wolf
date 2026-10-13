@@ -287,6 +287,111 @@ describe('addMemoryObject facet validation (note)', () => {
   });
 });
 
+// Волна 2.17 (T-07): guard прямого add face (REQ-01 AC3) + сигнал-фасет
+// proposal на core-типах (REQ-08, design §Схемные изменения п.5)
+describe('addMemoryObject guards (волна 2.17: face, сигнал-фасет proposal)', () => {
+  let dir: string;
+  let store: MarkdownMemoryStore;
+  let log: JsonlEventLog;
+  let clock: SystemClock;
+  let idGen: HashIdGenerator;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'wolf-add-face-'));
+    store = new MarkdownMemoryStore(dir);
+    log = new JsonlEventLog(eventsPath(dir));
+    clock = new SystemClock();
+    idGen = new HashIdGenerator();
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  // полный контракт предложения (REQ-08 AC1; applicability_bounds — CR-2026-10-13-01)
+  const contract = {
+    addressee: 'agent:steward',
+    basis: 'наблюдение',
+    proposed_change: 'добавить раздел',
+    expected_benefit: 'меньше сбоев',
+    applicability_bounds: 'только волны 2.17+',
+  };
+
+  it('прямой add --type face → отказ с указанием на wolf face *, ничего не записано (REQ-01 AC3)', async () => {
+    await expect(
+      addMemoryObject(
+        { store, log, clock, idGen },
+        {
+          type: 'face',
+          title: 'Face direct',
+          // даже пользовательский актёр: face создаётся только версионирующим путём
+          createdBy: 'user:test',
+          extra: { owner_skill: 'skill:x', version: '1', reason: 'r', initiator: 'steward' },
+        }
+      )
+    ).rejects.toThrow(/type "face".*wolf face/);
+    expect(await store.list()).toHaveLength(0);
+  });
+
+  it('proposal-фасет на не-note core-типе проходит и пишется в объект (REQ-08 AC1)', async () => {
+    const { object } = await addMemoryObject(
+      { store, log, clock, idGen },
+      {
+        type: 'lesson',
+        title: 'Proposal on lesson',
+        createdBy: 'agent:worker',
+        facet: 'proposal',
+        extra: { ...contract },
+      }
+    );
+    expect(object.facet).toBe('proposal');
+    expect(object.addressee).toBe('agent:steward');
+  });
+
+  it('proposal на note проходит с контрактом (character-словарь включает proposal)', async () => {
+    const { object } = await addMemoryObject(
+      { store, log, clock, idGen },
+      {
+        type: 'note',
+        title: 'Proposal on note',
+        createdBy: 'agent:worker',
+        facet: 'proposal',
+        extra: { ...contract },
+      }
+    );
+    expect(object.facet).toBe('proposal');
+  });
+
+  it('proposal без applicability_bounds → отказ валидации схемы (REQ-08 AC2)', async () => {
+    await expect(
+      addMemoryObject(
+        { store, log, clock, idGen },
+        {
+          type: 'lesson',
+          title: 'Bad proposal',
+          createdBy: 'agent:worker',
+          facet: 'proposal',
+          extra: {
+            addressee: 'agent:steward',
+            basis: 'наблюдение',
+            proposed_change: 'добавить раздел',
+            expected_benefit: 'меньше сбоев',
+          },
+        }
+      )
+    ).rejects.toThrow(/applicability_bounds/);
+  });
+
+  it('character-фасет на не-note по-прежнему отказ (только note)', async () => {
+    await expect(
+      addMemoryObject(
+        { store, log, clock, idGen },
+        { type: 'lesson', title: 'L', createdBy: 'u:test', facet: 'pitfall' }
+      )
+    ).rejects.toThrow(/facet is only valid for type "note" \(got type "lesson"\)/);
+  });
+});
+
 // WP3 §6.3 (2.16): related.files/docs нормализуются в project-relative при записи
 describe('addMemoryObject related normalization (WP3 §6.3)', () => {
   let root: string;

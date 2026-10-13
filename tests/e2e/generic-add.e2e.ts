@@ -3,8 +3,11 @@ import { rmSync } from 'fs';
 import { ensureBuilt, runCli, tmpProject } from './helpers.js';
 import { MEMORY_TYPES } from '../../src/domain/memory-types.js';
 
-// Таксономия 2.13: 7 core-типов; таблица не хардкодит список — покрытие
+// Таксономия 2.13: core-типы; таблица не хардкодит список — покрытие
 // сверяется с MEMORY_TYPES (как в tests/unit/domain/taxonomy.test.ts).
+// Волна 2.17 (REQ-01 AC3): face создаётся только версионирующим путём
+// (wolf face *) — guard прямого add отказывает, поэтому в creatable-таблице
+// face отсутствует: таблица покрывает все MEMORY_TYPES, КРОМЕ face.
 // expectedStatus = defaultStatus декларации (голова lifecycle, если не задана).
 const TYPES: Record<string, { args: string[]; expectedStatus: string }> = {
   rule: { args: ['--set', 'scope=project'], expectedStatus: 'active' },
@@ -19,6 +22,9 @@ const TYPES: Record<string, { args: string[]; expectedStatus: string }> = {
   note: { args: ['--facet', 'howto'], expectedStatus: 'active' },
 };
 
+// 2.17: единственный не-creatable core-тип — face (версионирующий путь wolf face *)
+const CREATABLE_TYPES = MEMORY_TYPES.filter((t) => t !== 'face');
+
 // Старые типы 2.12 — commander choices даёт exit 1 с invalid-подсказкой.
 const OLD_TYPES = ['observation', 'article', 'open-question', 'work-thread'];
 
@@ -30,11 +36,11 @@ describe('all creatable types default to declaration lifecycle head via generic 
   });
   afterAll(() => rmSync(cwd, { recursive: true, force: true }));
 
-  it('TYPES table covers every MEMORY_TYPES entry exactly once', () => {
-    expect(Object.keys(TYPES).sort()).toEqual([...MEMORY_TYPES].sort());
+  it('TYPES table covers every creatable MEMORY_TYPES entry exactly once (face excluded — versioned-only)', () => {
+    expect(Object.keys(TYPES).sort()).toEqual([...CREATABLE_TYPES].sort());
   });
 
-  for (const type of MEMORY_TYPES) {
+  for (const type of CREATABLE_TYPES) {
     const spec = TYPES[type];
     it(`${type} → ${spec.expectedStatus}`, () => {
       const r = runCli(['add', '--type', type, '--title', `${type} test`, ...spec.args], cwd);
@@ -47,6 +53,14 @@ describe('all creatable types default to declaration lifecycle head via generic 
       expect(g.stdout).toContain(spec.expectedStatus);
     });
   }
+
+  // Волна 2.17 REQ-01 AC3: прямой add face закрыт guard'ом с указанием на wolf face *
+  it('face direct add is refused with a pointer to wolf face commands', () => {
+    const r = runCli(['add', '--type', 'face', '--title', 'face test'], cwd);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain('type "face"');
+    expect(r.stderr).toContain('wolf face');
+  });
 
   for (const oldType of OLD_TYPES) {
     it(`${oldType} rejected (removed in 2.13, commander choices)`, () => {

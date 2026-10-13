@@ -7,8 +7,19 @@ import { MemoryLock } from '../../ports/memory-lock.port.js';
 import { MemoryObject, MemoryObjectSchema } from '../../domain/schemas/memory-object-schema.js';
 import { validateMemoryObject } from '../../domain/policies/write-protocol.js';
 import { governanceDefaults } from '../../domain/governance.js';
-import { getDeclaration, DEFAULT_CHARACTER_FACETS, type MemoryTypeDeclaration } from '../../domain/memory-types.js';
-import { buildTypeSchema, applyFacetEnum } from '../../domain/type-schema-builder.js';
+import {
+  getDeclaration,
+  DEFAULT_CHARACTER_FACETS,
+  MEMORY_TYPES,
+  SIGNAL_FACETS,
+  type MemoryTypeDeclaration,
+} from '../../domain/memory-types.js';
+import {
+  buildTypeSchema,
+  applyFacetEnum,
+  PROPOSAL_FACET,
+  PROPOSAL_CONTRACT_FIELDS,
+} from '../../domain/type-schema-builder.js';
 import { UserFacingError } from '../../domain/errors.js';
 import { isAbsolute, normalize, relative, sep } from 'path';
 
@@ -83,9 +94,25 @@ export async function addMemoryObject(
     );
   }
 
+  // Волна 2.17 REQ-01 AC3 (design §Схемные изменения п.5): face создаётся только
+  // версионирующим путём (wolf face new/restore/breakglass) — прямой add закрыт
+  // для всех акторов, включая пользователя (прецедент: rule-guard выше)
+  if (input.type === 'face') {
+    throw new UserFacingError(
+      'type "face" cannot be created with add: faces are versioned, use "wolf face" commands (new | restore | breakglass)'
+    );
+  }
+
   // 2.13 §5.3: фасетная валидация в домене (формат подсказки — прецедент getDeclaration)
   const facetDict = deps.facetCharacter ?? DEFAULT_CHARACTER_FACETS;
   const facet = input.facet ?? (input.extra?.facet as string | undefined);
+  // Волна 2.17 REQ-08/ADR-3: сигнал-фасет разрешён на не-note core-типах
+  // (SIGNAL_FACETS); character-фасеты — по-прежнему только note
+  const isSignalFacet =
+    input.type !== 'note' &&
+    facet !== undefined &&
+    (MEMORY_TYPES as readonly string[]).includes(input.type) &&
+    SIGNAL_FACETS.includes(facet);
   if (input.type === 'note') {
     if (facet === undefined) {
       throw new UserFacingError(`facet is required for type "note" (valid values: ${facetDict.join(', ')})`);
@@ -93,7 +120,7 @@ export async function addMemoryObject(
     if (!facetDict.includes(facet)) {
       throw new UserFacingError(`Invalid facet "${facet}" for type "note" (valid values: ${facetDict.join(', ')})`);
     }
-  } else if (facet !== undefined) {
+  } else if (facet !== undefined && !isSignalFacet) {
     throw new UserFacingError(`facet is only valid for type "note" (got type "${input.type}")`);
   }
 
@@ -128,13 +155,18 @@ export async function addMemoryObject(
     Object.assign(object, input.extra ?? {});
     // WP3 §6.2: явный scope (--scope main / --set scope=...) сильнее дефолта ворктрии
     if (deps.defaultScope !== undefined && object.scope === undefined) object.scope = deps.defaultScope;
-    if (input.type === 'note' && facet !== undefined) object.facet = facet;
+    // 2.17: фасет пишется и для сигнал-фасетов не-note core-типов (REQ-08);
+    // guard выше уже отсек недопустимые комбинации тип×фасет
+    if (facet !== undefined) object.facet = facet;
     const baseDecl = getDeclaration(object.type, deps.declarations);
     // note: enum фасета = эффективный словарь (кастомный из конфига или дефолт)
     const decl = object.type === 'note' ? applyFacetEnum(baseDecl, facetDict) : baseDecl;
     const baseKeys = new Set(Object.keys(MemoryObjectSchema.shape));
     for (const key of Object.keys(input.extra ?? {})) {
-      if (!baseKeys.has(key) && !(key in (decl.fields ?? {}))) {
+      // 2.17 REQ-08: поля контракта предложения допустимы только при facet='proposal'
+      // (сами поля не входят в декларации типов — валидирует schema-builder superRefine)
+      const proposalField = facet === PROPOSAL_FACET && PROPOSAL_CONTRACT_FIELDS.includes(key);
+      if (!baseKeys.has(key) && !proposalField && !(key in (decl.fields ?? {}))) {
         // T011: список валидных полей типа в сообщении; classifyError → invalid_input
         throw new UserFacingError(
           `Unknown field "${key}" for type "${object.type}" (valid fields: ${
