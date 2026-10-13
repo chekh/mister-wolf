@@ -28,6 +28,14 @@ export async function transitionMemoryObject(
   const run = async (): Promise<void> => {
     const existing = await deps.store.get(id);
     if (!existing) throw new UserFacingError(`Memory object not found: ${id}`);
+    // 2.17.1 REQ-04 (R05, design §7): generic transition на face запрещён —
+    // лицо меняется только версионирующим путём (wolf face …/recover); guard
+    // в use-case (не только CLI): сюда же приходит MCP transition и archive.
+    if (existing.type === 'face') {
+      throw new UserFacingError(
+        'type "face" cannot be transitioned generically: faces are versioned, use "wolf face" commands (new | restore | breakglass | recover)'
+      );
+    }
 
     const decl = getDeclaration(existing.type, deps.declarations);
     if (!decl.lifecycle.includes(newStatus)) {

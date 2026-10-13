@@ -201,6 +201,12 @@ export function faceCommand(baseDir: string = safeCwd()): Command {
     for (const o of report.outcomes) {
       if (o.action === 'migrated') {
         console.log(`Migrated ${o.ownerSkill} -> ${o.faceId} (superseded legacy head ${o.headId})`);
+      } else if (o.action === 'healed') {
+        console.log(`Healed ${o.ownerSkill} -> ${o.faceId} (superseded legacy head ${o.headId})`);
+      } else if (o.action === 'resumed') {
+        console.log(
+          `Resumed ${o.ownerSkill} -> ${o.faceId}${o.headId ? ` (legacy head ${o.headId})` : ''}: ${o.reason}`
+        );
       } else {
         console.log(`Skipped ${o.ownerSkill}: ${o.reason}`);
       }

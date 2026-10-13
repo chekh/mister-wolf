@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { createFaceVersion, type FaceObject } from '../../../src/app/use-cases/create-face-version.js';
+import { addMemoryObject } from '../../../src/app/use-cases/add-memory-object.js';
 import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
 import { JsonlEventLog } from '../../../src/adapters/fs/jsonl-event-log.js';
 import { SystemClock } from '../../../src/adapters/fs/system-clock.js';
@@ -301,5 +302,60 @@ describe('createFaceVersion (T-02: REQ-03 guard, REQ-04 версии)', () => {
     expect(versions).toEqual(['1', '2']);
     expect(await facesOf('skill:demo')).toHaveLength(2);
     expect(await facesOf('skill:demo').then((f) => f.filter((x) => x.status === 'active'))).toHaveLength(1);
+  });
+
+  // FIX-раунд 2 (независимое ревью T3): M1 — design §3.6, популяция 2.16.3:
+  // re-init владельца legacy-howto — ОДНА операция seed с шагом supersede_legacy
+  // (тот же input.legacyHeadId, что у migrate); m3 — шаг только migrate/seed.
+  it('M1 (§3.6): seed с legacyHeadId — план операции содержит supersede_legacy, head погашен ею же', async () => {
+    const { object: head } = await addMemoryObject(
+      { store, log, clock: new SystemClock(), idGen: new HashIdGenerator() },
+      {
+        type: 'note',
+        facet: 'howto',
+        title: 'Legacy playbook',
+        body: 'legacy body',
+        createdBy: 'wolf-init',
+      }
+    );
+
+    const result = await createFaceVersion(deps(STEWARD_CLI), {
+      command: 'seed',
+      ownerSkill: 'skill:demo',
+      reason: 'template update: base-set',
+      body: '# Template body',
+      legacyHeadId: head.id,
+    });
+
+    const started = await eventsOf('memory.face.op_started');
+    expect(started).toHaveLength(1);
+    expect(started[0]!.payload['command']).toBe('seed');
+    expect(started[0]!.payload['plan']).toEqual([
+      'add_face',
+      'activate',
+      'supersede_prev',
+      'supersede_legacy',
+      'announce',
+    ]);
+    expect(result.face.initiator).toBe('seed');
+    expect(result.face.body).toBe('# Template body'); // §3.6: body = ШАБЛОН, не legacy-body
+    const headAfter = await store.get(head.id);
+    expect(headAfter?.status).toBe('superseded');
+    expect(headAfter?.superseded_by).toBe(result.face.id);
+  });
+
+  it('m3 (негатив): new с legacyHeadId — план БЕЗ supersede_legacy (шаг только migrate/seed)', async () => {
+    await createFaceVersion(deps(STEWARD_CLI), {
+      command: 'new',
+      ownerSkill: 'skill:demo',
+      reason: 'r',
+      body: 'b',
+      ...G17,
+      legacyHeadId: 'mem_20260925_head_ffffff',
+    });
+
+    const started = await eventsOf('memory.face.op_started');
+    expect(started).toHaveLength(1);
+    expect(started[0]!.payload['plan']).toEqual(['add_face', 'g17_record', 'activate', 'supersede_prev', 'announce']);
   });
 });

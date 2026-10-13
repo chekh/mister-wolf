@@ -28,9 +28,10 @@ import type {
  * цепочка шагов (staging `candidate` → activation как точка commit) в
  * существующем append-only event log; resume/abort идемпотентны по opId,
  * reconcile читает фактическое состояние store (журнал — намёк, store —
- * истина). `supersede_legacy` — шаг операции 'migrate' (design §3.4, T3):
- * имя в союзе шагов по контракту §3.3, план 'new'/'restore'-подобных его
- * не содержит. Всё исполняется под ВНЕШНИМ MemoryLock (прецедент
+ * истина). `supersede_legacy` — шаг операций 'migrate'/'seed' (design §3.4/F9
+ * + §3.6 — популяция 2.16.3 тем же input.legacyHeadId): добавляется планом
+ * только при legacyHeadId во input (между supersede_prev
+ * и announce); план 'new'/'restore'-подобных его не содержит. Всё исполняется под ВНЕШНИМ MemoryLock (прецедент
  * create-face-version.ts): сам модуль lock не реентерабельно не берёт,
  * кроме публичных точек recover (self-locking). */
 
@@ -268,13 +269,18 @@ function journalDetail(op: FaceOpRecord, step: FaceOperationStep, key: string): 
 }
 
 /** План шагов операции по команде (§3.3): g17 — только initiator 'steward';
- * proposal_relation — только при --from-proposal; supersede_legacy — план
- * 'migrate' (T3), здесь не добавляется. */
+ * proposal_relation — только при --from-proposal; supersede_legacy — только
+ * 'migrate'/'seed' с legacyHeadId (design §3.4/F9 + §3.6: между supersede_prev
+ * и announce). */
 function planFor(input: CreateFaceVersionInput): FaceOperationStep[] {
   const plan: FaceOperationStep[] = ['add_face'];
   if (INITIATOR_BY_COMMAND[input.command] === 'steward') plan.push('g17_record');
   if (input.fromProposal !== undefined) plan.push('proposal_relation');
-  plan.push('activate', 'supersede_prev', 'announce');
+  plan.push('activate', 'supersede_prev');
+  if ((input.command === 'migrate' || input.command === 'seed') && input.legacyHeadId !== undefined) {
+    plan.push('supersede_legacy');
+  }
+  plan.push('announce');
   return plan;
 }
 
@@ -458,10 +464,33 @@ async function executeChain(
     await supersedeMemoryObject(
       { store, log: deps.log, clock: deps.clock, idGen: deps.idGen, index },
       prev.id,
-      face.id
+      face.id,
+      { internalFacePath: true }
     );
     supersededId = prev.id;
     await stepDone(deps, op, 'supersede_prev', { prev_id: prev.id }, actor);
+  }
+
+  // 5b supersede_legacy — погасить legacy-head волны 2.17 (design §3.4/F9 +
+  // §3.6; только migrate/seed с legacyHeadId). Идемпотентность §3.3: op_step уже в
+  // журнале → skip; head уже погашен (окно «supersede записан, op_step не
+  // дописан») → погашение не повторяется, op_step дописывается.
+  if (op.plan.includes('supersede_legacy') && input.legacyHeadId !== undefined) {
+    const legacyHeadId = input.legacyHeadId;
+    if (journalDetail(op, 'supersede_legacy', 'head_id') === null) {
+      const head = await store.get(legacyHeadId);
+      if (!head) {
+        throw new UserFacingError(`legacy head not found: ${legacyHeadId} (operation ${op.opId}) — resolve manually`);
+      }
+      if (head.status !== 'superseded') {
+        await supersedeMemoryObject(
+          { store, log: deps.log, clock: deps.clock, idGen: deps.idGen, index },
+          legacyHeadId,
+          face.id
+        );
+      }
+      await stepDone(deps, op, 'supersede_legacy', { head_id: legacyHeadId, face_id: face.id }, actor);
+    }
   }
 
   // 6 announce — публичное событие memory.face.versioned (+ breakglass).
