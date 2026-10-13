@@ -30,7 +30,7 @@ updated: 2026-10-13
 | T-04 CLI `wolf face` | DONE (принято L1) | 45ecd46 |
 | T-05 миграция + alias + seed | DONE (принято L1) | см. ниже |
 | T-06 doctor NFR-02 + memory-sync | pending | — |
-| T-07 guard `wolf add` | pending | — |
+| T-07 guard `wolf add` | DONE (принято L1) | ff10f7f |
 | T-08 wolf-router вариант Б | DONE (принято L1 + ревью APPROVED + минор-фикс) | c45b66e, 51e2477 |
 | T-09 proposals save/deliver + CLI | pending | — |
 | T-10 интеграция + e2e + полный гейт | pending | — |
@@ -137,3 +137,17 @@ updated: 2026-10-13
 - DEPRECATED_TYPE_ALIASES.playbook→note+howto СОЗНАТЕЛЬНО не менялся (design: alias-чтение сохраняется; переучить на face = старые файлы нечитаемы, нарушение REQ-02 AC1); живость alias-пути доказана тестами.
 Отклонения (приняты L1): memory-init.ts — обязательное следование изменённому контракту seedBasePlaybooks (−61/+11); scaffold.e2e.ts — якорь старого поведения; prettier-нормализация create-face-version.ts (латентные нарушения).
 Риски: атрибуция посева env-only (ADR-5); «face создан, supersede head упал» → повторный мигрейт скипает владельца, остаток подсветит doctor T-06; скип посева консервативнее AC (любой face владельца, не только активный).
+
+### T-07 (2026-10-13)
+- `vitest run tests/unit/use-cases/add-memory-object.test.ts` — ✅ 30/30 (L1 повторил; TDD RED 4 failed → GREEN).
+- e2e generic-add + add-collision-guard — ✅ 13/13 + 1/1; `tsc --noEmit` — ✅; prettier — ✅.
+- Инцидент: рестарт сервера оборвал параллельные T-06/T-07; T-07 возобновлён в своей сессии (ses_ecb651657ffeqm2A4Z9ML2c9Xg), частичные правки доделаны; T-06 перезапущен новой сессией (частичный тест-файл оставлен ему).
+
+### T-07 — guard прямого `wolf add` (ff10f7f)
+Файлы: src/app/use-cases/add-memory-object.ts (+33/−8), tests/unit/use-cases/add-memory-object.test.ts (+105), tests/e2e/generic-add.e2e.ts (+22/−3).
+- Guard face (REQ-01 AC3): UserFacingError «type "face" cannot be created with add … use "wolf face" commands» — покрывает generic add, генерённые <type> add, MCP add (все через runAddAction → addMemoryObject).
+- Facet-guard (REQ-08/ADR-3): proposal разрешён на не-note core-типах (SIGNAL_FACETS); character-фасеты только note (якорь не изменён).
+- Allowance PROPOSAL_CONTRACT_FIELDS в extra при facet=proposal (обязательное следствие; фундамент T-09).
+- generic-add: CREATABLE_TYPES = MEMORY_TYPES кроме face + тест «face direct add is refused».
+Отклонение (принято L1): allowance контрактных полей — расширение внутри назначенного файла, без него контракт proposal невыполним.
+Передачи: хинт `--facet` в memory-add.ts:108 не упоминает proposal (design: «справка дописывает proposal») — кандидат T-09/T-10; сообщение «facet only valid for note» для не-core типов чуть неточное — якорь сохранён, риск принят.
