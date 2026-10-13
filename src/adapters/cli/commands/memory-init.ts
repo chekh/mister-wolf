@@ -9,7 +9,7 @@ import { wolfUserConfigDir } from '../../../adapters/fs/user-config.js';
 import { PLATFORM_ADAPTERS, CANONICAL_MCP_COMMAND } from '../../../adapters/platforms/index.js';
 import { writeSchemaVersionIfAbsent } from '../../../adapters/fs/schema-version.js';
 import { ensureCurrentSchema } from '../../../adapters/fs/schema-guard.js';
-import { initProject, planInit, recreateConfig } from '../../../app/use-cases/init-project.js';
+import { initProject, planInit, recreateConfig, type BaseSetOutcome } from '../../../app/use-cases/init-project.js';
 import { ensureGitignoreBlock } from '../../../app/use-cases/gitignore-block.js';
 import { OpencodeBaseSetRenderer } from '../../../adapters/render/opencode/opencode-renderer.js';
 import { templatesRoot, harnessTemplatesRoot, wolfVersion } from '../../../adapters/render/templates-root.js';
@@ -224,7 +224,7 @@ export function memoryInitCommand(): Command {
                 new OpencodeBaseSetRenderer(templatesRoot(), {
                   harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
                 }).renderBaseSet(dir, opts),
-              seed: () =>
+              seed: (): Promise<BaseSetOutcome[]> =>
                 seedBasePlaybooks({
                   files: playbookFiles,
                   store,
@@ -234,16 +234,45 @@ export function memoryInitCommand(): Command {
                   index,
                   lock,
                   declarations,
-                }),
+                }).then((os) =>
+                  // BaseSetOutcome.action = RenderAction: 'diverged' печатается как
+                  // 'conflict' (ближайший легальный исход), слово diverged — в reason
+                  os.map(
+                    (o): BaseSetOutcome => ({
+                      file: o.file,
+                      action: o.action === 'diverged' ? 'conflict' : o.action,
+                      reason: o.reason,
+                    })
+                  )
+                ),
             },
           },
           baseDir,
           input
         );
 
+        // T4 (REQ-01, design §3.6/ADR-6): re-init без --full тоже обновляет
+        // live-лица — минимальный путь не доходит до baseSet.seed (гейт
+        // input.full внутри initProject); документированная последовательность
+        // обновления «пакет → wolf init --yes» идёт этим проходом.
+        const faceOutcomes =
+          plan.live && !input.full && !result.npx
+            ? await seedBasePlaybooks({
+                files: playbookFiles,
+                store,
+                log,
+                clock,
+                idGen,
+                index,
+                lock,
+                declarations,
+              })
+            : [];
+
         console.log('# wolf init');
         console.log(`- memory skeleton: ensured (${join(baseDir, '.wolf')})`);
         for (const o of result.baseSetOutcomes) console.log(formatBaseSetLine(o)); // F5: скиллы — [skill] имя → путь
+        for (const o of faceOutcomes) console.log(formatBaseSetLine(o)); // §3.6: исходы обновления лиц
         for (const outcome of result.platformOutcomes) console.log(formatPlatformLine(outcome)); // F6: configFile + keys
         console.log(
           result.initReport.action === 'created'

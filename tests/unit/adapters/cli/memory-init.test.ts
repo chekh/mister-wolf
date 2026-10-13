@@ -34,6 +34,13 @@ vi.mock('../../../../src/bootstrap/container.js', () => ({
   }),
 }));
 
+// T4 (§3.6): re-init без --full зовёт посев/обновление лиц напрямую из CLI —
+// в этом юните он замокан (как initProject): проверяется проводка команды,
+// а не посев (посев — seed-base-playbooks.test.ts + live-face-update.test.ts).
+vi.mock('../../../../src/app/use-cases/seed-base-playbooks.js', () => ({
+  seedBasePlaybooks: vi.fn(async () => []),
+}));
+
 /** Fake readline: заранее заготовленные ответы по порядку. */
 function fakeRl(answers: string[]) {
   let i = 0;
