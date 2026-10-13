@@ -1,6 +1,6 @@
 ---
 slug: wolf-2-17-1-subrelease
-title: "2.17.1 — план исполнения (REQ-01…REQ-07, NFR-01…NFR-03)"
+title: '2.17.1 — план исполнения (REQ-01…REQ-07, NFR-01…NFR-03)'
 status: draft
 created: 2026-10-13
 requirements: docs/dev/2026-10-13-wolf-2-17-1-subrelease/requirements.md

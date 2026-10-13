@@ -16,7 +16,7 @@
 
 ## Findings
 
-Идентификаторы: P-* — линза plan↔design, T-* — линза test-plan↔requirements/design. Дубликатов между линзами нет.
+Идентификаторы: P-_ — линза plan↔design, T-_ — линза test-plan↔requirements/design. Дубликатов между линзами нет.
 
 ### P-M1 | Major | plan.md:85, 89, 93 vs plan.md:99–100 — пересечение write-зон T6×T7 + двусмысленность владельца `[x]`
 
