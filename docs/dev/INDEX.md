@@ -5,7 +5,8 @@
 | Слаг | Дата | Title | Статус | Профиль |
 | ---- | ---- | ----- | ------ | ------- |
 | wave-2-16-2-platform-lifecycle | 2026-10-12 | Волна 2.16.2 — версионная дисциплина и жизненный цикл платформы (doctor repair v1→v2, uninstall) | approved | full |
-| hotfix-2-16-3-agent-modes | 2026-10-13 | hotfix-2-16-3-agent-modes | in-progress | fix |
+| wave-2-17-faces | 2026-10-12 | Волна 2.17 — Лица: артефакт, версии, мутация | approved | full |
+| hotfix-2-16-3-agent-modes | 2026-10-13 | hotfix-2-16-3-agent-modes | done | fix |
 
 ## Волны
 
