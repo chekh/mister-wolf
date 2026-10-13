@@ -64,7 +64,8 @@ Add a memory object
 
 Options:
   --type <type>              Memory type (choices: "rule", "lesson",
-                             "decision", "thread", "complaint", "tool", "note")
+                             "decision", "thread", "complaint", "tool", "note",
+                             "face")
   --title <title>            Title
   --body <body>              Body text
   --tags <tags>              Comma-separated tags
@@ -566,7 +567,8 @@ Options:
   --created-by <actor>       Creator actor (default: env WOLF_ACTOR, else
                              user:cli)
   --facet <facet>            facet (choices: "howto", "pitfall", "context",
-                             "metric", "history", "legacy", "constraint")
+                             "metric", "history", "legacy", "constraint",
+                             "proposal")
   -h, --help                 display help for command
 ```
 
@@ -582,8 +584,130 @@ Options:
   --stale            List stale objects (not updated in 30 days) (default:
                      false)
   --facet <facet>    Filter by character facet
-                     (howto|pitfall|context|metric|history|legacy|constraint)
+                     (howto|pitfall|context|metric|history|legacy|constraint|proposal)
   -h, --help         display help for command
+```
+
+### wolf face
+
+```text
+Usage: wolf face [options] [command]
+
+Manage faces (versioned agent playbooks)
+
+Options:
+  -h, --help                          display help for command
+
+Commands:
+  new [options] <owner_skill>         Create a new face version (steward-only;
+                                      guard inside the use-case)
+  restore [options] <owner_skill>     Restore an old version as a NEW one
+                                      (owner; linear history, REQ-05)
+  breakglass [options] <owner_skill>  Emergency rollback by the owner (steward
+                                      not involved; logged, REQ-07)
+  list [options]                      List faces: owner_skill, current version,
+                                      id, status
+  history [options] <owner_skill>     Show version history of a face (newest
+                                      first)
+  show [options] <owner_skill>        Show the current face version: metadata
+                                      and body
+  help [command]                      display help for command
+```
+
+#### wolf face new
+
+```text
+Usage: wolf face new [options] <owner_skill>
+
+Create a new face version (steward-only; guard inside the use-case)
+
+Arguments:
+  owner_skill           Owner skill, e.g. skill:my-agent
+
+Options:
+  --reason <t>          Why this version exists (REQ-04)
+  --body <md>           Face body markdown
+  --file <path>         Read face body from a file (alternative to --body)
+  --title <title>       Face title (default: "Face: <owner_skill>")
+  --tags <tags>         Comma-separated tags
+  --minimal-change <t>  G17: what exactly changes (REQ-06)
+  --boundaries <t>      G17: what does NOT change (essence/frame)
+  --example-helps <t>   G17: example that benefits from the change
+  --example-keep <t>    G17: example that must keep working
+  --verification <t>    G17: how to verify the mutation
+  --rollback <t>        G17: how to roll back
+  -h, --help            display help for command
+```
+
+#### wolf face restore
+
+```text
+Usage: wolf face restore [options] <owner_skill>
+
+Restore an old version as a NEW one (owner; linear history, REQ-05)
+
+Arguments:
+  owner_skill     Owner skill, e.g. skill:my-agent
+
+Options:
+  --from <id|vN>  Base version: memory id or version number (v2|2)
+  --reason <t>    Why this version exists (REQ-04)
+  -h, --help      display help for command
+```
+
+#### wolf face breakglass
+
+```text
+Usage: wolf face breakglass [options] <owner_skill>
+
+Emergency rollback by the owner (steward not involved; logged, REQ-07)
+
+Arguments:
+  owner_skill     Owner skill, e.g. skill:my-agent
+
+Options:
+  --from <id|vN>  Base version: memory id or version number (v2|2)
+  --reason <t>    Why this version exists (REQ-04)
+  -h, --help      display help for command
+```
+
+#### wolf face list
+
+```text
+Usage: wolf face list [options]
+
+List faces: owner_skill, current version, id, status
+
+Options:
+  -h, --help  display help for command
+```
+
+#### wolf face history
+
+```text
+Usage: wolf face history [options] <owner_skill>
+
+Show version history of a face (newest first)
+
+Arguments:
+  owner_skill  Owner skill
+
+Options:
+  -h, --help   display help for command
+```
+
+#### wolf face show
+
+```text
+Usage: wolf face show [options] <owner_skill>
+
+Show the current face version: metadata and body
+
+Arguments:
+  owner_skill  Owner skill
+
+Options:
+  -h, --help   display help for command
 ```
 
 ### wolf tool

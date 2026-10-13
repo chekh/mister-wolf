@@ -275,6 +275,15 @@ export const COMMANDS: CommandSpec[] = [
     load: () => import('./type-command-generator.js').then((m) => m.typeNamespaceCommand('note')),
   },
   {
+    // Волна 2.17 T-04: публичная группа версионирования лиц — живая команда,
+    // не генерённый type-неймспейс (face — не add/list-обёртка: new/restore/
+    // breakglass/history идут через createFaceVersion, REQ-03/05/07/10).
+    name: 'face',
+    description: 'Manage faces (versioned agent playbooks)',
+    usage: '',
+    load: () => import('./commands/face.js').then((m) => m.faceCommand()),
+  },
+  {
     name: 'tool',
     description: 'Tool librarian: add/register/list/use/...',
     usage: '',

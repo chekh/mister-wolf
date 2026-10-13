@@ -27,12 +27,12 @@ describe('help budget: wolf --help <= 33 lines, plumbing hidden but alive (P224)
     return dir;
   }
 
-  it('--help fits the 34-line budget (2.16: +promote; 2.16.2: +uninstall)', () => {
+  it('--help fits the 35-line budget (2.16: +promote; 2.16.2: +uninstall; 2.17: +face)', () => {
     const dir = newProject();
     const help = runCli(['--help'], dir);
     expect(help.status).toBe(0);
     const lines = help.stdout.replace(/\n+$/, '').split('\n');
-    expect(lines.length).toBeLessThanOrEqual(34);
+    expect(lines.length).toBeLessThanOrEqual(35);
   });
 
   it('hidden plumbing works: think --help answers, scan runs, session wrap-up --help answers', () => {
@@ -101,6 +101,7 @@ describe('help budget: wolf --help <= 33 lines, plumbing hidden but alive (P224)
       'thread',
       'complaint',
       'note',
+      'face',
       'tool',
       'complain',
       'upgrade',
