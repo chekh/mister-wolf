@@ -27,7 +27,7 @@ updated: 2026-10-13
 | T-01 face+proposal схемный фундамент | DONE (принято L1) | ed7dd8f |
 | T-02 createFaceVersion + guard | DONE (принято L1, 1 фикс по ревью L1) | 89dbdda |
 | T-03 G17-запись мутации | DONE (принято L1) | (см. ниже) |
-| T-04 CLI `wolf face` | pending | — |
+| T-04 CLI `wolf face` | DONE (принято L1) | 45ecd46 |
 | T-05 миграция + alias + seed | pending | — |
 | T-06 doctor NFR-02 + memory-sync | pending | — |
 | T-07 guard `wolf add` | pending | — |
@@ -108,3 +108,18 @@ updated: 2026-10-13
 - Шаблон неопционален: без обязательных полей — отказ до записей (REQ-06 AC2). Прямой store.save по прецеденту scaffold-agent.ts:152 (addMemoryObject не пускает спец-поля note).
 Отклонения (приняты L1): relation-schema закрытый enum не содержал mutates — физически необходимо по design; тесты T-02 требуют G17-фикстуру после обязательности шаблона.
 Передачи: T-09 может упереться в предикат proposes (если design его требует — расширить enum аналогично); mutationRecordId в контракте createFaceVersion — учесть в T-04 CLI; guard-отказ срабатывает раньше G17-валидации (security-граница, design порядок не фиксировал).
+
+### T-04 (2026-10-13)
+- `vitest run tests/unit/adapters/cli/face-cli.test.ts` — ✅ 12/12 (L1 повторил — совпадает).
+- `vitest run tests/unit/adapters/` — ✅ 522/522; `tsc --noEmit` — ✅ exit 0.
+- cli-reference-guard — ✅ 1/1 (после build + регенерации; до регенерации — ложнозелёный на устаревшем dist, выявлено и закрыто воркером).
+- help-budget e2e — ✅ 3/3 (после бюджета 34→35); english-surface — ✅ OK; prettier — ✅.
+- TDD: RED 12 failed (нет модуля) → GREEN.
+
+### T-04 — CLI-группа `wolf face` (45ecd46)
+Файлы: src/adapters/cli/commands/face.ts (новый), tests/unit/adapters/cli/face-cli.test.ts (новый, 12 тестов), src/adapters/cli/cli-entry.ts (+регистрация), docs/reference/cli.md (регенерация, +127/−3), tests/e2e/help-budget.e2e.ts (бюджет 34→35).
+- new (G17-флаги обязательны, --body/--file), restore/breakglass (--from id|vN), list/history/show через store без чтения файлов; мутации — только вызов createFaceVersion.
+- --created-by — скрытая ловушка ADR-5: парсится, в action отказ с пояснением (env-only атрибуция).
+- breakglass: журнал memory.face.breakglass в операции, отказ не-владельцу/opc-сессии → memory.face.denied (REQ-07).
+Отклонения от allowlist (приняты L1, механические следствия): cli-reference.md — требование guard-теста P224; help-budget — прецедент волны («2.16: +promote»), face скрыть отвергнуто (breakglass — аварийная поверхность владельца).
+Риски: дубль активных лиц в list/history/show разрешается старшей версией (находка дублей — doctor T-06); `wolf face new` без WOLF_ACTOR=agent:steward откажется (контракт REQ-03).
