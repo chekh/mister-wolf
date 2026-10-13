@@ -20,7 +20,7 @@ Options:
 - `--importance <n>` — importance from 0 to 1
 - `--set <k=v>` — extra field key=value (repeatable; a `"[a,b]"` value is a string array; default: `[]`)
 - `--scope <scope>` — scope field for types that declare one (rule: `project|global`); also `main` or `worktree:<name>` — writes from a linked worktree get `worktree:<name>` by default, `--scope main` opts out (see [Memory in git worktrees](/guide/memory#memory-in-git-worktrees))
-- `--facet <facet>` — note facet. Required for `note`: `howto|pitfall|context|metric|history|legacy|constraint`. Free input is an error — the facet vocabulary is closed
+- `--facet <facet>` — note facet. Required for `note`: `howto|pitfall|context|metric|history|legacy|constraint|proposal`. Free input is an error — the facet vocabulary is closed. On other core types `proposal` is the signal facet (a structured proposal via `wolf propose`)
 - `--created-by <actor>` — creator actor (default: env `WOLF_ACTOR`, else `user:cli`)
 
 ```bash
@@ -45,7 +45,7 @@ Options:
 - `--type <type>` — filter by type
 - `--status <status>` — filter by status
 - `--stale` — list stale objects (not updated in 30 days; default: false)
-- `--facet <facet>` — filter notes by character facet (`howto|pitfall|context|metric|history|legacy|constraint`)
+- `--facet <facet>` — filter notes by character facet (`howto|pitfall|context|metric|history|legacy|constraint|proposal`)
 
 `list` is enumeration with filters; when you need a full-text query, use `search` — the two share no duplicate options.
 
@@ -85,7 +85,7 @@ Arguments: `query` — search query.
 Options:
 
 - `--type <type>` — filter by type
-- `--facet <facet>` — filter notes by character facet (`howto|pitfall|context|metric|history|legacy|constraint`)
+- `--facet <facet>` — filter notes by character facet (`howto|pitfall|context|metric|history|legacy|constraint|proposal`)
 - `--status <status>` — filter by status
 - `--tag <tag>` — filter by tag (repeatable; default: `[]`)
 - `--confidence <confidence>` — filter by confidence (`low|medium|high`)

@@ -10,6 +10,39 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.17.0] - 2026-10-13
+
+### Added — Faces: versioned agent playbooks (wave 2.17)
+
+- `face` is a core type — the canonical playbook of an agent as a first-class memory object (the taxonomy grows 7 → 8 types). Required fields: `owner_skill`, `version`, `reason`; optional `based_on` (the previous version id); `initiator` records who created the version (`steward` | `owner` | `breakglass` | `migration` | `seed`). Versions live in `shared/faces/` and chain through the existing supersede mechanism; direct `wolf add --type face` is refused with a pointer to `wolf face` (the versioning path is the only door, for CLI and MCP alike).
+- `wolf face` command group: `new` (Steward only — requires the G17 mutation fields), `restore`/`breakglass` (owner only; breakglass refuses to run inside a live agent session), `migrate` (legacy playbook notes → face v1, idempotent, per-owner report, exit 1 on partial failure), `list`/`history`/`show` (read views resolve duplicates by highest version).
+- G17 mutation records: every Steward face version leaves a `note` (facet `history`, title `mutation: <owner_skill> v<N>`) with the seven design fields — `reason`, `minimal_change`, `boundaries`, `example_helps`, `example_keep`, `verification`, `rollback` — linked to the version by a `mutates` relation. The template is mandatory: a version without the record is refused before anything is written.
+- `wolf propose` (`add`/`deliver`/`list`) and the `proposal` signal facet: a structured proposal on any core type carries a 5-field contract (`addressee`, `basis`, `proposed_change`, `expected_benefit`, `applicability_bounds`); `deliver` stamps `delivered_at`; `wolf face new --from-proposal <id>` links the new version to its proposal (`proposes` relation). The `--facet` help in `add`/`list`/`search` mentions `proposal`.
+- `wolf doctor` gains a `## Faces` section: duplicate canon per `owner_skill`, a `based_on` that points nowhere, legacy note + live face for the same owner (hint: `wolf face migrate`), and faces outside the contract (files silently dropped by the store).
+- Router variant B (`.opencode/plugins/wolf-router.ts`): delivery is memoized per session — the injected playbook text is sealed for the whole session, so a mid-chat mutation cannot change what the session already reads — while the TTL cache is now version-guarded: a cached entry is served only when its id still matches the current head, so a stale version is never delivered; every new session runs one fresh search as the freshness barrier.
+
+### Changed
+
+- Seeding and scaffolding go through the face contract: `wolf init` seeds base-set playbooks as faces (skipped when a live face or a legacy note exists for the owner), and `wolf scaffold agent` creates the face instead of a playbook note (`--from-playbook` accepts face ids).
+- `wolf sync` Steward-zone hint now points face maintenance at `wolf face *` instead of generic supersede.
+- README and site guides updated for the 8-type taxonomy, the face model of delivery, `wolf propose`, and the `proposal` facet; CLI reference regenerated (`wolf face`, `wolf propose`).
+
+### Upgrade notes
+
+- Migrations: none forced. Legacy playbook notes (`note` + `facet: howto` + `owner_skill`) remain readable through the alias path; run `wolf face migrate` to convert them into versioned faces — idempotent, safe to re-run, `wolf doctor` flags owners where both forms coexist. Run `wolf sync` after upgrading to receive the updated wolf-router plugin (variant B).
+
+## [2.16.3] - 2026-10-13
+
+### Fixed — Agent spawn regression on OpenCode v2 (default mode: primary)
+
+- Base-set agent templates `executor-lead`, `worker-implementer`, `worker-researcher`, and `worker-reviewer` now declare `mode: all` explicitly. The templates never carried a `mode` field; OpenCode v1 compensated with its `all` default, while v2 defaults agent frontmatter to `primary` and gates the subagent tool ("Agent X cannot run as a subagent") — silently killing the whole Wolf Task-chain (L0 → L1 → L2). `all` keeps both live scenarios: Task-spawn by coordinators and direct `opencode run --agent …` CLI invocations (the current pipeline workaround).
+- New unit guard `agents-mode-guard`: `npm run check` fails when any `templates/base/agents/*.md` lacks a valid `mode` (`primary | all | subagent`) or when a Task-chain agent (`executor-lead`, `worker-*`) is `primary` — protection against the next platform default change.
+- `steward` template: the hardcoded `model: zai-coding-plan/glm-5.3` literal is replaced with `&#123;&#123;model.primary}}` (projects without model context omit the line → platform default model). In the wolf repo itself the stale 2.16.1 render — locally mutated to comment the literal out, which had permanently triggered the sync mutated-skip (T010) — was consciously superseded and re-created by `wolf sync`; the stamp now tracks the current set.
+
+### Upgrade notes
+
+- Migrations: none. Run `wolf sync` after upgrading to receive the fixed agent templates. Affected: every project where wolf rendered agents — until then, Task-spawn of `executor-lead`/`worker-*` keeps failing there with "cannot run as a subagent"; the direct `opencode run --agent …` path is unaffected. Caveat: if `wolf sync` reports an agent file as "mutated after render" (local edits on top of the render, like the steward case fixed here), it deliberately skips that file — resolve the local delta and re-sync, otherwise the fix silently does not reach that agent.
+
 ## [2.16.2] - 2026-10-12
 
 ### Added — Platform lifecycle: v1→v2 repair & uninstall
@@ -21,6 +54,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 ### Changed
 
 - `AGENTS.md` base template now carries the versioning discipline rule: version numbers are always full X.Y.Z (plans, threads, waves, tags, conversation); a bare minor ("2.16") is not a release name. Initialized projects receive it through the regular sync delivery.
+- `--help` output budget raised 33 → 34 lines to accommodate the new `uninstall` command (C-06).
 
 ### Upgrade notes
 
@@ -437,6 +471,7 @@ First public release on npm.
 - Normalized the bin path in `package.json` — `npm publish` stripped the binary from the package (2cb1d05).
 
 [Unreleased]: https://github.com/chekh/mister-wolf/compare/v2.9.0...HEAD
+[2.17.0]: https://github.com/chekh/mister-wolf/compare/v2.16.3...v2.17.0
 [2.0.0]: https://github.com/chekh/mister-wolf/compare/v1.1.0...v2.0.0
 [1.1.0]: https://github.com/chekh/mister-wolf/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/chekh/mister-wolf/compare/v1.0.2...v1.0.3

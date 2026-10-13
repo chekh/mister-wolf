@@ -123,7 +123,7 @@ worktree `.worktrees/<имя-задачи>` (правило `mem_20260827`). Т�
 `mem_20260929_sayt_soderzhit_stranitsu_changelog_c0ac8b`: релиз завершён только
 с опубликованными доками и сайтом.
 
-- [ ] **T-11: Документация, сайт, релизная подготовка** — выполняется после приёмки
+- [x] **T-11: Документация, сайт, релизная подготовка** — выполняется после приёмки
       T-10: (1) docs/ актуальны (README/docs по новым CLI `wolf face`, `wolf propose`;
       CLI-reference перегенерируется `docs:build`); (2) CHANGELOG.md — запись версии;
       (3) версия — `npm version X.Y.Z` (полный номер, package.json — единственный
@@ -135,11 +135,11 @@ worktree `.worktrees/<имя-задачи>` (правило `mem_20260827`). Т�
 
 Релизный чек-лист (отметки — по факту):
 
-1. [ ] `npm run check` зелёный
-2. [ ] `npm version X.Y.Z` (полный X.Y.Z)
-3. [ ] CHANGELOG.md дополнен
-4. [ ] docs/ актуальны (вкл. CLI-reference)
-5. [ ] `npm run docs:build` собран, changelog-страница синхронна
+1. [x] `npm run check` зелёный
+2. [x] версия 2.17.0 в package.json (без тега — конвенция no-tag-prep, тег в релизном запуске)
+3. [x] CHANGELOG.md дополнен
+4. [x] docs/ актуальны (вкл. CLI-reference)
+5. [x] `npm run docs:build` собран, changelog-страница синхронна
 6. [ ] тег `vX.Y.Z` + GitHub Release
 7. [ ] npm publish (trusted publishing)
 8. [ ] `wolf sync` в проекты-потребители

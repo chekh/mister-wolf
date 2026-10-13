@@ -12,16 +12,16 @@ Since 2.13 Wolf's taxonomy is **eight types** — down from 26, plus `face` in 2
 
 ## The eight types
 
-| Type        | What it represents                                     | Where it lives (thread / shared) | Lifecycle                                                            | Fields beyond the basics                                                                             |
-| ----------- | ------------------------------------------------------ | -------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `rule`      | a standing instruction the agent follows               | — / `shared/rules`               | active, superseded, obsolete, proposed, accepted, rejected, archived | `scope` (project\|global), `applies_to`, `trigger`, `trigger_keywords`                               |
-| `lesson`    | a pitfall or practice that should resurface later      | `lessons/` / `lessons/`          | full set (active, open, resolved, stale, conflicting, paused, …)     | `trigger_keywords`                                                                                   |
-| `decision`  | a chosen option and the alternatives it beat           | `decisions/` / `decisions/`      | active, superseded, rejected, obsolete                               | `thread` (optional)                                                                                  |
-| `thread`    | multi-step work in progress                            | `threads/<tid>/WORK-THREAD.md`   | active, paused, blocked, waiting_answer, open, completed, archived   | `goal` (required), `current_state`, `next_steps`                                                     |
-| `complaint` | a filed complaint about a rule or playbook             | `notes/` / `shared/complaints`   | open, resolved, rejected, archived                                   | `about`, `rule`, `evidence`, `proposal`, `triage`, `resolution`, `dispatch_ages`, `corroborations`   |
-| `tool`      | a registered script for reuse                          | — / `shared/tools`               | candidate, active, deprecated, archived                              | `name`, `script_path`, `language`, `contract_*`, `usage_count`, `last_used_at`, `deprecation_reason` |
+| Type        | What it represents                                     | Where it lives (thread / shared) | Lifecycle                                                            | Fields beyond the basics                                                                              |
+| ----------- | ------------------------------------------------------ | -------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `rule`      | a standing instruction the agent follows               | — / `shared/rules`               | active, superseded, obsolete, proposed, accepted, rejected, archived | `scope` (project\|global), `applies_to`, `trigger`, `trigger_keywords`                                |
+| `lesson`    | a pitfall or practice that should resurface later      | `lessons/` / `lessons/`          | full set (active, open, resolved, stale, conflicting, paused, …)     | `trigger_keywords`                                                                                    |
+| `decision`  | a chosen option and the alternatives it beat           | `decisions/` / `decisions/`      | active, superseded, rejected, obsolete                               | `thread` (optional)                                                                                   |
+| `thread`    | multi-step work in progress                            | `threads/<tid>/WORK-THREAD.md`   | active, paused, blocked, waiting_answer, open, completed, archived   | `goal` (required), `current_state`, `next_steps`                                                      |
+| `complaint` | a filed complaint about a rule or playbook             | `notes/` / `shared/complaints`   | open, resolved, rejected, archived                                   | `about`, `rule`, `evidence`, `proposal`, `triage`, `resolution`, `dispatch_ages`, `corroborations`    |
+| `tool`      | a registered script for reuse                          | — / `shared/tools`               | candidate, active, deprecated, archived                              | `name`, `script_path`, `language`, `contract_*`, `usage_count`, `last_used_at`, `deprecation_reason`  |
 | `face`      | an agent's playbook as a versioned canon (since 2.17)  | — / `shared/faces`               | active, superseded, archived                                         | `owner_skill`, `version`, `reason` (required), `based_on`, `initiator` — created only via `wolf face` |
-| `note`      | everything else: observation, context, metric, history | `notes/` / `shared/notes`        | full set                                                             | `facet` (enum, required at add)                                                                      |
+| `note`      | everything else: observation, context, metric, history | `notes/` / `shared/notes`        | full set                                                             | `facet` (enum, required at add)                                                                       |
 
 ## Which type do I need?
 
@@ -33,7 +33,7 @@ Since 2.13 Wolf's taxonomy is **eight types** — down from 26, plus `face` in 2
 | "Multi-step work is underway"                                           | `thread`       |
 | "Something is wrong with a rule or playbook"                            | `complaint`    |
 | "Registering a script for reuse"                                        | `tool`         |
-| "An agent's playbook needs a new version" | `wolf face` |
+| "An agent's playbook needs a new version"                               | `wolf face`    |
 | Everything else — an observation, context, a metric, a piece of history | `note` + facet |
 
 ## Facets
