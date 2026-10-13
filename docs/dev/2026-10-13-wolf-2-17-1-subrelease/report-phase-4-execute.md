@@ -154,4 +154,27 @@ F1 add_face / F2 g17_record / F3 proposal_relation → «не применено
 - **Гейт после merge**: `npm run check` GREEN — 184 файла / 1447 теста на main.
 - Примечание: нумерация S-54/S-55 в TASK-брифе T6 была переставлена относительно тест-плана; воркер корректно следовал тест-плану (отклонение брифа, не исполнения). Расхождение R2-02 test-plan (`.opencode/agent` vs `agents`) — в бэклог тест-плана (не блокер, путь в факте верный).
 
-## T7 — в исполнении; финальный пакет приёмки — в конце фазы
+## Промежуточный отчёт 6: T7 (REQ-06/R08 — интеграция, карта, сквозные сценарии)
+
+### Статус: DONE_WITH_CONCERNS (см. Расхождение-1 — ред гейта внесён T5, вне allowlist T7)
+
+### Что сделано (все шаги — фактические tool calls, трассы в artifacts/)
+
+- **Сценарий 1 (S-45)** — `artifacts/scenario-1-steward-g17.md` (+ `scenario-1-raw.log`, `scenario-1-router.log`): свежая установка 2.17.1-сборки в tmp (`init --full --platform opencode`, XDG изолирован); активное задание `ses-worker-1` получило лицо Стюарда **v1** через реальный router-плагин (search+get, router.log); Стюард (`WOLF_ACTOR=agent:steward`) — `wolf face new steward` со всеми **7 полями G17**, exit 0, op-id `faceop-1791933985203-237c`, G17-запись `mem_20261013_mutation_steward_v2_2d4d03`; `face show` → v2 active, `face history` → v1 superseded (head-1); **новое** задание `ses-worker-2` (свежий процесс) получило **v2**; **активное** задание (тот же процесс, та же сессия) удержало **v1** (router ms=0 — мемо без ре-резолва); цитата ограничения R03 §6 и граница «к следующему запуску процесса/задания» зафиксированы в артефакте.
+- **Сценарий 2 (S-46)** — `artifacts/scenario-2-worktree-delivery.md` (+ `scenario-2-raw.log`): tmp git-репо + main + два linked worktree; `add --type lesson` из W1 → scope `worktree:w-a089d905af7c` (WT-ID); `call --for` — доставлено в W1 (ses-a), **не** доставлено в W2 (ses-b) и main (ses-m); `promote w1` → «Promoted 1 object(s) from worktree:w-a089d905af7c, worktree:w1 to main»; после promote доставлено W2 (ses-b2) и main (ses-m2). Отклонение буквы брифа: `promote <id>` → фактическая сигнатура `promote <worktree>` (имя; владелец по cwd-идентичности).
+- **Интеграционная карта (S-44)** — `artifacts/integration-map.md`: все 6 изменённых путей покрыты зелёными интеграционными тестами на реальном хранилище/CLI (сводный прогон 6 файлов: **59 passed (59)**: face-operation-recovery 16, live-face-update 6, worktree-scope-isolation 9, claim-workflow 8, migrate-faces-healing 16, base-set-init 4); строка «установка» + tmp-запуски T6 (S-51 чистая установка; обновление 2.16.3 — S-55 тест-плана / «S-54» брифа T6) со ссылкой на Evidence-строку отчёта T5/T6 выше. Дыр покрытия нет; правки `tests/**` — 0.
+
+### Гейты фазы
+
+- `npm run check` — **GREEN**: `Test Files 184 passed (184)`, `Tests 1447 passed (1447)`.
+- `npm run e2e` — **1 failed / 219 passed** (`Test Files 1 failed | 58 passed (59)`, 220 тестов, 445s).
+
+### Расхождение-1 (для L1, не правилось молча)
+
+`tests/e2e/help-budget.e2e.ts` (P224): `wolf --help` = **38** строк при бюджете ≤36 (`expected 38 to be less than or equal to 36`). Воспроизведён изолированно. Внесён **T5** (7bd53b9: команда `claim` добавила 2 строки; бюджет последний поднимался в 2.16.2 и не включает 2.17.1-команды) — ред существует на базе T7 (a1c7c85), diff T7 — только `artifacts/**`. Зона решения вне allowlist T7 (`src/**` запрещён; правка теста-гварда — продуктовое решение, не дыра покрытия). Варианты для L1: поднять бюджет P224 до 38 (прецеденты 2.16/2.16.2) или сократить поверхность help (однострочное описание claim); при правке — регенерация cli-reference.
+
+### Прочее
+
+- Allowlist соблюдён: новые файлы только в `artifacts/**` (6 файлов); `src/**`, `plan.md`, requirements, design не тронуты; коммитов нет.
+- Гигиена окружения: первый разведочный init зарегистрировал tmp-проект в пользовательском `~/.config/wolf/projects.yaml` — запись удалена (backup сохранён); все последующие запуски шли с изолированным `XDG_CONFIG_HOME` (паттерн tests/e2e).
+- Замечание по механике (для сведений): `wolf call` лица не доставляет (pool call-injections пуст после init) — доставка лиц идёт router-плагином (`search <agent-id> playbook --hide-superseded` + `get`); сценарий 1 исполнял реальный отрендеренный плагин с PATH-shim на тестируемый dist CLI.
