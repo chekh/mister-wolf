@@ -84,7 +84,9 @@ export async function createMutationRecord(
 ): Promise<MutationRecord> {
   const missing = missingG17Field(input);
   if (missing !== null) {
-    throw new UserFacingError(`Face mutation record requires G17 field "${missing}" (REQ-06: the template is not optional)`);
+    throw new UserFacingError(
+      `Face mutation record requires G17 field "${missing}" (REQ-06: the template is not optional)`
+    );
   }
 
   const now = deps.clock.now();

@@ -65,9 +65,7 @@ describe('createMutationRecord через createFaceVersion (T-03: REQ-06 G17)',
   async function mutationNotes(): Promise<MutationNote[]> {
     // supersede триггерит summarizeSession → в store есть и «Session wrap-up»
     // note(history); G17-запись отличается контрактным title (design).
-    return (await store.list({ type: 'note' })).filter((o) =>
-      o.title.startsWith('mutation: ')
-    ) as MutationNote[];
+    return (await store.list({ type: 'note' })).filter((o) => o.title.startsWith('mutation: ')) as MutationNote[];
   }
 
   it('мутация Стюарда: note(history) со всеми полями G17 + relation mutates → версия', async () => {
@@ -109,7 +107,11 @@ describe('createMutationRecord через createFaceVersion (T-03: REQ-06 G17)',
     // версия журналируется как обычно
     const versioned = (await log.readAll()).filter((e) => e.type === 'memory.face.versioned');
     expect(versioned).toHaveLength(1);
-    expect(versioned[0]!.payload).toMatchObject({ owner_skill: 'skill:demo', new: result.face.id, initiator: 'steward' });
+    expect(versioned[0]!.payload).toMatchObject({
+      owner_skill: 'skill:demo',
+      new: result.face.id,
+      initiator: 'steward',
+    });
   });
 
   it('отсутствует обязательное поле G17: операция целиком не выполняется (REQ-06 AC2)', async () => {
