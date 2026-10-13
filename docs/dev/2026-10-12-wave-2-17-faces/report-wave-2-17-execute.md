@@ -28,7 +28,7 @@ updated: 2026-10-13
 | T-02 createFaceVersion + guard | DONE (принято L1, 1 фикс по ревью L1) | 89dbdda |
 | T-03 G17-запись мутации | DONE (принято L1) | (см. ниже) |
 | T-04 CLI `wolf face` | DONE (принято L1) | 45ecd46 |
-| T-05 миграция + alias + seed | pending | — |
+| T-05 миграция + alias + seed | DONE (принято L1) | см. ниже |
 | T-06 doctor NFR-02 + memory-sync | pending | — |
 | T-07 guard `wolf add` | pending | — |
 | T-08 wolf-router вариант Б | DONE (принято L1 + ревью APPROVED + минор-фикс) | c45b66e, 51e2477 |
@@ -123,3 +123,17 @@ updated: 2026-10-13
 - breakglass: журнал memory.face.breakglass в операции, отказ не-владельцу/opc-сессии → memory.face.denied (REQ-07).
 Отклонения от allowlist (приняты L1, механические следствия): cli-reference.md — требование guard-теста P224; help-budget — прецедент волны («2.16: +promote»), face скрыть отвергнуто (breakglass — аварийная поверхность владельца).
 Риски: дубль активных лиц в list/history/show разрешается старшей версией (находка дублей — doctor T-06); `wolf face new` без WOLF_ACTOR=agent:steward откажется (контракт REQ-03).
+
+### T-05 (2026-10-13)
+- `vitest run tests/unit/use-cases/ tests/unit/adapters/` — ✅ 115 файлов / 1002 теста.
+- e2e migrate-taxonomy + taxonomy-alias — ✅ 15 passed; e2e scaffold + router-fallback — ✅ 7 passed (допущение ADR-4 проверено: face резолвится router-путём).
+- `tsc --noEmit` — ✅; english-surface — ✅; prettier (файлы T-05) — ✅.
+- L1 повтор: migrate-faces.test.ts — ✅ 5/5; prettier-долг T-03 подтверждён → закрыт отдельным коммитом 5d7eaf1.
+- TDD: RED (нет модуля) → GREEN 5/5; seed/scaffold — ассерты переключены на face-контракт, GREEN.
+
+### T-05 — миграция + alias-чтение + seed
+Файлы: src/app/use-cases/migrate-faces.ts (+тест 5 сценариев), src/app/use-cases/create-face-version.ts (вход += migrate/seed, initiator migration/seed, guard для служебных путей не применяется), src/adapters/cli/commands/face.ts (+migrate: отчёт, exitCode 1 при частичном сбое, --created-by отказ), seed-base-playbooks.ts (посев через face, skip при живом face ИЛИ legacy-note), scaffold-agent.ts (лицо через command 'seed', isPlaybookNote знает 'face', --from-playbook <face-id> работает), memory-init.ts (вызывающая сторона контракта посева), тесты seed/scaffold/face-cli переписаны, tests/e2e/scaffold.e2e.ts (якорь face-контракта).
+- Миграция: кандидат = note+howto+owner_skill (вкл. legacy playbook через alias P211); skip при живом face; face v1 initiator='migration' + supersede head; поэтапность (try/catch на владельца), идемпотентность.
+- DEPRECATED_TYPE_ALIASES.playbook→note+howto СОЗНАТЕЛЬНО не менялся (design: alias-чтение сохраняется; переучить на face = старые файлы нечитаемы, нарушение REQ-02 AC1); живость alias-пути доказана тестами.
+Отклонения (приняты L1): memory-init.ts — обязательное следование изменённому контракту seedBasePlaybooks (−61/+11); scaffold.e2e.ts — якорь старого поведения; prettier-нормализация create-face-version.ts (латентные нарушения).
+Риски: атрибуция посева env-only (ADR-5); «face создан, supersede head упал» → повторный мигрейт скипает владельца, остаток подсветит doctor T-06; скип посева консервативнее AC (любой face владельца, не только активный).
