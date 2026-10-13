@@ -96,3 +96,134 @@ describe('wolf doctor hygiene e2e (P331/2.14 §11.4)', () => {
     expect(statSync(registryFile).mtimeMs).toBe(mtimeAfterFirst);
   });
 });
+
+// Волна 2.17 T-06 (test-plan §NFR-02): doctor подсвечивает дубликаты канонических
+// лиц, face вне контракта, битый based_on и legacy+face — формат `! <file>: <issue>`.
+
+interface FaceSeed {
+  id: string;
+  owner_skill: string;
+  version: string;
+  status?: string;
+  based_on?: string;
+  /** undefined — поле не пишется вовсе: файл не проходит контракт face (сценарий «вне контракта»). */
+  reason?: string;
+}
+
+/** Face-файл руками в shared/faces/ (даты в кавычках — прецедент writeLegacyInjection). */
+function writeFace(dir: string, seed: FaceSeed): string {
+  const q = (s: string) => JSON.stringify(s);
+  const now = new Date().toISOString();
+  const frontmatter = [
+    '---',
+    `id: ${q(seed.id)}`,
+    'type: face',
+    `title: ${q(`Face: ${seed.owner_skill} v${seed.version}`)}`,
+    `status: ${q(seed.status ?? 'active')}`,
+    'review_state: accepted',
+    'confidence: high',
+    'importance: 0.8',
+    `created_at: ${q(now)}`,
+    `updated_at: ${q(now)}`,
+    `created_by: ${q('user:cli')}`,
+    'schema_version: 1',
+    'source:',
+    '  kind: manual',
+    `owner_skill: ${q(seed.owner_skill)}`,
+    `version: ${q(seed.version)}`,
+    ...(seed.based_on !== undefined ? [`based_on: ${q(seed.based_on)}`] : []),
+    ...(seed.reason !== undefined ? [`reason: ${q(seed.reason)}`] : []),
+    `initiator: ${q('steward')}`,
+    '---',
+  ].join('\n');
+  const facesDir = join(dir, '.wolf', 'memory', 'shared', 'faces');
+  mkdirSync(facesDir, { recursive: true });
+  const path = join(facesDir, `${seed.id}.md`);
+  writeFileSync(path, `${frontmatter}\n\n# face body\n`);
+  return path;
+}
+
+/** Legacy-плейбук до-2.17 (тип playbook в shared/playbooks; alias-чтение даёт note+howto). */
+function writeLegacyPlaybook(dir: string, id: string, ownerSkill: string, status = 'active'): string {
+  const q = (s: string) => JSON.stringify(s);
+  const now = new Date().toISOString();
+  const frontmatter = [
+    '---',
+    `id: ${q(id)}`,
+    'type: playbook',
+    `title: ${q(`Playbook: ${ownerSkill}`)}`,
+    `status: ${q(status)}`,
+    'review_state: accepted',
+    'confidence: high',
+    'importance: 0.8',
+    `created_at: ${q(now)}`,
+    `updated_at: ${q(now)}`,
+    `created_by: ${q('user:cli')}`,
+    'schema_version: 1',
+    'source:',
+    '  kind: manual',
+    `owner_skill: ${q(ownerSkill)}`,
+    '---',
+  ].join('\n');
+  const pbDir = join(dir, '.wolf', 'memory', 'shared', 'playbooks');
+  mkdirSync(pbDir, { recursive: true });
+  const path = join(pbDir, `${id}.md`);
+  writeFileSync(path, `${frontmatter}\n\n# playbook body\n`);
+  return path;
+}
+
+describe('wolf doctor face hygiene e2e (2.17 NFR-02)', () => {
+  const dirs: string[] = [];
+
+  beforeAll(() => ensureBuilt());
+
+  afterAll(() => {
+    for (const d of dirs) rmSync(d, { recursive: true, force: true });
+  });
+
+  it('дубликаты / битый based_on / вне контракта / legacy+face → находки `! <file>: <issue>`', () => {
+    const sb = mkdtempSync(join(tmpdir(), 'wolf-doc-faces-sb-'));
+    dirs.push(sb);
+    const proj = memoryProject();
+    dirs.push(proj);
+    // (а) два активных face одного владельца — правка в обход версионирующего пути
+    writeFace(proj, { id: 'mem_dup_a', owner_skill: 'skill:hygiene', version: '1', reason: 'initial' });
+    writeFace(proj, { id: 'mem_dup_b', owner_skill: 'skill:hygiene', version: '2', reason: 'manual edit' });
+    // (в) based_on указывает на несуществующий id
+    writeFace(proj, {
+      id: 'mem_badbase',
+      owner_skill: 'skill:other',
+      version: '1',
+      based_on: 'mem_ghost',
+      reason: 'restore attempt',
+    });
+    // (б) face вне контракта: обязательный reason отсутствует — файл отбракован парсером store
+    writeFace(proj, { id: 'mem_offcontract', owner_skill: 'skill:third', version: '1' });
+    // (г) остаточный кейс T-05: face создан, supersede legacy-head упал — legacy остался active
+    writeFace(proj, { id: 'mem_face_ok', owner_skill: 'skill:fourth', version: '1', reason: 'migrated' });
+    writeLegacyPlaybook(proj, 'mem_legacy_head', 'skill:fourth');
+
+    const res = runCli(['doctor'], proj, { WOLF_SANDBOX: sb });
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain('## Faces (canonical playbooks)');
+    expect(res.stdout).toContain('! mem_dup_a: duplicate canonical face for skill:hygiene');
+    expect(res.stdout).toContain('! mem_dup_b: duplicate canonical face for skill:hygiene');
+    expect(res.stdout).toContain('! mem_badbase: based_on mem_ghost does not exist');
+    expect(res.stdout).toContain('! shared/faces/mem_offcontract.md: face does not match its contract');
+    expect(res.stdout).toContain('! mem_legacy_head: active legacy playbook for skill:fourth');
+    expect(res.stdout).toContain('wolf face migrate');
+  });
+
+  it('чистые лица не шумят: единственный face и не-мигрированный legacy — секции Faces нет', () => {
+    const sb = mkdtempSync(join(tmpdir(), 'wolf-doc-faces-sb2-'));
+    dirs.push(sb);
+    const proj = memoryProject();
+    dirs.push(proj);
+    writeFace(proj, { id: 'mem_solo', owner_skill: 'skill:solo', version: '1', reason: 'initial' });
+    writeLegacyPlaybook(proj, 'mem_pre_migration', 'skill:notmigrated'); // legacy без face — норма до миграции
+
+    const res = runCli(['doctor'], proj, { WOLF_SANDBOX: sb });
+    expect(res.status).toBe(0);
+    expect(res.stdout).not.toContain('## Faces');
+  });
+});

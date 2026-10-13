@@ -34,6 +34,6 @@ export function memorySyncCommand(): Command {
       console.log('- models: omit — model: lines omitted (no routing source since wave 2.13)');
       for (const o of outcomes) console.log(`- ${o.file}: ${o.action}${o.reason ? ` — ${o.reason}` : ''}`);
       for (const f of orphaned) console.log(`- orphaned (template is gone — you may delete): ${f}`);
-      console.log('Memory (.wolf/) untouched: playbook mutations are the Steward zone (D4).');
+      console.log('Memory (.wolf/) untouched: face mutations are the Steward zone (D4) — use wolf face *.');
     });
 }
