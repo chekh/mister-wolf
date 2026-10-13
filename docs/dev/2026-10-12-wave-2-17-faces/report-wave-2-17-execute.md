@@ -230,6 +230,7 @@ updated: 2026-10-13
 - Прочее: prettier-нормализация журнала (запись T-10 выше нарушала формат:check); INDEX.md не менялся (генерируется wolf sync, волна зарегистрирована).
 
 ### T-11 (2026-10-13, 168e176)
+
 - `npm version 2.17.0 --no-git-tag-version` — версия в package.json (единственный источник), ТЕГА НЕТ (тег — шаг 6 релизного чек-листа, отдельный запуск).
 - CHANGELOG.md — запись [2.17.0] - 2026-10-13 (EN, Keep-a-Changelog) + compare-link v2.16.3...v2.17.0.
 - README.md/README.ru.md (таксономия 8, wolf face/propose, Steward-абзац), docs/site/guide delivery/memory/base-set/feedback/cli + RU-зеркала, changelog-страницы EN+RU регенерированы sync-changelog.
@@ -246,19 +247,27 @@ updated: 2026-10-13
 
 ## Workers Used — финал
 
-| Задача | Воркер | Исход |
-|---|---|---|
-| T-01 | worker-implementer ses_ecbe897e1ffeAksUlbNbPzBlNt | DONE_WITH_CONCERNS → принято L1 |
-| T-02 | worker-implementer ses_ecbd3562bffepUfj7RRMimvvyy | DONE_WITH_CONCERNS → FINDING-1 фикс → DONE |
-| T-08 | worker-implementer ses_ecbd35627ffeQDRwFQlB7KklEK | DONE → минор-фикс по ревью DONE |
-| Ревью T-08 | worker-reviewer ses_ecbc13f2dffeLWqLnIZJnlUzIk | APPROVED |
-| T-03 | worker-implementer ses_ecbb4faa2ffefj4S3ks2dlKCyR | DONE_WITH_CONCERNS → принято L1 |
-| T-04 | worker-implementer ses_ecba36c95ffeGn3gI0JL23DXNz | DONE_WITH_CONCERNS → принято L1 |
-| T-05 | worker-implementer ses_ecb85794bffe3ArHJhyZmgFSPk | DONE → принято L1 |
-| T-07 | worker-implementer ses_ecb651657ffeqm2A4Z9ML2c9Xg | прерван рестартом → возобновлён → DONE |
-| T-06 | worker-implementer ses_ecb52fed0ffek61XJtSb48hZS6 | перезапуск после сбоя → DONE |
-| T-09 | worker-implementer ses_ecb427e56ffeaVXeQZdKW2109a | DONE (вскрыл и закрыл регрессию T-07) |
-| T-10 | worker-implementer ses_ecb2e3a87ffeiIfFJ1H0142F5d | DONE (гейт 173/1312) |
-| Ревью волны | worker-reviewer ses_ecaf1c8fbffexHDXsUKqP8vAuJ | APPROVED (0 crit/major) |
-| T-11 | worker-implementer ses_ecae8f5ddffeU394e1lvXsyzdD | DONE (без публикации) |
-| (continuation-сессия) | воркеры её диспетчеризации, вкл. ревью ses_ecaec4a54ffeoVixgg5DVHovuU | APPROVED |
+| Задача                | Воркер                                                                | Исход                                      |
+| --------------------- | --------------------------------------------------------------------- | ------------------------------------------ |
+| T-01                  | worker-implementer ses_ecbe897e1ffeAksUlbNbPzBlNt                     | DONE_WITH_CONCERNS → принято L1            |
+| T-02                  | worker-implementer ses_ecbd3562bffepUfj7RRMimvvyy                     | DONE_WITH_CONCERNS → FINDING-1 фикс → DONE |
+| T-08                  | worker-implementer ses_ecbd35627ffeQDRwFQlB7KklEK                     | DONE → минор-фикс по ревью DONE            |
+| Ревью T-08            | worker-reviewer ses_ecbc13f2dffeLWqLnIZJnlUzIk                        | APPROVED                                   |
+| T-03                  | worker-implementer ses_ecbb4faa2ffefj4S3ks2dlKCyR                     | DONE_WITH_CONCERNS → принято L1            |
+| T-04                  | worker-implementer ses_ecba36c95ffeGn3gI0JL23DXNz                     | DONE_WITH_CONCERNS → принято L1            |
+| T-05                  | worker-implementer ses_ecb85794bffe3ArHJhyZmgFSPk                     | DONE → принято L1                          |
+| T-07                  | worker-implementer ses_ecb651657ffeqm2A4Z9ML2c9Xg                     | прерван рестартом → возобновлён → DONE     |
+| T-06                  | worker-implementer ses_ecb52fed0ffek61XJtSb48hZS6                     | перезапуск после сбоя → DONE               |
+| T-09                  | worker-implementer ses_ecb427e56ffeaVXeQZdKW2109a                     | DONE (вскрыл и закрыл регрессию T-07)      |
+| T-10                  | worker-implementer ses_ecb2e3a87ffeiIfFJ1H0142F5d                     | DONE (гейт 173/1312)                       |
+| Ревью волны           | worker-reviewer ses_ecaf1c8fbffexHDXsUKqP8vAuJ                        | APPROVED (0 crit/major)                    |
+| T-11                  | worker-implementer ses_ecae8f5ddffeU394e1lvXsyzdD                     | DONE (без публикации)                      |
+| (continuation-сессия) | воркеры её диспетчеризации, вкл. ревью ses_ecaec4a54ffeoVixgg5DVHovuU | APPROVED                                   |
+
+### T-11 — документация, сайт, версия 2.17.0 без публикации (2026-10-13)
+
+- Состав: README.md / README.ru.md (8-типная таксономия, face/propose), сайтовые гиды en+ru (memory, delivery, base-set, feedback, cli/memory), docs/reference/cli.md — без дрейфа (T-04/T-09 регенерации актуальны), CHANGELOG.md — запись 2.17.0 (EN, Keep-a-Changelog: Added/Changed/Upgrade notes), package.json + lock = 2.17.0.
+- `npm run docs:build` — ✅ EXIT=0 (vitepress build complete, 7.74s); changelog-страницы en/ru синхронизированы scripts/sync-changelog.mjs (+35/+35 — секция 2.17.0); prettier docs — ✅ чисто.
+- Финальный полный гейт на итоговом дереве — ✅ EXIT=0: 173 test files / 1312 tests (15:00, idle-машина).
+- Особенность исполнения: бо́льшая часть T-11-контента создана параллельной сессией (всплески до 14:55; см. инцидент в записи T-10) и частично поглощена коммитом f73fb1a через add -A; финальный сайтовый дельта-набор (base-set, feedback, memory en/ru, cli/memory, changelog-страницы) — коммитом T-11. Диффы проверены L1: выдумок нет, стиль волны, prettier зелёный.
+- Отклонение от брифа диспетчера: стандартный `npm version 2.17.0` НЕ выполнялся — версия уже поднята параллельной сессией (повтор дал бы 2.17.1); тег v2.17.0 НЕ создан: бриф запрещает теги, конвенция репо — no-tag-prep (прецедент 2b6491e «no deploy/tag», тег v2.16.3 создан релизным запуском на итоговом коммите). Пункты чек-листа 6–8 (тег+GitHub Release, npm publish, wolf sync в проекты) — релизному запуску после приёмки L0.
