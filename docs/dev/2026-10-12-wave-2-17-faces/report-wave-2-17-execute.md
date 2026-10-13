@@ -32,7 +32,7 @@ updated: 2026-10-13
 | T-06 doctor NFR-02 + memory-sync | DONE (принято L1) | см. ниже |
 | T-07 guard `wolf add` | DONE (принято L1) | ff10f7f |
 | T-08 wolf-router вариант Б | DONE (принято L1 + ревью APPROVED + минор-фикс) | c45b66e, 51e2477 |
-| T-09 proposals save/deliver + CLI | pending | — |
+| T-09 proposals save/deliver + CLI | DONE (принято L1) | e030d8b |
 | T-10 интеграция + e2e + полный гейт | pending | — |
 | T-11 документация/сайт/версия (без публикации) | pending | — |
 
@@ -161,3 +161,18 @@ updated: 2026-10-13
 - face вне контракта: единственный источник — store.scanProblems() (файлы молча выпадают из store.list; прецедент memory-validate.ts:91), гейт existsSync(shared/faces) — проекты без лиц не платят.
 - Асимптотика: один проход store.list для lint; scanProblems — отдельный линейный обход.
 Отклонения: новый unit-тест memory-sync (разрешено брифом). Риски: scanProblems удваивает IO-обход для проектов с лицами (линейно, гейт смягчает); based_on на face ДРУГОГО владельца не флагуется (design требует только существование).
+
+### T-09 (2026-10-13)
+- `vitest run tests/unit/use-cases/ tests/unit/adapters/` — ✅ 120 файлов / 1031 теста (L1 повторил).
+- e2e help-budget — ✅ 3/3 (бюджет 36); контрольные generic-add 13, cli-reference-guard 1 — ✅; tsc — ✅; prettier (16 файлов) — ✅.
+- TDD: RED 7 → GREEN; smoke полного цикла через dist (add→pending→deliver→list→фильтры→guard).
+
+### T-09 — предложения save/deliver + CLI `wolf propose` (e030d8b)
+Файлы: save-proposal.ts (+5 тестов), deliver-proposal.ts (+5), propose.ts CLI add/deliver/list (+7), cli-entry (регистрация), relation-schema (+пара proposes/proposed_by), create-face-version (fromProposal → relation proposes по design:88, валидация ДО записей), face.ts (--from-proposal), memory-add/memory-list/memory-search (хинт --facet +proposal), help-budget (36), cli-reference.md (регенерация).
+- Автор пиннится env-атрибуцией (параметра-актора нет структурно); delivered_at заполняет ТОЛЬКО deliver; повторная доставка/не-proposal id — осмысленные отказы; событие memory.proposal.delivered {id, addressee}.
+Отклонения (приняты L1):
+1. add-memory-object.ts — фикс регрессии T-07: guard блокировал и версионирующий путь (подтверждено L1: на ff10f7f create-face-version.test.ts 7/9 красных — приёмка T-07 прогоняла только якорные сьюты). Фикс: input.internalFacePath — маркер версионирующего пути; герметичность проверена L1 (CLI/MCP собирают input явно, extra не пробрасывает верхнеуровневое поле).
+2. memory-list/memory-search хинты — design:183 требует add/list/search.
+3. Пропущен `--on <id>` из design:197 (нет в CLI-спеке задачи; связывание — штатный relation add).
+Урок процесса (в память Wolf): приёмка каждой задачи обязана прогонять смежные сьюты (unit use-cases + adapters целиком), точечных якорей недостаточно — регрессия T-07 жила 3 коммита.
+Риски: пробельные строки ('  ') проходят контракт-валидатор (length≥1 без trim) — oracle тест-плана «поле отсутствует» покрыт; ужесточение на усмотрение владельца.
