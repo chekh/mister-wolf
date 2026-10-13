@@ -53,24 +53,23 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
     const plugins = readdirSync(join(dir, '.opencode/plugins')).filter((f) => /\.(js|ts)$/.test(f));
     expect(plugins).toHaveLength(2);
 
-    // посев в память: 7 playbook'ов → note+facet howto с owner_skill (M3, MAJ-3; executor-lead — T012)
-    // wave13-a §5.4: playbook-тип поглощён note; спец-поля живут в passthrough
-    // (в notes/ лежит и init-отчёт note+facet history — отделяем по owner_skill)
-    const notes = readdirSync(join(dir, '.wolf/memory/shared/notes'))
-      .filter((f) => f.endsWith('.md'))
-      .filter((f) => readFileSync(join(dir, '.wolf/memory/shared/notes', f), 'utf-8').includes('owner_skill'));
-    expect(notes).toHaveLength(6);
-    for (const f of notes) {
-      expect(readFileSync(join(dir, '.wolf/memory/shared/notes', f), 'utf-8')).toContain('owner_skill');
+    // посев в память: 6 playbook'ов → волна 2.17 T-05: base-set сеется ЛИЦАМИ
+    // (type face, shared/faces/, initiator: seed, owner_skill в каждом);
+    // legacy-посев note+facet howto больше не существует
+    const faces = readdirSync(join(dir, '.wolf/memory/shared/faces')).filter((f) => f.endsWith('.md'));
+    expect(faces).toHaveLength(6);
+    for (const f of faces) {
+      expect(readFileSync(join(dir, '.wolf/memory/shared/faces', f), 'utf-8')).toContain('owner_skill');
     }
-    const list = runCli(['list', '--type', 'note', '--facet', 'howto'], dir).stdout;
-    expect((list.match(/\[note\]/g) ?? []).length).toBe(6);
+    const list = runCli(['list', '--type', 'face'], dir).stdout;
+    expect((list.match(/\[face\]/g) ?? []).length).toBe(6);
 
-    // триггер жалобы в воркерских playbook'ах — процедурный, не декларативный
-    // (дефект догфудинга фазы C: декларативное правило воркеры не исполняли)
+    // триггер жалобы в воркерских лицах (лица живут в shared/faces/) —
+    // процедурный, не декларативный (дефект догфудинга фазы C: декларативное
+    // правило воркеры не исполняли)
     for (const f of ['worker-implementer', 'worker-researcher', 'worker-reviewer']) {
-      const seeded = readdirSync(join(dir, '.wolf/memory/shared/notes'))
-        .map((p) => readFileSync(join(dir, '.wolf/memory/shared/notes', p), 'utf-8'))
+      const seeded = readdirSync(join(dir, '.wolf/memory/shared/faces'))
+        .map((p) => readFileSync(join(dir, '.wolf/memory/shared/faces', p), 'utf-8'))
         .find((body) => body.includes(`owner_skill: ${f}`));
       expect(seeded, f).toBeDefined();
       expect(seeded, f).toContain('ТРИГГЕР ЖАЛОБЫ');
@@ -90,8 +89,8 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
     expect(again.stdout).toMatch(/- base set: \S+ skipped/);
     expect(readFileSync(agentPath, 'utf-8')).toBe(before); // существующее не тронуто
 
-    const list = runCli(['list', '--type', 'note', '--facet', 'howto'], dir).stdout;
-    expect((list.match(/\[note\]/g) ?? []).length).toBe(6); // снова 6, не 12
+    const list = runCli(['list', '--type', 'face'], dir).stdout;
+    expect((list.match(/\[face\]/g) ?? []).length).toBe(6); // снова 6, не 12
   });
 
   it('контент отрендеренных агентов: agent-id ×6, тройка «рамка/лицо/доставка», wolf search у воркеров (§11.3, §11.8)', () => {

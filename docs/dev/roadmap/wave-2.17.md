@@ -44,3 +44,25 @@ created: 2026-10-08
 Requirements волны: `docs/dev/2026-10-12-wave-2-17-faces/requirements.md`
 (approved, ревизия CR-2026-10-13-02); план (T-01…T-11) и тест-план заполнены,
 тред `mem_20261012_2_17_litsa_artefakt_versii_mutatsiya_vol_b69113`.
+
+## Фазы (по факту исполнения; обновлено в T-10, 2026-10-13)
+
+- Планирование — requirements (approved, CR-2026-10-13-02) + design (вариант Б,
+  раунд 3 APPROVED) + план/тест-план: папка `docs/dev/2026-10-12-wave-2-17-faces/`.
+- Исполнение T-01…T-09 — единая ветка wave-2.17-faces, последовательные коммиты:
+  T-01 схемный фундамент (`ed7dd8f`) → T-02 createFaceVersion + guard → T-08
+  wolf-router вариант Б + переработка TTL-теста (параллельная ветвь плана,
+  `c45b66e`) → T-03 G17-запись мутации → T-04 CLI `wolf face` → T-05
+  migrateFaces + alias + seed/scaffold через face (`ff1c3f2`) → T-07 guard
+  прямого add → T-06 doctor lintFaces → T-09 предложения + CLI `wolf propose`
+  (`e030d8b`). Журналы исполнения — report-wave-2-17-execute.md папки волны.
+- Интеграция T-10 — e2e волны `tests/e2e/face-router.e2e.ts`: мигрированное
+  лицо резолвится router-путём (REQ-02); мутация лица в живом чате не меняет
+  доставленный текст (REQ-05, механика T-08); respawn после TTL — актуальная
+  версия (NFR-01). Полный гейт `npm run check` на объединённом состоянии —
+  зелёный (173 test files / 1312 tests); точечные фиксы гейта: формат журналов
+  исполнения волны, актуализация tests/integration/base-set-init.test.ts под
+  посев base-set лицами (T-05).
+- Доки и релиз T-11 — ожидается: README/docs по `wolf face` / `wolf propose`,
+  CLI-reference, CHANGELOG, версия, сайт; публикация — отдельный согласованный
+  шаг с владельцем.
