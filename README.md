@@ -162,7 +162,7 @@ The standalone self-learning pipeline (`wolf learn …`) was removed by owner de
 
 ## Read isolation
 
-Memory scoped to a linked worktree (`worktree:<id>`) is filtered on exactly one path — the delivery path, `wolf call`, in all modes (default, `--for <topic>`, `--thread <id>`); the MCP channel mirrors the CLI list and a `call` tool there would inherit the same isolation. Every other read — `wolf search`/`get`/`list`, `brief`, `recap`, `think`/`solve`, `doctor`, relation/analytics paths, `wolf face *` (faces filter by `owner_skill`, not scope) — sees the whole project memory. This composition is a frozen contract (NFR-03): extending it is a requirements change, guarded by a doc-test. Details: [Read Isolation](https://chekh.github.io/mister-wolf/guide/read-isolation).
+Memory scoped to a linked worktree (`worktree:<id>`) is filtered on exactly one path — the delivery path, `wolf call`, in all modes (default, `--for <topic>`, `--thread <id>`); the MCP channel mirrors the CLI list and a `call` tool there would inherit the same isolation. Every other read — `wolf search`/`get`/`list`/`show`, `brief`, `recap`, `think`/`solve`, `doctor`, relation/analytics paths, `wolf face *` (faces filter by `owner_skill`, not scope) — sees the whole project memory. This composition is a frozen contract (NFR-03): extending it is a requirements change, guarded by a doc-test. Details: [Read Isolation](https://chekh.github.io/mister-wolf/guide/read-isolation).
 
 ## Demos
 

@@ -22,7 +22,7 @@ The delivery path applies the scope filter in every selection branch:
 
 Everything else reads the whole project memory:
 
-- `wolf search` / `get` / `list`;
+- `wolf search` / `get` / `list` / `show`;
 - `wolf brief`, `wolf recap`;
 - `wolf think` / `solve`;
 - `wolf doctor`;

@@ -33,7 +33,7 @@ updated: 2026-10-14
 | T-07 guard `wolf add`                          | DONE (принято L1)                               | ff10f7f          |
 | T-08 wolf-router вариант Б                     | DONE (принято L1 + ревью APPROVED + минор-фикс) | c45b66e, 51e2477 |
 | T-09 proposals save/deliver + CLI              | DONE (принято L1)                               | e030d8b          |
-| T-10 интеграция + e2e + полный гейт            | DONE (принято L1, 2 ревью APPROVED)             | 8610588, eb7a5fe |
+| T-10 интеграция + e2e + полный гейт            | DONE (принято L1, ревью APPROVED)                | 8610588, eb7a5fe |
 | T-11 документация/сайт/версия (без публикации) | DONE (без публикации)                           | f73fb1a          |
 
 ## Task Decomposition

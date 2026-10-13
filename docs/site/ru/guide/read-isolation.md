@@ -21,7 +21,7 @@ main-чекоут. Перевод записи в общую память — я
 
 Всё остальное читает всю память проекта:
 
-- `wolf search` / `get` / `list`;
+- `wolf search` / `get` / `list` / `show`;
 - `wolf brief`, `wolf recap`;
 - `wolf think` / `solve`;
 - `wolf doctor`;
