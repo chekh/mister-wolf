@@ -8,8 +8,11 @@
  * попадает — известная грабля) → wolf search `<agentId> playbook` (после
  * таксономии 2.13 канон — note+facet howto, type-фильтр не применим) → get +
  * гвард owner_skill === agentId | `skill:${agentId}` (legacy) → первый
- * прошедший гвард кандидат (ранний стоп, A2-б) → инжект в system-промпт
- * на каждое сообщение.
+ * прошедший гвард кандидат (ранний стоп, A2-б) → инжект в system-промпт.
+ * Вариант Б (CR-2026-10-13-02): инъекция мемоизируется по opencode-сессии
+ * (пересборка system в пределах сессии получает запечатанный текст той же
+ * версии — без переключения посередине задания), кэш версионируется ключом
+ * head-записи — новая сессия всегда получает актуальную версию.
  *
  * Fallback (T012, волна 1.1): канон приоритетен; при miss для ЛЮБОГО
  * agent-id инъецируется встроенный универсальный FALLBACK_PLAYBOOK —
@@ -84,12 +87,20 @@ function logRoute(line: string): void {
 }
 
 // ponytail: per-agent кэш на TTL 5 мин — canonical-память мутируется редко,
-// CLI-спавн не на каждое сообщение.
+// CLI-спавн не на каждое сообщение. Вариант Б (CR-2026-10-13-02): запись
+// версионируется ключом head — кэш экономит только get-спавн и отдаётся лишь
+// при совпадении id с актуальной записью живого search; устаревшая версия
+// лица не отдаётся никогда (новая сессия в пределах TTL получает head).
 const cache = new Map<string, { value: { id: string; body: string } | null; at: number }>();
 
+// Вариант Б (а): мемоизация инъекции по opencode-сессии. Ключ сессии —
+// WOLF_SESSION (ставится на процесс opencode; несколько чатов одного
+// процесса — задокументированный потолок, см. ensureSession). Сессия
+// пригвождена к версии первого задания: пересборка system не запускает
+// ре-резолв — переключение версии посередине задания исключено (REQ-05).
+const sessionInject = new Map<string, { text: string; name: string; variant: string; bytes: number }>();
+
 async function resolvePlaybook(agentId: string): Promise<{ id: string; body: string } | null> {
-  const hit = cache.get(agentId);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
   let found: { id: string; body: string } | null = null;
   try {
     // 2.13: плейбуки живут как note+facet howto (type 'playbook' — legacy),
@@ -98,6 +109,14 @@ async function resolvePlaybook(agentId: string): Promise<{ id: string; body: str
     // фильтруем — каноничность решает гвард owner_skill ниже.
     const { stdout } = await runWolf(['search', agentId, 'playbook', '--hide-superseded']);
     const ids = [...stdout.matchAll(/^([\w-]+) \[\w+\]/gm)].map((m) => m[1]);
+    // Вариант Б (б): search живой на каждой новой сессии (мемоизация в
+    // deliverPlaybook гарантирует «раз на сессию», не «на сообщение») — это
+    // барьер свежести; кэш отдаётся только при совпадении head-id с первой
+    // строкой выборки, устаревшая версия лица не отдаётся.
+    const hit = cache.get(agentId);
+    if (hit?.value && Date.now() - hit.at < CACHE_TTL_MS && hit.value.id === ids[0]) {
+      return hit.value;
+    }
     // Ранний стоп (спека A2-б): релевантность поиска уже отсортировала,
     // --hide-superseded отсекает старые версии — первый кандидат, прошедший
     // гвард владельца, и есть результат (один get при miss вместо K подряд).
@@ -139,8 +158,9 @@ function recordSkillMetric(tool: unknown, args: unknown): void {
 }
 
 // Общая доставка playbook (v1 system.transform / v2 context): joined system-текст
-// → маркер agent-id → гвард идемпотентности INJECT_HEADER → resolvePlaybook →
-// push(текст). Fail-safe: не роняем сессию ни на одном шаге.
+// → маркер agent-id → гвард идемпотентности INJECT_HEADER → мемоизация сессии
+// (вариант Б: запечатанный текст без ре-резолва) → resolvePlaybook → push(текст).
+// Fail-safe: не роняем сессию ни на одном шаге.
 async function deliverPlaybook(joined: string, push: (text: string) => void): Promise<void> {
   try {
     const m = joined.match(AGENT_ID_RE);
@@ -148,18 +168,45 @@ async function deliverPlaybook(joined: string, push: (text: string) => void): Pr
     if (joined.includes(INJECT_HEADER)) return; // идемпотентность: не вставляем дважды
     const agentId = m[1];
     lastAgentId = agentId; // агент известен хуку skill-метрики (B3)
+    // Вариант Б (а): сессия уже получила инъекцию → отдаём запечатанный текст
+    // (то же содержание, тот же вариант), без CLI-спавнов и ре-резолва —
+    // независимо от того, персистит ли рантайм system-текст между сообщениями.
+    const memoKey = `${process.env.WOLF_SESSION ?? ''}:${agentId}`;
+    const memoized = sessionInject.get(memoKey);
+    if (memoized) {
+      push(memoized.text);
+      logRoute(
+        `agent-id=${agentId} playbook=hit name=${memoized.name} variant=${memoized.variant} injected=yes` +
+          ` ms=0 bytes=${memoized.bytes}`
+      );
+      return;
+    }
     const startedAt = Date.now();
     const resolved = await resolvePlaybook(agentId);
     const ms = Date.now() - startedAt;
     if (resolved) {
-      push(`\n\n${INJECT_HEADER}\n\n${resolved.body}`);
+      const text = `\n\n${INJECT_HEADER}\n\n${resolved.body}`;
+      sessionInject.set(memoKey, {
+        text,
+        name: resolved.id,
+        variant: 'canonical',
+        bytes: Buffer.byteLength(resolved.body),
+      });
+      push(text);
       logRoute(
         `agent-id=${agentId} playbook=hit name=${resolved.id} variant=canonical injected=yes` +
           ` ms=${ms} bytes=${Buffer.byteLength(resolved.body)}`
       );
     } else {
       // T012: miss канона → универсальный fallback; инъекция для любого agent-id
-      push(`\n\n${INJECT_HEADER}\n\n${FALLBACK_PLAYBOOK}`);
+      const text = `\n\n${INJECT_HEADER}\n\n${FALLBACK_PLAYBOOK}`;
+      sessionInject.set(memoKey, {
+        text,
+        name: 'fallback',
+        variant: 'fallback',
+        bytes: Buffer.byteLength(FALLBACK_PLAYBOOK),
+      });
+      push(text);
       logRoute(
         `agent-id=${agentId} playbook=hit name=fallback variant=fallback injected=yes` +
           ` ms=${ms} bytes=${Buffer.byteLength(FALLBACK_PLAYBOOK)}`
