@@ -74,7 +74,7 @@ Miss-rate по каждому agent-id остаётся частью acceptance-
 
 `wolf scaffold agent` делает оба шага за вас: штампует маркер в тело рамки и создаёт лицо (см. [Платформа и обслуживание](/ru/guide/cli/platform#wolf-scaffold)).
 
-Агенты базового набора несут маркеры из коробки (`worker-implementer`, `worker-researcher`, `worker-reviewer`, `executor-lead`, `steward`, `mr-wolf`), а `wolf init` сеет для них канонические лица — включая диспетчера executor-lead.
+Агенты базового набора несут маркеры из коробки (`worker-implementer`, `worker-researcher`, `worker-reviewer`, `executor-lead`, `steward`, `mr-wolf`), а `wolf init --full` сеет для них канонические лица — включая диспетчера executor-lead.
 
 ## Доверие
 

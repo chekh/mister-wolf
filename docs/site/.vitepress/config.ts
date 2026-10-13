@@ -98,6 +98,7 @@ export default defineConfig({
               { text: 'Memory Model', link: '/guide/memory' },
               { text: 'Learning Loop', link: '/guide/feedback' },
               { text: 'Delivery & Trust', link: '/guide/delivery' },
+              { text: 'Read Isolation', link: '/guide/read-isolation' },
             ],
           },
           {
@@ -165,6 +166,7 @@ export default defineConfig({
               { text: 'Модель памяти', link: '/ru/guide/memory' },
               { text: 'Контур обучения', link: '/ru/guide/feedback' },
               { text: 'Доставка и доверие', link: '/ru/guide/delivery' },
+              { text: 'Изоляция чтения', link: '/ru/guide/read-isolation' },
             ],
           },
           {

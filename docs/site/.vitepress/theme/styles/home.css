@@ -207,7 +207,9 @@
 .wolf-btn-alt {
   color: #c9c0aa;
   border: 1px solid #9a9280;
-  transition: border-color 0.25s, color 0.25s;
+  transition:
+    border-color 0.25s,
+    color 0.25s;
 }
 
 .wolf-btn-alt:hover {
@@ -479,7 +481,10 @@
 }
 
 .wolf-trust-bar .wolf-stamp {
-  transition: transform 0.2s, border-color 0.2s, color 0.2s;
+  transition:
+    transform 0.2s,
+    border-color 0.2s,
+    color 0.2s;
 }
 
 .wolf-trust-bar .wolf-stamp-even {
@@ -1097,26 +1102,18 @@
   margin-right: 6px;
 }
 
-/* ----- HomeInstall: three steps ----- */
+/* ----- HomeInstall: one binary + two alternative paths ----- */
 
 .wolf-install-grid {
   margin-top: 28px;
   display: grid;
-  grid-template-columns: 1fr 28px 1fr 28px 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 12px;
   align-items: stretch;
 }
 
 .wolf-install-step {
   min-width: 0; /* let the command plate scroll, not blow the grid */
-}
-
-.wolf-install-arrow {
-  align-self: center;
-  text-align: center;
-  font-family: var(--vp-font-family-mono);
-  font-size: 20px;
-  color: var(--wolf-signal);
 }
 
 .wolf-install-step-tag {
@@ -1159,6 +1156,12 @@
   font-size: 13px;
   line-height: 1.5;
   color: var(--vp-c-text-2);
+}
+
+/* try-out/npx footnote under the two-path grid */
+.wolf-install-note-foot {
+  margin-top: 16px;
+  max-width: 72ch;
 }
 
 /* ----- HomeFinalCTA: memory ready ----- */
@@ -1369,13 +1372,9 @@
     text-decoration: none;
   }
 
-  /* install: vertical steps, arrows point down */
+  /* install: cards stack vertically on narrow screens */
   .wolf-install-grid {
     grid-template-columns: 1fr;
     gap: 8px;
-  }
-
-  .wolf-install-arrow {
-    transform: rotate(90deg);
   }
 }

@@ -36,26 +36,33 @@ Mr. Wolf — постоянная проектная организация, с�
 > библиотека): `npm install mr-wolf` поставит сторонний код и выполнит его install-скрипты.
 > Проверяй имя буква-в-букву перед установкой.
 
-Установка — три команды:
+Установка — бинарь плюс один из двух явных путей:
 
 ```bash
 npm install -g mister-wolf   # 1) машина: бинарь wolf (уровень 0)
-cd my-project && wolf init   # 2) проект: скелет .wolf/ + MCP-конфиги платформ
-wolf bootstrap               # 3) память: стартовое наполнение из документов проекта
 ```
 
-После `wolf init` **перезапусти агентскую платформу** — MCP-сервер Wolf подключается при старте.
-Claude Code при первом старте попросит approve project-scope MCP-сервер — это штатно.
+```bash
+# Путь А — память: минимальный набор
+cd my-project && wolf init   # скелет .wolf/ + AGENTS.md; без платформенных конфигов и базового сета
+wolf bootstrap               # память: стартовое наполнение из документов проекта
 
-- **Попробовать без установки:** `npx mister-wolf init` — создаст память проекта, но никогда
-  не пишет MCP-конфиги (try-out). Понравилось — `npm install -g mister-wolf` и повтори `wolf init`.
+# Путь Б — организация OpenCode: полный базовый набор + MCP
+cd my-project && wolf init --full --platform opencode
+wolf bootstrap
+```
+
+- **Путь А — память:** `wolf init` подключает проект минимально — скелет `.wolf/` и `AGENTS.md`; платформенные конфиги и базовый сет он не пишет. Что печатает чистый запуск: `memory skeleton: ensured`, `base set: AGENTS.md created`, id init-отчёта.
+- **Путь Б — организация OpenCode:** `wolf init --full --platform opencode` отрисовывает полный базовый набор (6 рамок агентов, 19 скиллов, 3 команды, 2 плагина, посев playbook-лиц) и пишет `opencode.json` (`mcp.wolf`, `default_agent=mr-wolf`, `subagent_depth=2`). После него **перезапусти opencode** — MCP-сервер и агент по умолчанию подключаются при старте. Claude Code при первом старте попросит approve project-scope MCP-сервер — это штатно.
+
+- **Попробовать без установки:** `npx mister-wolf init` — try-out-режим: создаёт скелет памяти `.wolf/`, но никогда не пишет ни MCP-конфиги, ни базовый сет. Понравилось — `npm install -g mister-wolf` и повтори `wolf init`.
 - **Обновление:** `wolf upgrade` — сравнит установленную версию с npm registry и выполнит
   `npm install -g mister-wolf@latest` (`--check` только сообщает; dev/linked-установке откажет честно).
-  Вручную: `npm i -g mister-wolf@latest`.
+  Вручную: `npm i -g mister-wolf@latest`. После обновления пакета повтори `wolf init --yes` в проектах:
+  шаблоны базового сета и посеянные лица обновляются через re-init (`wolf sync` память не трогает).
 - **Платформы v1:** opencode, Claude Code. MCP-конфиги платформ — opt-in:
   `wolf init --platform opencode,claude` (список заменяет текущий набор); без флага платформенные
-  конфиги не пишутся. Нет маркеров платформы —
-  init честно предупредит и подскажет `--platform`.
+  конфиги не пишутся.
 - **Первый запуск без барьеров:** `wolf init` не принимает решений за тебя — минимальный набор
   файлов по умолчанию (`--full` — полный базовый набор), один вопрос интервью в терминале
   (Enter — пропустить), никакого пиннинга модели (`--model` — opt-in, строки модели опускаются —
@@ -172,6 +179,10 @@ wolf tool revive check       # deprecated → active
 - `wolf analytics` — единая аналитическая поверхность: ledger'ы (memory/tools/rules/agents), жизненный цикл памяти и атрибуция, кампании «с памятью/без» + per-memory ROI, координация, data-quality, консольный дашборд (`--view dashboard`), готовность экспериментов; честные метрики (`n/a` + причина, числа не выдумываются). Бывшие автономные `wolf effectiveness` / `wolf dashboard` / `wolf insights` — теперь view'ы `wolf analytics`.
 - `wolf task-eval --verdict accepted|rejected|partial|inconclusive` — вердикты по задачам: acceptance, coverage, стоимость принятой задачи; `--campaign` группирует раны в A/B-когорты.
 - Бенчмарки: `scripts/bench/` (b1-repeat-debug, b2-bootstrap, b3-retrospective).
+
+## Изоляция чтения
+
+Память со scope связанной рабочей копии (`worktree:<id>`) фильтруется ровно на одном пути — пути доставки, `wolf call`, во всех режимах (обычный, `--for <тема>`, `--thread <id>`); MCP-канал зеркалит CLI-список, и тул `call` там унаследовал бы ту же изоляцию. Все остальные чтения — `wolf search`/`get`/`list`, `brief`, `recap`, `think`/`solve`, `doctor`, relation/analytics-пути, `wolf face *` (лица фильтруются по `owner_skill`, не по scope) — видят всю память проекта. Этот состав — замороженный контракт (NFR-03): расширение = изменение требований, охраняется doc-тестом. Подробности: [Изоляция чтения](https://chekh.github.io/mister-wolf/ru/guide/read-isolation).
 
 ## Демо
 

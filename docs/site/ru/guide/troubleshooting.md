@@ -18,11 +18,11 @@ npm install -g mister-wolf
 
 **Причина:** npx-режим — try-out: он создаёт память проекта, но **никогда** не пишет MCP-конфиги.
 
-**Решение:** глобальная установка + повторный init:
+**Решение:** глобальная установка + init с явной платформой:
 
 ```bash
 npm install -g mister-wolf
-cd my-project && wolf init
+cd my-project && wolf init --platform opencode
 ```
 
 Затем перезапустите платформу — MCP-сервер подключается при старте.
