@@ -8,16 +8,20 @@ import { tmpdir } from 'os';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { ensureBuilt } from './helpers.js';
+import { acquireArtifactClaim } from '../../src/app/use-cases/claim-artifact.js';
 
 ensureBuilt();
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const cli = join(REPO, 'dist', 'bootstrap', 'cli.js');
 
-/** Изоляция: tmp XDG (реестр проектов) + срез npm_command (npx-запуск теста не должен выглядеть как npx try-out CLI). */
+/** Изоляция: tmp XDG (реестр проектов) + срез npm_command (npx-запуск теста не должен выглядеть как npx try-out CLI).
+ * 2.17.1 REQ-05 AC-3: scaffold artifact требует claim; держатель — живой
+ * тест-раннер (CLI-acquire мёртв своим pid → guard «stale», MINOR-3 ревью),
+ * идентичность env одна на acquire и CLI-scaffold. */
 function env(xdg: string): NodeJS.ProcessEnv {
   const { npm_command: _drop, ...rest } = process.env;
-  return { ...rest, XDG_CONFIG_HOME: xdg };
+  return { ...rest, XDG_CONFIG_HOME: xdg, WOLF_ACTOR: 'agent:e2e', WOLF_SESSION: 'ses-e2e' };
 }
 
 function run(args: string[], cwd: string, xdg: string) {
@@ -33,6 +37,9 @@ describe('wolf sync генерирует docs/dev/INDEX.md, идемпотент
     project = mkdtempSync(join(tmpdir(), 'wolf-artifact-index-e2e-'));
     writeFileSync(join(project, 'package.json'), '{ "name": "artifact-index-e2e" }');
     xdg = mkdtempSync(join(tmpdir(), 'wolf-artifact-index-e2e-xdg-'));
+    // claim артефакта до scaffold (REQ-05 AC-3); created — UTC-дата
+    const today = new Date().toISOString().slice(0, 10);
+    acquireArtifactClaim({ baseDir: project, env: env(xdg), pid: process.pid }, `dev:${today}-demo`);
     expect(run(['scaffold', 'artifact', 'demo'], project, xdg).status).toBe(0);
   });
 

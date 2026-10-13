@@ -182,6 +182,24 @@ describe('claim-registry: release и передача (design §3.5, S-41)', () 
     expect(() => releaseClaim(deps(root), { artifact: 'dev:nope', identity: HELLO })).toThrow(UserFacingError);
   });
 
+  it('FIX-5: release порченого claim — честное «corrupt», не «No claim held»; файл цел', () => {
+    const path = claimFilePath(root, 'dev:2026-10-14-demo');
+    mkdirSync(claimsDir(root), { recursive: true });
+    writeFileSync(path, '{garbage', 'utf-8');
+    let err: unknown;
+    try {
+      releaseClaim(deps(root), { artifact: 'dev:2026-10-14-demo', identity: HELLO });
+    } catch (e) {
+      err = e;
+    }
+    expect(err).toBeInstanceOf(UserFacingError);
+    const msg = (err as UserFacingError).message;
+    expect(msg).toContain('corrupt');
+    expect(msg).not.toContain('No claim held');
+    expect(msg).toContain(path);
+    expect(readFileSync(path, 'utf-8')).toBe('{garbage'); // поведение не расширяем: файл не тронут
+  });
+
   it('мёртвый владелец: release тем же owner+session из другого процесса — уборка', () => {
     seedClaimFile(root, claim({ pid: 99999 }));
     const res = releaseClaim(deps(root, { isAlive: () => false }), {
@@ -281,5 +299,125 @@ describe('claim-registry: list и requireClaim (AC-2, AC-3)', () => {
         sessionId: HELLO.sessionId,
       })
     ).toThrow(/stale/);
+  });
+});
+
+describe('claim-registry: MINOR-1/2/4 (FIX-раунд T5, независимое ревью)', () => {
+  let root: string;
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'wolf-claims-'));
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  it('MINOR-1: transfer → адресат пишет под guard (session null, pid 0); прежний/чужой — отказ', () => {
+    seedClaimFile(root, claim());
+    releaseClaim(deps(root), { artifact: 'dev:2026-10-14-demo', identity: HELLO, transferTo: 'agent:w1' });
+    // адресат с собственной сессией проходит guard — передача не паркует запись до TTL
+    expect(() =>
+      requireClaim(deps(root), 'dev:2026-10-14-demo', { owner: 'agent:w1', sessionId: 'ses-w1' })
+    ).not.toThrow();
+    // прежний владелец больше не проходит
+    expect(() =>
+      requireClaim(deps(root), 'dev:2026-10-14-demo', { owner: HELLO.owner, sessionId: HELLO.sessionId })
+    ).toThrow(UserFacingError);
+    // чужой — отказ
+    expect(() =>
+      requireClaim(deps(root), 'dev:2026-10-14-demo', { owner: OTHER.owner, sessionId: OTHER.sessionId })
+    ).toThrow(UserFacingError);
+  });
+
+  it('MINOR-2: пустой claim-файл (in-flight создатель) — не takeover: ожидание видит свежий claim', () => {
+    const path = claimFilePath(root, 'dev:2026-10-14-demo');
+    mkdirSync(claimsDir(root), { recursive: true });
+    writeFileSync(path, '', 'utf-8'); // создатель между openSync('wx') и writeFileSync
+    let waited = false;
+    const d = deps(root, {
+      // в момент ожидания создатель дописывает запись — конкурент должен увидеть
+      // свежий claim и отказаться, а не переименовать файл из-под создателя
+      wait: () => {
+        if (!waited) {
+          waited = true;
+          writeFileSync(path, JSON.stringify(claim()), 'utf-8');
+        }
+      },
+    });
+    expect(() => acquireClaim(d, { artifact: 'dev:2026-10-14-demo', identity: OTHER, cwd: '/tmp/wt2' })).toThrow(
+      ClaimHeldError
+    );
+    expect(waited).toBe(true);
+    expect(JSON.parse(readFileSync(path, 'utf-8')).owner).toBe(HELLO.owner); // файл создателя цел
+    expect(readdirSync(claimsDir(root))).toEqual(['dev_2026-10-14-demo.json']); // следа нет
+  });
+
+  it('MINOR-2: пустой файл не заполняется — отказ после ограниченного ожидания, без переименования', () => {
+    const path = claimFilePath(root, 'dev:2026-10-14-demo');
+    mkdirSync(claimsDir(root), { recursive: true });
+    writeFileSync(path, '   ', 'utf-8'); // whitespace-only — тоже in-flight, не порча
+    expect(() =>
+      acquireClaim(deps(root, { wait: () => {} }), {
+        artifact: 'dev:2026-10-14-demo',
+        identity: OTHER,
+        cwd: '/tmp/wt2',
+      })
+    ).toThrow(ClaimHeldError);
+    expect(readFileSync(path, 'utf-8')).toBe('   '); // не переименован в след
+    expect(readdirSync(claimsDir(root))).toEqual(['dev_2026-10-14-demo.json']);
+  });
+
+  it('MINOR-4: slug, кончающийся на .<13 цифр> — легитимный claim, виден в list', () => {
+    acquireClaim(deps(root), { artifact: 'dev:2026-10-14-x.1234567890123', identity: HELLO, cwd: '/tmp/wt' });
+    const list = listClaims(deps(root));
+    expect(list.map((r) => r.artifact)).toContain('dev:2026-10-14-x.1234567890123');
+  });
+
+  it('FIX-4: двойной перехват в одну мс (одинаковый epoch) — два разных следа, байты каждого целы (NFR-02)', () => {
+    // последовательная гонка — регрессионная сеть механизма уникальности имени
+    // следа; TOCTOU-окно exists+rename доказано стресс-прогоном (отчёт FIX-4)
+    const first = 'first-stale-bytes';
+    const second = 'second-stale-bytes';
+    const path = claimFilePath(root, 'dev:2026-10-14-demo');
+    mkdirSync(claimsDir(root), { recursive: true });
+    writeFileSync(path, first, 'utf-8');
+    acquireClaim(deps(root, { isAlive: () => false }), {
+      artifact: 'dev:2026-10-14-demo',
+      identity: OTHER,
+      cwd: '/tmp/wt2',
+    });
+    writeFileSync(path, second, 'utf-8'); // артефакт снова stale (порченый)
+    acquireClaim(deps(root, { isAlive: () => false }), {
+      artifact: 'dev:2026-10-14-demo',
+      identity: HELLO,
+      cwd: '/tmp/wt',
+    });
+
+    const trails = readdirSync(claimsDir(root))
+      .filter((n) => /^dev_2026-10-14-demo\.\d+\.json$/.test(n))
+      .sort();
+    expect(trails).toHaveLength(2);
+    expect(trails[1]).not.toBe(trails[0]); // имена различаются — bump эпохи
+    expect(readFileSync(join(claimsDir(root), trails[0]), 'utf-8')).toBe(first);
+    expect(readFileSync(join(claimsDir(root), trails[1]), 'utf-8')).toBe(second);
+  });
+
+  it('FIX-4: перехватчик с устаревшим чтением не сносит чужую свежую запись и не оставляет ложный след', () => {
+    // конкурент забирает артефакт в окне между чтением и сохранением следа
+    // (seam isAlive) — поздний перехватчик должен отказаться, не тронув claim
+    // победителя: ни подмены байтов в следе, ни двойной победы (AC-1)
+    seedClaimFile(root, claim({ pid: 99999 }));
+    const fresh = JSON.stringify(claim({ owner: 'agent:winner', pid: process.pid }));
+    const d = deps(root, {
+      isAlive: (pid) => {
+        if (pid === 99999) {
+          writeFileSync(claimFilePath(root, 'dev:2026-10-14-demo'), fresh, 'utf-8');
+          return false; // решение принималось по старым (stale) байтам
+        }
+        return true;
+      },
+    });
+    expect(() => acquireClaim(d, { artifact: 'dev:2026-10-14-demo', identity: OTHER, cwd: '/tmp/wt2' })).toThrow(
+      ClaimHeldError
+    );
+    expect(readFileSync(claimFilePath(root, 'dev:2026-10-14-demo'), 'utf-8')).toBe(fresh);
+    expect(readdirSync(claimsDir(root))).toEqual(['dev_2026-10-14-demo.json']); // следа нет
   });
 });

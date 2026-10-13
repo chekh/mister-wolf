@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, readFileSync, existsSync } from 'fs';
+import { mkdtempSync, rmSync, readFileSync, existsSync, readdirSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import {
@@ -8,6 +8,7 @@ import {
   makeClaimGuard,
   releaseArtifactClaim,
 } from '../../../src/app/use-cases/claim-artifact.js';
+import { ClaimHeldError } from '../../../src/adapters/fs/claim-registry.js';
 import { UserFacingError } from '../../../src/domain/errors.js';
 
 // 2.17.1 REQ-05 (R06), design §3.5: use-case-слой claim — идентичность из env
@@ -65,5 +66,31 @@ describe('claim-artifact (use-case): идентичность из env и кор
     acquireArtifactClaim({ baseDir: dir, env: { WOLF_ACTOR: 'agent:a', WOLF_SESSION: 's' }, pid: 1 }, 'dev:x');
     expect(() => mine.requireClaim('dev:x')).not.toThrow();
     expect(() => theirs.requireClaim('dev:x')).toThrow(UserFacingError);
+  });
+
+  it('FIX-1 (CRITICAL-1): claim с pid 0 (CLI-семантика) — guard сессии проходит из другого процесса; конкурент — ClaimHeld без следа', () => {
+    // CLI-процесс одноразовый, держатель — агент-сессия: pid 0 = liveness
+    // неизвестна, владение живёт до TTL/передачи (pidAlive трактует pid<=0 живым)
+    const envA = { WOLF_ACTOR: 'agent:a', WOLF_SESSION: 'ses-a' };
+    acquireArtifactClaim({ baseDir: dir, env: envA, pid: 0 }, 'dev:2026-10-14-demo');
+
+    // «другой процесс» той же сессии пишет под guard — не stale, не owner-lockout
+    expect(() =>
+      makeClaimGuard({ baseDir: dir, env: envA, pid: 777 }).requireClaim('dev:2026-10-14-demo')
+    ).not.toThrow();
+
+    // конкурент с другим actor — отказ, след перехвата не появился (AC-1)
+    let err: unknown;
+    try {
+      acquireArtifactClaim(
+        { baseDir: dir, env: { WOLF_ACTOR: 'agent:b', WOLF_SESSION: 'ses-b' }, pid: 888 },
+        'dev:2026-10-14-demo'
+      );
+    } catch (e) {
+      err = e;
+    }
+    expect(err).toBeInstanceOf(ClaimHeldError);
+    expect((err as ClaimHeldError).owner).toBe('agent:a');
+    expect(readdirSync(join(dir, '.wolf', 'shared', 'claims'))).toEqual(['dev_2026-10-14-demo.json']);
   });
 });

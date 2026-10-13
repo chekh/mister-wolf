@@ -1,11 +1,12 @@
 import {
   closeSync,
   existsSync,
+  linkSync,
   mkdirSync,
   openSync,
   readFileSync,
   readdirSync,
-  renameSync,
+  statSync,
   unlinkSync,
   writeFileSync,
 } from 'fs';
@@ -18,7 +19,7 @@ import { UserFacingError } from '../../domain/errors.js';
  * `.wolf/shared/claims/` (cross-copy видимость — root из resolveMemoryRoot);
  * атомарный захват — `openSync(…, 'wx')` (механика FsMemoryLock tryAcquire);
  * stale: PID мёртв (ESRCH) ИЛИ возраст > CLAIM_TTL; перехват stale сохраняет
- * прежний файл переименованием в след `<slug>.<epochMs>.json` (NFR-02).
+ * прежний файл жёсткой ссылкой в след `<slug>.<epochMs>.json` (excl, NFR-02).
  */
 
 /** TTL claim'а: локальный-first, heartbeat не вводим (design §3.5). */
@@ -50,6 +51,8 @@ export interface ClaimRegistryDeps {
   now?: () => Date;
   /** Тестовый seam: liveness PID. Дефолт — process.kill(pid, 0). */
   isAlive?: (pid: number) => boolean;
+  /** Тестовый seam: ожидание in-flight окна. Дефолт — синхронный sleep. */
+  wait?: (ms: number) => void;
 }
 
 export class ClaimHeldError extends Error {
@@ -92,6 +95,11 @@ export function pidAlive(pid: number): boolean {
   } catch (e) {
     return (e as NodeJS.ErrnoException).code === 'EPERM';
   }
+}
+
+/** Синхронное ожидание in-flight окна (MINOR-2): Atomics.wait — без busy-loop. */
+function sleepMs(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
 function parseClaim(raw: string): ClaimRecord | null {
@@ -164,22 +172,49 @@ export function acquireClaim(
       const code = (e as NodeJS.ErrnoException).code;
       if (code !== 'EEXIST') throw e;
     }
-    const { rec } = readClaimFile(path);
+    const { raw, rec } = readClaimFile(path);
+    // MINOR-2 (ревью T5): пустой файл — in-flight окно создателя (между wx и
+    // write), не порча: takeover запрещён, короткое ожидание и повтор
+    if (raw !== null && raw.trim() === '') {
+      if (attempt >= 60) {
+        throw new ClaimHeldError(path, 'unknown', 'claim file exists but stays empty (in-flight write?)');
+      }
+      (deps.wait ?? sleepMs)(10);
+      continue;
+    }
     if (rec !== null && !isStale(rec, deps)) {
       throw new ClaimHeldError(path, rec.owner, describeHolder(rec));
     }
     // stale/порченый (rec === null, сырые байты могли быть) → перехват со следом;
-    // проигранная гонка перехвата (ENOENT на rename) — повтор захвата
+    // проигранная гонка перехвата (ENOENT на link/unlink) — повтор захвата
     try {
       const epoch = now().getTime();
-      let trail = claimTrailPath(deps.root, input.artifact, epoch);
-      // двойной перехват в одну мс не должен перезаписать чужой след (NFR-02)
-      for (let bump = 1; existsSync(trail) && bump < 50; bump++) {
-        trail = claimTrailPath(deps.root, input.artifact, epoch + bump);
+      // FIX-4 (MINOR-4, ревью T5): след — через linkSync (excl-семантика):
+      // exists+rename TOCTOU позволял двум перехватчикам одной мс перезаписать
+      // чужой след (потеря байтов, NFR-02); при EEXIST — bump эпохи до свободного
+      let preserved: string | null = null;
+      for (let bump = 0; bump < 50 && preserved === null; bump++) {
+        const trail = claimTrailPath(deps.root, input.artifact, epoch + bump);
+        try {
+          linkSync(path, trail);
+          preserved = trail;
+        } catch (e) {
+          if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
+        }
       }
-      renameSync(path, trail);
+      if (preserved !== null) {
+        // решение принималось по raw, а слинковаться мог уже переписанный файл
+        // (чужой takeover между чтением и link): чужую свежую запись в след не
+        // берём и claim-имя под ней не освобождаем — перечитаем и откажемся
+        if (raw !== null && readFileSync(preserved, 'utf-8') !== raw) {
+          unlinkSync(preserved);
+        } else if (statSync(path).ino === statSync(preserved).ino) {
+          // unlink только сохранённый inode: конкурент мог уже пересоздать claim
+          unlinkSync(path);
+        }
+      }
     } catch {
-      /* конкурент уже переименовал/отпустил — идём на повторный wx */
+      /* конкурент уже сохранил/убрал файл — идём на повторный wx */
     }
     if (attempt > 20) {
       throw new ClaimHeldError(path, rec?.owner ?? 'unknown', 'too many contention attempts');
@@ -201,8 +236,15 @@ export function releaseClaim(
 ): { action: 'released' | 'transferred'; owner: string } {
   const path = claimFilePath(deps.root, input.artifact);
   const { rec } = readClaimFile(path);
-  if (rec === null || !existsSync(path)) {
+  if (!existsSync(path)) {
     throw new UserFacingError(`No claim held for "${input.artifact}" (claim file: ${path})`);
+  }
+  if (rec === null) {
+    // FIX-5 (MINOR-5, ревью T5): файл есть, но не читается как claim — «No claim
+    // held» лгало об отсутствии; честный отказ без расширения поведения.
+    throw new UserFacingError(
+      `Claim file for "${input.artifact}" is corrupt — ownership cannot be verified; take over via "wolf claim acquire" (preserves bytes) or remove it manually (claim file: ${path})`
+    );
   }
   const fullMatch = ownerSessionMatch(rec, input.identity) && rec.pid === input.identity.pid;
   const pidReleasable = rec.pid <= 0 || isStale(rec, deps);
@@ -230,7 +272,8 @@ export function releaseClaim(
 }
 
 /** Реестр для наблюдаемости (REQ-05 AC-2): кто/когда/что из файлов; следы
- * `<slug>.<epochMs>.json` исключаются. */
+ * `<slug>.<epochMs>.json` исключаются — по содержимому: след хранит запись
+ * базового артефакта, его slug ≠ имя файла следа (MINOR-4). */
 export function listClaims(deps: ClaimRegistryDeps): ClaimRecord[] {
   const dir = claimsDir(deps.root);
   let names: string[];
@@ -241,9 +284,13 @@ export function listClaims(deps: ClaimRegistryDeps): ClaimRecord[] {
   }
   const out: ClaimRecord[] = [];
   for (const name of names) {
-    if (!name.endsWith('.json') || /\.\d{13}\.json$/.test(name)) continue;
+    if (!name.endsWith('.json')) continue;
     const { rec } = readClaimFile(join(dir, name));
-    if (rec !== null) out.push(rec);
+    if (rec === null) continue;
+    // MINOR-4: имя с 13 цифрами на конце может быть легитимным claim'ом —
+    // след распознаём по несоответствию имени и slug(rec.artifact), не по маске
+    if (claimFilePath(deps.root, rec.artifact) !== join(dir, name)) continue;
+    out.push(rec);
   }
   return out;
 }
@@ -274,7 +321,11 @@ export function requireClaim(
       `Claim for "${artifact}" is stale (holder ${rec.owner}) — re-acquire: wolf claim acquire "${artifact}" (claim file: ${path})`
     );
   }
-  if (rec.owner !== who.owner || rec.session_id !== who.sessionId) {
+  // MINOR-1 (ревью T5): переданный claim (transfer: session null, pid 0)
+  // доступен адресату с любой его сессией — иначе передача парковала бы
+  // запись до TTL. pid-проверка для pid:0 не применяется (pidAlive).
+  const transferredToWho = rec.session_id === null && rec.owner === who.owner;
+  if (!transferredToWho && (rec.owner !== who.owner || rec.session_id !== who.sessionId)) {
     throw new UserFacingError(
       `Artifact "${artifact}" is claimed by ${rec.owner} (${describeHolder(rec)}) — claim file: ${path}`
     );

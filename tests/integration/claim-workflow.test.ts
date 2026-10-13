@@ -120,6 +120,25 @@ describe('REQ-05 (R06): claim владения артефактами — S-38�
     expect(JSON.parse(readFileSync(claimFilePath(dir, artifact), 'utf-8')).owner).toBe('agent:holder');
   }, 60_000);
 
+  it('S-38c (FIX-1/CRITICAL-1): CLI-acquire держит claim сессией (pid 0) — конкурент не перехватывает после смерти CLI-процесса', async () => {
+    const artifact = 'dev:2026-10-14-clisess';
+    // процесс A: CLI acquire — одноразовый процесс, к моменту конкурента мёртв
+    const acq = await runCliAsync(['claim', 'acquire', artifact], dir, envOf('agent:l1a', 'ses-a'));
+    expect(acq.status).toBe(0);
+    const rec = JSON.parse(readFileSync(claimFilePath(dir, artifact), 'utf-8'));
+    // держатель — агент-сессия, не процесс: pid 0 = liveness неизвестна, до TTL
+    expect(rec.pid).toBe(0);
+
+    // конкурент (другой actor) спустя секунду: НЕ перехват — ClaimHeld, следа нет
+    await new Promise((r) => setTimeout(r, 1000));
+    const res = await runCliAsync(['claim', 'acquire', artifact], dir, envOf('agent:l1b', 'ses-b'));
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain('agent:l1a');
+    const names = readdirSync(claimsDir(dir));
+    expect(names).toEqual(['dev_2026-10-14-clisess.json']); // след перехвата не появился
+    expect(JSON.parse(readFileSync(claimFilePath(dir, artifact), 'utf-8')).owner).toBe('agent:l1a');
+  }, 60_000);
+
   it('S-39: wolf claim list показывает who/when/what из файла реестра, не из брифа', async () => {
     const artifact = 'dev:2026-10-14-demo';
     const acq = await runCliAsync(['claim', 'acquire', artifact], dir, envOf('agent:l1a', 'ses-a'));
@@ -128,7 +147,8 @@ describe('REQ-05 (R06): claim владения артефактами — S-38�
     const rec = JSON.parse(readFileSync(claimFilePath(dir, artifact), 'utf-8'));
     expect(rec.owner).toBe('agent:l1a');
     expect(rec.session_id).toBe('ses-a');
-    expect(rec.pid).toBeGreaterThan(0);
+    // FIX-1 (CRITICAL-1): CLI-acquire пишет pid 0 — держатель сессия, не процесс
+    expect(rec.pid).toBe(0);
     expect(rec.cwd).toBe(realpathSync(dir)); // macOS symlink /var → /private/var
 
     const list = await runCliAsync(['claim', 'list'], dir, envOf('agent:l1a', 'ses-a'));
@@ -136,7 +156,7 @@ describe('REQ-05 (R06): claim владения артефактами — S-38�
     expect(list.stdout).toContain(artifact); // what
     expect(list.stdout).toContain('agent:l1a'); // who
     expect(list.stdout).toContain('ses-a');
-    expect(list.stdout).toContain(String(rec.pid));
+    expect(list.stdout).toContain('pid 0');
     expect(list.stdout).toContain(rec.cwd);
     expect(list.stdout).toContain(rec.acquired_at); // when
   }, 60_000);
@@ -156,8 +176,8 @@ describe('REQ-05 (R06): claim владения артефактами — S-38�
     const otherSession = await runCliAsync(['claim', 'release', artifact], dir, envOf('agent:l1a', 'ses-x'));
     expect(otherSession.status).toBe(1);
 
-    // владелец освобождает: acquirer-процесс завершился (pid из записи мёртв),
-    // owner+session совпадают — уборка разрешена
+    // владелец освобождает: CLI-acquire записал pid 0 (держатель — сессия),
+    // owner+session совпадают — уборка разрешена (pidReleasable при pid<=0)
     const rel = await runCliAsync(['claim', 'release', artifact], dir, envOf('agent:l1a', 'ses-a'));
     expect(rel.status).toBe(0);
     expect(rel.stdout).toContain('Released');
@@ -285,5 +305,26 @@ describe('REQ-05 (R06): claim владения артефактами — S-38�
     expect(trails).toHaveLength(2);
     expect(readFileSync(join(claimsDir(dir), trails[0]!), 'utf-8')).toBe(original);
     expect(readFileSync(join(claimsDir(dir), trails[1]!), 'utf-8')).toBe(stale);
+  });
+
+  it('S-42b (FIX-6/MINOR-6): порченый claim-файл на реальной ФС — перехват, исходные байты в следе', () => {
+    const artifact = 'dev:2026-10-14-corrupt';
+    mkdirSync(claimsDir(dir), { recursive: true });
+    const garbage = '{corrupt claim bytes — not json';
+    writeFileSync(claimFilePath(dir, artifact), garbage, 'utf-8');
+    const taken = acquireClaim(
+      { root: dir },
+      {
+        artifact,
+        identity: { owner: 'agent:new', sessionId: 's2', pid: process.pid },
+        cwd: dir,
+      }
+    );
+    expect(taken.owner).toBe('agent:new');
+    // основной путь занят новым владельцем, исходные байты — в следе (NFR-02)
+    expect(JSON.parse(readFileSync(claimFilePath(dir, artifact), 'utf-8')).owner).toBe('agent:new');
+    const trail = readdirSync(claimsDir(dir)).find((f) => /^dev_2026-10-14-corrupt\.\d+\.json$/.test(f));
+    expect(trail, `след перехвата: ${readdirSync(claimsDir(dir)).join(', ')}`).toBeDefined();
+    expect(readFileSync(join(claimsDir(dir), trail!), 'utf-8')).toBe(garbage);
   });
 });

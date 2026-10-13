@@ -25,7 +25,12 @@ export function claimCommand(baseDir: string = safeCwd()): Command {
     .argument('<artifact>', 'Artifact id, e.g. "dev:<date>-<slug>" or "worktree:w-<12hex>"')
     .action((artifact: string) => {
       try {
-        const rec = acquireArtifactClaim({ baseDir }, artifact);
+        // FIX-1 (CRITICAL-1, ревью T5): CLI-процесс одноразовый — его pid мёртв
+        // сразу после выхода, и claim деградировал в «stale» (owner-lockout
+        // scaffold'а и мгновенный перехват конкурентом). Держатель claim'а —
+        // агент-сессия (owner+session): пишем pid 0 = liveness неизвестна,
+        // владение живёт до TTL или передачи (pidAlive: pid<=0 — жив до TTL).
+        const rec = acquireArtifactClaim({ baseDir, pid: 0 }, artifact);
         console.log(`Claim acquired: ${rec.artifact}`);
         console.log(`owner ${rec.owner} (session ${rec.session_id ?? '-'}, pid ${rec.pid})`);
         console.log(`claim file: ${claimFilePath(resolveMemoryRoot(baseDir).root, artifact)}`);
