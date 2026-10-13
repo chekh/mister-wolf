@@ -1043,6 +1043,68 @@ Options:
   -h, --help  display help for command
 ```
 
+### wolf claim
+
+```text
+Usage: wolf claim [options] [command]
+
+Single-writer claims on shared artifacts (TASK briefs, plans, reports,
+worktrees)
+
+Options:
+  -h, --help                    display help for command
+
+Commands:
+  acquire <artifact>            Atomically acquire artifact ownership (second
+                                concurrent writer is rejected)
+  release [options] <artifact>  Release artifact ownership (owner-only) or
+                                transfer it explicitly
+  list                          List active claims (who/when/what, from the
+                                registry files)
+  help [command]                display help for command
+```
+
+#### wolf claim acquire
+
+```text
+Usage: wolf claim acquire [options] <artifact>
+
+Atomically acquire artifact ownership (second concurrent writer is rejected)
+
+Arguments:
+  artifact    Artifact id, e.g. "dev:<date>-<slug>" or "worktree:w-<12hex>"
+
+Options:
+  -h, --help  display help for command
+```
+
+#### wolf claim release
+
+```text
+Usage: wolf claim release [options] <artifact>
+
+Release artifact ownership (owner-only) or transfer it explicitly
+
+Arguments:
+  artifact               Artifact id to release
+
+Options:
+  --transfer-to <actor>  Hand ownership over to another actor instead of
+                         dropping the claim
+  -h, --help             display help for command
+```
+
+#### wolf claim list
+
+```text
+Usage: wolf claim list [options]
+
+List active claims (who/when/what, from the registry files)
+
+Options:
+  -h, --help  display help for command
+```
+
 ### wolf projects
 
 ```text

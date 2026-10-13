@@ -366,6 +366,14 @@ export const COMMANDS: CommandSpec[] = [
     load: () => import('./commands/memory-promote.js').then((m) => m.memoryPromoteCommand()),
   },
   {
+    // 2.17.1 REQ-05 (R06): атомарный claim владения общими артефактами —
+    // один активный писатель; guard записи — в use-cases (requireClaim)
+    name: 'claim',
+    description: 'Single-writer claims on shared artifacts (acquire/release/list)',
+    usage: '',
+    load: () => import('./commands/claim.js').then((m) => m.claimCommand()),
+  },
+  {
     // Волна 2.14 §8.1 (P330): реестр-«телефонная книга» — просмотр; C-поток
     // регистрирует aggregate выше — ребейз механический (точка 4 §1 плана)
     name: 'projects',

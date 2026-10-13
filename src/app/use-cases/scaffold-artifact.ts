@@ -2,6 +2,7 @@ import { join } from 'path';
 import { Clock } from '../../ports/clock.port.js';
 import { FileSystem } from '../../ports/file-system.port.js';
 import { UserFacingError } from '../../domain/errors.js';
+import type { ClaimGuard } from './claim-artifact.js';
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/;
 
@@ -9,6 +10,10 @@ export interface ScaffoldArtifactDeps {
   clock: Clock;
   fs: Pick<FileSystem, 'exists' | 'writeFile'>;
   baseDir: string;
+  /** 2.17.1 REQ-05 (R06): запись TASK-бриф сета требует активный claim
+   * (артефакт `dev:<created>-<slug>`); CLI передаёт реальный guard из
+   * makeClaimGuard, юнит-тесты шаблонов — заглушку. */
+  claims: ClaimGuard;
 }
 
 export interface ScaffoldArtifactInput {
@@ -156,6 +161,8 @@ export async function scaffoldArtifact(
   }
   const now = deps.clock.now();
   const created = now.toISOString().slice(0, 10);
+  // REQ-05 AC-3: guard до любой записи — без claim запись отклоняется в use-case
+  deps.claims.requireClaim(`dev:${created}-${input.slug}`);
   const dir = join(deps.baseDir, 'docs', 'dev', `${created}-${input.slug}`);
   // Уникальность имён — машина, не дисциплина: отказ ДО любых записей (спека §4-A1).
   if (await deps.fs.exists(dir)) {
