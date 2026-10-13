@@ -6,14 +6,16 @@ import {
   getDeclaration,
   subdirectoryFor,
   DEFAULT_CHARACTER_FACETS,
+  SIGNAL_FACETS,
 } from '../../../src/domain/memory-types.js';
 import type { MemoryType, MemoryTypeDeclaration } from '../../../src/domain/memory-types.js';
 import { ALLOWED_TRANSITIONS } from '../../../src/domain/governance.js';
 import { targetPathFor } from '../../../src/adapters/fs/project-paths.js';
 
 describe('CORE_TAXONOMY (волна 2.13 §5.1)', () => {
-  it('MEMORY_TYPES ровно 7 в дословном составе', () => {
-    expect(MEMORY_TYPES).toEqual(['rule', 'lesson', 'decision', 'thread', 'complaint', 'tool', 'note']);
+  // Волна 2.17 T-01: осознанная правка якоря «ровно 7» → 8 (+face, REQ-01).
+  it('MEMORY_TYPES ровно 8 в дословном составе (2.17: +face)', () => {
+    expect(MEMORY_TYPES).toEqual(['rule', 'lesson', 'decision', 'thread', 'complaint', 'tool', 'note', 'face']);
   });
 
   it('covers every MEMORY_TYPES entry exactly once', () => {
@@ -72,7 +74,7 @@ describe('CORE_TAXONOMY (волна 2.13 §5.1)', () => {
     expect(subdirectoryFor('tool', 'shared')).toBe('tools');
   });
 
-  it('note объявляет facet enum из дефолтного словаря §5.3', () => {
+  it('note объявляет facet enum из дефолтного словаря §5.3 (2.17: +proposal, 8/10)', () => {
     expect(getDeclaration('note').fields?.facet).toEqual({ kind: 'enum', values: DEFAULT_CHARACTER_FACETS });
     expect(DEFAULT_CHARACTER_FACETS).toEqual([
       'howto',
@@ -82,7 +84,35 @@ describe('CORE_TAXONOMY (волна 2.13 §5.1)', () => {
       'history',
       'legacy',
       'constraint',
+      'proposal',
     ]);
+  });
+});
+
+describe('face: декларация core-типа (волна 2.17 REQ-01, design §Контракты)', () => {
+  it('контракт лица дословно по design', () => {
+    const d = getDeclaration('face');
+    expect(d.lifecycle).toEqual(['active', 'superseded', 'archived']); // T18: существующие статусы
+    expect(d.subdirThread).toBeNull();
+    expect(d.subdirShared).toBe('faces');
+    expect(d.fields).toEqual({
+      owner_skill: { kind: 'string', required: true, min: 1 },
+      version: { kind: 'string', required: true, min: 1 },
+      based_on: { kind: 'string', optional: true },
+      reason: { kind: 'string', required: true, min: 1 },
+      initiator: { kind: 'enum', values: ['steward', 'owner', 'breakglass', 'migration', 'seed'] },
+    });
+  });
+
+  it('сигнал-словарь proposal отличен от character-словаря note (ADR-3)', () => {
+    expect(SIGNAL_FACETS).toEqual(['proposal']);
+    // note получает proposal в свой закрытый словарь
+    expect(DEFAULT_CHARACTER_FACETS).toContain('proposal');
+    // не-note core-типы не декларируют facet в fields — сигнал-фасет живёт в
+    // type-schema-builder (не попадает в генерацию CLI-флагов)
+    for (const t of ['rule', 'lesson', 'decision', 'thread', 'complaint', 'tool', 'face']) {
+      expect(getDeclaration(t as MemoryType).fields?.facet, t).toBeUndefined();
+    }
   });
 });
 
@@ -95,9 +125,9 @@ describe('getDeclaration: C12-гвард старых типов (§5.4)', () =>
     expect(() => getDeclaration('blocker')).toThrow(/use "note" \(facet: pitfall\)/);
   });
 
-  it('неизвестный тип — прежний гвард со списком 7 типов', () => {
+  it('неизвестный тип — гвард со списком 8 типов (2.17: +face)', () => {
     expect(() => getDeclaration('notaftype')).toThrow(
-      /Unknown memory type "notaftype"\. Valid types: rule, lesson, decision, thread, complaint, tool, note/
+      /Unknown memory type "notaftype"\. Valid types: rule, lesson, decision, thread, complaint, tool, note, face/
     );
   });
 

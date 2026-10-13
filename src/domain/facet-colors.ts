@@ -13,6 +13,7 @@ const FACET_COLORS: Readonly<Record<string, string>> = {
   history: '\x1b[35m', // magenta
   legacy: '\x1b[2m', // gray/dim
   constraint: '\x1b[36m', // cyan
+  proposal: '\x1b[37m', // white (2.17: сигнал-фасет предложения)
 };
 
 /** ANSI-код фасета или null для неизвестного значения (в т.ч. кастомного из конфига). */

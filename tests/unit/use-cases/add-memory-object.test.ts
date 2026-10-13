@@ -231,7 +231,7 @@ describe('addMemoryObject facet validation (note)', () => {
     await expect(
       addMemoryObject({ store, log, clock, idGen }, { type: 'note', title: 'N', createdBy: 'u:test' })
     ).rejects.toThrow(
-      /facet is required for type "note" \(valid values: howto, pitfall, context, metric, history, legacy, constraint\)/
+      /facet is required for type "note" \(valid values: howto, pitfall, context, metric, history, legacy, constraint, proposal\)/
     );
   });
 
@@ -239,7 +239,7 @@ describe('addMemoryObject facet validation (note)', () => {
     await expect(
       addMemoryObject({ store, log, clock, idGen }, { type: 'note', title: 'N', createdBy: 'u:test', facet: 'mood' })
     ).rejects.toThrow(
-      /Invalid facet "mood" for type "note" \(valid values: howto, pitfall, context, metric, history, legacy, constraint\)/
+      /Invalid facet "mood" for type "note" \(valid values: howto, pitfall, context, metric, history, legacy, constraint, proposal\)/
     );
   });
 

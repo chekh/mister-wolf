@@ -31,6 +31,8 @@ const TYPE_NAMESPACE_DESCRIPTIONS: Record<Exclude<MemoryType, 'tool'>, string> =
   thread: 'Manage work threads',
   complaint: 'Manage complaints',
   note: 'Manage notes',
+  // 2.17: ключ для полноты Record; реальная группа `wolf face` — T-04
+  face: 'Manage faces',
 };
 
 const kebab = (s: string): string => s.replace(/_/g, '-');

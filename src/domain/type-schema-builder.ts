@@ -1,6 +1,26 @@
 import { z } from 'zod';
 import { MemoryObjectSchema, type MemoryObject } from './schemas/memory-object-schema.js';
-import { CORE_TAXONOMY, type FieldSpec, type MemoryStatus, type MemoryTypeDeclaration } from './memory-types.js';
+import {
+  CORE_TAXONOMY,
+  MEMORY_TYPES,
+  SIGNAL_FACETS,
+  type FieldSpec,
+  type MemoryStatus,
+  type MemoryTypeDeclaration,
+} from './memory-types.js';
+
+// Волна 2.17 REQ-08 (design §Контракты «Proposal»): facet='proposal' на любом
+// core-типе обязывает поля контракта предложения. Автор пиннится из created_by
+// (saveProposal, T-09), delivered_at заполняет только propose deliver (T-09) —
+// оба поля вне схемы сохранения.
+export const PROPOSAL_FACET = 'proposal';
+export const PROPOSAL_CONTRACT_FIELDS: readonly string[] = [
+  'addressee',
+  'basis',
+  'proposed_change',
+  'expected_benefit',
+  'applicability_bounds',
+];
 
 /** FieldSpec -> zod. Используется для декларативных полей и будет использован
  * для project-типов из config.yaml (Phase 8, Task 3). */
@@ -62,6 +82,11 @@ export function buildTypeSchema<F extends z.ZodRawShape = Record<string, never>>
   for (const [name, fs] of Object.entries(decl.fields ?? {})) {
     declFields[name] = fieldToZod(fs);
   }
+  // Волна 2.17 ADR-3: не-note core-типы получают опциональный сигнал-фасет
+  // SIGNAL_FACETS — отдельно от character-словаря note; project-типы не затронуты.
+  if (MEMORY_TYPES.includes(decl.name) && !('facet' in declFields)) {
+    declFields.facet = fieldToZod({ kind: 'enum', values: SIGNAL_FACETS, optional: true });
+  }
   const typed = MemoryObjectSchema.extend({
     type: z.literal(decl.name),
     status: z.enum(decl.lifecycle as unknown as [MemoryStatus, ...MemoryStatus[]]),
@@ -77,6 +102,20 @@ export function buildTypeSchema<F extends z.ZodRawShape = Record<string, never>>
         path: ['source', 'path'],
         message: `${decl.name} requires source.path`,
       });
+    }
+    // Волна 2.17 REQ-08 AC2: контракт предложения обязателен при facet='proposal'
+    // на любом типе (валидация наличия и непустоты; пустой контракт ≠ предложение)
+    if ((obj as { facet?: unknown }).facet === PROPOSAL_FACET) {
+      for (const field of PROPOSAL_CONTRACT_FIELDS) {
+        const v = (obj as unknown as Record<string, unknown>)[field];
+        if (typeof v !== 'string' || v.length < 1) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [field],
+            message: `facet "${PROPOSAL_FACET}" requires non-empty field "${field}"`,
+          });
+        }
+      }
     }
   });
 }

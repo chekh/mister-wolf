@@ -72,6 +72,8 @@ const FULL: readonly MemoryStatus[] = [
 
 // Волна 2.13 §5.3: закрытый словарь фасетов «характер записи» для типа note.
 // Диапазон длины словаря 7–10 (config-file); кастомизация — facets.character в config.yaml.
+// Волна 2.17 (ADR-3, REQ-08): +proposal (8/10) — сигнал-фасет предложения
+// входит в character-словарь note; прочие core-типы — SIGNAL_FACETS ниже.
 export const DEFAULT_CHARACTER_FACETS: readonly string[] = [
   'howto',
   'pitfall',
@@ -80,12 +82,19 @@ export const DEFAULT_CHARACTER_FACETS: readonly string[] = [
   'history',
   'legacy',
   'constraint',
+  'proposal',
 ];
+
+// Волна 2.17 ADR-3 (REQ-08): сигнал-словарь facet для не-note core-типов —
+// единственное значение proposal, отдельно от character-словаря note (новый
+// тег-словарь не вводится). Инжектится в per-type схемы type-schema-builder'ом,
+// а не декларацией fields — чтобы не попадать в генерацию CLI-флагов.
+export const SIGNAL_FACETS: readonly string[] = ['proposal'];
 
 // Единственный источник истины: типы (MemoryType, MEMORY_TYPES) выводятся
 // отсюда — новый core-тип добавляется ТОЛЬКО в этот массив.
-// Волна 2.13 §5.1: 7 выживших типов (дословно Т1); старые типы — карта
-// DEPRECATED_TYPE_ALIASES ниже (alias-чтение P211) и migrate taxonomy (P213).
+// Волна 2.13 §5.1: 7 выживших типов (дословно Т1); волна 2.17: +face (REQ-01).
+// Старые типы — карта DEPRECATED_TYPE_ALIASES ниже (alias-чтение P211) и migrate taxonomy (P213).
 const CORE_TAXONOMY_DECLS = [
   {
     name: 'rule',
@@ -188,6 +197,28 @@ const CORE_TAXONOMY_DECLS = [
     subdirShared: 'notes',
     fields: {
       facet: { kind: 'enum', values: DEFAULT_CHARACTER_FACETS },
+    },
+  },
+  {
+    // Волна 2.17 REQ-01 (design §Контракты «Тип face»): лицо агента —
+    // канонический playbook как самостоятельный core-тип; история = цепочка
+    // записей-версий через существующий supersede (ADR-1). Создание — только
+    // версионирующим путём (guard в use-case, T-02/T-07).
+    name: 'face',
+    // T18: только существующие статусы
+    lifecycle: ['active', 'superseded', 'archived'],
+    subdirThread: null,
+    subdirShared: 'faces',
+    fields: {
+      owner_skill: { kind: 'string', required: true, min: 1 },
+      // '1','2',… — номер версии назначает версионирующая команда (T-02)
+      version: { kind: 'string', required: true, min: 1 },
+      // id версии-основы; отсутствует у первой версии
+      based_on: { kind: 'string', optional: true },
+      // REQ-04 AC2: причина обязательна
+      reason: { kind: 'string', required: true, min: 1 },
+      // ADR-6: seed — посев первых версий (wolf init)
+      initiator: { kind: 'enum', values: ['steward', 'owner', 'breakglass', 'migration', 'seed'] },
     },
   },
 ] as const;
