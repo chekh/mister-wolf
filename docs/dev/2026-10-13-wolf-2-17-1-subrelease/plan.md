@@ -37,7 +37,7 @@ T7 REQ-06 (R08) + интеграция ← T1–T6 (полный гейт + e2e)
 
 Контракты TASK: task_id, цель, AC, base, worktree, allowlist, проверки, ожидаемый RESULT (DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED + evidence). Точные `file:line` исполнителю брать из design §2 (baseline 31ab280) и фактического кода.
 
-- [ ] **T1 — REQ-02 (R02): изоляция worktree-памяти** — design §3.1–3.2, ADR-1/ADR-2, NFR-01 (R02); базлайн `src/adapters/fs/memory-root.ts:31`, `src/app/use-cases/get-call-injections.ts:82–129,144–158`, `src/app/use-cases/add-memory-object.ts:163–164`, `src/app/use-cases/promote-memory.ts:33–39`
+- [x] **T1 — REQ-02 (R02): изоляция worktree-памяти** — исполнено 2026-10-13: коммит d7859f5, merge 11d62d5 в main. Ревью: CHANGES_REQUIRED (MAJOR-1 e2e-контракт 2.16 + 3 minor) → фикс-раунд устранил все; полные прогоны: `npm run check` GREEN (174/1335 на main после merge), `npm run e2e` GREEN 220/220, integration S-10…S-18 9/9. Evidence: RED/GREEN в tmp (волны 1–2), evidence-файлы воркера. Замечание ревью (banner уроков считает по всему пулу — pre-existing 2.14) — вне REQ-02, передано в риски фазы. — design §3.1–3.2, ADR-1/ADR-2, NFR-01 (R02); базлайн `src/adapters/fs/memory-root.ts:31`, `src/app/use-cases/get-call-injections.ts:82–129,144–158`, `src/app/use-cases/add-memory-object.ts:163–164`, `src/app/use-cases/promote-memory.ts:33–39`
   - Цель: единый WT-ID (`worktree:w-<12 hex sha1(realpath)>`), предикат `isVisible` во всех ветвях отбора, defaultScope = WT-ID, promote обоих токенов владельца, честный конфликт неоднозначного legacy-имени.
   - AC: REQ-02 AC-1…AC-6 + NFR-01 AC. Проверки: сценарии S-10…S-18 test-plan.
   - base_sha: `8ca53af09176cd13933d5e020b950cafb798e8fd`
