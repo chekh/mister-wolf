@@ -182,7 +182,7 @@ wolf tool revive check       # deprecated → active
 
 ## Изоляция чтения
 
-Память со scope связанной рабочей копии (`worktree:<id>`) фильтруется ровно на одном пути — пути доставки, `wolf call`, во всех режимах (обычный, `--for <тема>`, `--thread <id>`); MCP-канал зеркалит CLI-список, и тул `call` там унаследовал бы ту же изоляцию. Все остальные чтения — `wolf search`/`get`/`list`, `brief`, `recap`, `think`/`solve`, `doctor`, relation/analytics-пути, `wolf face *` (лица фильтруются по `owner_skill`, не по scope) — видят всю память проекта. Этот состав — замороженный контракт (NFR-03): расширение = изменение требований, охраняется doc-тестом. Подробности: [Изоляция чтения](https://chekh.github.io/mister-wolf/ru/guide/read-isolation).
+Память со scope связанной рабочей копии (`worktree:<id>`) фильтруется ровно на одном пути — пути доставки, `wolf call`, во всех режимах (обычный, `--for <тема>`, `--thread <id>`); MCP-канал зеркалит CLI-список, и тул `call` там унаследовал бы ту же изоляцию. Все остальные чтения — `wolf search`/`get`/`list`/`show`, `brief`, `recap`, `think`/`solve`, `doctor`, relation/analytics-пути, `wolf face *` (лица фильтруются по `owner_skill`, не по scope) — видят всю память проекта. Этот состав — замороженный контракт (NFR-03): расширение = изменение требований, охраняется doc-тестом. Подробности: [Изоляция чтения](https://chekh.github.io/mister-wolf/ru/guide/read-isolation).
 
 ## Демо
 
