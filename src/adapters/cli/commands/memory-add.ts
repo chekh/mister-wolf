@@ -105,7 +105,10 @@ export function memoryAddCommand(baseDir: string = safeCwd()): Command {
       '--scope <scope>',
       'Scope field for types that declare one (rule: project|global; also main or worktree:<name>)'
     )
-    .option('--facet <facet>', 'Note facet (required for note; howto|pitfall|context|metric|history|legacy|constraint)')
+    .option(
+      '--facet <facet>',
+      'Note facet (required for note; howto|pitfall|context|metric|history|legacy|constraint|proposal)'
+    )
     .option('--created-by <actor>', 'Creator actor (default: env WOLF_ACTOR, else user:cli)')
     .action(
       withCliCall(

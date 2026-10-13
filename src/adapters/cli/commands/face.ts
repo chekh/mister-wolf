@@ -52,6 +52,8 @@ interface NewOptions {
   exampleKeep: string;
   verification: string;
   rollback: string;
+  /** T-09: id предложения, породившего версию (relation proposes; не применение). */
+  fromProposal?: string;
   createdBy?: string;
 }
 
@@ -89,6 +91,7 @@ export function faceCommand(baseDir: string = safeCwd()): Command {
         .option('--file <path>', 'Read face body from a file (alternative to --body)')
         .option('--title <title>', 'Face title (default: "Face: <owner_skill>")')
         .option('--tags <tags>', 'Comma-separated tags')
+        .option('--from-proposal <id>', 'Link the new version to a proposal (relation: proposes)')
     )
   ).action(async (ownerSkill: string, options: NewOptions) => {
     denyCreatedBy(options);
@@ -114,6 +117,7 @@ export function faceCommand(baseDir: string = safeCwd()): Command {
       exampleKeep: options.exampleKeep,
       verification: options.verification,
       rollback: options.rollback,
+      fromProposal: options.fromProposal,
     });
     const superseded = result.supersededId ? ` (superseded ${result.supersededId})` : '';
     const mutation = result.mutationRecordId ? `; mutation record ${result.mutationRecordId}` : '';

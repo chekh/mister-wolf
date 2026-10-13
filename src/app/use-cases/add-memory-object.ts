@@ -60,6 +60,11 @@ export interface AddMemoryObjectInput {
   status?: MemoryObject['status'];
   /** 2.13 §5.3: фасет «характер записи» — обязателен для note, запрещён прочим типам. */
   facet?: string;
+  /** 2.17 (заявка T-09): маркер версионирующего пути — единственный легальный
+   * создатель face (createFaceVersion и его служебные входы migrate/seed).
+   * Не экспортируется в CLI/MCP: прямой add face refuses ниже (REQ-01 AC3,
+   * прецедент — T-07 тест «даже с initiator в extra»). */
+  internalFacePath?: boolean;
 }
 
 export interface AddMemoryObjectResult {
@@ -96,8 +101,10 @@ export async function addMemoryObject(
 
   // Волна 2.17 REQ-01 AC3 (design §Схемные изменения п.5): face создаётся только
   // версионирующим путём (wolf face new/restore/breakglass) — прямой add закрыт
-  // для всех акторов, включая пользователя (прецедент: rule-guard выше)
-  if (input.type === 'face') {
+  // для всех акторов, включая пользователя (прецедент: rule-guard выше).
+  // internalFacePath — маркер этого пути (createFaceVersion; заявка T-09:
+  // без него guard T-07 блокировал и версионирующий путь — 24 теста T-02/T-03/T-04/T-05 красные на HEAD)
+  if (input.type === 'face' && input.internalFacePath !== true) {
     throw new UserFacingError(
       'type "face" cannot be created with add: faces are versioned, use "wolf face" commands (new | restore | breakglass)'
     );

@@ -56,9 +56,6 @@ export function memoryListCommand(): Command {
     .option('--type <type>', 'Filter by type')
     .option('--status <status>', 'Filter by status')
     .option('--stale', 'List stale objects (not updated in 30 days)', false)
-    .option(
-      '--facet <facet>',
-      'Filter notes by character facet (howto|pitfall|context|metric|history|legacy|constraint)'
-    )
+    .option('--facet <facet>', 'Filter by facet (howto|pitfall|context|metric|history|legacy|constraint|proposal)')
     .action(withCliCall('list', (options) => runListAction(options)));
 }

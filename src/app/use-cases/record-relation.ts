@@ -31,6 +31,9 @@ const INVERSE: Record<RelationPredicate, RelationPredicate> = {
   // 2.17 REQ-06: G17-запись мутации → версия лица
   mutates: 'mutated_by',
   mutated_by: 'mutates',
+  // 2.17 T-09: предложение → порождённая им версия лица (design строка 88)
+  proposes: 'proposed_by',
+  proposed_by: 'proposes',
 };
 
 export async function recordRelation(

@@ -33,6 +33,10 @@ export const RELATION_PREDICATES = [
   // версия лица (пара, прецедент complain/complained_by)
   'mutates',
   'mutated_by',
+  // 2.17 T-09 (design §«Механика версий», строка 88): --from-proposal:
+  // proposal -proposes-> face-версия (пара, прецедент mutates/mutated_by)
+  'proposes',
+  'proposed_by',
 ] as const;
 
 export const RelationSchema = z.object({

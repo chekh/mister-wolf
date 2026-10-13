@@ -14,6 +14,7 @@ import { UserFacingError } from '../../domain/errors.js';
 import { addMemoryObject } from './add-memory-object.js';
 import { supersedeMemoryObject } from './supersede-memory-object.js';
 import { createMutationRecord, missingG17Field, type MutationG17Input } from './create-mutation-record.js';
+import { recordRelation } from './record-relation.js';
 
 /** Волна 2.17 REQ-03/REQ-04 (design §«Механика версий», §Guard): единая
  * версионирующая механика лиц — guard, номер версии, supersede head, журнал;
@@ -74,6 +75,10 @@ export interface CreateFaceVersionInput {
   exampleKeep?: string;
   verification?: string;
   rollback?: string;
+  /** T-09 (design §«Механика версий», строка 88): id предложения, породившего
+   * версию — записывает relation ('proposes', proposal, faceNew). Связь только
+   * фиксируется: применение предложения остаётся решением Стюарда (REQ-09). */
+  fromProposal?: string;
 }
 
 export interface CreateFaceVersionResult {
@@ -212,6 +217,18 @@ export async function createFaceVersion(
       }
     }
 
+    // T-09: валидация предложения ДО любых записей — битая ссылка не оставляет
+    // половину операции (та же атомарность, что у G17-проверки выше)
+    if (input.fromProposal !== undefined) {
+      const proposal = await deps.store.get(input.fromProposal);
+      if (!proposal) {
+        throw new UserFacingError(`Proposal not found: ${input.fromProposal}`);
+      }
+      if ((proposal as { facet?: string }).facet !== 'proposal') {
+        throw new UserFacingError(`Memory object ${input.fromProposal} is not a proposal (facet=proposal required)`);
+      }
+    }
+
     // Номер версии и head — строго под lock: параллельные вызовы сериализуются.
     const cur = await activeFace(deps.store, input.ownerSkill);
     const base = input.from ? await resolveBase(deps.store, input.ownerSkill, input.from) : cur;
@@ -242,7 +259,7 @@ export async function createFaceVersion(
         index: deps.index,
         declarations: deps.declarations,
       },
-      { type: 'face', title, body, tags, createdBy: actor, extra }
+      { type: 'face', title, body, tags, createdBy: actor, extra, internalFacePath: true }
     );
     const face = asFace(object);
 
@@ -285,6 +302,19 @@ export async function createFaceVersion(
         }
       );
       mutationRecordId = note.id;
+    }
+
+    // T-09 (design §«Механика версий», строка 88): --from-proposal → relation
+    // ('proposes', proposal, faceNew); только связь, не применение (REQ-09)
+    if (input.fromProposal !== undefined) {
+      await recordRelation(
+        { relations: deps.relations, idGen: deps.idGen },
+        deps.clock.now(),
+        input.fromProposal,
+        'proposes',
+        face.id,
+        'system'
+      );
     }
 
     // Design §События журнала: versioned — на КАЖДУЮ версию (включая breakglass,

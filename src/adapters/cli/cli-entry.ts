@@ -284,6 +284,14 @@ export const COMMANDS: CommandSpec[] = [
     load: () => import('./commands/face.js').then((m) => m.faceCommand()),
   },
   {
+    // Волна 2.17 T-09 (REQ-08/REQ-09): предложения — сигнал-фасет proposal;
+    // add/deliver/list — тонкие обёртки saveProposal/deliverProposal
+    name: 'propose',
+    description: 'Manage proposals: add/deliver/list (signal facet)',
+    usage: '',
+    load: () => import('./commands/propose.js').then((m) => m.proposeCommand()),
+  },
+  {
     name: 'tool',
     description: 'Tool librarian: add/register/list/use/...',
     usage: '',
