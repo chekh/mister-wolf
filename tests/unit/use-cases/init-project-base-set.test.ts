@@ -104,6 +104,44 @@ describe('initProject + baseSet (Task 6 + §4.5: модели — в ренде�
     };
     const result = await initProject(makeDeps(spyingBaseSet), dir, { models: MODELS, full: true });
     expect(seen).toEqual([MODELS]);
+    // фейковый seed не создал лиц в store → guard §3.4 (B0) честно конфликтует
+    expect(result.baseSetOutcomes).toEqual([
+      { file: '.opencode/agents/mr-wolf.md', action: 'created' },
+      { file: '.opencode/agents/steward.md', action: 'created' },
+      { file: '.opencode/skills/steward-nastavnik/SKILL.md', action: 'created' },
+      {
+        file: '(base set faces)',
+        action: 'conflict',
+        reason: expect.stringContaining('no active face with owner_skill'),
+      },
+    ]);
+  });
+
+  it('B0 guard §3.4: активные лица всех базовых агентов — конфликт-исход не добавляется', async () => {
+    writeFileSync(join(dir, 'package.json'), '{}');
+    const deps = makeDeps(baseSet);
+    for (const owner of [
+      'mr-wolf',
+      'executor-lead',
+      'steward',
+      'worker-implementer',
+      'worker-researcher',
+      'worker-reviewer',
+    ]) {
+      (deps.store as unknown as FakeMemoryStore).objects.push({
+        id: `mem_face_${owner}`,
+        type: 'face',
+        title: owner,
+        body: '',
+        status: 'active',
+        tags: [],
+        created_at: '2026-09-01T00:00:00.000Z',
+        updated_at: '2026-09-01T00:00:00.000Z',
+        created_by: 'wolf-init',
+        owner_skill: owner,
+      } as unknown as MemoryObject);
+    }
+    const result = await initProject(deps, dir, { models: MODELS, full: true });
     expect(result.baseSetOutcomes).toEqual([
       { file: '.opencode/agents/mr-wolf.md', action: 'created' },
       { file: '.opencode/agents/steward.md', action: 'created' },
