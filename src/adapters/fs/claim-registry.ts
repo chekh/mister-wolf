@@ -123,17 +123,18 @@ export function readHeartbeat(path: string): HeartbeatRecord | null {
   }
 }
 
-let heartbeatSeq = 0;
-
 /** Запись heartbeat (REQ-03, ADR-7): атомарная замена — уникальный tmp (wx) +
  * rename поверх, поэтому параллельные писатели не ломают JSON, последний
- * выигрывает, следа (в отличие от claim-перехвата) не остаётся. */
+ * выигрывает, следа (в отличие от claim-перехвата) не остаётся.
+ * shortcut: уникальность tmp через hrtime+Math.random — pid делят воркеры
+ * на macOS, threadId есть только в worker, атомарность через wx+rename. */
 export function writeHeartbeat(deps: ClaimRegistryDeps, input: { artifact: string; writer: string }): HeartbeatRecord {
   const dir = claimsDir(deps.root);
   mkdirSync(dir, { recursive: true });
   const now = (deps.now ?? (() => new Date()))();
   const record: HeartbeatRecord = { written_at: now.toISOString(), writer: input.writer };
-  const tmp = join(dir, `${claimSlug(input.artifact)}.heartbeat.${process.pid}.${heartbeatSeq++}.tmp`);
+  const tag = `${process.hrtime.bigint().toString(36)}.${Math.random().toString(36).slice(2, 10)}`;
+  const tmp = join(dir, `${claimSlug(input.artifact)}.heartbeat.${tag}.tmp`);
   const fd = openSync(tmp, 'wx');
   writeFileSync(fd, JSON.stringify(record), 'utf-8');
   closeSync(fd);
