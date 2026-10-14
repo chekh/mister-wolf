@@ -6,6 +6,7 @@ import {
   openSync,
   readFileSync,
   readdirSync,
+  renameSync,
   statSync,
   unlinkSync,
   writeFileSync,
@@ -18,12 +19,17 @@ import { UserFacingError } from '../../domain/errors.js';
  * общими артефактами (TASK-бриф, план, отчёт, worktree). JSON-файлы в общем
  * `.wolf/shared/claims/` (cross-copy видимость — root из resolveMemoryRoot);
  * атомарный захват — `openSync(…, 'wx')` (механика FsMemoryLock tryAcquire);
- * stale: PID мёртв (ESRCH) ИЛИ возраст > CLAIM_TTL; перехват stale сохраняет
+ * stale: PID мёртв (ESRCH) ИЛИ возраст > CLAIM_TTL ИЛИ heartbeat старше окна
+ * (2.18.0 REQ-03); перехват stale сохраняет
  * прежний файл жёсткой ссылкой в след `<slug>.<epochMs>.json` (excl, NFR-02).
  */
 
-/** TTL claim'а: локальный-first, heartbeat не вводим (design §3.5). */
+/** TTL claim'а: локальный-first (heartbeat — opt-in продление, REQ-03). */
 export const CLAIM_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** Окно свежести heartbeat (2.18.0 REQ-03, design §3.3 / ADR-7): heartbeat
+ * старше окна — claim stale; независимая величина от CLAIM_TTL_MS (DAP-2). */
+export const CLAIM_HEARTBEAT_WINDOW_MS = 10 * 60 * 1000;
 
 export interface ClaimRecord {
   /** Тип+идентификатор артефакта: "dev:<date>-<slug>" | "worktree:<WT-ID>" | … */
@@ -35,6 +41,15 @@ export interface ClaimRecord {
   cwd: string;
   /** ISO-время захвата. */
   acquired_at: string;
+}
+
+/** Heartbeat-запись (2.18.0 REQ-03, design §3.3): продление свежести
+ * держателем долгой операции; writer — для отладки, не auth. */
+export interface HeartbeatRecord {
+  /** ISO-время последнего heartbeat. */
+  written_at: string;
+  /** Идентификатор писателя (для отладки, не auth). */
+  writer: string;
 }
 
 /** Идентичность захватчика/освободителя: маппится в поля записи. */
@@ -85,6 +100,56 @@ export function claimTrailPath(root: string, artifact: string, epochMs: number):
   return join(claimsDir(root), `${claimSlug(artifact)}.${epochMs}.json`);
 }
 
+/** Путь heartbeat-файла артефакта (2.18.0 REQ-03): `<slug>.heartbeat` рядом с claim-файлом. */
+export function heartbeatFilePath(root: string, artifact: string): string {
+  return join(claimsDir(root), `${claimSlug(artifact)}.heartbeat`);
+}
+
+/** Чтение heartbeat: null при отсутствии/повреждении — нет heartbeat = правила
+ * 2.17.1 (NFR-03), повреждённый файл = stale (как у claim). */
+export function readHeartbeat(path: string): HeartbeatRecord | null {
+  let raw: string;
+  try {
+    raw = readFileSync(path, 'utf-8');
+  } catch {
+    return null;
+  }
+  try {
+    const d = JSON.parse(raw) as Partial<HeartbeatRecord>;
+    if (typeof d.written_at !== 'string' || typeof d.writer !== 'string') return null;
+    return { written_at: d.written_at, writer: d.writer };
+  } catch {
+    return null;
+  }
+}
+
+let heartbeatSeq = 0;
+
+/** Запись heartbeat (REQ-03, ADR-7): атомарная замена — уникальный tmp (wx) +
+ * rename поверх, поэтому параллельные писатели не ломают JSON, последний
+ * выигрывает, следа (в отличие от claim-перехвата) не остаётся. */
+export function writeHeartbeat(deps: ClaimRegistryDeps, input: { artifact: string; writer: string }): HeartbeatRecord {
+  const dir = claimsDir(deps.root);
+  mkdirSync(dir, { recursive: true });
+  const now = (deps.now ?? (() => new Date()))();
+  const record: HeartbeatRecord = { written_at: now.toISOString(), writer: input.writer };
+  const tmp = join(dir, `${claimSlug(input.artifact)}.heartbeat.${process.pid}.${heartbeatSeq++}.tmp`);
+  const fd = openSync(tmp, 'wx');
+  writeFileSync(fd, JSON.stringify(record), 'utf-8');
+  closeSync(fd);
+  try {
+    renameSync(tmp, heartbeatFilePath(deps.root, input.artifact));
+  } catch (e) {
+    try {
+      unlinkSync(tmp);
+    } catch {
+      /* конкурент уже убрал — не маскируем исходную ошибку */
+    }
+    throw e;
+  }
+  return record;
+}
+
 /** Прод-liveness: signal 0; ESRCH — мёртв, EPERM — жив (чужой user). pid<=0 —
  * неизвестен (переданный claim) — считаем живым, пока не истечёт TTL. */
 export function pidAlive(pid: number): boolean {
@@ -119,15 +184,22 @@ function parseClaim(raw: string): ClaimRecord | null {
   }
 }
 
-/** Stale (design §3.5): мёртвый PID ИЛИ возраст > TTL; порченый файл = stale. */
-function isStale(rec: ClaimRecord | null, deps: ClaimRegistryDeps): boolean {
+/** Stale (design §3.3): мёртвый PID ИЛИ возраст > TTL ИЛИ (heartbeat есть и
+ * старше окна/повреждён); нет heartbeat → правила 2.17.1 (NFR-03). */
+export function isStale(rec: ClaimRecord | null, hb: HeartbeatRecord | null, deps: ClaimRegistryDeps): boolean {
   if (rec === null) return true;
   const alive = deps.isAlive ?? pidAlive;
   if (!alive(rec.pid)) return true;
   const acquired = Date.parse(rec.acquired_at);
   if (Number.isNaN(acquired)) return true;
   const now = (deps.now ?? (() => new Date()))().getTime();
-  return now - acquired > CLAIM_TTL_MS;
+  if (now - acquired > CLAIM_TTL_MS) return true;
+  if (hb !== null) {
+    const written = Date.parse(hb.written_at);
+    if (Number.isNaN(written)) return true; // повреждён = stale
+    if (now - written > CLAIM_HEARTBEAT_WINDOW_MS) return true;
+  }
+  return false;
 }
 
 function readClaimFile(path: string): { raw: string | null; rec: ClaimRecord | null } {
@@ -186,7 +258,7 @@ export function acquireClaim(
       (deps.wait ?? sleepMs)(10);
       continue;
     }
-    if (rec !== null && !isStale(rec, deps)) {
+    if (rec !== null && !isStale(rec, readHeartbeat(heartbeatFilePath(deps.root, input.artifact)), deps)) {
       throw new ClaimHeldError(path, rec.owner, describeHolder(rec));
     }
     // stale/порченый (rec === null, сырые байты могли быть) → перехват со следом;
@@ -251,7 +323,7 @@ export function releaseClaim(
     );
   }
   const fullMatch = ownerSessionMatch(rec, input.identity) && rec.pid === input.identity.pid;
-  const pidReleasable = rec.pid <= 0 || isStale(rec, deps);
+  const pidReleasable = rec.pid <= 0 || isStale(rec, readHeartbeat(heartbeatFilePath(deps.root, input.artifact)), deps);
   // MINOR-1b (интегральное ревью 2.17.1): зеркально requireClaim — адресат
   // transfer (session null + owner) освобождает своей сессией, иначе передача
   // паркует release до TTL
@@ -324,7 +396,7 @@ export function requireClaim(
       `Claim file for "${artifact}" is corrupt — treated as stale; re-acquire: wolf claim acquire "${artifact}" (claim file: ${path})`
     );
   }
-  if (isStale(rec, deps)) {
+  if (isStale(rec, readHeartbeat(heartbeatFilePath(deps.root, artifact)), deps)) {
     throw new UserFacingError(
       `Claim for "${artifact}" is stale (holder ${rec.owner}) — re-acquire: wolf claim acquire "${artifact}" (claim file: ${path})`
     );
