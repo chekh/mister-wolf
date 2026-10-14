@@ -57,7 +57,7 @@ wolf brief       # сводка состояния по последнему sca
 wolf add --type lesson --title "Вит-тесты падают от кэша" --body "Запускать vitest с флагом --no-cache в CI" --tags "vitest,ci" --confidence medium
 ```
 
-Полный набор флагов `wolf add`: `--type` (один из 7 типов: rule, lesson, decision, thread, complaint, tool, note), `--title`, `--body`, `--tags` (через запятую), `--confidence` (low|medium|high), `--importance` (0..1), `--set <k=v>` (доп. поля, повторяемый), `--scope` (для rule: project|global; при записи из linked worktree по умолчанию ставится идентичность копии `worktree:w-<12hex>`, legacy-значения `worktree:<имя>` тоже принимаются, `main` — для универсальных фактов), `--facet` (характер записи: howto|pitfall|context|metric|history|legacy|constraint|proposal; обязателен для note, запрещён для остальных), `--created-by`.
+Полный набор флагов `wolf add`: `--type` (один из 7 типов: rule, lesson, decision, thread, complaint, tool, note), `--title`, `--body`, `--tags` (через запятую), `--confidence` (low|medium|high), `--importance` (0..1), `--set <k=v>` (доп. поля, повторяемый), `--scope` (для rule: project|global; при записи из linked worktree по умолчанию ставится идентичность копии `worktree:w-<12hex>`, legacy-значения `worktree:<имя>` тоже принимаются, `main` — для универсальных фактов), `--facet` (характер записи: howto|pitfall|context|metric|history|legacy|constraint|proposal; обязателен для note; на остальных core-типах разрешён только `proposal` — сигнальный фасет для `wolf propose`), `--created-by`.
 
 Выбор типа — теперь выбор из **семи** (было 26). Старый вопрос «какой из 26 типов это?» превратился в «это один из шести особых? если нет — note + фасет» (см. [Модель памяти](/ru/guide/memory)).
 

@@ -83,7 +83,7 @@ Key flags of `wolf add` (see the [CLI reference](/guide/cli/memory#wolf-add) for
 - `--type <type>` — one of the 7 memory types (`rule`, `lesson`, `decision`, `thread`, `complaint`, `tool`, `note`).
 - `--title`, `--body` — the object's content.
 - `--tags <tags>` — comma-separated tags.
-- `--facet <facet>` — the note's character (`howto|pitfall|context|metric|history|legacy|constraint`); required for `note`, forbidden for other types.
+- `--facet <facet>` — the note's character (`howto|pitfall|context|metric|history|legacy|constraint|proposal`); required for `note` — on other core types only `proposal` is allowed, the signal facet for `wolf propose`.
 - `--confidence <level>` — `low|medium|high`.
 - `--importance <n>` — importance from 0 to 1.
 - `--set <k=v>` — extra field, repeatable (`"[a,b]"` value is a string array).
