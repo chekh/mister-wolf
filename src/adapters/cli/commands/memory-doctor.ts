@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { join, relative, sep } from 'path';
+import { join, relative, sep, dirname } from 'path';
 import { existsSync, readdirSync, realpathSync, readFileSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { tmpdir } from 'os';
@@ -18,6 +18,7 @@ import { OpencodeBaseSetRenderer } from '../../../adapters/render/opencode/openc
 import { PLATFORM_ADAPTERS, CANONICAL_MCP_COMMAND } from '../../../adapters/platforms/index.js';
 import type { PlatformAdapter } from '../../../ports/platform-adapter.port.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
+import { worktreeScopeToken } from '../../../adapters/fs/memory-root.js';
 import { safeCwd } from '../cli-entry.js';
 import { repairStorage } from '../../../app/use-cases/repair-storage.js';
 import { eventsPath, memoryDir, sharedDir } from '../../../adapters/fs/project-paths.js';
@@ -320,17 +321,32 @@ export function memoryDoctorCommand(): Command {
         }
       }
 
-      // WP3 §6.2: осиротевшие worktree-scope — находка; очистка вручную (promote/edit), P3
+      // WP3 §6.2: осиротевшие worktree-scope — находка; очистка вручную (promote/edit), P3.
+      // F-02 (ревью фазы 4): WT-ID-токены (w-<sha1(realpath)[:12]>, 2.17.1 REQ-02)
+      // никогда не совпадают с именами каталогов .git/worktrees — живость такого
+      // токена сверяется с токенами живых копий (gitdir-файлы записей, тот же
+      // fs-контракт, что в memory-root.ts); legacy-токены (basename) — прежняя логика.
       const worktreesDir = join(memoryRoot, '.git', 'worktrees');
       const live = existsSync(worktreesDir) ? readdirSync(worktreesDir) : [];
+      const liveTokens = new Set<string>();
+      for (const name of live) {
+        try {
+          // gitdir-файл записи: путь к <копия>/.git → realpath каталога → WT-ID
+          const gitdir = readFileSync(join(worktreesDir, name, 'gitdir'), 'utf-8').trim();
+          liveTokens.add(worktreeScopeToken(dirname(gitdir)));
+        } catch {
+          // запись без читаемого gitdir / каталог копии исчез — токен не живой
+        }
+      }
       const orphan = new Map<string, number>();
       // один проход store.list — общий для orphan-проверки (WP3) и гигиены лиц (2.17 NFR-02)
       const objects = await store.list();
       for (const o of objects) {
         const s = (o as { scope?: string }).scope;
-        if (typeof s === 'string' && s.startsWith('worktree:') && !live.includes(s.slice('worktree:'.length))) {
-          orphan.set(s, (orphan.get(s) ?? 0) + 1);
-        }
+        if (typeof s !== 'string' || !s.startsWith('worktree:')) continue;
+        const token = s.slice('worktree:'.length);
+        const alive = /^w-[0-9a-f]{12}$/.test(token) ? liveTokens.has(token) : live.includes(token);
+        if (!alive) orphan.set(s, (orphan.get(s) ?? 0) + 1);
       }
       if (orphan.size > 0) {
         console.log();

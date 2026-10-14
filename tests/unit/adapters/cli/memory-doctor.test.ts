@@ -13,6 +13,7 @@ import { join } from 'path';
 import { lintFaces } from '../../../../src/adapters/cli/commands/memory-doctor.js';
 import { ProjectsRegistry } from '../../../../src/adapters/fs/projects-registry.js';
 import { createCliContainer } from '../../../../src/bootstrap/container.js';
+import { worktreeScopeToken } from '../../../../src/adapters/fs/memory-root.js';
 import { createFaceVersion } from '../../../../src/app/use-cases/create-face-version.js';
 import { resumeFaceOperation, type FaceFaultInjector } from '../../../../src/app/use-cases/face-operation.js';
 import type { MemoryObject } from '../../../../src/domain/schemas/memory-object-schema.js';
@@ -179,5 +180,68 @@ describe('wolf doctor: незавершённые операции лица (2.1
     const after = await runDoctor();
     expect(after).toContain('sandbox — pruned'); // доктор дошёл до конца, не ранний return
     expect(after).not.toContain('## Face operations (recoverable mutations)');
+  });
+});
+
+describe('wolf doctor: осиротевшие worktree-scope (F-02 ревью фазы 4 — WT-ID-токены)', () => {
+  let dir: string;
+  let sb: string;
+  let cwdMock: ReturnType<typeof vi.spyOn>;
+  let logs: string[];
+
+  beforeEach(async () => {
+    dir = mkdtempSync(join(tmpdir(), 'wolf-doc-orphan-'));
+    sb = mkdtempSync(join(tmpdir(), 'wolf-doc-orphan-sb-'));
+    mkdirSync(join(dir, '.wolf', 'memory'), { recursive: true });
+    writeFileSync(join(dir, '.wolf', 'config.yaml'), 'schema_version: 2\n');
+    vi.stubEnv('WOLF_SANDBOX', sb);
+    await new ProjectsRegistry(join(sb, '.config', 'wolf')).register(dir, 2);
+    cwdMock = vi.spyOn(process, 'cwd').mockReturnValue(dir);
+    logs = [];
+    vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      logs.push(args.map(String).join(' '));
+    });
+  });
+
+  afterEach(() => {
+    cwdMock.mockRestore();
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(sb, { recursive: true, force: true });
+  });
+
+  /** Живая linked-копия без git-подпроцесса: структура .git/worktrees/<имя>/gitdir
+   * (указатель на <копия>/.git — тот же контракт, что читает git) + сам каталог. */
+  function seedLiveWorktree(name: string): string {
+    const wtDir = join(dir, name);
+    mkdirSync(wtDir, { recursive: true });
+    mkdirSync(join(dir, '.git', 'worktrees', name), { recursive: true });
+    writeFileSync(join(dir, '.git', 'worktrees', name, 'gitdir'), `${join(wtDir, '.git')}\n`);
+    return worktreeScopeToken(wtDir);
+  }
+
+  async function seedScopedNote(id: string, scope: string): Promise<void> {
+    await createCliContainer(dir).store.save(mem(id, { facet: 'context', scope, title: id }));
+  }
+
+  async function runDoctor(): Promise<string> {
+    logs = [];
+    const { memoryDoctorCommand } = await import('../../../../src/adapters/cli/commands/memory-doctor.js');
+    await memoryDoctorCommand().exitOverride().parseAsync([], { from: 'user' });
+    return logs.join('\n');
+  }
+
+  it('живая WT-ID-копия — НЕ orphan; несуществующий WT-ID и legacy-токен — orphan', async () => {
+    const liveToken = seedLiveWorktree('wt-live');
+    await seedScopedNote('mem_wt_live', `worktree:${liveToken}`);
+    await seedScopedNote('mem_wt_dead', 'worktree:w-0123456789ab');
+    await seedScopedNote('mem_legacy_gone', 'worktree:wt-gone');
+
+    const out = await runDoctor();
+    expect(out).toContain('## Orphaned worktree scopes');
+    expect(out).toContain('worktree:w-0123456789ab'); // WT-ID несуществующей копии
+    expect(out).toContain('worktree:wt-gone'); // legacy-токен — прежняя логика
+    expect(out).not.toContain(`worktree:${liveToken}`); // живая копия — не orphan
   });
 });
