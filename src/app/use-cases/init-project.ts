@@ -30,6 +30,24 @@ export interface BaseSetOutcome {
   action: RenderAction; // тот же тип, minor 5
   reason?: string;
 }
+
+/** REQ-04 (B0, design §3.4): базовые агенты набора — инвариант контракта
+ * BaseSetSpec: каждому agent_id соответствует активное лицо с
+ * owner_skill === agent_id (доставка plugin-inject ищет лицо по agent-id). */
+export const BASE_SET_AGENT_IDS = [
+  'mr-wolf',
+  'executor-lead',
+  'steward',
+  'worker-implementer',
+  'worker-researcher',
+  'worker-reviewer',
+] as const;
+
+/** Активные владельцы лиц → агенты без лица (нарушение §3.4). */
+export function baseSetFaceViolations(activeOwners: Iterable<string>): string[] {
+  const active = new Set(activeOwners);
+  return BASE_SET_AGENT_IDS.filter((id) => !active.has(id));
+}
 export interface BaseSetDeps {
   render: (
     baseDir: string,
@@ -269,7 +287,25 @@ export async function initProject(
       baseSetOutcomes.push(
         ...(await deps.baseSet.render(baseDir, { models: input.models, scope: input.full ? 'full' : 'agents-md' }))
       );
-      if (input.full) baseSetOutcomes.push(...(await deps.baseSet.seed(baseDir)));
+      if (input.full) {
+        baseSetOutcomes.push(...(await deps.baseSet.seed(baseDir)));
+        // REQ-04 (B0): §3.4-инвариант — после посева каждому базовому агенту
+        // должно соответствовать активное лицо с owner_skill === agent_id.
+        // Нарушение — не авария init (design §6: отказы B0 подсвечиваются,
+        // ловит doctor), а честный conflict-исход в отчёте.
+        const activeOwners = (await deps.store.list({ type: 'face' }))
+          .filter((o) => o.status === 'active')
+          .map((o) => (o as { owner_skill?: unknown }).owner_skill)
+          .filter((o): o is string => typeof o === 'string');
+        const violations = baseSetFaceViolations(activeOwners);
+        if (violations.length > 0) {
+          baseSetOutcomes.push({
+            file: '(base set faces)',
+            action: 'conflict',
+            reason: `no active face with owner_skill for agent(s): ${violations.join(', ')} (design §3.4)`,
+          });
+        }
+      }
     }
   }
 
