@@ -1,7 +1,7 @@
 ---
 slug: wolf-2-17-1-subrelease
 title: '2.17.1 — релизный документационный проход и публикация (отчёт L1)'
-status: in-progress
+status: done
 created: 2026-10-14
 method: wolf-release-docs + verification-before-completion
 release-thread: mem_20261014_vladelets_poruchil_polnyy_reliznyy_tsikl_01b2a7
@@ -74,13 +74,34 @@ wolf-release-docs, затем публикация. Исполнитель: exec
 - README-пара / сайт согласованы с чистым запуском ✅
 - отчёт пакета документации записан (этот файл) ✅
 
-## 6. Публикация (Фаза B — только после гейта)
+## 6. Публикация (Фаза B) — ВЫПОЛНЕНА
 
-- Штатный механизм публикации npm проекта: GitHub Actions `publish.yml` по пушу тега `v*` (npm trusted publishing, OIDC, provenance; локальных долгоживущих токенов нет). Прецеденты: 2.16.0–2.17.0 опубликованы этим путём (gh run list).
-- Деплой сайта: GitHub Actions `deploy-docs.yml` по пушу main (paths: docs/site/\*\*) → GitHub Pages.
-- Отклонение от буквы брифа: локальный `npm publish` заменён штатным CI-путём; `npm publish --dry-run` + проверка manifest выполняются локально до пуша. Основание: публикация тегом дважды невозможна, локальный путь не даёт provenance; бриф сам требует «штатный механизм проекта» для сайта — тот же принцип применён к npm.
-- Статус: (заполняется)
+- Отчёт документационного прохода финализирован и закоммичен (228d44c) ДО бампа версии; CHANGELOG финализирован до `npm version`.
+- `npm version 2.17.1` → коммит 41d56e6 + тег v2.17.1 (единственный способ повышения версии). Тег на 41d56e6 по конвенции репо (тег на финальном HEAD, как v2.17.0/v2.16.3).
+- Манифест-проверка: `npm pack --dry-run` — найден и устранён мусор: `templates/.wolf/router.log` (5.3 КБ, probe-лог, untracked-стрэй рабочей копии; npm pack с полем files не применяет .gitignore к включаемым каталогам — файл был только локально, в чекауте CI его нет). После удаления: 1195 файлов, подозрительных нет (`router-log.*`/`mask-secrets.*` — легитимный код).
+- `git push origin main` (37ac8c0..41d56e6) и `git push origin v2.17.1` — мандат владельца (mem_20261014_vladelets_poruchil_polnyy_reliznyy_tsikl_01b2a7).
+- Публикация npm: штатный механизм проекта — GitHub Actions `publish.yml` по пушу тега (npm trusted publishing, OIDC, provenance; локальных токенов нет) — **успех** (run 38532390172). Локальный `npm publish --dry-run` выполнен как manifest-проверка до пуша.
+- Деплой сайта: `deploy-docs.yml` по пушу main — **успех** (54s).
+- Отклонение от буквы брифа (одно): фактическая публикация — CI по тегу вместо локального `npm publish` (двойная публикация невозможна, локальный путь без OIDC не даёт provenance; прецеденты 2.16.0–2.17.0 — тот же путь).
 
-## 7. Пост-верификация публикации (факты)
+## 7. Пост-верификация (факты, 2026-10-14)
 
-(заполняется после публикации)
+| Факт                      | Evidence                                                                                                                              |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Версия в npm              | `npm view mister-wolf@2.17.1 version` → 2.17.1; tarball `registry.npmjs.org/mister-wolf/-/mister-wolf-2.17.1.tgz`; provenance SLSA v1 |
+| latest dist-tag           | `npm view mister-wolf version` → 2.17.1                                                                                               |
+| Тег на origin             | `git ls-remote --tags origin v2.17.1` → 41d56e6 (refs/tags/v2.17.1)                                                                   |
+| Сайт: версия              | главная https://chekh.github.io/mister-wolf/ (HTTP 200) — навбар «v2.17.1»                                                            |
+| Сайт: changelog синхронен | /changelog/ и /ru/changelog/ содержат секцию 2.17.1                                                                                   |
+| Сайт: новые доки          | /guide/memory.html + /ru/guide/memory.html — токен `worktree:w-`; /guide/artifact-pipeline.html — `claim acquire`                     |
+| CI на финальном main      | run на 4f289e9 — **success** (Node 22/24 × ubuntu/macos + Docker)                                                                     |
+
+### Инцидент после публикации (закрыт в рамках цикла)
+
+Первый CI-прогон на пуше (38532388542): **Docker checks failure** — в образе нет `git`, новые интеграционные тесты REQ-02 (worktree-фикстуры, `git init`) падали (`git: not found`). Реальные чек-джобы (Node 22/24 × ubuntu/macos) — success. Причина: origin/main был на 37ac8c0 (до фазы 4) — фазовые коммиты впервые встретили CI-окружение пушем релиза. Фикс: `git` добавлен в apt-get Dockerfile (4f289e9); повторный прогон — **success**. Продукт без git работает fail-closed; git нужен только тестовым фикстурам.
+
+## 8. Итог релиза
+
+- **2.17.1 опубликована**: npm (latest, provenance) + тег v2.17.1 + сайт на факте + CI зелёный на 4f289e9.
+- Долг/бэклог (владельцу, вне цикла): F-3 — help `--scope` в src (memory-add.ts:106) не упоминает WT-ID-дефолт (reference истинна, но неполна; гайды полны); пакетная гигиена: рассмотреть `.npmignore`/сужение files-поля против стрэй-логов; e2e вне `npm run check` (из бэклога фазы 4).
+- FRICTION: 1× subagent (depth limit 1 — ревью через независимый процесс `opencode run`); 1× `git rm --cached` (файл оказался untracked-стрэем — прямой вывод git расходился с оптимизированным выводом rtk, проверено прямыми командами).
