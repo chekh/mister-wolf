@@ -60,8 +60,19 @@ wolf-release-docs, затем публикация. Исполнитель: exec
 
 - Канал: `opencode run --agent worker-reviewer` (независимый процесс; вложенный спавн субагента заблокирован платформой — depth limit 1, зафиксировано как FRICTION).
 - Мандаты (2 в одном): фактическое соответствие продукту (сверка утверждений с кодом/тестами/generated cli.md) + полезность читателю (новый пользователь, обновляющийся владелец, EN/RU пары).
-- Промпт: /private/var/folders/…/T/opencode/review-2171-docs-prompt.txt (полный текст, источники истины перечислены).
-- **Вердикт: (заполняется по завершении ревью)**
+- Ревью 1 (по диффу cfcdcc2..41bbc3b): **CHANGES_REQUIRED** — 1 critical / 0 major / 3 minor. F-1 critical: утверждение «stable across renames and moves» инвертировало ограничение ADR-1 (переименование/перенос копии = новый WT-ID); F-2: EN getting-started без фасета `proposal`, неточное «запрещён для остальных»; F-3: help `--scope` в src не упоминает WT-ID-дефолт; F-4: нечитаемый аппозитив id артефакта в claim-буллете. 20+ сверок CHECKED по коду/тестам.
+- Фикс-раунд 1 (коммит a4048de): F-1 — инверсия устранена (CHANGELOG Added + Known limitations, memory.md EN/RU, зеркала перегенерированы); F-2 — EN/RU getting-started; F-4 — формулировка id. F-3 — бэклог (правка src вне docs-прохода после acceptance; reference-строка истинна, но неполна — гайд полон).
+- Ревью 2 (повторное, по диффу 41bbc3b..a4048de): **APPROVED** — findings none; все находки подтверждены закрытыми (memory-root.ts:25-30, memory-doctor.ts:335-354, memory-types.ts:77-92, design.md ADR-1; grep инвертированной фразы по docs/ — 0).
+- Логи: /private/var/folders/…/T/opencode/review-2171-docs-result.txt (152 КБ), review-2171-docs-recheck-result.txt.
+
+## 5.1 Гейт перехода к публикации — ПРОЙДЕН
+
+- вердикт независимого ревью **APPROVED** ✅
+- `npm run check` GREEN 185 файлов / 1453 теста ✅
+- `npm run docs:build` GREEN (cli.md идемпотентен, зеркала синхронны, VitePress собран) ✅
+- CHANGELOG 2.17.1 заполнен ✅
+- README-пара / сайт согласованы с чистым запуском ✅
+- отчёт пакета документации записан (этот файл) ✅
 
 ## 6. Публикация (Фаза B — только после гейта)
 
