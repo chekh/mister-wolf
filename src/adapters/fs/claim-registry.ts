@@ -252,7 +252,11 @@ export function releaseClaim(
   }
   const fullMatch = ownerSessionMatch(rec, input.identity) && rec.pid === input.identity.pid;
   const pidReleasable = rec.pid <= 0 || isStale(rec, deps);
-  if (!fullMatch && !(ownerSessionMatch(rec, input.identity) && pidReleasable)) {
+  // MINOR-1b (интегральное ревью 2.17.1): зеркально requireClaim — адресат
+  // transfer (session null + owner) освобождает своей сессией, иначе передача
+  // паркует release до TTL
+  const transferredToWho = rec.session_id === null && rec.owner === input.identity.owner;
+  if (!fullMatch && !transferredToWho && !(ownerSessionMatch(rec, input.identity) && pidReleasable)) {
     throw new UserFacingError(
       `Claim for "${input.artifact}" is owned by ${rec.owner} (${describeHolder(rec)}) — release is owner-only (claim file: ${path})`
     );

@@ -326,6 +326,29 @@ describe('claim-registry: MINOR-1/2/4 (FIX-раунд T5, независимое
     ).toThrow(UserFacingError);
   });
 
+  it('MINOR-1b (интегральное ревью): адресат transfer освобождает claim своей сессией — release зеркален requireClaim', () => {
+    seedClaimFile(root, claim());
+    releaseClaim(deps(root), { artifact: 'dev:2026-10-14-demo', identity: HELLO, transferTo: 'agent:w1' });
+    // адресат с собственной сессией — тот же escape, что в requireClaim (transferredToWho)
+    const rel = releaseClaim(deps(root), {
+      artifact: 'dev:2026-10-14-demo',
+      identity: { owner: 'agent:w1', sessionId: 'ses-w1', pid: 4242 },
+    });
+    expect(rel.action).toBe('released');
+    // прежний владелец release после передачи — отказ
+    seedClaimFile(root, claim());
+    releaseClaim(deps(root), { artifact: 'dev:2026-10-14-demo', identity: HELLO, transferTo: 'agent:w1' });
+    expect(() => releaseClaim(deps(root), { artifact: 'dev:2026-10-14-demo', identity: HELLO })).toThrow(
+      UserFacingError
+    );
+    // чужой release — отказ
+    seedClaimFile(root, claim());
+    releaseClaim(deps(root), { artifact: 'dev:2026-10-14-demo', identity: HELLO, transferTo: 'agent:w1' });
+    expect(() => releaseClaim(deps(root), { artifact: 'dev:2026-10-14-demo', identity: OTHER })).toThrow(
+      UserFacingError
+    );
+  });
+
   it('MINOR-2: пустой claim-файл (in-flight создатель) — не takeover: ожидание видит свежий claim', () => {
     const path = claimFilePath(root, 'dev:2026-10-14-demo');
     mkdirSync(claimsDir(root), { recursive: true });
