@@ -22,13 +22,13 @@ review: pending
 
 ## 2. Карта покрытия REQ → компонент → контракт → проверка
 
-| REQ | Компонент | Контракт | Где проверяется | NFR |
-|---|---|---|---|---|
-| REQ-01 (A9) | `src/domain/memory-types.ts` + `src/app/use-cases/build-analytics.ts` + `.wolf/SKILL.md` + `templates/base/skills/wolf-brainstorm/SKILL.md` (consilium) | `CouncilOpinionV2` (см. §3.1) + `SynthesisV2` (см. §3.1) | unit (vitest): schema validation; integration: extractVote + new fields readable; e2e: new opinion + synthesis записываются и читаются | NFR-01 (обратная совместимость чтения legacy `vote`) |
-| REQ-02 (A10) | `tests/e2e/docs-audit.test.ts` (новый) + правки в `README.md`, `README.ru.md`, `docs/concept/concept.md`, `docs/README.md`, `docs/superpowers/specs/*`, `docs/superpowers/plans/*` | скрипт grep по `wolf learn`, `wolf run`, `Sandbox Replay`, `STOP-гейт` + frontmatter `historical: true` (см. §3.2) | e2e (CI): grep-скрипт зелёный | NFR-02 (тест в CI) |
-| REQ-03 (A11) | `src/adapters/fs/claim-registry.ts` + `src/app/use-cases/claim-artifact.ts` + `src/adapters/cli/commands/claim.ts` (новый подкоманд `heartbeat`) | `heartbeatFilePath`, `readHeartbeat`, `writeHeartbeat`, `isStale` (расширенный, см. §3.3) | unit (vitest): synth-тест `claim-registry.test.ts` + heartbeat-файл | NFR-03 (обратная совместимость 2.17.1 claim-файлов) |
-| REQ-04 (B0) | `templates/base/agents/*.md` + `src/app/use-cases/init-project.ts` + `src/app/use-cases/sync-base-set.ts` + `src/app/use-cases/scaffold-agent.ts` | per-agent face owner_skill consistency (см. §3.4) | integration: tmp-каталог `wolf init` + `wolf call` + `wolf face show`; playground-lab e2e | NFR-04 (совместимость 2.17.x) |
-| REQ-05 (Release) | `package.json` + `CHANGELOG.md` + `npm version` + `git tag` + сайт `docs:build` | релизный цикл (см. §3.5) | wolf-release-docs чек-лист | NFR-05 (полный цикл) |
+| REQ              | Компонент                                                                                                                                                                          | Контракт                                                                                                           | Где проверяется                                                                                                                        | NFR                                                  |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| REQ-01 (A9)      | `src/domain/memory-types.ts` + `src/app/use-cases/build-analytics.ts` + `.wolf/SKILL.md` + `templates/base/skills/wolf-brainstorm/SKILL.md` (consilium)                            | `CouncilOpinionV2` (см. §3.1) + `SynthesisV2` (см. §3.1)                                                           | unit (vitest): schema validation; integration: extractVote + new fields readable; e2e: new opinion + synthesis записываются и читаются | NFR-01 (обратная совместимость чтения legacy `vote`) |
+| REQ-02 (A10)     | `tests/e2e/docs-audit.test.ts` (новый) + правки в `README.md`, `README.ru.md`, `docs/concept/concept.md`, `docs/README.md`, `docs/superpowers/specs/*`, `docs/superpowers/plans/*` | скрипт grep по `wolf learn`, `wolf run`, `Sandbox Replay`, `STOP-гейт` + frontmatter `historical: true` (см. §3.2) | e2e (CI): grep-скрипт зелёный                                                                                                          | NFR-02 (тест в CI)                                   |
+| REQ-03 (A11)     | `src/adapters/fs/claim-registry.ts` + `src/app/use-cases/claim-artifact.ts` + `src/adapters/cli/commands/claim.ts` (новый подкоманд `heartbeat`)                                   | `heartbeatFilePath`, `readHeartbeat`, `writeHeartbeat`, `isStale` (расширенный, см. §3.3)                          | unit (vitest): synth-тест `claim-registry.test.ts` + heartbeat-файл                                                                    | NFR-03 (обратная совместимость 2.17.1 claim-файлов)  |
+| REQ-04 (B0)      | `templates/base/agents/*.md` + `src/app/use-cases/init-project.ts` + `src/app/use-cases/sync-base-set.ts` + `src/app/use-cases/scaffold-agent.ts`                                  | per-agent face owner_skill consistency (см. §3.4)                                                                  | integration: tmp-каталог `wolf init` + `wolf call` + `wolf face show`; playground-lab e2e                                              | NFR-04 (совместимость 2.17.x)                        |
+| REQ-05 (Release) | `package.json` + `CHANGELOG.md` + `npm version` + `git tag` + сайт `docs:build`                                                                                                    | релизный цикл (см. §3.5)                                                                                           | wolf-release-docs чек-лист                                                                                                             | NFR-05 (полный цикл)                                 |
 
 **NFR (наследуются из 2.17.1 + новые):**
 
@@ -53,37 +53,38 @@ type Confidence = 'low' | 'medium' | 'high';
 
 interface EvidenceRef {
   // OQ-02: id объекта памяти + опционально цитата/комментарий
-  memory_id?: string;   // e.g. 'wolf:lesson:mem_...'
-  path?: string;        // e.g. 'docs/concept/concept.md#1.3'
-  quote?: string;       // ≤ 200 chars, цитата
-  note?: string;        // ≤ 500 chars, объяснение
+  memory_id?: string; // e.g. 'wolf:lesson:mem_...'
+  path?: string; // e.g. 'docs/concept/concept.md#1.3'
+  quote?: string; // ≤ 200 chars, цитата
+  note?: string; // ≤ 500 chars, объяснение
 }
 
 interface CouncilOpinionV2 {
   // существующие:
-  vote: string;            // остаётся (NFR-01)
+  vote: string; // остаётся (NFR-01)
   // новые (REQ-01 AC-1, AC-2):
-  claims: string[];        // массив утверждений; ≥1 для новой записи
+  claims: string[]; // массив утверждений; ≥1 для новой записи
   evidence: EvidenceRef[]; // массив ссылок на подтверждение
-  assumptions: string[];   // предпосылки
-  confidence: Confidence;  // шкала из 2.13
-  risks: string[];         // известные риски
+  assumptions: string[]; // предпосылки
+  confidence: Confidence; // шкала из 2.13
+  risks: string[]; // известные риски
   failure_conditions: string[]; // при каких условиях рекомендация не работает
-  counterexamples: string[];    // контрпримеры
+  counterexamples: string[]; // контрпримеры
 }
 
 interface SynthesisV2 {
   // существующие (legacy):
   body: string;
   // новые:
-  accepted_claims: string[];          // какие claims приняты
-  rejected_alternatives: {            // отвергнутые альтернативы с обоснованием
+  accepted_claims: string[]; // какие claims приняты
+  rejected_alternatives: {
+    // отвергнутые альтернативы с обоснованием
     claim: string;
     reason: string;
   }[];
-  unresolved_dissent: string[];       // несогласованные пункты
+  unresolved_dissent: string[]; // несогласованные пункты
   confidence: Confidence;
-  required_validation: string[];      // что нужно проверить перед применением
+  required_validation: string[]; // что нужно проверить перед применением
 }
 ```
 
@@ -137,15 +138,13 @@ interface SynthesisV2 {
 
 ```ts
 const FORBIDDEN_TOKENS = [
-  /`wolf learn`/g,           // backticked form (instruction)
+  /`wolf learn`/g, // backticked form (instruction)
   /`wolf run`/g,
   /`Sandbox Replay`/g,
   /`STOP-гейт`/g,
 ];
-const ALLOWED_CONTEXT = [
-  /историческ/i, /архив/i, /удалён/i, /removed/i,
-];
-function auditFile(path: string): { ok: boolean; hits: Array<{line: number; text: string}> } {
+const ALLOWED_CONTEXT = [/историческ/i, /архив/i, /удалён/i, /removed/i];
+function auditFile(path: string): { ok: boolean; hits: Array<{ line: number; text: string }> } {
   const content = readFileSync(path, 'utf-8');
   const hits = [];
   for (const re of FORBIDDEN_TOKENS) {
@@ -153,7 +152,7 @@ function auditFile(path: string): { ok: boolean; hits: Array<{line: number; text
     while ((m = re.exec(content)) !== null) {
       const line = content.slice(0, m.index).split('\n').length;
       const window = content.slice(Math.max(0, m.index - 100), m.index + 100);
-      if (!ALLOWED_CONTEXT.some(r => r.test(window))) {
+      if (!ALLOWED_CONTEXT.some((r) => r.test(window))) {
         hits.push({ line, text: content.split('\n')[line - 1] });
       }
     }
@@ -181,9 +180,9 @@ export interface HeartbeatRecord {
   writer: string;
 }
 
-export const CLAIM_TTL_MS = 24 * 60 * 60 * 1000;        // 24h (без изменений)
+export const CLAIM_TTL_MS = 24 * 60 * 60 * 1000; // 24h (без изменений)
 export const CLAIM_HEARTBEAT_WINDOW_MS = 10 * 60 * 1000; // 10 минут (новый, OQ-01)
-export const CLAIM_FLOCK_TIMEOUT_MS = 30 * 1000;         // 30s на запись (L0 пояснение)
+export const CLAIM_FLOCK_TIMEOUT_MS = 30 * 1000; // 30s на запись (L0 пояснение)
 
 export function heartbeatFilePath(root: string, artifact: string): string {
   return join(claimsDir(root), `${claimSlug(artifact)}.heartbeat`);
@@ -194,10 +193,7 @@ export function readHeartbeat(path: string): HeartbeatRecord | null {
   // Возврат: null при отсутствии/повреждении
 }
 
-export function writeHeartbeat(
-  deps: ClaimRegistryDeps,
-  input: { artifact: string; writer: string }
-): HeartbeatRecord {
+export function writeHeartbeat(deps: ClaimRegistryDeps, input: { artifact: string; writer: string }): HeartbeatRecord {
   // wx-create (как в FsMemoryLock), атомарно
   // Содержимое: JSON { written_at, writer }
   // mtime — обновляется при записи (не полагаемся только на mtime — JSON парсим)
@@ -252,11 +248,11 @@ function acquireClaim(deps, input) {
 ```ts
 // В src/app/use-cases/init-project.ts
 interface BaseSetSpec {
-  agent_id: string;          // 'executor-lead' | 'steward' | 'worker-implementer' | ...
-  face_owner_skill: string;  // ДОЛЖЕН совпадать с agent_id
+  agent_id: string; // 'executor-lead' | 'steward' | 'worker-implementer' | ...
+  face_owner_skill: string; // ДОЛЖЕН совпадать с agent_id
   mode: 'primary' | 'all' | 'subagent';
-  tools: readonly string[];  // ожидаемый набор (для проверки)
-  path: string;              // относительный путь в .opencode/
+  tools: readonly string[]; // ожидаемый набор (для проверки)
+  path: string; // относительный путь в .opencode/
 }
 ```
 
@@ -334,7 +330,7 @@ interface BaseSetSpec {
 ### NFR-02 — docs-audit-тест в CI
 
 - `tests/e2e/docs-audit.test.ts` — vitest с `readFileSync` + grep-логикой; входит в `npm run check` (или эквивалент — TBD с учётом профиля проекта).
-- Покрытие: 4 ключевых файла (README*, concept.md, docs/README.md) + frontmatter `historical: true` в `docs/superpowers/specs/*.md` + `docs/superpowers/plans/*.md`.
+- Покрытие: 4 ключевых файла (README*, concept.md, docs/README.md) + frontmatter `historical: true` в `docs/superpowers/specs/*.md`+`docs/superpowers/plans/\*.md`.
 
 ### NFR-03 — claim-файлы 2.17.1 совместимы
 

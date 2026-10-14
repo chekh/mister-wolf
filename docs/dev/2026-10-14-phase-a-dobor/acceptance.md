@@ -13,46 +13,46 @@ created: 2026-10-14
 
 - **Статус:** pending / done / partial
 - **Evidence:**
-  - commit SHA: ___
+  - commit SHA: \_\_\_
   - test IDs: S-01, S-02, S-03, S-04, S-05, S-06, S-07, S-08, S-09 (отметить passed/failed)
-  - `git diff --stat`: ___
+  - `git diff --stat`: \_\_\_
   - manual: grep `.wolf/SKILL.md` §X; grep `templates/base/skills/wolf-brainstorm/SKILL.md`
 - **NFR-01 (legacy):** verified / not verified
 - **NFR-02 (docs-audit):** N/A для REQ-01
-- **Риски:** ___
+- **Риски:** \_\_\_
 
 ## REQ-02 (A10) — Полный аудит публичных документов
 
 - **Статус:** pending / done / partial
 - **Evidence:**
-  - commit SHA: ___
+  - commit SHA: \_\_\_
   - test IDs: S-10, S-11, S-12, S-13, S-14, S-15, S-60, S-61
-  - `git diff --stat`: ___
-  - manual: README*, concept.md, docs/README.md без удалённых команд; счётчик «8 core + расширения»
+  - `git diff --stat`: \_\_\_
+  - manual: README\*, concept.md, docs/README.md без удалённых команд; счётчик «8 core + расширения»
 - **NFR-02 (docs-audit в CI):** verified
-- **Риски:** ___
+- **Риски:** \_\_\_
 
 ## REQ-03 (A11) — Heartbeat-файл
 
 - **Статус:** pending / done / partial
 - **Evidence:**
-  - commit SHA: ___
+  - commit SHA: \_\_\_
   - test IDs: S-20, S-21, S-22, S-23, S-24, S-25, S-26, S-27, S-28, S-70, S-71
-  - `git diff --stat`: ___
+  - `git diff --stat`: \_\_\_
   - manual: synth-тест «heartbeat удерживает claim» + «stale heartbeat перехватывается»
 - **NFR-03 (legacy 2.17.1):** verified
-- **Риски:** ___
+- **Риски:** \_\_\_
 
 ## REQ-04 (B0) — Доводка базовых наборов
 
 - **Статус:** pending / done / partial
 - **Evidence:**
-  - commit SHA: ___
+  - commit SHA: \_\_\_
   - test IDs: S-30, S-31, S-32, S-33, S-34, S-35
-  - `git diff --stat`: ___
+  - `git diff --stat`: \_\_\_
   - manual: e2e playground-lab (если выполнено)
 - **NFR-04 (2.17.x → 2.18.0):** verified
-- **Риски:** ___
+- **Риски:** \_\_\_
 
 ## REQ-05 (Release) — Релизный цикл
 
@@ -73,9 +73,9 @@ created: 2026-10-14
 
 ## Замечания ревьюера
 
-- L2 reviewer 1: ___
-- L2 reviewer 2: ___
-- Конфликты: ___
+- L2 reviewer 1: \_\_\_
+- L2 reviewer 2: \_\_\_
+- Конфликты: \_\_\_
 
 ## Вердикт L1
 

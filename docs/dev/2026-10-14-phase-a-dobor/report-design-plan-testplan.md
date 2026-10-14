@@ -15,27 +15,28 @@
 
 ## Changes (в этом отчёте)
 
-| Действие | Файл | Размер |
-|---|---|---|
-| update (status → approved, OQ-решения) | `docs/dev/2026-10-14-phase-a-dobor/requirements.md` | 190 строк |
-| create | `docs/dev/2026-10-14-phase-a-dobor/design.md` | 384 строки |
-| create | `docs/dev/2026-10-14-phase-a-dobor/test-plan.md` | 304 строки |
-| create | `docs/dev/2026-10-14-phase-a-dobor/plan.md` | 244 строки |
+| Действие                               | Файл                                                | Размер     |
+| -------------------------------------- | --------------------------------------------------- | ---------- |
+| update (status → approved, OQ-решения) | `docs/dev/2026-10-14-phase-a-dobor/requirements.md` | 190 строк  |
+| create                                 | `docs/dev/2026-10-14-phase-a-dobor/design.md`       | 384 строки |
+| create                                 | `docs/dev/2026-10-14-phase-a-dobor/test-plan.md`    | 304 строки |
+| create                                 | `docs/dev/2026-10-14-phase-a-dobor/plan.md`         | 244 строки |
 
 ## Task Decomposition (план)
 
-| # | task_id | Что | Статус | Worktree | Зависимости |
-|---|---|---|---|---|---|
-| 0 | T-00 | wolf-review design.md + test-plan.md | TODO | `.worktrees/2.18.0` | — |
-| 1 | T-A9 | REQ-01 — A9 Council-контракт v2 | TODO | `.worktrees/2.18.0-a9` | T-00 |
-| 2 | T-A11 | REQ-03 — A11 Heartbeat-файл | TODO | `.worktrees/2.18.0-a11` | T-00 |
-| 3 | T-B0 | REQ-04 — B0 Доводка | TODO | `.worktrees/2.18.0-b0` | T-00 |
-| 4 | T-A10 | REQ-02 — A10 Аудит документов | TODO | `.worktrees/2.18.0-a10` | T-A9, T-B0 |
-| 5 | T-INT | Интеграция + полный прогон | TODO | `.worktrees/2.18.0` | T-A9..T-A10 |
-| 6 | T-REL | REQ-05 — Релизный цикл | TODO | `.worktrees/2.18.0` | T-INT |
-| 7 | T-STEW | Фон: Стюард агрегирует 4 зрелых урока | TODO (фон) | main (отдельно) | — |
+| #   | task_id | Что                                   | Статус     | Worktree                | Зависимости |
+| --- | ------- | ------------------------------------- | ---------- | ----------------------- | ----------- |
+| 0   | T-00    | wolf-review design.md + test-plan.md  | TODO       | `.worktrees/2.18.0`     | —           |
+| 1   | T-A9    | REQ-01 — A9 Council-контракт v2       | TODO       | `.worktrees/2.18.0-a9`  | T-00        |
+| 2   | T-A11   | REQ-03 — A11 Heartbeat-файл           | TODO       | `.worktrees/2.18.0-a11` | T-00        |
+| 3   | T-B0    | REQ-04 — B0 Доводка                   | TODO       | `.worktrees/2.18.0-b0`  | T-00        |
+| 4   | T-A10   | REQ-02 — A10 Аудит документов         | TODO       | `.worktrees/2.18.0-a10` | T-A9, T-B0  |
+| 5   | T-INT   | Интеграция + полный прогон            | TODO       | `.worktrees/2.18.0`     | T-A9..T-A10 |
+| 6   | T-REL   | REQ-05 — Релизный цикл                | TODO       | `.worktrees/2.18.0`     | T-INT       |
+| 7   | T-STEW  | Фон: Стюард агрегирует 4 зрелых урока | TODO (фон) | main (отдельно)         | —           |
 
 Классификация (таблица декомпозиции L1):
+
 - T-00 — TRIVIAL (L1 сам или L2 reviewer).
 - T-A9/T-A11/T-B0 — НЕ TRIVIAL → L2 воркеры в worktree.
 - T-A10 — НЕ TRIVIAL (большой объём правок docs/) → L2 воркер.
@@ -92,7 +93,7 @@
 
 1. **Heartbeat-окно = 10 минут (дефолт)** — зафиксировано в design §3.3 + test-plan S-24; дальнейшая калибровка — отдельный PR.
 2. **Изоляция формирования мнений = правило процесса (ADR-8)** — фиксируется в `.wolf/SKILL.md` §X (новый раздел); не в коде.
-3. **A10 = полный аудит `docs/**`** (L0-решение OQ-05) — отражён в design §3.2 + plan T-A10.
+3. **A10 = полный аудит `docs/**`\*\* (L0-решение OQ-05) — отражён в design §3.2 + plan T-A10.
 4. **Confidence = `low|medium|high` из 2.13 (ADR-9)** — переиспользуем существующий enum, ничего нового не вводим.
 5. **B0 = `playground-lab` для проверки (OQ-06)** — отражено в design §3.4 + test-plan S-33.
 6. **Параллелизм: A9/A11/B0 → 3 worktree** — отражён в plan §1, §4.

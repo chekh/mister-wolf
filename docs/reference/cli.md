@@ -1057,6 +1057,9 @@ Options:
 Commands:
   acquire <artifact>            Atomically acquire artifact ownership (second
                                 concurrent writer is rejected)
+  heartbeat <artifact>          Refresh the claim heartbeat (keeps a
+                                long-running claim fresh within the 10-minute
+                                window)
   release [options] <artifact>  Release artifact ownership (owner-only) or
                                 transfer it explicitly
   list                          List active claims (who/when/what, from the
@@ -1073,6 +1076,21 @@ Atomically acquire artifact ownership (second concurrent writer is rejected)
 
 Arguments:
   artifact    Artifact id, e.g. "dev:<date>-<slug>" or "worktree:w-<12hex>"
+
+Options:
+  -h, --help  display help for command
+```
+
+#### wolf claim heartbeat
+
+```text
+Usage: wolf claim heartbeat [options] <artifact>
+
+Refresh the claim heartbeat (keeps a long-running claim fresh within the
+10-minute window)
+
+Arguments:
+  artifact    Artifact id whose claim heartbeat to refresh
 
 Options:
   -h, --help  display help for command
