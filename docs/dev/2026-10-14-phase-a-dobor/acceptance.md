@@ -14,23 +14,23 @@ thread: mem_20261014_faza_a_dobor_b0_reliz_2_17_2_2_18_0_34c39f
 
 ## Сводка
 
-| REQ | Статус | Доказательство |
-|---|---|---|
-| **REQ-01** (A9 Council v2) | ✅ DONE | `COUNCIL_OPINION_DECL`/`SYNTHESIS_DECL` (memory-types.ts:263/283); `extractClaims`/`extractSynthesisMeta` (build-analytics.ts:1796/1817); изоляция `.wolf/SKILL.md:95` §7; 7-полей v2; 3 тест-файла (421 строка); S-01..S-09 зелёные |
-| **REQ-02** (A10 Docs audit) | ⚠️ PARTIAL | F-01/F-02/F-05 fixed; **F-03 (AC-2 «Действующий контракт версии») — OUTSTANDING**; S-10..S-15 + S-61 зелёные; docs-audit 7/7; 22 файла (T-A10) + 18 файлов (FIX-1) |
-| **REQ-03** (A11 Heartbeat) | ✅ DONE | `CLAIM_HEARTBEAT_WINDOW_MS=10min` (claim-registry.ts:32); `HeartbeatRecord`, `writeHeartbeat` (hrtime+random + atomic rename); `isStale` (PID/TTL/heartbeat); race-fix (commit 09a4036); S-20..S-28 + S-70/71 зелёные |
-| **REQ-04** (B0 Base sets) | ✅ DONE | 6 агент-шаблонов; `baseSetFaceViolations` guard; init-project + sync; 2 интеграционных теста + 1 e2e; S-30..S-35 зелёные; playground-lab manual pending |
-| **REQ-05** (Release cycle) | ⏳ PENDING | T-REL — npm version 2.18.0, CHANGELOG, тег v2.18.0, npm publish (на аппрув L0) |
+| REQ                         | Статус     | Доказательство                                                                                                                                                                                                                       |
+| --------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **REQ-01** (A9 Council v2)  | ✅ DONE    | `COUNCIL_OPINION_DECL`/`SYNTHESIS_DECL` (memory-types.ts:263/283); `extractClaims`/`extractSynthesisMeta` (build-analytics.ts:1796/1817); изоляция `.wolf/SKILL.md:95` §7; 7-полей v2; 3 тест-файла (421 строка); S-01..S-09 зелёные |
+| **REQ-02** (A10 Docs audit) | ⚠️ PARTIAL | F-01/F-02/F-05 fixed; **F-03 (AC-2 «Действующий контракт версии») — OUTSTANDING**; S-10..S-15 + S-61 зелёные; docs-audit 7/7; 22 файла (T-A10) + 18 файлов (FIX-1)                                                                   |
+| **REQ-03** (A11 Heartbeat)  | ✅ DONE    | `CLAIM_HEARTBEAT_WINDOW_MS=10min` (claim-registry.ts:32); `HeartbeatRecord`, `writeHeartbeat` (hrtime+random + atomic rename); `isStale` (PID/TTL/heartbeat); race-fix (commit 09a4036); S-20..S-28 + S-70/71 зелёные                |
+| **REQ-04** (B0 Base sets)   | ✅ DONE    | 6 агент-шаблонов; `baseSetFaceViolations` guard; init-project + sync; 2 интеграционных теста + 1 e2e; S-30..S-35 зелёные; playground-lab manual pending                                                                              |
+| **REQ-05** (Release cycle)  | ⏳ PENDING | T-REL — npm version 2.18.0, CHANGELOG, тег v2.18.0, npm publish (на аппрув L0)                                                                                                                                                       |
 
 ## NFR
 
-| NFR | Статус | Доказательство |
-|---|---|---|
-| **NFR-01** (legacy чтение) | ✅ DONE | `extractClaims(legacy) → []`; `confidence default 'medium'`; S-50/51 зелёные |
-| **NFR-02** (docs-audit в CI) | ✅ DONE | `tests/e2e/docs-audit.test.ts` интегрирован; S-60/61 зелёные |
-| **NFR-03** (claim 2.17.1 compat) | ✅ DONE | `readHeartbeat = null` при отсутствии `.heartbeat`; правила 2.17.1; S-70/71 зелёные |
-| **NFR-04** (2.17.x → 2.18.0) | ✅ DONE | `wolf init --yes` не стирает steward-мутнувшие; b0-sync тест зелёный |
-| **NFR-05** (полный релиз) | ⏳ PENDING | T-REL — pending L0 |
+| NFR                              | Статус     | Доказательство                                                                      |
+| -------------------------------- | ---------- | ----------------------------------------------------------------------------------- |
+| **NFR-01** (legacy чтение)       | ✅ DONE    | `extractClaims(legacy) → []`; `confidence default 'medium'`; S-50/51 зелёные        |
+| **NFR-02** (docs-audit в CI)     | ✅ DONE    | `tests/e2e/docs-audit.test.ts` интегрирован; S-60/61 зелёные                        |
+| **NFR-03** (claim 2.17.1 compat) | ✅ DONE    | `readHeartbeat = null` при отсутствии `.heartbeat`; правила 2.17.1; S-70/71 зелёные |
+| **NFR-04** (2.17.x → 2.18.0)     | ✅ DONE    | `wolf init --yes` не стирает steward-мутнувшие; b0-sync тест зелёный                |
+| **NFR-05** (полный релиз)        | ⏳ PENDING | T-REL — pending L0                                                                  |
 
 ## T-INT gate
 

@@ -26,18 +26,18 @@ thread: mem_20261014_faza_a_dobor_b0_reliz_2_17_2_2_18_0_34c39f
 
 ## Сводка задач
 
-| ID | Задача | Статус | Evidence |
-|---|---|---|---|
-| T-00 | wolf-review design+testplan | ✅ APPROVED | 0914638; 2 minor F-01/F-02 (закрыты позже) |
-| T-A9 | REQ-01 Council v2 | ✅ DONE_WITH_CONCERNS | 097d87c; S-01..S-09 зелёные; persist-путь outstanding |
-| T-A11 | REQ-03 Heartbeat | ✅ DONE | e328714; S-20..S-28 + S-70/71 зелёные; race-fix L1 09a4036 |
-| T-B0 | REQ-04 Base sets | ✅ DONE | 156252f; 10/10 integration; e2e manual pending |
-| T-A10 | REQ-02 Docs audit | ✅ DONE_WITH_CONCERNS | 2c89b2b; 7/7 docs-audit; F-01/F-02/F-05 fixed L1 |
-| T-INT-FIX-1 | F-01/F-02/F-05 | ✅ DONE | ea9a84a; 18 файлов; docs-audit 7/7 |
-| T-INT-review | wolf-review integration | ⚠️ CHANGES_REQUIRED | F-01..F-03 major |
-| T-INT-review-2 | re-review post-fix | ✅ ACCEPTED | F-03 outstanding (waiver L0) |
-| T-STEW | Steward aggregates 4 lessons | ⏳ PROPOSED | 2 агрегата, `wolf aggregate apply` на L0 |
-| T-REL | Release cycle | ⏳ PENDING | L0 загружает wolf-release-docs; npm publish на аппрув L0 |
+| ID             | Задача                       | Статус                | Evidence                                                   |
+| -------------- | ---------------------------- | --------------------- | ---------------------------------------------------------- |
+| T-00           | wolf-review design+testplan  | ✅ APPROVED           | 0914638; 2 minor F-01/F-02 (закрыты позже)                 |
+| T-A9           | REQ-01 Council v2            | ✅ DONE_WITH_CONCERNS | 097d87c; S-01..S-09 зелёные; persist-путь outstanding      |
+| T-A11          | REQ-03 Heartbeat             | ✅ DONE               | e328714; S-20..S-28 + S-70/71 зелёные; race-fix L1 09a4036 |
+| T-B0           | REQ-04 Base sets             | ✅ DONE               | 156252f; 10/10 integration; e2e manual pending             |
+| T-A10          | REQ-02 Docs audit            | ✅ DONE_WITH_CONCERNS | 2c89b2b; 7/7 docs-audit; F-01/F-02/F-05 fixed L1           |
+| T-INT-FIX-1    | F-01/F-02/F-05               | ✅ DONE               | ea9a84a; 18 файлов; docs-audit 7/7                         |
+| T-INT-review   | wolf-review integration      | ⚠️ CHANGES_REQUIRED   | F-01..F-03 major                                           |
+| T-INT-review-2 | re-review post-fix           | ✅ ACCEPTED           | F-03 outstanding (waiver L0)                               |
+| T-STEW         | Steward aggregates 4 lessons | ⏳ PROPOSED           | 2 агрегата, `wolf aggregate apply` на L0                   |
+| T-REL          | Release cycle                | ⏳ PENDING            | L0 загружает wolf-release-docs; npm publish на аппрув L0   |
 
 **Acceptance:** `docs/dev/2026-10-14-phase-a-dobor/acceptance.md` (60f9740).
 
@@ -63,18 +63,18 @@ e328714 feat(2.18.0): A11 heartbeat-файл + TTL-продление (REQ-03)
 
 ## Task Decomposition (8 задач по plan.md)
 
-| # | ID | Что | Worktree | Result |
-|---|---|---|---|---|
-| 1 | T-00 | wolf-review design+testplan | .worktrees/2.18.0 | APPROVED (2 minor) |
-| 2 | T-A9 | Council-контракт v2 | .worktrees/2.18.0-a9 | DONE_WITH_CONCERNS |
-| 3 | T-A11 | Heartbeat-файл | .worktrees/2.18.0-a11 | DONE |
-| 4 | T-B0 | Базовые наборы | .worktrees/2.18.0-b0 | DONE (RESULT не формальный) |
-| 5 | T-A10 | Docs audit | .worktrees/2.18.0-a10 | DONE_WITH_CONCERNS |
-| 6 | T-INT-FIX-1 | F-01/F-02/F-05 | .worktrees/2.18.0 (прямо) | DONE |
-| 7 | T-INT-review | wolf-review L2 (1) | main session | CHANGES_REQUIRED |
-| 7' | T-INT-review-2 | wolf-review L2 (2) | main session | ACCEPTED |
-| 8 | T-STEW | Steward агрегация | main worktree | 2 proposed (L0) |
-| 9 | T-REL | Release | .worktrees/2.18.0 | PENDING (L0) |
+| #   | ID             | Что                         | Worktree                  | Result                      |
+| --- | -------------- | --------------------------- | ------------------------- | --------------------------- |
+| 1   | T-00           | wolf-review design+testplan | .worktrees/2.18.0         | APPROVED (2 minor)          |
+| 2   | T-A9           | Council-контракт v2         | .worktrees/2.18.0-a9      | DONE_WITH_CONCERNS          |
+| 3   | T-A11          | Heartbeat-файл              | .worktrees/2.18.0-a11     | DONE                        |
+| 4   | T-B0           | Базовые наборы              | .worktrees/2.18.0-b0      | DONE (RESULT не формальный) |
+| 5   | T-A10          | Docs audit                  | .worktrees/2.18.0-a10     | DONE_WITH_CONCERNS          |
+| 6   | T-INT-FIX-1    | F-01/F-02/F-05              | .worktrees/2.18.0 (прямо) | DONE                        |
+| 7   | T-INT-review   | wolf-review L2 (1)          | main session              | CHANGES_REQUIRED            |
+| 7'  | T-INT-review-2 | wolf-review L2 (2)          | main session              | ACCEPTED                    |
+| 8   | T-STEW         | Steward агрегация           | main worktree             | 2 proposed (L0)             |
+| 9   | T-REL          | Release                     | .worktrees/2.18.0         | PENDING (L0)                |
 
 ## Workers Used
 

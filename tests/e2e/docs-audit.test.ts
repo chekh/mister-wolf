@@ -41,7 +41,8 @@ const ALLOWED_FILES_WITH_HISTORICAL = new Set<string>([
 ]);
 
 // Документы текущей фазы — аудит их не касается (T-INT ведёт отдельно).
-const EXCLUDED_DIRS = ['docs/dev/2026-10-14-phase-a-dobor'];
+// docs/site/{,ru/}changelog/ — зеркала CHANGELOG, исторические токены ожидаемы.
+const EXCLUDED_DIRS = ['docs/dev/2026-10-14-phase-a-dobor', 'docs/site/changelog', 'docs/site/ru/changelog'];
 
 function scanText(text: string): string[] {
   return FORBIDDEN_TOKENS.filter((t) => text.includes(t));
