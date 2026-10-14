@@ -222,7 +222,7 @@ Options:
 
 ### wolf migrate run-log
 
-Archive the legacy `.wolf/run-log.jsonl` to `.wolf/metrics/archive/run-log-<date>-legacy.jsonl` (local date; a name collision gets the next free `-2`, `-3` suffix). Run it after upgrading if your `wolf run` used to write the run log: while the legacy file is in place, analytics counts old runs twice — the signal log is the canonical source. The move is a rename (contents are never rewritten); the command prints the line count. Idempotent: no legacy file → `nothing to migrate`, exit 0.
+Archive the legacy `.wolf/run-log.jsonl` to `.wolf/metrics/archive/run-log-<date>-legacy.jsonl` (local date; a name collision gets the next free `-2`, `-3` suffix). Run it after upgrading if the removed `run` wrapper (2.13) used to write the run log: while the legacy file is in place, analytics counts old runs twice — the signal log is the canonical source. The move is a rename (contents are never rewritten); the command prints the line count. Idempotent: no legacy file → `nothing to migrate`, exit 0.
 
 ```bash
 wolf migrate run-log

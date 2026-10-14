@@ -1,11 +1,11 @@
 ---
 slug: wave-2.18
-title: Волна 2.18 — Async wolf learn
+title: Волна 2.18 — Async learning
 status: draft
 created: 2026-10-08
 ---
 
-# Волна 2.18 — Async wolf learn
+# Волна 2.18 — Async learning
 
 Источник: драфт «Продуктовый роадмап 2.15+» (волна C). Кандидатный слот 2.17 из драфта сдвинут
 на 2.18 (решение владельца `mem_20261008_volna_2_15_konveyer_artefaktov_skill_int_c62cfc`);

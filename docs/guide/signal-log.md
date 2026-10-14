@@ -16,10 +16,10 @@ rebuildable, в git не коммитится); markdown-отчёты конту
 
 | Событие          | Кто пишет                                                                                          | Когда                                                                               |
 | ---------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `run`            | `wolf run`                                                                                         | после каждого запуска (с P1 — единственный источник run-метрик)                     |
+| `run`            | run-обёртка (команда run удалена в 2.13)                                                           | исторические записи прогонов (с P1 — единственный источник run-метрик)              |
 | `complaint`      | `wolf complain`                                                                                    | при каждой жалобе                                                                   |
 | `delivery`       | `wolf scaffold`, `wolf tool expose`                                                                | доставка методики (рамка+playbook / SKILL.md)                                       |
-| `tool_error`     | `wolf run` (ошибка spawn) + `recordToolError()`                                                    | ошибка тула, класс — через классификатор                                            |
+| `tool_error`     | run-обёртка (ошибка spawn; удалена в 2.13) + `recordToolError()`                                   | ошибка тула, класс — через классификатор                                            |
 | `task_evaluated` | `wolf task-eval`                                                                                   | вердикт по задаче (P0); `--campaign` → `detail.campaign_id` (P3)                    |
 | `mcp_call`       | MCP-сервер (обёртка в `registerMemoryTools`); CLI-обёртка `withCliCall` (волна 0)                  | каждый вызов mr-wolf-\* тулзы (P1 D5); CLI add/get/list/search/call/brief (волна 0) |
 | `memory_stage`   | авто: `wolf search`/`get` (retrieved), `wolf brief`/`call` (injected); ручной: `wolf memory-stage` | стадия жизненного цикла памяти (P2 D1); cited/applied — внешние акторы              |
@@ -54,7 +54,7 @@ rebuildable, в git не коммитится); markdown-отчёты конту
 
 | Поле          | Тип                                      | Откуда                               |
 | ------------- | ---------------------------------------- | ------------------------------------ |
-| `duration_ms` | number                                   | замер `wolf run` вокруг spawn        |
+| `duration_ms` | number                                   | замер run-обёртки вокруг spawn       |
 | `tokens`      | `{input, output, cache_read}`            | суммы сырых токенов по step-finish   |
 | `experiment`  | `{id, arm: 'wolf'\|'baseline', task_id}` | флаги `--experiment/--arm/--task-id` |
 
@@ -89,30 +89,31 @@ writer-путь run-метрик. Существующий историческ�
 `undefined`, файлы истории не переписываются). Неизвестные поля отбрасываются
 Zod-схемой (`strip`).
 
-| Поле             | Тип                        | Семантика                                                        |
-| ---------------- | -------------------------- | ---------------------------------------------------------------- |
-| `event_id`       | uuid                       | уникальный id события; дубликаты детектируются data-quality v2   |
-| `schema_version` | `2` (literal)              | версия схемы; отсутствие = v1                                    |
-| `run_id`         | uuid                       | id прогона `wolf run` — сквозная цепочка задачи                  |
-| `trace_id`       | uuid                       | трасса: объединяет раны одной задачи (`--trace-id` или uuid)     |
-| `parent_span_id` | string                     | родительский span (зарезервирован; span-модель — P2)             |
-| `role_level`     | `'L0'\|'L1'\|'L2'`         | уровень роли писателя по actor-конвенции; дефолт — не писать     |
-| `attempt`        | number                     | попытка (retry-номер) в рамках run                               |
-| `task_id`        | string                     | общий id задачи (пишется всегда при передаче `--task-id`)        |
-| `campaign_id`    | string                     | id кампании: `wolf run --campaign` / `task-eval --campaign` (P3) |
-| `config_hash`    | sha256, первые 12 символов | подпись `.wolf/config.yaml` на момент прогона                    |
-| `prompt_hash`    | sha256, первые 12 символов | подпись текста промпта                                           |
-| `tools`          | `string[]`                 | инструменты прогона (из `--tool`) — источник tool-runs экономики |
+| Поле             | Тип                        | Семантика                                                                   |
+| ---------------- | -------------------------- | --------------------------------------------------------------------------- |
+| `event_id`       | uuid                       | уникальный id события; дубликаты детектируются data-quality v2              |
+| `schema_version` | `2` (literal)              | версия схемы; отсутствие = v1                                               |
+| `run_id`         | uuid                       | id прогона run-обёртки — сквозная цепочка задачи                            |
+| `trace_id`       | uuid                       | трасса: объединяет раны одной задачи (`--trace-id` или uuid)                |
+| `parent_span_id` | string                     | родительский span (зарезервирован; span-модель — P2)                        |
+| `role_level`     | `'L0'\|'L1'\|'L2'`         | уровень роли писателя по actor-конвенции; дефолт — не писать                |
+| `attempt`        | number                     | попытка (retry-номер) в рамках run                                          |
+| `task_id`        | string                     | общий id задачи (пишется всегда при передаче `--task-id`)                   |
+| `campaign_id`    | string                     | id кампании: `--campaign` run-обёртки (архив) / `task-eval --campaign` (P3) |
+| `config_hash`    | sha256, первые 12 символов | подпись `.wolf/config.yaml` на момент прогона                               |
+| `prompt_hash`    | sha256, первые 12 символов | подпись текста промпта                                                      |
+| `tools`          | `string[]`                 | инструменты прогона (из `--tool`) — источник tool-runs экономики            |
 
-`wolf run` (P1 D3) генерирует `event_id`/`run_id`/`trace_id` сам, считает хеши
-и пишет `schema_version: 2` во все новые run-события. Семантика флагов:
+Run-обёртка (P1 D3; команда run удалена в 2.13) генерировала `event_id`/`run_id`/
+`trace_id` сама, считала хеши и писала `schema_version: 2` в новые run-события.
+Семантика флагов:
 `experiment` записывается только полным набором `--experiment` + `--arm`
 (arm обязателен); `--arm` без `--experiment` игнорируется с warning в stderr;
 `--task-id` — общий флаг (пишется и вне эксперимента); `--trace-id`/`--attempt`
 пишутся в `trace_id`/`attempt`.
 
-Живой пример v2-записи (реальный прогон `wolf run --tool wolf-search --tool bash
---trace-id 7f3a… --attempt 1 --task-id docs-p1 --campaign eval-01`):
+Живой пример v2-записи (реальный прогон run-обёртки с `--tool wolf-search
+--tool bash --trace-id 7f3a… --attempt 1 --task-id docs-p1 --campaign eval-01`):
 
 ```json
 {
@@ -315,13 +316,10 @@ error_class_taxonomy:
 ## Паттерн-детекция (Ф21, D1.3)
 
 Ключ кластера (`signalKey`): `tool_name:error_class_id` для ошибок;
-`complaint:<about>` / `delivery:<name>` для остальных; `run` не кластеризуется.
-Порог N≥3 — параметр процесса: `learning.pattern_threshold` в `.wolf/config.yaml`
-(дефолт 3, спека §16). Триггер событийный: в момент записи, перевалившей порог,
-паттерн фиксируется строкой в `.wolf/metrics/patterns.jsonl` — календарных прогонов нет.
-
-Сводка: `wolf learn digest` (активные паттерны + evidence-ссылки на строки лога),
-здоровье контура: `wolf learn status` (объёмы, Layer 1–2 meta-metrics, последние события).
+`complaint:<about>` / `delivery:<name>` для остальных. Счётчики кластеров —
+в сайдкаре (ниже); событийная фиксация паттернов отдельным файлом и сводные
+команды learn-контура удалены в 2.13 по решению владельца. Накопленные сигналы
+читаются действующей аналитикой: `wolf tool stats`, `wolf analytics`.
 
 ### Сайдкар счётчиков (волна 2.12, A1)
 

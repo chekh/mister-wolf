@@ -429,6 +429,10 @@ export interface CouncilsView {
   participation: { agent: string; opinions: number }[];
   votes: Record<string, number>;
   synthesis: { questionsWithSynthesis: number; sharePct: number | null; medianHours: number | null };
+  /** A9 (2.18.0 REQ-01): сколько мнений несут claims (аудируемые), и суммарный
+   * неразрешённый dissent по синтезам — расширение, не замена прежних полей. */
+  audited_count: number;
+  unresolved_dissent_total: number;
   weeks: CouncilWeekActivity[];
   openQuestions: CouncilOpenQuestion[];
 }
@@ -1787,6 +1791,50 @@ function extractVote(op: MemoryObject): string {
   return m ? m[1] : 'TIMEOUT';
 }
 
+/** A9 (2.18.0 REQ-01, NFR-01): claims мнения; legacy-запись без поля → [] —
+ * чтение исторических советов не падает и не даёт мусора. */
+export function extractClaims(op: MemoryObject): string[] {
+  const raw = (op as Record<string, unknown>).claims;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((c): c is string => typeof c === 'string');
+}
+
+/** A9: метаданные синтеза (5 полей v2-контракта, design §3.1). */
+export interface SynthesisMeta {
+  accepted_claims: string[];
+  rejected_alternatives: { claim: string; reason: string }[];
+  unresolved_dissent: string[];
+  confidence: MemoryObject['confidence'];
+  required_validation: string[];
+}
+
+function stringList(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((s): s is string => typeof s === 'string') : [];
+}
+
+/** A9: v2-метаданные синтеза; legacy-синтез без новых полей → пустые списки и
+ * confidence 'medium' (ADR-9) — чтение не падает (NFR-01). */
+export function extractSynthesisMeta(s: MemoryObject): SynthesisMeta {
+  const raw = s as Record<string, unknown>;
+  const rejected = raw.rejected_alternatives;
+  const conf = s.confidence;
+  return {
+    accepted_claims: stringList(raw.accepted_claims),
+    rejected_alternatives: Array.isArray(rejected)
+      ? rejected.filter(
+          (r): r is { claim: string; reason: string } =>
+            typeof r === 'object' &&
+            r !== null &&
+            typeof (r as { claim?: unknown }).claim === 'string' &&
+            typeof (r as { reason?: unknown }).reason === 'string'
+        )
+      : [],
+    unresolved_dissent: stringList(raw.unresolved_dissent),
+    confidence: conf === 'low' || conf === 'high' ? conf : 'medium',
+    required_validation: stringList(raw.required_validation),
+  };
+}
+
 /** Консилиумы: вопросы/мнения/синтезы из councils-subdir + relations answers/based_on.
  * Чистая агрегация по уже выгруженным объектам; ровно два вызова relations.list
  * (predicate answers и based_on — без N+1 по вопросам). Голоса — extractVote
@@ -1909,6 +1957,10 @@ async function buildCouncils(
       sharePct: questions.length > 0 ? (questionsWithSynthesis / questions.length) * 100 : null,
       medianHours,
     },
+    // A9 (2.18.0 REQ-01): аудируемость советов — мнения с claims (≠0 = v2) и
+    // суммарный неразрешённый dissent; legacy без полей даёт 0 (NFR-01)
+    audited_count: opinions.reduce((sum, o) => sum + (extractClaims(o).length > 0 ? 1 : 0), 0),
+    unresolved_dissent_total: syntheses.reduce((sum, s) => sum + extractSynthesisMeta(s).unresolved_dissent.length, 0),
     weeks: weeksOut,
     openQuestions,
   };

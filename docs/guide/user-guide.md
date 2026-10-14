@@ -440,18 +440,13 @@ wolf scaffold skill db-migrations --from-playbook <playbook-id>
 
 `--persona` и `--model` — только для `agent`; `--from-playbook` — переиспользовать существующий playbook вместо создания нового.
 
-### 6.3. run — запуск opencode с маршрутизацией
+### 6.3. run — запуск opencode с маршрутизацией (историческое основание)
 
-Запускает opencode с моделью из routing-объекта Wolf и пишет весовую стоимость токенов в журнал:
+> **Историческое основание:** команда «run» (запуск opencode с маршрутизацией Wolf) удалена в 2.13. Раздел сохранён как архитектурная справка о форме рантайм-сигнала и взаимодействии с кампаниями. Действующая замена — `wolf task-eval --campaign <id>` для вердиктов в кампании и `wolf call <запрос>` для запуска wolf-сессии.
 
-```bash
-wolf run "Проверь контракт add --set" \
-  --agent api-reviewer \
-  --title "Проверка контракта add" \
-  --tool cli-dump
-```
+В прежней форме команда запускала opencode с моделью из routing-объекта Wolf и писала весовую стоимость токенов в журнал. Архитектурная справка по форме сигнала и взаимодействию с кампаниями сохранена ниже.
 
-Флаги: `--agent <name>`, `--title` (метка в журнале), `--session <sid>` (продолжить сессию), `--tool <name>` (повторяемый — отметить используемые инструменты), `--experiment <id>` + `--arm wolf|baseline` (экспериментальная разметка), `--task-id <id>` (общий id задачи), `--campaign <id>` (id кампании для `analytics --view campaign`), `--trace-id <id>` (трасса задачи; дефолт — свежий uuid), `--attempt <n>` (номер попытки). Метрики прогона пишутся run-сигналом в сигнальный лог (схема — [signal-log](signal-log.md)).
+**Флаги (архив, 2.13):** `--agent <name>`, `--title` (метка в журнале), `--session <sid>` (продолжить сессию), `--tool <name>` (повторяемый — отметить используемые инструменты), `--experiment <id>` + `--arm wolf|baseline` (экспериментальная разметка), `--task-id <id>` (общий id задачи), `--campaign <id>` (id кампании для `analytics --view campaign`), `--trace-id <id>` (трасса задачи; дефолт — свежий uuid), `--attempt <n>` (номер попытки). Метрики прогона писались run-сигналом в сигнальный лог (схема — [signal-log](signal-log.md)).
 
 ### 6.4. complain — жалоба на правило/агента/методику
 
@@ -461,7 +456,7 @@ wolf run "Проверь контракт add --set" \
 wolf complain --about skill:apprentice \
   --rule "Правило требует npx vitest run перед отчётом" \
   --evidence "Воркер сдал задачу без прогона тестов (e2e red, лог-цитата)" \
-  --proposal "Добавить STOP-гейт в playbook перед шагом отчёта"
+  --proposal "Добавить обязательный прогон тестов в playbook перед шагом отчёта"
 ```
 
 - `--about` — цель: id базового агента (`worker-implementer`), `skill:<имя>` или существующий mem-id;
@@ -509,31 +504,20 @@ wolf tool stats
 
 ## 8. Самообучение и эффективность
 
-Цикл самообучения Wolf: сигнал-лог → паттерны → черновик урока → валидация → активация. Подробности: [Стюард и обучение](steward-learn.md), [signal-log](signal-log.md).
+Автономный learn-конвейер (паттерны → черновик → валидация → активация) удалён в 2.13 по решению владельца; его протокол сохранён как историческое основание: [Стюард и обучение](steward-learn.md) (`historical: true`), события — [signal-log](signal-log.md). Действующий цикл:
 
 ```bash
-# Активные паттерны: живые счётчики, свежие примеры, ссылки на evidence
-wolf learn digest
+# Урок из опыта сессии (вручную; триггер — повтор ошибки или находка)
+wolf add --type lesson "vitest: запускать один файл с -t <name>, а не весь suite"
 
-# Здоровье сигнал-лога: объёмы, пороги, мета-метрики Layer 1-2, drift
-wolf learn status
+# Жалоба на правило/playbook — hot-signal для мутации (контур Наставника)
+wolf complain --about skill:apprentice --rule "…" --evidence "…" --proposal "…"
 
-# Черновик урока/правила из активного паттерна (механический генератор, без LLM)
-wolf learn propose repeated-grep-miss --negative  # --negative: анти-правило, запрещающее тул
-
-# Sandbox Replay Holdout: повтор черновика на tool_error-событиях после его создания
-wolf learn validate <draft-id>
-
-# Активация валидированного черновика (гейт: holdout пройден или --human-approved)
-wolf learn activate <draft-id> --human-approved
+# Счётчики сигнального лога: экономика инструментов, события
+wolf tool stats
 ```
 
-Специализированные прогоны:
-
-- `wolf learn gate` — STOP-гейт (Ф23): pressure-сценарии доставки + проба read-only зоны; отдельный запуск, вне `check`.
-- `wolf learn decay [--dry-run]` — Ф26: decay-прогон по пробегу (сессии) — очередь `review_required`, реактивация, drift.
-- `wolf learn evolve <template-id> [--write]` — Ф24 (GEPA): кандидат против текущего шаблона `.wolf/templates/<id>.md` по детерминированной метрике; `--write` записывает `<id>.candidate.md`, активация — только человек.
-- `wolf learn route` — Ф25: эвристика глубины ревью по признакам задачи (рекомендация; решение за человеком). Флаги: `--type feature|bugfix|refactor|docs|experiment`, `--files <n>`, `--lines <n>`, `--blast-radius 0..1`, `--touches-read-only`, `--security`, `--metricless`.
+Зрелые уроки Стюард агрегирует в одну замену (`aggregated-lesson`, с 2.14); подтверждение — владелец.
 
 Панель эффективности памяти (агрегация, без LLM): rules holdout, tool economy, delivery, noise, routing:
 
@@ -548,7 +532,7 @@ wolf effectiveness
 ## 9. Legacy
 
 - `wolf migrate [--apply]` — **разовая** миграция старой структуры памяти: `objects/<type>/` → `threads/<tid>/<subdir>/` + `shared/`. По умолчанию dry-run; `--apply` выполняет перенос. Для свежих проектов не нужна.
-- `wolf migrate run-log` — архивирует устаревший `.wolf/run-log.jsonl` в `.wolf/metrics/archive/run-log-<дата>-legacy.jsonl` (rename, без перезаписи содержимого; коллизия имени → суффикс `-2`). Запусти после обновления, если `wolf run` раньше писал run-лог: пока legacy-файл на месте, analytics считает старые прогоны дважды. Идемпотентно: файла нет → `nothing to migrate`, exit 0.
+- `wolf migrate run-log` — архивирует устаревший `.wolf/run-log.jsonl` в `.wolf/metrics/archive/run-log-<дата>-legacy.jsonl` (rename, без перезаписи содержимого; коллизия имени → суффикс `-2`). Запусти после обновления, если run-обёртка (команда run удалена в 2.13) раньше писала run-лог: пока legacy-файл на месте, analytics считает старые прогоны дважды. Идемпотентно: файла нет → `nothing to migrate`, exit 0.
 
 ---
 
@@ -756,8 +740,6 @@ wolf council synthesize --question-id <qid> --recommendation "..."
 # Процессы
 wolf bootstrap                     # скан + черновик стартовой памяти
 wolf scaffold agent|skill|command <name> [--persona "..."] [--model "..."] [--from-playbook <id>]
-wolf run "prompt" [--agent <name>] [--title "..."] [--session <sid>] [--tool <name>] \
-           [--experiment <id> --arm wolf|baseline] [--task-id <id>] [--campaign <id>] [--trace-id <id>] [--attempt <n>]
 wolf complain --about <agent-id|skill:name|mem-id> --rule "..." --evidence "..." --proposal "..."
 
 # Инструменты (tool-экономика)
@@ -770,15 +752,9 @@ wolf tool revive <name-or-id>
 wolf tool stats
 
 # Самообучение и эффективность
-wolf learn digest                  # активные паттерны
-wolf learn status                  # здоровье сигнал-лога
-wolf learn propose <pattern-key> [--negative]
-wolf learn validate <draft-id>     # Sandbox Replay Holdout
-wolf learn activate <draft-id> [--human-approved]
-wolf learn gate                    # STOP-гейт (Ф23)
-wolf learn decay [--dry-run]       # Ф26
-wolf learn evolve <template-id> [--write]  # Ф24 GEPA
-wolf learn route [--type feature] [--files <n>] [--lines <n>] [--blast-radius 0..1] [--touches-read-only] [--security] [--metricless]
+wolf add --type lesson "текст"       # урок из опыта сессии (самообучение — ручное)
+wolf tool stats                      # экономика инструментов из сигнального лога
+wolf analytics                       # единая аналитика поверхности памяти
 wolf effectiveness                 # панель эффективности памяти
 
 # Legacy

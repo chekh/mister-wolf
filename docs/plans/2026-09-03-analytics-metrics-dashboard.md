@@ -188,7 +188,7 @@ git commit -m "feat(run): raw token sums alongside weighted in parseRunMetrics (
 
 ### Задача 2: M1b — duration_ms + experiment/arm/task_id в run-log и run-сигнале
 
-Спека: §5 M1 (пункты 2–3), D4 (duration меряет `wolf run` вокруг spawn), D5 (экспериментальные примитивы без движка), §8 критерий 1, Q5/Q10 (источники duration и arm/task_id).
+Спека: §5 M1 (пункты 2–3), D4 (duration меряет run-обёртка вокруг spawn), D5 (экспериментальные примитивы без движка), §8 критерий 1, Q5/Q10 (источники duration и arm/task_id).
 
 Согласование контрактов: в `SignalEvent.experiment` поле `arm` имеет тип `'wolf' | 'baseline'`, в `RunLogEntry.experiment` — `string`. Эксперимент-объект пишется только при наличии `--experiment`; поскольку `arm` обязателен в типе сигнала, CLI пишет experiment только при полном наборе `--experiment` + `--arm` (оба неполных варианта — `--arm/--task-id` без `--experiment` и `--experiment` без `--arm` — дают `console.error`-предупреждение и игнорируются).
 
@@ -290,7 +290,7 @@ export interface RunLogEntry {
   session?: string;
   weighted?: number;
   tools?: string[];
-  /** M1 (D4): wall-clock длительность прогона, мс (замер wolf run вокруг spawn). */
+  /** M1 (D4): wall-clock длительность прогона, мс (замер run-обёртки вокруг spawn). */
   duration_ms?: number;
   /** M1 (D3): сырые токены прогона (Σ по step-finish). */
   tokens?: { input: number; output: number; cache_read: number };
@@ -313,7 +313,7 @@ export interface RunLogEntry {
 И замените функцию `appendRunSignal` целиком на:
 
 ```typescript
-/** Writer (а): `wolf run` — метрики сессии (модель из routing, weighted, outcome; M1: duration/tokens/experiment). */
+/** Writer (а): run-обёртка — метрики сессии (модель из routing, weighted, outcome; M1: duration/tokens/experiment). */
 export function appendRunSignal(
   baseDir: string,
   input: {
@@ -4667,7 +4667,7 @@ agents, steward, outliers, readiness.
 
 | Поле          | Тип                                      | Откуда                               |
 | ------------- | ---------------------------------------- | ------------------------------------ |
-| `duration_ms` | number                                   | замер `wolf run` вокруг spawn        |
+| `duration_ms` | number                                   | замер run-обёртки вокруг spawn       |
 | `tokens`      | `{input, output, cache_read}`            | суммы сырых токенов по step-finish   |
 | `experiment`  | `{id, arm: 'wolf'\|'baseline', task_id}` | флаги `--experiment/--arm/--task-id` |
 

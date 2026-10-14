@@ -103,8 +103,9 @@ attribution: accepted 1/1 (100.0%)
 
 Сценарий A/B «та же задача, с памятью и без»: одна задача, N прогонов в сессиях
 с injected-памятью и M прогонов без; все раны и вердикты помечаются одним id
-кампании — `wolf run --campaign <id>` (топ-левел поле `campaign_id` run-сигнала)
-и `wolf task-eval --campaign <id>` (пишется в `detail.campaign_id`). Пошаговый
+кампании — `wolf task-eval --campaign <id>` (пишется в `detail.campaign_id`).
+Раньше использовался флаг `--campaign <id>` на команде run (топ-левел поле
+`campaign_id` run-сигнала), но команда удалена в 2.13. Пошаговый
 рецепт с WOLF_SESSION — [harness-integration.md](./harness-integration.md).
 
 Когорта рана определяется join-по-`session_id`: раны группируются по
@@ -419,7 +420,7 @@ task verdict recorded: verdict=accepted scorer=human
 
 Отвечает на вопрос «растёт ли отдача памяти вместе с захватом»: если added
 неделями опережает superseded/resolved — память растёт быстрее, чем очищается
-(сигнал к `wolf learn decay` и аудиту шума, [effectiveness.md](./effectiveness.md)).
+(сигнал к аудиту шума и консолидации однотипных, [effectiveness.md](./effectiveness.md)).
 
 ## Конфигурация
 
