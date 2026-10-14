@@ -3,10 +3,11 @@ import { Command } from 'commander';
 import { safeCwd } from '../cli-entry.js';
 import {
   acquireArtifactClaim,
+  heartbeatArtifactClaim,
   listArtifactClaims,
   releaseArtifactClaim,
 } from '../../../app/use-cases/claim-artifact.js';
-import { claimFilePath, ClaimHeldError } from '../../fs/claim-registry.js';
+import { claimFilePath, ClaimHeldError, heartbeatFilePath } from '../../fs/claim-registry.js';
 import { resolveMemoryRoot } from '../../fs/memory-root.js';
 import { UserFacingError } from '../../../domain/errors.js';
 
@@ -40,6 +41,16 @@ export function claimCommand(baseDir: string = safeCwd()): Command {
         }
         throw err;
       }
+    });
+
+  cmd
+    .command('heartbeat')
+    .description('Refresh the claim heartbeat (keeps a long-running claim fresh within the 10-minute window)')
+    .argument('<artifact>', 'Artifact id whose claim heartbeat to refresh')
+    .action((artifact: string) => {
+      const hb = heartbeatArtifactClaim({ baseDir }, artifact);
+      console.log(`Heartbeat written: ${artifact} at ${hb.written_at} (writer ${hb.writer})`);
+      console.log(`heartbeat file: ${heartbeatFilePath(resolveMemoryRoot(baseDir).root, artifact)}`);
     });
 
   cmd

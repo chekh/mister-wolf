@@ -5,9 +5,11 @@ import {
   listClaims,
   releaseClaim,
   requireClaim,
+  writeHeartbeat,
   type ClaimIdentity,
   type ClaimRecord,
   type ClaimRegistryDeps,
+  type HeartbeatRecord,
 } from '../../adapters/fs/claim-registry.js';
 
 /**
@@ -62,6 +64,12 @@ export function releaseArtifactClaim(
 
 export function listArtifactClaims(deps: ClaimArtifactDeps): ClaimRecord[] {
   return listClaims(registryDeps(deps));
+}
+
+/** Heartbeat держателя (2.18.0 REQ-03): продлевает свежесть claim'а долгой
+ * операции в окне CLAIM_HEARTBEAT_WINDOW_MS; writer — owner из env (не auth). */
+export function heartbeatArtifactClaim(deps: ClaimArtifactDeps, artifact: string): HeartbeatRecord {
+  return writeHeartbeat(registryDeps(deps), { artifact, writer: identityOf(deps).owner });
 }
 
 /** Guard для use-cases записи общих артефактов: claim артефакта должен
