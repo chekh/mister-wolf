@@ -419,7 +419,7 @@ task verdict recorded: verdict=accepted scorer=human
 
 Отвечает на вопрос «растёт ли отдача памяти вместе с захватом»: если added
 неделями опережает superseded/resolved — память растёт быстрее, чем очищается
-(сигнал к `wolf learn decay` и аудиту шума, [effectiveness.md](./effectiveness.md)).
+(сигнал к аудиту шума и консолидации однотипных, [effectiveness.md](./effectiveness.md)).
 
 ## Конфигурация
 

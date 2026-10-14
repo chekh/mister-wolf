@@ -8,7 +8,7 @@
 
 - [Getting Started](https://chekh.github.io/mister-wolf/guide/getting-started) — установка и первая сессия
 - [Organization & Council](https://chekh.github.io/mister-wolf/guide/organization) — роли L0/L1/L2, цикл работы, консилиум
-- [Memory Model](https://chekh.github.io/mister-wolf/guide/memory) — семь типов, фасеты, статусы
+- [Memory Model](https://chekh.github.io/mister-wolf/guide/memory) — 8 core-типов + расширения, фасеты, статусы
 - [Learning Loop](https://chekh.github.io/mister-wolf/guide/feedback) — жалобный контур и самообучение
 - [Delivery & Trust](https://chekh.github.io/mister-wolf/guide/delivery) — доставка playbook'ов
 - [Artifact Pipeline](https://chekh.github.io/mister-wolf/guide/artifact-pipeline) — конвейер docs/dev
@@ -28,7 +28,7 @@
 
 ## Design specs
 
-- [Self-Learning Design](./superpowers/specs/2026-08-26-self-learning-design.md) — контур самообучения Ф20–26 (сигнальный лог, паттерны, Стюард, STOP, GEPA, AFlow, decay).
+- [Self-Learning Design](./superpowers/specs/2026-08-26-self-learning-design.md) — историческое основание (`historical: true`): дизайн контура самообучения Ф20–26, не реализованного в 2.18.0.
 - [Superpowers adoption](./superpowers/superpowers-adoption.md) — перенос механизмов superpowers в Wolf (D1–D5).
 
 ## Guides & process
@@ -38,7 +38,7 @@
 - [Architecture](./guide/architecture.md) — устройство системы: четыре слоя, поток данных, каталог исходников.
 - [Протокол обработки жалоб](./guide/complaint-protocol.md) — `wolf complain` → Стюард → новая версия playbook → вердикт.
 - [Протокол Стюарда: bootstrap](./guide/steward-bootstrap.md) — свёртка черновиков стартовой памяти после `wolf bootstrap`.
-- [Протокол обучения Стюарда](./guide/steward-learn.md) — полный цикл самообучения Ф20–26 (кто/что/когда).
+- [Протокол обучения Стюарда](./guide/steward-learn.md) — историческое основание (`historical: true`): цикл самообучения Ф20–26; learn-команды удалены в 2.13.
 - [Сигнальный лог (Ф20/Ф21)](./guide/signal-log.md) — события сигнального лога, пороги, читатели.
 - [Интеграция харнессов](./guide/harness-integration.md) — жизненный цикл памяти (cited/applied, `wolf memory-stage`), `WOLF_SESSION`, `wolf coord`, кампании «с памятью и без».
 - [Экономика инструментов](./guide/tool-economy.md) — переиспользование tool-объектов, счётчики, weighted-экономика.
@@ -47,13 +47,14 @@
 - [Master plan template](./templates/master-plan-template.md) — шаблон мастер-плана фичи (5 стадий).
 - [UX scenarios](./ux-scenarios/README.md) — 12 сценариев использования как requirements-материал.
 
-### Контур самообучения: как включить
+### Самообучение (действующий контур)
 
-1. `wolf init` в проекте — команды контура уже в CLI, отдельных установок нет.
-2. Работайте как обычно: `wolf run/complain/call` пишут сигналы в `.wolf/metrics/session-metrics.jsonl` (Ф20).
-3. `wolf learn digest` — накопленные паттерны (N≥3) и draft'ы; `wolf learn propose/validate/activate` — цикл правил (Ф21–22).
-4. `npm run pressure-test` — STOP-гейт: доставка знаний + read-only зоны (Ф23); `wolf learn decay` — чистка по пробегу (Ф26).
-5. Тонко: `wolf learn evolve` (шаблоны, Ф24) и `wolf learn route` (глубина ревью, Ф25) — рекомендации, применение через человека. Детали: [steward-learn.md](./guide/steward-learn.md).
+Автономный learn-конвейер (digest/propose/validate/activate, эволюция шаблонов) удалён в 2.13 по решению владельца — протокол сохранён как историческое основание: [steward-learn.md](./guide/steward-learn.md), спека — [self-learning-design.md](./superpowers/specs/2026-08-26-self-learning-design.md). Сейчас:
+
+1. Уроки пишутся вручную: `wolf add --type lesson "текст урока"`.
+2. Жалобы — `wolf complain`: hot-signal для мутаций playbook (контур Наставника).
+3. Сигнальный лог `.wolf/metrics/session-metrics.jsonl` остаётся источником метрик: его агрегируют `wolf tool stats` и `wolf analytics`.
+4. Зрелые уроки Стюард агрегирует в одну замену (`aggregated-lesson`, с 2.14); подтверждение — владелец.
 
 ### Базовый набор
 
