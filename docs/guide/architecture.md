@@ -56,23 +56,16 @@ Use-case'ы (сценарии) в `src/app/use-cases/` по факту: `activat
 
 ### 3.2. Конвейер активации (§3.2)
 
-Единый для всего, что меняет поведение или знания:
+Исторический дизайн (спека самообучения) описывал единый конвейер «draft → holdout-реплей → активация → пост-аудит → доставка» с жёстким принципом **создание ≠ активация**: черновик невидим для доставки, `wolf call` матчит только `status: active`. Автономная реализация конвейера (learn-команды, pressure-гейт) удалена в 2.13 по решению владельца; принцип выжил в ручных аналогах:
 
-```
-draft → Sandbox Replay → активация → пост-аудит владельца → доставка
-```
-
-Создание — без пре-аппрува; доставка пользователю — только после зелёного прогона. **Создание ≠ активация**: draft (`status: proposed`) невидим для доставки, `wolf call` матчит только `status: active`.
-
-- Код: `src/app/use-cases/propose-draft.ts` → `validate-draft.ts` (детерминированный holdout-реплей лога, не LLM-as-a-judge) → `activate-draft.ts`.
-- **STOP-гейт** (Ф23): автономная активация проходит давление pressure-сценария — `npm run pressure-test` (= `wolf learn gate`); гейт в `src/domain/gates/stop-gate.ts`.
-- Протокол: [steward-learn.md](steward-learn.md).
+- Уроки: `wolf add --type lesson`; изменение канона — через владельца (`supersede`, `wolf face` + подтверждение).
+- Архитектура конвейера — историческое основание: [steward-learn.md](steward-learn.md) (`historical: true`).
 
 ### 3.3. Цикл жизни знаний (§3.1)
 
 Память не «write-once»: **накопление → обработка по триггерам → обновлённое знание**. Обработка затрагивает часть памяти (по триггерам, не всё сразу): обобщение однотипного, актуализация устаревшего (supersede), забывание неиспользуемого — decay по **пробегу** (сессии, не календарь).
 
-- Код: `pattern-detection.ts` (триггеры-паттерны), `supersede-memory-object.ts` (актуализация), `learn-decay.ts` (TTL по пробегу → очередь `review_required`; срабатывание = delivery-событие, реактивация автоматическая).
+- Код: `supersede-memory-object.ts` (актуализация). Паттерн-детекция и decay-очередь — часть удалённого learn-контура (историческое основание: спека самообучения).
 
 ### 3.4. Атрибуция и статусы (§3.4)
 
@@ -90,28 +83,13 @@ draft → Sandbox Replay → активация → пост-аудит влад
 
 ### 3.6. Сигнальный лог (Ф20)
 
-`.wolf/metrics/session-metrics.jsonl` — append-only лог измеренного опыта (derived-артефакт: rebuildable, в git не коммитится). События: `run` (`wolf run`), `complaint` (`wolf complain`), `delivery` (`wolf scaffold` / `wolf tool expose` / `wolf call`), `tool_error` (класс — детерминированный классификатор `src/domain/error-class.ts`). Формат OTEL GenAI-совместимый, `gen_ai.modelID` обязательно. Writer'ы — сами команды (`wolf metrics emit` не существует). Паттерн-детекция (Ф21): кластер `tool:class` / `complaint:<about>` / `delivery:<name>` при **N≥3** (`learning.pattern_threshold`, дефолт 3) фиксируется в `.wolf/metrics/patterns.jsonl` событийно — в момент перевала порога. Подробно: [signal-log.md](signal-log.md).
+`.wolf/metrics/session-metrics.jsonl` — append-only лог измеренного опыта (derived-артефакт: rebuildable, в git не коммитится). События: `complaint` (`wolf complain`), `delivery` (`wolf scaffold` / `wolf tool expose` / `wolf call`), `tool_error` (класс — детерминированный классификатор `src/domain/error-class.ts`); события `run` — исторические (команда `run` удалена в 2.13). Формат OTEL GenAI-совместимый, `gen_ai.modelID` обязательно. Writer'ы — сами команды (`wolf metrics emit` не существует). Подробно: [signal-log.md](signal-log.md).
 
-## 4. Контур самообучения (Ф20–26)
+## 4. Контур самообучения (Ф20–26) — историческое основание
 
-Полный цикл (замкнут, roadmap v3 Phase D3):
+Дизайн контура Ф20–26 (паттерны N≥3 → draft → holdout-валидация → активация → decay по пробегу) не реализован в 2.18.0: автономные learn-команды удалены в 2.13 по решению владельца. Сохранившиеся части: сигнальный лог (§3.6), read-only зоны (§3.5), принцип «создание ≠ активация» в ручных операциях (§3.2). Действующий контур обучения: `wolf add --type lesson` (уроки), `wolf complain` → мутация playbook Наставником, агрегация зрелых уроков в одну замену (`aggregated-lesson`, 2.14+).
 
-```
-сигналы (Ф20) → паттерны N≥3 (Ф21) → draft (propose)
-  → Sandbox Replay Holdout (validate) → активация (activate) → доставка (wolf call)
-```
-
-| Фаза               | Механизм                                                                 | Команда                                       | Use-case                                                     |
-| ------------------ | ------------------------------------------------------------------------ | --------------------------------------------- | ------------------------------------------------------------ |
-| Ф20 сигнальный лог | writer'ы CLI пишут `session-metrics.jsonl`                               | — (побочный эффект команд)                    | —                                                            |
-| Ф21 паттерны       | кластеризация по порогу N≥3                                              | `wolf learn digest` / `status`                | `pattern-detection.ts`                                       |
-| Ф22 кандидаты      | propose → holdout → activate (гейт «создание ≠ активация»)               | `wolf learn propose/validate/activate`        | `propose-draft.ts`, `validate-draft.ts`, `activate-draft.ts` |
-| Ф23 STOP-гейт      | pressure-сценарии + read-only зоны — барьер автономной адаптации         | `npm run pressure-test` (= `wolf learn gate`) | `src/domain/gates/stop-gate.ts`                              |
-| Ф24 GEPA           | эволюция шаблонов брифов: dry-run сравнение по детерминированной метрике | `wolf learn evolve <id>`                      | `template-evolve.ts`                                         |
-| Ф25 AFlow          | эвристики глубины ревью: рекомендация flat / review-council              | `wolf learn route`                            | — (детерминированная таблица)                                |
-| Ф26 decay          | TTL по пробегу → очередь `review_required`; реактивация доставкой        | `wolf learn decay`                            | `learn-decay.ts`                                             |
-
-LLM в контуре — только опциональные адаптеры за интерфейсами `DraftGenerator` / `TemplateReflector`; запись и валидация никогда не требуют LLM (local-first). Канон контура — спека [docs/superpowers/specs/2026-08-26-self-learning-design.md](../superpowers/specs/2026-08-26-self-learning-design.md), продуктовый протокол — [steward-learn.md](steward-learn.md).
+Канон истории — спека [docs/superpowers/specs/2026-08-26-self-learning-design.md](../superpowers/specs/2026-08-26-self-learning-design.md) (`historical: true`), продуктовый протокол — [steward-learn.md](steward-learn.md) (`historical: true`).
 
 ## 5. Стюард — фоновый агент контура
 

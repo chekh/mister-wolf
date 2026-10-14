@@ -20,7 +20,7 @@ wolf complain \
   --about skill:apprentice \
   --rule "Правило требует npx vitest run перед отчётом" \
   --evidence "Воркер сдал задачу без прогона тестов: e2e red, лог-цитата" \
-  --proposal "STOP-гейт в playbook перед шагом отчёта"
+  --proposal "Обязательный прогон тестов в playbook перед шагом отчёта"
 ```
 
 - `--about` — цель жалобы: id базового агента (`worker-implementer`, `mr-wolf`,

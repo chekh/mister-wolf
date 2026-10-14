@@ -36,11 +36,11 @@ const modes = computed(() => [
   },
   {
     name: 'LEARN',
-    status: 'EXPERIMENTAL',
-    statusClass: 'st-experimental',
-    cmd: '$ wolf learn digest → propose → validate → activate',
-    input: t({ en: 'the session signal log — errors, complaints, metrics.', ru: 'сигнал-лог сессий — ошибки, жалобы, метрики.' }),
-    output: t({ en: 'validated lessons become active rules.', ru: 'проверенные уроки становятся активными правилами.' }),
+    status: 'AVAILABLE',
+    statusClass: 'st-available',
+    cmd: '$ wolf add --type lesson',
+    input: t({ en: 'a recurring problem, put into words.', ru: 'повторяющаяся проблема, сформулированная словами.' }),
+    output: t({ en: 'a lesson in memory; mature ones aggregate into a single rule.', ru: 'урок в памяти; зрелые агрегируются в одно правило.' }),
   },
 ])
 </script>
