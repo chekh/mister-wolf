@@ -86,10 +86,20 @@ describe('worktree memory (2.17.1 REQ-02: WT-ID scope, S-15/S-17/S-18)', () => {
     expect(runCli(['get', 'inj_wt_only'], wt).stdout).toContain('wt only');
   });
 
-  it('orphaned legacy scope is a doctor finding (no auto-cleanup, P3)', () => {
-    // Предсказуемая фикстура: отдельный legacy-scope, чья ворктрия никогда
-    // не существовала — гарантированно не промоутирован и не зависит от
-    // исхода предыдущих кейсов
+  it('orphaned scope is a doctor finding (no auto-cleanup, P3); живая WT-ID-копия — не orphan (F-02)', () => {
+    // Предсказуемая фикстура: отдельные scope, чьи ворктрии никогда не
+    // существовали — гарантированно не промоутированы и не зависят от
+    // исхода предыдущих кейсов. Живой WT-ID-токен (формат w-<sha12>) не
+    // совпадает с именами каталогов .git/worktrees — раньше репортился
+    // ложным orphan'ом; теперь сверяется с токенами живых копий.
+    writeLegacyInjection(main, {
+      id: 'inj_wt_live_scope',
+      title: 'live wt fact',
+      body: 'live worktree-scoped fact',
+      trigger_keywords: [],
+      created_by: 'user:t',
+      scope: `worktree:${wtId}`,
+    });
     writeLegacyInjection(main, {
       id: 'inj_orphan',
       title: 'orphan fact',
@@ -101,5 +111,6 @@ describe('worktree memory (2.17.1 REQ-02: WT-ID scope, S-15/S-17/S-18)', () => {
     const d = runCli(['doctor'], main);
     expect(d.stdout).toContain('Orphaned worktree scopes');
     expect(d.stdout).toContain('worktree:wt-gone');
+    expect(d.stdout).not.toContain(`worktree:${wtId}`);
   });
 });

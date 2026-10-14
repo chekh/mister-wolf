@@ -338,6 +338,19 @@ async function resultFromRecord(deps: FaceOperationDeps, op: FaceOpRecord): Prom
   return { face, supersededId, mutationRecordId, opId: op.opId };
 }
 
+/** F-01 (фикс-раунд 1 ревью фазы 4): healing-операция миграции — план не
+ * начинается с add_face (тот же признак, что parseMigrateOps в
+ * migrate-faces.ts). Её вход не содержит body, а add_face не входит в план:
+ * recovery-пути (wolf face recover, авто-resume, явный --op-id) её НЕ
+ * исполняют — иначе executeChain создал бы версию с пустым body и погасил
+ * живой канон. Дозавершение — только повторный `wolf face migrate`
+ * (migrateOwner → healLegacyTransition). */
+function healingRefusal(op: FaceOpRecord): UserFacingError {
+  return new UserFacingError(
+    `face operation ${op.opId} is a healing migration (plan: ${op.plan.join(', ')}) — recovery cannot resume it; re-run wolf face migrate to complete it (or wolf face recover ${op.opId} --abort to cancel)`
+  );
+}
+
 /** Цепочка шагов с reconcile (§3.3): каждый шаг перед записью проверяет
  * фактическое состояние — уже-выполненное пропускается молча (без второго
  * op_step). Вызывается под внешним lock. */
@@ -346,6 +359,9 @@ async function executeChain(
   op: FaceOpRecord,
   actor: string
 ): Promise<CreateFaceVersionResult> {
+  // F-01 defense-in-depth: шаг add_face гейтен планом — версия с пустым body
+  // (вход healing-операции body не содержит) из recovery-пути невозможна в принципе.
+  if (op.plan[0] !== 'add_face') throw healingRefusal(op);
   const index = safeIndex(deps, op.opId);
   const { store } = deps;
   const input = op.input;
@@ -545,9 +561,11 @@ export async function runFaceMutation(
   // Авто-resume: первая же мутация владельца дозавершает незавершённую
   // операцию под тем же lock до старта новой (детерминированно из op_started).
   // Тот же input — вызов является повтором той же операции (без второй версии).
+  // F-01: healing-операции пропускуются — их дозавершает только wolf face migrate.
   let unfinished: FaceOpRecord | null = null;
   for (const op of ops.values()) {
     if (op.ownerSkill !== owner || op.committed || op.aborted) continue;
+    if (op.plan[0] !== 'add_face') continue;
     if (unfinished === null || op.seq > unfinished.seq) unfinished = op;
   }
   if (unfinished) {
@@ -596,6 +614,7 @@ export async function resumeFaceOperation(
     const ops = await readOperations(deps.log);
     const op = ops.get(opId);
     if (!op) throw new UserFacingError(`face operation not found: ${opId}`);
+    if (op.plan[0] !== 'add_face') throw healingRefusal(op); // F-01/MINOR-1: гейт выше committed — завершённой healing-операции честный отказ вместо «no face object»
     if (op.committed) return resultFromRecord(deps, op);
     if (op.aborted) throw new UserFacingError(`face operation ${opId} was aborted — nothing to resume`);
     return executeChain(deps, op, who);
