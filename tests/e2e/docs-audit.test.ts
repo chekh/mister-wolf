@@ -8,6 +8,8 @@ import { join, relative, sep } from 'node:path';
 
 const ROOT = join(__dirname, '..', '..');
 
+// Tokens ловятся с границей слова/символа, чтобы не путать `wolf run` (удалена)
+// с `wolf run-log` (другая команда) или `learn` в составе `learnable`.
 const FORBIDDEN_TOKENS = [
   'wolf learn',
   'sandbox-replay',
@@ -15,6 +17,10 @@ const FORBIDDEN_TOKENS = [
   'STOP-гейт',
   'STOP gate',
   'learn --from-session',
+  'wolf run ', // пробел после — отсекает wolf run-log
+  '`wolf run`', // backtick-форма
+  'wolf run\n', // перевод строки
+  'wolf run\t', // таб
 ] as const;
 
 // Архив: документы, описывающие удалённый learn-контур. Допущены при
@@ -26,6 +32,12 @@ const ALLOWED_FILES_WITH_HISTORICAL = new Set<string>([
   'docs/superpowers/plans/2026-10-02-product-roadmap-2.15-plus.md',
   'docs/superpowers/plans/2026-10-10-wave-2.16-init2-unpin-hygiene-plan.md',
   'docs/guide/steward-learn.md',
+  // F-01 (2.18.0): спеки аналитики 2026-09-03/04 описывают writer'ы удалённой
+  // в 2.13 run-обёртки — архив с historical: true.
+  'docs/superpowers/specs/2026-09-03-analytics-metrics-dashboard-design.md',
+  'docs/superpowers/specs/2026-09-04-p0-analytics-honesty-design.md',
+  'docs/superpowers/specs/2026-09-04-p1-telemetry-identity-design.md',
+  'docs/superpowers/specs/2026-09-04-p3-campaigns-roi-design.md',
 ]);
 
 // Документы текущей фазы — аудит их не касается (T-INT ведёт отдельно).

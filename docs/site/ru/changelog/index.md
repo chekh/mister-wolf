@@ -284,7 +284,7 @@ Supported OpenCode range: v1 ≥ 1.18.29 and v2 (tested against 2.0.24).
 ### Added
 
 - Campaigns, cohorts and per-memory ROI analytics (P3, spec `docs/superpowers/specs/2026-09-04-p3-campaigns-roi-design.md`):
-  - `wolf run --campaign <id>` writes a top-level `campaign_id` into the run signal; `wolf task-eval --campaign <id>` propagates it into `task_evaluated` (`detail.campaign_id`); without the flag nothing is written (backward-compatible optional schema field, `task_id` pattern from P1).
+  - The `run` wrapper's `--campaign <id>` flag (wrapper removed in 2.13) wrote a top-level `campaign_id` into the run signal; `wolf task-eval --campaign <id>` propagates it into `task_evaluated` (`detail.campaign_id`); without the flag nothing is written (backward-compatible optional schema field, `task_id` pattern from P1).
   - `wolf analytics --view campaign` (CLI and MCP): runs grouped by `campaign_id`, split into `with_memory`/`no_memory` cohorts by injected-memory presence in the run session (`session_id` join over `memory_stage injected`, attribution pattern from P2); per cohort — n, median weighted, accepted-verdict share, process-failure rate; cohorts below 3 runs report honest `n/a` with reason, campaigns without verdicts report `n/a` verdict columns.
   - `wolf analytics --view memory`: per-memory ROI section — `associatedAccepted` / `associatedApplied` / `injectedTotal` / last activity per memory id, sorted by `associatedAccepted` desc, under a "correlational, not causal" disclaimer.
   - Docs: analytics guide + site (EN/RU) cover the new view and ROI section with live examples; signal-log guide documents `campaign_id`; harness-integration guide adds the "with/without memory" campaign scenario.
@@ -311,7 +311,7 @@ Supported OpenCode range: v1 ≥ 1.18.29 and v2 (tested against 2.0.24).
 
 - End-to-end telemetry identity (P1, spec `docs/superpowers/specs/2026-09-04-p1-telemetry-identity-design.md`):
   - `SignalEventSchema` v2: optional identity fields on every signal — `event_id` (uuid), `schema_version: 2`, `run_id`, `trace_id`, `parent_span_id`, `role_level` (L0/L1/L2), `attempt`, `task_id`, `config_hash`, `prompt_hash`, `tools: string[]`. Records without `schema_version` read as v1 (upcast on read, history is never rewritten); unknown fields are stripped by Zod.
-  - `wolf run` writes v2 fields into the run signal: generates `event_id`/`run_id` (uuid), `trace_id` (uuid or new `--trace-id`), `attempt` (new `--attempt`), `config_hash` = sha256(`.wolf/config.yaml`).slice(0,12), `prompt_hash` = sha256(prompt).slice(0,12), `tools` from `--tool`; `--task-id` is promoted from experiment-only to a general flag (always written when passed).
+  - The `run` wrapper (removed in 2.13) wrote v2 fields into the run signal: generated `event_id`/`run_id` (uuid), `trace_id` (uuid or new `--trace-id`), `attempt` (new `--attempt`), `config_hash` = sha256(`.wolf/config.yaml`).slice(0,12), `prompt_hash` = sha256(prompt).slice(0,12), `tools` from `--tool`; `--task-id` was promoted from experiment-only to a general flag (always written when passed).
   - `mcp_call` signal event (P1 D5): the `registerMemoryTools` wrapper logs every `mr-wolf_*` tool call with `tool_name`, `duration_ms`, `outcome: 'ok'|'error'`, `detail.method`; telemetry failures never break the wrapped call.
   - `dataQuality` v2 in the analytics report: `duplicateEventRatePct` (duplicates by `event_id`; the second copy never reaches analytics), `unknownModelRatePct` (runs with modelID null/'unknown'), `pricingCoveragePct` (runs with tokens priced / all runs with tokens; null without pricing), `completeTraceRatePct: null` with `completeTraceRateReason` (span model planned P2). `wolf analytics`/`wolf dashboard` print the new lines.
   - Docs: signal-log guide covers schema v2 and `mcp_call`; new "Harness integration" section in the analytics guide and on the site (EN/RU) — how wrapper/plugin authors write v2 events.
@@ -323,11 +323,11 @@ Supported OpenCode range: v1 ≥ 1.18.29 and v2 (tested against 2.0.24).
 
 ### Breaking
 
-- `wolf run` no longer writes `.wolf/run-log.jsonl` (P1 D4: single canonical signal log; `verdict_pending` is not carried over — use `wolf task-eval`). Existing run-log history remains readable for analytics; run `wolf migrate run-log` after upgrade to archive the legacy file and stop the double count.
+- The `run` wrapper (removed in 2.13) no longer wrote `.wolf/run-log.jsonl` (P1 D4: single canonical signal log; `verdict_pending` is not carried over — use `wolf task-eval`). Existing run-log history remains readable for analytics; run `wolf migrate run-log` after upgrade to archive the legacy file and stop the double count.
 
 ### Fixed
 
-- e2e telemetry tests updated for signal-only source (v2.6.0 publish blocker): `analytics.e2e` asserted against `.wolf/run-log.jsonl`, which `wolf run` no longer writes — run assertions now target the canonical signal log (`session_id`/`arm`/`task_id` coverage preserved); `migrate doc-ids` e2e fixture made deterministic (live playground memory is copied only when it still contains `doc_*` ids, otherwise the synthetic seed is used — local/CI parity).
+- e2e telemetry tests updated for signal-only source (v2.6.0 publish blocker): `analytics.e2e` asserted against `.wolf/run-log.jsonl`, which the `run` wrapper no longer writes — run assertions now target the canonical signal log (`session_id`/`arm`/`task_id` coverage preserved); `migrate doc-ids` e2e fixture made deterministic (live playground memory is copied only when it still contains `doc_*` ids, otherwise the synthetic seed is used — local/CI parity).
 
 ## [2.5.0] — 2026-09-04
 
@@ -375,7 +375,7 @@ Supported OpenCode range: v1 ≥ 1.18.29 and v2 (tested against 2.0.24).
 ### Added
 
 - Effectiveness analytics system (spec `docs/superpowers/specs/2026-09-03-analytics-metrics-dashboard-design.md`):
-  - `wolf run` now records a raw token breakdown (`input`/`output`/`cache_read`), wall-clock `duration_ms`, and optional experiment primitives (`--experiment`, `--arm wolf|baseline`, `--task-id`) into both the run log and the signal log; existing records stay compatible.
+  - The `run` wrapper (removed in 2.13) recorded a raw token breakdown (`input`/`output`/`cache_read`), wall-clock `duration_ms`, and optional experiment primitives (`--experiment`, `--arm wolf|baseline`, `--task-id`) into both the run log and the signal log; existing records stay compatible.
   - `wolf effectiveness --snapshot` — append-only report snapshots (`.wolf/metrics/effectiveness-snapshots.jsonl`); regular runs print a numeric delta against the last snapshot.
   - Absolute totals block in `wolf effectiveness`: runs/failures, weighted and raw token sums, cache-hit ratio, average duration, per-model cost-per-success, and optional `$` conversion via `pricing` in `.wolf/config.yaml` (hidden when no pricing is configured).
   - Weekly memory-mutation dynamics in `wolf insights` (activity view).

@@ -147,7 +147,7 @@
 **Integration surface:**
 
 - Wolf как OpenCode plugin (`opencode.json` → `wolf-plugin`).
-- Commands: `/wolf run <workflow>`, `/wolf status`, `/wolf artifacts`.
+- Commands: `/wolf start <workflow>`, `/wolf status`, `/wolf artifacts`.
 - Hooks: `session.start` → inject Wolf bootstrap, `session.compacted` → re-inject context.
 - Tools: Wolf предоставляет tools для OpenCode (run_workflow, check_policy, find_artifact).
 - Events: Wolf слушает OpenCode events и записывает в Case Store.
@@ -265,7 +265,7 @@
 
 ### Success Criteria
 
-1. Пользователь запускает `/wolf run research-to-plan` в OpenCode.
+1. Пользователь запускает `/wolf start research-to-plan` в OpenCode.
 2. Wolf выполняет workflow: research → analyze → plan → review → approve → implement.
 3. На шаге "implement" агент пытается выполнить `sudo rm -rf /tmp`.
 4. Wolf block'ит операцию до выполнения, записывает в audit trail.

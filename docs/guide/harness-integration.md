@@ -78,22 +78,19 @@ wolf coord --kind handoff --from "L0:wolf" --to "L1:lead" --ref mem_…_report -
 
 Сценарий A/B «та же задача, с памятью и без»: одна задача, N прогонов в
 сессиях с injected-памятью (обычный поток `wolf call`/`brief` с выставленным
-`WOLF_SESSION`) и M прогонов без памяти; все раны и вердикты помечаются одним
-id кампании:
+`WOLF_SESSION`) и M прогонов без памяти; вердикты помечаются одним id кампании
+(раны получали `campaign_id` от run-обёртки — команда run удалена в 2.13,
+прогон задачи теперь делает сам агент в сессии):
 
 ```bash
 # arm «с памятью»: инъекции пишутся в сессию (WOLF_SESSION у авто-писателей)
 WOLF_SESSION=ses-ab-wolf wolf call
-wolf run --agent dev --title "fix-failing-test" --session ses-ab-wolf \
-  --campaign eval-01 --task-id fix-failing-test "Fix the failing test"
-# ... ещё N-1 прогонов той же кампании в этой сессии
+# ... N прогонов той же задачи агентом в этой сессии
 wolf task-eval --verdict accepted --session ses-ab-wolf \
   --task-id fix-failing-test --campaign eval-01
 
 # arm «без памяти»: та же задача, отдельная сессия без инъекций
-wolf run --agent dev --title "fix-failing-test" --session ses-ab-base \
-  --campaign eval-01 --task-id fix-failing-test "Fix the failing test"
-# ... ещё M-1 прогонов
+# ... M прогонов в сессии ses-ab-base
 wolf task-eval --verdict rejected --session ses-ab-base \
   --task-id fix-failing-test --campaign eval-01
 

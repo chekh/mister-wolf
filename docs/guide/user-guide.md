@@ -440,18 +440,13 @@ wolf scaffold skill db-migrations --from-playbook <playbook-id>
 
 `--persona` и `--model` — только для `agent`; `--from-playbook` — переиспользовать существующий playbook вместо создания нового.
 
-### 6.3. run — запуск opencode с маршрутизацией
+### 6.3. run — запуск opencode с маршрутизацией (историческое основание)
 
-Запускает opencode с моделью из routing-объекта Wolf и пишет весовую стоимость токенов в журнал:
+> **Историческое основание:** команда «run» (запуск opencode с маршрутизацией Wolf) удалена в 2.13. Раздел сохранён как архитектурная справка о форме рантайм-сигнала и взаимодействии с кампаниями. Действующая замена — `wolf task-eval --campaign <id>` для вердиктов в кампании и `wolf call <запрос>` для запуска wolf-сессии.
 
-```bash
-wolf run "Проверь контракт add --set" \
-  --agent api-reviewer \
-  --title "Проверка контракта add" \
-  --tool cli-dump
-```
+В прежней форме команда запускала opencode с моделью из routing-объекта Wolf и писала весовую стоимость токенов в журнал. Архитектурная справка по форме сигнала и взаимодействию с кампаниями сохранена ниже.
 
-Флаги: `--agent <name>`, `--title` (метка в журнале), `--session <sid>` (продолжить сессию), `--tool <name>` (повторяемый — отметить используемые инструменты), `--experiment <id>` + `--arm wolf|baseline` (экспериментальная разметка), `--task-id <id>` (общий id задачи), `--campaign <id>` (id кампании для `analytics --view campaign`), `--trace-id <id>` (трасса задачи; дефолт — свежий uuid), `--attempt <n>` (номер попытки). Метрики прогона пишутся run-сигналом в сигнальный лог (схема — [signal-log](signal-log.md)).
+**Флаги (архив, 2.13):** `--agent <name>`, `--title` (метка в журнале), `--session <sid>` (продолжить сессию), `--tool <name>` (повторяемый — отметить используемые инструменты), `--experiment <id>` + `--arm wolf|baseline` (экспериментальная разметка), `--task-id <id>` (общий id задачи), `--campaign <id>` (id кампании для `analytics --view campaign`), `--trace-id <id>` (трасса задачи; дефолт — свежий uuid), `--attempt <n>` (номер попытки). Метрики прогона писались run-сигналом в сигнальный лог (схема — [signal-log](signal-log.md)).
 
 ### 6.4. complain — жалоба на правило/агента/методику
 
@@ -537,7 +532,7 @@ wolf effectiveness
 ## 9. Legacy
 
 - `wolf migrate [--apply]` — **разовая** миграция старой структуры памяти: `objects/<type>/` → `threads/<tid>/<subdir>/` + `shared/`. По умолчанию dry-run; `--apply` выполняет перенос. Для свежих проектов не нужна.
-- `wolf migrate run-log` — архивирует устаревший `.wolf/run-log.jsonl` в `.wolf/metrics/archive/run-log-<дата>-legacy.jsonl` (rename, без перезаписи содержимого; коллизия имени → суффикс `-2`). Запусти после обновления, если `wolf run` раньше писал run-лог: пока legacy-файл на месте, analytics считает старые прогоны дважды. Идемпотентно: файла нет → `nothing to migrate`, exit 0.
+- `wolf migrate run-log` — архивирует устаревший `.wolf/run-log.jsonl` в `.wolf/metrics/archive/run-log-<дата>-legacy.jsonl` (rename, без перезаписи содержимого; коллизия имени → суффикс `-2`). Запусти после обновления, если run-обёртка (команда run удалена в 2.13) раньше писала run-лог: пока legacy-файл на месте, analytics считает старые прогоны дважды. Идемпотентно: файла нет → `nothing to migrate`, exit 0.
 
 ---
 

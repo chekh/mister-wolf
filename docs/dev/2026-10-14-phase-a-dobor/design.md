@@ -182,7 +182,6 @@ export interface HeartbeatRecord {
 
 export const CLAIM_TTL_MS = 24 * 60 * 60 * 1000; // 24h (без изменений)
 export const CLAIM_HEARTBEAT_WINDOW_MS = 10 * 60 * 1000; // 10 минут (новый, OQ-01)
-export const CLAIM_FLOCK_TIMEOUT_MS = 30 * 1000; // 30s на запись (L0 пояснение)
 
 export function heartbeatFilePath(root: string, artifact: string): string {
   return join(claimsDir(root), `${claimSlug(artifact)}.heartbeat`);
