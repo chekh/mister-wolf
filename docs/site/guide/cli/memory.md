@@ -19,7 +19,7 @@ Options:
 - `--confidence <confidence>` — confidence level (`low|medium|high`)
 - `--importance <n>` — importance from 0 to 1
 - `--set <k=v>` — extra field key=value (repeatable; a `"[a,b]"` value is a string array; default: `[]`)
-- `--scope <scope>` — scope field for types that declare one (rule: `project|global`); also `main` or `worktree:<name>` — writes from a linked worktree get `worktree:<name>` by default, `--scope main` opts out (see [Memory in git worktrees](/guide/memory#memory-in-git-worktrees))
+- `--scope <scope>` — scope field for types that declare one (rule: `project|global`); also `main` or a worktree scope — writes from a linked worktree get the worktree identity `worktree:w-<12hex>` by default (legacy `worktree:<name>` values are accepted), `--scope main` opts out (see [Memory in git worktrees](/guide/memory#memory-in-git-worktrees))
 - `--facet <facet>` — note facet. Required for `note`: `howto|pitfall|context|metric|history|legacy|constraint|proposal`. Free input is an error — the facet vocabulary is closed. On other core types `proposal` is the signal facet (a structured proposal via `wolf propose`)
 - `--created-by <actor>` — creator actor (default: env `WOLF_ACTOR`, else `user:cli`)
 

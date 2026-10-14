@@ -8,6 +8,24 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.17.1] - 2026-10-14
+
+### Added — Memory safety: worktree identity, atomic face mutations, artifact claims
+
+- Worktree memory identity (WT-ID): writes made from a linked worktree are scoped to `worktree:w-<12hex>` — a hash of the worktree's realpath, stable across renames and moves, computed fail-closed. Delivery filters on exactly one path — `wolf call`, in all modes and selection branches; conflicting scope records surface as stderr warnings instead of silent drops. The rest of the read surface (`wolf brief`, `search`, `get`, `doctor`, faces — everything except `wolf call`) sees the whole project memory; that composition is now a documented frozen contract guarded by a doc-test. Legacy `worktree:<name>` objects stay readable; promoting a legacy scope that matches several worktrees reports an honest conflict instead of a silent guess.
+- Atomic face mutations: every face change (create version, G17 record, relation, activate, supersede, announce, legacy migration) runs as one journaled operation (`op_started → … → op_committed`). A crash mid-mutation leaves a readable candidate plus an operation record — never a half-written canon. `wolf face recover <opId>` resumes (idempotently — it adds exactly the missing steps) or aborts cleanly; `wolf doctor` lists incomplete operations with recover hints; a later command auto-resumes an interrupted operation with the same input. Seeding and `wolf face migrate` run on the same mechanism, so an interrupted upgrade is finished, not restarted. A nine-case fault matrix (F1–F9) covers the failure points.
+- Single-writer claims on shared artifacts: `wolf claim acquire` / `release` / `list` (and `--transfer-to` on release) gives an agent session exclusive ownership of a shared artifact id (`dev:<date>-<slug>`, a worktree identity) — the second concurrent writer is rejected with the holder named. `wolf scaffold artifact` now requires the claim for the artifact it is about to write; the refusal names the exact `claim acquire` command.
+
+### Fixed
+
+- Face recovery paths no longer resume a healing/migration operation into a broken state: such operations are rejected by resume-with-input paths (`wolf face recover`, auto-resume, `wolf face new`) and are completed only by `wolf face migrate`. Previously, creating a face version while a migration was interrupted could activate a face with an empty body and retire the real canon.
+- `wolf doctor` no longer reports every live WT-ID-scoped object as an orphaned worktree: identity tokens are checked against the live worktree registry (realpath gitdir records); legacy name-based checks are unchanged.
+
+### Upgrade notes
+
+- Migrations: none forced. Run `wolf sync` after upgrading. Memory written from worktrees by 2.16.x keeps the name-based scope and stays deliverable; new writes get the WT-ID scope. If `wolf promote` reports a conflict for a legacy scope, two linked copies share the same name — resolve the stale copy and re-run.
+- Known limitations: a claim has no heartbeat — it lives up to 24h (TTL) and ends with `wolf claim release` or expiry; `wolf claim list` does not mark stale entries yet.
+
 ## [2.17.0] - 2026-10-13
 
 ### Added — Faces: versioned agent playbooks (wave 2.17)

@@ -14,14 +14,17 @@
 
 ## Команды
 
-Конвейер крутят три команды:
+Конвейер крутят четыре команды — и с 2.17.1 пишущая сессия сначала владеет claim'ом одиночного писателя:
 
 ```bash
-wolf scaffold artifact <slug>        # create docs/dev/<YYYY-MM-DD>-<slug>/ with the full 4-file set
-wolf scaffold artifact <slug> --fix  # reduced 2-file set for fix-type work
-wolf sync                            # regenerate indexes — idempotent
-wolf doctor                          # lint the documents
+wolf claim acquire dev:<date>-<slug>  # own the artifact — scaffold refuses without it
+wolf scaffold artifact <slug>         # create docs/dev/<YYYY-MM-DD>-<slug>/ with the full 4-file set
+wolf scaffold artifact <slug> --fix   # reduced 2-file set for fix-type work
+wolf sync                             # regenerate indexes — idempotent
+wolf doctor                           # lint the documents
 ```
+
+Claim — замок записи конвейера: два агента, редактирующие одну папку фичи, молча затирали бы друг друга, поэтому `wolf scaffold artifact` без активного claim'а отвечает отказом `No claim held` — в сообщении отказа точная команда `claim acquire`. Закончив писать, сессия освобождает владение (`wolf claim release dev:<date>-<slug>`) или передаёт его (`--transfer-to <actor>`); `wolf claim list` показывает, кто чем владеет. Claim истекает через 24 часа, так что упавшая сессия не запирает папку навсегда.
 
 `wolf sync` генерирует `docs/dev/INDEX.md` — таблицу фич плюс секцию "Waves" — и файлы `_index.md` внутри подпапок design и plan. Повторный запуск ничего не меняет.
 

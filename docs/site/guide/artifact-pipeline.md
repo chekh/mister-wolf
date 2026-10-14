@@ -14,14 +14,17 @@ The pipeline is a set of feature documents moving through statuses under owner a
 
 ## Commands
 
-Three commands run the conveyor:
+Four commands run the conveyor — and since 2.17.1 the writing session holds a single-writer claim first:
 
 ```bash
-wolf scaffold artifact <slug>        # create docs/dev/<YYYY-MM-DD>-<slug>/ with the full 4-file set
-wolf scaffold artifact <slug> --fix  # reduced 2-file set for fix-type work
-wolf sync                            # regenerate indexes — idempotent
-wolf doctor                          # lint the documents
+wolf claim acquire dev:<date>-<slug>  # own the artifact — scaffold refuses without it
+wolf scaffold artifact <slug>         # create docs/dev/<YYYY-MM-DD>-<slug>/ with the full 4-file set
+wolf scaffold artifact <slug> --fix   # reduced 2-file set for fix-type work
+wolf sync                             # regenerate indexes — idempotent
+wolf doctor                           # lint the documents
 ```
+
+The claim is the conveyor's write lock: two agents editing the same feature folder would silently overwrite each other, so `wolf scaffold artifact` refuses with `No claim held` until your session owns the claim for the artifact id — the refusal names the exact `claim acquire` command. When the writing session is done, release the claim (`wolf claim release dev:<date>-<slug>`) or hand it over (`--transfer-to <actor>`); `wolf claim list` shows who holds what. A claim expires after 24h, so a crashed session does not lock the folder forever.
 
 `wolf sync` generates `docs/dev/INDEX.md` — a table of features plus a "Waves" section — and `_index.md` files inside the design and plan subfolders. Running it again changes nothing.
 
