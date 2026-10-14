@@ -22,6 +22,21 @@ export const PROPOSAL_CONTRACT_FIELDS: readonly string[] = [
   'applicability_bounds',
 ];
 
+// A9 (2.18.0 REQ-01): структурированные элементы council-контракта v2 —
+// zod-форма видов полей 'evidence-ref[]' / 'rejected-alternative[]'
+// (OQ-02: quote ≤ 200, note ≤ 500; альтернатива без обоснования не проходит).
+const EvidenceRefSchema = z.object({
+  memory_id: z.string().optional(),
+  path: z.string().optional(),
+  quote: z.string().max(200).optional(),
+  note: z.string().max(500).optional(),
+});
+
+const RejectedAlternativeSchema = z.object({
+  claim: z.string().min(1),
+  reason: z.string().min(1),
+});
+
 /** FieldSpec -> zod. Используется для декларативных полей и будет использован
  * для project-типов из config.yaml (Phase 8, Task 3). */
 export function fieldToZod(spec: FieldSpec): z.ZodTypeAny {
@@ -55,6 +70,13 @@ export function fieldToZod(spec: FieldSpec): z.ZodTypeAny {
   if (spec.kind === 'string[]') {
     if (s.required) return z.array(z.string()).min(s.minItems ?? 0);
     return z.array(z.string()).default((s.default as string[]) ?? []);
+  }
+  // A9 (2.18.0 REQ-01): массивы объектов council v2 — default [] как у string[]
+  if (spec.kind === 'evidence-ref[]') {
+    return z.array(EvidenceRefSchema).default([]);
+  }
+  if (spec.kind === 'rejected-alternative[]') {
+    return z.array(RejectedAlternativeSchema).default([]);
   }
   // enum: optional (2.14 §6.1, complaint.kind) — отсутствует у старых объектов
   const enumSchema = z.enum(s.values as [string, ...string[]]);

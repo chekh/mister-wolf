@@ -21,7 +21,10 @@ export type MemoryStatus =
   | 'blocked'
   | 'waiting_answer';
 export type ReviewState = 'accepted' | 'proposed' | 'rejected' | 'review_required';
-export type Confidence = 'low' | 'medium' | 'high';
+// A9 (2.18.0 REQ-01, ADR-9): шкала confidence советов — та же, что у базового
+// объекта; единственный источник значений для деклараций council v2 ниже.
+const CONFIDENCE_VALUES = ['low', 'medium', 'high'] as const;
+export type Confidence = (typeof CONFIDENCE_VALUES)[number];
 export type SourceKind = 'manual' | 'session' | 'file' | 'scan';
 
 /** Алфавит типов полей для project-типов (config.yaml) и деклараций core-типов. */
@@ -33,7 +36,25 @@ export type FieldSpec =
   | { kind: 'string[]'; default?: readonly string[] }
   | { kind: 'boolean'; optional: true }
   | { kind: 'int'; default?: number }
-  | { kind: 'enum'; values: readonly string[]; optional?: true };
+  | { kind: 'enum'; values: readonly string[]; optional?: true }
+  // A9 (2.18.0 REQ-01, OQ-02): структурированные массивы council-контракта v2
+  | { kind: 'evidence-ref[]'; default?: readonly EvidenceRef[] }
+  | { kind: 'rejected-alternative[]'; default?: readonly RejectedAlternative[] };
+
+/** A9 (2.18.0 REQ-01, design §3.1): ссылка на подтверждение claim'а.
+ * Предпочтителен memory_id, path — fallback; quote ≤ 200, note ≤ 500 символов. */
+export interface EvidenceRef {
+  memory_id?: string;
+  path?: string;
+  quote?: string;
+  note?: string;
+}
+
+/** A9: отвергнутая альтернатива синтеза — утверждение + обоснование отказа. */
+export interface RejectedAlternative {
+  claim: string;
+  reason: string;
+}
 
 export interface MemoryTypeDeclaration {
   name: MemoryType;
@@ -230,6 +251,49 @@ const CORE_TAXONOMY_DECLS = [
 export type MemoryType = (typeof CORE_TAXONOMY_DECLS)[number]['name'];
 
 export const MEMORY_TYPES = CORE_TAXONOMY_DECLS.map((d) => d.name);
+
+// A9 council-контракт v2 (2.18.0 REQ-01, design §3.1 + ADR-8/ADR-9):
+// валидационные декларации советов. council-opinion/synthesis — deprecated-
+// алиасы к note (2.13 §5.4, read-only history), а новые core-типы в 2.18.0
+// запрещены scope'ом («8 core + расширения») — поэтому декларации живут
+// ОТДЕЛЬНО от CORE_TAXONOMY/MEMORY_TYPES: это схема v2-записи для
+// buildTypeSchema и источник полей аналитики, не членство в таксономии
+// (CLI-генерация и MCP-поверхность их не видят). Чтение legacy-записей идёт
+// по-прежнему через alias-резолвер — claims старым мнениям не требуются (NFR-01).
+export const COUNCIL_OPINION_DECL: MemoryTypeDeclaration = {
+  // name вне core-словаря: cast — прецедент project-типов (config-file.ts)
+  name: 'council-opinion' as MemoryType,
+  lifecycle: FULL,
+  subdirThread: 'councils',
+  subdirShared: null,
+  fields: {
+    // NFR-01: vote остаётся первичным полем подсчёта голосов (extractVote)
+    vote: { kind: 'string', optional: true },
+    // REQ-01 AC-1 / OQ-03: новое мнение без claims (min 1) отклоняется схемой
+    claims: { kind: 'string[]', required: true, minItems: 1 },
+    evidence: { kind: 'evidence-ref[]', default: [] },
+    assumptions: { kind: 'string[]', default: [] },
+    confidence: { kind: 'enum', values: CONFIDENCE_VALUES },
+    risks: { kind: 'string[]', default: [] },
+    failure_conditions: { kind: 'string[]', default: [] },
+    counterexamples: { kind: 'string[]', default: [] },
+  },
+};
+
+export const SYNTHESIS_DECL: MemoryTypeDeclaration = {
+  name: 'synthesis' as MemoryType,
+  lifecycle: FULL,
+  subdirThread: 'councils',
+  subdirShared: null,
+  fields: {
+    // REQ-01 AC-2: синтез без accepted_claims (min 1) не принимается
+    accepted_claims: { kind: 'string[]', required: true, minItems: 1 },
+    rejected_alternatives: { kind: 'rejected-alternative[]', default: [] },
+    unresolved_dissent: { kind: 'string[]', default: [] },
+    confidence: { kind: 'enum', values: CONFIDENCE_VALUES },
+    required_validation: { kind: 'string[]', default: [] },
+  },
+};
 
 /**
  * Волна 2.13 §5.4: карта миграции старых типов (alias-чтение P211 + migrate P213).
