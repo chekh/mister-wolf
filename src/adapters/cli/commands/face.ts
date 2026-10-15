@@ -5,6 +5,7 @@ import { safeCwd } from '../cli-entry.js';
 import { createFaceVersion, type FaceObject } from '../../../app/use-cases/create-face-version.js';
 import { abortFaceOperation, resumeFaceOperation } from '../../../app/use-cases/face-operation.js';
 import { migrateFaces } from '../../../app/use-cases/migrate-faces.js';
+import { resolveFace } from '../../../app/use-cases/resolve-face.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { MemoryStore } from '../../../ports/memory-store.port.js';
 import { UserFacingError } from '../../../domain/errors.js';
@@ -292,6 +293,22 @@ export function faceCommand(baseDir: string = safeCwd()): Command {
     console.log(`created: ${active.created_at}`);
     console.log('---');
     console.log(active.body ?? '');
+  });
+
+  // 2.18.4: канонический резолвер лица — машинный канал доставки (wolf-router
+  // плагин). Строгий отказ (exit 1) при нуле/конфликте активных лиц — плагин
+  // переходит на legacy-путь, диагностику конфликта ловит wolf doctor.
+  createdByTrap(
+    cmd
+      .command('resolve')
+      .description('Resolve the canonical active face for an agent (JSON: {ok, face|error}; exit 1 on miss/conflict)')
+      .argument('<owner_skill>', 'Agent id or skill (owner_skill)')
+  ).action(async (ownerSkill: string, options: ObserveOptions) => {
+    denyCreatedBy(options);
+    const { store } = createCliContainer(baseDir);
+    const result = await resolveFace(store, ownerSkill);
+    if (!result.ok) process.exitCode = 1;
+    console.log(JSON.stringify(result));
   });
 
   return cmd;

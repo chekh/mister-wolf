@@ -47,8 +47,23 @@ export function claimCommand(baseDir: string = safeCwd()): Command {
     .command('heartbeat')
     .description('Refresh the claim heartbeat (keeps a long-running claim fresh within the 10-minute window)')
     .argument('<artifact>', 'Artifact id whose claim heartbeat to refresh')
-    .action((artifact: string) => {
-      const hb = heartbeatArtifactClaim({ baseDir }, artifact);
+    .option('--session <id>', 'Assert the claim session (2.18.4): refuse on mismatch')
+    .option('--pid <n>', 'Record writer pid in the heartbeat (debug, not auth)', parseInt)
+    .option('--claim-token <t>', 'Assert the claim token (2.18.4): refuse after re-acquire')
+    .action((artifact: string, options: { session?: string; pid?: number; claimToken?: string }) => {
+      // 2.18.4: флаги включают строгую идентификацию; без них — legacy (только writer)
+      const hasFlags = options.session !== undefined || options.pid !== undefined || options.claimToken !== undefined;
+      const hb = heartbeatArtifactClaim(
+        { baseDir },
+        artifact,
+        hasFlags
+          ? {
+              ...(options.session !== undefined ? { sessionId: options.session } : {}),
+              ...(options.pid !== undefined ? { pid: options.pid } : {}),
+              ...(options.claimToken !== undefined ? { claimToken: options.claimToken } : {}),
+            }
+          : undefined
+      );
       console.log(`Heartbeat written: ${artifact} at ${hb.written_at} (writer ${hb.writer})`);
       console.log(`heartbeat file: ${heartbeatFilePath(resolveMemoryRoot(baseDir).root, artifact, hb.claim_token)}`);
     });

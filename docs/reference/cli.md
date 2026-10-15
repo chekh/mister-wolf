@@ -616,6 +616,9 @@ Commands:
                                       first)
   show [options] <owner_skill>        Show the current face version: metadata
                                       and body
+  resolve [options] <owner_skill>     Resolve the canonical active face for an
+                                      agent (JSON: {ok, face|error}; exit 1 on
+                                      miss/conflict)
   help [command]                      display help for command
 ```
 
@@ -740,6 +743,21 @@ Show the current face version: metadata and body
 
 Arguments:
   owner_skill  Owner skill
+
+Options:
+  -h, --help   display help for command
+```
+
+#### wolf face resolve
+
+```text
+Usage: wolf face resolve [options] <owner_skill>
+
+Resolve the canonical active face for an agent (JSON: {ok, face|error}; exit 1
+on miss/conflict)
+
+Arguments:
+  owner_skill  Agent id or skill (owner_skill)
 
 Options:
   -h, --help   display help for command
@@ -1052,19 +1070,19 @@ Single-writer claims on shared artifacts (TASK briefs, plans, reports,
 worktrees)
 
 Options:
-  -h, --help                    display help for command
+  -h, --help                      display help for command
 
 Commands:
-  acquire <artifact>            Atomically acquire artifact ownership (second
-                                concurrent writer is rejected)
-  heartbeat <artifact>          Refresh the claim heartbeat (keeps a
-                                long-running claim fresh within the 10-minute
-                                window)
-  release [options] <artifact>  Release artifact ownership (owner-only) or
-                                transfer it explicitly
-  list                          List active claims (who/when/what, from the
-                                registry files)
-  help [command]                display help for command
+  acquire <artifact>              Atomically acquire artifact ownership (second
+                                  concurrent writer is rejected)
+  heartbeat [options] <artifact>  Refresh the claim heartbeat (keeps a
+                                  long-running claim fresh within the 10-minute
+                                  window)
+  release [options] <artifact>    Release artifact ownership (owner-only) or
+                                  transfer it explicitly
+  list                            List active claims (who/when/what, from the
+                                  registry files)
+  help [command]                  display help for command
 ```
 
 #### wolf claim acquire
@@ -1090,10 +1108,13 @@ Refresh the claim heartbeat (keeps a long-running claim fresh within the
 10-minute window)
 
 Arguments:
-  artifact    Artifact id whose claim heartbeat to refresh
+  artifact           Artifact id whose claim heartbeat to refresh
 
 Options:
-  -h, --help  display help for command
+  --session <id>     Assert the claim session (2.18.4): refuse on mismatch
+  --pid <n>          Record writer pid in the heartbeat (debug, not auth)
+  --claim-token <t>  Assert the claim token (2.18.4): refuse after re-acquire
+  -h, --help         display help for command
 ```
 
 #### wolf claim release

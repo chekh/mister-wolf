@@ -9,6 +9,7 @@ import {
   type ClaimIdentity,
   type ClaimRecord,
   type ClaimRegistryDeps,
+  type HeartbeatIdentity,
   type HeartbeatRecord,
 } from '../../adapters/fs/claim-registry.js';
 
@@ -67,9 +68,19 @@ export function listArtifactClaims(deps: ClaimArtifactDeps): ClaimRecord[] {
 }
 
 /** Heartbeat держателя (2.18.0 REQ-03): продлевает свежесть claim'а долгой
- * операции в окне CLAIM_HEARTBEAT_WINDOW_MS; writer — owner из env (не auth). */
-export function heartbeatArtifactClaim(deps: ClaimArtifactDeps, artifact: string): HeartbeatRecord {
-  return writeHeartbeat(registryDeps(deps), { artifact, writer: identityOf(deps).owner });
+ * операции в окне CLAIM_HEARTBEAT_WINDOW_MS; writer — owner из env (не auth).
+ * 2.18.4: identityOverride (CLI-флаги --session/--pid/--claim-token) включает
+ * строгие проверки владения; без него — legacy-поведение (только writer). */
+export function heartbeatArtifactClaim(
+  deps: ClaimArtifactDeps,
+  artifact: string,
+  identityOverride?: { sessionId?: string | null; pid?: number; claimToken?: string }
+): HeartbeatRecord {
+  const who = identityOf(deps);
+  const identity: HeartbeatIdentity | undefined = identityOverride
+    ? { owner: who.owner, ...identityOverride }
+    : undefined;
+  return writeHeartbeat(registryDeps(deps), { artifact, writer: who.owner, ...(identity ? { identity } : {}) });
 }
 
 /** Guard для use-cases записи общих артефактов: claim артефакта должен

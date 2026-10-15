@@ -10,6 +10,14 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.18.4] - 2026-10-16
+
+### Fixed — Full heartbeat identity and canonical face resolver
+
+- **Full heartbeat identity (2.18.4)**: `writeHeartbeat` now accepts an optional full `HeartbeatIdentity` (`owner`, `sessionId`, `pid`, `claimToken`). When provided, ownership is verified strictly: `owner` must match, `sessionId` must equal the claim's session (both `null` allowed for transferred ownership), and `claimToken` must equal the current claim's token — refusing heartbeats from a previous holder's session after re-acquisition, with the owner's name in every refusal. `HeartbeatRecord` persists `session_id` and `pid` of the writer. `wolf claim heartbeat` gains optional `--session`, `--pid` and `--claim-token` flags; without them the legacy writer-only behavior is preserved.
+- **Canonical face resolver (2.18.4)**: new `resolveFace` use-case (`src/app/use-cases/resolve-face.ts`) performs a strict memory query — `type=face`, `status=active`, `owner_skill === agentId` (legacy `skill:` prefix accepted) — and returns body, version and content hash of the face. Zero or multiple active faces yield a deterministic refusal (`none` / `multiple` with a sorted candidate diagnostics), never a "first match" pick. New `wolf face resolve <owner_skill>` command exposes it as a machine channel (JSON, exit 1 on miss/conflict).
+- **wolf-router plugin**: playbook delivery now tries the canonical face resolver first (`wolf face resolve`); on miss/conflict it falls back to the legacy text search with the `owner_skill` guard, preserving 2.13 howto-playbook delivery. Duplicate active faces stay visible to `wolf doctor`.
+
 ## [2.18.3] - 2026-10-15
 
 ### Fixed — Per-token claim heartbeat isolation, council analytics naming, docs & demo sync

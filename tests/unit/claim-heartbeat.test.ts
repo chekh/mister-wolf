@@ -309,3 +309,97 @@ describe('2.18.3 per-token heartbeat isolation: предотвращение г�
     expect(() => requireClaim(d, artifact, { owner: idB.owner, sessionId: idB.sessionId })).not.toThrow();
   });
 });
+
+describe('2.18.4 полная идентификация heartbeat (owner+session+pid+claim_token)', () => {
+  let root: string;
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'wolf-claims-hb-id-'));
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  it('полная идентичность владельца проходит; запись хранит session_id, pid и токен', () => {
+    const claim = acquireClaim(deps(root), {
+      artifact: 'dev:x',
+      identity: { owner: 'agent:foo', sessionId: 'ses-1', pid: 123 },
+      cwd: root,
+    });
+    const hb = writeHeartbeat(deps(root), {
+      artifact: 'dev:x',
+      writer: 'agent:foo',
+      identity: { owner: 'agent:foo', sessionId: 'ses-1', pid: 999, claimToken: claim.claim_token! },
+    });
+    expect(hb.session_id).toBe('ses-1');
+    expect(hb.pid).toBe(999);
+    expect(hb.claim_token).toBe(claim.claim_token);
+    expect(readHeartbeat(heartbeatFilePath(root, 'dev:x', claim.claim_token))).toEqual(hb);
+  });
+
+  it('старая сессия того же агента НЕ может записать heartbeat для новой сессии (отказ с именем владельца)', () => {
+    acquireClaim(deps(root), {
+      artifact: 'dev:x',
+      identity: { owner: 'agent:foo', sessionId: 'ses-NEW', pid: 123 },
+      cwd: root,
+    });
+    expect(() =>
+      writeHeartbeat(deps(root), {
+        artifact: 'dev:x',
+        writer: 'agent:foo',
+        identity: { owner: 'agent:foo', sessionId: 'ses-OLD' },
+      })
+    ).toThrow(/held by agent:foo \(session ses-NEW\)/);
+  });
+
+  it('переданное владение (обе сессии null) — heartbeat с null-сессией проходит', () => {
+    acquireClaim(deps(root), {
+      artifact: 'dev:x',
+      identity: { owner: 'agent:foo', sessionId: null, pid: 0 },
+      cwd: root,
+    });
+    const hb = writeHeartbeat(deps(root), {
+      artifact: 'dev:x',
+      writer: 'agent:foo',
+      identity: { owner: 'agent:foo', sessionId: null },
+    });
+    expect(hb.session_id).toBeNull();
+  });
+
+  it('claim_token прежнего владения отклоняется после перезахвата (отказ с именем владельца)', () => {
+    const idA = { owner: 'agent:foo', sessionId: 'ses-A', pid: 101 };
+    const idB = { owner: 'agent:bar', sessionId: 'ses-B', pid: 102 };
+    const claimA = acquireClaim(deps(root), { artifact: 'dev:x', identity: idA, cwd: root });
+    releaseClaim(deps(root), { artifact: 'dev:x', identity: idA });
+    acquireClaim(deps(root), { artifact: 'dev:x', identity: idB, cwd: root });
+    expect(() =>
+      writeHeartbeat(deps(root), {
+        artifact: 'dev:x',
+        writer: 'agent:bar',
+        identity: { owner: 'agent:bar', sessionId: 'ses-B', claimToken: claimA.claim_token },
+      })
+    ).toThrow(/re-acquired by agent:bar/);
+  });
+
+  it('чужой owner с полной идентичностью отклоняется с именем владельца', () => {
+    acquireClaim(deps(root), {
+      artifact: 'dev:x',
+      identity: { owner: 'agent:foo', sessionId: 'ses-1', pid: 123 },
+      cwd: root,
+    });
+    expect(() =>
+      writeHeartbeat(deps(root), {
+        artifact: 'dev:x',
+        writer: 'agent:bar',
+        identity: { owner: 'agent:bar', sessionId: 'ses-1' },
+      })
+    ).toThrow(/owned by agent:foo, not agent:bar/);
+  });
+
+  it('legacy-путь без identity не проверяет сессию (обратная совместимость 2.18.3)', () => {
+    acquireClaim(deps(root), {
+      artifact: 'dev:x',
+      identity: { owner: 'agent:foo', sessionId: 'ses-1', pid: 123 },
+      cwd: root,
+    });
+    const hb = writeHeartbeat(deps(root), { artifact: 'dev:x', writer: 'agent:foo' });
+    expect(hb.session_id).toBeUndefined();
+  });
+});

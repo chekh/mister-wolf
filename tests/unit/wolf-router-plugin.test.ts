@@ -5,7 +5,17 @@ import { readFileSync, rmSync } from 'fs';
 // ни от .wolf/-памяти репо (gitignored, есть только на дев-машине), ни от dist.
 const ROUTER_LOG = '/tmp/wolf-router-plugin-test/router.log';
 const SKILL_LOG = '/tmp/wolf-router-plugin-test/skill-invocations.jsonl';
-const { execFileMock, publishVersion, TTL_PLAYBOOK, TTL_PLAYBOOK_V2, TTL_PLAYBOOK_V3 } = vi.hoisted(() => {
+const {
+  execFileMock,
+  publishVersion,
+  publishFaceConflict,
+  FACE_AGENT,
+  FACE_ID,
+  FACE_BODY,
+  TTL_PLAYBOOK,
+  TTL_PLAYBOOK_V2,
+  TTL_PLAYBOOK_V3,
+} = vi.hoisted(() => {
   // WOLF_ROUTER_LOG-шов: лог пишется в tmp-файл, а не в живой .wolf/router.log
   // репо (иначе тесты после мержа в main загрязняли бы dogfood-аналитику владельца).
   process.env.WOLF_ROUTER_LOG = '/tmp/wolf-router-plugin-test/router.log';
@@ -86,6 +96,23 @@ const { execFileMock, publishVersion, TTL_PLAYBOOK, TTL_PLAYBOOK_V2, TTL_PLAYBOO
     version: 'v1',
     body: '# env probe body',
   };
+  // 2.18.4: канонический face-resolver (`wolf face resolve`) — fixture-лицо;
+  // по умолчанию для любого agent-id — детерминированный miss (ok:false none)
+  const FACE_AGENT = 'face-agent-2-18-4';
+  const FACE_ID = 'mem_fixture_face_canon';
+  const FACE_BODY = '# Лицо face-agent-2-18-4 (канон 2.18.4)';
+  const FACE_RESOLVE: Record<string, string> = {
+    [FACE_AGENT]: JSON.stringify({
+      ok: true,
+      face: { id: FACE_ID, body: FACE_BODY, version: '3', hash: 'facehash16' },
+    }),
+  };
+  const publishFaceConflict = (agentId: string) => {
+    FACE_RESOLVE[agentId] = JSON.stringify({
+      ok: false,
+      error: { kind: 'multiple', owner: agentId, candidates: [{ id: 'a', version: '1', updated_at: 't' }] },
+    });
+  };
   const SEARCH_HITS: Record<string, string> = {
     apprentice: `${PLAYBOOK_ID} [playbook] # Apprentice playbook\n`,
     'worker-reviewer': `${WORKER_PLAYBOOK_ID} [playbook] # Worker reviewer playbook\n`,
@@ -114,9 +141,27 @@ const { execFileMock, publishVersion, TTL_PLAYBOOK, TTL_PLAYBOOK_V2, TTL_PLAYBOO
       const obj = GET_OBJECTS[args[2]];
       if (obj) return done(null, { stdout: JSON.stringify(obj) });
     }
+    // 2.18.4: face-resolver (node-форма [cli, 'face', 'resolve', agentId]);
+    // дефолт — детерминированный miss → legacy-путь плагина
+    if (sub === 'face' && args[2] === 'resolve') {
+      return done(null, {
+        stdout:
+          FACE_RESOLVE[args[3] as string] ?? JSON.stringify({ ok: false, error: { kind: 'none', owner: args[3] } }),
+      });
+    }
     return done(new Error(`unexpected CLI call: ${JSON.stringify(args)}`));
   });
-  return { execFileMock, publishVersion, TTL_PLAYBOOK, TTL_PLAYBOOK_V2, TTL_PLAYBOOK_V3 };
+  return {
+    execFileMock,
+    publishVersion,
+    publishFaceConflict,
+    FACE_AGENT,
+    FACE_ID,
+    FACE_BODY,
+    TTL_PLAYBOOK,
+    TTL_PLAYBOOK_V2,
+    TTL_PLAYBOOK_V3,
+  };
 });
 vi.mock('child_process', () => ({ execFile: execFileMock }));
 
@@ -408,6 +453,59 @@ describe('P106: TTL 5 мин / ранний стоп / негативный кэ
       expect(readFileSync(SKILL_LOG, 'utf-8').trim().split('\n').filter(Boolean)).toHaveLength(1);
     } finally {
       delete process.env.WOLF_SKILL_LOG;
+    }
+  });
+});
+
+describe('2.18.4: канонический face-resolver (wolf face resolve)', () => {
+  const faceResolveCalls = () => execFileMock.mock.calls.filter((c) => (c[1] as string[])[1] === 'face');
+
+  // Свой WOLF_SESSION: сессийная мемоизация пинает инъекцию, агенты
+  // worker-reviewer/ttl-пробы уже закэшированы дефолтным ключом выше.
+  const useIsolatedSession = (): string => {
+    const saved = process.env.WOLF_SESSION;
+    process.env.WOLF_SESSION = 'sess-2-18-4';
+    return saved === undefined ? '' : saved;
+  };
+
+  it('ровно одно активное лицо → инъекция из face-resolver, variant=canonical, name=id лица', async () => {
+    const saved = useIsolatedSession();
+    try {
+      const plugin = await WolfPlaybookPlugin.server();
+      const output = makeSystemOutput(`agent-id: ${FACE_AGENT}\n\nТы — агент с лицом.`);
+      await plugin['experimental.chat.system.transform']({}, output);
+
+      expect(playbookParts(output)).toHaveLength(1);
+      expect(playbookParts(output)[0]).toContain(FACE_BODY);
+      expect(playbookParts(output)[0]).not.toContain('Универсальный playbook');
+      expect(faceResolveCalls().length).toBeGreaterThan(0);
+      expect(lastLogLine()).toMatch(
+        new RegExp(
+          `^agent-id=${FACE_AGENT} playbook=hit name=${FACE_ID} variant=canonical injected=yes ms=\\d+ bytes=\\d+$`
+        )
+      );
+    } finally {
+      if (saved === '') delete process.env.WOLF_SESSION;
+      else process.env.WOLF_SESSION = saved;
+    }
+  });
+
+  it('конфликт лиц (ok:false multiple) → legacy-путь: howto-плейбук по гварду владельца', async () => {
+    const saved = useIsolatedSession();
+    try {
+      publishFaceConflict('worker-reviewer'); // мутация мока: конфликт активных лиц
+      const plugin = await WolfPlaybookPlugin.server();
+      const output = makeSystemOutput('agent-id: worker-reviewer\n\nТы — рецензент.');
+      await plugin['experimental.chat.system.transform']({}, output);
+
+      expect(playbookParts(output)).toHaveLength(1);
+      expect(playbookParts(output)[0]).toContain('reviewer-canonical-body'); // legacy howto, не лицо
+      expect(lastLogLine()).toMatch(
+        /^agent-id=worker-reviewer playbook=hit name=mem_fixture_playbook_worker_v1 variant=canonical injected=yes ms=\d+ bytes=\d+$/
+      );
+    } finally {
+      if (saved === '') delete process.env.WOLF_SESSION;
+      else process.env.WOLF_SESSION = saved;
     }
   });
 });

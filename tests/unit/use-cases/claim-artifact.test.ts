@@ -4,6 +4,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import {
   acquireArtifactClaim,
+  heartbeatArtifactClaim,
   listArtifactClaims,
   makeClaimGuard,
   releaseArtifactClaim,
@@ -92,5 +93,17 @@ describe('claim-artifact (use-case): идентичность из env и кор
     expect(err).toBeInstanceOf(ClaimHeldError);
     expect((err as ClaimHeldError).owner).toBe('agent:a');
     expect(readdirSync(join(dir, '.wolf', 'shared', 'claims'))).toEqual(['dev_2026-10-14-demo.json']);
+  });
+
+  it('2.18.4: heartbeatArtifactClaim с override-сессией отвергает чужую сессию (имя владельца в ошибке)', () => {
+    const env = { WOLF_ACTOR: 'agent:a', WOLF_SESSION: 'ses-NEW' };
+    acquireArtifactClaim({ baseDir: dir, env, pid: 0 }, 'dev:x');
+    // override --session ses-OLD (CLI-флаг): та же сессия в env проходит, чужая — отказ
+    expect(() => heartbeatArtifactClaim({ baseDir: dir, env, pid: 0 }, 'dev:x', { sessionId: 'ses-OLD' })).toThrow(
+      /held by agent:a \(session ses-NEW\)/
+    );
+    const hb = heartbeatArtifactClaim({ baseDir: dir, env, pid: 0 }, 'dev:x', { sessionId: 'ses-NEW', pid: 4242 });
+    expect(hb.session_id).toBe('ses-NEW');
+    expect(hb.pid).toBe(4242);
   });
 });

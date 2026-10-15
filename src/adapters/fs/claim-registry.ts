@@ -57,6 +57,21 @@ export interface HeartbeatRecord {
   claim_acquired_at?: string;
   /** Уникальный токен владения claim'ом (2.18.3). */
   claim_token?: string;
+  /** 2.18.4: полный идентификатор сессии писателя (null — переданное владение). */
+  session_id?: string | null;
+  /** 2.18.4: pid писателя (для отладки, не auth). */
+  pid?: number;
+}
+
+/** 2.18.4: полная идентичность писателя heartbeat. Проверяются только переданные
+ * поля: owner — всегда; sessionId (null трактуется строго: claim тоже без сессии —
+ * переданное владение) и claimToken — только если определены. Непереданные поля —
+ * legacy-поведение (только writer). */
+export interface HeartbeatIdentity {
+  owner: string;
+  sessionId?: string | null;
+  pid?: number;
+  claimToken?: string;
 }
 
 export type HeartbeatReadResult = HeartbeatRecord | { corrupt: true } | null;
@@ -176,16 +191,27 @@ export function readHeartbeat(path: string): HeartbeatReadResult {
       writer: d.writer,
       ...(typeof d.claim_acquired_at === 'string' ? { claim_acquired_at: d.claim_acquired_at } : {}),
       ...(typeof d.claim_token === 'string' ? { claim_token: d.claim_token } : {}),
+      ...(typeof d.session_id === 'string'
+        ? { session_id: d.session_id }
+        : d.session_id === null
+          ? { session_id: null }
+          : {}),
+      ...(typeof d.pid === 'number' ? { pid: d.pid } : {}),
     };
   } catch {
     return { corrupt: true };
   }
 }
 
-/** Запись heartbeat (REQ-03, ADR-7; 2.18.2 F-01; 2.18.3 per-token isolation): атомарная замена —
- * уникальный tmp (wx) + rename поверх per-token heartbeat-файла. Проверяет, что claim существует,
- * активен и принадлежит writer. Привязывает heartbeat к rec.acquired_at и rec.claim_token. */
-export function writeHeartbeat(deps: ClaimRegistryDeps, input: { artifact: string; writer: string }): HeartbeatRecord {
+/** Запись heartbeat (REQ-03, ADR-7; 2.18.2 F-01; 2.18.3 per-token isolation; 2.18.4
+ * полная идентификация): атомарная замена — уникальный tmp (wx) + rename поверх
+ * per-token heartbeat-файла. Проверяет, что claim существует, активен и принадлежит
+ * писателю (owner обязателен; sessionId/claimToken — при передаче в identity).
+ * Привязывает heartbeat к rec.acquired_at и rec.claim_token. */
+export function writeHeartbeat(
+  deps: ClaimRegistryDeps,
+  input: { artifact: string; writer: string; identity?: HeartbeatIdentity }
+): HeartbeatRecord {
   const cPath = claimFilePath(deps.root, input.artifact);
   const { rec } = readClaimFile(cPath);
   if (!existsSync(cPath) || rec === null) {
@@ -196,7 +222,28 @@ export function writeHeartbeat(deps: ClaimRegistryDeps, input: { artifact: strin
   if (isStale(rec, readClaimHeartbeat(deps.root, input.artifact, rec), deps)) {
     throw new UserFacingError(`Claim for "${input.artifact}" is stale — cannot heartbeat (claim file: ${cPath})`);
   }
-  if (rec.owner !== input.writer) {
+  if (input.identity) {
+    const id = input.identity;
+    if (rec.owner !== id.owner) {
+      throw new UserFacingError(
+        `Claim for "${input.artifact}" is owned by ${rec.owner}, not ${id.owner} (claim file: ${cPath})`
+      );
+    }
+    // 2.18.4: сессия — строгое совпадение; оба null — переданное владение (легально)
+    if (id.sessionId !== undefined && rec.session_id !== id.sessionId) {
+      throw new UserFacingError(
+        `Claim for "${input.artifact}" is held by ${rec.owner} (session ${rec.session_id ?? '-'}) — ` +
+          `heartbeat session '${id.sessionId ?? '-'}' does not match (claim file: ${cPath})`
+      );
+    }
+    // 2.18.4: токен — защита от heartbeat'а прежнего владения после перезахвата
+    if (id.claimToken !== undefined && id.claimToken !== rec.claim_token) {
+      throw new UserFacingError(
+        `Claim for "${input.artifact}" was re-acquired by ${rec.owner} — ` +
+          `claim_token does not match the current claim (claim file: ${cPath})`
+      );
+    }
+  } else if (rec.owner !== input.writer) {
     throw new UserFacingError(
       `Claim for "${input.artifact}" is owned by ${rec.owner}, not ${input.writer} (claim file: ${cPath})`
     );
@@ -210,6 +257,8 @@ export function writeHeartbeat(deps: ClaimRegistryDeps, input: { artifact: strin
     writer: input.writer,
     claim_acquired_at: rec.acquired_at,
     claim_token: token,
+    ...(input.identity && input.identity.sessionId !== undefined ? { session_id: input.identity.sessionId } : {}),
+    ...(input.identity?.pid !== undefined ? { pid: input.identity.pid } : {}),
   };
   const tag = `${process.hrtime.bigint().toString(36)}.${Math.random().toString(36).slice(2, 10)}`;
   const tmp = join(dir, `${claimSlug(input.artifact)}.${token}.heartbeat.${tag}.tmp`);
