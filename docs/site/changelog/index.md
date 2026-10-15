@@ -8,6 +8,13 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.18.1] - 2026-10-15
+
+### Fixed — Mobile scroll horizontal overflow on docs site (390px)
+
+- **Docs site HomeModes horizontal overflow fixed**: `.wolf-mode` cards now declare `min-width: 0`, matching the `.wolf-install-step` pattern. Previously, the lack of `min-width: 0` on the CSS Grid item caused a grid blowout on mobile viewports (e.g. 390px screen width), resulting in horizontal overflow and failing mobile layout acceptance. Tested and verified on headless Chrome at 390px viewport (`scrollWidth === 390`). Resolves blocker `mem_20260901_sayt_gorizontalnyy_overflow_390px_ot_sek_e443fd`.
+- **Roadmap files synchronized**: `docs/dev/roadmap/wave-2.18.md` is updated to reflect the completed 2.18.0 wave (Council opinions v2, Claim heartbeats, Base sets polish, Docs audit); `docs/dev/roadmap/wave-2.19.md` is updated to capture Wave 2.19.0 (Async learning); `docs/dev/roadmap/wave-2.20.md` tracks the candidate Wave 2.20.0 (Archival brief).
+
 ## [2.18.0] - 2026-10-14
 
 ### Added — Council opinions v2, claim heartbeats, base-set finalization, public docs audit

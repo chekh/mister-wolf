@@ -1010,6 +1010,10 @@
   gap: 28px;
 }
 
+.wolf-mode {
+  min-width: 0; /* let the command plate scroll, not blow the grid */
+}
+
 .wolf-mode-head {
   margin: 0;
   display: flex;
