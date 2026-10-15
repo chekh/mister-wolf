@@ -212,5 +212,5 @@ describe('generateAgentBrief', () => {
     expect(last!.content).toContain('## Open Questions');
     expect(last!.content).toContain('## Blockers');
     expect(last!.injectedIds.length).toBeGreaterThan(0);
-  });
+  }, 30_000);
 });

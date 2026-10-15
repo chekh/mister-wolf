@@ -70,7 +70,7 @@ wolf add --type lesson \
 
 Ключевые флаги:
 
-- `--type` — один из 8 core-типов + расширения: `decision`, `lesson`, `rule`, `thread`, `note`, `tool`, `role`, `project` (а также расширения и фасеты: `complaint`, `council-opinion`, `synthesis` и др.).
+- `--type` — один из 8 core-типов (`rule`, `lesson`, `decision`, `thread`, `complaint`, `tool`, `note`, `face`) + расширения и фасеты (`council-opinion`, `synthesis` и др.).
 - `--title`, `--body`, `--tags` (через запятую) — базовые поля.
 - `--confidence low|medium|high`, `--importance 0..1` — оценка достоверности и важности.
 - `--set k=v` — произвольное дополнительное поле (повторяемый; значение `[a,b]` — строковый массив).

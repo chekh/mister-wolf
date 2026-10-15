@@ -50,7 +50,7 @@ export function claimCommand(baseDir: string = safeCwd()): Command {
     .action((artifact: string) => {
       const hb = heartbeatArtifactClaim({ baseDir }, artifact);
       console.log(`Heartbeat written: ${artifact} at ${hb.written_at} (writer ${hb.writer})`);
-      console.log(`heartbeat file: ${heartbeatFilePath(resolveMemoryRoot(baseDir).root, artifact)}`);
+      console.log(`heartbeat file: ${heartbeatFilePath(resolveMemoryRoot(baseDir).root, artifact, hb.claim_token)}`);
     });
 
   cmd

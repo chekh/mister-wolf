@@ -429,8 +429,9 @@ export interface CouncilsView {
   participation: { agent: string; opinions: number }[];
   votes: Record<string, number>;
   synthesis: { questionsWithSynthesis: number; sharePct: number | null; medianHours: number | null };
-  /** A9 (2.18.0 REQ-01; 2.18.2 F-02): сколько мнений несут валидные claims (аудируемые), и суммарный
-   * неразрешённый dissent по синтезам — расширение, не замена прежних полей. */
+  /** Число мнений с непустыми утверждениями (2.18.3). */
+  opinions_with_claims_count: number;
+  /** @deprecated alias for opinions_with_claims_count */
   audited_count: number;
   /** F-02: суммарное количество непустых структурированных claims во всех мнениях */
   structured_claims_count?: number;
@@ -1959,8 +1960,9 @@ async function buildCouncils(
       sharePct: questions.length > 0 ? (questionsWithSynthesis / questions.length) * 100 : null,
       medianHours,
     },
-    // A9 (2.18.0 REQ-01; 2.18.2 F-02): аудируемость советов — мнения с валидными claims (≠0 = v2) и
+    // A9 (2.18.0 REQ-01; 2.18.2 F-02; 2.18.3): аудируемость советов — мнения с валидными claims (≠0 = v2) и
     // суммарный неразрешённый dissent; legacy без полей даёт 0 (NFR-01)
+    opinions_with_claims_count: opinions.reduce((sum, o) => sum + (extractClaims(o).length > 0 ? 1 : 0), 0),
     audited_count: opinions.reduce((sum, o) => sum + (extractClaims(o).length > 0 ? 1 : 0), 0),
     structured_claims_count: opinions.reduce((sum, o) => sum + extractClaims(o).length, 0),
     unresolved_dissent_total: syntheses.reduce((sum, s) => sum + extractSynthesisMeta(s).unresolved_dissent.length, 0),

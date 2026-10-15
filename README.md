@@ -168,16 +168,16 @@ Memory scoped to a linked worktree (`worktree:<id>`) is filtered on exactly one 
 
 Self-checking scenarios: `bash scripts/demo/scenario-N.sh`.
 
-| #   | Scenario                                                                                                         |
-| --- | ---------------------------------------------------------------------------------------------------------------- |
-| 1   | Connecting Wolf to a new project (self-checking, PASS/FAIL points)                                               |
-| 2   | The life of a knowledge item: birth, aging (supersede), reading the current one                                  |
-| 3   | A new agent = one command (scaffold: playbook + frame + relation)                                                |
-| 4   | An owner complaint — a hot-signal into the self-learning loop                                                    |
-| 5   | A script becomes a resource — the Librarian's tool cycle                                                         |
-| 6   | Signal log: repeated tool errors land in session metrics (self-learning pipeline removed)                        |
-| 7   | Loop hygiene: memory integrity, attribution, and noise audit                                                     |
-| 8   | Routing: model from a routing memory object, spend written to the signal log (**one real LLM call, ~30–60 sec**) |
+| #   | Scenario                                                                                                            |
+| --- | ------------------------------------------------------------------------------------------------------------------- |
+| 1   | Connecting Wolf to a new project (self-checking, PASS/FAIL points)                                                  |
+| 2   | The life of a knowledge item: birth, aging (supersede), reading the current one                                     |
+| 3   | A new agent = one command (scaffold: playbook + frame + relation)                                                   |
+| 4   | An owner complaint — a hot-signal into the self-learning loop                                                       |
+| 5   | A script becomes a resource — the Librarian's tool cycle                                                            |
+| 6   | Signal log: repeated tool errors land in session metrics (self-learning pipeline removed)                           |
+| 7   | Loop hygiene: memory integrity, attribution, and noise audit                                                        |
+| 8   | Routing: model from a routing memory object, session wrap-up recorded in memory (**one real LLM call, ~30–60 sec**) |
 
 ## Integrations
 

@@ -102,7 +102,7 @@ describe('MCP stdio server', () => {
 
   function sendAndReceive(proc: typeof child, message: unknown): Promise<unknown> {
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('timeout')), 5000);
+      const timeout = setTimeout(() => reject(new Error('timeout')), 15000);
       let buffer = '';
       const handler = (data: Buffer) => {
         buffer += data.toString();

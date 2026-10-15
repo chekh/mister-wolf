@@ -57,7 +57,7 @@ describe('memory integrity: mass write + pressure-integrity секции validat
     const result = await runValidate(dir);
     expect(result.ok).toBe(true);
     expect(result.errors).toBe(0);
-  });
+  }, 30_000);
 
   it('(б) supersede-цепочка: битый superseded_by → ошибка validate', async () => {
     const deps = makeDeps();

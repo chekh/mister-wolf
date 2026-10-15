@@ -41,11 +41,13 @@ export interface ClaimRecord {
   cwd: string;
   /** ISO-время захвата. */
   acquired_at: string;
+  /** 2.18.3: уникальный токен владения claim'ом для per-token изоляции heartbeat. */
+  claim_token?: string;
 }
 
-/** Heartbeat-запись (2.18.0 REQ-03, design §3.3; 2.18.2 F-01): продление свежести
- * держателем долгой операции; writer — для отладки, не auth; claim_acquired_at
- * привязывает heartbeat к конкретному владению claim'ом. */
+/** Heartbeat-запись (2.18.0 REQ-03, design §3.3; 2.18.2 F-01; 2.18.3 per-token isolation):
+ * продление свежести держателем долгой операции; writer — для отладки, не auth;
+ * claim_acquired_at и claim_token привязывают heartbeat к конкретному владению claim'ом. */
 export interface HeartbeatRecord {
   /** ISO-время последнего heartbeat. */
   written_at: string;
@@ -53,6 +55,8 @@ export interface HeartbeatRecord {
   writer: string;
   /** ISO-время захвата claim, к которому привязан heartbeat (F-01). */
   claim_acquired_at?: string;
+  /** Уникальный токен владения claim'ом (2.18.3). */
+  claim_token?: string;
 }
 
 export type HeartbeatReadResult = HeartbeatRecord | { corrupt: true } | null;
@@ -105,12 +109,55 @@ export function claimTrailPath(root: string, artifact: string, epochMs: number):
   return join(claimsDir(root), `${claimSlug(artifact)}.${epochMs}.json`);
 }
 
-/** Путь heartbeat-файла артефакта (2.18.0 REQ-03): `<slug>.heartbeat` рядом с claim-файлом. */
-export function heartbeatFilePath(root: string, artifact: string): string {
+/** Путь heartbeat-файла артефакта (2.18.0 REQ-03; 2.18.3 per-token isolation):
+ * если передан token: `<slug>.<claim_token>.heartbeat`, иначе fallback на `<slug>.heartbeat`. */
+export function heartbeatFilePath(root: string, artifact: string, token?: string): string {
+  if (token) {
+    return join(claimsDir(root), `${claimSlug(artifact)}.${token}.heartbeat`);
+  }
   return join(claimsDir(root), `${claimSlug(artifact)}.heartbeat`);
 }
 
-/** Чтение heartbeat (F-01): null при отсутствии файла (ENOENT); { corrupt: true }
+/** Токен claim'а: явный claim_token или fallback на acquired_at (legacy-совместимость). */
+export function claimTokenOf(rec: ClaimRecord): string {
+  return rec.claim_token ?? rec.acquired_at;
+}
+
+/** Удаление heartbeat-файлов артефакта: per-token (если указан) и legacy. */
+export function removeHeartbeatFiles(root: string, artifact: string, token?: string): void {
+  if (token) {
+    try {
+      const p = heartbeatFilePath(root, artifact, token);
+      if (existsSync(p)) unlinkSync(p);
+    } catch {
+      /* ignore */
+    }
+  }
+  try {
+    const legacy = heartbeatFilePath(root, artifact);
+    if (existsSync(legacy)) unlinkSync(legacy);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Чтение heartbeat для конкретного claim (2.18.3): сначала per-token файл, затем fallback на legacy. */
+export function readClaimHeartbeat(root: string, artifact: string, rec?: ClaimRecord | null): HeartbeatReadResult {
+  if (rec) {
+    const token = claimTokenOf(rec);
+    const tokenPath = heartbeatFilePath(root, artifact, token);
+    if (existsSync(tokenPath)) {
+      return readHeartbeat(tokenPath);
+    }
+  }
+  const legacyPath = heartbeatFilePath(root, artifact);
+  if (existsSync(legacyPath)) {
+    return readHeartbeat(legacyPath);
+  }
+  return null;
+}
+
+/** Чтение heartbeat (F-01; 2.18.3): null при отсутствии файла (ENOENT); { corrupt: true }
  * при повреждённом файле/JSON; HeartbeatRecord при валидном JSON. */
 export function readHeartbeat(path: string): HeartbeatReadResult {
   let raw: string;
@@ -128,15 +175,16 @@ export function readHeartbeat(path: string): HeartbeatReadResult {
       written_at: d.written_at,
       writer: d.writer,
       ...(typeof d.claim_acquired_at === 'string' ? { claim_acquired_at: d.claim_acquired_at } : {}),
+      ...(typeof d.claim_token === 'string' ? { claim_token: d.claim_token } : {}),
     };
   } catch {
     return { corrupt: true };
   }
 }
 
-/** Запись heartbeat (REQ-03, ADR-7; 2.18.2 F-01): атомарная замена — уникальный tmp (wx) +
- * rename поверх. Проверяет, что claim существует, активен и принадлежит writer.
- * Привязывает heartbeat к rec.acquired_at. */
+/** Запись heartbeat (REQ-03, ADR-7; 2.18.2 F-01; 2.18.3 per-token isolation): атомарная замена —
+ * уникальный tmp (wx) + rename поверх per-token heartbeat-файла. Проверяет, что claim существует,
+ * активен и принадлежит writer. Привязывает heartbeat к rec.acquired_at и rec.claim_token. */
 export function writeHeartbeat(deps: ClaimRegistryDeps, input: { artifact: string; writer: string }): HeartbeatRecord {
   const cPath = claimFilePath(deps.root, input.artifact);
   const { rec } = readClaimFile(cPath);
@@ -145,7 +193,7 @@ export function writeHeartbeat(deps: ClaimRegistryDeps, input: { artifact: strin
       `No claim held for "${input.artifact}" — acquire it first before heartbeat (claim file: ${cPath})`
     );
   }
-  if (isStale(rec, readHeartbeat(heartbeatFilePath(deps.root, input.artifact)), deps)) {
+  if (isStale(rec, readClaimHeartbeat(deps.root, input.artifact, rec), deps)) {
     throw new UserFacingError(`Claim for "${input.artifact}" is stale — cannot heartbeat (claim file: ${cPath})`);
   }
   if (rec.owner !== input.writer) {
@@ -156,18 +204,20 @@ export function writeHeartbeat(deps: ClaimRegistryDeps, input: { artifact: strin
   const dir = claimsDir(deps.root);
   mkdirSync(dir, { recursive: true });
   const now = (deps.now ?? (() => new Date()))();
+  const token = claimTokenOf(rec);
   const record: HeartbeatRecord = {
     written_at: now.toISOString(),
     writer: input.writer,
     claim_acquired_at: rec.acquired_at,
+    claim_token: token,
   };
   const tag = `${process.hrtime.bigint().toString(36)}.${Math.random().toString(36).slice(2, 10)}`;
-  const tmp = join(dir, `${claimSlug(input.artifact)}.heartbeat.${tag}.tmp`);
+  const tmp = join(dir, `${claimSlug(input.artifact)}.${token}.heartbeat.${tag}.tmp`);
   const fd = openSync(tmp, 'wx');
   writeFileSync(fd, JSON.stringify(record), 'utf-8');
   closeSync(fd);
   try {
-    renameSync(tmp, heartbeatFilePath(deps.root, input.artifact));
+    renameSync(tmp, heartbeatFilePath(deps.root, input.artifact, token));
   } catch (e) {
     try {
       unlinkSync(tmp);
@@ -207,15 +257,16 @@ function parseClaim(raw: string): ClaimRecord | null {
       pid: typeof d.pid === 'number' ? d.pid : 0,
       cwd: typeof d.cwd === 'string' ? d.cwd : '',
       acquired_at: typeof d.acquired_at === 'string' ? d.acquired_at : '',
+      claim_token: typeof d.claim_token === 'string' ? d.claim_token : undefined,
     };
   } catch {
     return null;
   }
 }
 
-/** Stale (design §3.3; 2.18.2 F-01): мёртвый PID ИЛИ возраст > TTL ИЛИ (heartbeat есть и
- * старше окна/повреждён); нет heartbeat → правила 2.17.1 (NFR-03).
- * Если heartbeat привязан к чужому claim_acquired_at — игнорируется. */
+/** Stale (design §3.3; 2.18.2 F-01; 2.18.3 per-token isolation): мёртвый PID ИЛИ
+ * возраст > TTL ИЛИ (heartbeat есть и старше окна/повреждён); нет heartbeat → правила 2.17.1 (NFR-03).
+ * Если heartbeat привязан к чужому claim_acquired_at или чужому claim_token — игнорируется. */
 export function isStale(rec: ClaimRecord | null, hb: HeartbeatReadResult, deps: ClaimRegistryDeps): boolean {
   if (rec === null) return true;
   const alive = deps.isAlive ?? pidAlive;
@@ -227,6 +278,10 @@ export function isStale(rec: ClaimRecord | null, hb: HeartbeatReadResult, deps: 
   if (hb !== null) {
     if ('corrupt' in hb && hb.corrupt) return true;
     const hbRec = hb as HeartbeatRecord;
+    // 2.18.3: если heartbeat от другого claim_token — игнорируем его
+    if (hbRec.claim_token && rec.claim_token && hbRec.claim_token !== rec.claim_token) {
+      return false;
+    }
     // F-01: если heartbeat от предыдущего владения (acquired_at не совпадает), игнорируем его
     if (hbRec.claim_acquired_at && hbRec.claim_acquired_at !== rec.acquired_at) {
       return false;
@@ -261,6 +316,9 @@ export function acquireClaim(
   mkdirSync(dir, { recursive: true });
   const path = claimFilePath(deps.root, input.artifact);
   const now = deps.now ?? (() => new Date());
+  const epoch = now().getTime();
+  const randomTag = `${process.hrtime.bigint().toString(36)}.${Math.random().toString(36).slice(2, 10)}`;
+  const claim_token = `${epoch}.${randomTag}`;
   const record: ClaimRecord = {
     artifact: input.artifact,
     owner: input.identity.owner,
@@ -268,6 +326,7 @@ export function acquireClaim(
     pid: input.identity.pid,
     cwd: input.cwd,
     acquired_at: now().toISOString(),
+    claim_token,
   };
 
   for (let attempt = 0; ; attempt++) {
@@ -275,12 +334,7 @@ export function acquireClaim(
       const fd = openSync(path, 'wx');
       writeFileSync(fd, JSON.stringify(record), 'utf-8');
       closeSync(fd);
-      try {
-        const hbPath = heartbeatFilePath(deps.root, input.artifact);
-        if (existsSync(hbPath)) unlinkSync(hbPath);
-      } catch {
-        /* ignore */
-      }
+      removeHeartbeatFiles(deps.root, input.artifact);
       return record;
     } catch (e) {
       const code = (e as NodeJS.ErrnoException).code;
@@ -300,19 +354,19 @@ export function acquireClaim(
       (deps.wait ?? sleepMs)(10);
       continue;
     }
-    if (rec !== null && !isStale(rec, readHeartbeat(heartbeatFilePath(deps.root, input.artifact)), deps)) {
+    if (rec !== null && !isStale(rec, readClaimHeartbeat(deps.root, input.artifact, rec), deps)) {
       throw new ClaimHeldError(path, rec.owner, describeHolder(rec));
     }
     // stale/порченый (rec === null, сырые байты могли быть) → перехват со следом;
     // проигранная гонка перехвата (ENOENT на link/unlink) — повтор захвата
     try {
-      const epoch = now().getTime();
+      const epochMs = now().getTime();
       // FIX-4 (MINOR-4, ревью T5): след — через linkSync (excl-семантика):
       // exists+rename TOCTOU позволял двум перехватчикам одной мс перезаписать
       // чужой след (потеря байтов, NFR-02); при EEXIST — bump эпохи до свободного
       let preserved: string | null = null;
       for (let bump = 0; bump < 50 && preserved === null; bump++) {
-        const trail = claimTrailPath(deps.root, input.artifact, epoch + bump);
+        const trail = claimTrailPath(deps.root, input.artifact, epochMs + bump);
         try {
           linkSync(path, trail);
           preserved = trail;
@@ -329,11 +383,7 @@ export function acquireClaim(
         } else if (statSync(path).ino === statSync(preserved).ino) {
           // unlink только сохранённый inode: конкурент мог уже пересоздать claim
           unlinkSync(path);
-          try {
-            unlinkSync(heartbeatFilePath(deps.root, input.artifact));
-          } catch {
-            /* ignore */
-          }
+          removeHeartbeatFiles(deps.root, input.artifact, rec ? claimTokenOf(rec) : undefined);
         }
       }
     } catch {
@@ -370,7 +420,7 @@ export function releaseClaim(
     );
   }
   const fullMatch = ownerSessionMatch(rec, input.identity) && rec.pid === input.identity.pid;
-  const pidReleasable = rec.pid <= 0 || isStale(rec, readHeartbeat(heartbeatFilePath(deps.root, input.artifact)), deps);
+  const pidReleasable = rec.pid <= 0 || isStale(rec, readClaimHeartbeat(deps.root, input.artifact, rec), deps);
   // MINOR-1b (интегральное ревью 2.17.1): зеркально requireClaim — адресат
   // transfer (session null + owner) освобождает своей сессией, иначе передача
   // паркует release до TTL
@@ -382,6 +432,9 @@ export function releaseClaim(
   }
   if (input.transferTo !== undefined) {
     const now = (deps.now ?? (() => new Date()))();
+    const epoch = now.getTime();
+    const randomTag = `${process.hrtime.bigint().toString(36)}.${Math.random().toString(36).slice(2, 10)}`;
+    const transferredToken = `${epoch}.${randomTag}`;
     const transferred: ClaimRecord = {
       artifact: rec.artifact,
       owner: input.transferTo,
@@ -390,21 +443,14 @@ export function releaseClaim(
       pid: 0,
       cwd: rec.cwd,
       acquired_at: now.toISOString(),
+      claim_token: transferredToken,
     };
     writeFileSync(path, JSON.stringify(transferred), 'utf-8');
-    try {
-      unlinkSync(heartbeatFilePath(deps.root, input.artifact));
-    } catch {
-      /* ignore */
-    }
+    removeHeartbeatFiles(deps.root, input.artifact, claimTokenOf(rec));
     return { action: 'transferred', owner: input.transferTo };
   }
   unlinkSync(path);
-  try {
-    unlinkSync(heartbeatFilePath(deps.root, input.artifact));
-  } catch {
-    /* ignore */
-  }
+  removeHeartbeatFiles(deps.root, input.artifact, claimTokenOf(rec));
   return { action: 'released', owner: rec.owner };
 }
 
@@ -453,7 +499,7 @@ export function requireClaim(
       `Claim file for "${artifact}" is corrupt — treated as stale; re-acquire: wolf claim acquire "${artifact}" (claim file: ${path})`
     );
   }
-  if (isStale(rec, readHeartbeat(heartbeatFilePath(deps.root, artifact)), deps)) {
+  if (isStale(rec, readClaimHeartbeat(deps.root, artifact, rec), deps)) {
     throw new UserFacingError(
       `Claim for "${artifact}" is stale (holder ${rec.owner}) — re-acquire: wolf claim acquire "${artifact}" (claim file: ${path})`
     );

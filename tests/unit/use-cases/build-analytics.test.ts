@@ -726,7 +726,8 @@ describe('buildAnalyticsReport: councils', () => {
       participation: [],
       votes: {},
       synthesis: { questionsWithSynthesis: 0, sharePct: null, medianHours: null },
-      // A9 (2.18.0 REQ-01; 2.18.2 F-02): новые метрики аудируемости — нули на пустой памяти
+      // A9 (2.18.0 REQ-01; 2.18.2 F-02; 2.18.3): новые метрики аудируемости — нули на пустой памяти
+      opinions_with_claims_count: 0,
       audited_count: 0,
       structured_claims_count: 0,
       unresolved_dissent_total: 0,

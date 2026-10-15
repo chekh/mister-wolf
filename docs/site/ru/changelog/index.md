@@ -10,6 +10,14 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.18.3] - 2026-10-15
+
+### Fixed — Per-token claim heartbeat isolation, council analytics naming, docs & demo sync
+
+- **Per-token claim heartbeat isolation**: `ClaimRecord` now issues a unique `claim_token` on acquisition (`${epoch}.${randomTag}`) with fallback to `acquired_at` for legacy records. Heartbeats are saved as `<slug>.<claim_token>.heartbeat`, eliminating race conditions where delayed writes from a previous holder could overwrite the heartbeat of a new claim holder. `releaseClaim` and takeover clean up their per-token files alongside legacy paths.
+- **Council analytics naming**: `CouncilsView` introduces `opinions_with_claims_count` to unambiguously represent opinions with non-empty claims. `audited_count` is preserved as a deprecated alias pointing to `opinions_with_claims_count` for backwards compatibility.
+- **Documentation & demo scenarios sync**: `docs/guide/user-guide.md` updates the 8 core memory types to the canonical list (`rule`, `lesson`, `decision`, `thread`, `complaint`, `tool`, `note`, `face`). `docs/guide/architecture.md` synchronizes active use cases in `src/app/use-cases/`, removing obsolete draft/learn files. `README.md` and `README.ru.md` update demo scenario 8 description to reflect routing model and session wrap-up. `scripts/demo/lib.sh` ensures non-zero exit code (`exit 1`) in `summary()` upon scenario failures.
+
 ## [2.18.2] - 2026-10-15
 
 ### Fixed — Claim heartbeat lifecycle, evidence validation, docs hygiene & coordinator face

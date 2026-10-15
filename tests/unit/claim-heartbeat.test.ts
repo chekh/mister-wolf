@@ -8,12 +8,14 @@ import {
   claimsDir,
   heartbeatFilePath,
   isStale,
+  readClaimHeartbeat,
   readHeartbeat,
   releaseClaim,
   requireClaim,
   writeHeartbeat,
   type ClaimRecord,
   type ClaimRegistryDeps,
+  type HeartbeatRecord,
 } from '../../src/adapters/fs/claim-registry.js';
 import { acquireArtifactClaim, heartbeatArtifactClaim } from '../../src/app/use-cases/claim-artifact.js';
 
@@ -53,23 +55,33 @@ describe('claim-registry: heartbeat-файл (REQ-03 A11, design §3.3 / ADR-7)'
     expect(CLAIM_HEARTBEAT_WINDOW_MS).toBe(10 * 60 * 1000);
   });
 
-  it('S-20: writeHeartbeat создаёт <slug>.heartbeat с JSON {written_at, writer, claim_acquired_at}', () => {
-    acquireClaim(deps(root), {
+  it('S-20: writeHeartbeat создаёт <slug>.<token>.heartbeat с JSON {written_at, writer, claim_acquired_at, claim_token}', () => {
+    const claim = acquireClaim(deps(root), {
       artifact: 'dev:x',
       identity: { owner: 'agent:foo', sessionId: 'ses-1', pid: 123 },
       cwd: root,
     });
     const hb = writeHeartbeat(deps(root), { artifact: 'dev:x', writer: 'agent:foo' });
-    expect(hb).toEqual({ written_at: T0.toISOString(), writer: 'agent:foo', claim_acquired_at: T0.toISOString() });
-    const path = heartbeatFilePath(root, 'dev:x');
-    expect(path).toBe(join(claimsDir(root), 'dev_x.heartbeat'));
+    expect(hb).toEqual({
+      written_at: T0.toISOString(),
+      writer: 'agent:foo',
+      claim_acquired_at: T0.toISOString(),
+      claim_token: claim.claim_token,
+    });
+    const path = heartbeatFilePath(root, 'dev:x', claim.claim_token);
+    expect(path).toBe(join(claimsDir(root), `dev_x.${claim.claim_token}.heartbeat`));
     expect(readFileSync(path, 'utf-8')).toBe(
-      JSON.stringify({ written_at: T0.toISOString(), writer: 'agent:foo', claim_acquired_at: T0.toISOString() })
+      JSON.stringify({
+        written_at: T0.toISOString(),
+        writer: 'agent:foo',
+        claim_acquired_at: T0.toISOString(),
+        claim_token: claim.claim_token,
+      })
     );
   });
 
   it('S-20b: повторный heartbeat атомарно перезаписывает — один файл, последний выигрывает, без следов', () => {
-    acquireClaim(deps(root), {
+    const claim = acquireClaim(deps(root), {
       artifact: 'dev:x',
       identity: { owner: 'agent:a', sessionId: 'ses-1', pid: 123 },
       cwd: root,
@@ -82,8 +94,8 @@ describe('claim-registry: heartbeat-файл (REQ-03 A11, design §3.3 / ADR-7)'
       artifact: 'dev:x',
       writer: 'agent:a',
     });
-    expect(readdirSync(claimsDir(root))).toEqual(['dev_x.heartbeat', 'dev_x.json']); // tmp-мусора нет
-    expect(readHeartbeat(heartbeatFilePath(root, 'dev:x'))).toEqual(second);
+    expect(readdirSync(claimsDir(root)).sort()).toEqual([`dev_x.${claim.claim_token}.heartbeat`, 'dev_x.json'].sort()); // tmp-мусора нет
+    expect(readHeartbeat(heartbeatFilePath(root, 'dev:x', claim.claim_token))).toEqual(second);
   });
 
   it('S-20c: writeHeartbeat выбрасывает ошибку при отсутствии claim или чужом writer', () => {
@@ -179,8 +191,8 @@ describe('claim-artifact (use-case): heartbeatArtifactClaim', () => {
   });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-  it('пишет heartbeat от владельца из WOLF_ACTOR в <root>/.wolf/shared/claims/<slug>.heartbeat', () => {
-    acquireArtifactClaim(
+  it('пишет heartbeat от владельца из WOLF_ACTOR в <root>/.wolf/shared/claims/<slug>.<token>.heartbeat', () => {
+    const claim = acquireArtifactClaim(
       { baseDir: dir, env: { WOLF_ACTOR: 'agent:executor-lead', WOLF_SESSION: 'ses-1' } },
       'dev:2026-10-14-demo'
     );
@@ -190,8 +202,9 @@ describe('claim-artifact (use-case): heartbeatArtifactClaim', () => {
     );
     expect(hb.writer).toBe('agent:executor-lead');
     expect(typeof hb.written_at).toBe('string');
+    expect(hb.claim_token).toBe(claim.claim_token);
     const onDisk = JSON.parse(
-      readFileSync(join(dir, '.wolf', 'shared', 'claims', 'dev_2026-10-14-demo.heartbeat'), 'utf-8')
+      readFileSync(join(dir, '.wolf', 'shared', 'claims', `dev_2026-10-14-demo.${hb.claim_token}.heartbeat`), 'utf-8')
     );
     expect(onDisk).toEqual(hb);
   });
@@ -216,7 +229,7 @@ describe('F-01 regression: захват A -> heartbeat -> release -> прошл�
     const idB = { owner: 'agent:B', sessionId: 'ses-B', pid: 102 };
 
     // 1. Захват A
-    acquireClaim(d, { artifact, identity: idA, cwd: root });
+    const claimA = acquireClaim(d, { artifact, identity: idA, cwd: root });
 
     // 2. Heartbeat от A
     writeHeartbeat(d, { artifact, writer: idA.owner });
@@ -225,7 +238,7 @@ describe('F-01 regression: захват A -> heartbeat -> release -> прошл�
     releaseClaim(d, { artifact, identity: idA });
 
     // Убеждаемся, что при release .heartbeat файл удалился
-    expect(readHeartbeat(heartbeatFilePath(root, artifact))).toBeNull();
+    expect(readHeartbeat(heartbeatFilePath(root, artifact, claimA.claim_token))).toBeNull();
 
     // 4. Прошло 11 минут
     nowMs += 11 * MIN;
@@ -234,6 +247,65 @@ describe('F-01 regression: захват A -> heartbeat -> release -> прошл�
     acquireClaim(d, { artifact, identity: idB, cwd: root });
 
     // 6. requireClaim от B успешен и не падает из-за старого heartbeat!
+    expect(() => requireClaim(d, artifact, { owner: idB.owner, sessionId: idB.sessionId })).not.toThrow();
+  });
+});
+
+describe('2.18.3 per-token heartbeat isolation: предотвращение гонки запоздавшего heartbeat', () => {
+  let root: string;
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'wolf-claims-per-token-'));
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  it('A и B имеют разные токены: запоздавший A не затирает heartbeat B, B остаётся валиден', () => {
+    let nowMs = T0.getTime();
+    const d: ClaimRegistryDeps = {
+      root,
+      now: () => new Date(nowMs),
+      isAlive: () => true,
+    };
+    const artifact = 'dev:race-prevention';
+    const idA = { owner: 'agent:A', sessionId: 'ses-A', pid: 101 };
+    const idB = { owner: 'agent:B', sessionId: 'ses-B', pid: 102 };
+
+    // 1. Агент A захватывает claim и получает уникальный токен
+    const claimA = acquireClaim(d, { artifact, identity: idA, cwd: root });
+    expect(claimA.claim_token).toBeDefined();
+
+    // 2. Агент A пишет heartbeat
+    const hbA = writeHeartbeat(d, { artifact, writer: idA.owner });
+    expect(hbA.claim_token).toBe(claimA.claim_token);
+
+    // 3. Агент A освобождает claim
+    releaseClaim(d, { artifact, identity: idA });
+
+    // 4. Проходит 5 минут, агент B захватывает claim
+    nowMs += 5 * MIN;
+    const claimB = acquireClaim(d, { artifact, identity: idB, cwd: root });
+    expect(claimB.claim_token).toBeDefined();
+    expect(claimB.claim_token).not.toBe(claimA.claim_token);
+
+    // 5. Агент B пишет свой heartbeat
+    nowMs += 1 * MIN;
+    const hbB = writeHeartbeat(d, { artifact, writer: idB.owner });
+    expect(hbB.claim_token).toBe(claimB.claim_token);
+
+    // 6. Запоздавшая операция A пытается записать в свой per-token heartbeat
+    const delayedHbA: HeartbeatRecord = {
+      written_at: new Date(nowMs - 20 * MIN).toISOString(), // старый timestamp
+      writer: idA.owner,
+      claim_acquired_at: claimA.acquired_at,
+      claim_token: claimA.claim_token,
+    };
+    writeFileSync(heartbeatFilePath(root, artifact, claimA.claim_token), JSON.stringify(delayedHbA), 'utf-8');
+
+    // 7. Проверяем, что файл B физически не пострадал и heartbeat B остаётся свежим
+    const bOnDisk = readHeartbeat(heartbeatFilePath(root, artifact, claimB.claim_token));
+    expect(bOnDisk).toEqual(hbB);
+
+    // 8. requireClaim и isStale для агента B успешны и валидны
+    expect(isStale(claimB, readClaimHeartbeat(root, artifact, claimB), d)).toBe(false);
     expect(() => requireClaim(d, artifact, { owner: idB.owner, sessionId: idB.sessionId })).not.toThrow();
   });
 });

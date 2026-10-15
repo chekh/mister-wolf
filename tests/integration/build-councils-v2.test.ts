@@ -149,10 +149,12 @@ describe('S-06: buildCouncils mixed legacy+v2', () => {
     ]);
   });
 
-  it('новые поля присутствуют и не NaN: audited_count=2, unresolved_dissent_total=1', async () => {
+  it('новые поля присутствуют и не NaN: opinions_with_claims_count=2, audited_count=2, unresolved_dissent_total=1', async () => {
     const c = (await report()).councils;
+    expect(c.opinions_with_claims_count).toBe(2);
     expect(c.audited_count).toBe(2); // только op-v2-1 и op-v2-2 несут claims
     expect(c.unresolved_dissent_total).toBe(1); // syn-v2: 1 пункт
+    expect(Number.isFinite(c.opinions_with_claims_count)).toBe(true);
     expect(Number.isFinite(c.audited_count)).toBe(true);
     expect(Number.isFinite(c.unresolved_dissent_total)).toBe(true);
   });

@@ -59,9 +59,9 @@ describe('claim-registry: захват (REQ-05 AC-1, design §3.5)', () => {
 
   it('создаёт .wolf/shared/claims/<slug>.json с who/when/what (AC-2)', () => {
     const rec = acquireClaim(deps(root), { artifact: 'dev:2026-10-14-demo', identity: HELLO, cwd: '/tmp/wt' });
-    expect(rec).toEqual(claim());
+    expect(rec).toEqual(claim({ claim_token: rec.claim_token }));
     const onDisk = JSON.parse(readFileSync(join(claimsDir(root), 'dev_2026-10-14-demo.json'), 'utf-8'));
-    expect(onDisk).toEqual(claim());
+    expect(onDisk).toEqual(claim({ claim_token: rec.claim_token }));
   });
 
   it('второй claim при живом владельце — ClaimHeldError с идентификатором владельца (AC-1)', () => {

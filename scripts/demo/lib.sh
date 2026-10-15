@@ -14,7 +14,7 @@ summary() {
   echo; echo "════════════════════════════════════"
   echo "Итог: PASS=$PASS FAIL=$FAIL"
   [ -n "${DEMO:-}" ] && echo "проект демо сохранён: $DEMO (можно осмотреть .wolf/ вручную)"
-  if [ "$FAIL" -eq 0 ]; then echo "ВСЁ РАБОТАЕТ"; else echo "ЕСТЬ СБОИ"; fi
+  if [ "$FAIL" -eq 0 ]; then echo "ВСЁ РАБОТАЕТ"; exit 0; else echo "ЕСТЬ СБОИ"; exit 1; fi
 }
 
 # new_demo_project — чистый tmp-проект с пустой изолированной памятью

@@ -92,11 +92,12 @@ describe('REQ-03 (A11): heartbeat — S-26…S-28, S-70/S-71 (integration)', () 
     at = T0.getTime() + 9 * MIN;
     writeHeartbeat(d, { artifact, writer: X.owner });
 
-    const hb = readHeartbeat(heartbeatFilePath(dir, artifact));
+    const hb = readHeartbeat(heartbeatFilePath(dir, artifact, acquired.claim_token));
     expect(hb).toEqual({
       written_at: new Date(T0.getTime() + 9 * MIN).toISOString(),
       writer: X.owner,
       claim_acquired_at: acquired.acquired_at,
+      claim_token: acquired.claim_token,
     });
     expect(isStale(acquired, hb, d)).toBe(false);
     expect(() => requireClaim(d, artifact, { owner: X.owner, sessionId: X.sessionId })).not.toThrow();
@@ -131,8 +132,9 @@ describe('REQ-03 (A11): heartbeat — S-26…S-28, S-70/S-71 (integration)', () 
     expect(y.ok, y.msg).toBe(true);
 
     const hbFiles = readdirSync(claimsDir(dir)).filter((n) => n.endsWith('.heartbeat'));
-    expect(hbFiles).toEqual(['dev_race.heartbeat']); // ровно один, tmp-мусора нет
-    const hb = readHeartbeat(heartbeatFilePath(dir, artifact));
+    expect(hbFiles.length).toBe(1); // ровно один, tmp-мусора нет
+    expect(hbFiles[0]).toMatch(/^dev_race\..+\.heartbeat$/);
+    const hb = readHeartbeat(join(claimsDir(dir), hbFiles[0]!));
     expect(hb).not.toBeNull(); // JSON цел, не битый
     expect(hb!.writer).toBe(X.owner);
   }, 60_000);
