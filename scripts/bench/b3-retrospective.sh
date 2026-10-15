@@ -3,7 +3,7 @@
 # маркерам ['reserve','tool_error','delivery'] + weighted-цена пересказа.
 # A: wolf session wrap-up (события сессии в .wolf/metrics/session-metrics.jsonl
 # + событие в памяти; wrap-up — локальная команда, weighted=0). B: голый
-# пересказ (dry: заглушка, weighted n/a; live: wolf run — реальный вызов).
+# пересказ (dry: заглушка, weighted n/a; live: opencode run — реальный вызов).
 # ВНИМАНИЕ: флаг --live делает РЕАЛЬНЫЙ opencode/LLM-вызов (минуты, деньги) —
 # только ручной запуск; по умолчанию и под npm — dry без LLM.
 # Покрытие маркеров печатается как число — качество НЕ ассертим (LLM/шаблон

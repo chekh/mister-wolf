@@ -109,6 +109,41 @@ describe('S-02: council-opinion без claims отклоняется схемо�
     const result = schema.safeParse(opinion({ claims: [] }));
     expect(result.success).toBe(false);
   });
+
+  it('F-02: EvidenceRef без memory_id и без path отклоняется', () => {
+    const schema = buildTypeSchema(COUNCIL_OPINION_DECL);
+    const resultOnlyQuote = schema.safeParse(
+      opinion({
+        claims: ['claim 1'],
+        evidence: [{ quote: 'some quote without source' }],
+      })
+    );
+    expect(resultOnlyQuote.success).toBe(false);
+
+    const resultEmptyStrings = schema.safeParse(
+      opinion({
+        claims: ['claim 1'],
+        evidence: [{ memory_id: '   ', path: '' }],
+      })
+    );
+    expect(resultEmptyStrings.success).toBe(false);
+
+    const resultValidMemoryId = schema.safeParse(
+      opinion({
+        claims: ['claim 1'],
+        evidence: [{ memory_id: 'mem_123' }],
+      })
+    );
+    expect(resultValidMemoryId.success).toBe(true);
+
+    const resultValidPath = schema.safeParse(
+      opinion({
+        claims: ['claim 1'],
+        evidence: [{ path: 'docs/guide.md' }],
+      })
+    );
+    expect(resultValidPath.success).toBe(true);
+  });
 });
 
 describe('S-07: extractVote обратно совместим (legacy vote — первичное поле подсчёта)', () => {

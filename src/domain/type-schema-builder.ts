@@ -22,15 +22,22 @@ export const PROPOSAL_CONTRACT_FIELDS: readonly string[] = [
   'applicability_bounds',
 ];
 
-// A9 (2.18.0 REQ-01): структурированные элементы council-контракта v2 —
+// A9 (2.18.0 REQ-01; 2.18.2 F-02): структурированные элементы council-контракта v2 —
 // zod-форма видов полей 'evidence-ref[]' / 'rejected-alternative[]'
-// (OQ-02: quote ≤ 200, note ≤ 500; альтернатива без обоснования не проходит).
-const EvidenceRefSchema = z.object({
-  memory_id: z.string().optional(),
-  path: z.string().optional(),
-  quote: z.string().max(200).optional(),
-  note: z.string().max(500).optional(),
-});
+// (OQ-02: quote ≤ 200, note ≤ 500; альтернатива без обоснования не проходит;
+// F-02: EvidenceRef обязан содержать хотя бы одно из полей memory_id или path).
+const EvidenceRefSchema = z
+  .object({
+    memory_id: z.string().optional(),
+    path: z.string().optional(),
+    quote: z.string().max(200).optional(),
+    note: z.string().max(500).optional(),
+  })
+  .refine(
+    (data) =>
+      Boolean((data.memory_id && data.memory_id.trim().length > 0) || (data.path && data.path.trim().length > 0)),
+    { message: 'EvidenceRef must contain at least one non-empty field: memory_id or path' }
+  );
 
 const RejectedAlternativeSchema = z.object({
   claim: z.string().min(1),

@@ -14,8 +14,8 @@ check "создан relation -complain-> agent:demo-agent"     "grep -q 'complai
 step "4.2 жалоба попала в сигнальный лог Ф20 (writer-матрица)"
 check "событие complaint в session-metrics.jsonl"        "grep -q '\"event\": \"complaint\"\|\"event\":\"complaint\"' .wolf/metrics/session-metrics.jsonl"
 
-step "4.3 жалоба видна контуру (learn status)"
-node "$WOLF" learn status >/dev/null 2>&1
-check "learn status читает лог с жалобой"               "node "$WOLF" learn status 2>/dev/null | grep -q 'complaint'"
+step "4.3 жалоба видна в списке жалоб"
+COMPLAINTS=$(node "$WOLF" list --type complaint 2>/dev/null)
+check "list находит созданную жалобу"                        "echo \"$COMPLAINTS\" | grep -q 'слишком многословен'"
 
 summary

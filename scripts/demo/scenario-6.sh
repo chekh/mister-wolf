@@ -1,41 +1,36 @@
 #!/usr/bin/env bash
-# Демо-сценарий 6: самообучение — 3 ошибки → паттерн → draft → Sandbox Replay → активация.
-# Гейт: живого LLM нет (спека: детерминированные шаги); сбои порождаются реальным ENOENT.
+# Демо-сценарий 6: предложения агентов — сохранение предложения (wolf propose add),
+# просмотр (wolf propose list), доставка адресату (wolf propose deliver) и защита ADR-5.
 set -u
 source "$(dirname "$0")/lib.sh"
 new_demo_project
 
-fail_run() { # wolf run в окружении без opencode → ENOENT → writer пишет tool_error
-  env PATH="/usr/bin:/bin" "$NODE_BIN" "$WOLF" run --agent apprentice --title "$1" "test" >/dev/null 2>&1
-  return 0
-}
+step "6.1 wolf propose add — сохранение предложения (facet=proposal, pending)"
+PROP_OUT=$(env WOLF_ACTOR="agent:apprentice" node "$WOLF" propose add \
+  --addressee "agent:steward" \
+  --basis "Повторяющийся сбой в сборке" \
+  --change "Добавить pre-check для артефактов" \
+  --benefit "Снижение ошибок на 40%" \
+  --bounds "Только в dev-режиме" \
+  "Предложение: включить автоматическую валидацию артефактов" 2>&1)
+PROP_ID=$(echo "$PROP_OUT" | grep -oE 'mem_[a-z0-9_]+' | head -1)
+check "proposal сохранён (id получен)"                       "[ -n \"$PROP_ID\" ]"
+check "автор предложения из env (WOLF_ACTOR)"                "node \"$WOLF\" get \"$PROP_ID\" 2>/dev/null | grep -q 'agent:apprentice'"
 
-step "6.1 три сбоя одного класса попадают в сигнальный лог (writer: wolf run)"
-fail_run "task-1"; fail_run "task-2"; fail_run "task-3"
-check "3 tool_error-события в session-metrics.jsonl"     "[ \"$(grep -c 'tool_error' .wolf/metrics/session-metrics.jsonl | tr -d ' ')\" -ge 3 ]"
+step "6.2 wolf propose list --pending — предложение в очереди"
+PENDING=$(node "$WOLF" propose list --pending 2>/dev/null)
+check "предложение присутствует в pending-списке"            "echo \"$PENDING\" | grep -q \"$PROP_ID\""
 
-step "6.2 wolf learn digest — контур фиксирует паттерн (порог N≥3)"
-DIGEST=$(node "$WOLF" learn digest 2>/dev/null)
-check "паттерн opencode:tool_not_found зафиксирован"     "echo \"$DIGEST\" | grep -q 'opencode:tool_not_found'"
+step "6.3 wolf propose deliver — явная доставка адресату"
+DELIVER_OUT=$(node "$WOLF" propose deliver "$PROP_ID" 2>&1)
+check "предложение доставлено адресату"                      "echo \"$DELIVER_OUT\" | grep -q 'delivered'"
 
-step "6.3 wolf learn propose — черновик правила (пост-аудит, механический генератор)"
-node "$WOLF" learn propose "opencode:tool_not_found" >/dev/null 2>&1
-DRAFT=$(node "$WOLF" learn digest 2>/dev/null | grep -oE 'mem_[a-z0-9_]*draft[a-z0-9_]*' | head -1)
-check "draft создан (id в digest)"                       "[ -n \"$DRAFT\" ]"
-check "автор draft = Стюард (steward:*)"                 "node \"$WOLF\" get \"$DRAFT\" 2>/dev/null | grep -q 'steward:'"
+step "6.4 wolf propose list --delivered — статус доставлен"
+DELIV_LIST=$(node "$WOLF" propose list --delivered 2>/dev/null)
+check "предложение появилось в списке delivered"             "echo \"$DELIV_LIST\" | grep -q \"$PROP_ID\""
 
-step "6.4 wolf learn validate — Sandbox Replay Holdout"
-fail_run "task-4"   # новое событие после draft → holdout содержит случай
-VALID=$(node "$WOLF" learn validate "$DRAFT" 2>/dev/null)
-check "вердикт pass (prevented ≥1)"                      "echo \"$VALID\" | grep -q 'pass'"
-
-step "6.5 wolf learn activate — правило входит в силу (доставка только теперь)"
-node "$WOLF" learn activate "$DRAFT" >/dev/null 2>&1
-check "draft активирован (active)"                       "node \"$WOLF\" get \"$DRAFT\" 2>/dev/null | grep -q '\"status\": \"active\"'"
-check "delivery_event записан в Ф20-лог"                 "grep -q 'delivery' .wolf/metrics/session-metrics.jsonl"
-
-step "6.6 дедуп: второй propose на тот же паттерн отклонён"
-node "$WOLF" learn propose "opencode:tool_not_found" >/dev/null 2>&1
-check "повторный propose — отказ"                        "[ $? -ne 0 ]"
+step "6.5 защита ADR-5: попытка передать --created-by отклоняется"
+node "$WOLF" propose add --addressee "agent:steward" --basis "b" --change "c" --benefit "b" --bounds "b" --created-by "fake" >/dev/null 2>&1
+check "отказ при передаче явного флага --created-by"         "[ $? -ne 0 ]"
 
 summary

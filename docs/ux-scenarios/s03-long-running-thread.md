@@ -18,7 +18,7 @@
 1. Пользователь создает thread:
 
    ```bash
-   wolf thread create \
+   wolf thread add \
      --title "Refactor auth module to schema-driven taxonomy" \
      --goal "Replace hardcoded MEMORY_TYPES with config-driven registry" \
      --current-state "Phase 6-7 complete; Phase 8 direction unclear" \
@@ -70,7 +70,7 @@
 
 ## Покрываемые команды
 
-- `wolf thread create`
+- `wolf thread add`
 - `wolf thread list`
 - `wolf thread brief <id>`
 - `wolf info-request create`

@@ -70,7 +70,7 @@ wolf add --type lesson \
 
 Ключевые флаги:
 
-- `--type` — один из 25 активных типов: `decision`, `lesson`, `observation`, `complaint`, `session-summary`, `open-question`, `context`, `work-thread`, `info-request`, `article`, `blocker`, `session-checkpoint`, `rule`, `document-ref`, `document-native`, `task-brief`, `report`, `council-question`, `council-opinion`, `synthesis`, `escalation`, `decision-request`, `call-injection`, `playbook`, `tool`.
+- `--type` — один из 8 core-типов + расширения: `decision`, `lesson`, `rule`, `thread`, `note`, `tool`, `role`, `project` (а также расширения и фасеты: `complaint`, `council-opinion`, `synthesis` и др.).
 - `--title`, `--body`, `--tags` (через запятую) — базовые поля.
 - `--confidence low|medium|high`, `--importance 0..1` — оценка достоверности и важности.
 - `--set k=v` — произвольное дополнительное поле (повторяемый; значение `[a,b]` — строковый массив).
@@ -171,7 +171,7 @@ wolf validate --fix # поместить битые объекты в каран
 **Пример:**
 
 ```bash
-wolf thread create \
+wolf thread add \
   --title "Переход на schema-driven memory" \
   --goal "Сделать Mr. Wolf конфигурируемым движком памяти" \
   --current-state "Завершена Phase 1" \
@@ -575,7 +575,7 @@ wolf call --for "тема задачи"
 wolf brief
 
 # 2. Создать тред (если работы ещё нет)
-wolf thread create --title "Название задачи" --goal "Чего хотим достичь"
+wolf thread add --title "Название задачи" --goal "Чего хотим достичь"
 
 # 3. В процессе: решение и отложенный вопрос
 wolf decision add --title "Выбор X" --thread <thread-id> --body "Почему X"
@@ -703,7 +703,7 @@ wolf rebuild-index                 # перестроить SQLite-индекс
 wolf validate [--fix]              # целостность хранилища (—fix: карантин)
 
 # Work threads и артефакты
-wolf thread create --title "..." --goal "..." [--current-state "..."] [--next-steps "a,b"]
+wolf thread add --title "..." --goal "..." [--current-state "..."] [--next-steps "a,b"]
 wolf thread list
 wolf thread brief <thread-id>
 wolf diff <thread-id> --since <checkpoint-id>

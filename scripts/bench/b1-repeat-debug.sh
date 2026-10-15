@@ -3,7 +3,7 @@
 # не существует) решается дважды — A с активным правилом в памяти Wolf (доставка
 # через `wolf call --for reserve`), B с пустой памятью.
 # Dry (по умолчанию): LLM-прогоны = fixture-NDJSON, механика Wolf исполняется
-# по-настоящему. --live: реальные вызовы `wolf run` (opencode), ~минуты.
+# по-настоящему. --live: реальные вызовы `opencode run`, ~минуты.
 set -u
 source "$(dirname "$0")/lib.sh"
 bench_flags "$@"

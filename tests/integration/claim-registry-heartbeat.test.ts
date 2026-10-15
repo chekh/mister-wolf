@@ -93,7 +93,11 @@ describe('REQ-03 (A11): heartbeat — S-26…S-28, S-70/S-71 (integration)', () 
     writeHeartbeat(d, { artifact, writer: X.owner });
 
     const hb = readHeartbeat(heartbeatFilePath(dir, artifact));
-    expect(hb).toEqual({ written_at: new Date(T0.getTime() + 9 * MIN).toISOString(), writer: X.owner });
+    expect(hb).toEqual({
+      written_at: new Date(T0.getTime() + 9 * MIN).toISOString(),
+      writer: X.owner,
+      claim_acquired_at: acquired.acquired_at,
+    });
     expect(isStale(acquired, hb, d)).toBe(false);
     expect(() => requireClaim(d, artifact, { owner: X.owner, sessionId: X.sessionId })).not.toThrow();
   });
@@ -116,11 +120,12 @@ describe('REQ-03 (A11): heartbeat — S-26…S-28, S-70/S-71 (integration)', () 
     expect(readFileSync(join(claimsDir(dir), trail!), 'utf-8')).toBe(original);
   });
 
-  it('S-28: параллельный heartbeat (реальные воркеры X и Y) — один файл, содержимое X|Y, без исключений', async () => {
+  it('S-28: параллельный heartbeat (реальные воркеры) — один файл, содержимое без повреждений, без исключений', async () => {
     const artifact = 'dev:race';
+    acquireClaim({ root: dir }, { artifact, identity: { ...X, pid: process.pid }, cwd: dir });
     const [x, y] = await Promise.all([
       heartbeatViaWorker(dir, artifact, X.owner),
-      heartbeatViaWorker(dir, artifact, Y.owner),
+      heartbeatViaWorker(dir, artifact, X.owner),
     ]);
     expect(x.ok, x.msg).toBe(true);
     expect(y.ok, y.msg).toBe(true);
@@ -129,7 +134,7 @@ describe('REQ-03 (A11): heartbeat — S-26…S-28, S-70/S-71 (integration)', () 
     expect(hbFiles).toEqual(['dev_race.heartbeat']); // ровно один, tmp-мусора нет
     const hb = readHeartbeat(heartbeatFilePath(dir, artifact));
     expect(hb).not.toBeNull(); // JSON цел, не битый
-    expect([X.owner, Y.owner]).toContain(hb!.writer); // последний выигрывает
+    expect(hb!.writer).toBe(X.owner);
   }, 60_000);
 
   it('S-70 (NFR-03): claim 2.17.1 без heartbeat — правила 2.17.1: живой PID держит, мёртвый — перехват со следом', () => {

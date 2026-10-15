@@ -4,7 +4,7 @@
 # A: wolf init + wolf bootstrap + wolf brief (память проекта готова).
 # B: холодный старт — память не инициализируется.
 # Dry (по умолчанию): прогоны = fixture-NDJSON, bootstrap/brief исполняются
-# по-настоящему. --live: реальный `wolf run` с вопросом о проекте.
+# по-настоящему. --live: реальный `opencode run` с вопросом о проекте.
 set -u
 source "$(dirname "$0")/lib.sh"
 bench_flags "$@"

@@ -102,11 +102,43 @@ describe('A10 docs audit (REQ-02)', () => {
   });
 
   it('S-14: счётчик «8 core» присутствует, устаревший «25 типов» отсутствует', () => {
-    for (const rel of ['README.md', 'docs/concept/concept.md', 'docs/README.md']) {
+    for (const rel of [
+      'README.md',
+      'docs/concept/concept.md',
+      'docs/README.md',
+      'docs/guide/architecture.md',
+      'docs/guide/user-guide.md',
+    ]) {
       const text = readFileSync(join(ROOT, rel), 'utf-8');
       expect(text, `${rel}: нет счётчика 8 core`).toMatch(/8\s*core/i);
-      expect(text.match(/\b25\s*\+?\s*(типов|типы|types)\b/i), `${rel}: жив счётчик 25 типов`).toBeNull();
+      expect(text.match(/\b25\s*\+?\s*(активных\s+)?(типов|типы|types)\b/i), `${rel}: жив счётчик 25 типов`).toBeNull();
     }
+  });
+
+  it('F-04: scripts/ (включая demo и bench) не содержат токенов удалённых команд', () => {
+    function walkScripts(dir: string, acc: string[] = []): string[] {
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        const rel = relative(ROOT, full).split(sep).join('/');
+        if (statSync(full).isDirectory()) {
+          walkScripts(full, acc);
+        } else if (entry.endsWith('.sh') || entry.endsWith('.ts') || entry.endsWith('.js')) {
+          acc.push(rel);
+        }
+      }
+      return acc;
+    }
+
+    const scriptFiles = walkScripts(join(ROOT, 'scripts'));
+    const offenders: string[] = [];
+    for (const rel of scriptFiles) {
+      const text = readFileSync(join(ROOT, rel), 'utf-8');
+      const hits = scanText(text);
+      if (hits.length > 0) {
+        offenders.push(`${rel}: ${hits.join(', ')}`);
+      }
+    }
+    expect(offenders, offenders.join('\n')).toEqual([]);
   });
 
   it('S-15: HomeModes.vue сайта чист от токенов', () => {

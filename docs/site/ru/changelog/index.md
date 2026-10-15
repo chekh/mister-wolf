@@ -10,6 +10,15 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.18.2] - 2026-10-15
+
+### Fixed — Claim heartbeat lifecycle, evidence validation, docs hygiene & coordinator face
+
+- **Claim heartbeat lifecycle binding (F-01)**: `HeartbeatRecord` now records `claim_acquired_at` tying the heartbeat to the specific ownership session. `isStale` ignores orphaned heartbeats whose `claim_acquired_at` does not match the active claim, preventing subsequent claim holders from being spuriously flagged as stale after 10 minutes. `readHeartbeat` returns `{ corrupt: true }` on damaged JSON files so that corruption triggers fail-closed staleness. `writeHeartbeat` validates that the claim exists, is active, and is owned by `writer`. `releaseClaim` and `acquireClaim` takeover now cleanly remove stale `.heartbeat` files alongside the claim JSON.
+- **EvidenceRef schema validation & council metrics (F-02)**: `EvidenceRef` now enforces that at least one of `memory_id` or `path` is present and non-empty via Zod refinement. Analytics exposes `structured_claims_count` alongside `audited_count` and filters whitespace-only claim entries.
+- **Documentation & demo scripts hygiene (F-04)**: Demo scenarios `scenario-6.sh`, `scenario-7.sh`, `scenario-8.sh` and `scenario-4.sh` in `scripts/demo/` no longer invoke removed `wolf run` or `wolf learn` commands, switching to canonical `wolf propose`, `wolf doctor`, `wolf validate` and `wolf session wrap-up`. `scripts/bench/` comments cleaned of `wolf run`. Stale references to "25 активных типов" in `docs/guide/architecture.md` and `docs/guide/user-guide.md` updated to "8 core-типов + расширения". Stale `wolf thread create` invocations updated to `wolf thread add`. E2E audit `tests/e2e/docs-audit.test.ts` now enforces token cleanliness across `scripts/` as well.
+- **Coordinator L0 role contract (F-03)**: In `templates/base/agents/mr-wolf.md` and `.opencode/agents/mr-wolf.md`, replaced "безликий: отсутствие playbook — данные" with the coordinator face contract (procedural coordination & complaint loop protocol).
+
 ## [2.18.1] - 2026-10-15
 
 ### Fixed — Mobile scroll horizontal overflow on docs site (390px)
