@@ -6,7 +6,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=worker-reviewer.md set=2.18.4 -->
+<!-- wolf:rendered base=worker-reviewer.md set=2.17.1 -->
 
 # Роль: Worker Reviewer — уровень 2
 

@@ -17,7 +17,12 @@ import {
   type ClaimRegistryDeps,
   type HeartbeatRecord,
 } from '../../src/adapters/fs/claim-registry.js';
-import { acquireArtifactClaim, heartbeatArtifactClaim } from '../../src/app/use-cases/claim-artifact.js';
+import {
+  acquireArtifactClaim,
+  heartbeatArtifactClaim,
+  listArtifactClaims,
+  releaseArtifactClaim,
+} from '../../src/app/use-cases/claim-artifact.js';
 
 // 2.18.0 REQ-03 (A11), design §3.3 / ADR-7: heartbeat-файл `<slug>.heartbeat` —
 // продление свежести держателя в окне CLAIM_HEARTBEAT_WINDOW_MS; isStale расширен,
@@ -401,5 +406,75 @@ describe('2.18.4 полная идентификация heartbeat (owner+sessio
     });
     const hb = writeHeartbeat(deps(root), { artifact: 'dev:x', writer: 'agent:foo' });
     expect(hb.session_id).toBeUndefined();
+  });
+});
+
+// 2.18.5 (AC2): штатный вызов heartbeat проверяет сессию из WOLF_SESSION
+// автоматически; совместимость только по имени — явный legacy-режим
+// (WOLF_CLAIM_HEARTBEAT_LEGACY=1); переданное владение (session null)
+// принимает первая heartbeat новой сессии того же owner.
+describe('2.18.5 heartbeat: штатная проверка сессии из WOLF_SESSION', () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'wolf-claims-hb-2185-'));
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  const OLD_ENV = { WOLF_ACTOR: 'agent:executor-lead', WOLF_SESSION: 'ses-OLD' };
+  const NEW_ENV = { WOLF_ACTOR: 'agent:executor-lead', WOLF_SESSION: 'ses-NEW' };
+
+  it('claim старой сессии → штатный heartbeat новой сессией того же агента ОТКЛОНЁН', () => {
+    acquireArtifactClaim({ baseDir: dir, env: OLD_ENV }, 'dev:hb-2185');
+    // сценарий ревьюера 2.18.4: heartbeat без параметров и только с pid принимался
+    expect(() => heartbeatArtifactClaim({ baseDir: dir, env: NEW_ENV, pid: 7777 }, 'dev:hb-2185')).toThrow(
+      /held by agent:executor-lead \(session ses-OLD\)/
+    );
+  });
+
+  it('штатный heartbeat своей сессией принят и записывает session_id', () => {
+    acquireArtifactClaim({ baseDir: dir, env: NEW_ENV }, 'dev:hb-2185');
+    const hb = heartbeatArtifactClaim({ baseDir: dir, env: NEW_ENV }, 'dev:hb-2185');
+    expect(hb.writer).toBe('agent:executor-lead');
+    expect(hb.session_id).toBe('ses-NEW');
+  });
+
+  it('штатный вызов без WOLF_SESSION для claim с сессией — отклонён (нет права на чужую сессию)', () => {
+    acquireArtifactClaim({ baseDir: dir, env: NEW_ENV }, 'dev:hb-2185');
+    expect(() =>
+      heartbeatArtifactClaim({ baseDir: dir, env: { WOLF_ACTOR: 'agent:executor-lead' } }, 'dev:hb-2185')
+    ).toThrow(/does not match/);
+  });
+
+  it('legacy-режим (WOLF_CLAIM_HEARTBEAT_LEGACY=1) — совместимость только по имени, явно обозначенная', () => {
+    acquireArtifactClaim({ baseDir: dir, env: OLD_ENV }, 'dev:hb-2185');
+    const hb = heartbeatArtifactClaim(
+      { baseDir: dir, env: { ...NEW_ENV, WOLF_CLAIM_HEARTBEAT_LEGACY: '1' } },
+      'dev:hb-2185'
+    );
+    expect(hb.writer).toBe('agent:executor-lead');
+    expect(hb.session_id).toBeUndefined(); // сессия не записана — режим только по имени
+  });
+
+  it('переданное владение (session null): первая heartbeat новой сессии принимает, вторая сессия отклонена', () => {
+    // release --transfer-to производит rec с session_id null (переданное владение)
+    acquireArtifactClaim({ baseDir: dir, env: OLD_ENV }, 'dev:hb-2185');
+    releaseArtifactClaim({ baseDir: dir, env: OLD_ENV }, 'dev:hb-2185', 'agent:executor-lead');
+    const transferred = listArtifactClaims({ baseDir: dir, env: NEW_ENV }).find((c) => c.artifact === 'dev:hb-2185');
+    expect(transferred?.session_id ?? null).toBeNull();
+
+    const first = heartbeatArtifactClaim({ baseDir: dir, env: NEW_ENV }, 'dev:hb-2185');
+    expect(first.session_id).toBe('ses-NEW'); // владение принято новой сессией
+
+    expect(() => heartbeatArtifactClaim({ baseDir: dir, env: OLD_ENV }, 'dev:hb-2185')).toThrow(
+      /accepted by another session/
+    );
+  });
+
+  it('переданное владение чужому агенту: штатный heartbeat от прежнего owner отклонён', () => {
+    acquireArtifactClaim({ baseDir: dir, env: OLD_ENV }, 'dev:hb-2185');
+    releaseArtifactClaim({ baseDir: dir, env: OLD_ENV }, 'dev:hb-2185', 'agent:worker-1');
+    expect(() => heartbeatArtifactClaim({ baseDir: dir, env: OLD_ENV }, 'dev:hb-2185')).toThrow(
+      /owned by agent:worker-1/
+    );
   });
 });

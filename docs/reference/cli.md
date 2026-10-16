@@ -1077,7 +1077,9 @@ Commands:
                                   concurrent writer is rejected)
   heartbeat [options] <artifact>  Refresh the claim heartbeat (keeps a
                                   long-running claim fresh within the 10-minute
-                                  window)
+                                  window). Background jobs must pass
+                                  --claim-token from the acquired claim
+                                  (2.18.5).
   release [options] <artifact>    Release artifact ownership (owner-only) or
                                   transfer it explicitly
   list                            List active claims (who/when/what, from the
@@ -1105,7 +1107,8 @@ Options:
 Usage: wolf claim heartbeat [options] <artifact>
 
 Refresh the claim heartbeat (keeps a long-running claim fresh within the
-10-minute window)
+10-minute window). Background jobs must pass --claim-token from the acquired
+claim (2.18.5).
 
 Arguments:
   artifact           Artifact id whose claim heartbeat to refresh

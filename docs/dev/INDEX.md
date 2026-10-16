@@ -9,6 +9,7 @@
 | hotfix-2-16-3-agent-modes | 2026-10-13 | hotfix-2-16-3-agent-modes | done | fix |
 | wolf-2-17-1-subrelease | 2026-10-13 | '2.17.1 — подрелиз по внешнему ревью 2026-10-13: доставка и мутации' | draft | full |
 | phase-a-dobor | 2026-10-14 | '2.18.0 — Фаза A добор (A9, A10, A11) + B0 доводка' | approved | full |
+| patch-2-18-5 | 2026-10-15 | patch-2-18-5 — запрет обхода конфликта лиц в router, штатная проверка сессии heartbeat, наблюдаемость доставки | draft | fix |
 | wave-2-19-async-learning | 2026-10-15 | '2.19.0 — Async learning (автономный фоновый запуск Стюарда)' | draft | full |
 
 ## Волны
