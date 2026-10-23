@@ -1,7 +1,7 @@
 ---
 slug: unified-update
 title: unified-update — план
-status: draft
+status: approved
 created: 2026-10-23
 ---
 
@@ -302,3 +302,7 @@ exit 0/2; отдельный пограничный сценарий — «тр�
   курируется и коммитится до тега; T10 → MEDIUM и источник контент-diff
   syncBaseSet/templates (не T5); трассировки REQ-09/REQ-02 уточнены.
   Статус: draft.
+- 2026-10-24: Утверждён владельцем (основание: решение владельца
+  2026-10-24, мем записан; последняя редакция — коммит db2d280).
+  Frontmatter status: draft → approved. Все 15 задач / 6 фаз — в силе;
+  downstream: test-plan.md (этап wolf-testplan запущен).
