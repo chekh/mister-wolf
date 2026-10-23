@@ -1,7 +1,7 @@
 ---
 slug: unified-update
 title: unified-update
-status: draft
+status: approved
 created: 2026-10-23
 ---
 
@@ -701,6 +701,11 @@ agent_id), доля fallback-доставок по executor-lead в router.log �
   оговорка мутаций в AC REQ-01, живые сессии, конкретика скана, не-TTY,
   множество id в REQ-07, ОВ-5 — на месте. Статус draft — финальное
   утверждение за владельцем через L0. Downstream: нет.
+- CR-2026-10-23-06: Требования утверждены владельцем 2026-10-23 (основание:
+  mem_20261023_requirements_2_19_0_unified_update_karta_e129ba, последняя
+  редакция — коммит 1d3c10d). Frontmatter status: draft → approved. Все 14
+  REQ / 4 NFR / 0 открытых вопросов — в силе; downstream: design.md (этап
+  wolf-design запущен).
 - CR-2026-10-23-05: Решение владельца — депрекация `wolf sync` как
   самостоятельной точки обновления. Добавлен REQ-14 (`wolf upgrade --here`:
   полный проектный шаг в cwd — sync base-set + досев лиц + сверка по карте,
