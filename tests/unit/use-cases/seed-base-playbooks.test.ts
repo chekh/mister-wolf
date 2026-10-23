@@ -334,4 +334,153 @@ describe('seedBasePlaybooks (T-05: face-контракт, initiator=seed)', () =
     expect(v2.supersededId).toBe(all.find((f) => f.version === '1')!.id);
     expect(all.filter((f) => f.status === 'active')).toHaveLength(1);
   });
+
+  // 2.19.0 T2 (ADR-3, design §«Проектный шаг» шаг 3): seed-missing-only —
+  // посев ТОЛЬКО недостающих лиц; живые не трогаются; структурные коды kind
+  // (seeded | skipped-live | legacy-absorbed | diverged) для сверки T5.
+  describe('mode: seed-missing-only', () => {
+    const run = (files?: Map<string, string>) => seedBasePlaybooks({ ...deps(files), mode: 'seed-missing-only' });
+
+    it('пустой стор → kind=seeded; повторный проход → kind=skipped-live, мутаций нет (NFR-02)', async () => {
+      const out = await run();
+      expect(out.map((o) => o.kind)).toEqual(['seeded', 'seeded']);
+      expect(out.map((o) => o.action)).toEqual(['created', 'created']); // legacy action-коды совместимы
+      expect((await facesOf('steward'))[0]!.initiator).toBe('seed');
+      expect((await facesOf('mr-wolf'))[0]!.body).toBe('Правило жалобы.'); // тело из шаблона
+
+      const before = await store.list();
+      const eventsBefore = (await log.readAll()).length;
+      const out2 = await run();
+      expect(out2.every((o) => o.kind === 'skipped-live')).toBe(true);
+      expect(await store.list()).toEqual(before); // повтор ничего не мутировал
+      expect((await log.readAll()).length).toBe(eventsBefore);
+    });
+
+    it.each(['seed', 'migration'] as const)(
+      'живое лицо (initiator %s) отстало от шаблона → kind=skipped-live, createFaceVersion НЕ вызван',
+      async (initiator) => {
+        if (initiator === 'seed') {
+          await seedBasePlaybooks(deps()); // v1 телом FILE_A
+        } else {
+          await createFaceVersion(
+            { store, log, clock: new SystemClock(), idGen: new HashIdGenerator() },
+            {
+              command: 'migrate',
+              ownerSkill: 'steward',
+              reason: 'migrated (2.17)',
+              body: 'мигрированное тело',
+              title: 'Наставник (migrated)',
+              tags: ['steward:наставник'],
+            }
+          );
+        }
+        const before = await facesOf('steward');
+        const activeBefore = before.find((f) => f.status === 'active')!;
+        const eventsBefore = (await log.readAll()).length;
+
+        const out = await run(new Map([['steward-nastavnik.md', TEMPLATE_A_V2]]));
+
+        const o = out.find((x) => x.file === 'steward-nastavnik.md')!;
+        expect(o.kind).toBe('skipped-live');
+        expect(o.action).toBe('skipped');
+        const after = await facesOf('steward');
+        expect(after).toHaveLength(before.length); // переверсионирования нет
+        expect(after.find((f) => f.status === 'active')!.body).toBe(activeBefore.body); // тело не тронуто
+        expect((await log.readAll()).length).toBe(eventsBefore); // записей нет — face-оп не запускался
+      }
+    );
+
+    it.each(['steward', 'owner', 'breakglass'] as const)(
+      'живое лицо (initiator %s) отстало → kind=diverged, лицо не тронуто (D4)',
+      async (initiator) => {
+        await seedBasePlaybooks(deps());
+        if (initiator === 'steward') {
+          await createFaceVersion(
+            {
+              store,
+              log,
+              clock: new SystemClock(),
+              idGen: new HashIdGenerator(),
+              env: { WOLF_ACTOR: 'agent:steward' },
+            },
+            {
+              command: 'new',
+              ownerSkill: 'steward',
+              reason: 'стюардская правка',
+              body: 'тело, изменённое Стюардом',
+              title: 'Наставник (steward)',
+              tags: ['steward:наставник'],
+              minimalChange: 'm',
+              boundaries: 'b',
+              exampleHelps: 'h',
+              exampleKeep: 'k',
+              verification: 'v',
+              rollback: 'r',
+            }
+          );
+        } else {
+          await createFaceVersion(
+            { store, log, clock: new SystemClock(), idGen: new HashIdGenerator(), env: { WOLF_ACTOR: 'user:owner' } },
+            {
+              command: initiator === 'owner' ? 'restore' : 'breakglass',
+              ownerSkill: 'steward',
+              reason: 'возврат',
+              from: 'v1',
+            }
+          );
+        }
+        const before = await facesOf('steward');
+        const eventsBefore = (await log.readAll()).length;
+
+        const out = await run(new Map([['steward-nastavnik.md', TEMPLATE_A_V2]]));
+
+        const o = out.find((x) => x.file === 'steward-nastavnik.md')!;
+        expect(o.kind).toBe('diverged');
+        expect(o.action).toBe('diverged');
+        expect(await facesOf('steward')).toHaveLength(before.length);
+        expect((await log.readAll()).length).toBe(eventsBefore);
+      }
+    );
+
+    it('нет лица + активный legacy howto → kind=legacy-absorbed (структурно), посев телом шаблона', async () => {
+      writeLegacyHowto('mem_20260920_legacy_ab12cd', 'steward');
+
+      const out = await run();
+
+      const o = out.find((x) => x.file === 'steward-nastavnik.md')!;
+      expect(o.kind).toBe('legacy-absorbed');
+      expect(o.action).toBe('created');
+      const faces = await facesOf('steward');
+      expect(faces).toHaveLength(1);
+      expect(faces[0]!.body).toContain('Протокол мутации.'); // тело = ШАБЛОН
+      expect((await store.get('mem_20260920_legacy_ab12cd'))?.status).toBe('superseded'); // head поглощён
+    });
+
+    it('REQ-07: изменения памяти исчерпываются посевом недостающих лиц (слепок id+объектов)', async () => {
+      await seedBasePlaybooks(deps(new Map([['steward-nastavnik.md', FILE_A]]))); // steward жив, mr-wolf нет
+      const before = await store.list();
+      const eventsBefore = (await log.readAll()).length;
+
+      const out = await run(); // оба шаблона: steward жив, mr-wolf недостающий
+
+      expect(out.find((o) => o.file === 'steward-nastavnik.md')!.kind).toBe('skipped-live');
+      expect(out.find((o) => o.file === 'complaint-protocol.md')!.kind).toBe('seeded');
+      const after = await store.list();
+      const beforeIds = new Set(before.map((o) => o.id));
+      const added = after.filter((o) => !beforeIds.has(o.id));
+      expect(added).toHaveLength(1); // ровно один новый объект — посев mr-wolf
+      expect(added[0]!.type).toBe('face');
+      const afterById = new Map(after.map((o) => [o.id, o]));
+      for (const b of before) expect(afterById.get(b.id)).toEqual(b); // существующие не изменены
+      const newEvents = (await log.readAll()).slice(eventsBefore);
+      const started = newEvents.filter((e) => e.type === 'memory.face.op_started');
+      expect(started).toHaveLength(1); // единственная face-операция — посев
+      expect((started[0]!.payload['input'] as { reason?: string }).reason).toContain('complaint-protocol.md');
+    });
+
+    it('дефолтный режим не задаёт kind (структурный код только в seed-missing-only)', async () => {
+      const out = await seedBasePlaybooks(deps());
+      expect(out.every((o) => o.kind === undefined)).toBe(true);
+    });
+  });
 });

@@ -1,7 +1,8 @@
 // src/adapters/render/opencode/opencode-renderer.ts
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { basename, join, relative } from 'path';
-import { mkdir, writeFile } from 'fs/promises';
+import { mkdir } from 'fs/promises';
+import { writeFileAtomic } from '../../fs/markdown-memory-store.js';
 import {
   BaseSetRenderer,
   BakeResolver,
@@ -104,7 +105,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
             reason: 'mutated after render — differs from recorded render and fresh render; left untouched',
           });
         } else {
-          await writeFile(f.target, fresh, 'utf-8');
+          await writeFileAtomic(f.target, fresh);
           state.files[rel] = sha256(fresh);
           outcomes.push({ file: rel, action: 'updated', reason: 'content differs (diff branch, §4.5)' });
         }
@@ -161,7 +162,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
         continue;
       }
       await mkdir(join(f.target, '..'), { recursive: true });
-      await writeFile(f.target, fresh, 'utf-8');
+      await writeFileAtomic(f.target, fresh);
       state.files[rel] = sha256(fresh);
       outcomes.push({ file: rel, action: 'updated' });
     }
@@ -206,7 +207,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
     const content = this.agentsMdContent(paths.tplPath, models);
     if (!existsSync(paths.target)) {
       const written = insertStamp(content, { base: 'AGENTS.md', set: this.setVersion }, 'AGENTS.md');
-      await writeFile(paths.target, written, 'utf-8');
+      await writeFileAtomic(paths.target, written);
       state.files['AGENTS.md'] = sha256(written);
       return [{ file: 'AGENTS.md', action: 'created' }];
     }
@@ -217,7 +218,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
     // marker-append: маркированный блок без штампа в конец; чужой контент не трогаем
     const block = content.endsWith('\n') ? content : `${content}\n`;
     const sep = current.endsWith('\n') ? (current.endsWith('\n\n') ? '' : '\n') : '\n\n';
-    await writeFile(paths.target, `${current}${sep}${block}`, 'utf-8');
+    await writeFileAtomic(paths.target, `${current}${sep}${block}`);
     return [{ file: 'AGENTS.md', action: 'appended', reason: 'marker-append (D3: foreign content untouched)' }];
   }
 
@@ -235,7 +236,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
       'AGENTS.md'
     );
     if (!existsSync(paths.target)) {
-      await writeFile(paths.target, fresh, 'utf-8');
+      await writeFileAtomic(paths.target, fresh);
       state.files['AGENTS.md'] = sha256(fresh);
       return [{ file: 'AGENTS.md', action: 'created' }];
     }
@@ -260,7 +261,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
         },
       ];
     }
-    await writeFile(paths.target, fresh, 'utf-8');
+    await writeFileAtomic(paths.target, fresh);
     state.files['AGENTS.md'] = sha256(fresh);
     return [{ file: 'AGENTS.md', action: 'updated' }];
   }
@@ -278,7 +279,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
   private async writeRendered(f: TemplateFile, bake?: BakeResolver, models?: ModelContext | 'omit'): Promise<string> {
     await mkdir(join(f.target, '..'), { recursive: true });
     const content = this.renderContent(f, bake, models);
-    await writeFile(f.target, content, 'utf-8');
+    await writeFileAtomic(f.target, content);
     return content;
   }
 }
