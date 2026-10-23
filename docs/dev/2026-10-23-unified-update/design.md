@@ -122,16 +122,20 @@ worktree/missing. Пример — вайрфрейм (1).
 ```
 runProjectStep(deps, root, map, opts{confirmedRemovals}) → ProjectReport
   1. syncBaseSet(renderer, root)            // существующий: перезапись/
-     //   skip-mutated/identical; outcomes — вход сверки. Точки фиксации —
-     //   атомарная запись каждого файла (writeFileAtomic).
+     //   skip-mutated/identical; outcomes — вход сверки. ИЗМЕНИТЬ:
+     //   сейчас пишет обычным writeFile — проход обязан перевести запись
+     //   каждого файла на tmp+rename (writeFileAtomic).
   2. removals: orphaned-файлы ∩ map.files[removed] → unlink (подтверждение
      //   уже дано на уровне списка REQ-02; AC REQ-11). orphaned ∖ removed
      //   → «требует решения» (дрейф без объявления).
   3. seedBasePlaybooks(root, { mode: 'seed-missing-only' })
      //   сеять ТОЛЬКО недостающие лица; живые лица не трогаются (без
      //   template-update / переверсионирования). legacy-head без живого
-     //   лица → legacy-absorbed; расхождение с заголовком шаблона →
-     //   diverged → «требует решения». Каждый объект — атомарная фиксация.
+     //   лица → legacy-absorbed. Тело ≠ шаблону: у seed/migration-лица
+     //   (initiator = seed | migration) → skipped-live — штатное
+     //   отставание живого лица, повторный проход стабильно даёт exit 0
+     //   (NFR-02 AC1); initiator иной → diverged → «требует решения».
+     //   Каждый объект — атомарная фиксация.
   4. ensureCurrentSchema(root)              // существующая ленивая миграция
      //   (backup), репорт «migrated/refused».
   5. verifyAgainstMap(map, {syncOutcomes, seedOutcomes, removals})
@@ -329,7 +333,7 @@ plain: `Mr Wolf — upgrade 2.19.0`.
 │   ● base-set: 29 updated, ▲ 1 skipped-mutated        │
 │   ● сверка: ▲ 1 «требует решения»                    │
 └ Итог: обновлено 2 · требует решения 1 · ошибок 0 ·   │
-  досеяно лиц 8 — Done                                 │
+  досеяно лиц 8 — Done with attention                  │
 ```
 
 plain-фоллбек: те же строки плоско (`Mr Wolf upgrade 2.19.0`, `- wolf
