@@ -1,0 +1,69 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderReport > R15.1 styled truecolor: логотип A, рамки секций, маркеры, └ Done 1`] = `
+"Mr.  ██╗    ██╗███████╗ ██████╗ ███████╗
+     ██║    ██║██╔════╝██╔═══██╗╚══███╔╝
+     ██║ █╗ ██║█████╗  ██║   ██║  ███╔╝
+     ██║███╗██║██╔══╝  ██║   ██║ ███╔╝
+     ╚███╔███╔╝███████╗╚██████╔╝███████╗
+      ╚══╝╚══╝ ╚══════╝ ╚═════╝ ╚══════╝
+                   upgrade 2.19.0"
+`;
+
+exports[`renderReport > R15.2 plain: banner — однострочный фоллбек 1`] = `"Mr Wolf upgrade 2.19.0"`;
+
+exports[`renderReport > R15.2 plain: summary-поверхность (snapshot) 1`] = `"updated 2 · needs-decision 1 · errors 0 — Done"`;
+
+exports[`renderReport > R15.2 plain: те же данные/порядок, без рамок и ANSI (snapshot — оракул) 1`] = `
+"Mr Wolf — upgrade 2.19.0
+- wolf 2.18.5 → 2.19.0 … ok
+- 4 projects in registry (1 pinned, 1 worktree)
+plan: trading-signal · ~/dev/trading-signal
+- composition 2.17.1 (stamp 2.16.2) → 2.19.0
+- map: +2 skills · 1 changed · 0 removed · seed×2
+plan: Tender · ~/dev/Tender
+- composition 2.16.0, no faces → 2.19.0 · map: seed×6
+skip: plan: adminvps · [pinned] — skipped
+trading-signal
+ok: base-set: 30 files → updated
+- faces: executor-lead seeded, worker-* skip-live
+ok: map check: 33/33 ok
+Tender
+ok: base-set: 29 updated
+warn: 1 skipped-mutated
+warn: map check: 1 needs-decision
+updated 2 · needs-decision 1 · errors 0 · faces seeded 8 — Done"
+`;
+
+exports[`renderReport > width 60: styled с длинным путём — перенос, рамки не рвутся 1`] = `
+"┌ Mr Wolf — upgrade 2.19.0 ───────────────────────────────┐
+│ plan: trading-signal ·                                   │
+│ ~/very/long/~/very/long/~/very/long/~/very/long/~/very/l │
+│ ong/~/very/long/trading-signal                           │
+│   [38;2;0;191;191m●[0m composition 2.17.1 → 2.19.0 · map: +2 skills ·       │
+│      xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx │
+│      xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx             │
+│   [38;2;230;190;60m▲[0m 1 skipped-mutated                                    │
+└ updated 2 · needs-decision 1 · errors 0 — Done ─────────┘"
+`;
+
+exports[`renderReport > width 80: styled с длинным путём — перенос, рамки не рвутся 1`] = `
+"┌ Mr Wolf — upgrade 2.19.0 ───────────────────────────────────────────────────┐
+│ plan: trading-signal ·                                                       │
+│ ~/very/long/~/very/long/~/very/long/~/very/long/~/very/long/~/very/long/trad │
+│ ing-signal                                                                   │
+│   [38;2;0;191;191m●[0m composition 2.17.1 → 2.19.0 · map: +2 skills ·                           │
+│      xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx │
+│      xxxxxxxxxxxxxxxxxxx                                                     │
+│   [38;2;230;190;60m▲[0m 1 skipped-mutated                                                        │
+└ updated 2 · needs-decision 1 · errors 0 — Done ─────────────────────────────┘"
+`;
+
+exports[`renderReport > width 120: styled с длинным путём — перенос, рамки не рвутся 1`] = `
+"┌ Mr Wolf — upgrade 2.19.0 ────────────────────────────────────────────────────────────────────────────────────┐
+│ plan: trading-signal · ~/very/long/~/very/long/~/very/long/~/very/long/~/very/long/~/very/long/trading-signal │
+│   [38;2;0;191;191m●[0m composition 2.17.1 → 2.19.0 · map: +2 skills ·                                                            │
+│      xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx               │
+│   [38;2;230;190;60m▲[0m 1 skipped-mutated                                                                                         │
+└ updated 2 · needs-decision 1 · errors 0 — Done ──────────────────────────────────────────────────────────────┘"
+`;
