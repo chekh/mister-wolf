@@ -12,6 +12,15 @@ const {
   FACE_AGENT,
   FACE_ID,
   FACE_BODY,
+  ERROR_AGENT,
+  EXIT1_AGENT,
+  GUARD_AGENT,
+  CONFLICT_AGENT,
+  CONFLICT_PROPOSED_ID,
+  PROPOSED_FACE_ID,
+  PROPOSED_HOWTO_ID,
+  ACTIVE_NOTE_ID,
+  ACTIVE_NOTE,
   TTL_PLAYBOOK,
   TTL_PLAYBOOK_V2,
   TTL_PLAYBOOK_V3,
@@ -113,6 +122,50 @@ const {
       error: { kind: 'multiple', owner: agentId, candidates: [{ id: 'a', version: '1', updated_at: 't' }] },
     });
   };
+  // 2.18.5: resolver вернул ошибку CLI (обе формы runWolf падают без stdout)
+  const ERROR_AGENT = 'face-error-p2-18-5';
+  // 2.18.5: контракт CLI — miss/conflict печатают JSON на stdout с exit 1:
+  // колбэк бросает ошибку, НО stdout передаётся вторым аргументом (как в Node)
+  const EXIT1_AGENT = 'face-exit1-p2-18-5';
+  // 2.18.5: гвард legacy-пути — proposed-лицо и proposed-howto в выборке НЕ
+  // доставляются; active-note с тем же owner выбирается
+  const GUARD_AGENT = 'legacy-guard-p2-18-5';
+  // 2.18.5: конфликт лиц — выборка содержит proposed-лицо (ловушка обхода);
+  // отдельный агент, чтобы мутация FACE_RESOLVE не протекала в GUARD_AGENT-пробы
+  const CONFLICT_AGENT = 'face-conflict-p2-18-5';
+  const CONFLICT_PROPOSED_ID = 'mem_fixture_face_conflict_proposed';
+  const CONFLICT_PROPOSED = {
+    id: CONFLICT_PROPOSED_ID,
+    type: 'face',
+    status: 'proposed',
+    owner_skill: CONFLICT_AGENT,
+    body: '# conflict proposed face body (must never inject)',
+  };
+  const PROPOSED_FACE_ID = 'mem_fixture_face_proposed';
+  const PROPOSED_FACE = {
+    id: PROPOSED_FACE_ID,
+    type: 'face',
+    status: 'proposed',
+    owner_skill: GUARD_AGENT,
+    body: '# proposed face body (must never inject)',
+  };
+  const PROPOSED_HOWTO_ID = 'mem_fixture_howto_proposed';
+  const PROPOSED_HOWTO = {
+    id: PROPOSED_HOWTO_ID,
+    type: 'howto',
+    status: 'proposed',
+    owner_skill: GUARD_AGENT,
+    body: '# proposed howto body (must never inject)',
+  };
+  const ACTIVE_NOTE_ID = 'mem_fixture_note_active';
+  const ACTIVE_NOTE = {
+    id: ACTIVE_NOTE_ID,
+    type: 'note',
+    status: 'active',
+    owner_skill: GUARD_AGENT,
+    version: 'n1',
+    body: '# active note body (legacy allowed)',
+  };
   const SEARCH_HITS: Record<string, string> = {
     apprentice: `${PLAYBOOK_ID} [playbook] # Apprentice playbook\n`,
     'worker-reviewer': `${WORKER_PLAYBOOK_ID} [playbook] # Worker reviewer playbook\n`,
@@ -120,6 +173,11 @@ const {
     // два кандидата, ОБА проходят гвард владельца (проба раннего стопа)
     [STOP_AGENT]: `${STOP_A_ID} [playbook] # A\n${STOP_B_ID} [playbook] # B\n`,
     [ENV_AGENT]: `${ENV_PLAYBOOK_ID} [playbook] # env probe\n`,
+    // 2.18.5: первая строка — proposed-лицо (ловушка обхода конфликта),
+    // затем proposed-howto; выбираемый канал — active-note
+    [GUARD_AGENT]: `${PROPOSED_FACE_ID} [face] # proposed face\n${PROPOSED_HOWTO_ID} [howto] # proposed howto\n${ACTIVE_NOTE_ID} [note] # active note\n`,
+    // 2.18.5: конфликт лиц — выборка с proposed-лицом обходчика
+    [CONFLICT_AGENT]: `${CONFLICT_PROPOSED_ID} [face] # conflict proposed face\n`,
   };
   const GET_OBJECTS: Record<string, object> = {
     [PLAYBOOK_ID]: PLAYBOOK,
@@ -128,26 +186,34 @@ const {
     [STOP_A_ID]: STOP_A,
     [STOP_B_ID]: STOP_B,
     [ENV_PLAYBOOK_ID]: ENV_PLAYBOOK,
+    [PROPOSED_FACE_ID]: PROPOSED_FACE,
+    [PROPOSED_HOWTO_ID]: PROPOSED_HOWTO,
+    [ACTIVE_NOTE_ID]: ACTIVE_NOTE,
+    [CONFLICT_PROPOSED_ID]: CONFLICT_PROPOSED,
   };
   // promisify(execFile) без custom-symbol → стандартный callback-контракт.
+  // 2.18.5: колбэк-контракт Node — (err, stdout, stderr): stdout строкой и при
+  // ненулевом exit (реальный CLI печатает JSON miss/conflict с exit 1).
   const execFileMock = vi.fn((file: unknown, args: string[], opts: unknown, cb?: unknown) => {
-    const done = (typeof opts === 'function' ? opts : cb) as
-      | ((err: Error | null, res?: { stdout: string }) => void)
-      | undefined;
+    const done = (typeof opts === 'function' ? opts : cb) as ((err: Error | null, stdout?: string) => void) | undefined;
     if (!done) throw new Error('execFile: callback not found');
     const sub = args?.[1];
-    if (sub === 'search') return done(null, { stdout: SEARCH_HITS[args[2]] ?? '' });
+    if (sub === 'search') return done(null, SEARCH_HITS[args[2]] ?? '');
     if (sub === 'get') {
       const obj = GET_OBJECTS[args[2]];
-      if (obj) return done(null, { stdout: JSON.stringify(obj) });
+      if (obj) return done(null, JSON.stringify(obj));
+      return done(new Error(`get: no such object ${args[2]}`));
     }
     // 2.18.4: face-resolver (node-форма [cli, 'face', 'resolve', agentId]);
     // дефолт — детерминированный miss → legacy-путь плагина
     if (sub === 'face' && args[2] === 'resolve') {
-      return done(null, {
-        stdout:
-          FACE_RESOLVE[args[3] as string] ?? JSON.stringify({ ok: false, error: { kind: 'none', owner: args[3] } }),
-      });
+      if (args[3] === ERROR_AGENT) return done(new Error('wolf face resolve: simulated CLI failure'));
+      if (args[3] === EXIT1_AGENT)
+        return done(new Error('CLI exit 1'), JSON.stringify({ ok: false, error: { kind: 'none', owner: args[3] } }));
+      return done(
+        null,
+        FACE_RESOLVE[args[3] as string] ?? JSON.stringify({ ok: false, error: { kind: 'none', owner: args[3] } })
+      );
     }
     return done(new Error(`unexpected CLI call: ${JSON.stringify(args)}`));
   });
@@ -158,6 +224,16 @@ const {
     FACE_AGENT,
     FACE_ID,
     FACE_BODY,
+    ERROR_AGENT,
+    EXIT1_AGENT,
+    GUARD_AGENT,
+    CONFLICT_AGENT,
+    CONFLICT_PROPOSED_ID,
+    PROPOSED_FACE_ID,
+    PROPOSED_FACE,
+    PROPOSED_HOWTO_ID,
+    ACTIVE_NOTE_ID,
+    ACTIVE_NOTE,
     TTL_PLAYBOOK,
     TTL_PLAYBOOK_V2,
     TTL_PLAYBOOK_V3,
@@ -244,7 +320,7 @@ describe('wolf-router plugin', () => {
     expect(playbookParts(output)[0]).not.toContain('Универсальный playbook');
 
     expect(lastLogLine()).toMatch(
-      /^agent-id=worker-reviewer playbook=hit name=mem_fixture_playbook_worker_v1 variant=canonical injected=yes ms=\d+ bytes=\d+$/
+      /^agent-id=worker-reviewer playbook=hit name=mem_fixture_playbook_worker_v1 variant=legacy source=legacy resolution=none face_id=- version=v1 hash=- session=\S+ injected=yes ms=\d+ bytes=\d+$/
     );
   });
 
@@ -265,7 +341,7 @@ describe('wolf-router plugin', () => {
     expect(playbookParts(output)).toHaveLength(1);
 
     expect(lastLogLine()).toMatch(
-      /^agent-id=apprentice playbook=hit name=mem_fixture_playbook_v4 variant=canonical injected=yes ms=\d+ bytes=\d+$/
+      /^agent-id=apprentice playbook=hit name=mem_fixture_playbook_v4 variant=legacy source=legacy resolution=none face_id=- version=v4 hash=- session=\S+ injected=yes ms=\d+ bytes=\d+$/
     );
   });
 
@@ -276,7 +352,7 @@ describe('wolf-router plugin', () => {
     await plugin['experimental.chat.system.transform']({}, output);
 
     expect(lastLogLine()).toMatch(
-      /^agent-id=net-takogo-2-xyz playbook=hit name=fallback variant=fallback injected=yes ms=\d+ bytes=\d+$/
+      /^agent-id=net-takogo-2-xyz playbook=hit name=fallback variant=fallback source=default resolution=none face_id=- version=- hash=- session=\S+ injected=yes ms=\d+ bytes=\d+$/
     );
   });
 });
@@ -384,13 +460,13 @@ describe('P106: TTL 5 мин / ранний стоп / негативный кэ
 
     await transform({}, makeSystemOutput('agent-id: apprentice\n\nТы — аналитик-подмастерье.'));
     expect(lastLogLine()).toMatch(
-      /^agent-id=apprentice playbook=hit name=\S+ variant=canonical injected=yes ms=\d+ bytes=\d+$/
+      /^agent-id=apprentice playbook=hit name=\S+ variant=legacy source=legacy resolution=none face_id=- version=v\d hash=- session=\S+ injected=yes ms=\d+ bytes=\d+$/
     );
     expect(Number(lastLogLine().match(/bytes=(\d+)/)?.[1])).toBeGreaterThan(0);
 
     await transform({}, makeSystemOutput('agent-id: net-takogo-3-xyz\n\nТы — неизвестный агент.'));
     expect(lastLogLine()).toMatch(
-      /^agent-id=net-takogo-3-xyz playbook=hit name=fallback variant=fallback injected=yes ms=\d+ bytes=\d+$/
+      /^agent-id=net-takogo-3-xyz playbook=hit name=fallback variant=fallback source=default resolution=none face_id=- version=- hash=- session=\S+ injected=yes ms=\d+ bytes=\d+$/
     );
     expect(Number(lastLogLine().match(/bytes=(\d+)/)?.[1])).toBeGreaterThan(0);
   });
@@ -481,7 +557,8 @@ describe('2.18.4: канонический face-resolver (wolf face resolve)', (
       expect(faceResolveCalls().length).toBeGreaterThan(0);
       expect(lastLogLine()).toMatch(
         new RegExp(
-          `^agent-id=${FACE_AGENT} playbook=hit name=${FACE_ID} variant=canonical injected=yes ms=\\d+ bytes=\\d+$`
+          `^agent-id=${FACE_AGENT} playbook=hit name=${FACE_ID} variant=canonical source=face resolution=unique ` +
+            `face_id=${FACE_ID} version=3 hash=facehash16 session=sess-2-18-4 injected=yes ms=\\d+ bytes=\\d+$`
         )
       );
     } finally {
@@ -490,18 +567,114 @@ describe('2.18.4: канонический face-resolver (wolf face resolve)', (
     }
   });
 
-  it('конфликт лиц (ok:false multiple) → legacy-путь: howto-плейбук по гварду владельца', async () => {
+  // 2.18.5 (AC1): конфликт лиц — НЕ выбирать и не внедрять методику: запасной
+  // поиск не выполняется вообще, proposed-лицо из выборки не внедряется,
+  // агент получает только универсальный fallback; конфликт зафиксирован в логе.
+  it('конфликт лиц (ok:false multiple) → методика НЕ выбрана и НЕ внедрена, resolution=conflict', async () => {
     const saved = useIsolatedSession();
     try {
-      publishFaceConflict('worker-reviewer'); // мутация мока: конфликт активных лиц
+      publishFaceConflict(CONFLICT_AGENT); // резолвер: конфликт активных лиц
+      execFileMock.mockClear();
       const plugin = await WolfPlaybookPlugin.server();
-      const output = makeSystemOutput('agent-id: worker-reviewer\n\nТы — рецензент.');
+      const output = makeSystemOutput(`agent-id: ${CONFLICT_AGENT}\n\nТы — рецензент.`);
       await plugin['experimental.chat.system.transform']({}, output);
 
       expect(playbookParts(output)).toHaveLength(1);
-      expect(playbookParts(output)[0]).toContain('reviewer-canonical-body'); // legacy howto, не лицо
+      expect(playbookParts(output)[0]).toContain('Универсальный playbook'); // только fallback
+      expect(playbookParts(output)[0]).not.toContain('must never inject'); // proposed-лицо не внедрено
+      // запасной поиск не выбирал кандидата: get по proposed-id не вызывался
+      const getIds = getCalls().map((c) => (c[1] as string[])[2]);
+      expect(getIds).not.toContain(CONFLICT_PROPOSED_ID);
       expect(lastLogLine()).toMatch(
-        /^agent-id=worker-reviewer playbook=hit name=mem_fixture_playbook_worker_v1 variant=canonical injected=yes ms=\d+ bytes=\d+$/
+        new RegExp(
+          `^agent-id=${CONFLICT_AGENT} playbook=hit name=fallback variant=fallback source=default resolution=conflict ` +
+            `face_id=- version=- hash=- session=sess-2-18-4 injected=yes ms=\\d+ bytes=\\d+$`
+        )
+      );
+    } finally {
+      if (saved === '') delete process.env.WOLF_SESSION;
+      else process.env.WOLF_SESSION = saved;
+    }
+  });
+
+  // 2.18.5 (AC1): resolver error — диагностируемый сбой (resolution=error в
+  // журнале), не молчаливый fallback к текстовому поиску.
+  it('resolver error (CLI failure) → fallback + resolution=error в журнале, legacy-поиск не выполнялся', async () => {
+    const saved = useIsolatedSession();
+    try {
+      execFileMock.mockClear();
+      const plugin = await WolfPlaybookPlugin.server();
+      const output = makeSystemOutput(`agent-id: ${ERROR_AGENT}\n\nТы — агент с умирающим CLI.`);
+      await plugin['experimental.chat.system.transform']({}, output);
+
+      expect(playbookParts(output)).toHaveLength(1);
+      expect(playbookParts(output)[0]).toContain('Универсальный playbook');
+      // legacy-поиск не выполнялся: search/get по этому агенту не спавнились
+      const searched = execFileMock.mock.calls.filter(
+        (c) => (c[1] as string[])[1] === 'search' && (c[1] as string[])[2] === ERROR_AGENT
+      );
+      expect(searched).toHaveLength(0);
+      expect(getCalls()).toHaveLength(0);
+      expect(lastLogLine()).toMatch(
+        new RegExp(
+          `^agent-id=${ERROR_AGENT} playbook=hit name=fallback variant=fallback source=default resolution=error ` +
+            `face_id=- version=- hash=- session=sess-2-18-4 injected=yes ms=\\d+ bytes=\\d+$`
+        )
+      );
+    } finally {
+      if (saved === '') delete process.env.WOLF_SESSION;
+      else process.env.WOLF_SESSION = saved;
+    }
+  });
+
+  // 2.18.5 (AC1): miss → legacy-поиск разрешён, но с гвардом типа/статуса:
+  // proposed-лицо (type=face, status=proposed) и proposed-howto отсекаются
+  // (ранее выбиралось только по owner_skill), active-note доставляется.
+  // 2.18.5: контракт CLI — miss печатается на stdout с exit 1: спавн бросает,
+  // но тело ошибки несёт kind=none → legacy-путь выполняется (resolution=none,
+  // не error) — регрессионная защита поведения реального CLI.
+  it('resolver miss с exit 1 (stdout несёт kind=none) → legacy-путь, resolution=none', async () => {
+    const saved = useIsolatedSession();
+    try {
+      execFileMock.mockClear();
+      const plugin = await WolfPlaybookPlugin.server();
+      const output = makeSystemOutput(`agent-id: ${EXIT1_AGENT}\n\nТы — агент с exit-1 CLI.`);
+      await plugin['experimental.chat.system.transform']({}, output);
+
+      expect(playbookParts(output)).toHaveLength(1);
+      expect(playbookParts(output)[0]).toContain('Универсальный playbook'); // search-hit нет → fallback
+      const searched = execFileMock.mock.calls.filter(
+        (c) => (c[1] as string[])[1] === 'search' && (c[1] as string[])[2] === EXIT1_AGENT
+      );
+      expect(searched.length).toBeGreaterThan(0); // legacy-поиск ВЫПОЛНЯЛСЯ
+      expect(lastLogLine()).toMatch(
+        new RegExp(
+          `^agent-id=${EXIT1_AGENT} playbook=hit name=fallback variant=fallback source=default resolution=none ` +
+            `face_id=- version=- hash=- session=sess-2-18-4 injected=yes ms=\\d+ bytes=\\d+$`
+        )
+      );
+    } finally {
+      if (saved === '') delete process.env.WOLF_SESSION;
+      else process.env.WOLF_SESSION = saved;
+    }
+  });
+
+  it('none → legacy-поиск с гвардом типа/статуса: proposed отсечены, active-note доставлен', async () => {
+    const saved = useIsolatedSession();
+    try {
+      execFileMock.mockClear();
+      const plugin = await WolfPlaybookPlugin.server();
+      const output = makeSystemOutput(`agent-id: ${GUARD_AGENT}\n\nТы — агент с legacy-памятью.`);
+      await plugin['experimental.chat.system.transform']({}, output);
+
+      expect(playbookParts(output)).toHaveLength(1);
+      expect(playbookParts(output)[0]).toContain(ACTIVE_NOTE.body);
+      expect(playbookParts(output)[0]).not.toContain('must never inject');
+      expect(lastLogLine()).toMatch(
+        new RegExp(
+          `^agent-id=${GUARD_AGENT} playbook=hit name=${ACTIVE_NOTE_ID} variant=legacy source=legacy resolution=none ` +
+            `face_id=- version=n1 hash=- session=sess-2-18-4 injected=yes ms=\\d+ bytes=\\d+$`
+        )
       );
     } finally {
       if (saved === '') delete process.env.WOLF_SESSION;

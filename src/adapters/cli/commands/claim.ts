@@ -45,7 +45,10 @@ export function claimCommand(baseDir: string = safeCwd()): Command {
 
   cmd
     .command('heartbeat')
-    .description('Refresh the claim heartbeat (keeps a long-running claim fresh within the 10-minute window)')
+    .description(
+      'Refresh the claim heartbeat (keeps a long-running claim fresh within the 10-minute window). ' +
+        'Background jobs must pass --claim-token from the acquired claim (2.18.5).'
+    )
     .argument('<artifact>', 'Artifact id whose claim heartbeat to refresh')
     .option('--session <id>', 'Assert the claim session (2.18.4): refuse on mismatch')
     .option('--pid <n>', 'Record writer pid in the heartbeat (debug, not auth)', parseInt)

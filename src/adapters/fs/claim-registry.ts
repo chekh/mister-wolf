@@ -231,10 +231,24 @@ export function writeHeartbeat(
     }
     // 2.18.4: сессия — строгое совпадение; оба null — переданное владение (легально)
     if (id.sessionId !== undefined && rec.session_id !== id.sessionId) {
-      throw new UserFacingError(
-        `Claim for "${input.artifact}" is held by ${rec.owner} (session ${rec.session_id ?? '-'}) — ` +
-          `heartbeat session '${id.sessionId ?? '-'}' does not match (claim file: ${cPath})`
-      );
+      // 2.18.5 (AC2): переданное владение (session_id null, release --transfer-to)
+      // принимает первая heartbeat новой сессии того же owner; повторная попытка
+      // от другой сессии отклонена — владение уже привязано принявшей сессией.
+      if (rec.session_id === null && rec.owner === id.owner) {
+        const existing = readClaimHeartbeat(deps.root, input.artifact, rec);
+        const takenBy = existing && !('corrupt' in existing) ? (existing.session_id ?? null) : null;
+        if (takenBy !== null && takenBy !== id.sessionId) {
+          throw new UserFacingError(
+            `Claim for "${input.artifact}" was transferred to ${rec.owner} and heartbeat ` +
+              `already accepted by another session (heartbeat session '${takenBy}') (claim file: ${cPath})`
+          );
+        }
+      } else {
+        throw new UserFacingError(
+          `Claim for "${input.artifact}" is held by ${rec.owner} (session ${rec.session_id ?? '-'}) — ` +
+            `heartbeat session '${id.sessionId ?? '-'}' does not match (claim file: ${cPath})`
+        );
+      }
     }
     // 2.18.4: токен — защита от heartbeat'а прежнего владения после перезахвата
     if (id.claimToken !== undefined && id.claimToken !== rec.claim_token) {

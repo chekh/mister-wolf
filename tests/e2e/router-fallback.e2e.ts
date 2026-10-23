@@ -98,7 +98,7 @@ describe('wolf-router fallback (T012): canonical приоритетен, miss �
     expect(r.status).toBe(0);
     expect(r.stdout.trim()).toBe('true');
     expect(lastLineFor('executor-lead')).toMatch(
-      /^agent-id=executor-lead playbook=hit name=\S+ variant=canonical injected=yes ms=\d+ bytes=\d+$/
+      /^agent-id=executor-lead playbook=hit name=\S+ variant=canonical source=face resolution=unique face_id=\S+ version=\S+ hash=\S+ session=\S+ injected=yes ms=\d+ bytes=\d+$/
     );
   });
 
@@ -107,7 +107,7 @@ describe('wolf-router fallback (T012): canonical приоритетен, miss �
     expect(r.status).toBe(0);
     expect(r.stdout.trim()).toBe('true');
     expect(lastLineFor('worker-reviewer')).toMatch(
-      /^agent-id=worker-reviewer playbook=hit name=\S+ variant=canonical injected=yes ms=\d+ bytes=\d+$/
+      /^agent-id=worker-reviewer playbook=hit name=\S+ variant=canonical source=face resolution=unique face_id=\S+ version=\S+ hash=\S+ session=\S+ injected=yes ms=\d+ bytes=\d+$/
     );
   });
 
@@ -116,7 +116,7 @@ describe('wolf-router fallback (T012): canonical приоритетен, miss �
     expect(r.status).toBe(0);
     expect(r.stdout.trim()).toBe('true');
     expect(lastLineFor('no-canonical-xyz')).toMatch(
-      /^agent-id=no-canonical-xyz playbook=hit name=fallback variant=fallback injected=yes ms=\d+ bytes=\d+$/
+      /^agent-id=no-canonical-xyz playbook=hit name=fallback variant=fallback source=default resolution=none face_id=- version=- hash=- session=\S+ injected=yes ms=\d+ bytes=\d+$/
     );
   });
 

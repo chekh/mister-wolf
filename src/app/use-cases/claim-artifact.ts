@@ -70,16 +70,23 @@ export function listArtifactClaims(deps: ClaimArtifactDeps): ClaimRecord[] {
 /** Heartbeat держателя (2.18.0 REQ-03): продлевает свежесть claim'а долгой
  * операции в окне CLAIM_HEARTBEAT_WINDOW_MS; writer — owner из env (не auth).
  * 2.18.4: identityOverride (CLI-флаги --session/--pid/--claim-token) включает
- * строгие проверки владения; без него — legacy-поведение (только writer). */
+ * строгие проверки владения.
+ * 2.18.5 (AC2): штатный вызов без override проверяет сессию из WOLF_SESSION
+ * автоматически; совместимость только по имени — явный legacy-режим
+ * (WOLF_CLAIM_HEARTBEAT_LEGACY=1) для внешних интеграций без сессии. */
 export function heartbeatArtifactClaim(
   deps: ClaimArtifactDeps,
   artifact: string,
   identityOverride?: { sessionId?: string | null; pid?: number; claimToken?: string }
 ): HeartbeatRecord {
+  const env = deps.env ?? process.env;
   const who = identityOf(deps);
+  const legacy = env.WOLF_CLAIM_HEARTBEAT_LEGACY === '1' || env.WOLF_CLAIM_HEARTBEAT_LEGACY === 'true';
   const identity: HeartbeatIdentity | undefined = identityOverride
     ? { owner: who.owner, ...identityOverride }
-    : undefined;
+    : legacy
+      ? undefined
+      : { owner: who.owner, sessionId: resolveSessionId(env) };
   return writeHeartbeat(registryDeps(deps), { artifact, writer: who.owner, ...(identity ? { identity } : {}) });
 }
 

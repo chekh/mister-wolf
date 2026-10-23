@@ -303,7 +303,8 @@ describe('wave 2.17 face-router e2e: лицо + router-доставка (T-10)',
     expect(rep.resolve?.text).toContain(MIG_MARKER);
     expect(lastLineFor(MIG_OWNER)).toMatch(
       new RegExp(
-        `^agent-id=${MIG_OWNER} playbook=hit name=${faceId} variant=canonical injected=yes ms=\\d+ bytes=\\d+$`
+        `^agent-id=${MIG_OWNER} playbook=hit name=${faceId} variant=canonical source=face resolution=unique ` +
+          `face_id=${faceId} version=\\S+ hash=\\S+ session=\\S+ injected=yes ms=\\d+ bytes=\\d+$`
       )
     );
   });
@@ -328,7 +329,12 @@ describe('wave 2.17 face-router e2e: лицо + router-доставка (T-10)',
     // ре-резолва (router.log: ms=0, имя запечатанной v1 — не опубликованной v2)
     const lines = routerLogLines().filter((l) => l.includes(`agent-id=${LIVE_OWNER} `));
     expect(lines).toHaveLength(2);
-    expect(lines[1]).toMatch(new RegExp(`name=${liveV1Id} variant=canonical injected=yes ms=0 bytes=\\d+$`));
+    expect(lines[1]).toMatch(
+      new RegExp(
+        `name=${liveV1Id} variant=canonical source=face resolution=unique face_id=${liveV1Id} ` +
+          `version=\\S+ hash=\\S+ session=\\S+ injected=yes ms=0 bytes=\\d+$`
+      )
+    );
     expect(lines[1]).not.toContain(v2Id);
   });
 
@@ -349,6 +355,11 @@ describe('wave 2.17 face-router e2e: лицо + router-доставка (T-10)',
     const lines = routerLogLines().filter((l) => l.includes(`agent-id=${TTL_OWNER} `));
     expect(lines).toHaveLength(2);
     expect(lines[0]).toMatch(new RegExp(`name=${ttlV1Id} variant=canonical`)); // S1 → v1
-    expect(lines[1]).toMatch(new RegExp(`name=${v2Id} variant=canonical injected=yes ms=\\d+ bytes=\\d+$`)); // S2 → v2
+    expect(lines[1]).toMatch(
+      new RegExp(
+        `name=${v2Id} variant=canonical source=face resolution=unique face_id=${v2Id} ` +
+          `version=\\S+ hash=\\S+ session=\\S+ injected=yes ms=\\d+ bytes=\\d+$`
+      )
+    ); // S2 → v2
   });
 });

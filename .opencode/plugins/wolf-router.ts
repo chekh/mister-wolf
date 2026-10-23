@@ -1,14 +1,11 @@
-// wolf:rendered base=wolf-router.ts set=2.18.4
+// wolf:rendered base=wolf-router.ts set=2.17.1
 /**
  * Mr.Wolf router plugin (шаблон базового набора, спека §5.4).
  *
  * Слой доставки №1 playbook-контекста (канон §7.1): детерминированная
  * доставка вместо вероятностного wolf search агентом. Маркер
  * `agent-id: <id>` В ТЕЛЕ рамки агента (frontmatter в system-промпт не
- * попадает — известная грабля) → 2.18.4: канонический face-resolver
- * (`wolf face resolve`: type=face, status=active, owner_skill === agentId;
- * ровно одно активное лицо, иначе отказ) → при miss/conflict legacy-путь:
- * wolf search `<agentId> playbook` (после
+ * попадает — известная грабля) → wolf search `<agentId> playbook` (после
  * таксономии 2.13 канон — note+facet howto, type-фильтр не применим) → get +
  * гвард owner_skill === agentId | `skill:${agentId}` (legacy) → первый
  * прошедший гвард кандидат (ранний стоп, A2-б) → инжект в system-промпт.
@@ -106,29 +103,7 @@ const cache = new Map<string, { value: { id: string; body: string } | null; at: 
 // ре-резолв — переключение версии посередине задания исключено (REQ-05).
 const sessionInject = new Map<string, { text: string; name: string; variant: string; bytes: number }>();
 
-// 2.18.4: канонический резолвер лица — строгий запрос type=face/status=active/
-// owner_skill (`wolf face resolve`) вместо вероятностного текстового поиска.
-// miss/conflict/сбой CLI → null → legacy-путь (note+howto + гвард) ниже:
-// поведение 2.13 для howto-плейбуков сохранено, конфликт лиц ловит doctor.
-async function resolveFaceCanonical(agentId: string): Promise<{ id: string; body: string } | null> {
-  try {
-    const { stdout } = await runWolf(['face', 'resolve', agentId]);
-    const parsed = JSON.parse(stdout) as { ok?: boolean; face?: { id?: unknown; body?: unknown } };
-    if (parsed?.ok && typeof parsed.face?.body === 'string' && parsed.face.body.length > 0) {
-      return { id: String(parsed.face.id ?? ''), body: parsed.face.body };
-    }
-  } catch {
-    /* fail-safe: miss/conflict — legacy-путь */
-  }
-  return null;
-}
-
 async function resolvePlaybook(agentId: string): Promise<{ id: string; body: string } | null> {
-  const face = await resolveFaceCanonical(agentId);
-  if (face) {
-    cache.set(agentId, { value: face, at: Date.now() });
-    return face;
-  }
   let found: { id: string; body: string } | null = null;
   try {
     // 2.13: плейбуки живут как note+facet howto (type 'playbook' — legacy),
@@ -174,7 +149,8 @@ function recordSkillMetric(tool: unknown, args: unknown): void {
     const a = (args ?? {}) as { name?: string; skill?: string } | null;
     const skill = a?.name ?? a?.skill;
     if (!skill) return;
-    const file = process.env.WOLF_SKILL_LOG ?? path.join(PROJECT_ROOT, '.wolf', 'metrics', 'skill-invocations.jsonl');
+    const file =
+      process.env.WOLF_SKILL_LOG ?? path.join(PROJECT_ROOT, '.wolf', 'metrics', 'skill-invocations.jsonl');
     fs.mkdirSync(path.dirname(file), { recursive: true });
     const entry: { ts: string; skill: string; agent?: string } = { ts: new Date().toISOString(), skill };
     if (lastAgentId) entry.agent = lastAgentId;
@@ -284,15 +260,19 @@ interface V2Ctx {
     hook(name: 'context', fn: (event: V2ContextEvent) => Promise<void>): Promise<{ dispose: () => Promise<void> }>;
   };
   tool: {
-    hook(name: 'execute.before', fn: (event: V2ToolEvent) => Promise<void>): Promise<{ dispose: () => Promise<void> }>;
+    hook(
+      name: 'execute.before',
+      fn: (event: V2ToolEvent) => Promise<void>
+    ): Promise<{ dispose: () => Promise<void> }>;
   };
 }
 
 async function setup(ctx: V2Ctx) {
   ensureSession();
   await ctx.session.hook('context', async (event) => {
-    await deliverPlaybook((event?.system ?? []).map((s) => s.text).join('\n'), (text) =>
-      event.system.push({ type: 'text', text })
+    await deliverPlaybook(
+      (event?.system ?? []).map((s) => s.text).join('\n'),
+      (text) => event.system.push({ type: 'text', text })
     );
   });
   await ctx.tool.hook('execute.before', async (event) => {

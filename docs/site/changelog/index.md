@@ -8,6 +8,14 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.18.5] - 2026-10-16
+
+### Fixed — Router conflict bypass, session-checked claim heartbeat, delivery observability
+
+- **Router: conflict bypass closed (2.18.5, AC1)**: the wolf-router plugin previously treated `none`, `multiple` and CLI-error results of the canonical face resolver identically, silently falling back to the legacy text search where only `owner_skill` was checked — a detected face conflict could be bypassed by picking a `proposed` face and injecting its body (confirmed by independent review of 2.18.4 on a controlled plugin fixture). Delivery is now split by resolver outcome: `unique` → the face is delivered; `none` → only a restricted legacy search over `note`/`howto`/`playbook` records with type (faces are resolver-only) and status (`active`) guards in addition to the owner guard; `multiple` → the conflict is recorded, no candidate is chosen and no methodology is injected (only the universal fallback); resolver/CLI error → a diagnosable failure (`resolution=error`), never a silent fallback. `runWolf` now resolves stdout even on non-zero exit, because the CLI contract prints machine-readable JSON (`{ok:false,error:{kind}}`) with exit 1 — `promisify(execFile)` used to lose it, turning real misses into unexplained errors.
+- **Claim heartbeat: session checked by default (2.18.5, AC2)**: the standard `wolf claim heartbeat <artifact>` call now verifies the session from `WOLF_SESSION` automatically (previously only the agent name was checked, so an old session of the same agent could refresh a claim handed to a new session). Name-only compatibility remains available as an explicit legacy mode (`WOLF_CLAIM_HEARTBEAT_LEGACY=1`). Transferred ownership (`release --transfer-to`, `session_id=null`) is accepted by the first heartbeat of a new session of the same owner; a second session is refused with an explicit message. Background jobs must pass `--claim-token` from the acquired claim (documented in the command description).
+- **Delivery observability (2.18.5, AC3)**: every router.log line now records `source=face|legacy|default`, `resolution=unique|none|conflict|error`, `face_id`, `version`, `hash` and the session id. Legacy deliveries are no longer logged as `variant=canonical` — the journal shows exactly how a methodology was delivered.
+
 ## [2.18.4] - 2026-10-16
 
 ### Fixed — Full heartbeat identity and canonical face resolver
