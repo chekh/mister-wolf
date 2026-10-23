@@ -102,7 +102,7 @@ describe('renderReport', () => {
       renderReport(parkTree, truecolor),
     ].join('\n');
     expect(out).toContain('██╗'); // логотип A (Mr.WOLF)
-    expect(out).toContain('Mr.  ██╗');
+    expect(out).toContain('███╗   ███╗██████╗'); // блочный префикс MR. (ansi_shadow)
     expect(out).not.toContain('╔═╗'); // демо-блок design-эскиза удалён
     expect(visible(renderReport({ kind: 'banner', version: '2.19.0' }, truecolor))).toMatchSnapshot();
     expect(out).toContain('upgrade 2.19.0');
