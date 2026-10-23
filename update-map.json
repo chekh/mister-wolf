@@ -1,0 +1,204 @@
+{
+  "version": "2.18.5",
+  "prev": "2.18.5",
+  "files": [
+    {
+      "path": "base/agents/executor-lead.md",
+      "kind": "agent",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/agents/mr-wolf.md",
+      "kind": "agent",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/agents/steward.md",
+      "kind": "agent",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/agents/worker-implementer.md",
+      "kind": "agent",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/agents/worker-researcher.md",
+      "kind": "agent",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/agents/worker-reviewer.md",
+      "kind": "agent",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/commands/analyze-doc.md",
+      "kind": "command",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/commands/complain.md",
+      "kind": "command",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/commands/doc-review.md",
+      "kind": "command",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/finishing-a-development-branch/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/receiving-code-review/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/requesting-code-review/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/test-driven-development/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/using-git-worktrees/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/using-skills/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/verification-before-completion/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/wolf-brainstorm/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/wolf-debug/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/wolf-design/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/wolf-execute/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/wolf-explain/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/wolf-handoff/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/wolf-plan/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/wolf-review/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/wolf-sdd/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/wolf-skill-intake/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/wolf-testplan/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/writing-skills/SKILL.md",
+      "kind": "skill",
+      "category": "unchanged"
+    },
+    {
+      "path": "opencode/plugins/wolf-router.ts",
+      "kind": "plugin",
+      "category": "unchanged"
+    },
+    {
+      "path": "opencode/plugins/wolf-session-start.js",
+      "kind": "plugin",
+      "category": "unchanged"
+    }
+  ],
+  "faces": [
+    {
+      "template": "base/playbooks/complaint-protocol.md",
+      "owner_skill": "mr-wolf",
+      "category": "unchanged",
+      "seed": true
+    },
+    {
+      "template": "base/playbooks/executor-lead-playbook.md",
+      "owner_skill": "executor-lead",
+      "category": "unchanged",
+      "seed": true
+    },
+    {
+      "template": "base/playbooks/steward-nastavnik.md",
+      "owner_skill": "steward",
+      "category": "unchanged",
+      "seed": true
+    },
+    {
+      "template": "base/playbooks/worker-implementer-playbook.md",
+      "owner_skill": "worker-implementer",
+      "category": "unchanged",
+      "seed": true
+    },
+    {
+      "template": "base/playbooks/worker-researcher-playbook.md",
+      "owner_skill": "worker-researcher",
+      "category": "unchanged",
+      "seed": true
+    },
+    {
+      "template": "base/playbooks/worker-reviewer-playbook.md",
+      "owner_skill": "worker-reviewer",
+      "category": "unchanged",
+      "seed": true
+    }
+  ],
+  "agents_md": {
+    "category": "unchanged",
+    "mode": "append-block"
+  },
+  "schema_migrations": [],
+  "outside_v1": [
+    "taxonomy (config.yaml memory_types — manual wolf taxonomy)",
+    "tool-skills (generated by wolf tool — not a base-set path)",
+    "local/foreign artifacts (untracked .opencode/* and .wolf/* files)"
+  ]
+}
