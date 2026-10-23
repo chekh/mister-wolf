@@ -7,8 +7,8 @@ created: 2026-10-23
 
 # unified-update — дизайн
 
-Волна 2.19.0. Вход: requirements.md (approved, коммит 1d3c10d, CR-06
-faf32a3), 14 REQ / 4 NFR. Исследования: research-artifacts-inventory.md
+Волна 2.19.0. Вход: requirements.md (approved; CR-06 faf32a3, REQ-15 —
+CR-07 3873a67), 15 REQ / 4 NFR. Исследования: research-artifacts-inventory.md
 (классы артефактов), docs/dev/2026-10-23-ts-update-investigation/note.md,
 docs/dev/2026-10-23-projects-analytics/note.md. Baseline: main 2.18.5.
 Ссылки на код: revision `faf32a3`, формат `path:symbol`.
@@ -18,12 +18,15 @@ docs/dev/2026-10-23-projects-analytics/note.md. Baseline: main 2.18.5.
 - **Карта (update-map)** — JSON-манифест полного состава релиза в корне
   npm-пакета (см. ADR-1).
 - **Проектный шаг** — детерминированная последовательность над одним
-  проектом: sync → удаления removed → посев лиц → миграция схемы → сверка.
+  проектом: sync → удаления removed → посев недостающих лиц
+  (seed-missing-only) → миграция схемы → сверка.
 - **Оркестратор прохода** — фаза реестрового обхода: список → подтверждение
   → проектные шаги → сводный отчёт.
 - **Re-exec** — перезапуск новым бинарником после npm-фазы (ADR-2).
-- **Статус пункта сверки** — updated / created / removed / seeded /
-  skipped-live / deprecated-отмечен / unchanged / «требует решения» / error.
+- **Статус пункта сверки** — структурный код исхода: updated / created /
+  removed / seeded / skipped-identical / skipped-mutated / skipped-live /
+  legacy-absorbed / deprecated-отмечен / unchanged / diverged / conflict /
+  «требует решения» / error (см. «Сверка»).
 - **State-файл** — временный JSON с контекстом между фазами re-exec.
 
 ## Компоненты и ответственность
@@ -40,6 +43,7 @@ docs/dev/2026-10-23-projects-analytics/note.md. Baseline: main 2.18.5.
 | Sync (deprecated)         | Прежняя семантика + redirect-подсказка; удаление в 2.20.0                                    | src/adapters/cli/commands/memory-sync.ts (расширить)    |
 | Генератор карты           | Скелет из git diff base-set prev→cur + verify согласованности                                | scripts/generate-update-map.mjs (новый, репо-only)      |
 | Карта данных              | Полный инвентарь состава релиза                                                              | update-map.json (новый, корень пакета, `files`)         |
+| Скан незарегистрированных | REQ-09: пост-отчётный ограниченный скан (maxdepth 4, топ-5, ≤5 с)                            | src/app/use-cases/scan-unregistered.ts (новый)          |
 
 Существующее без изменений: sync-base-set, seed-base-playbooks,
 schema-guard (ленивая миграция), container/selfHealRegistry (P331),
@@ -72,11 +76,12 @@ Cat = 'new' | 'changed' | 'unchanged' | 'deprecated' | 'removed'
 
 ```
 wolf upgrade [--yes] [--check]
-  ├─ --check → read-only сводка: npm view + реестр + карта (D-чек) → exit 0
+  ├─ --check → read-only проход парка по алгоритму --check → exit 0
   ├─ npm-фаза (существующий runUpgrade: linked-отказ, up-to-date, install)
   │    неудача → Error + exit 1; проекты не тронуты (REQ-01 AC3)
+  │    up-to-date → НЕ выход: фаза идемпотентна, идём к re-exec
   └─ re-exec: <npmPrefix>/bin/wolf upgrade-projects --from <v> --to <v'>
-       [--yes] --state <tmp.json>          (hidden-команда; ADR-2/5)
+       [--yes] --no-banner --state <tmp.json>   (hidden-команда; ADR-2/5)
 ```
 
 ```mermaid
@@ -98,6 +103,20 @@ State-файл: `{ from, to, startedAt }` — только контекст от
 SIGINT в группу процессов (spawn, TTY); зафиксированные фазы остаются
 завершёнными, повторный запуск доводит остальные (пофазная атомарность).
 
+Контракт spawn (ADR-2): `spawn(bin, argv, { stdio: 'inherit',
+env: process.env })` без shell — вывод ребёнка идёт в тот же терминал
+(склейка фаз, REQ-15); код выхода родителя = код выхода ребёнка. Сбой
+spawn/старта ребёнка → UserFacingError «CLI обновлён; проекты не тронуты —
+повтори `wolf upgrade` для проектного прохода» + exit 1: npm-фаза
+идемпотентна, повторный запуск при up-to-date сразу уходит в проектный
+проход.
+
+Список подтверждения (REQ-02) — поля каждой строки плана (контракт):
+имя · путь (realpath) · текущий состав + штамп (штамп справочен,
+недостоверен — инвентаризация §3.4) · целевая версия · категории карты
+числами (new/changed/deprecated/removed) · pinned-признак · статус
+worktree/missing. Пример — вайрфрейм (1).
+
 ### Проектный шаг (REQ-03/07/11; ADR-3/4)
 
 ```
@@ -108,31 +127,58 @@ runProjectStep(deps, root, map, opts{confirmedRemovals}) → ProjectReport
   2. removals: orphaned-файлы ∩ map.files[removed] → unlink (подтверждение
      //   уже дано на уровне списка REQ-02; AC REQ-11). orphaned ∖ removed
      //   → «требует решения» (дрейф без объявления).
-  3. seedBasePlaybooks(root)                // существующий: сеять
-     //   недостающие / skip живых / поглотить legacy атомарно; каждый
-     //   объект — фиксация.
+  3. seedBasePlaybooks(root, { mode: 'seed-missing-only' })
+     //   сеять ТОЛЬКО недостающие лица; живые лица не трогаются (без
+     //   template-update / переверсионирования). legacy-head без живого
+     //   лица → legacy-absorbed; расхождение с заголовком шаблона →
+     //   diverged → «требует решения». Каждый объект — атомарная фиксация.
   4. ensureCurrentSchema(root)              // существующая ленивая миграция
      //   (backup), репорт «migrated/refused».
   5. verifyAgainstMap(map, {syncOutcomes, seedOutcomes, removals})
      //   расхождение → error пункта; mutated → «требует решения».
 Память: единственная мутация — шаг 3 (посев), см. REQ-07.
+
+Атомарность записей (NFR-01): ВСЕ записи base-set в проходе — tmp+rename
+(прецедент writeFileAtomic из шага 1) — sync, посев, AGENTS-блок; вместе
+с identical-skip это фундамент сохранности.
+
+Ограничение (решение L0): содержание живых лиц проходом НЕ обновляется
+(seed-missing-only); обновление живых лиц — зона Стюарда, кандидат
+2.20.0 / async learning. Согласовано с REQ-03 AC2 и REQ-07.
 ```
 
 ### Сверка (verify-against-map)
 
-Ожидание: `new|changed → updated|created`; `unchanged → unchanged|updated`;
-`removed → removed`; `deprecated → файл на месте + deprecated-отмечен`;
-`faces[seed] → seeded | skipped-live | legacy-absorbed`. Мутант (sync
-skipped-mutated) перекрывает ожидание → «требует решения». Факт без
-ожидания (файл вне карты) → «требует решения». Отсутствие статуса → error.
-Сводка проекта: счётчики категорий + seeded + «требует решения» + errors.
+Исходы — структурные коды (не reason-строки): `updated | created |
+removed | seeded | skipped-identical | skipped-mutated | skipped-live |
+legacy-absorbed | deprecated-отмечен | unchanged | diverged | conflict`;
+коды `diverged` и `conflict` всегда отображаются как «требует решения».
+
+Ожидания по карте: `new|changed → updated|created`; `unchanged →
+unchanged|updated|skipped-identical`; `removed → removed`; `deprecated →
+файл на месте + deprecated-отмечен`; `faces[seed] → seeded | skipped-live
+| legacy-absorbed | diverged`. Мутант (`skipped-mutated`) перекрывает
+ожидание → «требует решения». Факт без ожидания (файл вне карты) →
+`conflict` → «требует решения». Отсутствие статуса → `error`.
+Сводка проекта: счётчики исходов + «требует решения» + errors.
 
 ### Exit-модель (REQ-05/06)
 
-`0` — все пункты закрыты, нет error/«требует решения»; `1` — ≥1 error;
-`2` — 0 error, ≥1 «требует решения» (различимо для CI). Парковые счётчики:
-updated / up-to-date / worktree / pinned / missing / «требует решения» /
-error + сумма по категориям карты + досеяно лиц.
+| Исход прохода                        | exit | Финальная строка (styled)     |
+| ------------------------------------ | ---- | ----------------------------- |
+| всё закрыто, 0 error, 0 «треб. реш.» | 0    | `└ Done`                      |
+| список отклонён пользователем        | 0    | `└ Cancelled — без изменений` |
+| не-TTY без `--yes`                   | 0    | `└ Cancelled: нужен --yes`    |
+| реестр пуст                          | 0    | `└ Done: проектов нет`        |
+| `--check` (read-only)                | 0    | `└ Done (read-only)`          |
+| ≥1 `error`                           | 1    | `└ Failed`                    |
+| 0 error, ≥1 «требует решения»        | 2    | `└ Done with attention`       |
+
+Финальная строка никогда не говорит «Done» при ошибке (error →
+`Failed`); `--here` использует ту же таблицу для одного проекта.
+Различимость 0/1/2 — для CI. Парковые счётчики: updated / up-to-date /
+worktree / pinned / missing / «требует решения» / error + сумма по
+категориям карты + досеяно лиц.
 
 ### `--here` (REQ-14)
 
@@ -156,6 +202,32 @@ memorySyncCommand сохраняет действие; в вывод добав�
 2.20.0». Удаление в 2.20.0 — через removed-commands.ts (прецедент 2.13
 §10.4: подсказка при unknown command). CHANGELOG-заметки с 2.19.0 указывают
 `upgrade`.
+
+### `--check` (REQ-08) — сверка состава, не штампов
+
+Алгоритм: для каждого проекта реестра — контентный diff целей карты
+установленного пакета (рендер `templates/` текущего CLI) против
+фактических файлов проекта; категории — из карты. Классификация проекта:
+`актуальный` (все цели совпадают) · `отстаёт` (расхождения по
+new/changed/removed) · `требует решения` (mutated / diverged / conflict) ·
+`unknown — вне покрытия` (карты нет: CLI < 2.19.0 или артефакт вне
+base-set). `unknown` НЕ показывается как актуальный. Если карты нет у
+самого CLI (старый бинарник), `--check` деградирует до npm view + штампов
+с явной пометкой недостоверности (инвентаризация §3.4). Read-only,
+мутаций нет, exit 0.
+
+### Гварды прохода (REQ-01/06)
+
+- Параллельный запуск: lock-файл в ОС-tmp с TTL (механика в духе flock);
+  живой lock → UserFacingError «upgrade уже выполняется» + exit 1;
+  протухший (TTL истёк) — захватывается и перезаписывается.
+- Реестр пуст vs нечитаем: пустой реестр → «проектов нет», exit 0; ошибка
+  чтения/парса yaml → `error` + exit 1, не маскируется под пустоту
+  (list() 2.18.5 молча возвращает `[]` на битом yaml — проход обязан
+  различать явно, тест).
+- Дедуп проектов: ключ — realpath(root); записи с одним realpath
+  сворачиваются в одну, дубль отмечается в отчёте (самолечение P331
+  дублей не порождает, но ручные правки yaml могут).
 
 ## Терминальный вывод (REQ-15, ADR-6)
 
@@ -187,6 +259,11 @@ Renderer — чистая функция над деревом (без I/O): sty
 | «требует решения», deprecated       | ▲      | yellow           | `warn:`           |
 | error                               | ✖      | red              | `error:`          |
 | pinned / worktree / missing         | ●      | dim              | `skip:`           |
+| skipped-live (живое лицо нетронуто) | ●      | dim              | `skip:`           |
+| migrated (схема), legacy-absorbed   | ●      | green            | `ok:`             |
+| refused (миграция отклонена)        | ▲      | yellow           | `warn:`           |
+| linked-refusal (npm-фаза, linked)   | ✖      | red              | `error:`          |
+| local-newer (проект новее CLI)      | ▲      | yellow           | `warn:`           |
 
 Правило различимости: статус несёт и маркер, и цвет, и текст — в моно
 (16/mono) различимость сохраняют маркер + слово (REQ-15 AC-3). Spinner —
@@ -237,8 +314,12 @@ plain: `Mr Wolf — upgrade 2.19.0`.
 ┌ Mr Wolf — upgrade 2.19.0 ───────────────────────────┐
 │ ● wolf 2.18.5 → 2.19.0 … ok                         │
 │ ● 4 проекта в реестре (1 pinned, 1 worktree)        │
-│ │ plan: trading-signal 2.16.2 → (+2 skills, seed×2) │
-│ │ plan: Tender (нет лиц) → seed×6                    │
+│ │ plan: trading-signal · ~/dev/trading-signal        │
+│ │   состав 2.17.1 (штамп 2.16.2) → 2.19.0            │
+│ │   карта: +2 skills · 1 changed · 0 removed · seed×2 │
+│ │ plan: Tender · ~/dev/Tender · состав 2.16.0, лиц   │
+│ │   нет → 2.19.0 · карта: seed×6                      │
+│ │ plan: adminvps · [pinned] — пропущен                │
 │ ▶ обновить 2 проекта? [Y/n]                          │
 │ ● trading-signal                                     │
 │   ● base-set: 30 файлов → updated                    │
@@ -262,7 +343,7 @@ plain-фоллбек: те же строки плоско (`Mr Wolf upgrade 2.19
 │ ● wolf 2.18.5 (latest: 2.19.0)                       │
 │ ● trading-signal: состав 2.17.1 (штамп 2.16.2) — отстаёт │
 │ ● adminvps: состав 2.17.0 — отстаёт                   │
-│ ● Tender: вне покрытия (нет карты < 2.19.0) — по штампу │
+│ ● Tender: unknown — вне покрытия карты (по штампу)  │
 └ актуальных 0 · отстающих 3 — Done (read-only)        │
 ```
 
@@ -317,18 +398,28 @@ NO_COLOR/pipe), TERM/COLORTERM — стандартные переменные.
   Контекст: REQ-04 — проход новой версией; upgrade стартует старым кодом.
   Альтернативы: in-process (невозможно: dist старой версии в памяти),
   «перезапусти сам» (ручной шаг против цели волны). Выбор: spawn
-  `<npmPrefix>/bin/wolf upgrade-projects` (hidden). Последствия: новый
-  бинарник отвечает за список/подтверждение/отчёт; состояние — state-файл;
-  linked-установка → npm-фаза уже отказывает (существующий контракт), при
-  up-to-date re-exec не нужен (проектная фаза запускается только если была
-  установка или явный флаг повторной доводки `--projects`). REQ-01/04/06.
-- **ADR-3: Оркестратор поверх существующих use-cases.**
+  `<npmPrefix>/bin/wolf upgrade-projects` (hidden); контракт spawn —
+  stdio inherit, env: process.env, exit родителя = exit ребёнка; сбой
+  spawn/старта → UserFacingError «CLI обновлён; проекты не тронуты —
+  повтори `wolf upgrade`» + exit 1. Восстановление после сбоя — повторный
+  `wolf upgrade`: npm-фаза идемпотентна, при up-to-date сразу выполняется
+  проектный проход; публичный `--projects` не вводится (решение L0,
+  вопрос 3 закрыт). Последствия: новый бинарник отвечает за
+  список/подтверждение/отчёт; состояние — state-файл; linked-установка →
+  npm-фаза уже отказывает (существующий контракт). REQ-01/04/06.
+- **ADR-3: Оркестратор поверх существующих use-cases; посев —
+  seed-missing-only.**
   Контекст: sync/seed/migration уже имеют нужную семантику и тесты.
   Альтернативы: монолитный новый проход; только sync (без посева — не
-  закрывает REQ-03). Выбор: новый тонкий project-step, компонующий
-  syncBaseSet + seedBasePlaybooks + ensureCurrentSchema + удаления +
-  сверку. Последствия: семантика посева не дублируется; риск расхождения
-  статусов sync ↔ сверки закрывается контрактом outcomes. REQ-03/07/11.
+  закрывает REQ-03); посев с template-update живых лиц. Выбор: тонкий
+  project-step, компонующий syncBaseSet + seedBasePlaybooks (mode:
+  seed-missing-only) + ensureCurrentSchema + удаления + сверку; живые
+  лица не переверсионируются — обновление содержания живых лиц зона
+  Стюарда, кандидат 2.20.0 / async learning (решение L0). Последствия:
+  семантика посева не дублируется; содержание живых лиц после прохода не
+  меняется (осознанное ограничение, согласовано с REQ-03 AC2/REQ-07);
+  расхождение статусов sync ↔ сверки закрывается контрактом структурных
+  кодов исходов. REQ-03/07/11.
 - **ADR-4: Удаления — в момент прохода, по подтверждённому списку;
   deprecated не удаляет.**
   Альтернативы: отложенная очередь удалений на следующий запуск; отдельный
@@ -338,10 +429,13 @@ NO_COLOR/pipe), TERM/COLORTERM — стандартные переменные.
   списка прохода нет вовсе (REQ-02). REQ-02/11.
 - **ADR-5: Скрытая команда `upgrade-projects` как транспорт фазы.**
   Альтернативы: флаг `--projects` на upgrade (путает фазы старого/нового
-  бинарника); standalone публичная команда (лишняя поверхность CLI).
-  Выбор: hidden-команда в COMMANDS (прецедент hidden-команд 2.18.5),
-  вызывается только re-exec'ом. Последствия: публичная поверхность CLI не
-  растёт; cli.md-референс — только upgrade/sync меняются. REQ-01/04.
+  бинарника; отклонён решением L0); standalone публичная команда (лишняя
+  поверхность CLI). Выбор: hidden-команда в COMMANDS (прецедент
+  hidden-команд 2.18.5), вызывается только re-exec'ом. Последствия:
+  публичная поверхность CLI не растёт, но cli-reference-guard
+  регенерирует справочник из всего реестра команд включая hidden —
+  `upgrade-projects` попадёт в docs/reference/cli.md (downstream этапа
+  реализации: обновить cli.md вместе с upgrade/sync). REQ-01/04.
 - **ADR-6: Renderer-модуль как стандарт вывода; в 2.19.0 — только
   upgrade-поверхности.**
   Контекст: решение владельца о стандарте терминального вывода (opencode
@@ -358,33 +452,35 @@ NO_COLOR/pipe), TERM/COLORTERM — стандартные переменные.
 
 ## Покрытие REQ/NFR
 
-| REQ                                     | Решение                                                                            |
-| --------------------------------------- | ---------------------------------------------------------------------------------- |
-| REQ-01 единая команда                   | Фазы upgrade + re-exec (ADR-2); npm-сбой → exit 1 без проектов                     |
-| REQ-02 список/подтверждение             | Оркестратор: планы из карты+реестра, статусы worktree/pinned/missing, --yes/не-TTY |
-| REQ-03 проектный шаг                    | Композиция sync+seed (ADR-3), точки фиксации                                       |
-| REQ-04 новая версия                     | Re-exec (ADR-2)                                                                    |
-| REQ-05 сводный отчёт                    | Счётчики оркестратора; формат одного проекта для --here                            |
-| REQ-06 изоляция сбоев                   | try/catch на проект, exit 0/1/2                                                    |
-| REQ-07 память вне посева                | Инвариант шага 3; sync-алиас до 2.20.0 + redirect                                  |
-| REQ-08 --check                          | Read-only сводка: npm view + штампы + карта                                        |
-| REQ-09 подсказка о незарегистрированных | Ограниченный скан после отчёта (maxdepth 4, топ-5, ≤5 с)                           |
-| REQ-10 карта                            | update-map.json + генератор + верификатор (ADR-1)                                  |
-| REQ-11 проход по карте                  | project-step + verify-against-map; removals/deprecated/миграции                    |
-| REQ-12 карта в релизе                   | Шаг чек-листа + guard-тест CI (ADR-1)                                              |
-| REQ-13 pinned                           | Поле реестра; самолечение уже уважает; guard-тест                                  |
-| REQ-14 --here                           | Прямой вызов runProjectStep; guard cwd                                             |
-| REQ-15 терминальный вывод               | report-renderer: ReportNode → styled/plain (ADR-6); склейка re-exec --no-banner    |
-| NFR-01 сохранность                      | Инварианты шагов + слепки (объекты/SHA мутированных) в приёмке                     |
-| NFR-02 идемпотентность                  | Пофазная фиксация; повтор = sync identical + seed skip-live; без дубликатов        |
-| NFR-03 время                            | Замер per-project (stdout отчёта приёмки, не лог-канал); ≤7 с/шаг                  |
-| NFR-04 observability                    | Существующие events.jsonl посева + stdout; новых каналов нет                       |
+| REQ                                     | Решение                                                                               |
+| --------------------------------------- | ------------------------------------------------------------------------------------- |
+| REQ-01 единая команда                   | Фазы upgrade + re-exec (ADR-2); npm-сбой → exit 1 без проектов                        |
+| REQ-02 список/подтверждение             | Оркестратор: планы с полями-контрактом, статусы worktree/pinned/missing, --yes/не-TTY |
+| REQ-03 проектный шаг                    | Композиция sync + seed-missing-only (ADR-3); атомарные записи tmp+rename              |
+| REQ-04 новая версия                     | Re-exec (ADR-2)                                                                       |
+| REQ-05 сводный отчёт                    | Счётчики оркестратора; формат одного проекта для --here                               |
+| REQ-06 изоляция сбоев                   | try/catch на проект; гварды (lock+TTL, realpath-дедуп, пусто ≠ нечитаем); exit 0/1/2  |
+| REQ-07 память вне посева                | Инвариант шага 3; sync-алиас до 2.20.0 + redirect                                     |
+| REQ-08 --check                          | Сверка состава: контент целей карты vs рендер templates; unknown ≠ актуальный         |
+| REQ-09 подсказка о незарегистрированных | Компонент скана после отчёта (maxdepth 4, топ-5, ≤5 с)                                |
+| REQ-10 карта                            | update-map.json + генератор + верификатор (ADR-1)                                     |
+| REQ-11 проход по карте                  | project-step + verify-against-map; removals/deprecated/миграции                       |
+| REQ-12 карта в релизе                   | Шаг чек-листа + guard-тест CI (ADR-1)                                                 |
+| REQ-13 pinned                           | Поле реестра; самолечение уже уважает; guard-тест                                     |
+| REQ-14 --here                           | Прямой вызов runProjectStep; guard cwd                                                |
+| REQ-15 терминальный вывод               | report-renderer: ReportNode → styled/plain (ADR-6); склейка re-exec --no-banner       |
+| NFR-01 сохранность                      | Атомарные записи + identical-skip; инварианты шагов; слепки в приёмке                 |
+| NFR-02 идемпотентность                  | Пофазная фиксация; повтор = sync identical + seed skip-live; без дубликатов           |
+| NFR-03 время                            | Замер per-project (stdout отчёта приёмки, не лог-канал); ≤7 с/шаг                     |
+| NFR-04 observability                    | Существующие events.jsonl посева + stdout; новых каналов нет                          |
 
 ## Ссылки на NFR
 
 - NFR-01: механика — шаги 1–4 не удаляют память и не перезаписывают
-  мутированное; сверка read-only. Приёмочный протокол: слепок множества id
-  - SHA мутированных файлов до/после, включая прерывание на k-м проекте.
+  мутированное; все записи base-set атомарны (tmp+rename) +
+  identical-skip; сверка read-only. Приёмочный протокол: слепок множества
+  id + SHA мутированных файлов до/после, включая прерывание на k-м
+  проекте.
 - NFR-02: повторный запуск после сбоя — новые планы из той же карты;
   зафиксированные фазы дают identical/skip; дубликаты исключены семантикой
   seed (живое лицо → skip).
@@ -412,8 +508,9 @@ NO_COLOR/pipe), TERM/COLORTERM — стандартные переменные.
 
 Логирование/новый observability (2.20.0), async learning (2.20.0),
 сетевые/мультиюзерные среды, обновление docs/reference/cli.md и CHANGELOG
-(downstream этапа реализации: cli-reference-guard потребует актуализировать
-справочник при изменении описаний upgrade/sync — урок «cli-reference-guard
+(downstream этапа реализации: cli-reference-guard регенерирует справочник
+из всего реестра команд включая hidden — `upgrade-projects` попадёт в
+cli.md вместе с изменениями upgrade/sync; урок «cli-reference-guard
 drift»), таксономия config.yaml в проходе (вне v1 карты).
 
 ## Открытые дизайн-вопросы
@@ -425,10 +522,9 @@ drift»), таксономия config.yaml в проходе (вне v1 карт
    будущего» (schema_version > текущей): предложение — честный error
    пункта (как schema-guard), продолжение обхода. Принимается в реализации
    с тестом.
-3. Нужен ли флаг `--projects` (доводка проектов без npm-фазы, если CLI уже
-   свежий) как публичный тонкий флаг вместо повторного re-exec при
-   up-to-date — мини-вопрос плану; по умолчанию: при up-to-date проектная
-   фаза не запускается (AC REQ-08 покрывает осмотр).
+3. [Закрыт решением L0] Публичный флаг `--projects` не вводится: при
+   up-to-date npm-фаза идемпотентна и сразу выполняется проектный проход;
+   восстановление после сбоя spawn — повторный `wolf upgrade` (ADR-2).
 4. Выбор логотипа из трёх эскизов (A блочный / B глиф / C минимал) —
    владелец в пакете утверждения (REQ-15); spinner принят TTY-only.
 5. Поведение рамок при терминале уже 60–72 колонок (усечение пути vs
