@@ -87,6 +87,9 @@ export async function seedBasePlaybooks(deps: SeedDeps): Promise<SeedOutcome[]> 
         file,
         action: 'skipped',
         reason: `owner_skill=${ownerSkill} already seeded from another template in this run`,
+        // 2.19.0: структурный код для сверки (T5) — дедуп означает живое лицо
+        // уже посеяно в этом прогоне; не error (риск №2 отчёта T5).
+        ...(missingOnly ? { kind: 'skipped-live' as const } : {}),
       });
       continue;
     }

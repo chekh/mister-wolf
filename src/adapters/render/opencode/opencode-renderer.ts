@@ -102,6 +102,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
           outcomes.push({
             file: rel,
             action: 'skipped',
+            mutated: true,
             reason: 'mutated after render — differs from recorded render and fresh render; left untouched',
           });
         } else {
@@ -157,6 +158,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
         outcomes.push({
           file: rel,
           action: 'skipped',
+          mutated: true,
           reason: 'mutated after render — differs from recorded render and fresh render; left untouched',
         });
         continue;
@@ -257,6 +259,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
         {
           file: 'AGENTS.md',
           action: 'skipped',
+          mutated: true,
           reason: 'mutated after render — differs from recorded render and fresh render; left untouched',
         },
       ];

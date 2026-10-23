@@ -5,6 +5,10 @@ export interface RenderOutcome {
   file: string;
   action: RenderAction;
   reason?: string;
+  /** 2.19.0 (design §«Сверка»): структурный флаг mutated-skip — сверка
+   *  verifyAgainstMap различает skipped-identical / skipped-mutated полем,
+   *  не парсингом reason-строки. */
+  mutated?: boolean;
 }
 
 /** Контекст подстановки моделей (onboarding v2, §4.5): {{model.primary}} / {{model.worker}}. */
