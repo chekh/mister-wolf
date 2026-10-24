@@ -17,6 +17,17 @@ export interface ModelContext {
   worker: string;
 }
 
+/** Действие read-only инспекции цели (T10, REQ-08, design §«--check»): цель
+ *  сверяется с текущим рендером без единой записи на диск. foreign — unstamped
+ *  файл на месте цели (wx-политика: чужое, вне покрытия). */
+export type InspectAction = 'identical' | 'differs' | 'missing' | 'mutated' | 'foreign' | 'unknown';
+
+export interface InspectOutcome {
+  /** rel-путь от baseDir — тот же ключ, что RenderOutcome.file. */
+  file: string;
+  action: InspectAction;
+}
+
 export interface BakeResolver {
   /** Вернуть тело playbook'а для вживления (bake-in) или null. Источник — память целевого проекта (§4). */
   (baseName: string): string | null;

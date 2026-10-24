@@ -10,6 +10,9 @@ import { runProjectStep, type ProjectReport, type ProjectStepDeps } from '../../
 import { mapCategories, STATUS_TEXT, statusOf, type OutcomeStatus } from '../../../app/use-cases/upgrade-projects.js';
 import { projectPath } from '../../../app/use-cases/verify-against-map.js';
 import { compareVersions, loadUpdateMap, type UpdateMap } from '../../fs/update-map.js';
+import { ProjectsRegistry, type RegisteredProject } from '../../fs/projects-registry.js';
+import { wolfUserConfigDir } from '../../fs/user-config.js';
+import type { InspectOutcome } from '../../../ports/base-set-renderer.port.js';
 import { loadSyncState } from '../../render/sync-state.js';
 import { parseStamp } from '../../render/stamp.js';
 import { harnessTemplatesRoot, templatesRoot } from '../../render/templates-root.js';
@@ -384,6 +387,232 @@ async function upgradeHereAction(cwd: string, yes: boolean): Promise<void> {
   process.exitCode = res.exitCode;
 }
 
+/* ---------- --check парковая сводка (REQ-08, T10): read-only, 0 мутаций ---------- */
+// Состав — истина, штамп — свидетель (инвентаризация §3.4): класс проекта —
+// контентная сверка целей карты установленного пакета с фактическими файлами
+// (deps.inspect = renderer.inspectBaseSet, без записей), штампы — справочно.
+// Read-only не падает: любые сбои — строки отчёта, exit всегда 0.
+
+/** Класс устаревания проекта (design §«--check»); unknown не показывается
+ *  как current — недостоверность ≠ актуальность. */
+export type FreshnessClass = 'current' | 'behind' | 'needs-decision' | 'unknown';
+
+const CLASS_TEXT: Record<FreshnessClass, string> = {
+  current: 'current',
+  behind: 'behind',
+  'needs-decision': 'needs decision',
+  unknown: 'unknown — out of coverage',
+};
+
+/** Срез классификации одного проекта: класс + краткое обоснование (rel-пути). */
+export interface ProjectFreshness {
+  cls: FreshnessClass;
+  differs: string[];
+  missing: string[];
+  mutated: string[];
+  foreign: string[];
+  /** Инспекция вернула unknown — класс unknown, но причина не «чужой файл». */
+  uncertain: string[];
+  /** removed-цели карты, чей файл всё ещё существует. */
+  removedPresent: string[];
+  /** deprecated-цели — report-only (REQ-11), класс не меняют. */
+  deprecated: string[];
+  /** Цели инспекции вне карты — справочно, класс не меняют. */
+  outsideMap: string[];
+}
+
+/** Чистая классификация (design §«--check»), приоритет правил — как в брифе:
+ *  mutated → «требует решения»; differs/missing по целям карты и существующий
+ *  removed-файл → «отстаёт»; foreign/unknown → «unknown — вне покрытия»;
+ *  иначе «актуальный». AGENTS.md — цель карты agents_md тем же словарём.
+ *  deprecated — report-only (REQ-11), вне-карты — справочно. */
+export function classifyProject(
+  map: UpdateMap,
+  outcomes: InspectOutcome[],
+  removedExisting: string[]
+): ProjectFreshness {
+  const out: ProjectFreshness = {
+    cls: 'current',
+    differs: [],
+    missing: [],
+    mutated: [],
+    foreign: [],
+    uncertain: [],
+    removedPresent: [...removedExisting],
+    deprecated: [],
+    outsideMap: [],
+  };
+  const byFile = new Map(outcomes.map((o) => [o.file, o.action]));
+  const targetRels = new Set<string>();
+  const absorb = (rel: string, action: InspectOutcome['action'] | undefined): void => {
+    if (action === 'mutated') out.mutated.push(rel);
+    else if (action === 'foreign') out.foreign.push(rel);
+    else if (action === 'unknown') out.uncertain.push(rel);
+    else if (action === 'differs') out.differs.push(rel);
+    else if (action === 'missing') out.missing.push(rel);
+  };
+  for (const entry of map.files) {
+    const rel = projectPath(entry);
+    targetRels.add(rel);
+    if (entry.category === 'deprecated') {
+      out.deprecated.push(rel); // report-only (REQ-11)
+      continue;
+    }
+    absorb(rel, byFile.get(rel));
+  }
+  if (map.agents_md.category !== 'deprecated') absorb('AGENTS.md', byFile.get('AGENTS.md'));
+  for (const o of outcomes) {
+    if (o.file !== 'AGENTS.md' && !targetRels.has(o.file)) out.outsideMap.push(o.file);
+  }
+  out.cls =
+    out.mutated.length > 0
+      ? 'needs-decision'
+      : out.differs.length > 0 || out.missing.length > 0 || out.removedPresent.length > 0
+        ? 'behind'
+        : out.foreign.length > 0 || out.uncertain.length > 0
+          ? 'unknown'
+          : 'current';
+  return out;
+}
+
+export interface UpgradeCheckDeps {
+  /** Реестр проектов; listStrict различает «пусто» и «нечитаем» (прецедент T7). */
+  registry: { listStrict(): Promise<RegisteredProject[]> };
+  /** Карта установленного CLI-релиза (T1); throw → деградация до штампов. */
+  loadMap: () => UpdateMap;
+  /** npm view доступной версии (мок в тестах). */
+  registryVersion: () => Promise<string>;
+  /** Установленная версия CLI. */
+  installedVersion: () => string;
+  /** Read-only инспекция base-set проекта (реализация — renderer.inspectBaseSet). */
+  inspect: (root: string) => Promise<InspectOutcome[]>;
+}
+
+export interface UpgradeCheckResult {
+  /** Read-only сводка не падает — exit всегда 0 (design exit-таблица: --check). */
+  exitCode: 0;
+  report: ReportNode;
+}
+
+const CHECK_TITLE = 'wolf upgrade — check';
+
+/** Детали проекта одной строкой: `2 differ · 1 missing · mutated: …`. */
+function freshnessDetails(f: ProjectFreshness): string | null {
+  const parts: string[] = [];
+  if (f.differs.length > 0) parts.push(`${f.differs.length} differ`);
+  if (f.missing.length > 0) parts.push(`${f.missing.length} missing`);
+  if (f.mutated.length > 0) parts.push(`mutated: ${f.mutated.join(', ')}`);
+  if (f.foreign.length > 0) parts.push(`foreign: ${f.foreign.join(', ')}`);
+  if (f.uncertain.length > 0) parts.push(`unknown: ${f.uncertain.join(', ')}`);
+  if (f.removedPresent.length > 0) parts.push(`removed present: ${f.removedPresent.join(', ')}`);
+  if (f.outsideMap.length > 0) parts.push(`${f.outsideMap.length} files outside the map`);
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
+const stampNote = (root: string): string => {
+  const stamps = stampVersions(root);
+  const floor = stamps.min !== null && stamps.min !== stamps.max ? ` (stamps from ${stamps.min})` : '';
+  return `stamps ${stamps.max ?? 'unknown'}${floor}`;
+};
+
+/** Секция одного проекта (REQ-08): имя · путь · класс · штамп/состав (справочно) ·
+ *  детали · deprecated-строка. Сбой инспекции — error-строка, не крах (REQ-06). */
+async function projectCheckLines(
+  entry: RegisteredProject,
+  map: UpdateMap,
+  deps: UpgradeCheckDeps
+): Promise<ReportNode[]> {
+  const name = basename(entry.path);
+  if (!existsSync(entry.path)) {
+    return [line('info', `${name} · ${entry.path} — ${CLASS_TEXT.unknown} (path does not exist)`, true)];
+  }
+  try {
+    const outcomes = await deps.inspect(entry.path);
+    const removedExisting = map.files
+      .filter((e) => e.category === 'removed' && existsSync(join(entry.path, projectPath(e))))
+      .map(projectPath);
+    const f = classifyProject(map, outcomes, removedExisting);
+    const marker: Marker = f.cls === 'current' ? 'ok' : f.cls === 'unknown' ? 'info' : 'warn';
+    const lines: ReportNode[] = [
+      line(marker, `${name} · ${entry.path} — ${CLASS_TEXT[f.cls]}`, f.cls === 'current'),
+      line('info', `${stampNote(entry.path)} · map ${map.version}`, true),
+    ];
+    const details = freshnessDetails(f);
+    if (details) lines.push(line('info', details, true));
+    if (f.deprecated.length > 0) {
+      lines.push(line('info', `deprecated: ${f.deprecated.join(', ')} (report-only)`, true));
+    }
+    return lines;
+  } catch (err) {
+    return [line('error', `${name} — error: ${msg(err)}`)];
+  }
+}
+
+/** `--check`-сводка парка (REQ-08): CLI-строка (installed vs available) →
+ *  перечисление проектов реестра. Деградации не крахят: битый реестр/npm —
+ *  error-строка; карты нет — штампы с пометкой недостоверности и классом
+ *  unknown (никогда current); пустой реестр — «no projects». exit 0. */
+export async function runUpgradeCheck(deps: UpgradeCheckDeps): Promise<UpgradeCheckResult> {
+  const children: ReportNode[] = [];
+  try {
+    children.push(
+      line('info', `cli: installed ${deps.installedVersion()} · available ${await deps.registryVersion()}`)
+    );
+  } catch (err) {
+    children.push(line('error', `cli: installed ${deps.installedVersion()} · available unknown — ${msg(err)}`));
+  }
+
+  let registered: RegisteredProject[] | null = null;
+  try {
+    registered = await deps.registry.listStrict();
+  } catch (err) {
+    children.push(line('error', `failed to read the projects registry: ${msg(err)}`));
+  }
+
+  if (registered !== null) {
+    if (registered.length === 0) {
+      children.push(line('info', 'no projects in the registry — run wolf init in a project to register it'));
+    } else {
+      let map: UpdateMap | null = null;
+      try {
+        map = deps.loadMap();
+      } catch {
+        map = null;
+      }
+      if (map) {
+        for (const entry of registered) children.push(...(await projectCheckLines(entry, map, deps)));
+      } else {
+        // Деградация (design §«--check»): карты нет у самого CLI — только штампы
+        // (свидетель касания, не истина) с явной пометкой недостоверности.
+        children.push(line('warn', 'map unavailable in this CLI — stamps only, unreliable'));
+        for (const entry of registered) {
+          children.push(line('info', `${basename(entry.path)} · ${entry.path} — ${CLASS_TEXT.unknown}`));
+          children.push(line('info', stampNote(entry.path), true));
+        }
+      }
+    }
+  }
+  children.push(line('ok', 'Done (read-only)'));
+  return { exitCode: 0, report: { kind: 'section', title: CHECK_TITLE, children } };
+}
+
+/** CLI-обвязка check-сводки (REQ-08): реестр — как projects (wolfUserConfigDir),
+ *  инспекция — read-only inspectBaseSet ('omit' — паритет sync-рендера);
+ *  exit не меняется (--check всегда 0). */
+async function upgradeCheckAction(viewVersion: () => Promise<string>): Promise<void> {
+  const renderer = new OpencodeBaseSetRenderer(templatesRoot(), {
+    harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
+  });
+  const res = await runUpgradeCheck({
+    registry: new ProjectsRegistry(wolfUserConfigDir()),
+    loadMap: () => loadUpdateMap(),
+    registryVersion: viewVersion,
+    installedVersion: readInstalledVersion,
+    inspect: (root) => renderer.inspectBaseSet(root, { models: 'omit' }),
+  });
+  process.stdout.write(`${renderReport(res.report, termEnv(process.stdout, process.env))}\n`);
+}
+
 export function memoryUpgradeCommand(): Command {
   return new Command('upgrade')
     .description(
@@ -398,13 +627,20 @@ export function memoryUpgradeCommand(): Command {
         return; // npm-ветка при --here не выполняется вообще (REQ-14)
       }
       const checkOnly = options.check === true;
+      // npm view один на запуск: CLI-часть и парковая сводка делят результат
+      let available: string | null = null;
+      const viewOnce = async (): Promise<string> => {
+        if (available === null) available = await registryVersion();
+        return available;
+      };
       const deps: UpgradeDeps = {
         currentVersion: readInstalledVersion(),
         binaryPath: process.argv[1] ? realPathOrNull(process.argv[1]) : null,
         npmPrefix: checkOnly ? null : await npmGlobalPrefix(), // --check тип установки не проверяет
-        registryVersion,
+        registryVersion: viewOnce,
         installLatest,
       };
       printOutcome(await runUpgrade(deps, checkOnly));
+      if (checkOnly) await upgradeCheckAction(viewOnce); // порядок: CLI-версии → парк (REQ-08)
     });
 }
