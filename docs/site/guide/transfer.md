@@ -35,7 +35,7 @@ Every field is computed on the fly (activity = mtime of `events.jsonl`, size = r
 - **Dead entries** — paths that no longer exist are pruned with a report.
 - **Ghost detect** — for the current directory and every registered project, doctor compares the onboarding marker in `AGENTS.md`/`CLAUDE.md` with the presence of `.wolf/memory/`:
   - the marker exists, memory doesn't — "instructs wolf, no memory": run `wolf init`;
-  - memory exists, no marker — "memory present, agent not wired": run `wolf sync`.
+  - memory exists, no marker — "memory present, agent not wired": run `wolf upgrade --here`.
 - **Self-healing** — any wolf command in a project with memory but no registry entry quietly re-registers it (no-op when the entry is identical).
 
 ## What to commit

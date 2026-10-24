@@ -349,7 +349,7 @@ export const COMMANDS: CommandSpec[] = [
   },
   {
     name: 'upgrade',
-    description: 'Upgrade global wolf to the latest npm version',
+    description: 'Update wolf and registered projects: npm phase + projects pass (--check, --here)',
     usage: '[options]',
     load: () => import('./commands/memory-upgrade.js').then((m) => m.memoryUpgradeCommand()),
   },

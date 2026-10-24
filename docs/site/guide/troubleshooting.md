@@ -98,3 +98,9 @@ wolf analytics --view acceptance
 - **Cause:** before 2.14 a same-id `add` silently **overwrote** the existing object — data loss dressed as success. The guard turns that into an explicit refusal.
 - **Fix:** pick the lane the hint offers — `wolf edit <id>` to change the existing object, `wolf supersede <old> <new>` to replace it with a successor, or a different `--title` for a genuinely new object.
 - **Audit trail:** any save that does overwrite a file (there are legitimate paths) records a `memory.overwritten` event with the previous title — silent overwrites no longer exist; the event log is the proof.
+
+## 10. `upgrade`: CLI updated, projects were not touched
+
+- **Symptom:** `wolf upgrade` updated the CLI (npm phase succeeded) but ended with `CLI updated; projects not touched — run wolf upgrade again for the project pass` and exit code 1.
+- **Cause:** the projects pass re-executes the freshly installed `wolf` binary; if that spawn fails (for example the binary moved between npm and the re-exec), wolf refuses to guess and stops without touching any project.
+- **Fix:** simply run `wolf upgrade` again — the npm phase is idempotent (up-to-date skips straight to the projects pass) and the pass resumes with the new binary. Check `wolf upgrade --check` afterwards to confirm the park freshness.

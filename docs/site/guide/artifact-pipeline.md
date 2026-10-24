@@ -6,7 +6,7 @@ Nothing in the pipeline is "done" because an agent wrote it — it is done when 
 
 ## What it is
 
-The pipeline is a set of feature documents moving through statuses under owner and lens gates. A feature folder starts with a scaffold command and grows through review; `wolf sync` keeps the indexes current; `wolf doctor` lints the result. The conveyor covers:
+The pipeline is a set of feature documents moving through statuses under owner and lens gates. A feature folder starts with a scaffold command and grows through review; `wolf sync` keeps the indexes current (a deprecated alias since 2.19.0 — the alias remains the index regenerator); `wolf doctor` lints the result. The conveyor covers:
 
 - the feature folder `docs/dev/<YYYY-MM-DD>-<slug>/` with the four artifact files;
 - the wave file of the current release wave;
@@ -26,7 +26,7 @@ wolf doctor                           # lint the documents
 
 The claim is the conveyor's write lock: two agents editing the same feature folder would silently overwrite each other, so `wolf scaffold artifact` refuses with `No claim held` until your session owns the claim for the artifact id — the refusal names the exact `claim acquire` command. When the writing session is done, release the claim (`wolf claim release dev:<date>-<slug>`) or hand it over (`--transfer-to <actor>`); `wolf claim list` shows who holds what. A claim expires after 24h, so a crashed session does not lock the folder forever.
 
-`wolf sync` generates `docs/dev/INDEX.md` — a table of features plus a "Waves" section — and `_index.md` files inside the design and plan subfolders. Running it again changes nothing.
+`wolf sync` generates `docs/dev/INDEX.md` — a table of features plus a "Waves" section — and `_index.md` files inside the design and plan subfolders. Running it again changes nothing. (Deprecated as a base-set command in 2.19.0 → `wolf upgrade --here`; index regeneration is why the alias still exists.)
 
 `wolf doctor` reports document findings in its `## Artifacts (docs/dev)` section (see [Platform & Maintenance](/guide/cli/platform)). The finding classes:
 

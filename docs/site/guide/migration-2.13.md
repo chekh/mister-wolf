@@ -1,6 +1,6 @@
 # Migration to 2.13
 
-This page is for owners of a live installation updating to 2.13. The package arrives the usual way (`wolf upgrade` + `wolf sync`); what needs your attention is memory: the taxonomy changes, and existing objects are moved by the one-time `wolf migrate taxonomy`.
+This page is for owners of a live installation updating to 2.13. The package arrives the usual way (`wolf upgrade` + `wolf sync`; `sync` is deprecated since 2.19.0 — use `wolf upgrade --here`); what needs your attention is memory: the taxonomy changes, and existing objects are moved by the one-time `wolf migrate taxonomy`.
 
 ## What changes
 
