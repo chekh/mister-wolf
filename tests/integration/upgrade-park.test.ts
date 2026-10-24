@@ -17,6 +17,9 @@ import {
   type UpgradeProjectsDeps,
   type UpgradeRunResult,
 } from '../../src/app/use-cases/upgrade-projects.js';
+// T8: npm-фаза CLI (мок installLatest → throw) — сбой до spawn, слепок парка.
+import { runUpgradeWithProjects } from '../../src/adapters/cli/commands/memory-upgrade.js';
+import { UserFacingError } from '../../src/domain/errors.js';
 import { runProjectStep, type ProjectReport, type ProjectStepDeps } from '../../src/app/use-cases/project-step.js';
 import { loadUpdateMap, type UpdateMap } from '../../src/adapters/fs/update-map.js';
 import { ProjectsRegistry, type RegisteredProject } from '../../src/adapters/fs/projects-registry.js';
@@ -436,5 +439,35 @@ describe('runUpgradeProjects: фикстурный парк (T7)', () => {
     expect(text).toContain('failed to read the projects registry');
     expect(text).toContain('Failed');
     expect(runStep).not.toHaveBeenCalled(); // проекты не тронуты
+  });
+
+  it('R01.3 (T8): сбой npm-фазы (мок installLatest throw) → └ Failed + UserFacingError, spawn не было, слепок парка не тронут', async () => {
+    const park = mkTmp('wolf-upgrade-park-');
+    await bootstrapProject(park, 'p-clean');
+    const before = takeParkSnapshot(park);
+
+    const reExec = vi.fn(async () => {});
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    try {
+      await expect(
+        runUpgradeWithProjects({
+          currentVersion: OLD_SET,
+          binaryPath: '/fake-prefix/bin/wolf',
+          npmPrefix: '/fake-prefix',
+          registryVersion: async () => NEW_SET,
+          installLatest: async () => {
+            throw new UserFacingError('npm install -g mister-wolf@latest failed (mock R01.3)');
+          },
+          reExec,
+        })
+      ).rejects.toThrow(UserFacingError);
+      expect(log).toHaveBeenCalledWith('└ Failed'); // секция фазы 1 закрыта (REQ-01 AC3)
+      expect(reExec).not.toHaveBeenCalled(); // spawn не выполнялся — projects не тронуты
+      expectUntouched(diffParkSnapshots(before, takeParkSnapshot(park)));
+    } finally {
+      write.mockRestore();
+      log.mockRestore();
+    }
   });
 });

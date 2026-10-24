@@ -1,5 +1,6 @@
 import { spawn } from 'child_process';
-import { existsSync, readdirSync, readFileSync, realpathSync } from 'fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
 import { fileURLToPath } from 'url';
 import { basename, dirname, join } from 'path';
 import { createInterface } from 'node:readline/promises';
@@ -325,8 +326,9 @@ export async function runUpgradeHere(deps: UpgradeHereDeps, opts: UpgradeHereOpt
 
 /** Прод-deps шага для root (контейнер-прецедент по адаптерам, но БЕЗ
  * createCliContainer: его selfHealRegistry пишет реестр, а --here реестр
- * не трогает — REQ-14). Привязка к root напрямую, как per-project deps T7. */
-function hereStepDeps(root: string): ProjectStepDeps {
+ * не трогает — REQ-14). Привязка к root напрямую, как per-project deps T7.
+ * Экспорт — точечный reuse фазы 2 (T8 upgrade-projects), не дубль сборки. */
+export function hereStepDeps(root: string): ProjectStepDeps {
   const tplPlaybooks = join(templatesRoot(), 'playbooks');
   const files = new Map<string, string>();
   if (existsSync(tplPlaybooks)) {
@@ -349,8 +351,9 @@ function hereStepDeps(root: string): ProjectStepDeps {
 }
 
 /** TermEnv из реального stdout/env (REQ-15): не-TTY/пайп/NO_COLOR → plain;
- * глубина цвета деградирует COLORTERM → TERM → 16; ширина — columns (80). */
-function termEnv(stdout: { isTTY?: boolean; columns?: number }, env: NodeJS.ProcessEnv): TermEnv {
+ * глубина цвета деградирует COLORTERM → TERM → 16; ширина — columns (80).
+ * Экспорт — точечный reuse фазы 2 (T8 upgrade-projects). */
+export function termEnv(stdout: { isTTY?: boolean; columns?: number }, env: NodeJS.ProcessEnv): TermEnv {
   if (!colorsEnabled(stdout, env)) return { tty: false, colors: 'mono', width: 80 };
   const colorterm = env.COLORTERM ?? '';
   const colors: ColorDepth =
@@ -613,6 +616,97 @@ async function upgradeCheckAction(viewVersion: () => Promise<string>): Promise<v
   process.stdout.write(`${renderReport(res.report, termEnv(process.stdout, process.env))}\n`);
 }
 
+/* ---------- re-exec фазы 2 (T8, REQ-01/04, ADR-2/5): транспорт wolf upgrade ---------- */
+
+export interface ReExecDeps {
+  /** Инжект spawn для юнит-контура (шпион опций/эмиттер); дефолт — child_process.spawn. */
+  spawnImpl?: typeof spawn;
+  /** Путь ребёнка; дефолт — env WOLF_UPGRADE_CHILD_BIN (существует ТОЛЬКО для
+   *  тестового контура, test-plan решение №1; продуктовое поведение не меняет)
+   *  либо `<npmPrefix>/bin/wolf`. */
+  childBin?: string;
+  /** Дефолт process.exit (не возвращается); юнит-контур — колбэк-шпион. */
+  exit?: (code: number) => void;
+  /** Каталог state-файла; дефолт — свежий mkdtemp в ОС-tmp. */
+  stateDir?: string;
+  /** Дефолт Date.now — startedAt state-файла. */
+  now?: () => number;
+}
+
+/** Re-exec нового бинарника (ADR-2, «Контракт spawn»): state-файл
+ *  `{ from, to, startedAt }` пишется ДО spawn; spawn без shell со stdio
+ *  inherit и env: process.env (склейка фаз, REQ-15); код родителя = код
+ *  ребёнка (убит сигналом → 1); сбой spawn/старта → UserFacingError —
+ *  npm-фаза идемпотентна, повторный `wolf upgrade` при up-to-date сразу
+ *  уходит в проектный проход. State — только контекст отчёта (NFR-02),
+ *  чистка не требуется (ОС-tmp). */
+export async function reExecUpgradeProjects(
+  from: string,
+  to: string,
+  npmPrefix: string | null,
+  opts: { yes?: boolean } & ReExecDeps = {}
+): Promise<void> {
+  const stateDir = opts.stateDir ?? mkdtempSync(join(tmpdir(), 'wolf-upgrade-state-'));
+  const statePath = join(stateDir, 'state.json');
+  writeFileSync(statePath, JSON.stringify({ from, to, startedAt: (opts.now ?? Date.now)() }));
+  const childBin = opts.childBin ?? process.env.WOLF_UPGRADE_CHILD_BIN ?? join(npmPrefix ?? tmpdir(), 'bin', 'wolf');
+  const argv = [
+    'upgrade-projects',
+    '--from',
+    from,
+    '--to',
+    to,
+    ...(opts.yes === true ? ['--yes'] : []),
+    '--no-banner',
+    '--state',
+    statePath,
+  ];
+  const child = (opts.spawnImpl ?? spawn)(childBin, argv, { stdio: 'inherit', env: process.env });
+  const exit = opts.exit ?? ((code: number) => process.exit(code));
+  await new Promise<void>((resolve, reject) => {
+    let settled = false; // error и close могут прийти оба (порядок не гарантирован)
+    child.on('error', () => {
+      if (settled) return;
+      settled = true;
+      reject(new UserFacingError('CLI updated; projects not touched — run wolf upgrade again for the project pass'));
+    });
+    child.on('close', (code) => {
+      if (settled) return;
+      settled = true;
+      exit(code ?? 1); // code null — ребёнок убит сигналом
+      resolve(); // прод: exit не возвращает; юнит: exit — колбэк
+    });
+  });
+}
+
+/** npm-фаза + re-exec (T8, REQ-01/04, ADR-2): шапку печатает ТОЛЬКО фаза 1
+ *  (склейка фаз, REQ-15 — фаза 2 идёт с --no-banner); npm-сбой закрывает
+ *  секцию `└ Failed` (REQ-01 AC3) и падает ДО spawn — проекты не тронуты;
+ *  up-to-date НЕ выход — фаза идемпотентна, идём к re-exec; local-newer —
+ *  реестру нечему обновляться, spawn не нужен (exit 0); linked-refusal —
+ *  отказ printOutcome. reExec-шов — юнит/R01.3-контур (шпион вместо spawn). */
+export async function runUpgradeWithProjects(
+  deps: UpgradeDeps & { reExec?: typeof reExecUpgradeProjects },
+  opts: { yes?: boolean } = {}
+): Promise<void> {
+  const env = termEnv(process.stdout, process.env);
+  process.stdout.write(`${renderReport({ kind: 'banner', version: deps.currentVersion }, env)}\n`);
+  let outcome: UpgradeOutcome;
+  try {
+    outcome = await runUpgrade(deps, false);
+  } catch (err) {
+    console.log('└ Failed'); // секция закрыта; Error:-строку и exit 1 даст runCli
+    throw err;
+  }
+  printOutcome(outcome);
+  const reExec = deps.reExec ?? reExecUpgradeProjects;
+  if (outcome.kind === 'updated') {
+    await reExec(outcome.from, outcome.to, deps.npmPrefix, { yes: opts.yes });
+  } else if (outcome.kind === 'up-to-date') {
+    await reExec(outcome.current, outcome.current, deps.npmPrefix, { yes: opts.yes });
+  }
+}
+
 export function memoryUpgradeCommand(): Command {
   return new Command('upgrade')
     .description(
@@ -620,7 +714,7 @@ export function memoryUpgradeCommand(): Command {
     )
     .option('--check', 'Only check for a newer version, do not install anything')
     .option('--here', 'Update this project only: full project step in cwd (no npm, no re-exec, no registry)')
-    .option('--yes', 'With --here: apply the plan without interactive confirmation')
+    .option('--yes', 'Apply the plan without interactive confirmation (--here or the projects pass)')
     .action(async (options: { check?: boolean; here?: boolean; yes?: boolean }) => {
       if (options.here === true) {
         await upgradeHereAction(safeCwd(), options.yes === true);
@@ -640,7 +734,12 @@ export function memoryUpgradeCommand(): Command {
         registryVersion: viewOnce,
         installLatest,
       };
-      printOutcome(await runUpgrade(deps, checkOnly));
-      if (checkOnly) await upgradeCheckAction(viewOnce); // порядок: CLI-версии → парк (REQ-08)
+      if (options.check === true) {
+        printOutcome(await runUpgrade(deps, true));
+        await upgradeCheckAction(viewOnce); // порядок: CLI-версии → парк (REQ-08)
+        return;
+      }
+      // npm-фаза + re-exec фазы 2 (T8): --here выше вышел раньше, re-exec там нет
+      await runUpgradeWithProjects(deps, { yes: options.yes === true });
     });
 }
