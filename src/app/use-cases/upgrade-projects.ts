@@ -62,8 +62,9 @@ export interface UpgradeRunResult {
   counters: Counter[];
 }
 
-/** Статус проекта в проходе (REQ-05, палитра T3). */
-type OutcomeStatus = 'updated' | 'up-to-date' | 'needs-decision' | 'error';
+/** Статус проекта в проходе (REQ-05, палитра T3); T9 (--here) переиспользует
+ * словарь точечным импортом — единая семантика статусов для одной поверхности. */
+export type OutcomeStatus = 'updated' | 'up-to-date' | 'needs-decision' | 'error';
 /** Статус плана: показан, пропущен (гварды прохода). */
 type PlanStatus = 'worktree' | 'pinned' | 'missing';
 
@@ -305,7 +306,7 @@ function stampVersions(root: string): { max: string | null; min: string | null }
  * «Действие» берём из фаз шага, не из кодов сверки: verify-код removed —
  * состояние «подтверждённо отсутствует» (идемпотентность NFR-02), в повторном
  * прогоне это не изменение. */
-function statusOf(report: ProjectReport): OutcomeStatus {
+export function statusOf(report: ProjectReport): OutcomeStatus {
   if (report.exitKind !== 'done') return report.exitKind;
   const changed =
     report.sync.outcomes.some((o) => o.action === 'updated' || o.action === 'created' || o.action === 'appended') ||
@@ -315,8 +316,9 @@ function statusOf(report: ProjectReport): OutcomeStatus {
   return changed ? 'updated' : 'up-to-date';
 }
 
-/** Категории карты (числами, REQ-02/R11.6) — считаются один раз по карте. */
-function mapCategories(map: UpdateMap): Record<'new' | 'changed' | 'deprecated' | 'removed', number> {
+/** Категории карты (числами, REQ-02/R11.6) — считаются один раз по карте.
+ * Экспорт — точечный reuse для T9 (--here, одиночный план). */
+export function mapCategories(map: UpdateMap): Record<'new' | 'changed' | 'deprecated' | 'removed', number> {
   const cats = { new: 0, changed: 0, deprecated: 0, removed: 0 };
   for (const f of map.files) {
     if (f.category !== 'unchanged') cats[f.category]++;
@@ -384,8 +386,8 @@ function plansSection(
 }
 
 /** Отображение статуса в строке отчёта (REQ-05): «требует решения» — текст
- * счётчика, не литерал ExitKind шага. */
-const STATUS_TEXT: Record<OutcomeStatus, string> = {
+ * счётчика, не литерал ExitKind шага. Экспорт — точечный reuse для T9 (--here). */
+export const STATUS_TEXT: Record<OutcomeStatus, string> = {
   updated: 'updated',
   'up-to-date': 'up-to-date',
   'needs-decision': 'needs decision',
