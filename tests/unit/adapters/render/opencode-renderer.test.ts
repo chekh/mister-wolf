@@ -1,6 +1,16 @@
 // tests/unit/adapters/render/opencode-renderer.test.ts
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, rmSync, existsSync } from 'fs';
+import {
+  mkdtempSync,
+  writeFileSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  existsSync,
+  readdirSync,
+  statSync,
+  chmodSync,
+} from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { OpencodeBaseSetRenderer } from '../../../../src/adapters/render/opencode/opencode-renderer.js';
@@ -253,5 +263,53 @@ describe('sync model context (§4.5)', () => {
     expect(agent).not.toContain('{{model.');
     const res2 = await renderer().syncBaseSet(proj, 'omit');
     expect(res2.outcomes.find((o) => o.file === '.opencode/agents/mr-wolf.md')?.action).toBe('skipped');
+  });
+});
+
+// NFR-01 / N01.1 (юнит): все записи sync-пути — tmp+rename (writeFileAtomic);
+// сбой посреди прохода не оставляет полу-записей и tmp-остатков.
+describe('атомарные записи tmp+rename (N01.1)', () => {
+  function tmpFiles(root: string): string[] {
+    const acc: string[] = [];
+    const walk = (d: string) => {
+      for (const e of readdirSync(d)) {
+        const p = join(d, e);
+        if (statSync(p).isDirectory()) walk(p);
+        else if (e.endsWith('.tmp')) acc.push(p);
+      }
+    };
+    if (existsSync(root)) walk(root);
+    return acc;
+  }
+
+  it('сбой записи (EACCES в точке AGENTS.md) → файлы либо старые, либо новые целиком; tmp-остатков нет; mutated не тронут', async () => {
+    await renderer().syncBaseSet(proj); // полный набор, set 9.9.9
+
+    // обновления в очереди: агент (успеет до сбоя), command (mutated → skip),
+    // AGENTS.md (смена setVersion → упрётся в read-only корень)
+    writeFileSync(join(base, 'agents', 'mr-wolf.md'), '---\ndescription: d\n---\n# NEW CANON\n');
+    writeFileSync(join(base, 'commands', 'complain.md'), '/complain NEW {{tool.skill}}\n');
+    const cmd = join(proj, '.opencode/command/complain.md');
+    writeFileSync(cmd, `${readFileSync(cmd, 'utf-8')}\nLOCAL EDIT\n`); // локальная правка
+    const agentsMdBefore = readFileSync(join(proj, 'AGENTS.md'), 'utf-8');
+    const r2 = new OpencodeBaseSetRenderer(base, { harnessTemplatesRoot: harness, setVersion: '1.0.1' });
+
+    chmodSync(proj, 0o500); // tmp-файл AGENTS.md.<pid>.…tmp в корне невозможен → EACCES до rename
+    try {
+      await expect(r2.syncBaseSet(proj)).rejects.toThrow();
+    } finally {
+      chmodSync(proj, 0o700); // cleanup обязателен: иначе rmSync не сможет удалить содержимое
+    }
+
+    // обработанное до сбоя — НОВЫЙ рендер целиком (штамп нового set)
+    const agent = readFileSync(join(proj, '.opencode/agents/mr-wolf.md'), 'utf-8');
+    expect(agent).toContain('# NEW CANON');
+    expect(parseStamp(agent)?.set).toBe('1.0.1');
+    // точка сбоя — СТАРЫЙ контент целиком, полу-записи нет
+    expect(readFileSync(join(proj, 'AGENTS.md'), 'utf-8')).toBe(agentsMdBefore);
+    // mutated-файл не перезаписан (T010 важнее сдвига канона)
+    expect(readFileSync(cmd, 'utf-8')).toContain('LOCAL EDIT');
+    // tmp-остатков нет нигде под proj
+    expect(tmpFiles(proj)).toEqual([]);
   });
 });

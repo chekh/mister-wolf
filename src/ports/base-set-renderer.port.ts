@@ -5,12 +5,27 @@ export interface RenderOutcome {
   file: string;
   action: RenderAction;
   reason?: string;
+  /** 2.19.0 (design §«Сверка»): структурный флаг mutated-skip — сверка
+   *  verifyAgainstMap различает skipped-identical / skipped-mutated полем,
+   *  не парсингом reason-строки. */
+  mutated?: boolean;
 }
 
 /** Контекст подстановки моделей (onboarding v2, §4.5): {{model.primary}} / {{model.worker}}. */
 export interface ModelContext {
   primary: string;
   worker: string;
+}
+
+/** Действие read-only инспекции цели (T10, REQ-08, design §«--check»): цель
+ *  сверяется с текущим рендером без единой записи на диск. foreign — unstamped
+ *  файл на месте цели (wx-политика: чужое, вне покрытия). */
+export type InspectAction = 'identical' | 'differs' | 'missing' | 'mutated' | 'foreign' | 'unknown';
+
+export interface InspectOutcome {
+  /** rel-путь от baseDir — тот же ключ, что RenderOutcome.file. */
+  file: string;
+  action: InspectAction;
 }
 
 export interface BakeResolver {

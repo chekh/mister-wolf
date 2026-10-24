@@ -1,10 +1,12 @@
 // src/adapters/render/opencode/opencode-renderer.ts
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { basename, join, relative } from 'path';
-import { mkdir, writeFile } from 'fs/promises';
+import { mkdir } from 'fs/promises';
+import { writeFileAtomic } from '../../fs/markdown-memory-store.js';
 import {
   BaseSetRenderer,
   BakeResolver,
+  InspectOutcome,
   ModelContext,
   RenderBaseSetOptions,
   RenderOutcome,
@@ -101,10 +103,11 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
           outcomes.push({
             file: rel,
             action: 'skipped',
+            mutated: true,
             reason: 'mutated after render — differs from recorded render and fresh render; left untouched',
           });
         } else {
-          await writeFile(f.target, fresh, 'utf-8');
+          await writeFileAtomic(f.target, fresh);
           state.files[rel] = sha256(fresh);
           outcomes.push({ file: rel, action: 'updated', reason: 'content differs (diff branch, §4.5)' });
         }
@@ -156,12 +159,13 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
         outcomes.push({
           file: rel,
           action: 'skipped',
+          mutated: true,
           reason: 'mutated after render — differs from recorded render and fresh render; left untouched',
         });
         continue;
       }
       await mkdir(join(f.target, '..'), { recursive: true });
-      await writeFile(f.target, fresh, 'utf-8');
+      await writeFileAtomic(f.target, fresh);
       state.files[rel] = sha256(fresh);
       outcomes.push({ file: rel, action: 'updated' });
     }
@@ -181,6 +185,67 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
     }
     saveSyncState(baseDir, state);
     return { outcomes, orphaned };
+  }
+
+  /** T10 (REQ-08): read-only инспекция целей base-set — предикат того, что
+   *  сделает syncBaseSet, БЕЗ записей (ни writeFileAtomic, ни saveSyncState):
+   *  missing / foreign (unstamped, wx-политика) / identical / differs /
+   *  mutated (свидетель sync-state говорит о локальной правке). models по
+   *  умолчанию 'omit' — паритет с syncBaseSet, чей исход и предсказываем. */
+  async inspectBaseSet(baseDir: string, opts?: RenderBaseSetOptions): Promise<InspectOutcome[]> {
+    const ctx = opts?.models ?? 'omit'; // легаси без routing-объекта — omit (§4.5)
+    const state = loadSyncState(baseDir);
+    const outcomes: InspectOutcome[] = [];
+    for (const f of this.templateFiles(baseDir)) {
+      const rel = relative(baseDir, f.target);
+      if (!existsSync(f.target)) {
+        outcomes.push({ file: rel, action: 'missing' });
+        continue;
+      }
+      const current = readFileSync(f.target, 'utf-8');
+      if (parseStamp(current) === null) {
+        outcomes.push({ file: rel, action: 'foreign' });
+        continue;
+      }
+      const fresh = this.renderContent(f, opts?.bake, ctx);
+      if (fresh === current) {
+        outcomes.push({ file: rel, action: 'identical' });
+        continue;
+      }
+      outcomes.push({
+        file: rel,
+        action: state.files[rel] !== undefined && sha256(current) !== state.files[rel] ? 'mutated' : 'differs',
+      });
+    }
+    const agents = this.inspectAgentsMd(baseDir, ctx, state);
+    if (agents) outcomes.push(agents);
+    return outcomes;
+  }
+
+  /** Read-only инспекция AGENTS.md (§4.2) — по фактическим веткам управления:
+   *  штампованный цельный файл — зона syncAgentsMd (сверка всего файла со
+   *  штампом, mutated по свидетелю); без штампа — маркер-блок append-ветки
+   *  init (синку не принадлежит, свидетеля не имеет); нет ни штампа, ни
+   *  маркера — чужой файл на месте цели (wx-политика → foreign). */
+  private inspectAgentsMd(baseDir: string, models: ModelContext | 'omit', state: SyncState): InspectOutcome | null {
+    const paths = this.agentsMdPaths(baseDir);
+    if (!paths) return null;
+    if (!existsSync(paths.target)) return { file: 'AGENTS.md', action: 'missing' };
+    const current = readFileSync(paths.target, 'utf-8');
+    const content = this.agentsMdContent(paths.tplPath, models);
+    const norm = (s: string): string => (s.endsWith('\n') ? s : `${s}\n`);
+    if (parseStamp(current) !== null) {
+      const fresh = insertStamp(content, { base: 'AGENTS.md', set: this.setVersion }, 'AGENTS.md');
+      if (fresh === current) return { file: 'AGENTS.md', action: 'identical' };
+      const recorded = state.files['AGENTS.md'];
+      return {
+        file: 'AGENTS.md',
+        action: recorded !== undefined && sha256(current) !== recorded ? 'mutated' : 'differs',
+      };
+    }
+    const idx = current.indexOf(ONBOARDING_MARKER);
+    if (idx === -1) return { file: 'AGENTS.md', action: 'foreign' };
+    return { file: 'AGENTS.md', action: norm(current.slice(idx)) === norm(content) ? 'identical' : 'differs' };
   }
 
   /** AGENTS.md — цель в КОРНЕ проекта (§4.2); шаблона нет — тихо нет исхода. */
@@ -206,7 +271,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
     const content = this.agentsMdContent(paths.tplPath, models);
     if (!existsSync(paths.target)) {
       const written = insertStamp(content, { base: 'AGENTS.md', set: this.setVersion }, 'AGENTS.md');
-      await writeFile(paths.target, written, 'utf-8');
+      await writeFileAtomic(paths.target, written);
       state.files['AGENTS.md'] = sha256(written);
       return [{ file: 'AGENTS.md', action: 'created' }];
     }
@@ -217,7 +282,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
     // marker-append: маркированный блок без штампа в конец; чужой контент не трогаем
     const block = content.endsWith('\n') ? content : `${content}\n`;
     const sep = current.endsWith('\n') ? (current.endsWith('\n\n') ? '' : '\n') : '\n\n';
-    await writeFile(paths.target, `${current}${sep}${block}`, 'utf-8');
+    await writeFileAtomic(paths.target, `${current}${sep}${block}`);
     return [{ file: 'AGENTS.md', action: 'appended', reason: 'marker-append (D3: foreign content untouched)' }];
   }
 
@@ -235,7 +300,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
       'AGENTS.md'
     );
     if (!existsSync(paths.target)) {
-      await writeFile(paths.target, fresh, 'utf-8');
+      await writeFileAtomic(paths.target, fresh);
       state.files['AGENTS.md'] = sha256(fresh);
       return [{ file: 'AGENTS.md', action: 'created' }];
     }
@@ -256,11 +321,12 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
         {
           file: 'AGENTS.md',
           action: 'skipped',
+          mutated: true,
           reason: 'mutated after render — differs from recorded render and fresh render; left untouched',
         },
       ];
     }
-    await writeFile(paths.target, fresh, 'utf-8');
+    await writeFileAtomic(paths.target, fresh);
     state.files['AGENTS.md'] = sha256(fresh);
     return [{ file: 'AGENTS.md', action: 'updated' }];
   }
@@ -278,7 +344,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
   private async writeRendered(f: TemplateFile, bake?: BakeResolver, models?: ModelContext | 'omit'): Promise<string> {
     await mkdir(join(f.target, '..'), { recursive: true });
     const content = this.renderContent(f, bake, models);
-    await writeFile(f.target, content, 'utf-8');
+    await writeFileAtomic(f.target, content);
     return content;
   }
 }

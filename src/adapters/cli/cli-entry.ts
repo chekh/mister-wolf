@@ -354,6 +354,16 @@ export const COMMANDS: CommandSpec[] = [
     load: () => import('./commands/memory-upgrade.js').then((m) => m.memoryUpgradeCommand()),
   },
   {
+    // Волна 2.19.0 (T8, ADR-5): hidden-транспорт фазы 2 — вызывается только
+    // re-exec'ом `wolf upgrade`; публичная поверхность CLI не растёт.
+    name: 'upgrade-projects',
+    description:
+      'Run the registered-projects update pass with the installed CLI version (re-exec target of wolf upgrade; hidden)',
+    usage: '[options]',
+    hidden: true,
+    load: () => import('./commands/upgrade-projects.js').then((m) => m.upgradeProjectsCommand()),
+  },
+  {
     name: 'doctor',
     description: 'Check registered projects and platform configs',
     usage: '',

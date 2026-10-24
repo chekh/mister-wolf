@@ -24,7 +24,8 @@
   },
   "files": [
     "dist",
-    "templates"
+    "templates",
+    "update-map.json"
   ],
   "scripts": {
     "build": "tsc",

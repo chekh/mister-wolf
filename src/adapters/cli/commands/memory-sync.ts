@@ -31,6 +31,9 @@ export function memorySyncCommand(): Command {
             : '- docs/dev/INDEX.md: docs/dev missing — skipped'
       );
       console.log('# wolf sync');
+      // 2.19.0 (REQ-07, design §«Депрекация sync»): deprecated-алиас;
+      // удаление — 2.20.0 (removed-commands, прецедент 2.13 §10.4).
+      console.log('DEPRECATED: wolf sync is superseded by `wolf upgrade --here`; removed in 2.20.0');
       console.log('- models: omit — model: lines omitted (no routing source since wave 2.13)');
       for (const o of outcomes) console.log(`- ${o.file}: ${o.action}${o.reason ? ` — ${o.reason}` : ''}`);
       for (const f of orphaned) console.log(`- orphaned (template is gone — you may delete): ${f}`);

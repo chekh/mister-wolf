@@ -12,6 +12,11 @@ import { activeFace } from './face-operation.js';
 export interface SeedOutcome {
   file: string;
   action: 'created' | 'updated' | 'skipped' | 'diverged';
+  /** Структурный код исхода для сверки (design §«Сверка», T5): выставляется
+   *  ТОЛЬКО в mode='seed-missing-only' — seeded | skipped-live |
+   *  legacy-absorbed | diverged; в дефолтном режиме отсутствует.
+   *  НЕ reason-строка: consumer различает исходы по полю, не парсингом. */
+  kind?: 'seeded' | 'skipped-live' | 'legacy-absorbed' | 'diverged';
   reason?: string;
 }
 
@@ -37,6 +42,11 @@ export interface SeedDeps {
   index?: SearchIndex;
   lock?: MemoryLock;
   declarations?: readonly MemoryTypeDeclaration[];
+  /** 2.19.0 T2 (ADR-3, design §«Проектный шаг» шаг 3): посев ТОЛЬКО
+   *  недостающих лиц; живые лица не трогаются (без template-update /
+   *  переверсионирования); исходы несут структурный код kind. Дефолт
+   *  (undefined) — прежнее поведение с template-update. */
+  mode?: 'seed-missing-only';
 }
 
 function parseFrontmatter(raw: string): { meta: Record<string, string>; body: string } {
@@ -66,6 +76,7 @@ async function activeLegacyHead(store: MemoryStore, ownerSkill: string): Promise
  * для каждого шаблона base-set с owner_skill. */
 export async function seedBasePlaybooks(deps: SeedDeps): Promise<SeedOutcome[]> {
   const outcomes: SeedOutcome[] = [];
+  const missingOnly = deps.mode === 'seed-missing-only';
   const processedOwners = new Set<string>();
   // ponytail: без .sort() — порядок вставки Map функционально не важен
   for (const [file, raw] of deps.files) {
@@ -76,6 +87,9 @@ export async function seedBasePlaybooks(deps: SeedDeps): Promise<SeedOutcome[]> 
         file,
         action: 'skipped',
         reason: `owner_skill=${ownerSkill} already seeded from another template in this run`,
+        // 2.19.0: структурный код для сверки (T5) — дедуп означает живое лицо
+        // уже посеяно в этом прогоне; не error (риск №2 отчёта T5).
+        ...(missingOnly ? { kind: 'skipped-live' as const } : {}),
       });
       continue;
     }
@@ -97,24 +111,57 @@ export async function seedBasePlaybooks(deps: SeedDeps): Promise<SeedOutcome[]> 
           .filter(Boolean),
         legacyHeadId: legacyHead?.id,
       });
-      outcomes.push(
-        legacyHead !== null
-          ? {
-              file,
-              action: 'created',
-              reason: `seeded from template; superseded legacy howto ${legacyHead.id}`,
-            }
-          : { file, action: 'created' }
-      );
+      if (missingOnly) {
+        outcomes.push(
+          legacyHead !== null
+            ? {
+                file,
+                action: 'created',
+                kind: 'legacy-absorbed',
+                reason: `seeded from template; superseded legacy howto ${legacyHead.id}`,
+              }
+            : { file, action: 'created', kind: 'seeded' }
+        );
+      } else {
+        outcomes.push(
+          legacyHead !== null
+            ? {
+                file,
+                action: 'created',
+                reason: `seeded from template; superseded legacy howto ${legacyHead.id}`,
+              }
+            : { file, action: 'created' }
+        );
+      }
       continue;
     }
 
     // лицо есть: идемпотентный skip либо решение о шаблонном обновлении
     if (active.body === body) {
-      outcomes.push({ file, action: 'skipped', reason: `active face v${active.version} matches template` });
+      outcomes.push(
+        missingOnly
+          ? {
+              file,
+              action: 'skipped',
+              kind: 'skipped-live',
+              reason: `live face v${active.version} matches template — untouched (seed-missing-only)`,
+            }
+          : { file, action: 'skipped', reason: `active face v${active.version} matches template` }
+      );
       continue;
     }
     if (active.initiator === 'seed' || active.initiator === 'migration') {
+      // seed-missing-only: живое лицо не трогаем — штатное отставание (ADR-3,
+      // REQ-03 AC2 / REQ-07): обновление живых лиц — зона Стюарда (кандидат 2.20.0)
+      if (missingOnly) {
+        outcomes.push({
+          file,
+          action: 'skipped',
+          kind: 'skipped-live',
+          reason: `live face v${active.version} lags template (initiator ${active.initiator}) — untouched (seed-missing-only)`,
+        });
+        continue;
+      }
       await createFaceVersion(deps, {
         command: 'seed',
         ownerSkill,
@@ -132,11 +179,20 @@ export async function seedBasePlaybooks(deps: SeedDeps): Promise<SeedOutcome[]> 
         reason: `template update from v${active.version} (initiator ${active.initiator})`,
       });
     } else {
-      outcomes.push({
-        file,
-        action: 'diverged',
-        reason: `diverged: face v${active.version} initiator=${active.initiator} — left untouched (steward zone, D4)`,
-      });
+      outcomes.push(
+        missingOnly
+          ? {
+              file,
+              action: 'diverged',
+              kind: 'diverged',
+              reason: `diverged: face v${active.version} initiator=${active.initiator} — left untouched (steward zone, D4)`,
+            }
+          : {
+              file,
+              action: 'diverged',
+              reason: `diverged: face v${active.version} initiator=${active.initiator} — left untouched (steward zone, D4)`,
+            }
+      );
     }
   }
   return outcomes;

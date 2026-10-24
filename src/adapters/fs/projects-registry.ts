@@ -1,5 +1,5 @@
 import * as fs from 'fs/promises';
-import { mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import yaml from 'js-yaml';
 import { writeFileAtomic } from './markdown-memory-store.js';
@@ -8,6 +8,8 @@ export interface RegisteredProject {
   path: string;
   schema_version: number;
   initialized_at: string;
+  /** Пиннинг (REQ-13): ставится/снимается ручной правкой projects.yaml; upgrade показывает и пропускает. */
+  pinned?: boolean;
 }
 
 /**
@@ -33,6 +35,29 @@ export class ProjectsRegistry {
       doc = yaml.load(raw);
     } catch {
       return []; // битый реестр — трактуем как пустой; register перезапишет
+    }
+    const projects = (doc as { projects?: unknown } | null)?.projects;
+    return Array.isArray(projects) ? (projects as RegisteredProject[]) : [];
+  }
+
+  /**
+   * Строгая альтернатива list() для прохода upgrade (design «Гварды прохода»):
+   * файла нет (ENOENT) → пустой реестр штатно; битый yaml / ошибка чтения →
+   * throw — «реестр нечитаем» обязан отличаться от «реестр пуст» (exit 1 vs 0).
+   */
+  async listStrict(): Promise<RegisteredProject[]> {
+    let raw: string;
+    try {
+      raw = await fs.readFile(this.file, 'utf-8');
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return []; // реестра ещё нет
+      throw err;
+    }
+    let doc: unknown;
+    try {
+      doc = yaml.load(raw);
+    } catch (err) {
+      throw new Error(`failed to read projects registry ${this.file}: ${(err as Error).message}`);
     }
     const projects = (doc as { projects?: unknown } | null)?.projects;
     return Array.isArray(projects) ? (projects as RegisteredProject[]) : [];
@@ -100,4 +125,38 @@ export class ProjectsRegistry {
     await fs.mkdir(this.configDir, { recursive: true });
     await writeFileAtomic(this.file, body);
   }
+}
+
+export interface RealpathDedup {
+  /** По одной записи на realpath — первая встреченная (порядок реестра сохранён). */
+  unique: RegisteredProject[];
+  /** Записи, свёрнутые в уже встреченный realpath (для пометки «дубль» в отчёте прохода). */
+  duplicates: RegisteredProject[];
+}
+
+/**
+ * Дедуп списка проектов по fs.realpathSync(root) (design «Гварды прохода»):
+ * ручные правки yaml могут задублировать один проект symlink'ом/алиас-путём.
+ * Несуществующий путь realpath не резолвится — запись сохраняется как есть
+ * (missing-статус классифицирует проход, не дедуп).
+ */
+export function dedupeByRealpath(projects: RegisteredProject[]): RealpathDedup {
+  const seen = new Set<string>();
+  const unique: RegisteredProject[] = [];
+  const duplicates: RegisteredProject[] = [];
+  for (const project of projects) {
+    let real: string;
+    try {
+      real = realpathSync(project.path);
+    } catch {
+      unique.push(project);
+      continue;
+    }
+    if (seen.has(real)) duplicates.push(project);
+    else {
+      seen.add(real);
+      unique.push(project);
+    }
+  }
+  return { unique, duplicates };
 }
