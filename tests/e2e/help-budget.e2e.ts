@@ -9,7 +9,7 @@ import { ensureBuilt, runCli, tmpProject } from './helpers.js';
  * видимые команды + 7 строк шапки, каждая команда — ровно одна строка
  * (описания стабов ≤ 52 симв., колонка 80−2−24−2).
  */
-describe('help budget: wolf --help <= 37 lines, plumbing hidden but alive (P224)', () => {
+describe('help budget: wolf --help <= 38 lines, plumbing hidden but alive (P224)', () => {
   const dirs: string[] = [];
 
   beforeAll(() => {
@@ -28,12 +28,12 @@ describe('help budget: wolf --help <= 37 lines, plumbing hidden but alive (P224)
     return dir;
   }
 
-  it('--help fits the 37-line budget (2.16: +promote; 2.16.2: +uninstall; 2.17: +face, +propose; 2.17.1: +claim)', () => {
+  it('--help fits the 38-line budget (2.16: +promote; 2.16.2: +uninstall; 2.17: +face, +propose; 2.17.1: +claim; 2.19: +upgrade)', () => {
     const dir = newProject();
     const help = runCli(['--help'], dir);
     expect(help.status).toBe(0);
     const lines = help.stdout.replace(/\n+$/, '').split('\n');
-    expect(lines.length).toBeLessThanOrEqual(37);
+    expect(lines.length).toBeLessThanOrEqual(38);
   });
 
   it('hidden plumbing works: think --help answers, scan runs, session wrap-up --help answers', () => {
