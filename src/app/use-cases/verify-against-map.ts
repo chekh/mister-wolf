@@ -77,7 +77,9 @@ const SOURCE_ROOT: Record<FileKind, string> = {
   plugin: 'opencode/plugins/',
 };
 
-function projectPath(entry: FileEntry): string {
+/** Путь цели карты → проектный путь (LAYOUT opencode-renderer.ts). Экспорт —
+ * точечный (T6): проектный шаг использует тот же перевод путей в удалениях. */
+export function projectPath(entry: FileEntry): string {
   const src = SOURCE_ROOT[entry.kind];
   return entry.path.startsWith(src) ? TARGET_ROOT[entry.kind] + entry.path.slice(src.length) : entry.path;
 }
