@@ -48,11 +48,13 @@ describe('tarball-assert (спека §5, §7)', () => {
     expect(files.some((f) => f === 'dist/bootstrap/cli.js')).toBe(true);
     // ponytail: npm force-пакует все README* из корня; ru-версия — часть двуязычной витрины
     // templates/ — базовый набор (base-sets C1: рендерер читает из корня пакета)
+    // update-map.json — карта обновления 2.19.0 (T1: loadUpdateMap из packageRoot)
     const allowed = (p: string) =>
       p === 'package.json' ||
       p === 'README.md' ||
       p === 'README.ru.md' ||
       p === 'LICENSE' ||
+      p === 'update-map.json' ||
       p.startsWith('dist/') ||
       p.startsWith('templates/');
     for (const f of files) {
