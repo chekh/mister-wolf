@@ -122,7 +122,8 @@ describe('D1: help', () => {
       timeout: 60_000,
     });
     expect(res.status).toBe(0);
-    expect(res.stdout).toContain('Upgrade the global wolf installation');
+    // 2.19.0 (T15): description называет проектный проход (REQ-01)
+    expect(res.stdout).toContain('One command updates everything');
     expect(res.stdout).toContain('--check');
   });
 });
