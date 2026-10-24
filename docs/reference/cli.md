@@ -1025,10 +1025,16 @@ Options:
 Usage: wolf upgrade [options]
 
 Upgrade the global wolf installation to the latest npm version (runs npm
-install -g mister-wolf@latest); --check only compares versions, no install
+install -g mister-wolf@latest); --check only compares versions, no install;
+--here runs the full project update step in the current directory only (no npm
+self-update, no registry)
 
 Options:
   --check     Only check for a newer version, do not install anything
+  --here      Update this project only: full project step in cwd (no npm, no
+              re-exec, no registry)
+  --yes       Apply the plan without interactive confirmation (--here or the
+              projects pass)
   -h, --help  display help for command
 ```
 
@@ -1579,6 +1585,23 @@ thread
 Options:
   --created-by <actor>  Creator actor (default: env WOLF_ACTOR, else user:cli)
   -h, --help            display help for command
+```
+
+### wolf upgrade-projects (hidden)
+
+```text
+Usage: wolf upgrade-projects [options]
+
+Run the registered-projects update pass with the installed CLI version (re-exec
+target of wolf upgrade; hidden)
+
+Options:
+  --from <version>  Previous CLI version (context from the phase-1 state file)
+  --to <version>    New CLI version (context from the phase-1 state file)
+  --yes             Apply the plan without interactive confirmation
+  --no-banner       Do not print the banner: phase 1 already opened the section
+  --state <path>    Phase-1 state file ({ from, to, startedAt })
+  -h, --help        display help for command
 ```
 
 ### Скрытые синонимы analytics (§6.5)
