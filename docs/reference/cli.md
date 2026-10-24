@@ -1024,10 +1024,10 @@ Options:
 ```text
 Usage: wolf upgrade [options]
 
-Upgrade the global wolf installation to the latest npm version (runs npm
-install -g mister-wolf@latest); --check only compares versions, no install;
---here runs the full project update step in the current directory only (no npm
-self-update, no registry)
+One command updates everything: npm phase (npm install -g mister-wolf@latest)
+followed by the registered-projects pass; --check only reports CLI + park
+freshness, no install; --here runs the full project update step in the current
+directory only (no npm self-update, no registry)
 
 Options:
   --check     Only check for a newer version, do not install anything

@@ -58,16 +58,16 @@ Playbook delivery for opencode agents — the `wolf-router` plugin injecting the
 
 ## Platform & Maintenance
 
-| Command                                                | What it does                                                                                       | Page                                          |
-| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| [`wolf init`](/guide/cli/platform#wolf-init)           | Initialize Mr. Wolf memory for this project (interactive in TTY; model pinning opt-in via --model) | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf bootstrap`](/guide/cli/platform#wolf-bootstrap) | Scan the project and draft starting memory: proposed rules, document-refs, work thread             | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf mcp`](/guide/cli/platform#wolf-mcp)             | Start the MCP server (stdio)                                                                       | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf scaffold`](/guide/cli/platform#wolf-scaffold)   | Scaffold opencode frame (agent\|skill\|command) + playbook in Wolf memory                          | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf tool`](/guide/cli/platform#wolf-tool)           | Tool librarian: register/list/use/expose/deprecate/revive                                          | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf taxonomy`](/guide/cli/platform#wolf-taxonomy)   | Manage memory taxonomy                                                                             | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf migrate`](/guide/cli/platform#wolf-migrate)     | One-time migration: `objects/<type>/` → `threads/<tid>/<subdir>/` + `shared/`                      | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf validate`](/guide/cli/platform#wolf-validate)   | Validate memory store integrity                                                                    | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf doctor`](/guide/cli/platform#wolf-doctor)       | Check all registered projects: binary vs schema version, platform configs, prune dead entries      | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf sync`](/guide/cli/platform#wolf-sync)           | Re-render the wolf base set (stamped files only; memory untouched)                                 | [Platform & Maintenance](/guide/cli/platform) |
-| [`wolf upgrade`](/guide/cli/platform#wolf-upgrade)     | Upgrade the global wolf installation to the latest npm version                                     | [Platform & Maintenance](/guide/cli/platform) |
+| Command                                                | What it does                                                                                               | Page                                          |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| [`wolf init`](/guide/cli/platform#wolf-init)           | Initialize Mr. Wolf memory for this project (interactive in TTY; model pinning opt-in via --model)         | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf bootstrap`](/guide/cli/platform#wolf-bootstrap) | Scan the project and draft starting memory: proposed rules, document-refs, work thread                     | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf mcp`](/guide/cli/platform#wolf-mcp)             | Start the MCP server (stdio)                                                                               | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf scaffold`](/guide/cli/platform#wolf-scaffold)   | Scaffold opencode frame (agent\|skill\|command) + playbook in Wolf memory                                  | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf tool`](/guide/cli/platform#wolf-tool)           | Tool librarian: register/list/use/expose/deprecate/revive                                                  | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf taxonomy`](/guide/cli/platform#wolf-taxonomy)   | Manage memory taxonomy                                                                                     | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf migrate`](/guide/cli/platform#wolf-migrate)     | One-time migration: `objects/<type>/` → `threads/<tid>/<subdir>/` + `shared/`                              | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf validate`](/guide/cli/platform#wolf-validate)   | Validate memory store integrity                                                                            | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf doctor`](/guide/cli/platform#wolf-doctor)       | Check all registered projects: binary vs schema version, platform configs, prune dead entries              | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf sync`](/guide/cli/platform#wolf-sync)           | Re-render the base set — deprecated 2.19.0 → `wolf upgrade --here` (still regenerates `docs/dev/` indexes) | [Platform & Maintenance](/guide/cli/platform) |
+| [`wolf upgrade`](/guide/cli/platform#wolf-upgrade)     | Update wolf and registered projects: npm phase + projects pass (`--check`, `--here`)                       | [Platform & Maintenance](/guide/cli/platform) |

@@ -46,7 +46,7 @@ Written when memory is actually delivered into an agent's context (`wolf brief` 
 ## Session keys
 
 - `cli-<uuid>` — produced by the CLI itself, one per invocation: a single CLI process gets a single stable id shared by all its telemetry writers. An explicitly exported `WOLF_SESSION` is never overwritten.
-- `opc-<uuid>` — passed by the stamped opencode plugins (`wolf-router`, `wolf-session-start`) on every CLI spawn. A long-lived opencode process inheriting one env var would otherwise fake a single session for all deliveries. Template updates arrive with `wolf sync`.
+- `opc-<uuid>` — passed by the stamped opencode plugins (`wolf-router`, `wolf-session-start`) on every CLI spawn. A long-lived opencode process inheriting one env var would otherwise fake a single session for all deliveries. Template updates arrive with the projects pass of `wolf upgrade`.
 - MCP channel — no session by design: `wolf mcp` is a long-lived server with one environment for all requests, so a single session id would be false attribution. Its events carry `session_id: null`.
 
 ## Privacy notes

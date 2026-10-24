@@ -265,6 +265,8 @@ Options:
 
 ## wolf sync
 
+> **Deprecated in 2.19.0** — superseded by `wolf upgrade --here`; the alias will be removed in 2.20.0. Running it prints the DEPRECATED notice and still re-renders stamped files.
+
 Re-render the wolf base set (stamped files only; memory untouched). What the set contains and how stamping works: [Base Set](/guide/base-set).
 
 ```text
@@ -285,13 +287,13 @@ The witness of the last render's hashes is `.opencode/wolf-sync-state.json`. The
 
 ## Sessions & environment
 
-`WOLF_SESSION` — the env var that ties telemetry to a session — is produced by the CLI itself: every invocation without an explicit `WOLF_SESSION` gets a fresh `cli-<uuid>`, stable for the whole process (all telemetry writers of one command share it). An explicitly exported `WOLF_SESSION` is never overwritten. The stamped opencode plugins (`wolf-router`, `wolf-session-start`) pass a fresh `opc-<uuid>` on every CLI spawn — the inherited env of a long-lived opencode process would otherwise collapse all deliveries into one fake session. Plugin templates are updated by re-rendering with `wolf sync`.
+`WOLF_SESSION` — the env var that ties telemetry to a session — is produced by the CLI itself: every invocation without an explicit `WOLF_SESSION` gets a fresh `cli-<uuid>`, stable for the whole process (all telemetry writers of one command share it). An explicitly exported `WOLF_SESSION` is never overwritten. The stamped opencode plugins (`wolf-router`, `wolf-session-start`) pass a fresh `opc-<uuid>` on every CLI spawn — the inherited env of a long-lived opencode process would otherwise collapse all deliveries into one fake session. Plugin templates are updated by the projects pass of `wolf upgrade` (`--here` for one project).
 
 `wolf mcp` is deliberately not sessioned: the MCP server is a long-lived process with a single environment, so one session id for all requests would be false attribution — its telemetry is written with `session_id: null` (see [Telemetry](/guide/telemetry)).
 
 ## wolf upgrade
 
-Upgrade the global `wolf` installation to the latest npm version (runs `npm install -g mister-wolf@latest`).
+**Unified update (2.19.0): one command updates everything.** The npm phase (`npm install -g mister-wolf@latest`) is followed by an update pass over every project registered in the wolf registry: stamped base-set files are re-rendered, seeded faces updated, and the update map is strictly verified (see [Base Set](/guide/base-set)). The CLI re-executes itself between the phases, so the projects pass always runs with the freshly installed binary; the output of both phases flows into the same terminal.
 
 ```text
 Usage: wolf upgrade [options]
@@ -299,8 +301,43 @@ Usage: wolf upgrade [options]
 
 Options:
 
-- `--check` — only check for a newer version, do not install anything (default: false)
+- `--check` — read-only freshness summary of the CLI and the whole park: no install, no writes (default: false)
+- `--here` — update only the current project: the full project step in cwd, no npm self-update, no registry
+- `--yes` — apply the plan without interactive confirmation (`--here` or the projects pass)
 
 ```bash
-wolf upgrade --check
+wolf upgrade            # npm phase + projects pass (plan, then confirm)
+wolf upgrade --check    # read-only: CLI + park freshness
+wolf upgrade --here     # update this project only, outside the registry
 ```
+
+Actual `--check` output (2.19.0, run in a live park):
+
+```text
+already the latest version (2.18.5)
+wolf upgrade — check
+- cli: installed 2.18.5 · available 2.18.5
+warn: adminvps · /Users/…/adminvps — behind
+- stamps 2.17.0 · map 2.18.5
+- 31 differ
+warn: mister-wolf · /Users/…/mister-wolf — needs decision
+- 30 differ · mutated: .opencode/agents/mr-wolf.md
+```
+
+Park classification per project: `current` (nothing to do), `behind` (stamped files differ from the map of the available release), `needs decision` (a stamped file was edited locally — mutated files are never overwritten), `unknown` (project is not covered by the update map of the release — out of coverage does **not** mean up to date). A missing update map degrades the summary to stamps only (marked unreliable).
+
+Expected combined run (interactive confirmation renders the per-project plan first):
+
+```text
+wolf upgrade — projects       # phase 2 (re-exec): registry pass
+- adminvps — updated
+- verify: 31/31 ok
+- mister-wolf — needs decision
+- verify: 29/30 ok · 1 needs decision
+updated 1 · up-to-date 0 · worktree 0 · pinned 0 · missing 0 · needs decision 1 · errors 0 · new 0 · changed 31 · deprecated 0 · removed 0 · faces seeded 0
+warn: Done with attention
+```
+
+Exit codes: `0` — done (or nothing to do), `1` — failed (npm error, project step error), `2` — done with attention: at least one project needs a decision (e.g. a mutated stamped file — mutated files are never overwritten, the decision stays with the owner). In a non-TTY run without `--yes` the projects pass prints the plan and stops with `Cancelled: --yes is required` — exit `0`, no changes. If the spawn of the re-executed binary fails after a successful npm phase, wolf prints `CLI updated; projects not touched — run wolf upgrade again for the project pass` and exits `1`: the npm phase is idempotent, so simply re-running `wolf upgrade` resumes with the projects pass.
+
+What it does **not** guarantee: the update map covers only the files listed for a release — files outside it are not verified; `unknown` projects get no claims; deletions happen only with explicit confirmation; unregistered projects are only reported by the scan hint (top-5 by recency), never written. Memory (`.wolf/`) is never touched by any pass — face mutations go through the complaint loop and the Steward. Dev/linked CLI installs are refused honestly (self-update would break the link).
