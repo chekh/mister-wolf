@@ -364,6 +364,27 @@ SyncEntry>` вместо `Record<string, string>` (`memory-doctor.ts:67-77`,
       Evidence: exit-коды, счётчики тестов и вывод guard-прогона в отчёт фазы.
       Allowlist: только уже перечисленные файлы задач + `tests/e2e/**` (если
       нужен сценарий), без новых зависимостей.
+      **Allowlist-расширение T14 (решение lead, 2026-10-25, приёмка остатков
+      ревью — все три пункта явно разрешены брифом L0):**
+      F1 m-6 — `src/adapters/render/sync-state.ts`,
+      `src/adapters/cli/commands/memory-doctor.ts`,
+      `src/adapters/cli/commands/memory-uninstall.ts`,
+      `src/app/use-cases/uninstall.ts`,
+      `src/app/use-cases/platform-mismatch.ts`,
+      `src/app/use-cases/repair-platform.ts`,
+      `tests/unit/adapters/render/sync-state.test.ts`;
+      F2 m-7 — `src/app/use-cases/decisions.ts`,
+      `src/app/use-cases/verify-against-map.ts`,
+      `tests/unit/use-cases/decisions.test.ts`,
+      `tests/unit/use-cases/verify-against-map.test.ts`, `design.md` (§4.6/§4.7/
+      §4.12 — уточнение контракта deprecated, дефект найден);
+      F3 m-2 — `tests/helpers/park-snapshot.ts`,
+      `tests/integration/upgrade-check.test.ts`,
+      `tests/integration/upgrade-here.test.ts`.
+      Интеграционный сценарий парка (3 проекта, все режимы) — новый файл
+      `tests/e2e/upgrade-park-modes.e2e.ts`; общие хелперы сценария — только
+      `tests/helpers/**` (при необходимости). `.opencode/skills/**` вне
+      allowlist.
 
 ### Ф5 — выпуск
 
