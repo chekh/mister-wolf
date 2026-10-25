@@ -9,7 +9,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { mkdir, unlink } from 'fs/promises';
 import { basename, extname, join } from 'path';
-import type { BaseSetRenderer, ModelContext } from '../../ports/base-set-renderer.port.js';
+import type { BackupHook, BaseSetRenderer, ModelContext } from '../../ports/base-set-renderer.port.js';
 import type { UpdateMap } from '../../adapters/fs/update-map.js';
 import { ensureCurrentSchema } from '../../adapters/fs/schema-guard.js';
 import { writeFileAtomic } from '../../adapters/fs/markdown-memory-store.js';
@@ -41,6 +41,9 @@ export interface ProjectStepDeps extends Omit<SeedDeps, 'mode'> {
  * оставшиеся removed-цели дают error сверки — план не доведён). */
 export interface ProjectStepOpts {
   confirmedRemovals?: string[];
+  /** `--yes` (§4.12): правило 6′ — mutated → бэкап → эталон → свидетель.
+   *  Хук собирается здесь, рядом с единственной реализацией формата бэкапа. */
+  takeMutated?: boolean;
 }
 
 /** Итог шага по exit-модели design §«Exit-модель»: 0-подобный / требует
@@ -105,7 +108,16 @@ export async function runProjectStep(
   const startedAt = now();
 
   // 1. sync: перезапись / skip-mutated / identical; orphaned — вход шага удалений.
-  const { outcomes: syncOutcomes, orphaned } = await syncBaseSet(deps.renderer, root, deps.models ?? 'omit');
+  // `--yes` включает режим take-on-mutated (§4.3 правило 6′, §4.12): бэкап-хук —
+  // та же backupLocalFile, что у удалений (второго формата бэкапа нет).
+  const backupHook: BackupHook = (rel, content) =>
+    backupLocalFile(root, rel, content, new Date(now())).then((copy) => copy.path);
+  const { outcomes: syncOutcomes, orphaned } = await syncBaseSet(
+    deps.renderer,
+    root,
+    deps.models ?? 'omit',
+    opts.takeMutated === true ? { takeMutated: { backup: backupHook } } : undefined
+  );
 
   // 2. removals: удаляется только объявленное картой И подтверждённое списком
   // REQ-02 (второго подтверждения нет — ADR-4). Прочий orphaned не трогаем.

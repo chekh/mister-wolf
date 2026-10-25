@@ -507,3 +507,111 @@ describe('детали проекта: имена needs-decision и коды §4
     }
   });
 });
+
+/* ---------- --yes: take-on-mutated, дайджест бэкапов, подсказка --review (T10, §4.12) ---------- */
+
+describe('--yes (T10, REQ-10, design §4.12): режим take, дайджест бэкапов, hint --review', () => {
+  it('R10-1/R10-3: режим take включается только с --yes; дайджест называет файл и путь бэкапа', async () => {
+    const proj = mkdtempSync(join(tmpdir(), 'wolf-upg-yes-'));
+    try {
+      const seen: Array<{ takeMutated?: boolean }> = [];
+      const runStep = vi.fn(
+        async (_deps: ProjectStepDeps, root: string, _map: UpdateMap, opts: { takeMutated?: boolean }) => {
+          seen.push({ takeMutated: opts.takeMutated });
+          return stepReport(root, {
+            sync: {
+              outcomes: [
+                {
+                  file: '.opencode/agents/mr-wolf.md',
+                  action: 'updated',
+                  backup: '.wolf/backup/upgrade/2026-10-25/.opencode/agents/mr-wolf.md',
+                },
+              ],
+              orphaned: [],
+              removed: [],
+            },
+            backups: [
+              {
+                file: '.opencode/agents/mr-wolf.md',
+                backup: '.wolf/backup/upgrade/2026-10-25/.opencode/agents/mr-wolf.md',
+              },
+            ],
+          });
+        }
+      );
+      const res = await runUpgradeProjects(
+        makeDeps({ runStep: runStep as unknown as typeof runProjectStep, registry: registryOf([entry(proj)]) }),
+        { yes: true }
+      );
+      expect(seen[0]?.takeMutated).toBe(true);
+      const text = plain(res);
+      expect(text).toContain(
+        'took base for .opencode/agents/mr-wolf.md (local saved: .wolf/backup/upgrade/2026-10-25/.opencode/agents/mr-wolf.md)'
+      );
+      expect(res.exitCode).toBe(0);
+
+      // без --yes режим не включается (проход отменён, шаг не зовётся)
+      seen.length = 0;
+      const cancelled = await runUpgradeProjects(
+        makeDeps({ runStep: runStep as unknown as typeof runProjectStep, registry: registryOf([entry(proj)]) }),
+        { yes: false, tty: false }
+      );
+      expect(seen).toEqual([]);
+      expect(plain(cancelled)).toContain('Cancelled: --yes is required');
+    } finally {
+      rmSync(proj, { recursive: true, force: true });
+    }
+  });
+
+  it('R10-1: удаление называет бэкап отдельной строкой (removed), take — «took base»', async () => {
+    const proj = mkdtempSync(join(tmpdir(), 'wolf-upg-yes-rm-'));
+    try {
+      const runStep = fakeRunStep({
+        [basename(proj)]: {
+          sync: { outcomes: [], orphaned: [], removed: ['.opencode/skills/gone-one/SKILL.md'] },
+          backups: [
+            {
+              file: '.opencode/skills/gone-one/SKILL.md',
+              backup: '.wolf/backup/upgrade/2026-10-25/.opencode/skills/gone-one/SKILL.md',
+            },
+          ],
+        },
+      });
+      const res = await runUpgradeProjects(makeDeps({ runStep, registry: registryOf([entry(proj)]) }), { yes: true });
+      expect(plain(res)).toContain(
+        'removed .opencode/skills/gone-one/SKILL.md (local saved: .wolf/backup/upgrade/2026-10-25/.opencode/skills/gone-one/SKILL.md)'
+      );
+    } finally {
+      rmSync(proj, { recursive: true, force: true });
+    }
+  });
+
+  it('R06.2/§4.12: TTY без --yes и needs-decision → hint --review; с --yes подсказки нет', async () => {
+    const proj = mkdtempSync(join(tmpdir(), 'wolf-upg-hint-'));
+    try {
+      const runStep = fakeRunStep({
+        [basename(proj)]: {
+          exitKind: 'needs-decision',
+          verify: {
+            items: [
+              { kind: 'file', target: '.opencode/agents/a.md', code: 'skipped-mutated', needsDecision: true },
+              { kind: 'file', target: '.opencode/agents/b.md', code: 'skipped-mutated', needsDecision: true },
+            ],
+            summary: decisionSummary,
+          },
+        },
+      });
+      const withHint = await runUpgradeProjects(makeDeps({ runStep, registry: registryOf([entry(proj)]) }), {
+        yes: false,
+        tty: true,
+        confirm: async () => true,
+      });
+      expect(plain(withHint)).toContain('hint: 1 file needs a decision — run wolf upgrade --review');
+
+      const quiet = await runUpgradeProjects(makeDeps({ runStep, registry: registryOf([entry(proj)]) }), { yes: true });
+      expect(plain(quiet)).not.toContain('hint:');
+    } finally {
+      rmSync(proj, { recursive: true, force: true });
+    }
+  });
+});

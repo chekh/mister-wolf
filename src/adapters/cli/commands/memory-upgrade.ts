@@ -9,6 +9,7 @@ import { runUpgrade, type UpgradeDeps, type UpgradeOutcome } from '../../../app/
 import { UserFacingError } from '../../../domain/errors.js';
 import { runProjectStep, type ProjectReport, type ProjectStepDeps } from '../../../app/use-cases/project-step.js';
 import {
+  backupDigestLines,
   mapCategories,
   STATUS_TEXT,
   statusOf,
@@ -268,6 +269,7 @@ function stepDetailLines(report: ProjectReport, map: UpdateMap): ReportNode[] {
   if (v.errors > 0) parts.push(`${v.errors} errors`);
   out.push(line(v.errors > 0 ? 'error' : v.needsDecision > 0 ? 'warn' : 'info', `verify: ${parts.join(' · ')}`, true));
   out.push(...verifyNameLines(report.verify, map));
+  out.push(...backupDigestLines(report)); // §4.12: файл + путь бэкапа
   return out;
 }
 
@@ -313,7 +315,10 @@ export async function runUpgradeHere(deps: UpgradeHereDeps, opts: UpgradeHereOpt
   let report: ProjectReport | null = null;
   let error: string | null = null;
   try {
-    report = await runStep(deps.makeStepDeps(deps.cwd), deps.cwd, map, { confirmedRemovals });
+    report = await runStep(deps.makeStepDeps(deps.cwd), deps.cwd, map, {
+      confirmedRemovals,
+      takeMutated: opts.yes === true, // §4.12: --yes = тихий take с бэкапом и в --here
+    });
   } catch (err) {
     error = msg(err); // изоляция сбоя шага: error-строка, не крах команды (REQ-06)
   }

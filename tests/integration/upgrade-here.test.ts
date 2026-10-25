@@ -33,6 +33,7 @@ import { eventsPath, memoryDir } from '../../src/adapters/fs/project-paths.js';
 import { parseStamp } from '../../src/adapters/render/stamp.js';
 import { renderReport } from '../../src/adapters/cli/report-renderer.js';
 import { insertProtect, parseProtect } from '../../src/domain/protect-key.js';
+import { loadSyncState } from '../../src/adapters/render/sync-state.js';
 import { diffParkSnapshots, takeParkSnapshot } from '../helpers/park-snapshot.js';
 
 // R14.1 «npm не звался»: any spawn через стаб кидает — если --here-путь
@@ -229,6 +230,7 @@ function hereDeps(cwd: string): UpgradeHereDeps {
 }
 
 const plain = (res: UpgradeHereResult): string => renderReport(res.report, { tty: false, colors: 'mono', width: 400 });
+const read = (root: string, rel: string): string => readFileSync(join(root, rel), 'utf-8');
 
 async function facesOf(proj: string, ownerSkill: string): Promise<FaceObject[]> {
   const store = new MarkdownMemoryStore(proj);
@@ -416,5 +418,55 @@ describe('runUpgradeShow --here (T8): protect, обе версии, diff; ни �
       removedFiles: [],
       changedFiles: [],
     });
+  });
+});
+
+/* ---------- --yes (T10, REQ-10, design §4.12): тихий take с бэкапом ---------- */
+
+describe('runUpgradeHere --yes (T10): take-on-mutated, бэкап, protect/kept не бэкапируются', () => {
+  it('R10-1/R10-3: mutated взят с бэкапом; защищённый и kept не тронуты и не в бэкапах', async () => {
+    const park = mkTmp('wolf-here-yes-');
+    const proj = await bootstrapProject(park, 'p-yes');
+    const target = join(proj, '.opencode/agents/mr-wolf.md');
+    writeFileSync(target, `${readFileSync(target, 'utf-8')}\n<!-- local edit -->\n`);
+    const local = readFileSync(target, 'utf-8');
+    // protected-цель: deprecated-файл с frontmatter (ручной ключ владельца)
+    const protectedRel = '.opencode/command/complain.md';
+    // фикстурный шаблон без frontmatter: protect требует его (матрица §4.8)
+    writeFileSync(join(proj, protectedRel), `---\nname: complain\n---\n${read(proj, protectedRel)}`);
+    writeFileSync(join(proj, protectedRel), insertProtect(read(proj, protectedRel), 'true').content);
+    const protectedContent = read(proj, protectedRel);
+    // kept-цель: принятый локальный контент (правило 6.5)
+    const keptRel = '.opencode/skills/using-skills/SKILL.md';
+    const keepDeps = resolveDeps(proj);
+    const kept = await runUpgradeResolve(keepDeps, { here: true, cwd: proj, values: [`${keptRel}=keep`] });
+    // mr-wolf остаётся решением → exit 2; kept-свидетель записан
+    expect(kept.exitCode).toBe(2);
+    expect((loadSyncState(proj).files[keptRel] as { origin: string }).origin).toBe('keep');
+
+    const res = await runUpgradeHere(hereDeps(proj), { yes: true });
+
+    expect(res.exitCode).toBe(0);
+    const fresh = new OpencodeBaseSetRenderer(fx.templatesRoot, { setVersion: NEW_SET }).renderFreshFile(
+      proj,
+      '.opencode/agents/mr-wolf.md'
+    );
+    expect(readFileSync(target, 'utf-8')).toBe(fresh); // эталон взят
+    const text = plain(res);
+    const backupLine = text.split('\n').find((l) => l.includes('took base for .opencode/agents/mr-wolf.md'));
+    expect(backupLine).toBeDefined();
+    const backup = backupLine!.match(/local saved: ([^)]+)\)/)?.[1];
+    expect(backup).toBeDefined();
+    expect(readFileSync(join(proj, backup!), 'utf-8')).toBe(local); // бэкап = локальные правки
+    expect(text).not.toContain(`local saved: ${backup}`.replace(backup!, 'x')); // санити: строка одна
+    // protect/pin/kept не бэкапируются и не меняются (REQ-10 AC3)
+    const backupsText = text
+      .split('\n')
+      .filter((l) => l.includes('(local saved: '))
+      .join('\n');
+    expect(backupsText).not.toContain(protectedRel);
+    expect(backupsText).not.toContain(keptRel);
+    expect(read(proj, protectedRel)).toBe(protectedContent);
+    expect(parseProtect(read(proj, protectedRel)).held).toBe(true);
   });
 });

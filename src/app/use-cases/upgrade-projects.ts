@@ -191,6 +191,7 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
     try {
       const report = await runStep(withNow(deps.makeStepDeps(plan.path), opts.now), plan.path, map, {
         confirmedRemovals,
+        takeMutated: opts.yes === true, // §4.12: --yes = тихий take с бэкапом
       });
       outcomes.push({ plan, status: statusOf(report), report });
     } catch (err) {
@@ -242,6 +243,19 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
   // не ошибка прохода (exitCode не меняется).
   const scan = await scanLines(deps, registered);
 
+  // Подсказка §4.12: TTY без --yes и оставшиеся решения — путь к разбору.
+  const decisionsLeft = outcomes.reduce((n, o) => n + (o.report?.verify.summary.needsDecision ?? 0), 0);
+  const hint =
+    opts.tty === true && opts.yes !== true && decisionsLeft > 0
+      ? [
+          line(
+            'info',
+            `hint: ${decisionsLeft} ${decisionsLeft === 1 ? 'file needs' : 'files need'} a decision — run wolf upgrade --review`,
+            true
+          ),
+        ]
+      : [];
+
   return {
     exitCode,
     report: {
@@ -253,6 +267,7 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
         // Суффикс summary у renderer фиксирован («— Done») и не выражает
         // exit-таблицу — слово финальной строки передаёт оркестратор строкой.
         { kind: 'summary', counters, done: false },
+        ...hint,
         line(exitCode === 1 ? 'error' : exitCode === 2 ? 'warn' : 'ok', finalText),
         ...scan,
       ],
@@ -434,6 +449,17 @@ export function verifyNameLines(verify: VerifyResult, map: UpdateMap): ReportNod
   return out;
 }
 
+/** Дайджест бэкапов проекта (§4.12): файл и путь копии; take — «took base»,
+ *  удаление — «removed». Единственная реализация формата: проход и `--here`. */
+export function backupDigestLines(report: ProjectReport): ReportNode[] {
+  const out: ReportNode[] = [];
+  for (const b of report.backups ?? []) {
+    const took = report.sync.outcomes.some((o) => o.backup === b.backup);
+    out.push(line('info', `${took ? 'took base for' : 'removed'} ${b.file} (local saved: ${b.backup})`, true));
+  }
+  return out;
+}
+
 /** Секция проектов: строка-статус на проект + детали шага (REQ-05, палитра T3). */
 function projectsSection(outcomes: StepOutcome[], map: UpdateMap): ReportNode {
   const children: ReportNode[] = [];
@@ -466,6 +492,7 @@ function projectsSection(outcomes: StepOutcome[], map: UpdateMap): ReportNode {
       line(v.errors > 0 ? 'error' : v.needsDecision > 0 ? 'warn' : 'info', `verify: ${parts.join(' · ')}`, true)
     );
     children.push(...verifyNameLines(r.verify, map));
+    children.push(...backupDigestLines(r));
   }
   return { kind: 'section', title: 'Projects', children };
 }
