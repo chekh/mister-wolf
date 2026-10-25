@@ -550,6 +550,22 @@ describe('runUpgradeCheckHere (§4.11, R09-5/N03-1): read-only проход по
     expect(res.json.protections).toHaveLength(1);
   });
 
+  it('m-1: деградация не выдаёт «none» — секция says not scanned', async () => {
+    const proj = mkTmp('wolf-check-here-noscan-');
+    const res = await runUpgradeCheckHere({
+      here: proj,
+      loadMap: () => {
+        throw new Error('update-map.json not found');
+      },
+      installedVersion: () => '2.19.0',
+      inspect: async () => [],
+      protections: async () => [],
+    });
+    const text = plain(res);
+    expect(text).toContain('Protections: not scanned (map or projects registry unavailable)');
+    expect(text).not.toContain('Protections: none');
+  });
+
   it('карты нет → штампы с пометкой недостоверности, inspect не зовётся, exit 0', async () => {
     const proj = mkTmp('wolf-check-here-nomap-');
     const inspect = vi.fn(async () => [] as InspectOutcome[]);

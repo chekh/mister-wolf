@@ -619,6 +619,7 @@ describe('runUpgradeCheckHere: read-only инспекция cwd (R09-5, N03-1)',
       loadMap: () => fx.map,
       installedVersion: () => NEW_SET,
       inspect: (root) => renderer.inspectBaseSet(root, { models: 'omit' }),
+      protections: (root) => renderer.listProtections(root, NEW_SET),
     });
     expect(res.exitCode).toBe(0);
     expect(existsSync(join(proj, '.opencode/wolf-sync-state.json'))).toBe(false);

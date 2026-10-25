@@ -1216,8 +1216,15 @@ const stampNote = (root: string): string => {
 /** Секция Protections (§4.11, REQ-09): печатается ВСЕГДА и последней в `--check`;
  *  пусто — строка `Protections: none`. Строится из того же `ProtectEntry[]`, что и
  *  `--json.protections`, поэтому текст и JSON не расходятся. */
-function protectionNodes(entries: JsonProtection[], base: string | null): ReportNode[] {
-  if (entries.length === 0) return [line('info', 'Protections: none', true)];
+function protectionNodes(entries: JsonProtection[], base: string | null, scanned = true): ReportNode[] {
+  if (entries.length === 0)
+    return [
+      line(
+        'info',
+        scanned ? 'Protections: none' : 'Protections: not scanned (map or projects registry unavailable)',
+        true
+      ),
+    ];
   const nodes: ReportNode[] = entries.map((e) => {
     const value = e.recognized ? `protect: ${e.value}` : `protect: ${e.value} (unrecognized — treated as protected)`;
     const drift = e.behind === null ? 'drift: n/a' : e.behind ? `behind (base ${base ?? 'unknown'})` : 'ok';
@@ -1351,11 +1358,16 @@ export async function runUpgradeCheck(deps: UpgradeCheckDeps): Promise<UpgradeCh
       }
     }
   }
-  // §4.11: секция Protections — последняя (перед финальной строкой), печатается всегда
+  // §4.11: секция Protections — последняя (перед финальной строкой), печатается всегда;
+  // при деградации (нет реестра/карты/реестра защит) сканирования не было — не «none»
+  // пустой реестр — сканировать нечего («none» честен), карта нужна только при проектах
+  const protectionsScanned =
+    deps.protections !== undefined && registered !== null && (registered.length === 0 || mapVersion !== null);
   children.push(
     ...protectionNodes(
       rows.flatMap((row) => row.protected),
-      mapVersion
+      mapVersion,
+      protectionsScanned
     )
   );
   children.push(line('ok', 'Done (read-only)'));
@@ -1410,7 +1422,8 @@ export async function runUpgradeCheckHere(deps: UpgradeCheckHereDeps): Promise<U
   children.push(
     ...protectionNodes(
       rows.flatMap((row) => row.protected),
-      map?.version ?? null
+      map?.version ?? null,
+      deps.protections !== undefined && map !== null
     )
   );
   children.push(line('ok', 'Done (read-only)'));
