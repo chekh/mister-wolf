@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  NEEDS_DECISION_CODES,
   verifyAgainstMap,
   type SyncVerifyOutcome,
   type VerifyCode,
@@ -417,5 +418,56 @@ describe('verifyAgainstMap (design §«Сверка»: ожидание из к�
     expect(() => verifyAgainstMap({} as UpdateMap, { syncOutcomes: [], seedOutcomes: [], removals: [] })).toThrow(
       /invalid/i
     );
+  });
+});
+
+describe('protected / kept — вне needs-decision (§4.6, волна 2.20.0)', () => {
+  it('файл карты: protected перекрывает ожидание категории, needsDecision=false', () => {
+    const r = run(map({ files: [f('base/agents/a.md', 'changed')] }), {
+      syncOutcomes: [{ file: proj('base/agents/a.md'), action: 'skipped', protected: true, protect: 'true' }],
+    });
+    expect(r.items.find((i) => i.target === 'base/agents/a.md')?.code).toBe('protected');
+    expect(r.summary.needsDecision).toBe(0);
+  });
+
+  it('kept: принятый локальный контент — не needs-decision', () => {
+    const r = run(map({ files: [f('base/agents/a.md', 'new')] }), {
+      syncOutcomes: [{ file: proj('base/agents/a.md'), action: 'skipped', kept: true }],
+    });
+    expect(r.items.find((i) => i.target === 'base/agents/a.md')?.code).toBe('kept');
+    expect(r.summary.needsDecision).toBe(0);
+  });
+
+  it('AGENTS.md: kept — не решение (правило 6.5)', () => {
+    const r = run(map(), { syncOutcomes: [{ file: 'AGENTS.md', action: 'skipped', kept: true }] });
+    expect(r.items.find((i) => i.kind === 'agents-md')?.code).toBe('kept');
+    expect(r.summary.needsDecision).toBe(0);
+  });
+
+  it('факт вне карты: protected/kept сохраняют код, дрейф без защиты — conflict', () => {
+    const r = run(map(), {
+      syncOutcomes: [
+        { file: '.opencode/agents/p.md', action: 'skipped', protected: true, protect: '2.19.0' },
+        { file: '.opencode/agents/k.md', action: 'skipped', kept: true },
+        { file: '.opencode/agents/d.md', action: 'skipped' },
+      ],
+    });
+    expect(r.items.find((i) => i.target === '.opencode/agents/p.md')).toMatchObject({
+      code: 'protected',
+      needsDecision: false,
+    });
+    expect(r.items.find((i) => i.target === '.opencode/agents/k.md')).toMatchObject({
+      code: 'kept',
+      needsDecision: false,
+    });
+    expect(r.items.find((i) => i.target === '.opencode/agents/d.md')).toMatchObject({
+      code: 'conflict',
+      needsDecision: true,
+    });
+    expect(r.summary.needsDecision).toBe(1);
+  });
+
+  it('NEEDS_DECISION_CODES не расширялся (§4.6)', () => {
+    expect([...NEEDS_DECISION_CODES].sort()).toEqual(['conflict', 'diverged', 'skipped-mutated']);
   });
 });

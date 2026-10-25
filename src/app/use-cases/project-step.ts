@@ -6,12 +6,14 @@
 // (контракт для оркестратора T7 и рендера T3). Пофазная фиксация: записи фаз
 // атомарны внутри шагов, сбой фазы k не откатывает k-1 — повтор доводит до
 // конца (NFR-02). Единственная мутация памяти — посев (REQ-07).
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { unlink } from 'fs/promises';
 import { basename, join } from 'path';
 import type { BaseSetRenderer, ModelContext } from '../../ports/base-set-renderer.port.js';
 import type { UpdateMap } from '../../adapters/fs/update-map.js';
 import { ensureCurrentSchema } from '../../adapters/fs/schema-guard.js';
+import { loadSyncState, sha256, type SyncEntry } from '../../adapters/render/sync-state.js';
+import { normalizeManaged, parseProtect } from '../../domain/protect-key.js';
 import { syncBaseSet } from './sync-base-set.js';
 import { seedBasePlaybooks, type SeedDeps, type SeedOutcome } from './seed-base-playbooks.js';
 import {
@@ -59,6 +61,9 @@ export interface ProjectReport {
   schema: { status: 'ok' | 'migrated' | 'refused'; error?: string };
   /** Фаза 5: строгая сверка с картой — каждый пункт со статусом (T5). */
   verify: VerifyResult;
+  /** Перезаписи с бэкапом локального контента (правила 6′/7 §4.3, §4.12):
+   *  путь файла и путь копии — вход дайджеста и `--json.projects[].backups`. */
+  backups?: Array<{ file: string; backup: string }>;
   /** Замер шага (NFR-03), мс; минимум 1 — разрешение Date.now-обёртки. */
   wallMs: number;
   exitKind: ExitKind;
@@ -89,15 +94,13 @@ export async function runProjectStep(
   // Контракт T5: removals = подтверждённо отсутствующие ПОСЛЕ шага — удалённые
   // теперь или отсутствовавшие ранее (идемпотентность повтора, NFR-02).
   const removals = [...removedTargets].filter((p) => confirmed.has(p) && !existsSync(join(root, p)));
-  // Дрейф без объявления: оставшийся orphaned вне карты — факт для сверки
-  // («файл вне карты» → conflict → «требует решения», design §«Сверка»).
+  // Дрейф без объявления: оставшийся orphaned вне карты — факт для сверки.
+  // До генерации conflict проверяются protect и kept (§4.3, §4.6): защищённая
+  // вариация и принятый локальный контент — не решения, а свои коды.
+  const witness = loadSyncState(root);
   const drift: SyncVerifyOutcome[] = orphaned
     .filter((p) => !removedTargets.has(p))
-    .map((p) => ({
-      file: p,
-      action: 'conflict',
-      reason: 'orphaned after pass — stamped file outside the map, not declared removed (drift without declaration)',
-    }));
+    .map((p) => orphanOutcome(root, p, witness.files[p]));
 
   // 3. посев — только недостающие лица (mode задаёт шаг) и только шаблоны,
   // объявленные картой с seed:true; deprecated-шаблоны не сеются (REQ-11).
@@ -124,6 +127,10 @@ export async function runProjectStep(
   const errors = verify.summary.errors + (schema.status === 'refused' ? 1 : 0);
   const exitKind: ExitKind = errors > 0 ? 'error' : verify.summary.needsDecision > 0 ? 'needs-decision' : 'done';
 
+  const backups = syncOutcomes
+    .filter((o): o is SyncVerifyOutcome & { backup: string } => typeof o.backup === 'string')
+    .map((o) => ({ file: o.file, backup: o.backup }));
+
   return {
     name: basename(root),
     root,
@@ -131,7 +138,39 @@ export async function runProjectStep(
     seed: seedOutcomes,
     schema,
     verify,
+    backups,
     wallMs: Math.max(1, now() - startedAt),
     exitKind,
+  };
+}
+
+/** Исход orphan для сверки: protect (§4.3) → protected; свидетель origin:'keep' → kept;
+ *  иначе — конфликт дрейфа без объявления (путь печатается именем, REQ-01). */
+function orphanOutcome(root: string, rel: string, entry: string | SyncEntry | undefined): SyncVerifyOutcome {
+  const abs = join(root, rel);
+  const current = existsSync(abs) ? readFileSync(abs, 'utf-8') : '';
+  const protect = parseProtect(current);
+  if (protect.held) {
+    return {
+      file: rel,
+      action: 'skipped',
+      protected: true,
+      protect: protect.value ?? protect.raw ?? '',
+      reason: 'orphaned but held by protect — sanctioned local variation',
+    };
+  }
+  const hash = typeof entry === 'string' ? entry : entry?.hash;
+  if (entry && typeof entry !== 'string' && entry.origin === 'keep' && hash === sha256(normalizeManaged(current))) {
+    return {
+      file: rel,
+      action: 'skipped',
+      kept: true,
+      reason: `orphaned but locally accepted (keep) at ${entry.base}`,
+    };
+  }
+  return {
+    file: rel,
+    action: 'conflict',
+    reason: 'orphaned after pass — stamped file outside the map, not declared removed (drift without declaration)',
   };
 }

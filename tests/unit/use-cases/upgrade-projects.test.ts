@@ -6,7 +6,7 @@
 // integration/upgrade-park.test.ts. Строки test-plan: R01.2, R02.1-R02.4,
 // R05.2, R06.2, R06.3, R11.6, R13.1 (статусная часть), R09 (wiring).
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, realpathSync, rmSync } from 'fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { basename, join } from 'path';
 import {
@@ -16,6 +16,9 @@ import {
 } from '../../../src/app/use-cases/upgrade-projects.js';
 import { runProjectStep, type ProjectReport, type ProjectStepDeps } from '../../../src/app/use-cases/project-step.js';
 import { renderReport } from '../../../src/adapters/cli/report-renderer.js';
+import type { BaseSetRenderer } from '../../../src/ports/base-set-renderer.port.js';
+import { sha256 } from '../../../src/adapters/render/sync-state.js';
+import { normalizeManaged } from '../../../src/domain/protect-key.js';
 import type { UpdateMap } from '../../../src/adapters/fs/update-map.js';
 import type { RegisteredProject } from '../../../src/adapters/fs/projects-registry.js';
 import type { ScanResult } from '../../../src/app/use-cases/scan-unregistered.js';
@@ -395,5 +398,79 @@ describe('runUpgradeProjects (T7: оркестратор прохода парк
       expect(plain(res)).toContain('unregistered-projects scan failed');
       expect(count(res, 'errors')).toBe(0);
     });
+  });
+});
+
+describe('project-step: orphan protect/kept и бэкапы (волна 2.20.0, §4.3/§4.12)', () => {
+  it('защищённый/принятый orphan не дают conflict; бэкапы собраны из исходов', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wolf-step-orphan-'));
+    try {
+      mkdirSync(join(dir, '.opencode', 'agents'), { recursive: true });
+      writeFileSync(join(dir, '.opencode', 'agents', 'gone.md'), '---\nprotect: true\n---\nheld\n');
+      const keptBody = '---\ntitle: k\n---\nkept body\n';
+      writeFileSync(join(dir, '.opencode', 'agents', 'kept.md'), keptBody);
+      writeFileSync(join(dir, '.opencode', 'agents', 'drift.md'), '---\ntitle: d\n---\ndrift\n');
+      writeFileSync(
+        join(dir, '.opencode', 'wolf-sync-state.json'),
+        `${JSON.stringify(
+          {
+            files: {
+              '.opencode/agents/kept.md': { hash: sha256(normalizeManaged(keptBody)), origin: 'keep', base: '2.19.0' },
+            },
+          },
+          null,
+          2
+        )}\n`
+      );
+      const mapX: UpdateMap = {
+        ...MINI_MAP,
+        files: [
+          { path: 'base/agents/x.md', kind: 'agent', category: 'new' },
+          { path: 'base/agents/y.md', kind: 'agent', category: 'new' },
+        ],
+        faces: [],
+        agents_md: { category: 'unchanged', mode: 'append-block' },
+      };
+      const renderer = {
+        id: 'fake',
+        async renderBaseSet() {
+          return [];
+        },
+        async syncBaseSet() {
+          return {
+            outcomes: [
+              { file: '.opencode/agents/x.md', action: 'created' as const },
+              {
+                file: '.opencode/agents/y.md',
+                action: 'updated' as const,
+                backup: '.wolf/backup/upgrade/2026-10-25/.opencode/agents/y.md',
+              },
+              { file: 'AGENTS.md', action: 'skipped' as const },
+            ],
+            orphaned: ['.opencode/agents/gone.md', '.opencode/agents/kept.md', '.opencode/agents/drift.md'],
+          };
+        },
+      } as unknown as BaseSetRenderer;
+      const deps = {
+        renderer,
+        files: new Map<string, string>(),
+        store: {},
+        log: {},
+        clock: {},
+        idGen: {},
+      } as unknown as ProjectStepDeps;
+
+      const report = await runProjectStep(deps, dir, mapX);
+      const byTarget = (t: string) => report.verify.items.find((i) => i.target === t);
+      expect(byTarget('.opencode/agents/gone.md')).toMatchObject({ code: 'protected', needsDecision: false });
+      expect(byTarget('.opencode/agents/kept.md')).toMatchObject({ code: 'kept', needsDecision: false });
+      expect(byTarget('.opencode/agents/drift.md')).toMatchObject({ code: 'conflict', needsDecision: true });
+      expect(report.verify.summary.needsDecision).toBe(1);
+      expect(report.backups).toEqual([
+        { file: '.opencode/agents/y.md', backup: '.wolf/backup/upgrade/2026-10-25/.opencode/agents/y.md' },
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
