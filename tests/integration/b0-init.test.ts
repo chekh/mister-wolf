@@ -140,11 +140,12 @@ describe('§4.14 (REQ-04): init без --platform чинит mcp.wolf в сущ�
 
     expect(runCli(['init', '--full'], d).status).toBe(0); // БЕЗ --platform
     const cfg = readCfg();
-    expect((cfg.mcp as Record<string, unknown>).wolf).toEqual({
+    expect(((cfg.mcp as Record<string, unknown>).servers as Record<string, unknown>).wolf).toEqual({
       type: 'local',
       command: ['wolf', 'mcp'],
-      enabled: true,
+      disabled: false,
     });
+    expect((cfg.mcp as Record<string, unknown>).wolf).toBeUndefined(); // легаси-форма не пишется
     expect(cfg.$schema).toBe('https://opencode.ai/config.json');
     expect(cfg.theme).toBe('system');
     expect((cfg.mcp as Record<string, unknown>).other).toEqual({

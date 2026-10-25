@@ -58,6 +58,11 @@ export interface PlatformAdapter {
    * { action: 'skipped', reason }.
    */
   removeWolfKeys?(projectRoot: string): Promise<PlatformWriteResult>;
+  /**
+   * Строки проблем конфига, которые знает только адаптер (6.2/6.3: обе формы MCP-записи).
+   * Нет метода — doctor делает generic-проверку wolf-записи.
+   */
+  configIssues?(projectRoot: string): Promise<string[]>;
   /** Детект версии платформы (опционально; init не ломается, если адаптер не умеет). */
   detectVersion?(projectRoot: string): Promise<PlatformVersionInfo>;
 }

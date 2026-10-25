@@ -95,6 +95,12 @@ export async function runDoctor(deps: DoctorDeps): Promise<DoctorReport> {
     if (status === 'ok') {
       for (const adapter of deps.adapters) {
         if (!adapter.detect(proj.path)) continue;
+        // 6.3: адаптер, знающий обе формы ключей, отвечает сам; generic-путь —
+        // для fake-адаптеров без configIssues (тесты D-8/R04-3).
+        if (adapter.configIssues) {
+          issues.push(...(await adapter.configIssues(proj.path)));
+          continue;
+        }
         const cfg = await adapter.readConfig(proj.path).catch(() => null);
         const mcp = cfg && typeof cfg === 'object' ? ((cfg.mcp ?? cfg.mcpServers) as Record<string, unknown>) : null;
         if (!mcp || mcp.wolf === undefined) {
