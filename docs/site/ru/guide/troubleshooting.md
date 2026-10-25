@@ -176,3 +176,28 @@ wolf upgrade --here --resolve .opencode/skills/foo/SKILL.md=protect   # замо
 ```
 
 Дайджест прогона называет копию для каждой перезаписи (`local saved: …`), а `--json` перечисляет их в `projects[].backups[]`. Сборщика мусора нет: старые даты чистите сами. Права и время не сохраняются.
+
+## 15. `doctor`: wolf entry missing
+
+**Симптом:** `wolf doctor` пишет `opencode: wolf entry missing — run wolf init` на проекте, в `opencode.json` которого MCP-сервер волка есть — обычно после того, как конфиг мигрировали (opencode сам или руками) с плоской `mcp.wolf` на нативную `mcp.servers.wolf`.
+
+**Причина:** в релизах до 2.20.1 доктор смотрел только на плоский ключ `mcp.wolf`. Нативной формы он не видел: запись считалась отсутствующей, `wolf init` дописал бы второй ключ, а `wolf uninstall` оставил бы сервер на месте.
+
+**Решение:** начиная с 2.20.1 `wolf doctor` и `wolf uninstall` понимают обе формы — достаточно повторить `wolf doctor`, и ложное срабатывание уходит. Если записи действительно нет, восстановите её (только починка, остальной JSON сохраняется):
+
+```bash
+wolf init               # существующий конфиг: вернёт mcp.servers.wolf / default_agent / experimental.subagent_depth
+wolf doctor --repair    # та же канонизация плюс ремонт базового набора и индекса
+```
+
+**Чего не делать:** не дописывайте второй MCP-ключ рядом с существующим. Две записи одного сервера (по одной в каждой форме) — это конфиг, который opencode v1 считает конфликтом, а принадлежность записи становится неоднозначной: волк уже не отличит свою запись от чужой.
+
+## 16. `subagent_depth` игнорируется opencode v2
+
+**Симптом:** субагенты не могут спавнить субагентов — `executor-lead` падает с `Subagent depth limit reached (1)`, трёхуровневая схема (Mr.Wolf → executor-lead → воркеры) не запускается.
+
+**Причина:** верхнеуровневый ключ `subagent_depth` помечен `deprecated` в схеме конфига opencode, и v2 его отбрасывает — действующая глубина остаётся платформенным дефолтом `1`.
+
+**Решение:** `wolf init` или `wolf doctor --repair` переносит наше значение `subagent_depth: 2` в `experimental.subagent_depth` и удаляет deprecated-ключ; остальные поля `experimental` и прочий JSON сохраняются. После этого перезапустите opencode. **Чужое** верхнеуровневое значение только сообщается (`deprecated and ignored by opencode v2`) и никогда не перезаписывается — в этом случае пропишите `experimental.subagent_depth` сами (`>= 2`).
+
+**Как убедиться:** `wolf doctor` прямо называет deprecated верхнеуровневый ключ, а opencode при старте пишет предупреждение `configuration normalization diagnostic` с `path=$.subagent_depth`.

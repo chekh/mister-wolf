@@ -117,26 +117,52 @@ What `wolf init` creates and what appears lazily:
 
 A work thread lives at `memory/threads/<tid>/WORK-THREAD.md`.
 
-## Platform configs and `mcp.wolf`
+## Platform configs and the wolf MCP entry
 
 Platform configs (`opencode.json`, Claude's `.mcp.json`) are written by `wolf init --platform <ids>` — the list replaces the current set — and never by a plain minimal `init`. What a minimal `init` does with them since 2.20.0 is **repair only**:
 
-- platform config file **exists** and the platform is detected → a missing or corrupted `mcp.wolf` entry is restored (alongside `default_agent` / `experimental.subagent_depth`), the rest of the JSON is preserved untouched;
+- platform config file **exists** and the platform is detected → the wolf MCP entry is restored if it is missing or corrupted (recognized in either form, written as the native `mcp.servers.wolf`), alongside `default_agent` / `experimental.subagent_depth`, and the rest of the JSON is preserved untouched;
 - the entry is already canonical → `unchanged` (idempotent; a second `init` writes nothing);
 - the config file **does not exist** → nothing is created — a minimal init stays minimal, and `--platform opencode` remains the explicit way to write a platform config;
 - the config is broken JSONC → not touched at all: `init` reports `skipped` with the reason and exits `0` (`wolf init --recreate` is the escape hatch for a corrupted `.wolf/config.yaml`, not for platform configs).
 
 This is what makes the `wolf doctor` advice (`run wolf init` when the wolf entry is missing) actionable: after a successful repair the doctor no longer reports `wolf entry missing`. Foreign MCP entries in the same file are never touched.
 
+Supported OpenCode range: v1 ≥ 1.18.29 and v2 — the native `mcp.servers` form is accepted from 1.18.29 (v1 hoists it into its flat map itself), so the written shape does not depend on the installed version.
+
 ### Where each key lives
 
-| Key              | Location                      | Notes                                                                           |
-| ---------------- | ----------------------------- | ------------------------------------------------------------------------------- |
-| `mcp.wolf`       | top level                     | MCP server entry: `{ type: 'local', command: ['wolf', 'mcp'], enabled: true }`  |
-| `default_agent`  | top level                     | `mr-wolf` — the agent opencode starts with                                      |
-| `subagent_depth` | `experimental.subagent_depth` | `2` for the three-level scheme (Mr.Wolf → executor-lead → workers); integer ≥ 0 |
+| Key                 | Location                       | Notes                                                                                               |
+| ------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------- |
+| `mcp.servers.wolf`  | top level, under `mcp.servers` | canonical (native) MCP server entry: `{ type: 'local', command: ['wolf', 'mcp'], disabled: false }` |
+| `mcp.wolf` (legacy) | top level, under `mcp`         | deprecated flat form, `enabled: true`: read and migrated by wolf, never written                     |
+| `default_agent`     | top level                      | `mr-wolf` — the agent opencode starts with                                                          |
+| `subagent_depth`    | `experimental.subagent_depth`  | `2` for the three-level scheme (Mr.Wolf → executor-lead → workers); integer ≥ 0                     |
 
-A top-level `subagent_depth` is marked `deprecated` in the opencode config schema and opencode v2 ignores it — the effective default there is `1`, which forbids subagents from launching subagents. Wolf therefore writes depth only under `experimental` and migrates the old place for you: a top-level `subagent_depth: 2` (wolf's own value) is moved to `experimental.subagent_depth` on the next `init` / `doctor --repair`, and the deprecated key is removed. Any other top-level value is a conflict: it is reported with a reason (`deprecated and ignored by opencode v2`) and never overwritten. Other fields under `experimental` and the rest of the JSON are preserved. On `wolf uninstall` only wolf's exact values are removed, and an `experimental` object emptied by that removal is dropped.
+A top-level `subagent_depth` is marked `deprecated` in the opencode config schema and opencode v2 ignores it — the effective default there is `1`, which forbids subagents from launching subagents. Wolf therefore writes depth only under `experimental` and migrates the old place for you: a top-level `subagent_depth: 2` (wolf's own value) is moved to `experimental.subagent_depth` on the next `init` / `doctor --repair`, and the deprecated key is removed. Any other top-level value is a conflict: it is reported with a reason (`deprecated and ignored by opencode v2`) and never overwritten. `wolf doctor` reports the deprecated top-level key even before the next repair. Other fields under `experimental` and the rest of the JSON are preserved. On `wolf uninstall` only wolf's exact values are removed, and an `experimental` object emptied by that removal is dropped.
+
+### MCP entry: two forms
+
+opencode kept MCP servers in a flat `mcp.<name>` map; v2 marks that form `deprecated` and reads `mcp.servers.<name>` natively, with the boolean inverted (`enabled: true` becomes `disabled: false`). Wolf writes only the native form:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "wolf": { "type": "local", "command": ["wolf", "mcp"], "disabled": false }
+    }
+  }
+}
+```
+
+- one shape for the whole supported range: opencode v1 ≥ 1.18.29 hoists `mcp.servers` into its flat map itself, v2 reads it natively;
+- `codemode` is not written — the field exists only in v2 and is `unsupported` in v1;
+- both forms are read: `wolf doctor` and `wolf uninstall` recognize `mcp.servers.wolf` and the legacy `mcp.wolf`, so a config migrated by opencode or by hand is not a false `wolf entry missing`;
+- the legacy form is removed only when it is ours: wolf's own `mcp.wolf` (`enabled: true`, the same command) is migrated on `wolf init` / `wolf doctor --repair`; a foreign entry in that place is reported and never touched.
+
+### Do not mix frontmatter formats
+
+opencode reads an agent file as V2 as soon as the file contains a V2 field. If `.opencode/agents/*.md` gains a `permissions`, `request`, `system` or `disabled` key next to the v1 `permission`, `temperature` or `mode`, the v1 fields are ignored silently — for wolf's agents that drops `permission.task: deny`, the rule that keeps a worker from spawning subagents. Wolf keeps writing the v1 keys (opencode v1 rejects `permissions` outright), and `wolf doctor` warns about a managed agent file where the two formats are mixed. Rule: one format per file.
 
 ## Global config
 

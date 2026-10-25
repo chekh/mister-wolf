@@ -132,7 +132,7 @@ wolf tool use check
 
 ### wolf tool expose
 
-(Re)generate `.opencode/skills/<name>/SKILL.md` from the tool object (idempotent).
+(Re)generate `.opencode/skills/<name>/SKILL.md` from the tool object (idempotent). The file starts with its YAML frontmatter; the `<!-- generated from tool:… -->` marker follows right after it.
 
 ```text
 Usage: wolf tool expose [options] <name-or-id>
@@ -253,6 +253,8 @@ Options:
 ## wolf doctor
 
 Check all registered projects: binary vs schema version, platform configs, prune dead entries.
+
+For a detected opencode config it also checks what the adapter writes: `default_agent`, `experimental.subagent_depth` ≥ 2, the deprecated top-level `subagent_depth` (reported as ignored by opencode v2), a legacy flat `mcp.wolf` entry (reported as deprecated: ours as `migrate`, a foreign one as left untouched), and a managed agent file whose frontmatter mixes v1 and v2 fields. `--repair` canonicalizes the config — it writes the native MCP entry and `experimental.subagent_depth` — besides repairing storage.
 
 ```text
 Usage: wolf doctor [options]

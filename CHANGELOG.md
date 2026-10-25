@@ -6,9 +6,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+### Changed
+
+- **opencode config: the wolf MCP entry is written natively as `mcp.servers.wolf`**: `{ "type": "local", "command": ["wolf", "mcp"], "disabled": false }`, without `codemode` (opencode v1 answers `unsupported` for it). The flat `mcp.wolf` map is `deprecated` in the config schema; opencode v1 ≥ 1.18.29 hoists `mcp.servers` itself and v2 reads it natively, so one written shape serves the whole supported range. Wolf's own legacy `mcp.wolf` (`enabled: true`, the same command) is migrated on `wolf init` / `wolf doctor --repair` — the native entry is written and the deprecated key removed; a foreign `mcp.wolf` (different command) is reported and left alone. `doctor`, `init` and `uninstall` understand both forms, so a config migrated by opencode or by hand is no longer reported as `wolf entry missing` and `uninstall` removes the server in either form; a second run reports `unchanged`.
+- **One registry of the platform keys wolf writes**: every key now carries its write path, its canonical opencode v2 path, its legacy paths and the forms wolf reads (`src/adapters/platforms/opencode-config-keys.ts`); the adapter, `doctor` and the platform-repair use case take paths from there instead of string literals. A test pins each registry write path to the canonical path of the config schema, so the next key that moves in opencode cannot slip through unnoticed — the 2.20.0 `subagent_depth` class of bug becomes a red test instead of a live run.
+- **`wolf tool expose` puts the generated marker after the frontmatter**: `<!-- generated from tool:… -->` used to be the first line of `SKILL.md`; a skill file must start with its `---` frontmatter block, so the marker now follows it. The rewrite stays idempotent.
+
 ### Fixed
 
+- **`wolf doctor` validates every key the adapter writes**: `default_agent === 'mr-wolf'`, `experimental.subagent_depth >= 2`, a deprecated top-level `subagent_depth` (`ignored by opencode v2 — migrate`), a legacy flat `mcp.wolf` entry (ours is reported as `migrate`, a foreign one as `foreign and deprecated`), and a managed agent file with a mixed frontmatter. Mixed means a v2 key (`permissions`, `request`, `system`, `disabled`) next to v1 keys (`permission`, `temperature`, `mode`): opencode then reads the file as V2 and ignores the v1 fields, so `permission.task: deny` silently disappears. Why it matters: the 2.20.0 incident (depth written to a path opencode v2 ignores) was invisible until a live run — `doctor` is the only channel that sees such a divergence on a user's machine.
 - **opencode v2: `subagent_depth` is written under `experimental`**: the config schema marks a top-level `subagent_depth` as `deprecated`, and opencode v2 ignores it — the effective depth stayed at the platform default `1`, so `executor-lead` could not launch `worker-*` (`Subagent depth limit reached (1)`). `wolf init` / `wolf doctor --repair` now merge `experimental.subagent_depth: 2` (other `experimental` fields and the rest of the JSON are preserved), never create the deprecated top-level key, and leave a foreign `experimental.subagent_depth` untouched (`<2` or a non-number is reported as a conflict). The old top-level value is migrated automatically: a top-level `subagent_depth: 2` (wolf's own value) is moved into `experimental` and removed; any other top-level value is reported as deprecated-and-ignored and never overwritten. `wolf uninstall` removes only wolf's exact values under the new path (and the legacy one), dropping an `experimental` object it emptied.
+
+Supported OpenCode range: v1 ≥ 1.18.29 and v2 (native `mcp.servers` is accepted from 1.18.29).
 
 ## [2.20.0] - 2026-10-25
 
