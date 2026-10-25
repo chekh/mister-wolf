@@ -123,6 +123,8 @@ allowlist, санкционированных lead'ом).
   collector'е `--resolve` после снятия `(default: [])` (`collectResolve`
   получает `previous = undefined`) — исправлено `[...(previous ?? []), value]`,
   тест R06-9 зелёный. Итоговые счётчики — в конце этого раздела.
+- Живой CLI-смоук на собранном `dist` (E15) — все новые режимы вне тестового
+  контура: check-json → review → show → resolve-json → check-json.
 - Целевые интеграционные: `tests/integration/upgrade-here.test.ts` (6),
   `upgrade-park.test.ts` (10), `upgrade-check.test.ts` (1) — зелёные.
 - `npm run e2e` — не входит в гейт Ф2 (T14, правило проекта «E2E после плана»).
