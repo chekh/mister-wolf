@@ -271,7 +271,8 @@ base:'0.0.0'|<stamp>}`, `saveSyncState` → `writeFileSync(tmp)` + `renameSync`;
 - [x] **T11. `--json`: схема, сквозь re-exec, паритет с текстом.**
       Сделано → коммит `55737b6` + регенерация `docs/reference/cli.md` (check 17,
       upgrade-projects-unit 18, park 10; `JSON.parse(stdout)` один документ,
-      `n` = non-TTY текст; `npx tsc --noEmit` ok).
+      `n` = non-TTY текст; `npx tsc --noEmit` ok). Ревью-цикл 1 (M-1…M-3,
+      m-1…m-6) → коммит `be28fbf`; независимое ревью 2 — в отчёте фазы.
       Цель: стабильный машинный вывод (design §4.13, REQ-11 AC1–AC3), единая
       диспетчеризация флагов (design §4.18).
       Контракт: `wolf.upgrade/1` и `wolf.upgrade.check/1`, единственный JSON в
