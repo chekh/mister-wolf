@@ -102,3 +102,21 @@ export function diffParkSnapshots(before: ParkSnapshot, after: ParkSnapshot): Pa
     baseSetRemoved: before.baseSet.filter((p) => !after.baseSet.includes(p)),
   };
 }
+
+/** Слепок mtime+sha256 ВСЕХ файлов проекта (F3 m-2): в отличие от
+ * `takeParkSnapshot` (только sha, волатильные зоны исключены) включает
+ * `.wolf/**` и `wolf-sync-state.json` и различает перезапись тем же контентом
+ * по mtime — проверка read-only NFR-03 (T13/T14). */
+export function takeTreeSnapshot(projectRoot: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  const walkDir = (dir: string, rel: string): void => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const relPath = rel === '' ? e.name : `${rel}/${e.name}`;
+      const abs = join(dir, e.name);
+      if (e.isDirectory()) walkDir(abs, relPath);
+      else out[relPath] = `${statSync(abs).mtimeMs}:${createHash('sha256').update(readFileSync(abs)).digest('hex')}`;
+    }
+  };
+  walkDir(projectRoot, '');
+  return out;
+}

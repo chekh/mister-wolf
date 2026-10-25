@@ -8,8 +8,7 @@
 // R14.1, R14.2.
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { Command } from 'commander';
-import { createHash } from 'crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import yaml from 'js-yaml';
@@ -38,7 +37,7 @@ import { parseStamp } from '../../src/adapters/render/stamp.js';
 import { renderReport } from '../../src/adapters/cli/report-renderer.js';
 import { insertProtect, normalizeManaged, parseProtect } from '../../src/domain/protect-key.js';
 import { loadSyncState, saveSyncState, sha256 } from '../../src/adapters/render/sync-state.js';
-import { diffParkSnapshots, takeParkSnapshot } from '../helpers/park-snapshot.js';
+import { diffParkSnapshots, takeParkSnapshot, takeTreeSnapshot } from '../helpers/park-snapshot.js';
 
 // R14.1 «npm не звался»: any spawn через стаб кидает — если --here-путь
 // попытается запустить npm-фазу, шаг упадёт (execFileSync и пр. остаются реальными).
@@ -541,20 +540,8 @@ describe('--json --resolve/--show (M-2): backups в документе, mode sho
 /* ---------- --here --check (T13, REQ-09 AC1–AC3, NFR-03, design §4.11) ---------- */
 
 /** NFR-03: mtime+sha256 каждого файла проекта (включая `.wolf/**` и
- *  `wolf-sync-state.json`): перезапись с тем же контентом тоже видна. */
-function snapshotTree(root: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  const walk = (dir: string, rel: string): void => {
-    for (const e of readdirSync(dir, { withFileTypes: true })) {
-      const relPath = rel === '' ? e.name : `${rel}/${e.name}`;
-      const abs = join(dir, e.name);
-      if (e.isDirectory()) walk(abs, relPath);
-      else out[relPath] = `${statSync(abs).mtimeMs}:${createHash('sha256').update(readFileSync(abs)).digest('hex')}`;
-    }
-  };
-  walk(root, '');
-  return out;
-}
+ *  `wolf-sync-state.json`): перезапись тем же контентом тоже видна. Хелпер —
+ *  `tests/helpers/park-snapshot.ts` (`takeTreeSnapshot`, F3 m-2). */
 
 describe('runUpgradeCheckHere: read-only инспекция cwd (R09-5, N03-1)', () => {
   it('мутации/differ/protect/kept видны, exit 0, ничего не записано', async () => {
@@ -579,7 +566,7 @@ describe('runUpgradeCheckHere: read-only инспекция cwd (R09-5, N03-1)',
     const protRel = '.opencode/agents/local-protected.md';
     writeFileSync(join(proj, protRel), '---\nname: local-protected\nprotect: true\n---\n\n# mine\n');
 
-    const before = snapshotTree(proj);
+    const before = takeTreeSnapshot(proj);
     const filesBefore = Object.fromEntries([mutatedRel, keptRel, protRel].map((rel) => [rel, read(proj, rel)]));
     const res = await runUpgradeCheckHere({
       here: proj,
@@ -600,7 +587,7 @@ describe('runUpgradeCheckHere: read-only инспекция cwd (R09-5, N03-1)',
     expect(text.split('\n')).toContain('ok: Done (read-only)');
 
     // NFR-03: ни один файл не изменён (mtime+sha256), sync-state не переписан, бэкапов нет
-    expect(snapshotTree(proj)).toEqual(before);
+    expect(takeTreeSnapshot(proj)).toEqual(before);
     for (const [rel, content] of Object.entries(filesBefore)) expect(read(proj, rel)).toBe(content);
     expect(existsSync(join(proj, '.wolf', 'backup'))).toBe(false);
     // differ-файл (был бы перезаписан проходом) байт-в-байт прежний
@@ -612,7 +599,7 @@ describe('runUpgradeCheckHere: read-only инспекция cwd (R09-5, N03-1)',
     const proj = await bootstrapProject(park, 'p-check-fresh');
     rmSync(join(proj, '.opencode/wolf-sync-state.json'));
     const renderer = new OpencodeBaseSetRenderer(fx.templatesRoot, { setVersion: NEW_SET });
-    const before = snapshotTree(proj);
+    const before = takeTreeSnapshot(proj);
 
     const res = await runUpgradeCheckHere({
       here: proj,
@@ -623,7 +610,7 @@ describe('runUpgradeCheckHere: read-only инспекция cwd (R09-5, N03-1)',
     });
     expect(res.exitCode).toBe(0);
     expect(existsSync(join(proj, '.opencode/wolf-sync-state.json'))).toBe(false);
-    expect(snapshotTree(proj)).toEqual(before);
+    expect(takeTreeSnapshot(proj)).toEqual(before);
     expect(renderReport(res.report, { tty: false, colors: 'mono', width: 400 })).toContain('Protections: none');
   });
 });

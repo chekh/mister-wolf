@@ -5,8 +5,7 @@
 // до/после байт-в-байт (включая .opencode/wolf-sync-state.json и .wolf/**),
 // exit 0, финальная строка Done (read-only).
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createHash } from 'crypto';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { basename, join } from 'path';
 import yaml from 'js-yaml';
@@ -15,7 +14,7 @@ import { loadUpdateMap, type UpdateMap } from '../../src/adapters/fs/update-map.
 import { ProjectsRegistry, type RegisteredProject } from '../../src/adapters/fs/projects-registry.js';
 import { OpencodeBaseSetRenderer } from '../../src/adapters/render/opencode/opencode-renderer.js';
 import { renderReport } from '../../src/adapters/cli/report-renderer.js';
-import { diffParkSnapshots, takeParkSnapshot } from '../helpers/park-snapshot.js';
+import { diffParkSnapshots, takeParkSnapshot, takeTreeSnapshot } from '../helpers/park-snapshot.js';
 
 const OLD_SET_A = '2.16.2';
 const OLD_SET_B = '2.17.1';
@@ -179,20 +178,7 @@ describe('runUpgradeCheck: R08.1 — парк 2 проектов, npm view (мо
 
 /** NFR-03: слепок mtime+sha256 ВСЕХ файлов проекта (включая `.wolf/**` и
  *  `wolf-sync-state.json`): перезапись с тем же контентом тоже видна, а
- *  takeParkSnapshot (sha-only) её бы пропустил. */
-function snapshotTree(root: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  const walk = (dir: string, rel: string): void => {
-    for (const e of readdirSync(dir, { withFileTypes: true })) {
-      const relPath = rel === '' ? e.name : `${rel}/${e.name}`;
-      const abs = join(dir, e.name);
-      if (e.isDirectory()) walk(abs, relPath);
-      else out[relPath] = `${statSync(abs).mtimeMs}:${createHash('sha256').update(readFileSync(abs)).digest('hex')}`;
-    }
-  };
-  walk(root, '');
-  return out;
-}
+ *  takeParkSnapshot (sha-only) её бы пропустил. Хелпер — `tests/helpers/park-snapshot.ts`. */
 
 /** Защищённый файл вне карты: frontmatter + protect (§4.1), в needs-decision не попадает. */
 function writeProtectedFile(proj: string, rel: string, protect: string): void {
@@ -267,14 +253,14 @@ describe('runUpgradeCheck: REQ-09 — секция Protections (R09-1…R09-4)',
       protections: (root: string) => renderer.listProtections(root, NEW_SET),
     };
 
-    const beforeProj = snapshotTree(proj);
-    const beforeCfg = snapshotTree(configDir);
+    const beforeProj = takeTreeSnapshot(proj);
+    const beforeCfg = takeTreeSnapshot(configDir);
     const first = renderReport((await runUpgradeCheck(deps)).report, { tty: false, colors: 'mono', width: 400 });
     const second = renderReport((await runUpgradeCheck(deps)).report, { tty: false, colors: 'mono', width: 400 });
 
     expect(second).toBe(first);
-    expect(snapshotTree(proj)).toEqual(beforeProj); // mtime+sha256, включая wolf-sync-state.json и .wolf/**
-    expect(snapshotTree(configDir)).toEqual(beforeCfg);
+    expect(takeTreeSnapshot(proj)).toEqual(beforeProj); // mtime+sha256, включая wolf-sync-state.json и .wolf/**
+    expect(takeTreeSnapshot(configDir)).toEqual(beforeCfg);
     expect(beforeProj['.opencode/wolf-sync-state.json']).toBeDefined(); // свидетель реально в слепке
   });
 
