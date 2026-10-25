@@ -606,6 +606,22 @@ describe('AGENTS.md: миграция 2.19.0, бэкапы, EOL, kept (F1-рев
     expect((await renderer().inspectBaseSet(proj)).find((o) => o.file === AGENTS)?.action).toBe('identical');
   });
 
+  it('rr-1: штамп приводится на своём месте — `---` frontmatter остаётся первой строкой', async () => {
+    writeFileSync(join(base, 'AGENTS.md'), V3_TEMPLATE);
+    const front = '---\ndescription: my agents\n---\n';
+    const old = insertStamp(front + V2_BLOCK, { base: AGENTS, set: '2.19.0' }, AGENTS);
+    writeFileSync(agentsPath(), old);
+    expect(parseStamp(old)?.set).toBe('2.19.0');
+    expect(old.startsWith(front)).toBe(true); // insertStamp: штамп после frontmatter
+
+    await renderer().renderBaseSet(proj);
+    const after = readFileSync(agentsPath(), 'utf-8');
+    expect(after.startsWith(front)).toBe(true); // frontmatter не сдвинут
+    expect(after).toContain('<!-- wolf:onboarding v3 -->');
+    expect(parseStamp(after)?.set).toBe('9.9.9');
+    expect(after.split('\n').filter((l) => l.includes('wolf:rendered'))).toHaveLength(1);
+  });
+
   it('M-1 heal: блок уже v3, штамп старый (след предыдущего init) → штамп приведён, свидетель записан', async () => {
     writeFileSync(join(base, 'AGENTS.md'), V3_TEMPLATE);
     const stale = insertStamp(V3_TEMPLATE, { base: AGENTS, set: '2.19.0' }, AGENTS);

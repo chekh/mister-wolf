@@ -71,12 +71,6 @@ function templateBlock(template: string): { version: number; text: string } | nu
   return { version: block.version, text: template.slice(block.start, block.end) };
 }
 
-/** EOL файла по первой строке: блок получает EOL файла, а не шаблона (m-7). */
-function fileEol(content: string): '\n' | '\r\n' {
-  const nl = content.indexOf('\n');
-  return nl > 0 && content[nl - 1] === '\r' ? '\r\n' : '\n';
-}
-
 const MUTATED_REASON = 'mutated after render — differs from recorded render and fresh render; left untouched';
 
 interface TemplateFile {
@@ -337,9 +331,10 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
         reason: 'onboarding markers broken — file treated as foreign (wx policy)',
       };
     }
-    // [start,end) включает завершающий `\r` закрывающего маркера: подстановка
-    // в CRLF-файл кончается им же, иначе после маркера остаётся LF (m-7).
-    const eol = fileEol(current);
+    // [start,end) включает завершающий `\r` закрывающего маркера: блок наследует
+    // EOL маркера (а не шаблона) и подстановка кончается тем же `\r`, иначе после
+    // маркера остаётся LF (m-7).
+    const eol = current[block.end - 1] === '\r' ? '\r\n' : '\n';
     const text = eol === '\r\n' ? `${tpl.text.replace(/\n/g, '\r\n')}\r` : tpl.text;
     const replaced = `${current.slice(0, block.start)}${text}${current.slice(block.end)}`;
     const updated = this.restampAgents(replaced);
@@ -358,13 +353,17 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
     };
   }
 
-  /** Штампованная цель с блоком: штамп приводится к текущей базе. Без нового
-   *  регекса штампа (§4.4) — strip + render; EOL файла сохраняется. */
+  /** Штампованная цель с блоком: штамп приводится к текущей базе **на своём
+   *  месте** (позицию задаёт `insertStamp` — после frontmatter, `---` остаётся
+   *  первой строкой). Без нового регекса штампа (§4.4): канонический текст
+   *  `renderStamp` заменяется строкой текущей базы; нестандартную запись штампа
+   *  не переписываем (файл честно останется `mutated`). */
   private restampAgents(content: string): string {
     const stamp = parseStamp(content);
     if (stamp === null || stamp.set === this.setVersion) return content;
-    const line = renderStamp({ base: 'AGENTS.md', set: this.setVersion }, 'AGENTS.md');
-    return `${line}${fileEol(content)}${stripStampLines(content)}`;
+    const old = renderStamp(stamp, 'AGENTS.md');
+    if (!content.includes(old)) return content;
+    return content.replace(old, renderStamp({ base: 'AGENTS.md', set: this.setVersion }, 'AGENTS.md'));
   }
 
   /** Свидетель после обновления блока: только если файл совпал с эталоном
