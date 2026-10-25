@@ -121,7 +121,7 @@ wolf analytics --view acceptance
 ## 12. Broken onboarding markers in `AGENTS.md`
 
 - **Symptom:** `AGENTS.md` is no longer updated at all; `wolf upgrade --check` shows the project as `unknown` with the detail `onboarding markers broken`, and the pass reports the file as `foreign`/skipped.
-- **Cause:** the block is delimited by `<!-- wolf:onboarding v3 -->` and `<!-- /wolf:onboarding -->`; when the closing line is missing (or the opening one is gone), wolf cannot tell its zone from yours and applies the `wx` policy — hands off.
+- **Cause:** the block is delimited by `<!-- wolf:onboarding v3 -->` and `<!-- /wolf:onboarding -->`. When the closing line is missing, wolf cannot tell its zone from yours and applies the `wx` policy — hands off, and the report says `onboarding markers broken`. When the opening marker is gone too, the file is simply foreign: no detail line, same hands-off outcome.
 - **Fix:** restore the closing marker line by hand (at the end of the wolf block), then run `wolf upgrade --here --check` — the file is managed again and the block is updated in place. If you would rather own the file, leave the markers broken: wolf will not touch it, and the report will keep saying so — that state is honest, not an error.
 
 ## 13. A hand-edited frontmatter that no longer parses
@@ -140,7 +140,7 @@ wolf analytics --view acceptance
 ## 14. Restoring a file from the upgrade backup
 
 - **Symptom:** an overwrite took local content you still need (`--yes`, `take`, or a removal).
-- **Cause:** that is what the backup is for — every overwrite and every deletion copies the file to `.wolf/backup/upgrade/<YYYY-MM-DD>/<rel-path>` first (`base.ext`, `base-2.ext`, … if the same file was overwritten twice in one day).
+- **Cause:** that is what the backup is for — every overwrite and every deletion copies the file to `.wolf/backup/upgrade/<YYYY-MM-DD>/<rel-path>` first (the same file overwritten twice in one day becomes `<name>-2.<ext>`, then `-3`, … — `SKILL.md` → `SKILL-2.md`).
 - **Fix:** copy it back and decide:
 
   ```bash

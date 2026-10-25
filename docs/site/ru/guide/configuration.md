@@ -98,7 +98,8 @@ wolf taxonomy sync   # перезаписать .wolf/config.yaml: проект�
 ├── metrics/               # session-metrics.jsonl, patterns.jsonl, signal-counts.json (derived-счётчики) — сигнальный лог
 ├── thinking/              # последовательности мышления
 ├── tools/                 # тела скриптов tool-объектов
-└── backup/<ts>/           # бэкапы (wolf init --recreate)
+├── backup/<ts>/           # бэкапы (wolf init --recreate)
+└── backup/upgrade/<дата>/ # локальная копия перед каждой перезаписью/удалением апгрейда (без GC)
 ```
 
 ## Платформенные конфиги и `mcp.wolf`

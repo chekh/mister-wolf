@@ -265,7 +265,7 @@ Options:
 
 ## wolf sync
 
-> **Deprecated in 2.19.0** — superseded by `wolf upgrade --here`; the alias still works in 2.20.0 (it prints the DEPRECATED notice and re-renders stamped files; its removal is planned for a later release).
+> **Deprecated in 2.19.0** — superseded by `wolf upgrade --here`; the alias still works in 2.20.0 (it prints a DEPRECATED notice and re-renders stamped files). The notice text still says `removed in 2.20.0` — stale wording, the command is alive.
 
 Re-render the wolf base set (stamped files only; memory untouched). What the set contains and how stamping works: [Base Set](/guide/base-set).
 
@@ -309,7 +309,7 @@ Options:
 - `--resolve <target=verb>` — resolve a decision: `<file|N>=take|keep|protect|pin`, repeatable, comma-separated lists allowed
 - `--show <file|N>` — print one target with the `local → base` diff (read-only)
 - `--review` — walk the decisions one by one with a diff (TTY); without a TTY prints the recipe and writes nothing
-- `--json` — print a single machine-readable document (`wolf.upgrade/1`) on stdout
+- `--json` — print a single machine-readable document on stdout (`wolf.upgrade/1`, or `wolf.upgrade.check/1` with `--check`)
 
 ```bash
 wolf upgrade                              # npm phase + projects pass (plan, then confirm)
@@ -321,7 +321,7 @@ wolf upgrade --show 2                     # what would `take` do to this file?
 wolf upgrade --yes --json > run.json      # silent pass, machine channel
 ```
 
-Flag dispatch happens once, in the command action, and short-circuits before the npm phase and the re-exec: `--check` (stronger than `--here`), then `--show`, `--review`, `--resolve`, then `--here`, and only a bare `wolf upgrade` / `--yes` reaches the npm phase. Incompatible pairs are argument errors (exit `1`, nothing written): `--review` with `--json`/`--resolve`/`--yes`, `--show` with `--resolve`/`--yes`, `--resolve` with `--yes`, `--check` with `--resolve`.
+Flag dispatch happens once, in the command action, and short-circuits before the npm phase and the re-exec: `--check` (stronger than `--here`), then `--show`, `--review`, `--resolve`, then `--here`, and only a bare `wolf upgrade` / `--yes` reaches the npm phase. Incompatible pairs are argument errors (exit `1`, nothing written): `--review` with `--json`/`--resolve`/`--yes`/`--show`/`--check`, `--show` with `--resolve`/`--yes`/`--check`, `--resolve` with `--yes`/`--check`.
 
 Actual `--check` output (2.20.0, a two-project fixture park, one protected file each — absolute paths shortened):
 

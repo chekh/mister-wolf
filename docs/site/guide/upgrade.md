@@ -46,7 +46,7 @@ Each project gets one class:
 - `needs decision` — a stamped file was edited locally (`mutated`), or an unstamped file occupies a wolf target (`conflict`). The pass will not resolve these by itself.
 - `unknown` — the project is not covered by the update map of that release (`foreign` files, unreadable projects, broken onboarding markers). Out of coverage does **not** mean up to date.
 
-Every entry names its files: `mutated:`, `differ:` (all paths, not a counter), `foreign:`, `missing:`. The `Protections` section is always printed — `Protections: none` when there is nothing to hold — and it is the audit view of the second layer in the table above.
+Every entry names its files: `mutated:`, `differ:` (all paths, not a counter), `foreign:`; `missing` is a counter — its paths are in `--json` (`missing[]`). The `Protections` section is always printed — `Protections: none` when there is nothing to hold — and it is the audit view of the second layer in the table above.
 
 A stamped file that differs from the base **only** by its `wolf:rendered …` line needs no decision: the pass re-renders it silently and refreshes the stamp. In `--check` it shows as `current` — `identical` here means "nothing to decide", not "byte-identical".
 
@@ -140,15 +140,16 @@ What each verb does to the file and to the witness:
 
 Which verbs make sense depends on what the target is:
 
-| Target                                      | `take`                                               | `keep`                                       | `protect` / `pin`                                 |
-| ------------------------------------------- | ---------------------------------------------------- | -------------------------------------------- | ------------------------------------------------- |
-| `mutated` stamped file                      | base + backup                                        | accept local                                 | accept + hold                                     |
-| `conflict` (unstamped file in wolf's place) | base + backup (file becomes stamped)                 | refused: `use protect (hold) or take (base)` | hold as a sanctioned variation (the right answer) |
-| protected file                              | drop the key, take the base, local → backup          | drop the key, accept local                   | idempotent / update the pinned version            |
-| orphan (stamped, no base in the map)        | refused: `no base for a file outside the update map` | refused                                      | hold                                              |
-| `AGENTS.md` (stamped, whole-file)           | base + backup                                        | accept local                                 | refused: no YAML frontmatter                      |
-| `AGENTS.md` (block mode, unstamped)         | fresh file in whole (block ownership ends)           | no-op — it is already outside the sync       | refused: no frontmatter                           |
-| `kept` (accepted local content)             | base + backup                                        | idempotent                                   | accept + hold                                     |
+| Target                                      | `take`                                               | `keep`                                                         | `protect` / `pin`                                    |
+| ------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------- |
+| `mutated` stamped file                      | base + backup                                        | accept local                                                   | accept + hold                                        |
+| `conflict` (unstamped file in wolf's place) | base + backup (file becomes stamped)                 | refused: `use protect (hold) or take (base)`                   | hold as a sanctioned variation (the right answer)    |
+| protected file                              | drop the key, take the base, local → backup          | drop the key, accept local                                     | idempotent / update the pinned version               |
+| orphan (stamped, no base in the map)        | refused: `no base for a file outside the update map` | refused                                                        | hold                                                 |
+| `AGENTS.md` (stamped, whole-file)           | base + backup                                        | accept local                                                   | refused: no YAML frontmatter                         |
+| `AGENTS.md` (block mode, unstamped)         | fresh file in whole (block ownership ends)           | no-op — it is already outside the sync                         | refused: no frontmatter                              |
+| `kept` (accepted local content)             | base + backup                                        | idempotent                                                     | accept + hold                                        |
+| `missing` (stamped file deleted by hand)    | base is written again                                | refused: `nothing to keep: the file does not exist — use take` | refused: `no YAML frontmatter — add one or use keep` |
 
 Actual output of a resolution:
 
@@ -190,7 +191,7 @@ protect: true
 | empty, `~`, `null`     | **held + warning** (an unfinished key is fail-safe, never "silently unprotected") |
 | anything else          | **held + warning**                                                                |
 
-Only the frontmatter counts — a `protect:` line in the body of the file is not a protection. Quoted (`"protect":`), indented or tab-separated keys are outside the grammar: they do not protect and are not normalized. When the key is declared twice, the first one wins and the second is reported (`protect declared twice, first value wins`).
+Only the frontmatter counts — a `protect:` line in the body of the file is not a protection. Quoted (`"protect":`), indented or tab-separated keys are outside the grammar: they do not protect and are not normalized. When the key is declared twice, the first one wins and the rest are ignored — no warning is printed.
 
 Writing the key (`protect`, `pin`, or by hand) is a line-wise edit: the line is inserted as the last line of the frontmatter block, existing `protect:` lines are replaced, and the rest of the file — key order, comments, spacing, line endings — stays byte-for-byte. Wolf refuses to protect a file without frontmatter:
 
@@ -243,7 +244,7 @@ updated 1 · new 0 · changed 0 · deprecated 0 · removed 0 · faces seeded 0
 ok: Done
 ```
 
-Every overwrite is preceded by a copy at `.wolf/backup/upgrade/<YYYY-MM-DD>/<rel-path>` (one directory per run date). A second overwrite of the same file on the same day becomes `base.<ext>`, `base-2.<ext>`, … — an existing backup is never overwritten. A `removed` target is copied there too before it is deleted.
+Every overwrite is preceded by a copy at `.wolf/backup/upgrade/<YYYY-MM-DD>/<rel-path>` (one directory per run date). A second overwrite of the same file on the same day becomes `<name>-2.<ext>` (then `-3`, …; the extension is kept), so `.opencode/skills/wolf-debug/SKILL.md` gets `.opencode/skills/wolf-debug/SKILL-2.md` — an existing backup is never overwritten. A `removed` target is copied there too before it is deleted.
 
 Restoring is a copy back:
 
@@ -266,7 +267,7 @@ wolf upgrade --yes --json | jq -e '.exit == 0' > /dev/null
 
 Two schemas:
 
-- `wolf.upgrade/1` — modes `pass`, `here`, `check`, `resolve`, `show`. Top level: `schema`, `exit` (mirrors the process exit code), `mode`, `cli{installed,available}`, optional `error`, `plan`, `projects[]`, `decisions[]`, `diverged[]`, `protections[]`. Each project has `status` (`updated` / `up-to-date` / `needs-decision` / `error` / `skipped` with `skipReason`), `files[]{path,code,inMap}`, `protected[]{path,value,behind}`, `backups[]{file,backup}`.
+- `wolf.upgrade/1` — modes `pass`, `here`, `resolve`, `show`. Top level: `schema`, `exit` (mirrors the process exit code), `mode`, `cli{installed,available}`, optional `error`, `plan`, `projects[]`, `decisions[]`, `diverged[]`, `protections[]`. Each project has `status` (`updated` / `up-to-date` / `needs-decision` / `error` / `skipped` with `skipReason`), `files[]{path,code,inMap}`, `protected[]{path,value,behind}`, `backups[]{file,backup}`.
 - `wolf.upgrade.check/1` — `--check`. `cli`, `projects[]{name,path,class,differ[],missing[],mutated[],foreign[],details[],protected[]}`, `diverged[]`, `protections[]`. `exit` is always `0`; `class` is `current` / `behind` / `needs-decision` / `unknown`.
 
 `decisions[].n` is the same numbering as the text renderer, so `--json` consumers and the human recipe agree. Stability contract: additive fields are allowed in minor releases, a rename or a removal needs a new major (`/2`).
@@ -275,10 +276,10 @@ Two schemas:
 
 The pass and `init` manage `AGENTS.md` in two modes:
 
-- **Block mode (the default for a project wolf initialized).** The file carries `<!-- wolf:onboarding v3 -->` … `<!-- /wolf:onboarding -->`. Wolf owns only the lines between the markers; everything above and below is byte-for-byte yours (a CRLF file keeps its CRLF). User text _inside_ the block is not preserved — the block is wolf's zone.
-- **Stamped whole-file mode.** `AGENTS.md` carries a `wolf:rendered …` stamp: it belongs to wolf entirely, local edits make it `mutated`, and `take`/`keep` decide its fate. `protect` is not available here (no frontmatter).
+- **Stamped whole-file mode — what a fresh `wolf init` writes.** `AGENTS.md` carries a `wolf:rendered …` stamp: it belongs to wolf entirely, local edits make it `mutated`, and `take`/`keep` decide its fate. `protect` is not available here (no frontmatter).
+- **Block mode — when `AGENTS.md` already existed.** `init` appends `<!-- wolf:onboarding v3 -->` … `<!-- /wolf:onboarding -->` to your file and touches nothing else. Wolf owns only the lines between the markers; everything above and below is byte-for-byte yours (a CRLF file keeps its CRLF). User text _inside_ the block is not preserved — the block is wolf's zone.
 
-Block detection is version-agnostic: an existing `v2` block on a 2.19.0 project is recognized and updated in place to `v3` (the block gained the owner-intention line), instead of appending a second block. `init` additionally aligns the stamp of a stamped file in place; `upgrade` does not append a block to an unstamped `AGENTS.md` without markers — a file wolf did not create stays foreign (`wx` policy).
+Block detection is version-agnostic: an existing `v2` block on a 2.19.0 project is recognized and updated in place to `v3` (the block gained the owner-intention line), instead of appending a second block. `init` additionally aligns the stamp of a stamped file in place; `upgrade` does not append a block to an unstamped `AGENTS.md` without markers — for the pass, a file wolf did not create stays foreign (`wx` policy).
 
 Broken markers (an opening marker without a closing one) make the file foreign: it is skipped, reported as `onboarding markers broken` in the pass details and in `--check`, and it never becomes a decision. Fix the markers by hand (add the closing line) and the next run manages it again.
 
@@ -289,7 +290,7 @@ Broken markers (an opening marker without a closing one) make the file foreign: 
 ## Limitations, stated plainly
 
 - **No auto-merge of content.** Only whole-file `take`/`keep`. If you need a merged file, take the base and re-apply your edit, or protect the file and keep maintaining it.
-- **`diverged` faces are not addressable.** They are printed in their own section (`faces (steward zone): … diverged (vX.Y.Z)`) and keep exit `2`, but there is no `--resolve` verb for them: a face is memory, and memory is mutated through the complaint loop and the Steward.
+- **`diverged` faces are not addressable.** `--review` and `--resolve` print them in their own section — `steward zone (not addressable by --resolve): <N>`, then one `<project> <file> diverged v<version>` line each — and the pass names them in its `faces:` line; they keep exit `2`, but there is no `--resolve` verb for them: a face is memory, and memory is mutated through the complaint loop and the Steward. Read-only `--check` always exits `0` and prints no faces section (the park `--json` carries `diverged[]`).
 - **`orphan` files have no base.** A stamped file whose target disappeared from the package can only be held (`=protect`) or deleted by hand; `take` is refused.
 - **Backups are not garbage-collected** (above), and they do not preserve file metadata.
 - **Exit model is unchanged** from 2.19.0: `0` done, `1` failed, `2` done with attention (`diverged` included).

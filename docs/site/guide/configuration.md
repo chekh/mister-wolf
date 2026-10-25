@@ -111,7 +111,8 @@ What `wolf init` creates and what appears lazily:
 ├── metrics/               # lazy; session-metrics.jsonl, patterns.jsonl, signal-counts.json (derived counters)
 ├── thinking/              # lazy; structured thinking sequences
 ├── tools/                 # lazy; registered tool scripts
-└── backup/<ts>/           # lazy; config backups from wolf init --recreate
+├── backup/<ts>/           # lazy; config backups from wolf init --recreate
+└── backup/upgrade/<date>/ # lazy; local copy before every upgrade overwrite/removal (no GC)
 ```
 
 A work thread lives at `memory/threads/<tid>/WORK-THREAD.md`.

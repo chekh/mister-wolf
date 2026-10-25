@@ -66,7 +66,7 @@ wolf bootstrap
 - **Намерения владельца (2.20.0):** когда проходу нужно ваше слово, он называет файл и причину
   (`mutated` / `conflict`, по путям — без голых счётчиков). `--review` разбирает решения с диффом,
   `--show <файл|N>` печатает локальный vs эталон, `--resolve <файл|N>=take|keep|protect|pin`
-  применяет решение, `--json` — машинный канал (`wolf.upgrade/1`). `protect: true` (или
+  применяет решение, `--json` — машинный канал (`wolf.upgrade/1`, а с `--check` — `wolf.upgrade.check/1`). `protect: true` (или
   `protect: X.Y.Z`) во frontmatter agent/skill/command-файла держит файл навсегда — не
   перезаписывается, не удаляется и остаётся видимым в `--check`. Локальный конфликт целиком:
 
@@ -78,6 +78,7 @@ wolf bootstrap
   ```
 
   Полный сценарий, бэкапы и ограничения: [Обновление проекта и парка](docs/site/ru/guide/upgrade.md).
+
 - **Платформы v1:** opencode, Claude Code. MCP-конфиги платформ — opt-in:
   `wolf init --platform opencode,claude` (список заменяет текущий набор); без флага платформенные
   конфиги не пишутся.
