@@ -121,12 +121,22 @@ A work thread lives at `memory/threads/<tid>/WORK-THREAD.md`.
 
 Platform configs (`opencode.json`, Claude's `.mcp.json`) are written by `wolf init --platform <ids>` — the list replaces the current set — and never by a plain minimal `init`. What a minimal `init` does with them since 2.20.0 is **repair only**:
 
-- platform config file **exists** and the platform is detected → a missing or corrupted `mcp.wolf` entry is restored (alongside `default_agent` / `subagent_depth`), the rest of the JSON is preserved untouched;
+- platform config file **exists** and the platform is detected → a missing or corrupted `mcp.wolf` entry is restored (alongside `default_agent` / `experimental.subagent_depth`), the rest of the JSON is preserved untouched;
 - the entry is already canonical → `unchanged` (idempotent; a second `init` writes nothing);
 - the config file **does not exist** → nothing is created — a minimal init stays minimal, and `--platform opencode` remains the explicit way to write a platform config;
 - the config is broken JSONC → not touched at all: `init` reports `skipped` with the reason and exits `0` (`wolf init --recreate` is the escape hatch for a corrupted `.wolf/config.yaml`, not for platform configs).
 
 This is what makes the `wolf doctor` advice (`run wolf init` when the wolf entry is missing) actionable: after a successful repair the doctor no longer reports `wolf entry missing`. Foreign MCP entries in the same file are never touched.
+
+### Where each key lives
+
+| Key              | Location                      | Notes                                                                           |
+| ---------------- | ----------------------------- | ------------------------------------------------------------------------------- |
+| `mcp.wolf`       | top level                     | MCP server entry: `{ type: 'local', command: ['wolf', 'mcp'], enabled: true }`  |
+| `default_agent`  | top level                     | `mr-wolf` — the agent opencode starts with                                      |
+| `subagent_depth` | `experimental.subagent_depth` | `2` for the three-level scheme (Mr.Wolf → executor-lead → workers); integer ≥ 0 |
+
+A top-level `subagent_depth` is marked `deprecated` in the opencode config schema and opencode v2 ignores it — the effective default there is `1`, which forbids subagents from launching subagents. Wolf therefore writes depth only under `experimental` and migrates the old place for you: a top-level `subagent_depth: 2` (wolf's own value) is moved to `experimental.subagent_depth` on the next `init` / `doctor --repair`, and the deprecated key is removed. Any other top-level value is a conflict: it is reported with a reason (`deprecated and ignored by opencode v2`) and never overwritten. Other fields under `experimental` and the rest of the JSON are preserved. On `wolf uninstall` only wolf's exact values are removed, and an `experimental` object emptied by that removal is dropped.
 
 ## Global config
 

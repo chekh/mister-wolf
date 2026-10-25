@@ -64,6 +64,7 @@ describe('wolf uninstall e2e (REQ-03)', () => {
     const cfg = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));
     expect(cfg.mcp?.wolf).toBeUndefined();
     expect(cfg.default_agent).toBeUndefined();
+    expect(cfg.experimental).toBeUndefined(); // пустая experimental не остаётся
     expect(cfg.subagent_depth).toBeUndefined();
   });
 

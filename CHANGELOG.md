@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- **opencode v2: `subagent_depth` is written under `experimental`**: the config schema marks a top-level `subagent_depth` as `deprecated`, and opencode v2 ignores it — the effective depth stayed at the platform default `1`, so `executor-lead` could not launch `worker-*` (`Subagent depth limit reached (1)`). `wolf init` / `wolf doctor --repair` now merge `experimental.subagent_depth: 2` (other `experimental` fields and the rest of the JSON are preserved), never create the deprecated top-level key, and leave a foreign `experimental.subagent_depth` untouched (`<2` or a non-number is reported as a conflict). The old top-level value is migrated automatically: a top-level `subagent_depth: 2` (wolf's own value) is moved into `experimental` and removed; any other top-level value is reported as deprecated-and-ignored and never overwritten. `wolf uninstall` removes only wolf's exact values under the new path (and the legacy one), dropping an `experimental` object it emptied.
+
 ## [2.20.0] - 2026-10-25
 
 ### Added — Upgrade UX: owner intentions, named decisions, silent pass
