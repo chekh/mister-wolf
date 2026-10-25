@@ -1568,8 +1568,7 @@ export function memoryUpgradeCommand(): Command {
     .option(
       '--resolve <target=verb>',
       'Resolve a decision: <file|N>=take|keep|protect|pin (repeatable, comma-separated)',
-      collectResolve,
-      []
+      collectResolve
     )
     .option('--show <file|N>', 'Show one target: protect, both versions and the local → base diff (read-only)')
     .option('--review', 'Review decisions one by one with a diff (TTY); without a TTY prints the recipe')

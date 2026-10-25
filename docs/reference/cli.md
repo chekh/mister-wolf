@@ -1027,15 +1027,28 @@ Usage: wolf upgrade [options]
 One command updates everything: npm phase (npm install -g mister-wolf@latest)
 followed by the registered-projects pass; --check only reports CLI + park
 freshness, no install; --here runs the full project update step in the current
-directory only (no npm self-update, no registry)
+directory only (no npm self-update, no registry); --resolve applies owner
+decisions (<file|N>=take|keep|protect|pin) without a pass; --show prints one
+target with the local → base diff (read-only); --review walks the decisions
+with a diff (TTY) or prints the recipe; --json prints a single machine-readable
+document
 
 Options:
-  --check     Only check for a newer version, do not install anything
-  --here      Update this project only: full project step in cwd (no npm, no
-              re-exec, no registry)
-  --yes       Apply the plan without interactive confirmation (--here or the
-              projects pass)
-  -h, --help  display help for command
+  --check                  Only check for a newer version, do not install
+                           anything
+  --here                   Update this project only: full project step in cwd
+                           (no npm, no re-exec, no registry)
+  --yes                    Apply the plan without interactive confirmation
+                           (--here or the projects pass)
+  --resolve <target=verb>  Resolve a decision: <file|N>=take|keep|protect|pin
+                           (repeatable, comma-separated) (default: [])
+  --show <file|N>          Show one target: protect, both versions and the
+                           local → base diff (read-only)
+  --review                 Review decisions one by one with a diff (TTY);
+                           without a TTY prints the recipe
+  --json                   Print a single machine-readable document
+                           (wolf.upgrade/1) on stdout
+  -h, --help               display help for command
 ```
 
 ### wolf doctor
@@ -1601,6 +1614,8 @@ Options:
   --yes             Apply the plan without interactive confirmation
   --no-banner       Do not print the banner: phase 1 already opened the section
   --state <path>    Phase-1 state file ({ from, to, startedAt })
+  --json            Print a single machine-readable document (wolf.upgrade/1)
+                    instead of the human report
   -h, --help        display help for command
 ```
 

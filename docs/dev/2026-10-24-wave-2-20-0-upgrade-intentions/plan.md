@@ -168,7 +168,9 @@ base:'0.0.0'|<stamp>}`, `saveSyncState` → `writeFileSync(tmp)` + `renameSync`;
       `npx tsc --noEmit`. RESULT: DONE; снапшоты обновлены, счётчики в тех же
       строках.
 
-- [ ] **T7. Реестр решений и глаголы `--resolve`.**
+- [x] **T7. Реестр решений и глаголы `--resolve`.**
+      Сделано → коммит `8d1a2a3` (106 точечных тестов: decisions 21, here 11, park 7,
+      renderer 43, projects 20, here-int 4; `npx tsc --noEmit` ok).
       Цель: одна команда разрешает конфликт, нумерация стабильна (design §4.7,
       §4.8, REQ-06 AC1–AC4). Контракт: `collectDecisions` (read-only, порядок
       реестр → карта → AGENTS.md → алфавит), `applyResolution` с матрицей
@@ -202,7 +204,9 @@ base:'0.0.0'|<stamp>}`, `saveSyncState` → `writeFileSync(tmp)` + `renameSync`;
       записей; keep не отменяется следующим проходом (сквозной тест); порядок и
       нумерация реестра совпадают с планами прохода.
 
-- [ ] **T8. `--show` и построчный diff.**
+- [x] **T8. `--show` и построчный diff.**
+      Сделано → коммит `1806c60` (line-diff 6, decisions 22, here-int 5, park 7,
+      here-unit 12; `npx tsc --noEmit` ok).
       Цель: осознанное снятие защиты (design §4.10, REQ-08 AC1/AC2).
       Контракт: `line-diff.ts` (LCS, лимиты входа/вывода, детерминизм),
       `--show <file|N>` read-only: protect, обе версии, diff локальный→эталон,
@@ -217,7 +221,9 @@ base:'0.0.0'|<stamp>}`, `saveSyncState` → `writeFileSync(tmp)` + `renameSync`;
       `npx tsc --noEmit`. RESULT: DONE; снапшот mtime/хэшей до/после `--show`
       идентичен; файл вне карты даёт `base: n/a`, exit 0.
 
-- [ ] **T9. `--review`: TTY-цикл и non-TTY рецепт.**
+- [x] **T9. `--review`: TTY-цикл и non-TTY рецепт.**
+      Сделано → коммит `9a168bb` (here-unit 17, park 8; TTY-цикл с diff и «ко всем
+      похожим», non-TTY рецепт без записей; `npx tsc --noEmit` ok).
       Цель: разбор по одному с diff и «ко всем похожим»; без TTY — готовый
       рецепт (design §4.9, REQ-07 AC1/AC2). Контракт: экран `[n/m]` с diff
       (≤ 40 строк), клавиши `t/k/p/v/s`, `a` с вопросом «ко всем N похожим?»,
@@ -235,7 +241,9 @@ base:'0.0.0'|<stamp>}`, `saveSyncState` → `writeFileSync(tmp)` + `renameSync`;
       завершает цикл с дайджестом; `diverged` печатается отдельной секцией и
       держит exit 2, но не нумеруется.
 
-- [ ] **T10. `--yes`: тихий take с бэкапом, дайджест, подсказка `--review`.**
+- [x] **T10. `--yes`: тихий take с бэкапом, дайджест, подсказка `--review`.**
+      Сделано → коммит `b32c5ff` (projects 23, here-int 6, park 9, project-step 10;
+      правило 6′ включается проходом, дайджест бэкапов §4.12; `npx tsc --noEmit` ok).
       Цель: CI-прогон без риска потери правок (design §4.12, REQ-10 AC1–AC3).
       Контракт: включение режима `takeMutated` в проходе (правило 6′ §4.3),
       бэкап → эталон → свидетель, дайджест «файл + путь бэкапа»,
@@ -260,7 +268,10 @@ base:'0.0.0'|<stamp>}`, `saveSyncState` → `writeFileSync(tmp)` + `renameSync`;
       `npx tsc --noEmit`. RESULT: DONE; восстановление из бэкапа + `=protect`
       проходит как сценарий; опция доходит до рендерера без второго обёрточного слоя.
 
-- [ ] **T11. `--json`: схема, сквозь re-exec, паритет с текстом.**
+- [x] **T11. `--json`: схема, сквозь re-exec, паритет с текстом.**
+      Сделано → коммит `55737b6` + регенерация `docs/reference/cli.md` (check 17,
+      upgrade-projects-unit 18, park 10; `JSON.parse(stdout)` один документ,
+      `n` = non-TTY текст; `npx tsc --noEmit` ok).
       Цель: стабильный машинный вывод (design §4.13, REQ-11 AC1–AC3), единая
       диспетчеризация флагов (design §4.18).
       Контракт: `wolf.upgrade/1` и `wolf.upgrade.check/1`, единственный JSON в
