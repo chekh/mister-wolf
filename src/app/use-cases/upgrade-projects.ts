@@ -65,10 +65,11 @@ export interface UpgradeRunResult {
 /** Статус проекта в проходе (REQ-05, палитра T3); T9 (--here) переиспользует
  * словарь точечным импортом — единая семантика статусов для одной поверхности. */
 export type OutcomeStatus = 'updated' | 'up-to-date' | 'needs-decision' | 'error';
-/** Статус плана: показан, пропущен (гварды прохода). */
-type PlanStatus = 'worktree' | 'pinned' | 'missing';
+/** Статус плана: показан, пропущен (гварды прохода). Экспорт (T7, §4.7):
+ *  реестр решений использует тот же фильтр — второй реализации статусов нет. */
+export type PlanStatus = 'worktree' | 'pinned' | 'missing';
 
-interface ProjectPlan {
+export interface ProjectPlan {
   name: string;
   /** realpath (несуществующий путь — как есть в реестре). */
   path: string;
@@ -248,7 +249,7 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
       title: SECTION_TITLE,
       children: [
         plansSection(plans, registered.length, duplicates, map),
-        projectsSection(outcomes),
+        projectsSection(outcomes, map),
         // Суффикс summary у renderer фиксирован («— Done») и не выражает
         // exit-таблицу — слово финальной строки передаёт оркестратор строкой.
         { kind: 'summary', counters, done: false },
@@ -261,8 +262,10 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
 }
 
 /** План одной записи реестра: realpath → статусы (порядок гвардов: missing →
- * worktree → pinned); состав/штамп — справочно, только для активных планов. */
-function planOf(entry: RegisteredProject): ProjectPlan {
+ * worktree → pinned); состав/штамп — справочно, только для активных планов.
+ * Экспорт (T7, design §4.7): `collectDecisions` нумерует те же активные проекты —
+ * второй реализации фильтра worktree/pinned/missing нет. */
+export function planOf(entry: RegisteredProject): ProjectPlan {
   let real: string;
   try {
     real = realpathSync(entry.path);
@@ -396,46 +399,43 @@ export const STATUS_TEXT: Record<OutcomeStatus, string> = {
 
 /** Файловые строки деталей проекта (REQ-01, design §4.15): каждый needs-decision
  *  назван путём (счётчики выше сохраняются дословно), защищённые и принятые
- *  локальные — отдельными строками, лица памяти (diverged) — по owner_skill,
- *  а не как пути файлов. Единственная реализация для прохода и `--here`. */
+ *  локальные — отдельными строками. Единственная реализация для прохода и
+ *  `--here`. Лица печатает владелец seed-строки (секция проекта) — иначе одно
+ *  diverged-лицо давало две строки `faces:` (m-1). */
 /** Путь карты (`base/agents/x.md`) → проектный путь (`.opencode/agents/x.md`):
- *  REQ-01 требует путь относительно корня проекта, а verify.items для целей
- *  карты несут путь карты. Перевод — тем же projectPath, второй таблицы нет. */
-const MAP_KINDS: Array<[string, FileKind]> = [
-  ['base/agents/', 'agent'],
-  ['base/skills/', 'skill'],
-  ['base/commands/', 'command'],
-  ['opencode/plugins/', 'plugin'],
-];
-
-function displayName(i: VerifyResult['items'][number]): string {
-  if (i.kind !== 'file') return i.target;
-  for (const [prefix, kind] of MAP_KINDS) {
-    if (i.target.startsWith(prefix)) return projectPath({ path: i.target, kind, category: 'new' });
-  }
-  return i.target;
+ *  REQ-01 требует путь относительно корня проекта, а verify.target для целей
+ *  карты несёт путь карты. `kind` берётся из `map.files` (m-3) — вторых таблиц
+ *  префиксов нет. */
+function kindIndex(map: UpdateMap): Map<string, FileKind> {
+  const kinds = new Map<string, FileKind>();
+  for (const entry of map.files) kinds.set(entry.path, entry.kind);
+  return kinds;
 }
 
-export function verifyNameLines(verify: VerifyResult, report?: ProjectReport): ReportNode[] {
+function displayName(i: VerifyResult['items'][number], kinds: Map<string, FileKind>): string {
+  if (i.kind !== 'file') return i.target;
+  const kind = kinds.get(i.target);
+  return kind ? projectPath({ path: i.target, kind, category: 'new' }) : i.target;
+}
+
+export function verifyNameLines(verify: VerifyResult, map: UpdateMap): ReportNode[] {
   const out: ReportNode[] = [];
+  const kinds = kindIndex(map);
   const named = verify.items.filter((i) => i.needsDecision && i.code !== 'diverged');
   if (named.length > 0) {
-    out.push(line('warn', `needs decision: ${named.map((i) => `${displayName(i)} (${i.code})`).join(', ')}`, true));
+    out.push(
+      line('warn', `needs decision: ${named.map((i) => `${displayName(i, kinds)} (${i.code})`).join(', ')}`, true)
+    );
   }
   const protectedCount = verify.items.filter((i) => i.code === 'protected').length;
   if (protectedCount > 0) out.push(line('info', `${protectedCount} protected (intentional)`, true));
-  const kept = verify.items.filter((i) => i.code === 'kept').map(displayName);
+  const kept = verify.items.filter((i) => i.code === 'kept').map((i) => displayName(i, kinds));
   if (kept.length > 0) out.push(line('info', `${kept.length} kept (local): ${kept.join(', ')}`, true));
-  // Лицо — объект памяти (зона Стюарда), поэтому имя владельца, не путь шаблона.
-  const diverged = (report?.seed ?? [])
-    .filter((s) => s.kind === 'diverged')
-    .map((s) => s.file.replace(/-playbook\.md$/, ''));
-  if (diverged.length > 0) out.push(line('warn', `faces: ${diverged.map((f) => `${f} diverged`).join(', ')}`, true));
   return out;
 }
 
 /** Секция проектов: строка-статус на проект + детали шага (REQ-05, палитра T3). */
-function projectsSection(outcomes: StepOutcome[]): ReportNode {
+function projectsSection(outcomes: StepOutcome[], map: UpdateMap): ReportNode {
   const children: ReportNode[] = [];
   for (const o of outcomes) {
     const marker: Marker = o.status === 'error' ? 'error' : o.status === 'needs-decision' ? 'warn' : 'ok';
@@ -465,7 +465,7 @@ function projectsSection(outcomes: StepOutcome[]): ReportNode {
     children.push(
       line(v.errors > 0 ? 'error' : v.needsDecision > 0 ? 'warn' : 'info', `verify: ${parts.join(' · ')}`, true)
     );
-    children.push(...verifyNameLines(r.verify, r));
+    children.push(...verifyNameLines(r.verify, map));
   }
   return { kind: 'section', title: 'Projects', children };
 }

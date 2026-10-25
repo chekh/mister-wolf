@@ -13,8 +13,10 @@ import { join } from 'path';
 import yaml from 'js-yaml';
 import {
   runUpgradeHere,
+  runUpgradeResolve,
   type UpgradeHereDeps,
   type UpgradeHereResult,
+  type UpgradeResolveDeps,
 } from '../../src/adapters/cli/commands/memory-upgrade.js';
 import { runProjectStep, type ProjectStepDeps } from '../../src/app/use-cases/project-step.js';
 import { loadUpdateMap, type UpdateMap } from '../../src/adapters/fs/update-map.js';
@@ -29,6 +31,8 @@ import { FsMemoryLock } from '../../src/adapters/fs/memory-lock.js';
 import { eventsPath, memoryDir } from '../../src/adapters/fs/project-paths.js';
 import { parseStamp } from '../../src/adapters/render/stamp.js';
 import { renderReport } from '../../src/adapters/cli/report-renderer.js';
+import { parseProtect } from '../../src/domain/protect-key.js';
+import { diffParkSnapshots, takeParkSnapshot } from '../helpers/park-snapshot.js';
 
 // R14.1 «npm не звался»: any spawn через стаб кидает — если --here-путь
 // попытается запустить npm-фазу, шаг упадёт (execFileSync и пр. остаются реальными).
@@ -288,5 +292,75 @@ describe('runUpgradeHere: полный шаг в cwd (T9, REQ-14)', () => {
     // реестр --here не трогает: pinned-запись не перезаписана
     const yamlAfter = readFileSync(registryFile, 'utf-8');
     expect(yamlAfter).toBe(yamlBefore);
+  });
+});
+
+/* ---------- --resolve на живом проекте (T7, REQ-06, design §4.7/§4.8) ---------- */
+
+/** deps `--resolve` для cwd: те же адаптеры, что у шага (шаблоны/лица релиза). */
+function resolveDeps(cwd: string): UpgradeResolveDeps {
+  const renderer = new OpencodeBaseSetRenderer(fx.templatesRoot, { setVersion: NEW_SET });
+  return {
+    here: cwd,
+    loadMap: () => fx.map,
+    inspect: (root) => renderer.inspectBaseSet(root, { models: 'omit' }),
+    liveFaces: async (root) => {
+      const faces = await new MarkdownMemoryStore(root).list({ type: 'face' });
+      return faces.map((o) => {
+        const face = o as FaceObject;
+        return { ownerSkill: face.owner_skill, version: face.version, body: face.body, initiator: face.initiator };
+      });
+    },
+    faceTemplates: playbookFiles(join(fx.templatesRoot, 'playbooks')),
+    renderer,
+  };
+}
+
+describe('runUpgradeResolve --here (T7): решение по номеру и защита от потери данных', () => {
+  it('R06-1: --resolve 1=protect защищает файл; следующий полный шаг его не трогает, exit 0', async () => {
+    const park = mkTmp('wolf-here-resolve-');
+    const proj = await bootstrapProject(park, 'p-resolve');
+    const target = join(proj, '.opencode/agents/mr-wolf.md');
+    // фикстурные шаблоны без YAML-frontmatter: protect требует его (матрица §4.8)
+    writeFileSync(target, `---\nname: mr-wolf\n---\n${readFileSync(target, 'utf-8')}\n<!-- local edit -->\n`);
+    const local = readFileSync(target, 'utf-8');
+
+    const res = await runUpgradeResolve(resolveDeps(proj), { here: true, cwd: proj, values: ['1=protect'] });
+
+    expect(res.exitCode).toBe(0);
+    const text = plain(res);
+    expect(text).toContain('resolved: 1 (protect: 1)');
+    expect(text).toContain('protect p-resolve/.opencode/agents/mr-wolf.md');
+    expect(parseProtect(readFileSync(target, 'utf-8'))).toMatchObject({ held: true, value: 'true' });
+    expect(readFileSync(target, 'utf-8')).toContain('<!-- local edit -->'); // контент цел
+
+    // следующий полный шаг: защищённый файл не перезаписан (правило 2 §4.3)
+    const after = readFileSync(target, 'utf-8');
+    const pass = await runUpgradeHere(hereDeps(proj), { yes: true });
+    expect(pass.exitCode).toBe(0);
+    expect(readFileSync(target, 'utf-8')).toBe(after);
+    expect(plain(pass)).toContain('1 protected (intentional)');
+    expect(local).toContain('Old agent body'); // санити-якорь локального контента
+  });
+
+  it('R06-3: неизвестный путь — exit 1, ни один файл не изменён', async () => {
+    const park = mkTmp('wolf-here-resolve-');
+    const proj = await bootstrapProject(park, 'p-resolve-unknown');
+    const before = takeParkSnapshot(proj);
+
+    const res = await runUpgradeResolve(resolveDeps(proj), {
+      here: true,
+      cwd: proj,
+      values: ['.opencode/agents/nope.md=take'],
+    });
+
+    expect(res.exitCode).toBe(1);
+    expect(plain(res)).toContain('unknown target .opencode/agents/nope.md');
+    expect(plain(res)).toContain('Failed');
+    expect(diffParkSnapshots(before, takeParkSnapshot(proj))).toMatchObject({
+      addedFiles: [],
+      removedFiles: [],
+      changedFiles: [],
+    });
   });
 });

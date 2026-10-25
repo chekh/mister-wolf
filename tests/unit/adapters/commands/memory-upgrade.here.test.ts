@@ -6,11 +6,14 @@
 // = все removed-цели карты, статус-словарь T7 (statusOf). Моки runStep/
 // makeStepDeps; полный шаг на реальных адаптерах — integration/upgrade-here.test.ts.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, mkdtempSync, rmSync } from 'fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { basename, join } from 'path';
+import { Command } from 'commander';
 import {
+  memoryUpgradeCommand,
   runUpgradeHere,
+  upgradeRoute,
   type UpgradeHereDeps,
   type UpgradeHereResult,
 } from '../../../../src/adapters/cli/commands/memory-upgrade.js';
@@ -232,5 +235,71 @@ describe('runUpgradeHere (T9: --here, REQ-14)', () => {
     expect(statusOf(stepReport(proj, { sync: CHANGED_SYNC }))).toBe('updated');
     expect(plain(active)).toContain(`${basename(proj)} — updated`);
     expect(active.exitCode).toBe(0);
+  });
+});
+
+/* ---------- диспетчеризация §4.18: --resolve в фазе 1 (T7) ---------- */
+
+describe('upgradeRoute: порядок режимов и несовместимые пары (§4.18)', () => {
+  it('--check сильнее --here; --resolve — отдельный режим; --yes/--check с --resolve — ошибка', () => {
+    expect(upgradeRoute({ check: true, here: true })).toEqual({ mode: 'check' });
+    expect(upgradeRoute({ resolve: ['1=keep'] })).toEqual({ mode: 'resolve' });
+    expect(upgradeRoute({ resolve: ['1=keep'], here: true })).toEqual({ mode: 'resolve' });
+    expect(upgradeRoute({ here: true })).toEqual({ mode: 'here' });
+    expect(upgradeRoute({})).toEqual({ mode: 'pass' });
+    expect(upgradeRoute({ resolve: ['3=protect'], yes: true }).error).toMatch(/--yes describes a pass/);
+    expect(upgradeRoute({ resolve: ['3=protect'], check: true }).error).toMatch(/--check is read-only/);
+  });
+});
+
+describe('--resolve (commander): решение не теряется и npm-фаза не запускается (R06-9)', () => {
+  it('парковый --resolve на пустом реестре: exit 1 по неизвестной цели, npm не позван', async () => {
+    const home = mkdtempSync(join(tmpdir(), 'wolf-resolve-cli-'));
+    const shimDir = join(home, 'npm-shim');
+    const marker = join(home, 'npm-was-called');
+    mkdirSync(shimDir, { recursive: true });
+    const shim = join(shimDir, 'npm');
+    writeFileSync(shim, `#!/bin/sh\ntouch '${marker}'\nprintf '%s\\n' 9.9.9\n`);
+    chmodSync(shim, 0o755);
+
+    const out: string[] = [];
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(((c: string) => {
+      out.push(String(c));
+      return true;
+    }) as typeof process.stdout.write);
+    const prevPath = process.env.PATH;
+    const prevXdg = process.env.XDG_CONFIG_HOME;
+    const prevExit = process.exitCode;
+    process.env.PATH = `${shimDir}:${prevPath ?? ''}`;
+    process.env.XDG_CONFIG_HOME = join(home, '.config'); // пустой изолированный реестр
+    try {
+      const program = new Command();
+      program.addCommand(memoryUpgradeCommand());
+      await program.parseAsync(['node', 'wolf', 'upgrade', '--resolve', '1=keep', '--resolve', '1=keep'], {
+        from: 'node',
+      });
+    } finally {
+      process.env.PATH = prevPath;
+      if (prevXdg === undefined) delete process.env.XDG_CONFIG_HOME;
+      else process.env.XDG_CONFIG_HOME = prevXdg;
+      writeSpy.mockRestore();
+    }
+    const exitCode = process.exitCode;
+    process.exitCode = prevExit;
+
+    expect(existsSync(marker)).toBe(false); // npm-фаза не выполнялась (флаг не потерян)
+    expect(exitCode).toBe(1);
+    const text = out.join('\n');
+    expect(text).toContain('unknown target 1'); // режим resolve дошёл до разбора, а не до npm
+    expect(text).toContain('Failed');
+    rmSync(home, { recursive: true, force: true });
+  });
+
+  it('несовместимая пара --resolve --yes: UserFacingError, записей нет', async () => {
+    const program = new Command();
+    program.addCommand(memoryUpgradeCommand());
+    await expect(
+      program.parseAsync(['node', 'wolf', 'upgrade', '--resolve', '3=protect', '--yes'], { from: 'node' })
+    ).rejects.toThrow(/--yes describes a pass/);
   });
 });

@@ -18,7 +18,11 @@ import {
   type UpgradeRunResult,
 } from '../../src/app/use-cases/upgrade-projects.js';
 // T8: npm-фаза CLI (мок installLatest → throw) — сбой до spawn, слепок парка.
-import { runUpgradeWithProjects } from '../../src/adapters/cli/commands/memory-upgrade.js';
+import {
+  runUpgradeResolve,
+  runUpgradeWithProjects,
+  type UpgradeResolveDeps,
+} from '../../src/adapters/cli/commands/memory-upgrade.js';
 import { UserFacingError } from '../../src/domain/errors.js';
 import { runProjectStep, type ProjectReport, type ProjectStepDeps } from '../../src/app/use-cases/project-step.js';
 import { loadUpdateMap, type UpdateMap } from '../../src/adapters/fs/update-map.js';
@@ -35,6 +39,7 @@ import { HashIdGenerator } from '../../src/adapters/fs/hash-id-generator.js';
 import { FsMemoryLock } from '../../src/adapters/fs/memory-lock.js';
 import { eventsPath, memoryDir } from '../../src/adapters/fs/project-paths.js';
 import { parseStamp } from '../../src/adapters/render/stamp.js';
+import { loadSyncState } from '../../src/adapters/render/sync-state.js';
 import { renderReport } from '../../src/adapters/cli/report-renderer.js';
 import { diffParkSnapshots, takeParkSnapshot, type ParkSnapshotDiff } from '../helpers/park-snapshot.js';
 
@@ -472,5 +477,124 @@ describe('runUpgradeProjects: фикстурный парк (T7)', () => {
       write.mockRestore();
       log.mockRestore();
     }
+  });
+});
+
+/* ---------- парковый --resolve (T7, REQ-06/§4.18): без npm и re-exec ---------- */
+
+/** deps `--resolve` на фикстурном парке: тот же реестр/карта/адаптеры, что у прохода. */
+function resolveDeps(configDir: string, liveFaces?: UpgradeResolveDeps['liveFaces']): UpgradeResolveDeps {
+  const renderer = new OpencodeBaseSetRenderer(fx.templatesRoot, { setVersion: NEW_SET });
+  return {
+    registry: new ProjectsRegistry(configDir),
+    loadMap: () => fx.map,
+    inspect: (root) => renderer.inspectBaseSet(root, { models: 'omit' }),
+    liveFaces:
+      liveFaces ??
+      (async (root) => {
+        const faces = await new MarkdownMemoryStore(root).list({ type: 'face' });
+        return faces.map((o) => {
+          const face = o as FaceObject;
+          return { ownerSkill: face.owner_skill, version: face.version, body: face.body, initiator: face.initiator };
+        });
+      }),
+    faceTemplates: playbookFiles(join(fx.templatesRoot, 'playbooks')),
+    renderer,
+  };
+}
+
+describe('runUpgradeResolve парк (T7): нумерация реестра, keep не отменяется проходом', () => {
+  it('R06-5/N02-2: --resolve 1=keep, затем полный проход — файл байт-в-байт, exit 0', async () => {
+    const park = mkTmp('wolf-upgrade-park-resolve-');
+    const clean = await bootstrapProject(park, 'p-clean');
+    const mutated = await bootstrapProject(park, 'p-mutated');
+    const target = join(mutated, '.opencode/agents/mr-wolf.md');
+    writeFileSync(target, `${readFileSync(target, 'utf-8')}\n<!-- local user edit -->\n`);
+    const accepted = readFileSync(target, 'utf-8');
+
+    const configDir = mkTmp('wolf-upgrade-cfg-');
+    writeRegistry(configDir, [entryOf(clean), entryOf(mutated)]);
+
+    const res = await runUpgradeResolve(resolveDeps(configDir), {
+      here: false,
+      cwd: park,
+      values: ['1=keep'],
+    });
+    expect(res.exitCode).toBe(0);
+    expect(res.registry.targets).toEqual([]);
+    const text = plain({ exitCode: res.exitCode, report: res.report, counters: [] });
+    expect(text).toContain('resolved: 1 (keep: 1)');
+    expect(text).toContain('keep p-mutated/.opencode/agents/mr-wolf.md');
+    expect(text).toContain('no decisions — nothing needs a decision');
+    expect(readFileSync(target, 'utf-8')).toBe(accepted);
+    const entry = loadSyncState(mutated).files['.opencode/agents/mr-wolf.md'] as {
+      hash: string;
+      origin: string;
+      base: string;
+    };
+    expect(entry.origin).toBe('keep');
+    expect(entry.base).toBe(NEW_SET);
+
+    // полный проход: keep держится (правило 6.5), файл не перезаписан, exit 0
+    const stepReports: ProjectReport[] = [];
+    const lockDir = mkTmp('wolf-upgrade-lockdir-');
+    const pass = await runUpgradeProjects(parkDeps(configDir, lockDir, park, stepReports), { yes: true });
+    expect(pass.exitCode).toBe(0);
+    expect(readFileSync(target, 'utf-8')).toBe(accepted);
+    expect(plain(pass)).toContain('p-mutated — updated');
+    // свидетель остаётся keep: правка после прохода снова даёт решение
+    expect((loadSyncState(mutated).files['.opencode/agents/mr-wolf.md'] as { origin: string }).origin).toBe('keep');
+  });
+
+  it('R06-2: --resolve 1=take в парке — бэкап, эталон, дайджест с путём бэкапа', async () => {
+    const park = mkTmp('wolf-upgrade-park-resolve-');
+    const proj = await bootstrapProject(park, 'p-take');
+    const target = join(proj, '.opencode/agents/mr-wolf.md');
+    writeFileSync(target, `${readFileSync(target, 'utf-8')}\n<!-- local user edit -->\n`);
+    const local = readFileSync(target, 'utf-8');
+    const configDir = mkTmp('wolf-upgrade-cfg-');
+    writeRegistry(configDir, [entryOf(proj)]);
+
+    const res = await runUpgradeResolve(resolveDeps(configDir), { here: false, cwd: park, values: ['1=take'] });
+
+    expect(res.exitCode).toBe(0);
+    expect(res.backups).toHaveLength(1);
+    const backup = res.backups[0]!.backup;
+    expect(backup).toMatch(/^\.wolf\/backup\/upgrade\/\d{4}-\d{2}-\d{2}\/\.opencode\/agents\/mr-wolf\.md$/);
+    expect(readFileSync(join(proj, backup), 'utf-8')).toBe(local);
+    const fresh = new OpencodeBaseSetRenderer(fx.templatesRoot, { setVersion: NEW_SET }).renderFreshFile(
+      proj,
+      '.opencode/agents/mr-wolf.md'
+    );
+    expect(readFileSync(target, 'utf-8')).toBe(fresh);
+    expect(plain({ exitCode: res.exitCode, report: res.report, counters: [] })).toContain(`(local saved: ${backup})`);
+  });
+
+  it('R06-3/N01-3: неизвестная цель — exit 1 без записей; diverged держит exit 2 отдельной секцией', async () => {
+    const park = mkTmp('wolf-upgrade-park-resolve-');
+    const proj = await bootstrapProject(park, 'p-diverged');
+    const target = join(proj, '.opencode/agents/mr-wolf.md');
+    writeFileSync(target, `${readFileSync(target, 'utf-8')}\n<!-- local user edit -->\n`);
+    const configDir = mkTmp('wolf-upgrade-cfg-');
+    writeRegistry(configDir, [entryOf(proj)]);
+
+    const unknown = await runUpgradeResolve(resolveDeps(configDir), { here: false, cwd: park, values: ['99=take'] });
+    expect(unknown.exitCode).toBe(1);
+    expect(plain({ exitCode: unknown.exitCode, report: unknown.report, counters: [] })).toContain('unknown target 99');
+
+    // diverged подставляем через liveFaces (read-only зеркало предиката посева)
+    const diverged = await runUpgradeResolve(
+      resolveDeps(configDir, async () => [
+        { ownerSkill: 'executor-lead', version: '1', body: 'Local steward-era body.\n', initiator: 'steward' },
+      ]),
+      { here: false, cwd: park, values: ['1=keep'] }
+    );
+    expect(diverged.exitCode).toBe(2);
+    const text = plain({ exitCode: diverged.exitCode, report: diverged.report, counters: [] });
+    expect(text).toContain('steward zone (not addressable by --resolve): 1');
+    expect(text).toContain('faces/executor-lead.md  diverged  v1');
+    expect(text).toContain('Done with attention');
+    expect(diverged.registry.targets).toEqual([]); // адресуемое решение применено
+    expect(diverged.registry.diverged).toHaveLength(1);
   });
 });

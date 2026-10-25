@@ -554,6 +554,14 @@ describe('protect, исцеление штампа, kept, take (§4.3)', () => {
     expect(renderer().renderFreshFile!(proj, AGENT)).toContain('wolf:rendered base=mr-wolf.md');
     expect(renderer().renderFreshFile!(proj, '.opencode/agents/nope.md')).toBeNull();
   });
+
+  it('renderFreshFile(AGENTS.md): штампованный эталон карты agents_md (T7, §4.8/§4.10)', () => {
+    // AGENTS.md — цель карты, но не файл templateFiles: эталон нужен `--show`/`take`
+    const fresh = renderer().renderFreshFile!(proj, 'AGENTS.md');
+    expect(fresh).toContain('Протокол: skill.'); // подстановка та же, что у прохода
+    expect(fresh).toContain('<!-- wolf:onboarding v2 -->');
+    expect(parseStamp(fresh!)).toEqual({ base: 'AGENTS.md', set: '9.9.9' });
+  });
 });
 
 // F1-ревью (волна 2.20.0): M-1 (init на штампованном AGENTS.md 2.19.0),

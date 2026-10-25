@@ -457,6 +457,17 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
 
   /** Свежий рендер одного файла карты (эталон для `--show` и `behind`); null — вне карты. */
   renderFreshFile(baseDir: string, rel: string, opts?: RenderBaseSetOptions): string | null {
+    // AGENTS.md — цель карты (agents_md), но не файл templateFiles: эталон для
+    // `--show`/`take` (design §4.8/§4.10) — штампованный whole-file рендер.
+    if (rel === 'AGENTS.md') {
+      const paths = this.agentsMdPaths(baseDir);
+      if (!paths) return null;
+      return insertStamp(
+        this.agentsMdContent(paths.tplPath, opts?.models ?? 'omit'),
+        { base: 'AGENTS.md', set: this.setVersion },
+        'AGENTS.md'
+      );
+    }
     for (const f of this.templateFiles(baseDir)) {
       if (relative(baseDir, f.target) === rel) return this.renderContent(f, opts?.bake, opts?.models ?? 'omit');
     }

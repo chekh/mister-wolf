@@ -15,6 +15,17 @@ import {
   verifyNameLines,
   type OutcomeStatus,
 } from '../../../app/use-cases/upgrade-projects.js';
+import {
+  applyResolutions,
+  collectDecisions,
+  parseResolveValues,
+  planResolutions,
+  type AppliedResolution,
+  type DecisionDeps,
+  type DecisionRegistry,
+  type DivergedFace,
+  type ResolutionVerb,
+} from '../../../app/use-cases/decisions.js';
 import { projectPath } from '../../../app/use-cases/verify-against-map.js';
 import { compareVersions, loadUpdateMap, type UpdateMap } from '../../fs/update-map.js';
 import { ProjectsRegistry, type RegisteredProject } from '../../fs/projects-registry.js';
@@ -31,6 +42,7 @@ import { SystemClock } from '../../fs/system-clock.js';
 import { HashIdGenerator } from '../../fs/hash-id-generator.js';
 import { FsMemoryLock } from '../../fs/memory-lock.js';
 import { eventsPath, indexPath, memoryDir } from '../../fs/project-paths.js';
+import type { FaceObject } from '../../../app/use-cases/create-face-version.js';
 import { colorsEnabled } from '../../../domain/facet-colors.js';
 import {
   renderReport,
@@ -220,7 +232,7 @@ function planSection(cwd: string, map: UpdateMap): ReportNode {
 
 /** Детали шага одного проекта (REQ-05): base-set/лица/схема/сверка — формат
  * строк T7 projectsSection. */
-function stepDetailLines(report: ProjectReport): ReportNode[] {
+function stepDetailLines(report: ProjectReport, map: UpdateMap): ReportNode[] {
   const out: ReportNode[] = [];
   const counts: Record<string, number> = { updated: 0, created: 0, appended: 0, identical: 0, mutated: 0, conflict: 0 };
   for (const o of report.sync.outcomes) {
@@ -250,7 +262,7 @@ function stepDetailLines(report: ProjectReport): ReportNode[] {
   if (v.needsDecision > 0) parts.push(`${v.needsDecision} needs decision`);
   if (v.errors > 0) parts.push(`${v.errors} errors`);
   out.push(line(v.errors > 0 ? 'error' : v.needsDecision > 0 ? 'warn' : 'info', `verify: ${parts.join(' · ')}`, true));
-  out.push(...verifyNameLines(report.verify, report));
+  out.push(...verifyNameLines(report.verify, map));
   return out;
 }
 
@@ -324,7 +336,7 @@ export async function runUpgradeHere(deps: UpgradeHereDeps, opts: UpgradeHereOpt
       error !== null ? `${basename(deps.cwd)} — error: ${error}` : `${basename(deps.cwd)} — ${STATUS_TEXT[status]}`,
       status === 'up-to-date'
     ),
-    ...(report ? stepDetailLines(report) : []),
+    ...(report ? stepDetailLines(report, map) : []),
     { kind: 'summary', counters, done: false },
     line(marker, finalText),
   ];
@@ -397,8 +409,190 @@ async function upgradeHereAction(cwd: string, yes: boolean): Promise<void> {
   process.exitCode = res.exitCode;
 }
 
-/* ---------- --check парковая сводка (REQ-08, T10): read-only, 0 мутаций ---------- */
-// Состав — истина, штамп — свидетель (инвентаризация §3.4): класс проекта —
+/* ---------- диспетчеризация флагов (design §4.18) ---------- */
+// Единственная точка порядка: проверка комбинаций → --check (сильнее --here) →
+// --show (T8) → --review (T9) → --resolve → --here → npm+re-exec. Новые режимы
+// завершаются в фазе 1 на установленном CLI: флаг не теряется в re-exec.
+
+export type UpgradeMode = 'check' | 'resolve' | 'here' | 'pass';
+
+export interface UpgradeFlags {
+  check?: boolean;
+  here?: boolean;
+  yes?: boolean;
+  resolve?: string[];
+}
+
+export interface UpgradeRoute {
+  mode: UpgradeMode;
+  /** Несовместимая пара флагов: exit 1 без записей и без сети (§4.18). */
+  error?: string;
+}
+
+/** Чистый разбор режима (тестируется без IO); T8/T9/T11 расширяют набор флагов. */
+export function upgradeRoute(flags: UpgradeFlags): UpgradeRoute {
+  const resolve = flags.resolve ?? [];
+  const resolveGiven = resolve.length > 0;
+  if (resolveGiven && flags.yes === true) {
+    return { mode: 'pass', error: '--yes describes a pass, not single decisions — drop one of --resolve/--yes' };
+  }
+  if (resolveGiven && flags.check === true) {
+    return { mode: 'pass', error: '--check is read-only and --resolve writes — run them separately' };
+  }
+  if (flags.check === true) return { mode: 'check' }; // --check сильнее --here (§4.18)
+  if (resolveGiven) return { mode: 'resolve' };
+  if (flags.here === true) return { mode: 'here' };
+  return { mode: 'pass' };
+}
+
+/* ---------- --resolve (T7, REQ-06, design §4.7/§4.8/§4.12) ---------- */
+
+const RESOLVE_TITLE = 'wolf upgrade — resolve';
+
+/** Нумерованный список решений (§4.7/§4.9): один источник для --resolve и --review. */
+export function decisionLines(reg: DecisionRegistry): ReportNode[] {
+  if (reg.targets.length === 0) return [line('info', 'no decisions — nothing needs a decision', true)];
+  const noun = reg.targets.length === 1 ? 'file needs' : 'files need';
+  const out: ReportNode[] = [line('warn', `${reg.targets.length} ${noun} a decision`, true)];
+  for (const t of reg.targets) out.push(line('info', `  ${t.n}  ${t.project}  ${t.file}  ${t.code}`, true));
+  return out;
+}
+
+/** Лица памяти: видны и держат exit 2, но адресуемого глагола нет (зона Стюарда). */
+export function stewardZoneLines(diverged: DivergedFace[]): ReportNode[] {
+  if (diverged.length === 0) return [];
+  const out: ReportNode[] = [line('warn', `steward zone (not addressable by --resolve): ${diverged.length}`, true)];
+  for (const d of diverged) {
+    out.push(line('info', `  ${d.project}  ${d.file}  diverged  v${d.version ?? '?'}`, true));
+  }
+  return out;
+}
+
+/** Дайджест применения: счётчики по глаголам + файл и путь бэкапа (§4.12). */
+export function digestLines(applied: AppliedResolution[]): ReportNode[] {
+  if (applied.length === 0) return [line('info', 'resolved: none', true)];
+  const counts: Record<ResolutionVerb, number> = { take: 0, keep: 0, protect: 0, pin: 0 };
+  for (const a of applied) counts[a.verb]++;
+  const parts = (Object.entries(counts) as Array<[ResolutionVerb, number]>)
+    .filter(([, n]) => n > 0)
+    .map(([verb, n]) => `${verb}: ${n}`);
+  const out: ReportNode[] = [line('ok', `resolved: ${applied.length} (${parts.join(', ')})`)];
+  for (const a of applied) {
+    const suffix = a.backup !== undefined ? ` (local saved: ${a.backup})` : a.noop === true ? ' — no-op' : '';
+    out.push(line('info', `${a.verb} ${a.project}/${a.file}${suffix}`, true));
+  }
+  return out;
+}
+
+export interface UpgradeResolveDeps extends DecisionDeps {
+  /** Эталон одного файла (renderer.renderFreshFile) — вход глагола take. */
+  renderer: { renderFreshFile(baseDir: string, rel: string): string | null };
+  /** Часы бэкапа (дата каталога `<date>`); дефолт Date.now. */
+  now?: () => number;
+}
+
+export interface UpgradeResolveResult {
+  exitCode: 0 | 1 | 2;
+  report: ReportNode;
+  /** Реестр после применения (остаток решений). */
+  registry: DecisionRegistry;
+  backups: Array<{ file: string; backup: string }>;
+}
+
+/** `--resolve` целиком: сбор реестра (read-only) → разбор всех аргументов →
+ *  применение ровно заказанного → повторный сбор → дайджест и exit. Ни npm-фазы,
+ *  ни re-exec, ни проектного прохода (§4.8 «Взаимодействие с проходом»). */
+export async function runUpgradeResolve(
+  deps: UpgradeResolveDeps,
+  opts: { here: boolean; cwd: string; values: string[] }
+): Promise<UpgradeResolveResult> {
+  const map = deps.loadMap();
+  const collectDeps: DecisionDeps = { ...deps, loadMap: () => map };
+  const before = await collectDecisions(collectDeps);
+  const parsed = parseResolveValues(opts.values);
+  const plan =
+    parsed.errors.length > 0
+      ? { ops: [], errors: [] as string[] }
+      : planResolutions(before, map, parsed.requests, { here: opts.here, cwd: opts.cwd });
+  const errors = [...parsed.errors, ...plan.errors];
+
+  const children: ReportNode[] = [];
+  if (errors.length > 0) {
+    // Двухфазность (AC3): все ошибки собраны до первой записи — записей нет
+    for (const error of errors) children.push(line('error', error));
+    children.push(...decisionLines(before));
+    children.push(line('error', 'Failed'));
+    return { exitCode: 1, report: { kind: 'section', title: RESOLVE_TITLE, children }, registry: before, backups: [] };
+  }
+
+  const applied = await applyResolutions(plan.ops, { map, renderer: deps.renderer, now: deps.now });
+  const after = await collectDecisions(collectDeps);
+
+  for (const error of applied.errors) children.push(line('error', error));
+  children.push(...digestLines(applied.applied));
+  children.push(...decisionLines(after));
+  children.push(...stewardZoneLines(after.diverged));
+  const exitCode: 0 | 1 | 2 =
+    applied.errors.length > 0 ? 1 : after.targets.length > 0 || after.diverged.length > 0 ? 2 : 0;
+  const finalText = exitCode === 1 ? 'Failed' : exitCode === 2 ? 'Done with attention' : 'Done';
+  children.push(line(exitCode === 1 ? 'error' : exitCode === 2 ? 'warn' : 'ok', finalText));
+  return {
+    exitCode,
+    report: { kind: 'section', title: RESOLVE_TITLE, children },
+    registry: after,
+    backups: applied.backups,
+  };
+}
+
+/** Шаблоны лиц релиза (basename → сырой контент) — сравнение тела для diverged. */
+function faceTemplates(): Map<string, string> {
+  const dir = join(templatesRoot(), 'playbooks');
+  const files = new Map<string, string>();
+  if (existsSync(dir)) {
+    for (const f of readdirSync(dir)) {
+      if (f.endsWith('.md')) files.set(f, readFileSync(join(dir, f), 'utf-8'));
+    }
+  }
+  return files;
+}
+
+/** Прод-deps реестра решений: парк (реестр проектов) или `--here` (только cwd). */
+function decisionProdDeps(here: string | null, renderer: OpencodeBaseSetRenderer): DecisionDeps {
+  return {
+    ...(here === null ? { registry: new ProjectsRegistry(wolfUserConfigDir()) } : { here }),
+    loadMap: () => loadUpdateMap(),
+    inspect: (root) => renderer.inspectBaseSet(root, { models: 'omit' }),
+    liveFaces: async (root) => {
+      const faces = await new MarkdownMemoryStore(root).list({ type: 'face' });
+      return faces.map((o) => {
+        const face = o as FaceObject;
+        return {
+          ownerSkill: face.owner_skill,
+          version: face.version,
+          body: face.body,
+          initiator: face.initiator,
+        };
+      });
+    },
+    faceTemplates: faceTemplates(),
+  };
+}
+
+/** CLI-обвязка `--resolve`: прод-deps + печать отчёта + exit-код. */
+async function upgradeResolveAction(values: string[], here: boolean): Promise<void> {
+  const cwd = safeCwd();
+  const renderer = new OpencodeBaseSetRenderer(templatesRoot(), {
+    harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
+  });
+  const res = await runUpgradeResolve(
+    { ...decisionProdDeps(here ? cwd : null, renderer), renderer },
+    { here, cwd, values }
+  );
+  process.stdout.write(`${renderReport(res.report, termEnv(process.stdout, process.env))}\n`);
+  process.exitCode = res.exitCode;
+}
+
+/* ---------- --check парковая сводка (REQ-08, T10): read-only, 0 мутаций ---------- */ // Состав — истина, штамп — свидетель (инвентаризация §3.4): класс проекта —
 // контентная сверка целей карты установленного пакета с фактическими файлами
 // (deps.inspect = renderer.inspectBaseSet, без записей), штампы — справочно.
 // Read-only не падает: любые сбои — строки отчёта, exit всегда 0.
@@ -628,13 +822,18 @@ export async function runUpgradeCheck(deps: UpgradeCheckDeps): Promise<UpgradeCh
 
 /** CLI-обвязка check-сводки (REQ-08): реестр — как projects (wolfUserConfigDir),
  *  инспекция — read-only inspectBaseSet ('omit' — паритет sync-рендера);
- *  exit не меняется (--check всегда 0). */
-async function upgradeCheckAction(viewVersion: () => Promise<string>): Promise<void> {
+ *  exit не меняется (--check всегда 0). `--here` сужает сводку до cwd без
+ *  чтения реестра (design §4.18: `--check` сильнее `--here`); полная
+ *  here-инспекция с секцией Protections — T13. */
+async function upgradeCheckAction(viewVersion: () => Promise<string>, here?: string): Promise<void> {
   const renderer = new OpencodeBaseSetRenderer(templatesRoot(), {
     harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
   });
   const res = await runUpgradeCheck({
-    registry: new ProjectsRegistry(wolfUserConfigDir()),
+    registry:
+      here === undefined
+        ? new ProjectsRegistry(wolfUserConfigDir())
+        : { listStrict: async () => [{ path: here, schema_version: 2, initialized_at: '' }] },
     loadMap: () => loadUpdateMap(),
     registryVersion: viewVersion,
     installedVersion: readInstalledVersion,
@@ -734,20 +933,39 @@ export async function runUpgradeWithProjects(
   }
 }
 
+/** commander-коллектор повторяемого `--resolve` (значение может нести список через запятую). */
+function collectResolve(value: string, previous: string[]): string[] {
+  return [...previous, value];
+}
+
 export function memoryUpgradeCommand(): Command {
   return new Command('upgrade')
     .description(
-      'One command updates everything: npm phase (npm install -g mister-wolf@latest) followed by the registered-projects pass; --check only reports CLI + park freshness, no install; --here runs the full project update step in the current directory only (no npm self-update, no registry)'
+      'One command updates everything: npm phase (npm install -g mister-wolf@latest) followed by the registered-projects pass; --check only reports CLI + park freshness, no install; --here runs the full project update step in the current directory only (no npm self-update, no registry); --resolve applies owner decisions (<file|N>=take|keep|protect|pin) without a pass'
     )
     .option('--check', 'Only check for a newer version, do not install anything')
     .option('--here', 'Update this project only: full project step in cwd (no npm, no re-exec, no registry)')
     .option('--yes', 'Apply the plan without interactive confirmation (--here or the projects pass)')
-    .action(async (options: { check?: boolean; here?: boolean; yes?: boolean }) => {
-      if (options.here === true) {
-        await upgradeHereAction(safeCwd(), options.yes === true);
+    .option(
+      '--resolve <target=verb>',
+      'Resolve a decision: <file|N>=take|keep|protect|pin (repeatable, comma-separated)',
+      collectResolve,
+      []
+    )
+    .action(async (options: { check?: boolean; here?: boolean; yes?: boolean; resolve?: string[] }) => {
+      const route = upgradeRoute(options);
+      if (route.error !== undefined) throw new UserFacingError(route.error);
+      const cwd = safeCwd();
+      if (route.mode === 'resolve') {
+        // Решения применяются в фазе 1: без npm-фазы, re-exec и прохода (§4.18)
+        await upgradeResolveAction(options.resolve ?? [], options.here === true);
+        return;
+      }
+      if (route.mode === 'here') {
+        await upgradeHereAction(cwd, options.yes === true);
         return; // npm-ветка при --here не выполняется вообще (REQ-14)
       }
-      const checkOnly = options.check === true;
+      const checkOnly = route.mode === 'check';
       // npm view один на запуск: CLI-часть и парковая сводка делят результат
       let available: string | null = null;
       const viewOnce = async (): Promise<string> => {
@@ -761,12 +979,13 @@ export function memoryUpgradeCommand(): Command {
         registryVersion: viewOnce,
         installLatest,
       };
-      if (options.check === true) {
+      if (route.mode === 'check') {
         printOutcome(await runUpgrade(deps, true));
-        await upgradeCheckAction(viewOnce); // порядок: CLI-версии → парк (REQ-08)
+        // порядок: CLI-версии → парк (REQ-08); --here сужает до cwd (read-only)
+        await upgradeCheckAction(viewOnce, options.here === true ? cwd : undefined);
         return;
       }
-      // npm-фаза + re-exec фазы 2 (T8): --here выше вышел раньше, re-exec там нет
+      // npm-фаза + re-exec фазы 2 (T8): режимы выше вышли раньше, re-exec там нет
       await runUpgradeWithProjects(deps, { yes: options.yes === true });
     });
 }
