@@ -8,7 +8,7 @@
 // differs/mutated/missing/foreign (AC6). Полный парк на реальных адаптерах —
 // integration/upgrade-check.test.ts (R08.1).
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { Command } from 'commander';
@@ -16,10 +16,12 @@ import {
   classifyProject,
   memoryUpgradeCommand,
   runUpgradeCheck,
+  runUpgradeCheckHere,
+  upgradeRoute,
   type UpgradeCheckDeps,
   type UpgradeCheckResult,
 } from '../../../../src/adapters/cli/commands/memory-upgrade.js';
-import type { InspectAction, InspectOutcome } from '../../../../src/ports/base-set-renderer.port.js';
+import type { InspectAction, InspectOutcome, ProtectEntry } from '../../../../src/ports/base-set-renderer.port.js';
 import { OpencodeBaseSetRenderer } from '../../../../src/adapters/render/opencode/opencode-renderer.js';
 import type { UpdateMap } from '../../../../src/adapters/fs/update-map.js';
 import { renderReport } from '../../../../src/adapters/cli/report-renderer.js';
@@ -458,5 +460,168 @@ describe('--json: несовместимая пара с --review (design §4.18
     await expect(
       program.parseAsync(['node', 'wolf', 'upgrade', '--review', '--json'], { from: 'node' })
     ).rejects.toThrow(/--review is interactive; --json is not supported/);
+  });
+});
+
+/* ---------- Protections (§4.11, REQ-09) и --here --check (NFR-03) ---------- */
+
+const protectEntry = (over: Partial<ProtectEntry> = {}): ProtectEntry => ({
+  project: '/park/p-one',
+  file: '.opencode/agents/mr-wolf.md',
+  value: '2.18.5',
+  recognized: true,
+  stamp: '2.18.5',
+  base: MINI_MAP.version,
+  behind: true,
+  ...over,
+});
+
+describe('Protections (§4.11): секция печатается всегда и последней в --check', () => {
+  it('R09-1: путь, значение и дрейф каждой защиты; секция после проектов, перед Done', async () => {
+    const park = mkTmp('wolf-check-prot-');
+    const proj = join(park, 'p-protected');
+    mkdirSync(proj, { recursive: true });
+    const res = await runUpgradeCheck(
+      checkDeps({
+        registry: { listStrict: async () => [{ path: proj, schema_version: 2, initialized_at: 't' }] },
+        inspect: async () => outcomes({ [CHANGED_REL]: 'protected', [AGENTS_MD]: 'identical' }),
+        protections: async () => [
+          protectEntry({ project: proj, file: CHANGED_REL, value: 'true', behind: false }),
+          protectEntry({ project: proj, file: '.opencode/agents/local-only.md', behind: null, value: '2.17.1' }),
+        ],
+      })
+    );
+    const text = plain(res);
+    const lines = text.split('\n');
+    expect(lines).toContain('Protections');
+    expect(text).toContain(`p-protected · ${CHANGED_REL} · protect: true · ok`);
+    expect(text).toContain('p-protected · .opencode/agents/local-only.md · protect: 2.17.1 · drift: n/a');
+    expect(text).toContain(`2 protected files · release: wolf upgrade --resolve <file>=take`);
+    // последняя секция: после строк проекта и перед финальной строкой Done
+    expect(text.indexOf('Protections')).toBeGreaterThan(text.indexOf('p-protected · ' + proj));
+    expect(text.indexOf('Protections')).toBeLessThan(text.indexOf('Done (read-only)'));
+  });
+
+  it('R09-4: значение вне грамматики → предупреждение в строке, exit 0', async () => {
+    const park = mkTmp('wolf-check-prot-raw-');
+    const proj = join(park, 'p-raw');
+    mkdirSync(proj, { recursive: true });
+    const res = await runUpgradeCheck(
+      checkDeps({
+        registry: { listStrict: async () => [{ path: proj, schema_version: 2, initialized_at: 't' }] },
+        protections: async () => [protectEntry({ project: proj, value: 'yes', recognized: false, behind: null })],
+      })
+    );
+    expect(res.exitCode).toBe(0);
+    expect(plain(res)).toContain('protect: yes (unrecognized — treated as protected)');
+  });
+
+  it('R09-2: чистый парк без защит → строка Protections: none', async () => {
+    const res = await runUpgradeCheck(checkDeps({ protections: async () => [] }));
+    expect(plain(res).split('\n')).toContain('- Protections: none');
+  });
+});
+
+describe('runUpgradeCheckHere (§4.11, R09-5/N03-1): read-only проход по cwd', () => {
+  it('инспекция одного cwd + Protections, без CLI/npm-строки, exit 0', async () => {
+    const proj = mkTmp('wolf-check-here-');
+    const inspect = vi.fn(async () => outcomes({ [CHANGED_REL]: 'mutated', [AGENTS_MD]: 'identical' }));
+    const res = await runUpgradeCheckHere({
+      here: proj,
+      loadMap: () => MINI_MAP,
+      installedVersion: () => '2.19.0',
+      inspect,
+      protections: async () => [protectEntry({ project: proj, file: UNCHANGED_REL, value: 'true', behind: false })],
+    });
+    const text = plain(res);
+    expect(res.exitCode).toBe(0);
+    expect(inspect).toHaveBeenCalledWith(proj);
+    expect(text).toContain(`mutated: ${CHANGED_REL}`);
+    expect(text).toContain('Protections');
+    expect(text).toContain('protect: true · ok');
+    expect(text).not.toContain('available'); // npm-фаза в этом режиме не выполняется
+    expect(text.split('\n')).toContain('ok: Done (read-only)');
+    expect(res.json).toMatchObject({
+      schema: 'wolf.upgrade.check/1',
+      exit: 0,
+      cli: { installed: '2.19.0', available: null },
+    });
+    expect(res.json.projects).toHaveLength(1);
+    expect(res.json.protections).toHaveLength(1);
+  });
+
+  it('карты нет → штампы с пометкой недостоверности, inspect не зовётся, exit 0', async () => {
+    const proj = mkTmp('wolf-check-here-nomap-');
+    const inspect = vi.fn(async () => [] as InspectOutcome[]);
+    const res = await runUpgradeCheckHere({
+      here: proj,
+      loadMap: () => {
+        throw new Error('update-map.json not found');
+      },
+      installedVersion: () => '2.19.0',
+      inspect,
+    });
+    expect(inspect).not.toHaveBeenCalled();
+    expect(plain(res)).toContain('map unavailable in this CLI — stamps only, unreliable');
+    expect(res.exitCode).toBe(0);
+  });
+
+  it('N03-1: sync-state и .wolf/backup не создаются, файлы проекта не изменены', async () => {
+    const proj = mkTmp('wolf-check-here-ro-');
+    const tpl = mkTmp('wolf-check-here-tpl-');
+    writeTemplates(tpl, OLD_TEMPLATES);
+    await new OpencodeBaseSetRenderer(tpl, { setVersion: '2.18.5' }).renderBaseSet(proj, { models: 'omit' });
+    rmSync(join(proj, '.opencode/wolf-sync-state.json'));
+    const before = takeParkSnapshot(proj);
+    const res = await runUpgradeCheckHere({
+      here: proj,
+      loadMap: () => MINI_MAP,
+      installedVersion: () => '2.19.0',
+      inspect: (root) =>
+        new OpencodeBaseSetRenderer(tpl, { setVersion: '2.18.5' }).inspectBaseSet(root, { models: 'omit' }),
+      protections: async () => [],
+    });
+    const diff = diffParkSnapshots(before, takeParkSnapshot(proj));
+    expect(res.exitCode).toBe(0);
+    expect(diff.addedFiles).toEqual([]);
+    expect(diff.changedFiles).toEqual([]);
+    expect(diff.removedFiles).toEqual([]);
+    expect(existsSync(join(proj, '.opencode/wolf-sync-state.json'))).toBe(false);
+    expect(existsSync(join(proj, '.wolf', 'backup'))).toBe(false);
+  });
+});
+
+describe('--check диспетчеризация (design §4.18): --here не доходит до npm-фазы', () => {
+  it('R09-5: --here --check идёт read-only путём (upgradeRoute: check сильнее here)', async () => {
+    // Диспетчеризация флагов — общая точка T11; здесь фиксируем, что --here не
+    // перехватывает check-режим и не уходит в npm-ветку.
+    expect(upgradeRoute({ check: true, here: true })).toEqual({ mode: 'check' });
+    const program = new Command();
+    program.addCommand(memoryUpgradeCommand());
+    // read-only путь вызывается без npm-фазы: npm-шим, который падает, не мешает
+    const home = mkTmp('wolf-check-here-cli-');
+    const shimDir = join(home, 'npm-shim');
+    mkdirSync(shimDir, { recursive: true });
+    const marker = join(home, 'npm-called');
+    writeFileSync(join(shimDir, 'npm'), `#!/bin/sh\ntouch ${JSON.stringify(marker)}\nexit 1\n`);
+    chmodSync(join(shimDir, 'npm'), 0o755);
+    const prevPath = process.env.PATH;
+    process.env.PATH = `${shimDir}:${prevPath ?? ''}`;
+    const out: string[] = [];
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(((c: string) => {
+      out.push(String(c));
+      return true;
+    }) as typeof process.stdout.write);
+    try {
+      await program.parseAsync(['node', 'wolf', 'upgrade', '--here', '--check'], { from: 'node' });
+    } finally {
+      process.env.PATH = prevPath;
+      writeSpy.mockRestore();
+    }
+    // cwd юнит-теста — репозиторий: инспекция его и печатается (read-only, без записей)
+    expect(existsSync(marker)).toBe(false);
+    expect(out.join('')).toContain('Protections');
+    expect(out.join('')).toContain('Done (read-only)');
+    expect(out.join('')).not.toContain('available');
   });
 });

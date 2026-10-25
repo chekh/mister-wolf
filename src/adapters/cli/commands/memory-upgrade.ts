@@ -1213,6 +1213,21 @@ const stampNote = (root: string): string => {
   return `stamps ${stamps.max ?? 'unknown'}${floor}`;
 };
 
+/** Секция Protections (§4.11, REQ-09): печатается ВСЕГДА и последней в `--check`;
+ *  пусто — строка `Protections: none`. Строится из того же `ProtectEntry[]`, что и
+ *  `--json.protections`, поэтому текст и JSON не расходятся. */
+function protectionNodes(entries: JsonProtection[], base: string | null): ReportNode[] {
+  if (entries.length === 0) return [line('info', 'Protections: none', true)];
+  const nodes: ReportNode[] = entries.map((e) => {
+    const value = e.recognized ? `protect: ${e.value}` : `protect: ${e.value} (unrecognized — treated as protected)`;
+    const drift = e.behind === null ? 'drift: n/a' : e.behind ? `behind (base ${base ?? 'unknown'})` : 'ok';
+    return line('info', `${e.project} · ${e.path} · ${value} · ${drift}`, true);
+  });
+  const noun = entries.length === 1 ? 'file' : 'files';
+  nodes.push(line('info', `${entries.length} protected ${noun} · release: wolf upgrade --resolve <file>=take`, true));
+  return [{ kind: 'section', title: 'Protections', children: nodes }];
+}
+
 /** Пустая строка документа `--json` (нет чтения/ошибка/карты). */
 function emptyCheckRow(name: string, path: string, protectedFiles: JsonProtection[]): JsonCheckProject {
   return {
@@ -1232,7 +1247,7 @@ function emptyCheckRow(name: string, path: string, protectedFiles: JsonProtectio
 async function projectCheck(
   entry: RegisteredProject,
   map: UpdateMap,
-  deps: UpgradeCheckDeps
+  deps: Pick<UpgradeCheckDeps, 'inspect' | 'protections'>
 ): Promise<{ lines: ReportNode[]; row: JsonCheckProject }> {
   const name = basename(entry.path);
   const protections = deps.protections ? jsonProtections(await deps.protections(entry.path)) : [];
@@ -1299,6 +1314,7 @@ export async function runUpgradeCheck(deps: UpgradeCheckDeps): Promise<UpgradeCh
     children.push(line('error', `cli: installed ${deps.installedVersion()} · available unknown — ${msg(err)}`));
   }
 
+  let mapVersion: string | null = null;
   let registered: RegisteredProject[] | null = null;
   try {
     registered = await deps.registry.listStrict();
@@ -1317,6 +1333,7 @@ export async function runUpgradeCheck(deps: UpgradeCheckDeps): Promise<UpgradeCh
         map = null;
       }
       if (map) {
+        mapVersion = map.version;
         for (const entry of registered) {
           const checked = await projectCheck(entry, map, deps);
           children.push(...checked.lines);
@@ -1334,6 +1351,13 @@ export async function runUpgradeCheck(deps: UpgradeCheckDeps): Promise<UpgradeCh
       }
     }
   }
+  // §4.11: секция Protections — последняя (перед финальной строкой), печатается всегда
+  children.push(
+    ...protectionNodes(
+      rows.flatMap((row) => row.protected),
+      mapVersion
+    )
+  );
   children.push(line('ok', 'Done (read-only)'));
   return {
     exitCode: 0,
@@ -1349,19 +1373,94 @@ export async function runUpgradeCheck(deps: UpgradeCheckDeps): Promise<UpgradeCh
   };
 }
 
-/** CLI-обвязка check-сводки (REQ-08): реестр — как projects (wolfUserConfigDir),
- *  инспекция — read-only inspectBaseSet ('omit' — паритет sync-рендера);
- *  exit не меняется (--check всегда 0). `--here` сужает сводку до cwd без
- *  чтения реестра (design §4.18: `--check` сильнее `--here`); полная
- *  here-инспекция с секцией Protections — T13. */
-async function upgradeCheckAction(viewVersion: () => Promise<string>, here?: string, json = false): Promise<void> {
+export interface UpgradeCheckHereDeps {
+  /** cwd — единственный проект этого режима (§4.11). */
+  here: string;
+  /** Карта установленного релиза; throw → деградация до штампов (класс unknown). */
+  loadMap: () => UpdateMap;
+  installedVersion: () => string;
+  /** Read-only инспекция base-set (renderer.inspectBaseSet). */
+  inspect: (root: string) => Promise<InspectOutcome[]>;
+  /** Read-only реестр защит (renderer.listProtections). */
+  protections?: (root: string) => Promise<ProtectEntry[]>;
+}
+
+/** `--here --check` (§4.11, REQ-09 AC1–AC3, NFR-03): read-only инспекция ОДНОГО
+ *  cwd + реестр защит. Ни реестра проектов, ни npm-фазы, ни sync-state, ни
+ *  бэкапов — exit всегда 0 (снапшот mtime+sha256 до/после идентичен, тест). */
+export async function runUpgradeCheckHere(deps: UpgradeCheckHereDeps): Promise<UpgradeCheckResult> {
+  const children: ReportNode[] = [];
+  const rows: JsonCheckProject[] = [];
+  let map: UpdateMap | null = null;
+  try {
+    map = deps.loadMap();
+  } catch {
+    map = null; // деградация: штампы с пометкой недостоверности, класс unknown
+  }
+  if (map) {
+    const checked = await projectCheck({ path: deps.here, schema_version: 2, initialized_at: '' }, map, deps);
+    children.push(...checked.lines);
+    rows.push(checked.row);
+  } else {
+    children.push(line('warn', 'map unavailable in this CLI — stamps only, unreliable'));
+    children.push(line('info', `${basename(deps.here)} · ${deps.here} — ${CLASS_TEXT.unknown}`));
+    children.push(line('info', stampNote(deps.here), true));
+    rows.push(emptyCheckRow(basename(deps.here), deps.here, []));
+  }
+  children.push(
+    ...protectionNodes(
+      rows.flatMap((row) => row.protected),
+      map?.version ?? null
+    )
+  );
+  children.push(line('ok', 'Done (read-only)'));
+  return {
+    exitCode: 0,
+    report: { kind: 'section', title: CHECK_TITLE, children },
+    json: {
+      schema: 'wolf.upgrade.check/1',
+      exit: 0,
+      // npm view в этом режиме не вызывается — доступной версии нет (поле схемы nullable)
+      cli: { installed: deps.installedVersion(), available: null },
+      projects: rows,
+      diverged: [],
+      protections: rows.flatMap((row) => row.protected),
+    },
+  };
+}
+
+/** CLI-обвязка `--here --check` (§4.11): только cwd, без реестра и npm-фазы. */
+async function upgradeCheckHereAction(json: boolean): Promise<void> {
+  const cwd = safeCwd();
   const renderer = new OpencodeBaseSetRenderer(templatesRoot(), {
     harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
   });
-  const registry =
-    here === undefined
-      ? new ProjectsRegistry(wolfUserConfigDir())
-      : { listStrict: async () => [{ path: here, schema_version: 2, initialized_at: '' }] };
+  let base: string | null = null;
+  try {
+    base = loadUpdateMap().version;
+  } catch {
+    base = null;
+  }
+  const res = await runUpgradeCheckHere({
+    here: cwd,
+    loadMap: () => loadUpdateMap(),
+    installedVersion: readInstalledVersion,
+    inspect: (root) => renderer.inspectBaseSet(root, { models: 'omit' }),
+    ...(base !== null ? { protections: (root: string) => renderer.listProtections(root, base) } : {}),
+  });
+  if (json) printJson(res.json);
+  else process.stdout.write(`${renderReport(res.report, termEnv(process.stdout, process.env))}\n`);
+}
+
+/** CLI-обвязка check-сводки парка (REQ-08): реестр — как projects
+ *  (wolfUserConfigDir), инспекция — read-only inspectBaseSet ('omit' — паритет
+ *  sync-рендера); exit не меняется (--check всегда 0). `--here` в эту ветку не
+ *  доходит — у него свой read-only путь (design §4.18: `--check` сильнее `--here`). */
+async function upgradeCheckAction(viewVersion: () => Promise<string>, json = false): Promise<void> {
+  const renderer = new OpencodeBaseSetRenderer(templatesRoot(), {
+    harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
+  });
+  const registry = new ProjectsRegistry(wolfUserConfigDir());
   let map: UpdateMap | null = null;
   try {
     map = loadUpdateMap();
@@ -1372,7 +1471,7 @@ async function upgradeCheckAction(viewVersion: () => Promise<string>, here?: str
   if (json) {
     // `--json.diverged` (§4.13): read-only сбор реестра решений (только при --json)
     const reg = await collectDecisions({
-      ...decisionProdDeps(here ?? null, renderer, registry),
+      ...decisionProdDeps(null, renderer, registry),
       loadMap: () => loadUpdateMap(),
     });
     diverged = jsonDiverged(reg);
@@ -1670,11 +1769,17 @@ export function memoryUpgradeCommand(): Command {
           registryVersion: viewOnce,
           installLatest,
         };
+        if (route.mode === 'check' && options.here === true) {
+          // §4.11: `--here --check` — отдельный read-only проход по cwd, без
+          // CLI/npm-фазы, реестра, sync-state и бэкапов (диспетчеризация в upgradeRoute)
+          await upgradeCheckHereAction(json);
+          return;
+        }
         if (route.mode === 'check') {
           // §4.13: при --json фаза 1 молчит — единственный документ печатает check
           if (!json) printOutcome(await runUpgrade(deps, true));
-          // порядок: CLI-версии → парк (REQ-08); --here сужает до cwd (read-only)
-          await upgradeCheckAction(viewOnce, options.here === true ? cwd : undefined, json);
+          // порядок: CLI-версии → парк (REQ-08)
+          await upgradeCheckAction(viewOnce, json);
           return;
         }
         // npm-фаза + re-exec фазы 2 (T8): режимы выше вышли раньше, re-exec там нет

@@ -8,11 +8,13 @@
 // R14.1, R14.2.
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { Command } from 'commander';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs';
+import { createHash } from 'crypto';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import yaml from 'js-yaml';
 import {
+  runUpgradeCheckHere,
   runUpgradeHere,
   runUpgradeResolve,
   runUpgradeShow,
@@ -34,8 +36,8 @@ import { FsMemoryLock } from '../../src/adapters/fs/memory-lock.js';
 import { eventsPath, memoryDir } from '../../src/adapters/fs/project-paths.js';
 import { parseStamp } from '../../src/adapters/render/stamp.js';
 import { renderReport } from '../../src/adapters/cli/report-renderer.js';
-import { insertProtect, parseProtect } from '../../src/domain/protect-key.js';
-import { loadSyncState } from '../../src/adapters/render/sync-state.js';
+import { insertProtect, normalizeManaged, parseProtect } from '../../src/domain/protect-key.js';
+import { loadSyncState, saveSyncState, sha256 } from '../../src/adapters/render/sync-state.js';
 import { diffParkSnapshots, takeParkSnapshot } from '../helpers/park-snapshot.js';
 
 // R14.1 «npm не звался»: any spawn через стаб кидает — если --here-путь
@@ -533,5 +535,94 @@ describe('--json --resolve/--show (M-2): backups в документе, mode sho
       if (prevXdg === undefined) delete process.env.XDG_CONFIG_HOME;
       else process.env.XDG_CONFIG_HOME = prevXdg;
     }
+  });
+});
+
+/* ---------- --here --check (T13, REQ-09 AC1–AC3, NFR-03, design §4.11) ---------- */
+
+/** NFR-03: mtime+sha256 каждого файла проекта (включая `.wolf/**` и
+ *  `wolf-sync-state.json`): перезапись с тем же контентом тоже видна. */
+function snapshotTree(root: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  const walk = (dir: string, rel: string): void => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const relPath = rel === '' ? e.name : `${rel}/${e.name}`;
+      const abs = join(dir, e.name);
+      if (e.isDirectory()) walk(abs, relPath);
+      else out[relPath] = `${statSync(abs).mtimeMs}:${createHash('sha256').update(readFileSync(abs)).digest('hex')}`;
+    }
+  };
+  walk(root, '');
+  return out;
+}
+
+describe('runUpgradeCheckHere: read-only инспекция cwd (R09-5, N03-1)', () => {
+  it('мутации/differ/protect/kept видны, exit 0, ничего не записано', async () => {
+    const park = mkTmp('wolf-here-check-');
+    const proj = await bootstrapProject(park, 'p-check');
+    const renderer = new OpencodeBaseSetRenderer(fx.templatesRoot, { setVersion: NEW_SET });
+
+    // mutated: правка после рендера (свидетель не совпадает)
+    const mutatedRel = '.opencode/agents/mr-wolf.md';
+    writeFileSync(join(proj, mutatedRel), `${read(proj, mutatedRel)}<!-- local edit -->\n`);
+    // kept: владелец принял локальный контент (свидетель origin:'keep', §4.2/ADR-8)
+    const keptRel = '.opencode/skills/using-skills/SKILL.md';
+    writeFileSync(join(proj, keptRel), `${read(proj, keptRel)}<!-- kept locally -->\n`);
+    const state = loadSyncState(proj);
+    state.files[keptRel] = {
+      hash: sha256(normalizeManaged(read(proj, keptRel))),
+      origin: 'keep',
+      base: OLD_SET,
+    };
+    saveSyncState(proj, state);
+    // protect: файл вне карты с валидным frontmatter (§4.1)
+    const protRel = '.opencode/agents/local-protected.md';
+    writeFileSync(join(proj, protRel), '---\nname: local-protected\nprotect: true\n---\n\n# mine\n');
+
+    const before = snapshotTree(proj);
+    const filesBefore = Object.fromEntries([mutatedRel, keptRel, protRel].map((rel) => [rel, read(proj, rel)]));
+    const res = await runUpgradeCheckHere({
+      here: proj,
+      loadMap: () => fx.map,
+      installedVersion: () => NEW_SET,
+      inspect: (root) => renderer.inspectBaseSet(root, { models: 'omit' }),
+      protections: (root) => renderer.listProtections(root, NEW_SET),
+    });
+    const text = renderReport(res.report, { tty: false, colors: 'mono', width: 400 });
+
+    expect(res.exitCode).toBe(0);
+    expect(text).toContain(`p-check · ${proj} — needs decision`);
+    expect(text).toContain(`mutated: ${mutatedRel}`);
+    expect(text).toContain(`kept (local): ${keptRel}`);
+    expect(text).toContain(`${protRel} · protect: true · drift: n/a`);
+    expect(text).toContain('Protections');
+    expect(text).not.toContain('available'); // npm-фазы в этом пути нет
+    expect(text.split('\n')).toContain('ok: Done (read-only)');
+
+    // NFR-03: ни один файл не изменён (mtime+sha256), sync-state не переписан, бэкапов нет
+    expect(snapshotTree(proj)).toEqual(before);
+    for (const [rel, content] of Object.entries(filesBefore)) expect(read(proj, rel)).toBe(content);
+    expect(existsSync(join(proj, '.wolf', 'backup'))).toBe(false);
+    // differ-файл (был бы перезаписан проходом) байт-в-байт прежний
+    expect(parseStamp(read(proj, mutatedRel))?.set).toBe(OLD_SET);
+  });
+
+  it('проект без свидетеля: sync-state не создаётся, exit 0', async () => {
+    const park = mkTmp('wolf-here-check-fresh-');
+    const proj = await bootstrapProject(park, 'p-check-fresh');
+    rmSync(join(proj, '.opencode/wolf-sync-state.json'));
+    const renderer = new OpencodeBaseSetRenderer(fx.templatesRoot, { setVersion: NEW_SET });
+    const before = snapshotTree(proj);
+
+    const res = await runUpgradeCheckHere({
+      here: proj,
+      loadMap: () => fx.map,
+      installedVersion: () => NEW_SET,
+      inspect: (root) => renderer.inspectBaseSet(root, { models: 'omit' }),
+    });
+    expect(res.exitCode).toBe(0);
+    expect(existsSync(join(proj, '.opencode/wolf-sync-state.json'))).toBe(false);
+    expect(snapshotTree(proj)).toEqual(before);
+    expect(renderReport(res.report, { tty: false, colors: 'mono', width: 400 })).toContain('Protections: none');
   });
 });

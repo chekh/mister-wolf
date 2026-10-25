@@ -5,9 +5,10 @@
 // до/после байт-в-байт (включая .opencode/wolf-sync-state.json и .wolf/**),
 // exit 0, финальная строка Done (read-only).
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { createHash } from 'crypto';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { basename, join } from 'path';
 import yaml from 'js-yaml';
 import { runUpgradeCheck } from '../../src/adapters/cli/commands/memory-upgrade.js';
 import { loadUpdateMap, type UpdateMap } from '../../src/adapters/fs/update-map.js';
@@ -173,3 +174,136 @@ describe('runUpgradeCheck: R08.1 — парк 2 проектов, npm view (мо
     );
   });
 });
+
+/* ---------- REQ-09 (§4.11): секция Protections; NFR-03: mtime+sha256 ---------- */
+
+/** NFR-03: слепок mtime+sha256 ВСЕХ файлов проекта (включая `.wolf/**` и
+ *  `wolf-sync-state.json`): перезапись с тем же контентом тоже видна, а
+ *  takeParkSnapshot (sha-only) её бы пропустил. */
+function snapshotTree(root: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  const walk = (dir: string, rel: string): void => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const relPath = rel === '' ? e.name : `${rel}/${e.name}`;
+      const abs = join(dir, e.name);
+      if (e.isDirectory()) walk(abs, relPath);
+      else out[relPath] = `${statSync(abs).mtimeMs}:${createHash('sha256').update(readFileSync(abs)).digest('hex')}`;
+    }
+  };
+  walk(root, '');
+  return out;
+}
+
+/** Защищённый файл вне карты: frontmatter + protect (§4.1), в needs-decision не попадает. */
+function writeProtectedFile(proj: string, rel: string, protect: string): void {
+  const abs = join(proj, rel);
+  mkdirSync(join(abs, '..'), { recursive: true });
+  writeFileSync(abs, `---\nname: ${basename(rel, '.md')}\nprotect: ${protect}\n---\n\n# local note\n`);
+}
+
+describe('runUpgradeCheck: REQ-09 — секция Protections (R09-1…R09-4)', () => {
+  it('R09-1: защищённые файлы двух проектов — путь, значение, дрейф; секция последняя', async () => {
+    const park = mkTmp('wolf-check-prot-park-');
+    const projA = await bootstrapProject(park, 'p-prot', OLD_SET_A);
+    const projB = await bootstrapProject(park, 'p-behind', OLD_SET_B);
+    writeProtectedFile(projA, '.opencode/agents/local-keep.md', 'true'); // вне карты → drift: n/a
+    // защита на цели карты с устаревшим телом → behind (эталон релиза отличается)
+    const skill = join(projB, '.opencode/skills/using-skills/SKILL.md');
+    writeFileSync(
+      skill,
+      readFileSync(skill, 'utf-8').replace(/^(---\r?\n)?/, `---\nname: using-skills\nprotect: ${OLD_SET_B}\n---\n`)
+    );
+
+    const renderer = new OpencodeBaseSetRenderer(fx.templatesRoot, { setVersion: NEW_SET });
+    const res = await runUpgradeCheck({
+      registry: new ProjectsRegistry(mkRegistry([projA, projB])),
+      loadMap: () => fx.map,
+      registryVersion: async () => '2.19.1',
+      installedVersion: () => '2.18.5',
+      inspect: (root) => renderer.inspectBaseSet(root, { models: 'omit' }),
+      protections: (root) => renderer.listProtections(root, NEW_SET),
+    });
+    const text = renderReport(res.report, { tty: false, colors: 'mono', width: 400 });
+    expect(text).toContain('Protections');
+    expect(text).toContain('p-prot · .opencode/agents/local-keep.md · protect: true · drift: n/a');
+    expect(text).toContain(
+      `p-behind · .opencode/skills/using-skills/SKILL.md · protect: ${OLD_SET_B} · behind (base ${NEW_SET})`
+    );
+    expect(text).toContain('2 protected files · release: wolf upgrade --resolve <file>=take');
+    // последняя секция документа: после проектов, перед финальной строкой
+    expect(text.indexOf('Protections')).toBeGreaterThan(text.lastIndexOf('p-behind · ' + projB));
+    expect(text.indexOf('Protections')).toBeLessThan(text.indexOf('Done (read-only)'));
+    expect(res.exitCode).toBe(0);
+  });
+
+  it('R09-2: чистый парк без защит → Protections: none', async () => {
+    const park = mkTmp('wolf-check-clean-');
+    const proj = await bootstrapProject(park, 'p-clean', NEW_SET);
+    const renderer = new OpencodeBaseSetRenderer(fx.templatesRoot, { setVersion: NEW_SET });
+    const res = await runUpgradeCheck({
+      registry: new ProjectsRegistry(mkRegistry([proj])),
+      loadMap: () => fx.map,
+      registryVersion: async () => NEW_SET,
+      installedVersion: () => NEW_SET,
+      inspect: (root) => renderer.inspectBaseSet(root, { models: 'omit' }),
+      protections: (root) => renderer.listProtections(root, NEW_SET),
+    });
+    const text = renderReport(res.report, { tty: false, colors: 'mono', width: 400 });
+    expect(text.split('\n')).toContain('- Protections: none');
+  });
+
+  it('R09-3/N03-1: два прогона дают идентичный вывод, mtime+sha256 всех файлов парка не изменён', async () => {
+    const park = mkTmp('wolf-check-ro-park-');
+    const proj = await bootstrapProject(park, 'p-ro', OLD_SET_A);
+    writeProtectedFile(proj, '.opencode/agents/local-keep.md', 'true');
+    const configDir = mkRegistry([proj]);
+    const renderer = new OpencodeBaseSetRenderer(fx.templatesRoot, { setVersion: NEW_SET });
+    const deps = {
+      registry: new ProjectsRegistry(configDir),
+      loadMap: () => fx.map,
+      registryVersion: async () => '2.19.1',
+      installedVersion: () => '2.18.5',
+      inspect: (root: string) => renderer.inspectBaseSet(root, { models: 'omit' }),
+      protections: (root: string) => renderer.listProtections(root, NEW_SET),
+    };
+
+    const beforeProj = snapshotTree(proj);
+    const beforeCfg = snapshotTree(configDir);
+    const first = renderReport((await runUpgradeCheck(deps)).report, { tty: false, colors: 'mono', width: 400 });
+    const second = renderReport((await runUpgradeCheck(deps)).report, { tty: false, colors: 'mono', width: 400 });
+
+    expect(second).toBe(first);
+    expect(snapshotTree(proj)).toEqual(beforeProj); // mtime+sha256, включая wolf-sync-state.json и .wolf/**
+    expect(snapshotTree(configDir)).toEqual(beforeCfg);
+    expect(beforeProj['.opencode/wolf-sync-state.json']).toBeDefined(); // свидетель реально в слепке
+  });
+
+  it('R09-4: значение вне грамматики → unrecognized — treated as protected, exit 0', async () => {
+    const park = mkTmp('wolf-check-raw-');
+    const proj = await bootstrapProject(park, 'p-raw', OLD_SET_A);
+    writeProtectedFile(proj, '.opencode/agents/local-typo.md', 'yes');
+    const renderer = new OpencodeBaseSetRenderer(fx.templatesRoot, { setVersion: NEW_SET });
+    const res = await runUpgradeCheck({
+      registry: new ProjectsRegistry(mkRegistry([proj])),
+      loadMap: () => fx.map,
+      registryVersion: async () => '2.19.1',
+      installedVersion: () => '2.18.5',
+      inspect: (root) => renderer.inspectBaseSet(root, { models: 'omit' }),
+      protections: (root) => renderer.listProtections(root, NEW_SET),
+    });
+    expect(res.exitCode).toBe(0);
+    expect(renderReport(res.report, { tty: false, colors: 'mono', width: 400 })).toContain(
+      'protect: yes (unrecognized — treated as protected)'
+    );
+  });
+});
+
+/** Реестр в tmp-configDir (R09-*): проекты без реального ~/.config/wolf. */
+function mkRegistry(projects: string[]): string {
+  const configDir = mkTmp('wolf-check-cfg-');
+  writeRegistry(
+    configDir,
+    projects.map((path) => ({ path, schema_version: 2, initialized_at: '2026-01-01T00:00:00.000Z' }))
+  );
+  return configDir;
+}
