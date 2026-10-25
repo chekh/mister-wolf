@@ -108,3 +108,42 @@ describe('baseSetFaceViolations: guard face_owner_skill === agent_id (design §3
     expect(baseSetFaceViolations(legacy)).toEqual(['worker-implementer']);
   });
 });
+
+describe('onboarding-блок v3 в init (REQ-03 AC3/AC4, волна 2.20.0)', () => {
+  let d: string;
+  const agentsMd = () => join(d, 'AGENTS.md');
+
+  beforeEach(() => {
+    d = mkdtempSync(join(tmpdir(), 'wolf-b0-block-'));
+    writeFileSync(join(d, 'package.json'), '{ "name": "b0-block-it" }');
+  });
+  afterEach(() => rmSync(d, { recursive: true, force: true }));
+
+  it('R03-3/R03-4: блок дописывается append-веткой, повторный init не дублирует его', () => {
+    const own = '# Чужой конфиг\nне трогай\n';
+    writeFileSync(agentsMd(), own);
+    expect(runCli(['init', '--full', '--platform', 'opencode'], d).status).toBe(0);
+    const first = readFileSync(agentsMd(), 'utf-8');
+    expect(first.startsWith(own)).toBe(true);
+    expect(first).toContain('<!-- wolf:onboarding v3 -->');
+    expect(first.match(/<!-- wolf:onboarding/g)).toHaveLength(1);
+    expect(runCli(['init', '--full', '--platform', 'opencode', '--yes'], d).status).toBe(0);
+    expect(readFileSync(agentsMd(), 'utf-8')).toBe(first);
+  });
+
+  it('R03-4: init поднимает блок v2 до v3, чужой текст вокруг сохранён', () => {
+    const above = '# Мой текст\n\n';
+    const below = '\n\nхвост\n';
+    writeFileSync(
+      agentsMd(),
+      `${above}<!-- wolf:onboarding v2 -->\nстарое содержимое\n<!-- /wolf:onboarding -->${below}`
+    );
+    expect(runCli(['init', '--full', '--platform', 'opencode'], d).status).toBe(0);
+    const out = readFileSync(agentsMd(), 'utf-8');
+    expect(out.startsWith(above)).toBe(true);
+    expect(out.endsWith(below)).toBe(true);
+    expect(out).toContain('<!-- wolf:onboarding v3 -->');
+    expect(out).not.toContain('старое содержимое');
+    expect(out.match(/<!-- wolf:onboarding/g)).toHaveLength(1);
+  });
+});

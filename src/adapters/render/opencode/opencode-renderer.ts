@@ -27,8 +27,49 @@ const LAYOUT: Record<(typeof NEUTRAL_DIRS)[number], string> = {
   commands: '.opencode/command',
 };
 
-/** Маркер онбординг-блока в AGENTS.md (спека §4.2). */
-const ONBOARDING_MARKER = '<!-- wolf:onboarding v2 -->';
+/** Детект онбординг-блока версионно-агностичен (§4.5): литерал `vN` в коде
+ *  запрещён, иначе после смены версии шаблона существующий блок не распознаётся
+ *  и init/append допишет второй. Версия формата — только в шаблоне (ADR-3). */
+const ONBOARDING_OPEN = /^<!-- wolf:onboarding v(\d+) -->$/;
+const ONBOARDING_CLOSE = /^<!-- \/wolf:onboarding -->$/;
+
+interface OnboardingBlock {
+  version: number;
+  /** Смещение начала строки открывающего маркера. */
+  start: number;
+  /** Смещение конца строки закрывающего маркера (без перевода строки). */
+  end: number;
+}
+
+/** Блок между маркерами: null — блока нет, 'broken' — открывающий без закрывающего. */
+function findOnboardingBlock(content: string): OnboardingBlock | 'broken' | null {
+  let offset = 0;
+  let start = -1;
+  let end = -1;
+  let version = 0;
+  for (const line of content.split('\n')) {
+    const text = line.replace(/\r$/, '');
+    if (start === -1) {
+      const m = text.match(ONBOARDING_OPEN);
+      if (m) {
+        start = offset;
+        version = Number(m[1]);
+      }
+    } else if (end === -1 && ONBOARDING_CLOSE.test(text)) {
+      end = offset + line.length;
+    }
+    offset += line.length + 1;
+  }
+  if (start === -1) return null;
+  return end === -1 ? 'broken' : { version, start, end };
+}
+
+/** Блок шаблона: единственный источник версии формата и текста обновления. */
+function templateBlock(template: string): { version: number; text: string } | null {
+  const block = findOnboardingBlock(template);
+  if (block === null || block === 'broken') return null;
+  return { version: block.version, text: template.slice(block.start, block.end) };
+}
 
 const MUTATED_REASON = 'mutated after render — differs from recorded render and fresh render; left untouched';
 
@@ -263,6 +304,32 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
     return { outcomes, orphaned };
   }
 
+  /** Блочный режим AGENTS.md (§4.5): управляется только текст между маркерами;
+   *  контент выше и ниже — байт-в-байт. protect у AGENTS.md не поддерживается. */
+  private async syncAgentsBlock(target: string, current: string, template: string): Promise<RenderOutcome> {
+    const block = findOnboardingBlock(current);
+    if (block === null) {
+      return {
+        file: 'AGENTS.md',
+        action: 'skipped',
+        reason: 'no onboarding block — left untouched (wx policy)',
+      };
+    }
+    const tpl = templateBlock(template);
+    if (block === 'broken' || tpl === null) {
+      return {
+        file: 'AGENTS.md',
+        action: 'skipped',
+        reason: 'onboarding markers broken — file treated as foreign (wx policy)',
+      };
+    }
+    if (block.version >= tpl.version && current.slice(block.start, block.end) === tpl.text) {
+      return { file: 'AGENTS.md', action: 'skipped', reason: 'content identical (onboarding block)' };
+    }
+    await this.writeFresh(target, `${current.slice(0, block.start)}${tpl.text}${current.slice(block.end)}`);
+    return { file: 'AGENTS.md', action: 'updated', reason: `onboarding block ${block.version} → ${tpl.version}` };
+  }
+
   /** T10 (REQ-08): read-only инспекция целей base-set — предикат того, что
    *  сделает syncBaseSet, БЕЗ записей (ни writeFileAtomic, ни saveSyncState):
    *  missing / protected / foreign (unstamped, wx-политика) / identical (в т.ч.
@@ -363,7 +430,6 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
     if (!existsSync(paths.target)) return { file: 'AGENTS.md', action: 'missing' };
     const current = readFileSync(paths.target, 'utf-8');
     const content = this.agentsMdContent(paths.tplPath, models);
-    const norm = (s: string): string => (s.endsWith('\n') ? s : `${s}\n`);
     if (parseStamp(current) !== null) {
       const fresh = insertStamp(content, { base: 'AGENTS.md', set: this.setVersion }, 'AGENTS.md');
       if (fresh === current) return { file: 'AGENTS.md', action: 'identical' };
@@ -374,9 +440,15 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
         return { file: 'AGENTS.md', action: 'kept', kept: true, keepBase: entry.base };
       return { file: 'AGENTS.md', action: 'differs' };
     }
-    const idx = current.indexOf(ONBOARDING_MARKER);
-    if (idx === -1) return { file: 'AGENTS.md', action: 'foreign' };
-    return { file: 'AGENTS.md', action: norm(current.slice(idx)) === norm(content) ? 'identical' : 'differs' };
+    const block = findOnboardingBlock(current);
+    if (block === null) return { file: 'AGENTS.md', action: 'foreign' };
+    if (block === 'broken') {
+      return { file: 'AGENTS.md', action: 'foreign', detail: 'onboarding markers broken' };
+    }
+    const tpl = templateBlock(content);
+    if (tpl === null) return { file: 'AGENTS.md', action: 'unknown' };
+    const same = block.version >= tpl.version && current.slice(block.start, block.end) === tpl.text;
+    return { file: 'AGENTS.md', action: same ? 'identical' : 'differs' };
   }
 
   /** AGENTS.md — цель в КОРНЕ проекта (§4.2); шаблона нет — тихо нет исхода. */
@@ -407,8 +479,18 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
       return [{ file: 'AGENTS.md', action: 'created' }];
     }
     const current = readFileSync(paths.target, 'utf-8');
-    if (current.includes(ONBOARDING_MARKER)) {
-      return [{ file: 'AGENTS.md', action: 'skipped', reason: 'onboarding marker exists (§4.2)' }];
+    if (findOnboardingBlock(current) === 'broken') {
+      return [
+        {
+          file: 'AGENTS.md',
+          action: 'skipped',
+          reason: 'onboarding markers broken — file treated as foreign (wx policy)',
+        },
+      ];
+    }
+    if (findOnboardingBlock(current) !== null) {
+      // блок уже есть: и init обновляет его по версии формата (§4.5), а не «вечно пропускает»
+      return [await this.syncAgentsBlock(paths.target, current, content)];
     }
     // marker-append: маркированный блок без штампа в конец; чужой контент не трогаем
     const block = content.endsWith('\n') ? content : `${content}\n`;
@@ -438,9 +520,9 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
     }
     const current = readFileSync(paths.target, 'utf-8');
     if (parseStamp(current) === null) {
-      return [
-        { file: 'AGENTS.md', action: 'skipped', reason: 'no stamp (append block) — does not belong to sync (§4.2)' },
-      ];
+      // Блочный режим (§4.5): управляется только блок между маркерами; append-ветка —
+      // исключительно init (решение L0 2026-10-25), upgrade чужой файл не дописывает.
+      return [await this.syncAgentsBlock(paths.target, current, this.agentsMdContent(paths.tplPath, models))];
     }
     if (fresh === current) {
       this.record(state, 'AGENTS.md', fresh);
