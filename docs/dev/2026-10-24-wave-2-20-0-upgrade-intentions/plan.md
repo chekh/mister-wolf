@@ -45,7 +45,8 @@ T1 и T2 независимы (разные файлы) — можно пара�
 
 ### Ф1 — ядро
 
-- [ ] **T1. `protect-key.ts`: грамматика, нормализация, вставка/снятие.**
+- [x] **T1. `protect-key.ts`: грамматика, нормализация, вставка/снятие.**
+      Сделано → коммит `fcbb36e` (35 unit-тестов грамматики/нормализации/вставки; `npx tsc --noEmit` ok).
       Цель: единственная точка правды о ключе `protect` (design §4.1).
       Контракт: `parseProtect` (первый ключ, `true`/`false`/`X.Y.Z`/пусто и
       не-грамматика → held+`unrecognized`), `normalizeManaged` (снять все строки
@@ -62,7 +63,8 @@ T1 и T2 независимы (разные файлы) — можно пара�
       `npx tsc --noEmit`. RESULT: DONE с зелёными тестами грамматики
       (CRLF, нет frontmatter, ключ в теле, дубли, `false`, пусто, кавычки).
 
-- [ ] **T2. Свидетель `{hash, origin, base}` + атомарная запись состояния.**
+- [x] **T2. Свидетель `{hash, origin, base}` + атомарная запись состояния.**
+      Сделано → коммит `db40309` (11 unit-тестов свидетеля и атомарности; `npx tsc --noEmit` ok).
       Цель: свидетель помнит происхождение записи, чтобы `keep` не отменялся
       следующим проходом (design §4.2, ADR-8), и пишется атомарно (NFR-04).
       Контракт: `SyncEntry`, нормализация легаси-строк в `{origin:'render',
@@ -79,7 +81,8 @@ base:'0.0.0'|<stamp>}`, `saveSyncState` → `writeFileSync(tmp)` + `renameSync`;
       `npx tsc --noEmit`. RESULT: DONE; старый state читается, новый пишется,
       после записи нет `*.tmp`.
 
-- [ ] **T3. Классификация цели в рендерере: protect, исцеление, kept, режим take.**
+- [x] **T3. Классификация цели в рендерере: protect, исцеление, kept, режим take.**
+      Сделано → коммит `5d58de6` (57 точечных тестов (renderer 32, stamp 8, sync-base-set 6, sync-state 11); регекс штампа один).
       Цель: единый порядок правил 1–7 §4.3 в `syncBaseSet`/`inspectBaseSet`/
       `renderBaseSet` + порты (§4.6). Контракт: `protected`, штамп-исцеление как
       `action:'updated'` + reason, `kept` (правило 6.5), `takeMutated` с
@@ -102,7 +105,8 @@ base:'0.0.0'|<stamp>}`, `saveSyncState` → `writeFileSync(tmp)` + `renameSync`;
       `npx tsc --noEmit`. RESULT: DONE; ни одна ветка inspect не пишет; регекс
       штампа в проекте ровно один (`grep` по `wolf:rendered`).
 
-- [ ] **T4. AGENTS.md: версионированный блок, agnostic-детект, без protect-гейта.**
+- [x] **T4. AGENTS.md: версионированный блок, agnostic-детект, без protect-гейта.**
+      Сделано → коммит `55c8cbb` (15 интеграционных (b0-sync 5, b0-init 10); init под v3 не дублирует блок).
       Цель: блок между маркерами обновляется при росте версии формата, текст вне
       блока сохраняется (design §4.5, REQ-03). Контракт: `findOnboardingBlock`
       (префикс `<!-- wolf:onboarding v<N> -->`, любая версия),
@@ -124,7 +128,8 @@ base:'0.0.0'|<stamp>}`, `saveSyncState` → `writeFileSync(tmp)` + `renameSync`;
       Проверки: `npx vitest run tests/integration/b0-init.test.ts tests/integration/b0-sync.test.ts tests/unit/use-cases/doctor.test.ts`,
       `npx tsc --noEmit`. RESULT: DONE; init под v3 не дописывает второй блок.
 
-- [ ] **T5. Verify-коды `protected`/`kept` и факты вне карты.**
+- [x] **T5. Verify-коды `protected`/`kept` и факты вне карты.**
+      Сделано → коммит `a6a3649` (41 unit verify-against-map + 20 unit upgrade-projects; NEEDS_DECISION_CODES не менялся).
       Цель: needs-decision не расширяется, защищённое и принятое видно
       (design §4.6). Контракт: `VerifyCode += 'protected'|'kept'`,
       `syncFact`/`fileVerdict` + хвост `verifyAgainstMap` для фактов вне карты,
@@ -140,7 +145,8 @@ base:'0.0.0'|<stamp>}`, `saveSyncState` → `writeFileSync(tmp)` + `renameSync`;
 
 ### Ф2 — решения владельца
 
-- [ ] **T6. Имена файлов в выводе прохода и `--check`.**
+- [x] **T6. Имена файлов в выводе прохода и `--check`.**
+      Сделано → коммит `94e1c59` (14 unit check + 1 integration check + 4 park + 20 unit projects; `npm run check` зелёный).
       Цель: каждый needs-decision/differ назван путём, счётчики сохранены
       (design §4.15, REQ-01 AC1–AC3). Контракт: `freshnessDetails` печатает все
       differ-пути; `stepDetailLines`/`projectsSection` берут строки из
