@@ -152,7 +152,15 @@ export function verifyAgainstMap(map: UpdateMap, outcomes: VerifyOutcomes): Veri
         seenRemovals.add(path);
         items.push(item('file', entry.path, 'removed'));
       } else {
-        items.push(errorItem('file', entry.path, 'removed target got no removal status'));
+        // protect сильнее удаления (REQ-05, §4.3): защищённая removed-цель — факт
+        // `protected`/`kept`, а не error; без факта — прежний error (fail-safe).
+        const fact = syncByFile.get(path);
+        if (fact?.protected || fact?.kept) {
+          seenSync.add(path);
+          items.push(item('file', entry.path, syncFact(fact)));
+        } else {
+          items.push(errorItem('file', entry.path, 'removed target got no removal status'));
+        }
       }
       continue;
     }

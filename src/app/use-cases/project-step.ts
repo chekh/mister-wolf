@@ -7,11 +7,12 @@
 // атомарны внутри шагов, сбой фазы k не откатывает k-1 — повтор доводит до
 // конца (NFR-02). Единственная мутация памяти — посев (REQ-07).
 import { existsSync, readFileSync } from 'fs';
-import { unlink } from 'fs/promises';
-import { basename, join } from 'path';
+import { mkdir, unlink } from 'fs/promises';
+import { basename, extname, join } from 'path';
 import type { BaseSetRenderer, ModelContext } from '../../ports/base-set-renderer.port.js';
 import type { UpdateMap } from '../../adapters/fs/update-map.js';
 import { ensureCurrentSchema } from '../../adapters/fs/schema-guard.js';
+import { writeFileAtomic } from '../../adapters/fs/markdown-memory-store.js';
 import { loadSyncState, sha256, type SyncEntry } from '../../adapters/render/sync-state.js';
 import { normalizeManaged, parseProtect } from '../../domain/protect-key.js';
 import { syncBaseSet } from './sync-base-set.js';
@@ -46,13 +47,38 @@ export interface ProjectStepOpts {
  * решения / error. Сам exit-код ставит CLI-слой (T7/T9), не шаг. */
 export type ExitKind = 'done' | 'needs-decision' | 'error';
 
+/** Локальная копия контента перед удалением/перезаписью (design §4.12, NFR-05):
+ *  `.wolf/backup/upgrade/<YYYY-MM-DD>/<rel>`, при коллизии — `base-2.ext`,
+ *  `base-3.ext` … (первый свободный, без перезаписи). Единственная реализация
+ *  формата на волну: `--resolve` (T7) и `--yes` (T10) используют эту же функцию. */
+export async function backupLocalFile(
+  root: string,
+  rel: string,
+  content: string,
+  now: Date
+): Promise<{ path: string; created: boolean }> {
+  const date = [now.getFullYear(), now.getMonth() + 1, now.getDate()]
+    .map((n, i) => (i === 0 ? String(n) : String(n).padStart(2, '0')))
+    .join('-');
+  const relTarget = `.wolf/backup/upgrade/${date}/${rel}`;
+  const ext = extname(relTarget);
+  const stem = relTarget.slice(0, relTarget.length - ext.length);
+  let path = relTarget;
+  for (let n = 2; existsSync(join(root, path)); n++) path = `${stem}-${n}${ext}`;
+  await mkdir(join(root, path, '..'), { recursive: true });
+  await writeFileAtomic(join(root, path), content);
+  return { path, created: path === relTarget };
+}
+
 /** Отчёт по проекту — вход рендера T3 и сводки парка T7. */
 export interface ProjectReport {
   /** Имя (basename) и корень проекта. */
   name: string;
   root: string;
   /** Фазы 1-2: исходы sync; осиротевшие, ОСТАВШИЕСЯ после шага удалений
-   * (дрейф без объявления); удалённые в этом проходе (подтверждённые). */
+   * (дрейф без объявления); удалённые в этом проходе (подтверждённые).
+   * `outcomes` включает факты защищённых removed-целей (`protected`): они не
+   * удаляются и в `removed` не попадают. */
   sync: { outcomes: SyncVerifyOutcome[]; orphaned: string[]; removed: string[] };
   /** Фаза 3: исходы посева — единственная мутация памяти (REQ-07). */
   seed: SeedOutcome[];
@@ -61,8 +87,8 @@ export interface ProjectReport {
   schema: { status: 'ok' | 'migrated' | 'refused'; error?: string };
   /** Фаза 5: строгая сверка с картой — каждый пункт со статусом (T5). */
   verify: VerifyResult;
-  /** Перезаписи с бэкапом локального контента (правила 6′/7 §4.3, §4.12):
-   *  путь файла и путь копии — вход дайджеста и `--json.projects[].backups`. */
+  /** Перезаписи и удаления с бэкапом локального контента (правила 6′/7 §4.3,
+   *  §4.12): путь файла и путь копии — вход дайджеста и `--json.projects[].backups`. */
   backups?: Array<{ file: string; backup: string }>;
   /** Замер шага (NFR-03), мс; минимум 1 — разрешение Date.now-обёртки. */
   wallMs: number;
@@ -83,12 +109,33 @@ export async function runProjectStep(
 
   // 2. removals: удаляется только объявленное картой И подтверждённое списком
   // REQ-02 (второго подтверждения нет — ADR-4). Прочий orphaned не трогаем.
+  // Защищённая цель не удаляется никогда (REQ-05, правило 2 §4.3): она остаётся
+  // `protected` с подсказкой, как снять защиту (`--resolve <путь>=keep` снимает
+  // ключ, после чего файл снова попадает в список удалений — матрица §4.8).
   const removedTargets = new Set(map.files.filter((e) => e.category === 'removed').map((e) => mapEntryProjectPath(e)));
   const confirmed = new Set(opts.confirmedRemovals ?? []);
   const removed: string[] = [];
+  const removalBackups: Array<{ file: string; backup: string }> = [];
+  const heldRemovals: SyncVerifyOutcome[] = [];
   for (const p of orphaned) {
     if (!removedTargets.has(p) || !confirmed.has(p)) continue;
-    await unlink(join(root, p));
+    const abs = join(root, p);
+    if (!existsSync(abs)) continue; // исчез между сканом и удалением — удалять нечего
+    const current = readFileSync(abs, 'utf-8');
+    const protect = parseProtect(current);
+    if (protect.held) {
+      heldRemovals.push({
+        file: p,
+        action: 'skipped',
+        protected: true,
+        protect: protect.value ?? protect.raw ?? '',
+        reason: `declared removed but held by protect — unprotect to allow removal: wolf upgrade --resolve ${p}=keep`,
+      });
+      continue;
+    }
+    // NFR-05: у removed-цели эталона нет — локальный контент всегда сначала в бэкап.
+    removalBackups.push({ file: p, backup: (await backupLocalFile(root, p, current, new Date(now()))).path });
+    await unlink(abs);
     removed.push(p);
   }
   // Контракт T5: removals = подтверждённо отсутствующие ПОСЛЕ шага — удалённые
@@ -117,9 +164,10 @@ export async function runProjectStep(
     schema = { status: 'refused', error: err instanceof Error ? err.message : String(err) };
   }
 
-  // 5. сверка: исходы всех фаз → статус каждого пункта карты.
+  // 5. сверка: исходы всех фаз → статус каждого пункта карты. Факты
+  // защищённых removed-целей идут тем же кодом `protected` (не error/removed).
   const verify = verifyAgainstMap(map, {
-    syncOutcomes: [...syncOutcomes, ...drift],
+    syncOutcomes: [...syncOutcomes, ...drift, ...heldRemovals],
     seedOutcomes,
     removals,
   });
@@ -127,14 +175,21 @@ export async function runProjectStep(
   const errors = verify.summary.errors + (schema.status === 'refused' ? 1 : 0);
   const exitKind: ExitKind = errors > 0 ? 'error' : verify.summary.needsDecision > 0 ? 'needs-decision' : 'done';
 
-  const backups = syncOutcomes
-    .filter((o): o is SyncVerifyOutcome & { backup: string } => typeof o.backup === 'string')
-    .map((o) => ({ file: o.file, backup: o.backup }));
+  const backups = [
+    ...syncOutcomes
+      .filter((o): o is SyncVerifyOutcome & { backup: string } => typeof o.backup === 'string')
+      .map((o) => ({ file: o.file, backup: o.backup })),
+    ...removalBackups,
+  ];
 
   return {
     name: basename(root),
     root,
-    sync: { outcomes: syncOutcomes, orphaned: orphaned.filter((p) => !removed.includes(p)), removed },
+    sync: {
+      outcomes: [...syncOutcomes, ...heldRemovals],
+      orphaned: orphaned.filter((p) => !removed.includes(p)),
+      removed,
+    },
     seed: seedOutcomes,
     schema,
     verify,

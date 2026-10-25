@@ -470,4 +470,22 @@ describe('protected / kept — вне needs-decision (§4.6, волна 2.20.0)'
   it('NEEDS_DECISION_CODES не расширялся (§4.6)', () => {
     expect([...NEEDS_DECISION_CODES].sort()).toEqual(['conflict', 'diverged', 'skipped-mutated']);
   });
+
+  // F1-ревью m-4: protect сильнее удаления (REQ-05, §4.3/§4.12).
+  it('removed-цель с фактом protected → protected (не error/removed), needsDecision=false', () => {
+    const r = run(map({ files: [f('base/agents/gone.md', 'removed')] }), {
+      syncOutcomes: [{ file: proj('base/agents/gone.md'), action: 'skipped', protected: true, protect: 'true' }],
+    });
+    expect(r.items.find((i) => i.target === 'base/agents/gone.md')).toMatchObject({
+      code: 'protected',
+      needsDecision: false,
+    });
+    // факт не утёк в хвост «факт без ожидания» (иначе был бы второй conflict)
+    expect(r.items.filter((i) => i.target === proj('base/agents/gone.md'))).toEqual([]);
+  });
+
+  it('removed-цель без факта удаления — по-прежнему error (fail-safe не ослаблен)', () => {
+    const r = run(map({ files: [f('base/agents/gone.md', 'removed')] }));
+    expect(r.items.find((i) => i.target === 'base/agents/gone.md')?.code).toBe('error');
+  });
 });

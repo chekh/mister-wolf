@@ -6,10 +6,15 @@
 // сбое (NFR-02), отказ схемы (P-future-schema), wallMs (NFR-03), exit-kind.
 // Полные сценарии парка на реальных деревьях — integration/project-step.test.ts.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { runProjectStep, type ProjectStepDeps, type ProjectReport } from '../../../src/app/use-cases/project-step.js';
+import {
+  backupLocalFile,
+  runProjectStep,
+  type ProjectStepDeps,
+  type ProjectReport,
+} from '../../../src/app/use-cases/project-step.js';
 import { seedBasePlaybooks } from '../../../src/app/use-cases/seed-base-playbooks.js';
 import type { BaseSetRenderer, ModelContext, RenderOutcome } from '../../../src/ports/base-set-renderer.port.js';
 import type { MemoryStore } from '../../../src/ports/memory-store.port.js';
@@ -344,5 +349,110 @@ describe('runProjectStep (T6: композиция sync → removals → seed �
       { confirmedRemovals: [GONE] }
     );
     expect(report.wallMs).toBe(7); // разница двух замеров обёртки
+  });
+});
+
+// F1-ревью m-4 (волна 2.20.0): protect сильнее удаления (REQ-05), любое
+// удаление removed-цели сопровождается бэкапом локального контента (NFR-05).
+describe('removals: protect × подтверждение × бэкап (m-4)', () => {
+  let proj: string;
+
+  beforeEach(() => {
+    proj = mkdtempSync(join(tmpdir(), 'wolf-project-step-rm-'));
+  });
+  afterEach(() => {
+    rmSync(proj, { recursive: true, force: true });
+  });
+
+  function deps(renderer: BaseSetRenderer, over: Partial<ProjectStepDeps> = {}): ProjectStepDeps {
+    return {
+      renderer,
+      files: new Map([['worker-implementer-playbook.md', PLAYBOOK_W]]),
+      store: new MarkdownMemoryStore(proj),
+      log: new JsonlEventLog(eventsPath(proj)),
+      clock: new SystemClock(),
+      idGen: new HashIdGenerator(),
+      lock: new FsMemoryLock(memoryDir(proj)),
+      ...over,
+    };
+  }
+
+  const removalsRenderer = (orphaned: string[]): BaseSetRenderer =>
+    fakeRenderer(
+      [
+        { file: KEEP, action: 'created' },
+        { file: 'AGENTS.md', action: 'skipped', reason: 'content identical (M2)' },
+      ],
+      orphaned
+    );
+
+  const itemOf = (report: ProjectReport, target: string) => report.verify.items.find((i) => i.target === target);
+
+  const writeProtectedOrphan = (): void => {
+    mkdirSync(join(proj, '.opencode', 'agents'), { recursive: true });
+    writeFileSync(join(proj, GONE), '---\ndescription: gone\nprotect: true\n---\nLOCAL BODY\n');
+  };
+
+  it('protect блокирует удаление: файл цел, код protected (не error/removed), подсказка как снять', async () => {
+    writeProtectedOrphan();
+    const report = await runProjectStep(deps(removalsRenderer([GONE])), proj, mapOf(), {
+      confirmedRemovals: [GONE],
+    });
+
+    expect(existsSync(join(proj, GONE))).toBe(true);
+    expect(readFileSync(join(proj, GONE), 'utf-8')).toContain('LOCAL BODY');
+    expect(report.sync.removed).toEqual([]);
+    const fact = report.sync.outcomes.find((o) => o.file === GONE);
+    expect(fact?.protected).toBe(true);
+    expect(fact?.reason).toContain(`--resolve ${GONE}=keep`);
+    const item = itemOf(report, 'base/agents/gone.md');
+    expect(item?.code).toBe('protected');
+    expect(item?.needsDecision).toBe(false);
+    expect(report.exitKind).toBe('done');
+    expect(existsSync(join(proj, '.wolf', 'backup'))).toBe(false); // контент не менялся — копия не нужна
+  });
+
+  it('удаление: локальный контент сначала в бэкап (.wolf/backup/upgrade/<date>/<rel>), затем unlink', async () => {
+    mkdirSync(join(proj, '.opencode', 'agents'), { recursive: true });
+    writeFileSync(join(proj, GONE), STAMPED('gone.md'));
+    const original = readFileSync(join(proj, GONE), 'utf-8');
+
+    const report = await runProjectStep(deps(removalsRenderer([GONE])), proj, mapOf(), {
+      confirmedRemovals: [GONE],
+    });
+
+    expect(existsSync(join(proj, GONE))).toBe(false);
+    expect(report.sync.removed).toEqual([GONE]);
+    expect(itemOf(report, 'base/agents/gone.md')?.code).toBe('removed');
+    expect(report.backups).toHaveLength(1);
+    const [copy] = report.backups!;
+    expect(copy!.file).toBe(GONE);
+    expect(copy!.backup).toMatch(/^\.wolf\/backup\/upgrade\/\d{4}-\d{2}-\d{2}\/\.opencode\/agents\/gone\.md$/);
+    expect(readFileSync(join(proj, copy!.backup), 'utf-8')).toBe(original);
+  });
+
+  it('идемпотентность: повторный прогон второй бэкап не создаёт (файла уже нет)', async () => {
+    mkdirSync(join(proj, '.opencode', 'agents'), { recursive: true });
+    writeFileSync(join(proj, GONE), STAMPED('gone.md'));
+
+    const first = await runProjectStep(deps(removalsRenderer([GONE])), proj, mapOf(), {
+      confirmedRemovals: [GONE],
+    });
+    expect(first.backups).toHaveLength(1);
+    const second = await runProjectStep(deps(removalsRenderer([GONE])), proj, mapOf(), {
+      confirmedRemovals: [GONE],
+    });
+    expect(second.backups).toEqual([]);
+    expect(itemOf(second, 'base/agents/gone.md')?.code).toBe('removed');
+  });
+
+  it('backupLocalFile: коллизия имени не перезаписывает копию (base-2.ext)', async () => {
+    const now = new Date('2026-10-25T10:00:00');
+    const a = await backupLocalFile(proj, GONE, 'one\n', now);
+    const b = await backupLocalFile(proj, GONE, 'two\n', now);
+    expect(a).toEqual({ path: `.wolf/backup/upgrade/2026-10-25/${GONE}`, created: true });
+    expect(b).toEqual({ path: `.wolf/backup/upgrade/2026-10-25/.opencode/agents/gone-2.md`, created: false });
+    expect(readFileSync(join(proj, a.path), 'utf-8')).toBe('one\n');
+    expect(readFileSync(join(proj, b.path), 'utf-8')).toBe('two\n');
   });
 });
