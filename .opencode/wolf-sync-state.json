@@ -21,9 +21,9 @@
       "base": "2.20.0"
     },
     ".opencode/skills/using-skills/SKILL.md": {
-      "hash": "ec71da63e67d50fa4a9f49bb1c2221722769d71eb16f109aef5697245dc81a39",
+      "hash": "b7750e17a911e31dd7fb39db5e0091c41e06fd6e763c5ea2ed243f020f30d726",
       "origin": "render",
-      "base": "0.0.0"
+      "base": "2.20.0"
     },
     ".opencode/skills/verification-before-completion/SKILL.md": {
       "hash": "311efc4183ee44bd9495af6f00fbf373afd13dbb29ee9da0620d143afb266f49",
@@ -41,9 +41,9 @@
       "base": "2.20.0"
     },
     ".opencode/skills/wolf-execute/SKILL.md": {
-      "hash": "32a5a353f20a23c289ad50dcc34b36f98472fd077aadf076d6889a91118044c3",
+      "hash": "a8111c51b9f37d36eb12a00120a282c5b95f5c8f3589aeee8e5b1155c87ebf8b",
       "origin": "render",
-      "base": "0.0.0"
+      "base": "2.20.0"
     },
     ".opencode/skills/wolf-handoff/SKILL.md": {
       "hash": "ab09d372777997a5f7df1faad33a3f3badb6e456a5756c573d991101f201ecf7",
@@ -61,9 +61,9 @@
       "base": "2.20.0"
     },
     ".opencode/skills/wolf-sdd/SKILL.md": {
-      "hash": "8ed6e0ee485fd81dedc8105127273ffd2e9b727aaaf73b40c895d4354cc1e782",
+      "hash": "7f3bc3b24f6ad8f07b7cf02bbbd7ae4aef84f5a0f6d6c5fe7b7beec2e3003464",
       "origin": "render",
-      "base": "0.0.0"
+      "base": "2.20.0"
     },
     ".opencode/command/complain.md": {
       "hash": "28cd041268b4aed4e75c1a7d3acdd281525c6476b2c991bfbb3f742d31b2c3b5",
