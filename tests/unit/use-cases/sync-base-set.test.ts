@@ -45,6 +45,27 @@ describe('syncBaseSet use-case (Task 7)', () => {
   });
 });
 
+describe('syncBaseSet — структурные исходы §4.3 (волна 2.20.0)', () => {
+  it('protected/kept/backup проходят через use-case без трансформаций', async () => {
+    const outcomes = [
+      { file: 'p.md', action: 'skipped' as const, protected: true, protect: 'true' },
+      { file: 'k.md', action: 'skipped' as const, kept: true },
+      { file: 'u.md', action: 'updated' as const, backup: '.wolf/backup/u.md' },
+    ];
+    const fake = {
+      id: 'fake',
+      async renderBaseSet() {
+        throw new Error('renderBaseSet не вызывается из sync');
+      },
+      async syncBaseSet() {
+        return { outcomes, orphaned: [] };
+      },
+    } as unknown as BaseSetRenderer;
+    const res = await syncBaseSet(fake, '/proj');
+    expect(res.outcomes).toEqual(outcomes);
+  });
+});
+
 describe('wolf sync CLI (Task 7)', () => {
   beforeEach(() => {
     delete process.env.npm_command;

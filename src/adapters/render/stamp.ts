@@ -16,9 +16,19 @@ export function parseStamp(text: string): Stamp | null {
   return m ? { base: m[1], set: m[2] } : null;
 }
 
+/** ЕДИНСТВЕННЫЙ регекс изъятия штамп-строк (design §4.4): используется вставкой и
+ *  исцелением штамп-дрейфа. Вторая копия регекса запрещена — иначе исцеление и
+ *  вставка разойдутся, и файл будет «лечиться» вечно. */
+const STAMP_STRIP = /(?:<!--|\/\/)\s*wolf:rendered[^\n]*(?:\s*-->)?\n?/g;
+
+/** Контент без штамп-строк (единственная точка правды о регексе, §4.4). */
+export function stripStampLines(source: string): string {
+  return source.replace(STAMP_STRIP, '');
+}
+
 export function insertStamp(source: string, stamp: Stamp, fileName: string): string {
   const line = renderStamp(stamp, fileName);
-  const stripped = source.replace(/(?:<!--|\/\/)\s*wolf:rendered[^\n]*(?:\s*-->)?\n?/g, '');
+  const stripped = stripStampLines(source);
   if (/^---\n/.test(stripped)) {
     const end = stripped.indexOf('\n---', 4);
     if (end !== -1) {

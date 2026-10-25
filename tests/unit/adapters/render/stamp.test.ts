@@ -1,6 +1,6 @@
 // tests/unit/adapters/render/stamp.test.ts
 import { describe, expect, it } from 'vitest';
-import { insertStamp, parseStamp, renderStamp } from '../../../../src/adapters/render/stamp.js';
+import { insertStamp, parseStamp, renderStamp, stripStampLines } from '../../../../src/adapters/render/stamp.js';
 
 describe('stamp', () => {
   it('md: HTML-комментарий, ровно один пробел перед -->', () => {
@@ -28,5 +28,16 @@ describe('stamp', () => {
   it('insertStamp идемпотентен', () => {
     const once = insertStamp('# B\n', { base: 'a', set: '1.0.0' }, 'a.md');
     expect(insertStamp(once, { base: 'a', set: '1.0.1' }, 'a.md').match(/wolf:rendered/g)?.length).toBe(1);
+  });
+
+  it('stripStampLines снимает оба формата штампа и их перевод строки (design §4.4)', () => {
+    expect(stripStampLines('<!-- wolf:rendered base=a.md set=1.0.0 -->\nbody\n')).toBe('body\n');
+    expect(stripStampLines('// wolf:rendered base=p.ts set=1.0.0\nbody\n')).toBe('body\n');
+    expect(stripStampLines('---\ntitle: x\n---\n<!-- wolf:rendered base=a set=2.0.0 -->\nbody\n')).toBe(
+      '---\ntitle: x\n---\nbody\n'
+    );
+  });
+  it('stripStampLines: файл без штампа — байт-в-байт', () => {
+    expect(stripStampLines('# body\n')).toBe('# body\n');
   });
 });

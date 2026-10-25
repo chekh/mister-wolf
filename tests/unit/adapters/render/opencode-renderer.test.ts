@@ -12,9 +12,11 @@ import {
   chmodSync,
 } from 'fs';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { join, relative } from 'path';
 import { OpencodeBaseSetRenderer } from '../../../../src/adapters/render/opencode/opencode-renderer.js';
 import { parseStamp } from '../../../../src/adapters/render/stamp.js';
+import { loadSyncState, sha256 } from '../../../../src/adapters/render/sync-state.js';
+import { normalizeManaged } from '../../../../src/domain/protect-key.js';
 
 let proj: string;
 let base: string;
@@ -320,4 +322,236 @@ describe('атомарные записи tmp+rename (N01.1)', () => {
       expect(tmpFiles(proj)).toEqual([]);
     }
   );
+});
+
+describe('protect, исцеление штампа, kept, take (§4.3)', () => {
+  const AGENT = '.opencode/agents/mr-wolf.md';
+  const statePath = (): string => join(proj, '.opencode', 'wolf-sync-state.json');
+  const stateRaw = (): string => readFileSync(statePath(), 'utf-8');
+  const withProtect = (content: string, value: string): string => {
+    const i = content.indexOf('\n');
+    return `${content.slice(0, i + 1)}protect: ${value}\n${content.slice(i + 1)}`;
+  };
+  const treeSnapshot = (root: string): Record<string, string> => {
+    const out: Record<string, string> = {};
+    const walk = (dir: string): void => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, e.name);
+        if (e.isDirectory()) walk(p);
+        else out[relative(root, p)] = `${statSync(p).mtimeMs}:${readFileSync(p, 'utf-8')}`;
+      }
+    };
+    walk(root);
+    return out;
+  };
+
+  it('R02-1: штамп-дрейф → updated + reason; повторный проход — skipped, файл не меняется (NFR-02)', async () => {
+    await renderer().syncBaseSet(proj);
+    const p = join(proj, AGENT);
+    writeFileSync(p, readFileSync(p, 'utf-8').replace('set=9.9.9', 'set=1.0.0'));
+    const res = await renderer().syncBaseSet(proj);
+    const o = res.outcomes.find((x) => x.file === AGENT);
+    expect(o?.action).toBe('updated');
+    expect(o?.reason).toContain('stamp drift healed');
+    expect(parseStamp(readFileSync(p, 'utf-8'))?.set).toBe('9.9.9');
+    const healed = readFileSync(p, 'utf-8');
+    const res2 = await renderer().syncBaseSet(proj);
+    expect(res2.outcomes.find((x) => x.file === AGENT)?.action).toBe('skipped');
+    expect(readFileSync(p, 'utf-8')).toBe(healed);
+  });
+
+  it('R02-3: реальная правка + старый штамп → mutated, файл не тронут', async () => {
+    await renderer().syncBaseSet(proj);
+    const p = join(proj, AGENT);
+    writeFileSync(p, readFileSync(p, 'utf-8').replace('set=9.9.9', 'set=1.0.0').replace('# task', '# edited'));
+    const res = await renderer().syncBaseSet(proj);
+    const o = res.outcomes.find((x) => x.file === AGENT);
+    expect(o?.action).toBe('skipped');
+    expect(o?.mutated).toBe(true);
+    expect(readFileSync(p, 'utf-8')).toContain('# edited');
+  });
+
+  it('R02-4: protect + старый штамп → protected, файл и свидетель не менялись (ADR-7)', async () => {
+    await renderer().syncBaseSet(proj);
+    const p = join(proj, AGENT);
+    const local = withProtect(readFileSync(p, 'utf-8').replace('set=9.9.9', 'set=1.0.0'), 'true');
+    writeFileSync(p, local);
+    const before = stateRaw();
+    const res = await renderer().syncBaseSet(proj);
+    const o = res.outcomes.find((x) => x.file === AGENT);
+    expect(o?.protected).toBe(true);
+    expect(o?.protect).toBe('true');
+    expect(readFileSync(p, 'utf-8')).toBe(local);
+    expect(stateRaw()).toBe(before);
+  });
+
+  it('R05-5: добавление, смена и снятие protect не меняют свидетель и не дают mutated', async () => {
+    await renderer().syncBaseSet(proj);
+    const p = join(proj, AGENT);
+    const canon = readFileSync(p, 'utf-8');
+    const before = stateRaw();
+    for (const value of ['true', '2.19.0']) {
+      writeFileSync(p, withProtect(canon, value));
+      const o = (await renderer().syncBaseSet(proj)).outcomes.find((x) => x.file === AGENT);
+      expect(o?.protected).toBe(true);
+      expect(o?.mutated).toBeFalsy();
+      expect(stateRaw()).toBe(before);
+    }
+    writeFileSync(p, canon);
+    const o = (await renderer().syncBaseSet(proj)).outcomes.find((x) => x.file === AGENT);
+    expect(o?.action).toBe('skipped');
+    expect(o?.mutated).toBeFalsy();
+    expect(stateRaw()).toBe(before);
+  });
+
+  it('kept (6.5): свидетель origin keep → файл не трогаем; правка владельца снова mutated', async () => {
+    await renderer().syncBaseSet(proj);
+    const p = join(proj, AGENT);
+    const local = `${readFileSync(p, 'utf-8')}\nLOCAL ACCEPTED\n`;
+    writeFileSync(p, local);
+    writeFileSync(
+      statePath(),
+      `${JSON.stringify(
+        { files: { [AGENT]: { hash: sha256(normalizeManaged(local)), origin: 'keep', base: '1.0.0' } } },
+        null,
+        2
+      )}\n`
+    );
+    const res = await renderer().syncBaseSet(proj);
+    const o = res.outcomes.find((x) => x.file === AGENT);
+    expect(o?.kept).toBe(true);
+    expect(o?.reason).toContain('locally accepted');
+    expect(readFileSync(p, 'utf-8')).toBe(local);
+    const res2 = await renderer().syncBaseSet(proj);
+    expect(res2.outcomes.find((x) => x.file === AGENT)?.kept).toBe(true);
+    writeFileSync(p, `${local}EDIT\n`);
+    const res3 = await renderer().syncBaseSet(proj);
+    const o3 = res3.outcomes.find((x) => x.file === AGENT);
+    expect(o3?.action).toBe('skipped');
+    expect(o3?.mutated).toBe(true);
+  });
+
+  it("take-on-mutated (6'): бэкап до записи, файл = эталон, свидетель render, outcome.backup", async () => {
+    await renderer().syncBaseSet(proj);
+    const p = join(proj, AGENT);
+    const canon = readFileSync(p, 'utf-8');
+    const backupCalls: Array<{ rel: string; content: string }> = [];
+    writeFileSync(p, `${canon}\nLOCAL EDIT\n`);
+    const res = await renderer().syncBaseSet(proj, undefined, {
+      takeMutated: {
+        backup: async (rel, content) => {
+          backupCalls.push({ rel, content });
+          return `.wolf/backup/upgrade/2026-10-25/${rel}`;
+        },
+      },
+    });
+    const o = res.outcomes.find((x) => x.file === AGENT);
+    expect(o?.action).toBe('updated');
+    expect(o?.backup).toBe(`.wolf/backup/upgrade/2026-10-25/${AGENT}`);
+    expect(backupCalls).toEqual([{ rel: AGENT, content: `${canon}\nLOCAL EDIT\n` }]);
+    expect(readFileSync(p, 'utf-8')).toBe(canon);
+    const entry = loadSyncState(proj).files[AGENT] as { hash: string; origin: string };
+    expect(entry).toMatchObject({ origin: 'render', hash: sha256(canon) });
+  });
+
+  it('правило 7: нет записи свидетеля → бэкап локального до перезаписи (NFR-05)', async () => {
+    await renderer().syncBaseSet(proj);
+    const p = join(proj, AGENT);
+    const canon = readFileSync(p, 'utf-8');
+    rmSync(statePath());
+    writeFileSync(p, `${canon}\nLOCAL WRONG\n`);
+    const backupCalls: string[] = [];
+    const res = await renderer().syncBaseSet(proj, undefined, {
+      takeMutated: {
+        backup: async (rel) => {
+          backupCalls.push(rel);
+          return `.wolf/backup/${rel}`;
+        },
+      },
+    });
+    expect(backupCalls).toContain(AGENT);
+    expect(res.outcomes.find((x) => x.file === AGENT)?.backup).toBe(`.wolf/backup/${AGENT}`);
+    expect(readFileSync(p, 'utf-8')).toBe(canon);
+  });
+
+  it('inspect: protect → protected, kept → kept, foreign+protect → protected; ноль записей (NFR-03)', async () => {
+    await renderer().syncBaseSet(proj);
+    const p = join(proj, AGENT);
+    writeFileSync(p, withProtect(readFileSync(p, 'utf-8'), '2.19.0'));
+    writeFileSync(join(proj, '.opencode', 'agents', 'custom.md'), '---\nprotect: true\n---\nbody\n');
+    const foreign = '.opencode/command/complain.md';
+    writeFileSync(join(proj, foreign), '---\nprotect: true\n---\nчужое без штампа\n');
+    const keptFile = '.opencode/plugins/wolf-router.ts';
+    writeFileSync(join(proj, keptFile), '// wolf:rendered base=wolf-router.ts set=1.0.0\nLOCAL\n');
+    writeFileSync(
+      statePath(),
+      `${JSON.stringify(
+        {
+          files: {
+            [AGENT]: { hash: sha256(normalizeManaged(readFileSync(p, 'utf-8'))), origin: 'render', base: '9.9.9' },
+            [keptFile]: {
+              hash: sha256(normalizeManaged(readFileSync(join(proj, keptFile), 'utf-8'))),
+              origin: 'keep',
+              base: '1.0.0',
+            },
+          },
+        },
+        null,
+        2
+      )}\n`
+    );
+    const before = treeSnapshot(proj);
+    const out = await renderer().inspectBaseSet(proj);
+    expect(out.find((x) => x.file === AGENT)).toMatchObject({ action: 'protected', protect: '2.19.0' });
+    expect(out.find((x) => x.file === keptFile)).toMatchObject({ action: 'kept', keepBase: '1.0.0' });
+    expect(out.find((x) => x.file === foreign)).toMatchObject({ action: 'protected' });
+    expect(out.find((x) => x.file === '.opencode/agents/custom.md')).toBeUndefined();
+    expect(treeSnapshot(proj)).toEqual(before);
+  });
+
+  it('inspect: штамп-дрейф → identical, записи нет (правило 5, read-only)', async () => {
+    await renderer().syncBaseSet(proj);
+    const p = join(proj, AGENT);
+    writeFileSync(p, readFileSync(p, 'utf-8').replace('set=9.9.9', 'set=1.0.0'));
+    const before = treeSnapshot(proj);
+    const out = await renderer().inspectBaseSet(proj);
+    expect(out.find((x) => x.file === AGENT)?.action).toBe('identical');
+    expect(treeSnapshot(proj)).toEqual(before);
+  });
+
+  it('listProtections: реестр карты и вне карты, behind/recognized, AGENTS.md не входит', async () => {
+    await renderer().syncBaseSet(proj);
+    const p = join(proj, AGENT);
+    writeFileSync(p, withProtect(readFileSync(p, 'utf-8'), 'true'));
+    mkdirSync(join(proj, '.opencode', 'command'), { recursive: true });
+    writeFileSync(join(proj, '.opencode', 'command', 'custom.md'), '---\nprotect: 2.19.0\n---\nbody\n');
+    writeFileSync(join(proj, '.opencode', 'command', 'typo.md'), '---\nprotect: yes\n---\nbody\n');
+    const list = await renderer().listProtections!(proj, '9.9.9');
+    const agent = list.find((e) => e.file === AGENT);
+    expect(agent).toMatchObject({ project: proj, value: 'true', recognized: true, behind: false, base: '9.9.9' });
+    expect(agent?.stamp).toBe('9.9.9');
+    expect(list.find((e) => e.file === '.opencode/command/custom.md')).toMatchObject({
+      value: '2.19.0',
+      behind: null,
+      stamp: null,
+    });
+    expect(list.find((e) => e.file === '.opencode/command/typo.md')).toMatchObject({
+      value: 'yes',
+      recognized: false,
+    });
+    expect(list.some((e) => e.file === 'AGENTS.md')).toBe(false);
+  });
+
+  it('listProtections: защищённый файл с дрейфом → behind true', async () => {
+    await renderer().syncBaseSet(proj);
+    const p = join(proj, AGENT);
+    writeFileSync(p, withProtect(readFileSync(p, 'utf-8').replace('# task', '# local'), 'true'));
+    const list = await renderer().listProtections!(proj, '9.9.9');
+    expect(list.find((e) => e.file === AGENT)?.behind).toBe(true);
+  });
+
+  it('renderFreshFile: эталон цели карты, null для файла вне карты', () => {
+    expect(renderer().renderFreshFile!(proj, AGENT)).toContain('wolf:rendered base=mr-wolf.md');
+    expect(renderer().renderFreshFile!(proj, '.opencode/agents/nope.md')).toBeNull();
+  });
 });
