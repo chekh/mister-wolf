@@ -71,6 +71,14 @@ plan: plan.md (tasks T1–T15)
   шаблона, текст выше блока сохранён байт-в-байт.
   Маппинг: `tests/integration/b0-sync.test.ts`,
   `tests/unit/adapters/render/opencode-renderer.test.ts`.
+- **R03-8 (правило 6.5, F1-ревью m-8.1)** Given штампованный `AGENTS.md` со
+  свидетелем `origin:'keep'`, When проход и `--check`, Then `kept` (файл не
+  тронут, exit 0) и `kept` + `keepBase` в инспекции.
+  Маппинг: `tests/unit/adapters/render/opencode-renderer.test.ts`.
+- **R03-9 (CRLF, F1-ревью m-7)** Given `AGENTS.md` в CRLF с блоком v2, When
+  init/sync, Then блок получает EOL файла (смешанных переводов нет), текст выше
+  и ниже — байт-в-байт, повторный проход — `skipped`.
+  Маппинг: `tests/unit/adapters/render/opencode-renderer.test.ts`.
 - **R03-2 (AC2)** Given тот же файл с текстом ниже блока, When проход, Then текст
   ниже также сохранён байт-в-байт (сравнение хвоста).
   Маппинг: те же.
@@ -79,8 +87,10 @@ plan: plan.md (tasks T1–T15)
   Маппинг: `tests/integration/b0-init.test.ts`.
 - **R03-4 (AC4)** Given обновлённый блок, When повторный проход и повторный
   `init`, Then exit 0, блок не изменён, второй блок не добавлен.
-  Маппинг: `tests/integration/b0-init.test.ts` (кейс «init под v3 не дублирует
-  блок»).
+  Маппинг: `tests/integration/b0-init.test.ts` (кейсы «init под v3 не дублирует
+  блок» и «init на проекте 2.19.0»), `tests/unit/adapters/render/opencode-renderer.test.ts`
+  (M-1: штамп приводится к текущей базе, свидетель пишется по нормализованному
+  контенту, повторный `init` — no-op).
 - **R03-5 (граница)** Given `AGENTS.md` с открывающим маркером и без
   закрывающего, When проход и `--check`, Then `foreign`/skipped с причиной
   `onboarding markers broken` (в `--check` — строкой `detail:`, в проходе —
@@ -168,6 +178,14 @@ plan: plan.md (tasks T1–T15)
   ключ стоит последней строкой блока, EOL как у закрывающего `---`; файл без
   frontmatter → отказ `no-yaml-frontmatter`; битый результат → отказ без записи.
   Маппинг: `tests/unit/domain/protect-key.test.ts`.
+- **R05-8 (protect × removed, F1-ревью m-4)** Given `removed`-цель карты с
+  `protect: true` и подтверждённый список удалений, When `wolf upgrade`, Then
+  файл цел, код `protected` (не `error`/`removed`, exit 0), подсказка
+  `--resolve <путь>=keep`; When `keep` снимает ключ, Then следующий проход
+  удаляет файл только с бэкапом (NFR-05).
+  Маппинг: `tests/unit/use-cases/project-step.test.ts`,
+  `tests/unit/use-cases/verify-against-map.test.ts`,
+  `tests/unit/use-cases/decisions.test.ts`.
 
 ### REQ-06 — глаголы `--resolve`
 

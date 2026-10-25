@@ -41,6 +41,10 @@ T1 и T2 независимы (разные файлы) — можно пара�
 **последовательно**: они делят `memory-upgrade.ts` и `decisions.ts`; T13
 мержится после T6 и T11 (общий `memory-upgrade.ts`) и после T3 (рендерер).
 
+**Гигиена коммитов (решение L0, 2026-10-25).** `db40309` — known-red (T2),
+`git bisect`: skip. История не переписывается; в Ф2 и далее каждый коммит обязан
+быть зелёным по своим тестам и `tsc`.
+
 ## Задачи
 
 ### Ф1 — ядро
@@ -64,7 +68,8 @@ T1 и T2 независимы (разные файлы) — можно пара�
       (CRLF, нет frontmatter, ключ в теле, дубли, `false`, пусто, кавычки).
 
 - [x] **T2. Свидетель `{hash, origin, base}` + атомарная запись состояния.**
-      Сделано → коммит `db40309` (11 unit-тестов свидетеля и атомарности; `npx tsc --noEmit` ok).
+      Сделано → коммит `db40309` (`db40309` — known-red (T2), `git bisect`: skip;
+      11 unit-тестов свидетеля и атомарности; `npx tsc --noEmit` ok).
       Цель: свидетель помнит происхождение записи, чтобы `keep` не отменялся
       следующим проходом (design §4.2, ADR-8), и пишется атомарно (NFR-04).
       Контракт: `SyncEntry`, нормализация легаси-строк в `{origin:'render',
@@ -167,9 +172,19 @@ base:'0.0.0'|<stamp>}`, `saveSyncState` → `writeFileSync(tmp)` + `renameSync`;
       Цель: одна команда разрешает конфликт, нумерация стабильна (design §4.7,
       §4.8, REQ-06 AC1–AC4). Контракт: `collectDecisions` (read-only, порядок
       реестр → карта → AGENTS.md → алфавит), `applyResolution` с матрицей
-      «глагол × класс цели», `backupLocalFile` (ADR-4), двухфазная валидация
+      «глагол × класс цели», `backupLocalFile` (ADR-4; в F1 уже реализована в
+      `project-step.ts` — переиспользовать, второй копии формата §4.12 не
+      заводить), двухфазная валидация
       (все ошибки до первой записи), `--resolve` в CLI, дайджест + exit
       0/1/2.
+      Остаток F1-ревью — закрыть здесь, не «уже покрыто»: - **m-1**: дубль строки `faces: … diverged` в деталях проекта
+      (`upgrade-projects.ts:453-456` из `r.seed` и `:468` из `verifyNameLines`,
+      `memory-upgrade.ts:238-241` и `:253`) закрывается переходом на единый
+      `collectDecisions().diverged`; тест — `text.match(/faces:/g).length === 1`
+      на одном diverged-лице; - **m-3**: вторая таблица путей `MAP_KINDS` (`upgrade-projects.ts:404-417`,
+      копия `SOURCE_ROOT` из `verify-against-map.ts:77-82`) удаляется: `kind`
+      берётся из `map.files` (`FileEntry`) либо `SOURCE_ROOT`/`projectPath`
+      экспортируются и переиспользуются — одна таблица на проект.
       AC/REQ: REQ-06, REQ-05 AC3 (take на защищённом), NFR-05, NFR-06. Baseline:
       `memory-upgrade.ts:710`, новые модули. Зависимости: T3, T5.
       Allowlist: `src/app/use-cases/decisions.ts` (новый),
@@ -225,16 +240,23 @@ base:'0.0.0'|<stamp>}`, `saveSyncState` → `writeFileSync(tmp)` + `renameSync`;
       Контракт: включение режима `takeMutated` в проходе (правило 6′ §4.3),
       бэкап → эталон → свидетель, дайджест «файл + путь бэкапа»,
       protect/pin/kept молча, conflict/diverged остаются → exit 2, hint
-      `--review` в TTY без `--yes`.
+      `--review` в TTY без `--yes`. `--yes` берёт mutated **и** штампованный
+      `AGENTS.md`: `opts.takeMutated` пробрасывается в `syncAgentsMd` (F1-ревью
+      m-2, design §4.5/§4.12) — остаток того же T3-контракта; правило 7 для
+      `AGENTS.md` без свидетеля тоже бэкапит (NFR-05).
       AC/REQ: REQ-10, NFR-05. Baseline: `memory-upgrade.ts:264-325`,
       `upgrade-projects.ts:164-200`, `project-step.ts:77`, `sync-base-set.ts:11-13`.
       Зависимости: T9 (последовательно). Allowlist:
       `src/adapters/cli/commands/memory-upgrade.ts`,
       `src/app/use-cases/upgrade-projects.ts`, `src/app/use-cases/project-step.ts`,
       `src/app/use-cases/sync-base-set.ts` (проброс `opts.takeMutated` в рендерер),
+      `src/adapters/render/opencode/opencode-renderer.ts` (ветка `AGENTS.md`:
+      take/бэкап — F1-ревью m-2),
       `tests/integration/upgrade-park.test.ts`, `tests/unit/adapters/commands/upgrade-projects.test.ts`,
-      `tests/unit/use-cases/sync-base-set.test.ts`.
-      Проверки: `npx vitest run tests/integration/upgrade-park.test.ts tests/unit/adapters/commands/upgrade-projects.test.ts tests/unit/use-cases/sync-base-set.test.ts`,
+      `tests/unit/use-cases/sync-base-set.test.ts`,
+      `tests/unit/adapters/render/opencode-renderer.test.ts` (pass-through
+      `opts` в `AGENTS.md`, take/бэкап).
+      Проверки: `npx vitest run tests/integration/upgrade-park.test.ts tests/unit/adapters/commands/upgrade-projects.test.ts tests/unit/use-cases/sync-base-set.test.ts tests/unit/adapters/render/opencode-renderer.test.ts`,
       `npx tsc --noEmit`. RESULT: DONE; восстановление из бэкапа + `=protect`
       проходит как сценарий; опция доходит до рендерера без второго обёрточного слоя.
 
@@ -311,6 +333,11 @@ base:'0.0.0'|<stamp>}`, `saveSyncState` → `writeFileSync(tmp)` + `renameSync`;
       делят T7→T8→T9→T10→T11 в том же порядке.
       Чекпоинты: после T5 (ядро), после T10 (поведение), после T11 (контракт
       вывода), после T13 (check-поверхность).
+      Остаток F1-ревью (закрыть здесь, не «уже покрыто»): - **m-6**: типы потребителей свидетеля — `Record<string, string |
+SyncEntry>` вместо `Record<string, string>` (`memory-doctor.ts:67-77`,
+      `memory-uninstall.ts:16-19`, `uninstall.ts:22`, `platform-mismatch.ts:24`,
+      `repair-platform.ts:14`) + тест на **сырой** JSON свидетеля (без
+      `loadSyncState`), а не на нормализованные записи.
       Проверки: `npm run check` (english-surface, prettier, tsc, build, vitest);
       `npm run e2e` (правило проекта: E2E после плана); прогон парка-фикстуры
       из 3 проектов: `--check` → `--resolve` → `--json` → повторный проход
