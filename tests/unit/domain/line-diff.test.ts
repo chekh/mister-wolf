@@ -50,7 +50,7 @@ describe('lineDiff: LCS, хунки, счётчики (R08-1/R08-4)', () => {
     const limited = lineDiff(before, after, { maxOutput: 10 });
     expect(formatDiff(limited).length).toBeLessThanOrEqual(12); // заголовок хунка + 10 строк + «… ещё N»
     expect(limited.truncated).toBeGreaterThan(0);
-    expect(formatDiff(limited).at(-1)).toMatch(/^… ещё \d+ строк/);
+    expect(formatDiff(limited).at(-1)).toMatch(/^… \d+ more lines$/);
 
     const big = text(Array.from({ length: 4500 }, (_, i) => `l${i}`));
     const bigEdit = `${big}extra\n`;

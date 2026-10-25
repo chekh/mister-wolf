@@ -317,6 +317,7 @@ describe('upgradeRoute: --show и несовместимые пары (T8, §4.1
     expect(upgradeRoute({ show: 'x.md', resolve: ['1=keep'] }).error).toMatch(/--show views a file/);
     expect(upgradeRoute({ show: 'x.md', yes: true }).error).toMatch(/--yes describes a pass/);
     expect(upgradeRoute({ show: 'x.md', check: true }).error).toMatch(/different read-only modes/);
+    expect(upgradeRoute({ review: true, check: true }).error).toMatch(/--check and --review are different modes/);
   });
 });
 
@@ -406,6 +407,20 @@ describe('runUpgradeReview (T9): TTY-цикл, non-TTY рецепт, diverged', 
     expect(parseProtect(readFileSync(join(proj, '.opencode/agents/a.md'), 'utf-8')).held).toBe(true);
     expect(io.out.join('')).toContain('[1/1] ');
     expect(io.out.join('')).toContain('[t]ake [k]eep [p]rotect [v]pin [s]kip');
+    rmSync(proj, { recursive: true, force: true });
+  });
+
+  it('R07-1/m-1: пустой и неизвестный ввод — переспрос; diff направлен база→локальный (§4.9)', async () => {
+    const proj = reviewProject({ '.opencode/agents/a.md': REVIEW_FILES['.opencode/agents/a.md']! });
+    const io = fakeIo(true, ['', 'zzz', 'p']);
+    const res = await runUpgradeReview(reviewDeps(proj), { here: true, cwd: proj, io });
+    expect(res.exitCode).toBe(0);
+    expect(res.applied[0]).toMatchObject({ verb: 'protect', file: '.opencode/agents/a.md' });
+    const text = io.out.join('');
+    expect(text.match(/\[1\/1\]/g)).toHaveLength(3); // экран повторён на пустой и неизвестный ввод
+    expect(text).toContain('--- a/base 2.19.0   +++ b/local');
+    expect(text).toContain('  -# A base'); // «−» — эталон
+    expect(text).toContain('  +# A local'); // «+» — локальные правки
     rmSync(proj, { recursive: true, force: true });
   });
 

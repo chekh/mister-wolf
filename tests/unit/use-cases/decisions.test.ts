@@ -206,6 +206,21 @@ describe('collectDecisions (design §4.7): нумерация, порядок, �
     expect(reg.targets).toEqual([]);
   });
 
+  it('M-3: сломанные onboarding-маркеры (foreign + detail) — наблюдение, не решение', async () => {
+    const proj = await boot('p-broken');
+    const reg = await collectDecisions(
+      hereDeps(proj, {
+        inspect: async () => [{ file: AGENTS, action: 'foreign', detail: 'onboarding markers broken' }],
+      })
+    );
+    expect(reg.targets).toEqual([]); // §4.5: needs-decision не выставляется
+    // без detail тот же foreign — конфликт (решение), как и раньше
+    const plainConflict = await collectDecisions(
+      hereDeps(proj, { inspect: async () => [{ file: AGENTS, action: 'foreign' }] })
+    );
+    expect(plainConflict.targets).toEqual([expect.objectContaining({ file: AGENTS, code: 'conflict' })]);
+  });
+
   it('--here нумерует только cwd и не читает реестр', async () => {
     const proj = await boot('p-here');
     touch(proj, MR_WOLF);
@@ -334,7 +349,7 @@ describe('parseResolveValues / planResolutions (§4.8): грамматика и 
     const errors = (target: string, verb: 'take' | 'keep' | 'protect' | 'pin'): string =>
       planResolutions(reg, MAP, [{ target, verb }], { here: true, cwd: proj }).errors.join('\n');
 
-    expect(errors(COMPLAIN, 'keep')).toMatch(/conflict comes from the map, not the witness — use protect/);
+    expect(errors(COMPLAIN, 'keep')).toMatch(/conflict stays: use protect \(hold\) or take \(base\)/);
     expect(errors('.opencode/agents/stray.md', 'keep')).toMatch(/conflict comes from the map/);
     expect(errors('.opencode/agents/stray.md', 'take')).toMatch(/no base for a file outside the update map/);
     expect(errors(AGENTS, 'protect')).toMatch(/AGENTS\.md has no YAML frontmatter/);

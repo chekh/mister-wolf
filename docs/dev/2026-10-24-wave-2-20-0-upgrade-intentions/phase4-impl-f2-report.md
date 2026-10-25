@@ -7,7 +7,7 @@ task: wave-2-20-0-impl-f2
 thread: mem_20261024_upgrade_ux_namereniya_vladeltsa_i_tikhiy_e6daf7
 branch: dev/wave-2-20-0-upgrade-intentions
 baseline: bb4f560
-head: f42af98
+head: см. `git log` (цикл 1 — `e734a98`, цикл 2 — коммит исправлений)
 mode: FULL (утверждённый plan.md, Ф2)
 ---
 
@@ -115,14 +115,15 @@ allowlist, санкционированных lead'ом).
 ## Гейт
 
 - `npx tsc --noEmit` — exit 0 на каждом коммите (E6).
-- `npm run check` — финальный прогон на дереве после `ea2df6a` (collector
+- `npm run check` — финальный прогон на дереве после цикла исправлений 1 → 2:
+  **exit 0, 214 файлов / 1860 passed**. Предыдущий прогон на дереве после `ea2df6a` (collector
   повторяемого `--resolve` без default + перегенерированный справочник). Два
   промежуточных прогона были красными по двум причинам, обе устранены и
   перепроверены: (а) `cli-reference-guard` — справочник отставал от новых
   флагов (регенерация, Отклонения п.7); (б) `previous is not iterable` в
   collector'е `--resolve` после снятия `(default: [])` (`collectResolve`
   получает `previous = undefined`) — исправлено `[...(previous ?? []), value]`,
-  тест R06-9 зелёный. Итоговые счётчики — в конце этого раздела.
+  тест R06-9 зелёный.
 - Живой CLI-смоук на собранном `dist` (E15) — все новые режимы вне тестового
   контура: check-json → review → show → resolve-json → check-json.
 - Целевые интеграционные: `tests/integration/upgrade-here.test.ts` (6),
@@ -177,6 +178,28 @@ allowlist, санкционированных lead'ом).
 11. **F1-ревью rr-1/rr-2 не трогались** (вне scope Ф2): `restampAgents` с
     пользовательским frontmatter и допущение «EOL файла = EOL первой строки» —
     остаются известными minor'ами для T14/T15.
+
+## Цикл исправлений 1 → 2 (по `phase4-rereview-f2.txt`)
+
+Независимое ревью 1: `SUMMARY: 0 critical / 3 major / 8 minor`,
+`VERDICT: CHANGES_REQUIRED`. Узкий цикл исправлений (без пересмотра архитектуры):
+
+| Находка                                                                                    | Решение                                                                                                                                                                                  | Тест                                                                                       |
+| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| **M-1** `--json` pass: `local-newer`/`linked-refusal` — пустой stdout, exit-паритет сломан | `phase1JsonDoc` (exit/available/error): local-newer → документ `exit 0` с `cli.available`; linked-refusal → документ `exit 1` + `error` + `rethrow` (как npm-сбой)                       | `upgrade-projects.test.ts` «M-1: --json local-newer … linked-refusal»                      |
+| **M-2** `--json --resolve`: бэкапы не попадают в документ                                  | аддитивное top-level поле `backups` в `UpgradeJson` (минор-совместимо, §4.13): заполняется в resolve (пути бэкапов), pass (плоский список по проектам), here; `--show` — пусто           | `upgrade-here.test.ts` «M-2: --json --resolve …=take …» (путь из JSON существует на диске) |
+| **M-3** AGENTS.md со сломанными onboarding-маркерами нумеровался как решение               | `collectDecisions`: `foreign` с `detail` — наблюдение, не решение (§4.5 «needs-decision НЕ выставляется»)                                                                                | `decisions.test.ts` «M-3: сломанные onboarding-маркеры»                                    |
+| m-1 пустой/неизвестный ввод в TTY-`--review` = молчаливый skip                             | цикл переспрашивает экран до валидной клавиши/`q`/EOF (§4.9)                                                                                                                             | `memory-upgrade.here.test.ts` «R07-1/m-1: переспрос»                                       |
+| m-2 знаки diff в review инвертированы                                                      | diff строится `lineDiff(эталон, локальный)` — `−` эталон, `+` локальные (§4.9)                                                                                                           | тот же тест (строки `-# A base` / `+# A local`)                                            |
+| m-3 «… ещё N строк» — RU в CLI                                                             | `… N more lines` (EN-поверхность)                                                                                                                                                        | `line-diff.test.ts`                                                                        |
+| m-4 `skippedProjects` нигде не печатались                                                  | `skippedProjectLines`: `skipped projects: N` + `[reason]` в `--resolve` и non-TTY `--review`                                                                                             | покрыто отчётом; отдельный тест не добавлялся (строки видны в смоуке)                      |
+| m-5 `--check --review` молча брал check                                                    | несовместимая пара → error exit 1 (§4.18, по аналогии с `--check --show`)                                                                                                                | `memory-upgrade.here.test.ts` route-тест                                                   |
+| m-6 текст отказа `keep` на conflict                                                        | `conflict stays: use protect (hold) or take (base)` (design §4.8), orphan-строка не изменена                                                                                             | `decisions.test.ts` R06-6                                                                  |
+| m-7 deprecated-mutated в реестре vs report-only в `--check`                                | оставлено как есть: реестр следует поведению прохода (§4.7: mutated — решение), `--check`-классификация deprecated — поведение T6/REQ-11; расхождение поверхностей зафиксировано для T14 | —                                                                                          |
+| m-8 `take` на защищённом без бэкапа, если отличие только в строке `protect`                | отклонено: design §4.8 прямо исключает снятие ключа из NFR-05 («снятие ключа — намеренное действие владельца»); бэкап контента при реальном отличии есть                                 | R06-4                                                                                      |
+
+После исправлений: 184 точечных теста зелёные (12 файлов), `tsc` exit 0,
+`npm run check` — финальный прогон ниже по тексту (счётчики обновлены).
 
 ## Риски
 

@@ -201,10 +201,7 @@ export function formatDiff(result: LineDiffResult): string[] {
       out.push(`${line.kind === 'del' ? '-' : line.kind === 'add' ? '+' : ' '}${line.text}`);
     }
   }
-  if (result.truncated > 0) {
-    const noun = result.truncated === 1 ? 'строка' : result.truncated < 5 ? 'строки' : 'строк';
-    out.push(`… ещё ${result.truncated} ${noun}`);
-  }
+  if (result.truncated > 0) out.push(`… ${result.truncated} more lines`);
   if (result.inputTruncated) out.push('… input truncated to the line limit');
   return out;
 }

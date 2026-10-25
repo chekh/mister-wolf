@@ -531,6 +531,33 @@ describe('--json: argv ребёнка, единственный документ
     }
   });
 
+  it('M-1: --json local-newer → документ exit 0 с available; linked-refusal → документ exit 1 + throw', async () => {
+    const chunks: string[] = [];
+    const write = vi.spyOn(process.stdout, 'write').mockImplementation(((c: string) => {
+      chunks.push(String(c));
+      return true;
+    }) as typeof process.stdout.write);
+    try {
+      const newer = phase1Deps({ registryVersion: async () => '2.18.0' });
+      await runUpgradeWithProjects(newer, { json: true });
+      const doc = JSON.parse(chunks.join('')) as Record<string, unknown>;
+      expect(doc).toMatchObject({ schema: 'wolf.upgrade/1', mode: 'pass', exit: 0, projects: [] });
+      expect((doc['cli'] as { available: string | null }).available).toBe('2.18.0');
+      expect(doc['error']).toBeUndefined();
+      expect(newer.reExec).not.toHaveBeenCalled();
+
+      chunks.length = 0;
+      const linked = phase1Deps({ binaryPath: '/somewhere/dev/wolf' });
+      await expect(runUpgradeWithProjects(linked, { json: true })).rejects.toThrow(/dev\/linked copy/);
+      const failed = JSON.parse(chunks.join('')) as Record<string, unknown>;
+      expect(failed).toMatchObject({ schema: 'wolf.upgrade/1', mode: 'pass', exit: 1 });
+      expect(String(failed['error'])).toMatch(/dev\/linked copy/);
+      expect(linked.reExec).not.toHaveBeenCalled();
+    } finally {
+      write.mockRestore();
+    }
+  });
+
   it('R11-7: --json в TTY не задаёт вопросов, шапка фазы 1 подавлена', async () => {
     const spies = silenceStdio();
     const deps = phase1Deps();

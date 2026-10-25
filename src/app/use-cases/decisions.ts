@@ -162,16 +162,22 @@ export async function collectDecisions(deps: DecisionDeps): Promise<DecisionRegi
     const add = (file: string, kind: DecisionKind, code: 'mutated' | 'conflict'): void => {
       targets.push({ n: targets.length + 1, project: project.name, root: project.root, file, kind, code });
     };
+    // `foreign` с `detail` — наблюдение (сломанные onboarding-маркеры), а не
+    // решение: design §4.5 «needs-decision НЕ выставляется», причина — полем.
+    const decisionCode = (outcome: InspectOutcome | undefined): 'mutated' | 'conflict' | null => {
+      if (outcome === undefined) return null;
+      if (outcome.action === 'mutated') return 'mutated';
+      if (outcome.action === 'foreign' && outcome.detail === undefined) return 'conflict';
+      return null;
+    };
     for (const entry of map.files) {
       if (entry.category === 'removed') continue;
       const rel = projectPath(entry);
-      const action = byFile.get(rel)?.action;
-      if (action === 'mutated') add(rel, KIND_OF[entry.kind], 'mutated');
-      else if (action === 'foreign') add(rel, KIND_OF[entry.kind], 'conflict');
+      const code = decisionCode(byFile.get(rel));
+      if (code !== null) add(rel, KIND_OF[entry.kind], code);
     }
-    const agents = byFile.get('AGENTS.md')?.action;
-    if (agents === 'mutated') add('AGENTS.md', 'agents-md', 'mutated');
-    else if (agents === 'foreign') add('AGENTS.md', 'agents-md', 'conflict');
+    const agentsCode = decisionCode(byFile.get('AGENTS.md'));
+    if (agentsCode !== null) add('AGENTS.md', 'agents-md', agentsCode);
     diverged.push(...(await divergedFaces(project.root, map, deps)));
   }
 
@@ -241,6 +247,8 @@ export interface UpgradeJson {
   decisions: JsonDecision[];
   diverged: JsonDiverged[];
   protections: JsonProtection[];
+  /** Бэкапы локального контента (§4.12): аддитивное поле в миноре (§4.13). */
+  backups: Array<{ file: string; backup: string }>;
 }
 
 export interface UpgradeCheckJson {
@@ -411,7 +419,7 @@ const MATRIX: Record<TargetClass, Record<ResolutionVerb, true | string>> = {
   mutated: { take: true, keep: true, protect: true, pin: true },
   conflict: {
     take: true,
-    keep: 'conflict comes from the map, not the witness — use protect',
+    keep: 'conflict stays: use protect (hold) or take (base)',
     protect: true,
     pin: true,
   },

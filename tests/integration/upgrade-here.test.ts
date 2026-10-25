@@ -7,6 +7,7 @@
 // tmp, слепок до/после равен (реестр не читаем и не пишем). Строки test-plan:
 // R14.1, R14.2.
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
+import { Command } from 'commander';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -15,6 +16,7 @@ import {
   runUpgradeHere,
   runUpgradeResolve,
   runUpgradeShow,
+  memoryUpgradeCommand,
   type UpgradeHereDeps,
   type UpgradeHereResult,
   type UpgradeResolveDeps,
@@ -468,5 +470,68 @@ describe('runUpgradeHere --yes (T10): take-on-mutated, бэкап, protect/kept 
     expect(backupsText).not.toContain(keptRel);
     expect(read(proj, protectedRel)).toBe(protectedContent);
     expect(parseProtect(read(proj, protectedRel)).held).toBe(true);
+  });
+});
+
+/* ---------- --json --resolve/--show (T11/M-2, design §4.13): документ и бэкапы ---------- */
+
+describe('--json --resolve/--show (M-2): backups в документе, mode show', () => {
+  it('R11-5: --json --resolve …=take отдаёт backups с путём; --json --show — mode show, projects []', async () => {
+    const park = mkTmp('wolf-json-resolve-');
+    const proj = await bootstrapProject(park, 'p-json-resolve');
+    const target = join(proj, '.opencode/agents/mr-wolf.md');
+    writeFileSync(target, `${readFileSync(target, 'utf-8')}\n<!-- local edit -->\n`);
+
+    // изолированный реестр через XDG: команда читает его, cwd не нужен (путь <project>/<rel>)
+    const xdg = mkTmp('wolf-json-resolve-xdg-');
+    const configDir = join(xdg, 'wolf');
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(
+      join(configDir, 'projects.yaml'),
+      yaml.dump({
+        projects: [{ path: proj, schema_version: 2, initialized_at: '2026-01-01T00:00:00.000Z' }],
+      })
+    );
+    const prevXdg = process.env.XDG_CONFIG_HOME;
+    process.env.XDG_CONFIG_HOME = xdg;
+
+    const run = async (argv: string[]): Promise<Record<string, unknown>> => {
+      const chunks: string[] = [];
+      const write = vi.spyOn(process.stdout, 'write').mockImplementation(((c: string) => {
+        chunks.push(String(c));
+        return true;
+      }) as typeof process.stdout.write);
+      const prevExit = process.exitCode;
+      try {
+        const program = new Command();
+        program.addCommand(memoryUpgradeCommand());
+        await program.parseAsync(['node', 'wolf', 'upgrade', ...argv], { from: 'node' });
+        process.exitCode = prevExit;
+      } finally {
+        write.mockRestore();
+      }
+      return JSON.parse(chunks.join('')) as Record<string, unknown>;
+    };
+
+    try {
+      const resolved = await run(['--resolve', 'p-json-resolve/.opencode/agents/mr-wolf.md=take', '--json']);
+      expect(resolved['schema']).toBe('wolf.upgrade/1');
+      expect(resolved['mode']).toBe('resolve');
+      expect(resolved['projects']).toEqual([]);
+      const backups = resolved['backups'] as Array<{ file: string; backup: string }>;
+      expect(backups).toHaveLength(1);
+      expect(backups[0]).toMatchObject({ file: '.opencode/agents/mr-wolf.md' });
+      expect(backups[0]!.backup).toMatch(/^\.wolf\/backup\/upgrade\/\d{4}-\d{2}-\d{2}\//);
+      expect(existsSync(join(proj, backups[0]!.backup))).toBe(true); // путь из JSON исполним
+
+      const shown = await run(['--show', 'p-json-resolve/.opencode/agents/mr-wolf.md', '--json']);
+      expect(shown['mode']).toBe('show');
+      expect(shown['projects']).toEqual([]);
+      expect(shown['decisions']).toEqual([]); // после take решений нет
+      expect(shown['backups']).toEqual([]);
+    } finally {
+      if (prevXdg === undefined) delete process.env.XDG_CONFIG_HOME;
+      else process.env.XDG_CONFIG_HOME = prevXdg;
+    }
   });
 });

@@ -459,7 +459,15 @@ async function upgradeHereAction(cwd: string, yes: boolean, json = false): Promi
     const map = loadUpdateMap();
     const reg = await collectDecisions({ ...decisionProdDeps(cwd, renderer), loadMap: () => map });
     printJson(
-      await modeJsonDoc({ mode: 'here', exit: res.exitCode, registry: reg, map, renderer, projects: [res.project] })
+      await modeJsonDoc({
+        mode: 'here',
+        exit: res.exitCode,
+        registry: reg,
+        map,
+        renderer,
+        projects: [res.project],
+        backups: res.project.backups,
+      })
     );
   } else {
     process.stdout.write(`${renderReport(res.report, env)}\n`);
@@ -509,6 +517,9 @@ export function upgradeRoute(flags: UpgradeFlags): UpgradeRoute {
   if (reviewGiven && showGiven) {
     return { mode: 'pass', error: '--review and --show are different read-only modes — run one of them' };
   }
+  if (reviewGiven && flags.check === true) {
+    return { mode: 'pass', error: '--check and --review are different modes — run one of them' };
+  }
   if (showGiven && resolveGiven) {
     return { mode: 'pass', error: '--show views a file, --resolve writes — run them separately' };
   }
@@ -542,6 +553,14 @@ export function decisionLines(reg: DecisionRegistry): ReportNode[] {
   const noun = reg.targets.length === 1 ? 'file needs' : 'files need';
   const out: ReportNode[] = [line('warn', `${reg.targets.length} ${noun} a decision`, true)];
   for (const t of reg.targets) out.push(line('info', `  ${t.n}  ${t.project}  ${t.file}  ${t.code}`, true));
+  return out;
+}
+
+/** Пропущенные проходом проекты (§4.7): причина видна, а не теряется. */
+export function skippedProjectLines(reg: DecisionRegistry): ReportNode[] {
+  if (reg.skippedProjects.length === 0) return [];
+  const out: ReportNode[] = [line('info', `skipped projects: ${reg.skippedProjects.length}`, true)];
+  for (const p of reg.skippedProjects) out.push(line('info', `  ${p.name}  [${p.reason}] — skipped`, true));
   return out;
 }
 
@@ -625,6 +644,7 @@ export async function runUpgradeResolve(
 
   for (const error of applied.errors) children.push(line('error', error));
   children.push(...digestLines(applied.applied));
+  children.push(...skippedProjectLines(after));
   children.push(...decisionLines(after));
   children.push(...stewardZoneLines(after.diverged));
   const exitCode: 0 | 1 | 2 =
@@ -697,6 +717,7 @@ async function upgradeResolveAction(values: string[], here: boolean, json = fals
         registry: res.registry,
         map,
         renderer,
+        backups: res.backups,
         ...(res.errors.length > 0 ? { error: res.errors.join('; ') } : {}),
       })
     );
@@ -861,6 +882,7 @@ function reviewRecipeNodes(reg: DecisionRegistry, base: string, here: boolean): 
     out.push(line('warn', `review (non-interactive): ${reg.targets.length} ${noun} a decision`, true));
     for (const t of reg.targets) out.push(line('info', reviewTargetLine(t, base), true));
   }
+  out.push(...skippedProjectLines(reg));
   out.push(...stewardZoneLines(reg.diverged));
   if (reg.targets.length > 0) {
     const scope = here ? ' --here' : '';
@@ -891,7 +913,8 @@ function reviewScreen(
   } else if (current === null) {
     lines.push(`  local: missing · base: ${baseLines} lines · take creates the file`);
   } else {
-    const diff = lineDiff(normalizeManaged(current), fresh, { maxOutput: 40 });
+    // a = эталон, b = локальный (§4.9): «−» — строки базы, «+» — локальные правки
+    const diff = lineDiff(fresh, normalizeManaged(current), { maxOutput: 40 });
     lines.push(`  local: ${localLines} lines · base: ${baseLines} lines · −${diff.removed} +${diff.added}`);
     lines.push(`  --- a/base ${map.version}   +++ b/local`);
     for (const text of formatDiff(diff)) lines.push(`  ${text}`);
@@ -947,10 +970,16 @@ export async function runUpgradeReview(
   for (let i = 0; i < before.targets.length; i++) {
     const target = before.targets[i]!;
     if (handled.has(target.n)) continue;
-    opts.io.write(`${reviewScreen(target, i + 1, total, map, deps.renderer).join('\n')}\n`);
-    const answer = (await opts.io.ask('> '))?.trim().toLowerCase() ?? null;
+    // пустой ввод и неизвестная клавиша — переспрос без изменения файлов (§4.9)
+    let answer: string | null = null;
+    for (;;) {
+      opts.io.write(`${reviewScreen(target, i + 1, total, map, deps.renderer).join('\n')}\n`);
+      answer = (await opts.io.ask('> '))?.trim().toLowerCase() ?? null;
+      if (answer === null || answer === 'q' || answer === 's' || answer === 'a') break;
+      if (VERB_KEYS[answer] !== undefined) break;
+    }
     if (answer === null || answer === 'q') break;
-    if (answer === 's' || answer === '') {
+    if (answer === 's') {
       handled.add(target.n);
       continue;
     }
@@ -968,8 +997,7 @@ export async function runUpgradeReview(
       for (const member of group) await applyOne(member, groupVerb);
       continue;
     }
-    const verb = VERB_KEYS[answer];
-    if (verb === undefined) continue; // пустой/неизвестный ввод — переспрос (без изменений)
+    const verb = VERB_KEYS[answer]!;
     await applyOne(target, verb);
     // «ко всем похожим» одним вопросом, если остались такие же цели
     const similar = similarTargets(before, target).filter((t) => !handled.has(t.n));
@@ -1411,6 +1439,7 @@ export async function buildPassJsonDoc(
     decisions: jsonDecisions(reg),
     diverged: jsonDiverged(reg),
     protections,
+    backups: res.projects.flatMap((p) => p.backups),
   };
 }
 
@@ -1422,6 +1451,7 @@ async function modeJsonDoc(args: {
   map: UpdateMap;
   renderer: OpencodeBaseSetRenderer;
   projects?: JsonProject[];
+  backups?: Array<{ file: string; backup: string }>;
   error?: string;
 }): Promise<UpgradeJson> {
   const protections = await collectProtections(args.registry, args.renderer, args.map);
@@ -1436,24 +1466,29 @@ async function modeJsonDoc(args: {
     decisions: jsonDecisions(args.registry),
     diverged: jsonDiverged(args.registry),
     protections,
+    backups: args.backups ?? [],
   };
 }
 
-/** Документ фазы 1 при сбое npm-фазы: проекты не тронуты, exit 1, error (§4.13). */
-function npmFailureJsonDoc(installed: string, error: string): UpgradeJson {
+/** Документ фазы 1, когда проход не дошёл до проектов (§4.13): npm-сбой,
+ *  linked-refusal (error + exit 1) или local-newer (exit 0, без error). */
+function phase1JsonDoc(installed: string, available: string | null, exit: 0 | 1, error?: string): UpgradeJson {
   return {
     schema: 'wolf.upgrade/1',
-    exit: 1,
+    exit,
     mode: 'pass',
-    cli: { installed, available: null },
-    error,
+    cli: { installed, available },
+    ...(error !== undefined ? { error } : {}),
     plan: emptyPlan(),
     projects: [],
     decisions: [],
     diverged: [],
     protections: [],
+    backups: [],
   };
 }
+
+const npmFailureJsonDoc = (installed: string, error: string): UpgradeJson => phase1JsonDoc(installed, null, 1, error);
 
 /* ---------- re-exec фазы 2 (T8, REQ-01/04, ADR-2/5): транспорт wolf upgrade ---------- */
 
@@ -1543,6 +1578,16 @@ export async function runUpgradeWithProjects(
     throw err;
   }
   if (!json) printOutcome(outcome); // §4.13: фаза 1 при --json молчит
+  // §4.13: документ печатает фаза 1, если до проектов дело не дошло
+  if (json && outcome.kind === 'linked-refusal') {
+    const message = `a dev/linked copy is installed (${outcome.binaryPath ?? 'path unknown'}) — upgrade not applicable; to update: npm rm -g mister-wolf && npm i -g mister-wolf`;
+    printJson(phase1JsonDoc(deps.currentVersion, null, 1, message));
+    throw new UserFacingError(message);
+  }
+  if (json && outcome.kind === 'local-newer') {
+    printJson(phase1JsonDoc(deps.currentVersion, outcome.latest, 0));
+    return; // реестру нечему обновляться: exit 0, без spawn
+  }
   const reExec = deps.reExec ?? reExecUpgradeProjects;
   const reExecOpts = { yes: opts.yes, ...(json ? { json } : {}) };
   if (outcome.kind === 'updated') {
