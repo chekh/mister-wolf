@@ -218,12 +218,14 @@ export async function useTool(deps: StoreDeps, input: { nameOrId: string; actor:
 /** Детерминированный контент SKILL.md из объекта tool — повторная генерация даёт тот же текст. */
 export function toolSkillContent(tool: ToolObject): string {
   const description = tool.contract_output ?? 'script from Wolf memory';
+  // 6.5 (аудит opencode v2): frontmatter обязан быть первой строкой файла — маркер
+  // генерации идёт после блока, иначе `name`/`description` скилла не парсятся.
   return [
-    `<!-- generated from tool:${tool.id} -->`,
     '---',
     `name: ${tool.name}`,
     `description: Tool ${tool.name} — ${description}.`,
     '---',
+    `<!-- generated from tool:${tool.id} -->`,
     '',
     `# Tool ${tool.name}`,
     '',

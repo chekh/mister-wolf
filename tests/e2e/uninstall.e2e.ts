@@ -62,7 +62,7 @@ describe('wolf uninstall e2e (REQ-03)', () => {
     expect(res.stdout).toMatch(/\.wolf — kept/);
     expect(res.stdout).toContain('npm uninstall -g mister-wolf');
     const cfg = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));
-    expect(cfg.mcp?.wolf).toBeUndefined();
+    expect(cfg.mcp).toBeUndefined(); // нативная и легаси формы удалены, пустой mcp не остаётся
     expect(cfg.default_agent).toBeUndefined();
     expect(cfg.experimental).toBeUndefined(); // пустая experimental не остаётся
     expect(cfg.subagent_depth).toBeUndefined();

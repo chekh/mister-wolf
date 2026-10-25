@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import yaml from 'js-yaml';
 import {
   registerTool,
   listTools,
@@ -209,6 +210,15 @@ describe('tool librarian (C2)', () => {
 
     const content = readFileSync(join(dir, first.path), 'utf-8');
     expect(content).toContain(`generated from tool:${toolId}`);
+    // 6.5: frontmatter — первым блоком файла; маркер генерации ниже, иначе платформа
+    // не парсит name/description скилла.
+    expect(content.startsWith('---\n')).toBe(true);
+    const end = content.indexOf('\n---\n', 4);
+    expect(end).toBeGreaterThan(0);
+    const front = yaml.load(content.slice(4, end)) as Record<string, unknown>;
+    expect(front.name).toBe('extract-todos');
+    expect(String(front.description)).toContain('список TODO');
+    expect(content.indexOf(`generated from tool:${toolId}`)).toBeGreaterThan(end);
     expect(content).toContain('Input: путь к файлу');
     expect(content).toContain('Output: список TODO');
     expect(content).toContain('Environment: node 22');

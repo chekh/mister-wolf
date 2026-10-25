@@ -6,6 +6,10 @@ import type { RenderOutcome } from '../../ports/base-set-renderer.port.js';
 import type { PlatformWriteResult } from '../../ports/platform-adapter.port.js';
 import { parseStamp } from '../../adapters/render/stamp.js';
 import type { SyncStateFiles } from '../../adapters/render/sync-state.js';
+import { CONFIG_KEYS } from '../../adapters/platforms/opencode-config-keys.js';
+
+/** Пути ключей для плана — из реестра (§6.2): литералов путей в use-case нет. */
+const KEY_PATHS = CONFIG_KEYS.map((key) => key.writePath.join('.'));
 
 export interface RepairPlatformDeps {
   baseDir: string;
@@ -70,7 +74,7 @@ export async function repairPlatform(
     ...mismatchLines.map((m) => `mismatch: ${m}`),
     `syncBaseSet: re-render ${owned.length} stamped file(s) under current templates:`,
     ...fileList,
-    'writeConfig: canonicalize mcp.wolf / default_agent / experimental.subagent_depth',
+    `writeConfig: canonicalize ${KEY_PATHS.join(' / ')}`,
   ];
   if (opts.dryRun) return { ...empty, plan };
   const { outcomes, orphaned } = await deps.syncBaseSet();

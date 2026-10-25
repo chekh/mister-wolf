@@ -43,10 +43,13 @@ describe('wolf init CLI (спека §3 уровень 1; WP2 unpin: --model opt
     );
     expect(first.status).toBe(0);
     // F6: честный лог — имя конфиг-файла + фактические ключи
-    expect(first.stdout).toContain('opencode.json: written (mcp.wolf, default_agent=mr-wolf, subagent_depth=2)');
+    expect(first.stdout).toContain(
+      'opencode.json: written (mcp.servers.wolf, default_agent=mr-wolf, subagent_depth=2)'
+    );
     expect(first.stdout).toContain('restart opencode'); // F7: блок «Дальше»
     const cfg = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));
-    expect(cfg.mcp.wolf).toEqual({ type: 'local', command: ['wolf', 'mcp'], enabled: true });
+    expect(cfg.mcp.servers.wolf).toEqual({ type: 'local', command: ['wolf', 'mcp'], disabled: false });
+    expect(cfg.mcp.wolf).toBeUndefined(); // легаси-форма не пишется
     expect(cfg.default_agent).toBe('mr-wolf'); // F4 закрыт: default_agent первым init'ом
     expect(cfg.experimental.subagent_depth).toBe(2); // opencode v2: действующий путь — experimental
     expect(cfg.subagent_depth).toBeUndefined(); // deprecated верхнеуровневый ключ не пишется
@@ -110,7 +113,7 @@ describe('wolf init CLI (спека §3 уровень 1; WP2 unpin: --model opt
     expect(res.stdout).toContain('opencode.json: written');
     expect(res.stdout).toContain('wolf bootstrap'); // F7: «Дальше» называет следующий шаг
     const cfg = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));
-    expect(cfg.mcp.wolf).toEqual({ type: 'local', command: ['wolf', 'mcp'], enabled: true });
+    expect(cfg.mcp.servers.wolf).toEqual({ type: 'local', command: ['wolf', 'mcp'], disabled: false });
   });
 
   it('init --recreate on a LEGACY project migrates properly (marker + layout v2, objects/ not orphaned)', () => {

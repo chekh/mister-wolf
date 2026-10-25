@@ -150,3 +150,23 @@ wolf analytics --view acceptance
   ```
 
   The digest of the run names the copy for every overwrite (`local saved: …`), and `--json` lists them in `projects[].backups[]`. There is no garbage collector: prune old dates yourself. Permissions and timestamps are not preserved.
+
+## 15. `doctor`: wolf entry missing
+
+- **Symptom:** `wolf doctor` reports `opencode: wolf entry missing — run wolf init` on a project whose `opencode.json` does have a wolf MCP server — typically after the config was migrated, by opencode itself or by hand, from the flat `mcp.wolf` to the native `mcp.servers.wolf`.
+- **Cause:** releases before 2.20.1 looked only at the flat `mcp.wolf` key. The native form was invisible to them, so the entry read as missing, `wolf init` would have added a second key, and `wolf uninstall` would have left the server behind.
+- **Fix:** on 2.20.1 and newer `wolf doctor` and `wolf uninstall` understand both forms, so re-run `wolf doctor` and the false positive is gone. If the entry is genuinely absent, restore it — repair only, the rest of the JSON is preserved:
+
+  ```bash
+  wolf init               # existing config: restores mcp.servers.wolf / default_agent / experimental.subagent_depth
+  wolf doctor --repair    # same canonicalization, plus base-set and index repair
+  ```
+
+- **What not to do:** add a second MCP key next to the existing one. Two entries for the same server (one in each form) is a configuration opencode v1 reports as a conflict, and it makes ownership ambiguous — wolf then cannot tell which entry is its own.
+
+## 16. `subagent_depth` ignored by opencode v2
+
+- **Symptom:** subagents cannot launch subagents — `executor-lead` fails with `Subagent depth limit reached (1)` and the three-level scheme (Mr.Wolf → executor-lead → workers) never starts.
+- **Cause:** the top-level `subagent_depth` key is marked `deprecated` in the opencode config schema, and opencode v2 drops it — the effective depth stays at the platform default `1`.
+- **Fix:** `wolf init` or `wolf doctor --repair` moves wolf's own `subagent_depth: 2` into `experimental.subagent_depth` and removes the deprecated key; other `experimental` fields and the rest of the JSON are preserved. Restart opencode afterwards. A **foreign** top-level value is only reported (`deprecated and ignored by opencode v2`), never overwritten — set `experimental.subagent_depth` yourself (`>= 2`) in that case.
+- **How to confirm:** `wolf doctor` names the deprecated top-level key directly, and opencode logs a `configuration normalization diagnostic` warning with `path=$.subagent_depth` on startup.

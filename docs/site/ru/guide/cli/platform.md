@@ -81,7 +81,7 @@ wolf tool use <name-or-id>
 
 ### `wolf tool expose`
 
-(Пере)сгенерировать `.opencode/skills/<name>/SKILL.md` (идемпотентно).
+(Пере)сгенерировать `.opencode/skills/<name>/SKILL.md` (идемпотентно). Файл начинается с YAML-frontmatter, а маркер `<!-- generated from tool:… -->` идёт сразу после него.
 
 ### `wolf tool deprecate`
 
@@ -153,6 +153,8 @@ wolf validate --fix
 ## `wolf doctor`
 
 Проверить все зарегистрированные проекты: binary vs schema version, платформенные конфиги, чистка мёртвых записей.
+
+У найденного конфига opencode проверяется и то, что пишет адаптер: `default_agent`, `experimental.subagent_depth` ≥ 2, deprecated верхнеуровневый `subagent_depth` (сообщается как игнорируемый opencode v2), легаси-плоская запись `mcp.wolf` (сообщается как deprecated: наша — «migrate», чужая — не трогается), а также frontmatter managed-агента со смешанными v1/v2-полями. `--repair` канонизирует конфиг — пишет нативную MCP-запись и `experimental.subagent_depth` — помимо ремонта хранилища.
 
 | Опция       | Описание                                                                               |
 | ----------- | -------------------------------------------------------------------------------------- |

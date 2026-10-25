@@ -18,7 +18,11 @@ import { configPath } from '../../adapters/fs/project-paths.js';
 import { writeFileAtomic } from '../../adapters/fs/markdown-memory-store.js';
 import { UserFacingError } from '../../domain/errors.js';
 import { RenderAction, ModelContext } from '../../ports/base-set-renderer.port.js';
+import { CONFIG_KEYS } from '../../adapters/platforms/opencode-config-keys.js';
 import { addMemoryObject } from './add-memory-object.js';
+
+/** Пути wolf-ключей для сообщений — из реестра (§6.2): литералов путей в use-case нет. */
+const KEY_PATHS = CONFIG_KEYS.map((key) => key.writePath.join('.'));
 
 /** Минимальный контракт реестра для init (структурно совместим с ProjectsRegistry). */
 export interface ProjectRegistry {
@@ -475,14 +479,11 @@ function renderInitReportBody(
   // §4.4 граничный случай: явный выбор без opencode — набор отрендерен, но MCP не подключён (осознанное состояние)
   if (input.platformChoice !== undefined && !input.platformChoice.includes('opencode')) {
     needsFix.push(
-      '- opencode not in the --platform list: Wolf agents are rendered into .opencode/, but mcp.wolf/default_agent/experimental.subagent_depth are not written; connect: wolf init --platform opencode,…'
+      `- opencode not in the --platform list: Wolf agents are rendered into .opencode/, but ${KEY_PATHS.join('/')} are not written; connect: wolf init --platform opencode,…`
     );
   }
   const mcpWritten = platformOutcomes.some((o) => o.action === 'written' || o.action === 'replaced');
-  if (mcpWritten)
-    needsFix.push(
-      '- connect MCP: restart the platform (opencode will pick up mcp.wolf, default_agent and experimental.subagent_depth)'
-    );
+  if (mcpWritten) needsFix.push(`- connect MCP: restart the platform (opencode will pick up ${KEY_PATHS.join(', ')})`);
 
   return [
     '## Done (made)',

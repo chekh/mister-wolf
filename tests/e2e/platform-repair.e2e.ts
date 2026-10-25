@@ -112,7 +112,7 @@ describe('platform repair v1→v2 (REQ-02, e2e)', () => {
     expect(plugin).toMatch(/\/\/ wolf:rendered base=wolf-router\.ts set=\d+\.\d+\.\d+/);
     expect(plugin).toMatch(/server|ctx\.session/);
     const cfg = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));
-    expect(cfg.mcp?.wolf?.command).toEqual(['wolf', 'mcp']);
+    expect(cfg.mcp?.servers?.wolf?.command).toEqual(['wolf', 'mcp']);
     expect(cfg.default_agent).toBe('mr-wolf');
     expect(cfg.experimental.subagent_depth).toBe(2);
     expect(cfg.subagent_depth).toBeUndefined(); // deprecated в opencode v2

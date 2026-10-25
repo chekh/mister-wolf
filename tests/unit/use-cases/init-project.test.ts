@@ -478,11 +478,11 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     expect(claude.writeCalls).toBe(0);
   });
 
-  /* ---------- §4.14 (REQ-04): init чинит mcp.wolf в существующем конфиге ---------- */
+  /* ---------- §4.14 (REQ-04): init чинит mcp.servers.wolf в существующем конфиге ---------- */
 
-  describe('§4.14 (REQ-04): без --platform восстанавливает mcp.wolf в существующем opencode.json', () => {
+  describe('§4.14 (REQ-04): без --platform восстанавливает mcp.servers.wolf в существующем opencode.json', () => {
     const MCP: McpCommand = { command: 'wolf', args: ['mcp'] };
-    const CANONICAL = { type: 'local', command: ['wolf', 'mcp'], enabled: true };
+    const CANONICAL = { type: 'local', command: ['wolf', 'mcp'], disabled: false };
     const configFile = (): string => join(dir, 'opencode.json');
     const readCfg = (): Record<string, unknown> =>
       JSON.parse(readFileSync(configFile(), 'utf-8')) as Record<string, unknown>;
@@ -490,7 +490,7 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     /** Реальный OpencodeAdapter: идемпотентность и «надо ли писать» проверяются настоящим writeConfig. */
     const realDeps = (): InitProjectDeps => makeDeps([new OpencodeAdapter()]).deps;
 
-    it('R04-1: конфиг есть, mcp.wolf нет → written, прочие ключи сохранены', async () => {
+    it('R04-1: конфиг есть, wolf-записи нет → written, прочие ключи сохранены', async () => {
       writeFileSync(join(dir, 'package.json'), '{}');
       writeFileSync(
         configFile(),
@@ -514,11 +514,13 @@ describe('initProject v2 (§4: без скана, платформы/модел�
         },
       ]);
       const cfg = readCfg();
-      expect((cfg.mcp as Record<string, unknown>).wolf).toEqual(CANONICAL);
+      const mcp = cfg.mcp as Record<string, unknown>;
+      expect((mcp.servers as Record<string, unknown>).wolf).toEqual(CANONICAL);
+      expect(mcp.wolf).toBeUndefined(); // легаси-форма не пишется
       // остальной конфиг не тронут
       expect(cfg.$schema).toBe('https://opencode.ai/config.json');
       expect(cfg.theme).toBe('system');
-      expect((cfg.mcp as Record<string, unknown>).other).toEqual({ type: 'local', command: ['x'], enabled: true });
+      expect(mcp.other).toEqual({ type: 'local', command: ['x'], enabled: true });
     });
 
     it('R04-2: повторный init → unchanged, файл байт-в-байт тот же (дубля нет)', async () => {
@@ -532,11 +534,15 @@ describe('initProject v2 (§4: без скана, платформы/модел�
       expect(readFileSync(configFile(), 'utf-8')).toBe(afterFirst);
     });
 
-    it('R04-4: mcp.wolf строкой (некорректная запись) → replaced, канонический блок, остальное сохранено', async () => {
+    it('R04-4: нативная запись строкой (некорректная) → replaced, канонический блок, остальное сохранено', async () => {
       writeFileSync(join(dir, 'package.json'), '{}');
       writeFileSync(
         configFile(),
-        `${JSON.stringify({ theme: 'system', mcp: { wolf: 'wolf', other: { type: 'local' } } }, null, 2)}\n`
+        `${JSON.stringify(
+          { theme: 'system', mcp: { servers: { wolf: 'wolf' }, other: { type: 'local' } } },
+          null,
+          2
+        )}\n`
       );
       const result = await initProject(realDeps(), dir, { models: MODELS });
       expect(result.platformOutcomes).toMatchObject([
@@ -544,9 +550,23 @@ describe('initProject v2 (§4: без скана, платформы/модел�
       ]);
       const cfg = readCfg();
       const mcp = cfg.mcp as Record<string, unknown>;
-      expect(mcp.wolf).toEqual(CANONICAL);
+      expect((mcp.servers as Record<string, unknown>).wolf).toEqual(CANONICAL);
       expect(mcp.other).toEqual({ type: 'local' });
       expect(cfg.theme).toBe('system');
+    });
+
+    it('R04-4b: наш легаси mcp.wolf мигрируется в нативную форму при починке', async () => {
+      writeFileSync(join(dir, 'package.json'), '{}');
+      writeFileSync(
+        configFile(),
+        `${JSON.stringify({ mcp: { wolf: { type: 'local', command: ['wolf', 'mcp'], enabled: true } } }, null, 2)}\n`
+      );
+      const result = await initProject(realDeps(), dir, { models: MODELS });
+      expect(result.platformOutcomes).toMatchObject([{ platform: 'opencode', action: 'written' }]);
+      const cfg = readCfg();
+      const mcp = cfg.mcp as Record<string, unknown>;
+      expect((mcp.servers as Record<string, unknown>).wolf).toEqual(CANONICAL);
+      expect(mcp.wolf).toBeUndefined();
     });
 
     it('R04-5: битый JSONC → skipped с причиной, файл не изменён, init не падает', async () => {
@@ -568,11 +588,15 @@ describe('initProject v2 (§4: без скана, платформы/модел�
       expect(existsSync(join(dir, 'opencode.jsonc'))).toBe(false);
     });
 
-    it('R04-7: валидный mcp.wolf + кастомный default_agent → unchanged, чужое значение сохранено', async () => {
+    it('R04-7: валидная нативная запись + кастомный default_agent → unchanged, чужое значение сохранено', async () => {
       writeFileSync(join(dir, 'package.json'), '{}');
       writeFileSync(
         configFile(),
-        `${JSON.stringify({ mcp: { wolf: CANONICAL }, default_agent: 'my-agent', experimental: { subagent_depth: 2 } }, null, 2)}\n`
+        `${JSON.stringify(
+          { mcp: { servers: { wolf: CANONICAL } }, default_agent: 'my-agent', experimental: { subagent_depth: 2 } },
+          null,
+          2
+        )}\n`
       );
       const before = readFileSync(configFile(), 'utf-8');
       const result = await initProject(realDeps(), dir, { models: MODELS });

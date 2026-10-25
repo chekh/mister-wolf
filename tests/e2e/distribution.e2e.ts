@@ -98,7 +98,7 @@ describe('global install from tarball into isolated HOME (спека §3, §7)',
     expect(init.stdout).toContain('restart opencode');
 
     const oc = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));
-    expect(oc.mcp.wolf).toEqual({ type: 'local', command: ['wolf', 'mcp'], enabled: true });
+    expect(oc.mcp.servers.wolf).toEqual({ type: 'local', command: ['wolf', 'mcp'], disabled: false });
     const claude = JSON.parse(readFileSync(join(project, '.mcp.json'), 'utf-8'));
     expect(claude.mcpServers.wolf).toEqual({ command: 'wolf', args: ['mcp'] });
 
