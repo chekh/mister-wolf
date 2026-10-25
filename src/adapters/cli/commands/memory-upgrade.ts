@@ -993,7 +993,10 @@ export async function runUpgradeReview(
         (await opts.io.ask('verb for all: [t]ake [k]eep [p]rotect [v]pin or [enter] back > '))?.trim().toLowerCase() ??
         null;
       const groupVerb = verbAnswer === null ? undefined : VERB_KEYS[verbAnswer];
-      if (groupVerb === undefined) continue; // без изменения файлов — возврат к текущей цели
+      if (groupVerb === undefined) {
+        i--; // без изменения файлов — возврат к текущей цели (переспрос), не пропуск
+        continue;
+      }
       for (const member of group) await applyOne(member, groupVerb);
       continue;
     }

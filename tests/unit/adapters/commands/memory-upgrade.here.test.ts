@@ -13,6 +13,7 @@ import { Command } from 'commander';
 import {
   memoryUpgradeCommand,
   runUpgradeHere,
+  runUpgradeResolve,
   runUpgradeReview,
   upgradeRoute,
   type ReviewIo,
@@ -460,6 +461,38 @@ describe('runUpgradeReview (T9): TTY-цикл, non-TTY рецепт, diverged', 
     expect(eof.applied).toEqual([]);
     expect(eofIo.out.join('')).toContain('Done with attention');
     rmSync(proj, { recursive: true, force: true });
+  });
+
+  it('m-4: skipped projects печатаются в --resolve и non-TTY --review (§4.7)', async () => {
+    const proj = reviewProject({ '.opencode/agents/a.md': REVIEW_FRESH['.opencode/agents/a.md']! });
+    const pinned = mkdtempSync(join(tmpdir(), 'wolf-skip-pinned-'));
+    const missing = join(mkdtempSync(join(tmpdir(), 'wolf-skip-gone-')), 'absent');
+    const registry = {
+      listStrict: async () => [
+        { path: pinned, schema_version: 2, initialized_at: 't', pinned: true },
+        { path: missing, schema_version: 2, initialized_at: 't' },
+      ],
+    };
+    try {
+      const resolved = await runUpgradeResolve(
+        { ...reviewDeps(proj), here: undefined, registry } as UpgradeResolveDeps,
+        { here: false, cwd: proj, values: [] }
+      );
+      const resolveText = renderReport(resolved.report, { tty: false, colors: 'mono', width: 400 });
+      expect(resolveText).toContain('skipped projects: 2');
+      expect(resolveText).toMatch(/\[pinned\] — skipped/);
+      expect(resolveText).toMatch(/\[missing\] — skipped/);
+
+      const reviewed = await runUpgradeReview(
+        { ...reviewDeps(proj), here: undefined, registry } as UpgradeResolveDeps,
+        { here: false, cwd: proj, io: fakeIo(false, []) }
+      );
+      const reviewText = renderReport(reviewed.report, { tty: false, colors: 'mono', width: 400 });
+      expect(reviewText).toContain('skipped projects: 2');
+    } finally {
+      rmSync(proj, { recursive: true, force: true });
+      rmSync(pinned, { recursive: true, force: true });
+    }
   });
 
   it('R07-2/R07-6: non-TTY — список с готовой командой --resolve, exit 2, без записей; пусто → 0', async () => {
