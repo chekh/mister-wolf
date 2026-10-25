@@ -553,7 +553,7 @@ describe('OpencodeAdapter.writeConfig: не-объектный контейне�
     const before = readFileSync(join(dir, 'opencode.json'), 'utf-8');
     const result = await new OpencodeAdapter().writeConfig(dir, cmd);
     expect(result.action).toBe('unchanged');
-    expect(result.reason).toContain('mcp path is not an object');
+    expect(result.reason).toContain('mcp is not an object');
     expect(result.keys).toEqual(['default_agent=mr-wolf', 'subagent_depth=2']);
     expect(readFileSync(join(dir, 'opencode.json'), 'utf-8')).toBe(before);
   });
@@ -750,6 +750,26 @@ describe('OpencodeAdapter.configIssues (6.3: doctor видит обе формы
     writeFileSync(join(dir, 'opencode.json'), '{ broken');
     const issues = await new OpencodeAdapter().configIssues(dir);
     expect(issues).toEqual(['opencode: config is not valid JSONC — fix it or remove the file, then run wolf init']);
+  });
+
+  it('валидный JSON-не-объект → отдельный ярлык (не «invalid JSONC»)', async () => {
+    writeFileSync(join(dir, 'opencode.json'), '[]');
+    const issues = await new OpencodeAdapter().configIssues(dir);
+    expect(issues).toEqual(['opencode: config is not a JSON object — fix it or remove the file, then run wolf init']);
+  });
+
+  it('не-объектный mcp → конфликт вместо совета init (init его не вылечит)', async () => {
+    writeFileSync(join(dir, 'opencode.json'), JSON.stringify({ ...FULL, mcp: 'broken' }));
+    const issues = await new OpencodeAdapter().configIssues(dir);
+    expect(issues).toEqual(['opencode: mcp is not an object — mcp.servers.wolf is not written; fix it manually']);
+  });
+
+  it('не-объектный mcp.servers → называет реальный сегмент', async () => {
+    writeFileSync(join(dir, 'opencode.json'), JSON.stringify({ ...FULL, mcp: { servers: 'broken' } }));
+    const issues = await new OpencodeAdapter().configIssues(dir);
+    expect(issues).toEqual([
+      'opencode: mcp.servers is not an object — mcp.servers.wolf is not written; fix it manually',
+    ]);
   });
 
   it('обе формы: нативная приоритетна, чужой легаси помечен', async () => {

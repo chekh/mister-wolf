@@ -131,19 +131,27 @@ export function deletePath(obj: Record<string, unknown>, path: readonly string[]
 export const WOLF_MCP_COMMAND = { command: 'wolf', args: ['mcp'] };
 
 /**
+ * Первый сегмент пути, занятый не-объектом (для сообщений): `mcp`, `mcp.servers`,
+ * `experimental`. undefined — путь записываем (промежуточные создаются).
+ */
+export function blockedSegment(obj: Record<string, unknown>, path: readonly string[]): string | undefined {
+  let cur: unknown = obj;
+  for (let i = 0; i < path.length - 1; i++) {
+    const record = asRecord(cur);
+    if (record === undefined) return path.slice(0, i).join('.');
+    const next = record[path[i]!];
+    if (next === undefined) return undefined; // дальше создаём новые объекты
+    cur = next;
+  }
+  return asRecord(cur) === undefined ? path.slice(0, -1).join('.') : undefined;
+}
+
+/**
  * true, если путь можно записать: каждый промежуточный сегмент либо отсутствует,
  * либо объект. Занятый чужим не-объектом сегмент — конфликт, а не молчаливый no-op.
  */
 export function pathWritable(obj: Record<string, unknown>, path: readonly string[]): boolean {
-  let cur: unknown = obj;
-  for (let i = 0; i < path.length - 1; i++) {
-    const record = asRecord(cur);
-    if (record === undefined) return false;
-    const next = record[path[i]!];
-    if (next === undefined) return true; // дальше создаём новые объекты
-    cur = next;
-  }
-  return asRecord(cur) !== undefined;
+  return blockedSegment(obj, path) === undefined;
 }
 
 /** Нативная запись MCP: { type: 'local', command: [cmd.command, ...cmd.args], disabled: false }. Без codemode. */

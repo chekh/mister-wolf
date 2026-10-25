@@ -30,6 +30,7 @@ import {
   getRecordAt,
   isWolfMcpEntry,
   legacyPathOf,
+  blockedSegment,
   mcpEntryNative,
   pathWritable,
   readWolfMcp,
@@ -137,9 +138,10 @@ export class OpencodeAdapter implements PlatformAdapter {
     const legacyMcpOurs = legacyMcp !== undefined && isWolfMcpEntry(legacyMcp, cmd);
 
     const reasons: string[] = [];
-    if (!mcpWritable) {
+    const mcpBlocked = blockedSegment(cfg, MCP_KEY.writePath);
+    if (mcpBlocked !== undefined) {
       reasons.push(
-        `${MCP_ROOT} path is not an object; ${MCP_KEY.label} is not written — fix the conflicting key manually`
+        `${mcpBlocked} is not an object; ${MCP_KEY.label} is not written — fix the conflicting key manually`
       );
     }
 
@@ -311,9 +313,12 @@ export class OpencodeAdapter implements PlatformAdapter {
     let cfg: PlatformConfig | null;
     try {
       cfg = await this.readConfig(projectRoot);
-    } catch {
-      // битый JSONC: «missing» советовал бы init, который честно скипает такой конфиг
-      return [`${this.id}: config is not valid JSONC — fix it or remove the file, then run wolf init`];
+    } catch (err) {
+      // «missing» советовал бы init, который честно скипает такой конфиг; различаем
+      // битый JSONC и валидный JSON не-объект (массив/строка) — советы разные по смыслу.
+      const message = err instanceof Error ? err.message : String(err);
+      const kind = message.includes('not valid JSONC') ? 'not valid JSONC' : 'not a JSON object';
+      return [`${this.id}: config is ${kind} — fix it or remove the file, then run wolf init`];
     }
     if (cfg === null) return [`${this.id}: wolf entry missing — run wolf init`];
     return [
@@ -327,6 +332,10 @@ export class OpencodeAdapter implements PlatformAdapter {
 
 /** 6.3: wolf-сервер отсутствует в обеих формах / легаси-форма подлежит миграции. */
 function mcpIssues(cfg: PlatformConfig): string[] {
+  // запись невозможна: init не вылечит такой конфиг — не советуем его
+  const blocked = blockedSegment(cfg, MCP_KEY.writePath);
+  if (blocked !== undefined)
+    return [`opencode: ${blocked} is not an object — ${MCP_KEY.label} is not written; fix it manually`];
   const wolf = readWolfMcp(cfg, WOLF_CMD);
   if (wolf.form === 'none') return [`opencode: wolf entry missing — run wolf init`];
   if (wolf.legacyEntry === undefined) return [];
