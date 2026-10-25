@@ -398,7 +398,12 @@ SyncEntry>` вместо `Record<string, string>` (`memory-doctor.ts:67-77`,
 
 ### Ф5 — выпуск
 
-- [ ] **T15. Документация, сайт и релиз 2.20.0** (полный чек-лист ниже).
+- [x] **T15. Документация, сайт и релиз 2.20.0** (полный чек-лист ниже).
+      Сделано → T15a (документация, dogfood, метрика): коммиты `b3544ee`, `7eba541`,
+      `abba767`, `d3db7b4`, `1c0dfac`, `39e7653`, `942960b`, `055655d`, `e8ff102`;
+      T15b (выпуск): merge **`3140da9`**, тег **`v2.20.0`**, npm `mister-wolf@2.20.0`
+      (latest, trusted publishing), GitHub Release `v2.20.0`, сайт задеплоен
+      (`guide/upgrade` EN/RU). Отчёт: `phase7-release-report.md`.
 
       **Allowlist T15** (кода не касается): `README.md`, `README.ru.md`,
       `CHANGELOG.md`, `package.json` (+ `package-lock.json` от `npm version`),
