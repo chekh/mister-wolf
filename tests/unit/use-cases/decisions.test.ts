@@ -149,16 +149,28 @@ describe('collectDecisions (design §4.7): нумерация, порядок, �
     touch(proj, AGENTS); // mutated (штампованный whole-file)
 
     const reg = await registryFor(proj);
+    // COMPLAIN — deprecated-цель: conflict виден инспекции, но в реестр не входит (m-7, §4.6/§4.7).
     expect(reg.targets.map((t) => [t.n, t.file, t.kind, t.code])).toEqual([
       [1, MR_WOLF, 'agent', 'mutated'],
-      [2, COMPLAIN, 'command', 'conflict'],
-      [3, AGENTS, 'agents-md', 'mutated'],
+      [2, AGENTS, 'agents-md', 'mutated'],
     ]);
     expect(reg.targets.every((t) => t.project === 'p-order' && t.root === proj)).toBe(true);
     expect(reg.skippedProjects).toEqual([]);
 
     const again = await registryFor(proj);
     expect(again).toEqual(reg); // NFR-06: детерминизм нумерации
+  });
+
+  it('m-7: deprecated-цель в состоянии mutated — report-only, не нумеруется, адресуется путём', async () => {
+    const proj = await boot('p-deprecated');
+    touch(proj, COMPLAIN); // mutated: штамп на месте, контент правили
+
+    const reg = await registryFor(proj);
+    expect(reg.targets).toEqual([]); // решение владельца не требуется (--check считает так же)
+    // адресация по пути работает (матрица §4.8: цель карты по пути) — N для неё нет
+    const plan = planResolutions(reg, MAP, [{ target: COMPLAIN, verb: 'take' }], { here: true, cwd: proj });
+    expect(plan.errors).toEqual([]);
+    expect(plan.ops.map((o) => [o.file, o.verb])).toEqual([[COMPLAIN, 'take']]);
   });
 
   it('реестр задаёт порядок проектов; protected/kept/differs/missing/removed не нумеруются', async () => {
@@ -340,7 +352,9 @@ describe('parseResolveValues / planResolutions (§4.8): грамматика и 
 
   it('R06-6: матрица §4.8 — отказы с подсказкой, файл не меняется', async () => {
     const proj = await boot('p-matrix');
-    writeFileSync(join(proj, COMPLAIN), '---\nname: my-own\n---\n# Mine\n'); // conflict
+    // conflict — цель карты вне deprecated: deprecated-цель report-only (m-7) и класс
+    // conflict больше не даёт (её отказы проверяются отдельным тестом ниже).
+    writeFileSync(join(proj, LEAD), '---\nname: my-own\n---\n# Mine\n'); // без штампа → conflict
     touch(proj, AGENTS); // stamped → agents-stamped
     const stray = join(proj, '.opencode/agents/stray.md');
     writeFileSync(stray, '# stray without frontmatter\n'); // orphan без frontmatter
@@ -349,7 +363,7 @@ describe('parseResolveValues / planResolutions (§4.8): грамматика и 
     const errors = (target: string, verb: 'take' | 'keep' | 'protect' | 'pin'): string =>
       planResolutions(reg, MAP, [{ target, verb }], { here: true, cwd: proj }).errors.join('\n');
 
-    expect(errors(COMPLAIN, 'keep')).toMatch(/conflict stays: use protect \(hold\) or take \(base\)/);
+    expect(errors(LEAD, 'keep')).toMatch(/conflict stays: use protect \(hold\) or take \(base\)/);
     expect(errors('.opencode/agents/stray.md', 'keep')).toMatch(/conflict comes from the map/);
     expect(errors('.opencode/agents/stray.md', 'take')).toMatch(/no base for a file outside the update map/);
     expect(errors(AGENTS, 'protect')).toMatch(/AGENTS\.md has no YAML frontmatter/);

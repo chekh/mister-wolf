@@ -104,20 +104,27 @@ function syncFact(o: SyncVerifyOutcome): VerifyCode {
  * любое ожидание → «требует решения». created/updated/skipped-identical —
  * конечное состояние равно текущему рендеру (повтор прогона NFR-02 — exit 0).
  */
+/**
+ * Категория карты × факт → код. Мутант и unstamped-conflict перекрывают
+ * любое ожидание → «требует решения», кроме deprecated: цель этой категории
+ * остаётся в поставке, но только репортится (`deprecated-noted`, design §4.6) —
+ * решение владельца по ней не требуется, иначе `--check` и реестр расходятся.
+ */
 function fileVerdict(category: UpdateCategory, fact: VerifyCode): VerifyCode {
-  if (fact === 'skipped-mutated' || fact === 'conflict') return fact;
   // Защищённая вариация и принятый локальный контент перекрывают ожидание категории (§4.6).
   if (fact === 'protected' || fact === 'kept') return fact;
+  if (category === 'deprecated') {
+    // «файл на месте»: identical/updated/mutated → пометка; created → файла не было
+    // (удалён вручную до прохода) — факт ≠ ожиданию → «требует решения».
+    return fact === 'created' ? 'conflict' : 'deprecated-noted';
+  }
+  if (fact === 'skipped-mutated' || fact === 'conflict') return fact;
   switch (category) {
     case 'new':
     case 'changed':
       return fact;
     case 'unchanged':
       return fact === 'skipped-identical' ? 'unchanged' : fact;
-    case 'deprecated':
-      // «файл на месте»: identical/updated → пометка; created → файла не было
-      // (удалён вручную до прохода) — факт ≠ ожиданию → «требует решения».
-      return fact === 'created' ? 'conflict' : 'deprecated-noted';
     case 'removed':
       return fact;
   }

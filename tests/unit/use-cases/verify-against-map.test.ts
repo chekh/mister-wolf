@@ -192,12 +192,18 @@ describe('verifyAgainstMap (design §«Сверка»: ожидание из к�
         needsDecision: true,
       },
       {
-        name: 'deprecated + mutated → skipped-mutated + needs-decision',
+        name: 'deprecated + mutated → deprecated-noted (report-only, m-7: паритет с --check)',
         files: [f('base/agents/legacy.md', 'deprecated')],
         sync: [{ file: proj('base/agents/legacy.md'), action: 'skipped', mutated: true }],
         target: 'base/agents/legacy.md',
-        code: 'skipped-mutated',
-        needsDecision: true,
+        code: 'deprecated-noted',
+      },
+      {
+        name: 'deprecated + conflict (без штампа) → deprecated-noted (report-only)',
+        files: [f('base/agents/legacy.md', 'deprecated')],
+        sync: [{ file: proj('base/agents/legacy.md'), action: 'conflict' }],
+        target: 'base/agents/legacy.md',
+        code: 'deprecated-noted',
       },
       // faces[seed=true] → seeded | skipped-live | legacy-absorbed | diverged
       {

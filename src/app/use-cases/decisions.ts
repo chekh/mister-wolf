@@ -132,7 +132,8 @@ async function divergedFaces(root: string, map: UpdateMap, deps: DecisionDeps): 
  * свидетель + чтение лиц. Порядок: реестр проектов → цели карты в порядке
  * `map.files` → AGENTS.md; нумерация сквозная 1-based и стабильна при
  * неизменном состоянии (NFR-06). `removed`-цели не нумеруются (их решает
- * проход, адресация — только по пути), orphan-дрейф — тоже (решается путём).
+ * проход, адресация — только по пути), `deprecated` — тоже: они report-only
+ * (design §4.6/§4.7), orphan-дрейф — тоже (решается путём).
  */
 export async function collectDecisions(deps: DecisionDeps): Promise<DecisionRegistry> {
   const map = deps.loadMap();
@@ -171,7 +172,9 @@ export async function collectDecisions(deps: DecisionDeps): Promise<DecisionRegi
       return null;
     };
     for (const entry of map.files) {
-      if (entry.category === 'removed') continue;
+      // deprecated — report-only (design §4.6/§4.7): как и removed, не решение;
+      // адресуется только путём (матрица §4.8, цель карты по пути).
+      if (entry.category === 'removed' || entry.category === 'deprecated') continue;
       const rel = projectPath(entry);
       const code = decisionCode(byFile.get(rel));
       if (code !== null) add(rel, KIND_OF[entry.kind], code);
