@@ -1,6 +1,6 @@
 # Base Set
 
-The base set is the agent harness Mr. Wolf delivers into a project: agents, skills, commands, opencode plugins and playbooks. The source of truth is the `templates/` directory of the `mister-wolf` npm package: `wolf init --full` renders the set into the project, and later updates arrive via the projects pass of `wolf upgrade` (`--here` for one project; see [Platform & Maintenance — wolf upgrade](/guide/cli/platform#wolf-upgrade)). The set also appends an onboarding block to the project root `AGENTS.md` (marked `<!-- wolf:onboarding v2 -->`; foreign content is untouched).
+The base set is the agent harness Mr. Wolf delivers into a project: agents, skills, commands, opencode plugins and playbooks. The source of truth is the `templates/` directory of the `mister-wolf` npm package: `wolf init --full` renders the set into the project, and later updates arrive via the projects pass of `wolf upgrade` (`--here` for one project; see [Platform & Maintenance — wolf upgrade](/guide/cli/platform#wolf-upgrade) and the workflow on [Upgrading a Project and a Park](/guide/upgrade)). The set also appends an onboarding block to the project root `AGENTS.md` (marked `<!-- wolf:onboarding v3 -->`; foreign content is untouched, and everything outside the markers is preserved byte-for-byte).
 
 The composition below is the catalog of `templates/base/` in the package.
 
@@ -76,9 +76,21 @@ The agents, skills, commands and plugins of the set are delivered and updated as
 - `created` — the file was missing;
 - `skipped` — the stamped content is identical;
 - `updated` — the file is stamped but differs from the template: **local edits to a stamped file are overwritten** by the re-render;
+- `updated (stamp drift healed)` — the content is identical to the template except for the `wolf:rendered …` line itself (an older release stamped it): wolf rewrites the file to align the stamp and refreshes the witness. This is not a decision and it is not `behind` in `--check` — an outdated stamp alone is not a local edit;
 - `conflict` — an unstamped file occupies the template's place: the owner decides — rename it, delete it, or accept it as is;
-- `orphaned` — a stamped file whose template is gone from the package; you may delete it.
+- `protected` — the file carries `protect: true` (or `protect: X.Y.Z`) in its frontmatter: it is never overwritten and never deleted, whatever the release says;
+- `kept` — you accepted the local content of a stamped file (`wolf upgrade --resolve <file>=keep`): the witness records it as accepted and the next pass leaves it alone instead of reverting your edit;
+- `orphaned` — a stamped file whose template is gone from the package; you may delete it, or hold it with `protect`.
 
 An unstamped file is yours (the `wx` policy): `wolf init` skips it, the update pass reports the conflict instead of overwriting. The source of truth is always `templates/` in the npm package — template updates arrive with the package (`wolf upgrade`) and land in the project via its projects pass. Note: npx try-out mode never writes the base set.
 
-Want to customize an agent or a skill? Do it in memory, not in the stamped file: file a complaint (`wolf complain`) and let the Steward mutate the playbook — or fork the file by removing its stamp, accepting that the update pass will no longer manage it.
+### The onboarding block in `AGENTS.md`
+
+`AGENTS.md` is managed in one of two modes, and both keep your authorship intact:
+
+- **Block mode** (what `init` produces): wolf owns only the lines between `<!-- wolf:onboarding v3 -->` and `<!-- /wolf:onboarding -->`. Everything above and below stays byte-for-byte, including line endings. The block itself is a versioned format: an existing `v2` block is recognized and updated in place to `v3` (the block gained the owner-intention line about `protect` and `--review`) — no second block is ever appended, and text _inside_ the block is wolf's zone, so it is not preserved. A broken marker pair (an opening marker without a closing one) makes the file foreign: it is skipped and reported as `onboarding markers broken`, never turned into a decision.
+- **Stamped whole-file mode**: `AGENTS.md` carries a `wolf:rendered …` stamp and belongs to wolf entirely — local edits make it `mutated`, and `take`/`keep` decide its fate. This mode predates the block; a `protect` key is not available here because the file ships without YAML frontmatter.
+
+`wolf upgrade` never appends a block to an unstamped `AGENTS.md` without markers — only `init` creates one. A file wolf did not create stays foreign.
+
+Want to customize an agent or a skill? Do it in memory, not in the stamped file: file a complaint (`wolf complain`) and let the Steward mutate the playbook — or fork the file by removing its stamp, accepting that the update pass will no longer manage it. If you only need to keep the local version of a file wolf does manage, declare the intent in the file (`protect: true`, or `wolf upgrade --resolve <file>=protect`) instead of removing the stamp: the file stays visible in `wolf upgrade --check`, which is the point. Full workflow: [Upgrading a Project and a Park](/guide/upgrade).

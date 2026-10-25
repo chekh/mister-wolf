@@ -60,8 +60,24 @@ wolf bootstrap
   (`npm install -g mister-wolf@latest`) и следом проход по всем зарегистрированным проектам
   (штампованные файлы базового сета и посеянные лица; удаления — только по подтверждению).
   `--check` — read-only сводка свежести CLI и парка; `--here` — обновить только текущий проект
-  (без npm и реестра); `--yes` — без интерактивного подтверждения. Dev/linked-установке откажет
-  честно. `wolf sync` депрекирован → `wolf upgrade --here` (удаление в 2.20.0).
+  (без npm и реестра); `--yes` — без интерактивного подтверждения, с бэкапом всего, что
+  перезаписывает. Dev/linked-установке откажет честно. `wolf sync` депрекирован →
+  `wolf upgrade --here` (алиас ещё работает в 2.20.0).
+- **Намерения владельца (2.20.0):** когда проходу нужно ваше слово, он называет файл и причину
+  (`mutated` / `conflict`, по путям — без голых счётчиков). `--review` разбирает решения с диффом,
+  `--show <файл|N>` печатает локальный vs эталон, `--resolve <файл|N>=take|keep|protect|pin`
+  применяет решение, `--json` — машинный канал (`wolf.upgrade/1`). `protect: true` (или
+  `protect: X.Y.Z`) во frontmatter agent/skill/command-файла держит файл навсегда — не
+  перезаписывается, не удаляется и остаётся видимым в `--check`. Локальный конфликт целиком:
+
+  ```bash
+  wolf upgrade --check                                     # needs decision: .opencode/agents/foo.md (mutated)
+  wolf upgrade --show 1                                    # дифф локальный → эталон, только чтение
+  wolf upgrade --resolve 1=protect                         # этот файл мой с этого момента
+  wolf upgrade --check                                     # current · 1 protected (intentional)
+  ```
+
+  Полный сценарий, бэкапы и ограничения: [Обновление проекта и парка](docs/site/ru/guide/upgrade.md).
 - **Платформы v1:** opencode, Claude Code. MCP-конфиги платформ — opt-in:
   `wolf init --platform opencode,claude` (список заменяет текущий набор); без флага платформенные
   конфиги не пишутся.

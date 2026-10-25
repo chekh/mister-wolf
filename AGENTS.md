@@ -25,7 +25,7 @@ Mr. Wolf — local-first project memory harness for AI coding agents («I solve 
 
 ВАЖНО: codegraph не поддерживает MCP-ресурсы — НЕ вызывай `list_mcp_resources`/`read_mcp_resource` с этим сервером; вся информация доступна через `codegraph_*` тулы.
 
-<!-- wolf:onboarding v2 -->
+<!-- wolf:onboarding v3 -->
 
 # Mr. Wolf — память проекта
 
@@ -53,7 +53,10 @@ Mr. Wolf — local-first project memory harness for AI coding agents («I solve 
 ## Указатели
 
 - Документация: `docs/README.md`
+- Защита файла от обновления: `protect: true` (или `protect: X.Y.Z`) в YAML-frontmatter
+  agent/skill/command-файла; конфликты разбираются `wolf upgrade --review`,
+  снятие защиты — `wolf upgrade --resolve <файл>=take|keep`.
 - Номер версии всегда полный X.Y.Z — в планах, тредах, волнах, тегах и разговоре.
-  Голый минор («2.16») запрещён как имя релиза/волны/треда/плана: релизов «2.16» не
-  существует, есть «2.16.0», «2.16.1» (пример корректного полного номера: 2.16.2).
+Голый минор («2.16») запрещён как имя релиза/волны/треда/плана: релизов «2.16» не
+существует, есть «2.16.0», «2.16.1» (пример корректного полного номера: 2.16.2).
 <!-- /wolf:onboarding -->

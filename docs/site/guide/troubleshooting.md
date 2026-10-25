@@ -104,3 +104,49 @@ wolf analytics --view acceptance
 - **Symptom:** `wolf upgrade` updated the CLI (npm phase succeeded) but ended with `CLI updated; projects not touched — run wolf upgrade again for the project pass` and exit code 1.
 - **Cause:** the projects pass re-executes the freshly installed `wolf` binary; if that spawn fails (for example the binary moved between npm and the re-exec), wolf refuses to guess and stops without touching any project.
 - **Fix:** simply run `wolf upgrade` again — the npm phase is idempotent (up-to-date skips straight to the projects pass) and the pass resumes with the new binary. Check `wolf upgrade --check` afterwards to confirm the park freshness.
+
+## 11. `mutated` on a file you want to keep, release after release
+
+- **Symptom:** a stamped agent/skill/command was edited locally; every `wolf upgrade --check` reports the project as `needs decision`, and you do not want the base version.
+- **Cause:** the file is stamped, the witness recorded the render, and the local content differs from it — wolf refuses to choose for you (and never overwrites).
+- **Fix:** declare the intent in one command instead of living with the noise:
+
+  ```bash
+  wolf upgrade --resolve <file>=protect   # hold forever: protect: true in the frontmatter
+  wolf upgrade --resolve <file>=pin       # hold and record the current base: protect: X.Y.Z
+  ```
+
+  `keep` is the soft version: it accepts the current content once (`origin: keep`) without protecting it — the next local edit makes it a decision again. A protected file still shows in the `Protections` section of `--check`, but no longer as `needs decision`. Audit the whole machine with `grep -rn '^protect:' ~/dev/*/.opencode/agents`.
+
+## 12. Broken onboarding markers in `AGENTS.md`
+
+- **Symptom:** `AGENTS.md` is no longer updated at all; `wolf upgrade --check` shows the project as `unknown` with the detail `onboarding markers broken`, and the pass reports the file as `foreign`/skipped.
+- **Cause:** the block is delimited by `<!-- wolf:onboarding v3 -->` and `<!-- /wolf:onboarding -->`; when the closing line is missing (or the opening one is gone), wolf cannot tell its zone from yours and applies the `wx` policy — hands off.
+- **Fix:** restore the closing marker line by hand (at the end of the wolf block), then run `wolf upgrade --here --check` — the file is managed again and the block is updated in place. If you would rather own the file, leave the markers broken: wolf will not touch it, and the report will keep saying so — that state is honest, not an error.
+
+## 13. A hand-edited frontmatter that no longer parses
+
+- **Symptom:** after editing an agent/skill frontmatter by hand, the agent silently disappears from opencode, or `wolf upgrade --resolve <file>=protect` answers `cannot protect <path>: no YAML frontmatter — add one or use keep` / refuses with `frontmatter-unparsable`.
+- **Cause:** wolf validates the frontmatter block structurally before writing the `protect` key — the block boundaries, the inserted value and its reversibility. It does not repair YAML it did not write: a file could already have been broken before wolf touched it. (A broken agent frontmatter makes opencode drop the agent without a word — that is the reason for the check, not pedantry.)
+- **Fix:** compare with the base and take it, or fix the block by hand:
+
+  ```bash
+  wolf upgrade --show <file>            # local vs base, read-only
+  wolf upgrade --resolve <file>=take    # base version, local copy saved to .wolf/backup/upgrade/<date>/
+  ```
+
+  If the file has no frontmatter at all and you want to keep your version, `keep` is the legal verb — `protect` deliberately refuses to invent a block.
+
+## 14. Restoring a file from the upgrade backup
+
+- **Symptom:** an overwrite took local content you still need (`--yes`, `take`, or a removal).
+- **Cause:** that is what the backup is for — every overwrite and every deletion copies the file to `.wolf/backup/upgrade/<YYYY-MM-DD>/<rel-path>` first (`base.ext`, `base-2.ext`, … if the same file was overwritten twice in one day).
+- **Fix:** copy it back and decide:
+
+  ```bash
+  find .wolf/backup/upgrade -path '*<file-fragment>*'
+  cp .wolf/backup/upgrade/2026-10-25/.opencode/skills/foo/SKILL.md .opencode/skills/foo/SKILL.md
+  wolf upgrade --here --resolve .opencode/skills/foo/SKILL.md=protect   # freeze it, so it stops being a decision
+  ```
+
+  The digest of the run names the copy for every overwrite (`local saved: …`), and `--json` lists them in `projects[].backups[]`. There is no garbage collector: prune old dates yourself. Permissions and timestamps are not preserved.

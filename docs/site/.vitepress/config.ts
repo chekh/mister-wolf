@@ -123,6 +123,7 @@ export default defineConfig({
           {
             text: 'OPERATE',
             items: [
+              { text: 'Upgrading', link: '/guide/upgrade' },
               { text: 'Configuration', link: '/guide/configuration' },
               { text: 'Transfer & Multi-Project', link: '/guide/transfer' },
               { text: 'Migration to 2.13 (historical)', link: '/guide/migration-2.13' },
@@ -191,6 +192,7 @@ export default defineConfig({
           {
             text: 'ЭКСПЛУАТАЦИЯ',
             items: [
+              { text: 'Обновление', link: '/ru/guide/upgrade' },
               { text: 'Конфигурация', link: '/ru/guide/configuration' },
               { text: 'Перенос и мультипроектность', link: '/ru/guide/transfer' },
               { text: 'Миграция на 2.13 (historical)', link: '/ru/guide/migration-2.13' },
