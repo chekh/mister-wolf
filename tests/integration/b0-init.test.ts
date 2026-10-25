@@ -4,7 +4,7 @@
 // .opencode/agents/*.md побайтово равны ожидаемому рендеру templates/base/agents;
 // guard-контракт design §3.4 (face_owner_skill === agent_id) в init-project.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readdirSync, readFileSync } from 'fs';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readdirSync, readFileSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, dirname, resolve, basename } from 'path';
 import { fileURLToPath } from 'url';
@@ -108,6 +108,76 @@ describe('baseSetFaceViolations: guard face_owner_skill === agent_id (design §3
   it('legacy-формат owner_skill (skill:<id>) не равен agent_id → нарушение', () => {
     const legacy = BASE_AGENTS.map((a) => (a === 'worker-implementer' ? `skill:${a}` : a));
     expect(baseSetFaceViolations(legacy)).toEqual(['worker-implementer']);
+  });
+});
+
+describe('§4.14 (REQ-04): init без --platform чинит mcp.wolf в существующем конфиге', () => {
+  let d: string;
+  const cfgPath = (): string => join(d, 'opencode.json');
+  const readCfg = (): Record<string, unknown> =>
+    JSON.parse(readFileSync(cfgPath(), 'utf-8')) as Record<string, unknown>;
+
+  beforeEach(() => {
+    d = mkdtempSync(join(tmpdir(), 'wolf-b0-repair-'));
+    writeFileSync(join(d, 'package.json'), '{ "name": "b0-repair-it" }');
+  });
+  afterEach(() => rmSync(d, { recursive: true, force: true }));
+
+  it('R04-1/R04-2: проект 2.19.0 с opencode.json без wolf-записи → запись добавлена, повторный init — no-op', () => {
+    // фикстура «2.19.0-проект»: чужой конфиг opencode без mcp.wolf
+    writeFileSync(
+      cfgPath(),
+      `${JSON.stringify(
+        {
+          $schema: 'https://opencode.ai/config.json',
+          theme: 'system',
+          mcp: { other: { type: 'local', command: ['other-mcp'], enabled: true } },
+        },
+        null,
+        2
+      )}\n`
+    );
+
+    expect(runCli(['init', '--full'], d).status).toBe(0); // БЕЗ --platform
+    const cfg = readCfg();
+    expect((cfg.mcp as Record<string, unknown>).wolf).toEqual({
+      type: 'local',
+      command: ['wolf', 'mcp'],
+      enabled: true,
+    });
+    expect(cfg.$schema).toBe('https://opencode.ai/config.json');
+    expect(cfg.theme).toBe('system');
+    expect((cfg.mcp as Record<string, unknown>).other).toEqual({
+      type: 'local',
+      command: ['other-mcp'],
+      enabled: true,
+    });
+
+    const once = readFileSync(cfgPath(), 'utf-8');
+    expect(runCli(['init', '--full', '--yes'], d).status).toBe(0);
+    expect(readFileSync(cfgPath(), 'utf-8')).toBe(once); // unchanged: ни дубля, ни перезаписи
+  });
+
+  it('R04-3: после init doctor больше не рапортует «wolf entry missing» (тот же проект)', async () => {
+    writeFileSync(cfgPath(), '{"theme":"system"}\n');
+    expect(runCli(['init', '--full'], d).status).toBe(0);
+
+    // in-process doctor: реестр фикстурный (tmp-путь не должен pruning'иться как sandbox)
+    const { runDoctor } = await import('../../src/app/use-cases/doctor.js');
+    const { readSchemaVersion } = await import('../../src/adapters/fs/schema-version.js');
+    const { OpencodeAdapter } = await import('../../src/adapters/platforms/opencode-adapter.js');
+    const report = await runDoctor({
+      registry: {
+        list: async () => [{ path: d, schema_version: 2, initialized_at: '2026-01-01T00:00:00.000Z' }],
+        remove: async () => false,
+      },
+      readSchema: (p: string) => readSchemaVersion(p),
+      exists: async (p: string) => existsSync(p),
+      adapters: [new OpencodeAdapter()],
+    });
+    const entry = report.entries.find((e) => e.path === d);
+    expect(entry?.status).toBe('ok');
+    expect(entry?.issues).not.toContain('opencode: wolf entry missing — run wolf init');
   });
 });
 

@@ -330,7 +330,38 @@ export async function initProject(
       }
     }
   } else {
-    // WP1: без --platform платформенные конфиги не пишутся (минимальный путь, спека §4)
+    // §4.14 (REQ-04): без --platform платформа уже настроена — чиним только
+    // отсутствующую/испорченную wolf-запись в СУЩЕСТВУЮЩЕМ конфиге. Новый конфиг
+    // не создаём (WP1: минимальный init остаётся минимальным), битый JSONC —
+    // fail-soft skipped (exit 0). Условие «надо ли писать» живёт только в
+    // writeConfig — второй копии каноничности здесь нет (design §4.14).
+    const BROKEN = Symbol('broken-config');
+    for (const adapter of deps.adapters) {
+      if (!adapter.detect(baseDir)) continue;
+      const cfg = await adapter.readConfig(baseDir).catch(() => BROKEN);
+      if (cfg === null) continue; // конфиг-файла нет — минимальный init его не создаёт
+      if (cfg === BROKEN) {
+        platformOutcomes.push({
+          platform: adapter.id,
+          action: 'skipped',
+          reason: 'config is not valid JSONC — fix it first',
+        });
+        continue;
+      }
+      const r = await adapter.writeConfig(baseDir, deps.mcpCommand);
+      const repaired = r.action === 'written' || r.action === 'replaced';
+      platformOutcomes.push({
+        platform: adapter.id,
+        action: r.action,
+        ...(repaired
+          ? { reason: `init: repaired missing/corrupted ${adapter.id} wolf entry` }
+          : r.reason !== undefined
+            ? { reason: r.reason }
+            : {}),
+        ...(r.configFile !== undefined ? { configFile: r.configFile } : {}),
+        ...(r.keys !== undefined ? { keys: r.keys } : {}),
+      });
+    }
   }
 
   // §4 п.8: реестр проектов
