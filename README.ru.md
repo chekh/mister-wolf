@@ -53,7 +53,7 @@ wolf bootstrap
 ```
 
 - **Путь А — память:** `wolf init` подключает проект минимально — скелет `.wolf/` и `AGENTS.md`; платформенные конфиги и базовый сет он не пишет. Что печатает чистый запуск: `memory skeleton: ensured`, `base set: AGENTS.md created`, id init-отчёта.
-- **Путь Б — организация OpenCode:** `wolf init --full --platform opencode` отрисовывает полный базовый набор (6 рамок агентов, 19 скиллов, 3 команды, 2 плагина, посев playbook-лиц) и пишет `opencode.json` (`mcp.wolf`, `default_agent=mr-wolf`, `subagent_depth=2`). После него **перезапусти opencode** — MCP-сервер и агент по умолчанию подключаются при старте. Claude Code при первом старте попросит approve project-scope MCP-сервер — это штатно.
+- **Путь Б — организация OpenCode:** `wolf init --full --platform opencode` отрисовывает полный базовый набор (6 рамок агентов, 19 скиллов, 3 команды, 2 плагина, посев playbook-лиц) и пишет `opencode.json` (`mcp.servers.wolf`, `default_agent=mr-wolf`, `experimental.subagent_depth=2`). После него **перезапусти opencode** — MCP-сервер и агент по умолчанию подключаются при старте. Claude Code при первом старте попросит approve project-scope MCP-сервер — это штатно.
 
 - **Попробовать без установки:** `npx mister-wolf init` — try-out-режим: создаёт скелет памяти `.wolf/`, но никогда не пишет ни MCP-конфиги, ни базовый сет. Понравилось — `npm install -g mister-wolf` и повтори `wolf init`.
 - **Обновление:** `wolf upgrade` — одна команда обновляет всё: npm-фаза

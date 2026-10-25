@@ -16,10 +16,10 @@ MCP-конфиги платформ — opt-in: их пишет `wolf init --pla
 
 ### opencode
 
-Пишется в `opencode.json`, ключ `mcp.wolf`:
+Пишется в `opencode.json`, ключ `mcp.servers.wolf` (плоская карта `mcp.wolf` — deprecated, читается только для миграции):
 
 ```json
-{ "mcp": { "wolf": { "type": "local", "command": ["wolf", "mcp"], "enabled": true } } }
+{ "mcp": { "servers": { "wolf": { "type": "local", "command": ["wolf", "mcp"], "disabled": false } } } }
 ```
 
 ### Claude Code

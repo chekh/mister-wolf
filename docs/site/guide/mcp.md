@@ -12,10 +12,10 @@ The canonical server command everywhere is the global binary — `{ command: 'wo
 
 ### opencode
 
-Written to `opencode.json`, key `mcp.wolf`:
+Written to `opencode.json`, key `mcp.servers.wolf` (the flat `mcp.wolf` map is deprecated and only read for migration):
 
 ```json
-{ "mcp": { "wolf": { "type": "local", "command": ["wolf", "mcp"], "enabled": true } } }
+{ "mcp": { "servers": { "wolf": { "type": "local", "command": ["wolf", "mcp"], "disabled": false } } } }
 ```
 
 ### Claude Code
