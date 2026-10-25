@@ -16,7 +16,8 @@ import { ProjectsRegistry } from '../../fs/projects-registry.js';
 import { loadUpdateMap } from '../../fs/update-map.js';
 import { UpgradeLock } from '../../fs/upgrade-lock.js';
 import { wolfUserConfigDir } from '../../fs/user-config.js';
-import { hereStepDeps, termEnv } from './memory-upgrade.js';
+import { buildPassJsonDoc, hereStepDeps, termEnv } from './memory-upgrade.js';
+import { getWolfVersion } from '../../version.js';
 import { renderReport, type ReportNode, type TermEnv } from '../report-renderer.js';
 
 /** IO-шов юнит-контура фазы 2: tty/печать/вопрос; прод — process stdio + readline. */
@@ -57,21 +58,29 @@ export function upgradeProjectsDeps(): UpgradeProjectsDeps {
 }
 
 /** Обвязка фазы 2: deps + TTY-confirm (plans ДО вопроса, REQ-02) + печать
- *  отчёта renderer'ом и простановка exit-кода. */
+ *  отчёта renderer'ом и простановка exit-кода. `--json` (§4.13): единственный
+ *  документ `wolf.upgrade/1` в stdout, без баннера, человеческих строк и
+ *  интерактивных вопросов; exit ребёнка = exit документа. */
 export async function upgradeProjectsAction(
   yes: boolean,
   deps: UpgradeProjectsDeps = upgradeProjectsDeps(),
-  io: ProjectsIo = prodIo()
+  io: ProjectsIo = prodIo(),
+  json = false
 ): Promise<void> {
   const confirm =
-    yes || !io.tty
+    json || yes || !io.tty
       ? undefined
       : async (plans: ReportNode): Promise<boolean> => {
           io.write(`${renderReport(plans, io.env)}\n`); // список ДО вопроса (REQ-02)
           return io.ask();
         };
-  const res = await runUpgradeProjects(deps, { yes, tty: io.tty, confirm });
-  io.write(`${renderReport(res.report, io.env)}\n`);
+  const res = await runUpgradeProjects(deps, { yes, tty: json ? false : io.tty, confirm });
+  if (json) {
+    const doc = await buildPassJsonDoc(deps, res, { installed: getWolfVersion(), available: null });
+    process.stdout.write(`${JSON.stringify(doc)}\n`);
+  } else {
+    io.write(`${renderReport(res.report, io.env)}\n`);
+  }
   process.exitCode = res.exitCode;
 }
 
@@ -85,8 +94,9 @@ export function upgradeProjectsCommand(): Command {
     .option('--yes', 'Apply the plan without interactive confirmation')
     .option('--no-banner', 'Do not print the banner: phase 1 already opened the section')
     .option('--state <path>', 'Phase-1 state file ({ from, to, startedAt })')
-    .action(async (options: { yes?: boolean }) => {
+    .option('--json', 'Print a single machine-readable document (wolf.upgrade/1) instead of the human report')
+    .action(async (options: { yes?: boolean; json?: boolean }) => {
       // from/to/state/noBanner — принятый контракт re-exec; отчёт фазы 2 их не требует
-      await upgradeProjectsAction(options.yes === true);
+      await upgradeProjectsAction(options.yes === true, undefined, undefined, options.json === true);
     });
 }

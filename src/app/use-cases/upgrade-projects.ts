@@ -14,11 +14,12 @@ import { dedupeByRealpath, type RegisteredProject } from '../../adapters/fs/proj
 import { resolveMemoryRoot } from '../../adapters/fs/memory-root.js';
 import { loadSyncState } from '../../adapters/render/sync-state.js';
 import { parseStamp } from '../../adapters/render/stamp.js';
-import { compareVersions, type UpdateMap } from '../../adapters/fs/update-map.js';
+import { compareVersions, type FileKind, type UpdateMap } from '../../adapters/fs/update-map.js';
 import type { Counter, Marker, ReportNode } from '../../adapters/cli/report-renderer.js';
 import { runProjectStep, type ProjectReport, type ProjectStepDeps } from './project-step.js';
-import { projectPath } from './verify-against-map.js';
+import { projectPath, type VerifyResult } from './verify-against-map.js';
 import { scanUnregistered } from './scan-unregistered.js';
+import type { JsonPlan, JsonProject } from './decisions.js';
 
 /** id lock'а параллельного upgrade (T4 UpgradeLock, design «Гварды прохода»). */
 const LOCK_ID = 'wolf-upgrade';
@@ -60,15 +61,20 @@ export interface UpgradeRunResult {
   exitCode: 0 | 1 | 2;
   report: ReportNode;
   counters: Counter[];
+  /** Машинное представление прогона (design §4.13, `--json`): документ собирает
+   *  CLI-слой — здесь только факты прохода (без решений/лиц/защит). */
+  projects: JsonProject[];
+  plan: JsonPlan;
 }
 
 /** Статус проекта в проходе (REQ-05, палитра T3); T9 (--here) переиспользует
  * словарь точечным импортом — единая семантика статусов для одной поверхности. */
 export type OutcomeStatus = 'updated' | 'up-to-date' | 'needs-decision' | 'error';
-/** Статус плана: показан, пропущен (гварды прохода). */
-type PlanStatus = 'worktree' | 'pinned' | 'missing';
+/** Статус плана: показан, пропущен (гварды прохода). Экспорт (T7, §4.7):
+ *  реестр решений использует тот же фильтр — второй реализации статусов нет. */
+export type PlanStatus = 'worktree' | 'pinned' | 'missing';
 
-interface ProjectPlan {
+export interface ProjectPlan {
   name: string;
   /** realpath (несуществующий путь — как есть в реестре). */
   path: string;
@@ -101,7 +107,47 @@ function guardFailure(message: string): UpgradeRunResult {
       children: [line('error', message), line('error', 'Failed')],
     },
     counters: [],
+    projects: [],
+    plan: { projects: 0, new: 0, changed: 0, deprecated: 0, removed: 0, faces: 0 },
   };
+}
+
+/** План-счётчики §4.13: registry-проекты, категории карты, досеянные лица. */
+function planCounts(plans: ProjectPlan[], map: UpdateMap, facesSeeded: number): JsonPlan {
+  const cats = mapCategories(map);
+  return { projects: plans.length, ...cats, faces: facesSeeded };
+}
+
+/** Проект, до которого проход не дошёл: только статус плана (design §4.13). */
+function plannedProject(plan: ProjectPlan): JsonProject {
+  return {
+    name: plan.name,
+    path: plan.path,
+    status: 'skipped',
+    ...(plan.status !== null ? { skipReason: plan.status } : {}),
+    files: [],
+    protected: [],
+    backups: [],
+  };
+}
+
+/** Файлы прогона для `--json.projects[].files`: путь, код, признак карты. */
+export function jsonProjectFiles(report: ProjectReport, map: UpdateMap): JsonProject['files'] {
+  const inMap = new Set<string>(['AGENTS.md', ...map.files.map((e) => projectPath(e))]);
+  return report.sync.outcomes.map((o) => {
+    const code = o.protected
+      ? 'protected'
+      : o.kept
+        ? 'kept'
+        : o.action === 'skipped'
+          ? o.mutated
+            ? 'skipped-mutated'
+            : 'skipped-identical'
+          : o.action === 'appended'
+            ? 'updated'
+            : o.action;
+    return { path: o.file, code, inMap: inMap.has(o.file) };
+  });
 }
 
 export async function runUpgradeProjects(
@@ -143,6 +189,8 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
         ],
       },
       counters: [],
+      projects: [],
+      plan: { projects: 0, new: 0, changed: 0, deprecated: 0, removed: 0, faces: 0 },
     };
   }
 
@@ -178,6 +226,9 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
         children: [plansSection(plans, registered.length, duplicates, map), line('info', finalText, true)],
       },
       counters: [],
+      // отменённый проход: только статусы плана (design §4.13)
+      projects: plans.map(plannedProject),
+      plan: planCounts(plans, map, 0),
     };
   }
 
@@ -190,6 +241,7 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
     try {
       const report = await runStep(withNow(deps.makeStepDeps(plan.path), opts.now), plan.path, map, {
         confirmedRemovals,
+        takeMutated: opts.yes === true, // §4.12: --yes = тихий take с бэкапом
       });
       outcomes.push({ plan, status: statusOf(report), report });
     } catch (err) {
@@ -241,6 +293,30 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
   // не ошибка прохода (exitCode не меняется).
   const scan = await scanLines(deps, registered);
 
+  // Подсказка §4.12: TTY без --yes и оставшиеся решения — путь к разбору.
+  const decisionsLeft = outcomes.reduce((n, o) => n + (o.report?.verify.summary.needsDecision ?? 0), 0);
+  const hint =
+    opts.tty === true && opts.yes !== true && decisionsLeft > 0
+      ? [
+          line(
+            'info',
+            `hint: ${decisionsLeft} ${decisionsLeft === 1 ? 'file needs' : 'files need'} a decision — run wolf upgrade --review`,
+            true
+          ),
+        ]
+      : [];
+
+  const jsonProjects: JsonProject[] = outcomes.map((o) => ({
+    name: o.plan.name,
+    path: o.plan.path,
+    status: o.status,
+    ...(o.error !== undefined ? { error: o.error } : {}),
+    files: o.report ? jsonProjectFiles(o.report, map) : [],
+    protected: [], // заполняет CLI-слой из listProtections (§4.13)
+    backups: o.report?.backups ?? [],
+  }));
+  for (const plan of plans) if (plan.status !== null) jsonProjects.push(plannedProject(plan));
+
   return {
     exitCode,
     report: {
@@ -248,21 +324,26 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
       title: SECTION_TITLE,
       children: [
         plansSection(plans, registered.length, duplicates, map),
-        projectsSection(outcomes),
+        projectsSection(outcomes, map),
         // Суффикс summary у renderer фиксирован («— Done») и не выражает
         // exit-таблицу — слово финальной строки передаёт оркестратор строкой.
         { kind: 'summary', counters, done: false },
+        ...hint,
         line(exitCode === 1 ? 'error' : exitCode === 2 ? 'warn' : 'ok', finalText),
         ...scan,
       ],
     },
     counters,
+    projects: jsonProjects,
+    plan: planCounts(plans, map, facesSeeded),
   };
 }
 
 /** План одной записи реестра: realpath → статусы (порядок гвардов: missing →
- * worktree → pinned); состав/штамп — справочно, только для активных планов. */
-function planOf(entry: RegisteredProject): ProjectPlan {
+ * worktree → pinned); состав/штамп — справочно, только для активных планов.
+ * Экспорт (T7, design §4.7): `collectDecisions` нумерует те же активные проекты —
+ * второй реализации фильтра worktree/pinned/missing нет. */
+export function planOf(entry: RegisteredProject): ProjectPlan {
   let real: string;
   try {
     real = realpathSync(entry.path);
@@ -394,8 +475,56 @@ export const STATUS_TEXT: Record<OutcomeStatus, string> = {
   error: 'error',
 };
 
+/** Файловые строки деталей проекта (REQ-01, design §4.15): каждый needs-decision
+ *  назван путём (счётчики выше сохраняются дословно), защищённые и принятые
+ *  локальные — отдельными строками. Единственная реализация для прохода и
+ *  `--here`. Лица печатает владелец seed-строки (секция проекта) — иначе одно
+ *  diverged-лицо давало две строки `faces:` (m-1). */
+/** Путь карты (`base/agents/x.md`) → проектный путь (`.opencode/agents/x.md`):
+ *  REQ-01 требует путь относительно корня проекта, а verify.target для целей
+ *  карты несёт путь карты. `kind` берётся из `map.files` (m-3) — вторых таблиц
+ *  префиксов нет. */
+function kindIndex(map: UpdateMap): Map<string, FileKind> {
+  const kinds = new Map<string, FileKind>();
+  for (const entry of map.files) kinds.set(entry.path, entry.kind);
+  return kinds;
+}
+
+function displayName(i: VerifyResult['items'][number], kinds: Map<string, FileKind>): string {
+  if (i.kind !== 'file') return i.target;
+  const kind = kinds.get(i.target);
+  return kind ? projectPath({ path: i.target, kind, category: 'new' }) : i.target;
+}
+
+export function verifyNameLines(verify: VerifyResult, map: UpdateMap): ReportNode[] {
+  const out: ReportNode[] = [];
+  const kinds = kindIndex(map);
+  const named = verify.items.filter((i) => i.needsDecision && i.code !== 'diverged');
+  if (named.length > 0) {
+    out.push(
+      line('warn', `needs decision: ${named.map((i) => `${displayName(i, kinds)} (${i.code})`).join(', ')}`, true)
+    );
+  }
+  const protectedCount = verify.items.filter((i) => i.code === 'protected').length;
+  if (protectedCount > 0) out.push(line('info', `${protectedCount} protected (intentional)`, true));
+  const kept = verify.items.filter((i) => i.code === 'kept').map((i) => displayName(i, kinds));
+  if (kept.length > 0) out.push(line('info', `${kept.length} kept (local): ${kept.join(', ')}`, true));
+  return out;
+}
+
+/** Дайджест бэкапов проекта (§4.12): файл и путь копии; take — «took base»,
+ *  удаление — «removed». Единственная реализация формата: проход и `--here`. */
+export function backupDigestLines(report: ProjectReport): ReportNode[] {
+  const out: ReportNode[] = [];
+  for (const b of report.backups ?? []) {
+    const took = report.sync.outcomes.some((o) => o.backup === b.backup);
+    out.push(line('info', `${took ? 'took base for' : 'removed'} ${b.file} (local saved: ${b.backup})`, true));
+  }
+  return out;
+}
+
 /** Секция проектов: строка-статус на проект + детали шага (REQ-05, палитра T3). */
-function projectsSection(outcomes: StepOutcome[]): ReportNode {
+function projectsSection(outcomes: StepOutcome[], map: UpdateMap): ReportNode {
   const children: ReportNode[] = [];
   for (const o of outcomes) {
     const marker: Marker = o.status === 'error' ? 'error' : o.status === 'needs-decision' ? 'warn' : 'ok';
@@ -425,6 +554,8 @@ function projectsSection(outcomes: StepOutcome[]): ReportNode {
     children.push(
       line(v.errors > 0 ? 'error' : v.needsDecision > 0 ? 'warn' : 'info', `verify: ${parts.join(' · ')}`, true)
     );
+    children.push(...verifyNameLines(r.verify, map));
+    children.push(...backupDigestLines(r));
   }
   return { kind: 'section', title: 'Projects', children };
 }

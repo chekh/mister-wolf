@@ -111,10 +111,22 @@ What `wolf init` creates and what appears lazily:
 ├── metrics/               # lazy; session-metrics.jsonl, patterns.jsonl, signal-counts.json (derived counters)
 ├── thinking/              # lazy; structured thinking sequences
 ├── tools/                 # lazy; registered tool scripts
-└── backup/<ts>/           # lazy; config backups from wolf init --recreate
+├── backup/<ts>/           # lazy; config backups from wolf init --recreate
+└── backup/upgrade/<date>/ # lazy; local copy before every upgrade overwrite/removal (no GC)
 ```
 
 A work thread lives at `memory/threads/<tid>/WORK-THREAD.md`.
+
+## Platform configs and `mcp.wolf`
+
+Platform configs (`opencode.json`, Claude's `.mcp.json`) are written by `wolf init --platform <ids>` — the list replaces the current set — and never by a plain minimal `init`. What a minimal `init` does with them since 2.20.0 is **repair only**:
+
+- platform config file **exists** and the platform is detected → a missing or corrupted `mcp.wolf` entry is restored (alongside `default_agent` / `subagent_depth`), the rest of the JSON is preserved untouched;
+- the entry is already canonical → `unchanged` (idempotent; a second `init` writes nothing);
+- the config file **does not exist** → nothing is created — a minimal init stays minimal, and `--platform opencode` remains the explicit way to write a platform config;
+- the config is broken JSONC → not touched at all: `init` reports `skipped` with the reason and exits `0` (`wolf init --recreate` is the escape hatch for a corrupted `.wolf/config.yaml`, not for platform configs).
+
+This is what makes the `wolf doctor` advice (`run wolf init` when the wolf entry is missing) actionable: after a successful repair the doctor no longer reports `wolf entry missing`. Foreign MCP entries in the same file are never touched.
 
 ## Global config
 

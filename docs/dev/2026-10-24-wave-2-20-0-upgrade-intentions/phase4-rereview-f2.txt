@@ -1,0 +1,1136 @@
+[0m
+> worker-reviewer · code
+[0m→ [0mRead docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/design.md 
+[0m$ [0mgit log --oneline bb4f560..HEAD && echo "---STATUS---" && git status --short && echo "---DIFFSTAT---" && git diff --stat bb4f560..HEAD
+e734a98 docs(2.20.0): отчёт фазы 2 (T7–T11) — статус, решения, evidence
+ea2df6a fix(2.20.0): T11 — повторяемый --resolve без default (collector)
+f42af98 docs(2.20.0): T7–T11 — регенерация CLI-справочника и отметки плана
+55737b6 feat(2.20.0): T11 — --json (схемы, сквозь re-exec, паритет с текстом)
+b32c5ff feat(2.20.0): T10 — --yes: тихий take с бэкапом и дайджест
+9a168bb feat(2.20.0): T9 — --review (TTY-цикл и non-TTY рецепт)
+1806c60 feat(2.20.0): T8 — --show и построчный diff
+8d1a2a3 feat(2.20.0): T7 — реестр решений и --resolve
+---STATUS---
+ M .opencode/skills/using-skills/SKILL.md
+ M .opencode/skills/wolf-execute/SKILL.md
+ M .opencode/skills/wolf-sdd/SKILL.md
+?? .opencode/skills/wolf-draft/
+?? docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/phase4-rereview-f2.txt
+---DIFFSTAT---
+ .../phase4-impl-f2-report.md                       | 230 +++++
+ .../plan.md                                        |  21 +-
+ docs/reference/cli.md                              |  33 +-
+ src/adapters/cli/commands/memory-upgrade.ts        | 990 +++++++++++++++++++--
+ src/adapters/cli/commands/upgrade-projects.ts      |  26 +-
+ src/adapters/render/opencode/opencode-renderer.ts  |  11 +
+ src/app/use-cases/decisions.ts                     | 771 ++++++++++++++++
+ src/app/use-cases/project-step.ts                  |  16 +-
+ src/app/use-cases/upgrade-projects.ts              | 154 +++-
+ src/domain/line-diff.ts                            | 210 +++++
+ tests/integration/upgrade-here.test.ts             | 180 ++++
+ tests/integration/upgrade-park.test.ts             | 320 ++++++-
+ .../adapters/commands/memory-upgrade.check.test.ts | 103 +++
+ .../adapters/commands/memory-upgrade.here.test.ts  | 276 +++++-
+ .../adapters/commands/upgrade-projects.test.ts     |  95 ++
+ .../unit/adapters/render/opencode-renderer.test.ts |   8 +
+ tests/unit/domain/line-diff.test.ts                |  69 ++
+ tests/unit/use-cases/decisions.test.ts             | 662 ++++++++++++++
+ tests/unit/use-cases/upgrade-projects.test.ts      | 108 +++
+ 19 files changed, 4156 insertions(+), 127 deletions(-)
+> worker-reviewer · code
+[0m→ [0mRead docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/design.md [90m[offset=589, limit=560][0m
+> worker-reviewer · code
+[0m→ [0mRead docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/plan.md 
+[0m→ [0mRead docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/design.md [90m[limit=200, offset=1149][0m
+> worker-reviewer · code
+[0m→ [0mRead docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/phase4-impl-f2-report.md 
+[0m$ [0mgrep -n "^#\|^## \|^### " docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/test-plan.md | head -60
+11:# wave-2-20-0-upgrade-intentions — тест-план
+29:## Сценарии
+31:### REQ-01 — имена файлов в выводе
+49:### REQ-02 — исцеление штамп-дрейфа
+67:### REQ-03 — версионированный onboarding-блок
+109:### REQ-04 — init восстанавливает `mcp.wolf`
+140:### REQ-05 — ключ `protect` (нормализация и поведение)
+190:### REQ-06 — глаголы `--resolve`
+233:### REQ-07 — `--review`
+266:### REQ-08 — `--show`
+289:### REQ-09 — секция Protections
+314:### REQ-10 — `--yes` без TTY
+338:### REQ-11 — `--json`
+378:### NFR-01 — exit-модель
+399:### NFR-02 — идемпотентность
+409:### NFR-03 — `--check` строго read-only
+422:### NFR-04 — атомарность записей
+434:### NFR-05 — никакой потери данных без бэкапа
+445:### NFR-06 — детерминированность не-TTY вывода
+457:## Прогоны
+> worker-reviewer · code
+[0m$ [0msed -n '422,480p' docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/test-plan.md
+### NFR-04 — атомарность записей
+
+- **N04-1** Given любые записи волны (файл base-set, frontmatter-правка,
+  AGENTS-блок, sync-state, бэкап), When успешная операция, Then в каталогах не
+  остаётся `*.tmp`, а содержимое появляется целиком (rename).
+  Маппинг: `tests/unit/adapters/render/sync-state.test.ts`,
+  `tests/unit/use-cases/decisions.test.ts`.
+- **N04-2** Given ревью кода, When поиск прямых `writeFileSync(` по путям
+  проекта, Then новых нет (только tmp+rename-хелперы).
+  Маппинг: `tests/e2e/base-set.e2e.ts` (проверка отсутствия `*.tmp` после
+  прогона) + ревью-чек в T14.
+
+### NFR-05 — никакой потери данных без бэкапа
+
+- **N05-1** Given локальный контент, отличный от эталона, When `take`/`--yes`/
+  правило 7 без свидетеля, Then файл перезаписывается только после появления
+  бэкапа с идентичным контентом (сравнение байтов).
+  Маппинг: `tests/unit/use-cases/decisions.test.ts`,
+  `tests/unit/adapters/render/opencode-renderer.test.ts`.
+- **N05-2** Given сбой записи эталона после бэкапа, When операция, Then бэкап
+  остаётся, свидетель не обновлён, exit 1, файл прежний.
+  Маппинг: тот же.
+
+### NFR-06 — детерминированность не-TTY вывода
+
+- **N06-1** Given неизменное состояние парка, When два non-TTY прогона
+  (`--check`, `--json`, `--review`), Then порядок строк и нумерация идентичны,
+  `diff` пуст.
+  Маппинг: `tests/integration/upgrade-park.test.ts`,
+  `tests/integration/upgrade-check.test.ts`.
+- **N06-2** Given разный порядок проектов в реестре, When сбор реестра решений,
+  Then порядок задаётся реестром → картой → AGENTS.md → алфавитом (тест на
+  фикстуре с перемешанным порядком).
+  Маппинг: `tests/unit/use-cases/decisions.test.ts`.
+
+## Прогоны
+
+Точечные (по задачам, до полного гейта):
+
+```
+npx vitest run tests/unit/domain/protect-key.test.ts tests/unit/domain/line-diff.test.ts
+npx vitest run tests/unit/adapters/render/sync-state.test.ts tests/unit/adapters/render/opencode-renderer.test.ts
+npx vitest run tests/unit/use-cases/verify-against-map.test.ts tests/unit/use-cases/sync-base-set.test.ts
+npx vitest run tests/unit/use-cases/decisions.test.ts tests/unit/use-cases/upgrade-projects.test.ts
+npx vitest run tests/unit/use-cases/init-project.test.ts tests/unit/use-cases/doctor.test.ts
+npx vitest run tests/unit/adapters/commands/memory-upgrade.check.test.ts tests/unit/adapters/commands/memory-upgrade.here.test.ts tests/unit/adapters/commands/upgrade-projects.test.ts
+npx vitest run tests/integration/upgrade-check.test.ts tests/integration/upgrade-here.test.ts tests/integration/upgrade-park.test.ts tests/integration/b0-init.test.ts tests/integration/b0-sync.test.ts
+npx tsc --noEmit
+```
+
+Полный гейт (T14, обязателен перед выпуском):
+
+```
+npm run check      # english-surface → prettier --check → tsc → build → vitest (все файлы)
+npm run e2e        # сборка + tests/e2e (правило проекта: E2E после каждого плана)
+```
+
+Ручные/полу-ручные проверки:
+[0m$ [0msed -n '190,380p' docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/test-plan.md
+### REQ-06 — глаголы `--resolve`
+
+- **R06-1 (AC1)** Given non-TTY прогон напечатал нумерованный список, When
+  `wolf upgrade --resolve 3=protect`, Then решение применено к файлу строки 3,
+  ключ `protect: true` вставлен атомарно, свидетель обновлён по нормализованному
+  контенту.
+  Маппинг: `tests/unit/use-cases/decisions.test.ts`,
+  `tests/integration/upgrade-here.test.ts`.
+- **R06-2 (AC2)** Given проект, When `--resolve .opencode/agents/foo.md=take`,
+  Then файл заменён эталоном, локальная копия в `.wolf/backup/upgrade/<дата>/…`.
+  Маппинг: `tests/unit/use-cases/decisions.test.ts`.
+- **R06-3 (AC3)** Given неизвестный номер (`99=take`) и неизвестный путь в одной
+  команде, When `--resolve`, Then exit 1, ошибки называют обе цели, ни один файл
+  не изменён (снапшот).
+  Маппинг: `tests/unit/use-cases/decisions.test.ts`.
+- **R06-4 (AC4)** Given защищённый файл, When `--resolve …=take`, Then ключ снят,
+  взят эталон, свидетель `origin:'render'`.
+  Маппинг: `tests/unit/use-cases/decisions.test.ts`.
+- **R06-5 (семантика keep)** Given mutated-файл, When `--resolve …=keep`, затем
+  обычный `wolf upgrade`, Then файл **не перезаписан**, exit 0 (правило 6.5
+  ADR-8); After правка файла пользователем, When проход, Then снова `mutated`.
+  Маппинг: `tests/unit/use-cases/decisions.test.ts`,
+  `tests/integration/upgrade-park.test.ts`.
+- **R06-6 (матрица)** Given цели классов conflict/orphan/блочный AGENTS.md, When
+  неподдерживаемый глагол (`keep` на orphan, `protect` на AGENTS.md без
+  frontmatter, `protect` на AGENTS.md с ручным frontmatter), Then exit 1 с
+  подсказкой «нет frontmatter», файл не изменён.
+  Маппинг: `tests/unit/use-cases/decisions.test.ts`.
+- **R06-7 (дубли и порядок)** Given `--resolve 2=take --resolve 2=keep` и
+  `--resolve a.md=take --resolve ./a.md=keep`, When разбор, Then ошибка «target
+  listed twice», записей нет; применение идёт в порядке реестра, не ввода.
+  Маппинг: тот же файл.
+- **R06-8 (идемпотентность)** Given применённое решение, When повтор того же
+  `--resolve`, Then exit 0/2 по остатку, файл и свидетель без изменений.
+  Маппинг: тот же файл.
+- **R06-9 (диспетчеризация, design §4.18)** Given устаревший CLI и парковый
+  `--resolve 3=protect`, When вызов, Then npm-фаза и re-exec **не выполняются**
+  (мок npm/spawn не вызван), флаг не теряется, применено ровно решение 3; Given
+  `--resolve 3=protect --yes`, Then exit 1 (несовместимая комбинация), записей и
+  сети нет.
+  Маппинг: `tests/unit/adapters/commands/memory-upgrade.here.test.ts`,
+  `tests/integration/upgrade-park.test.ts`.
+
+### REQ-07 — `--review`
+
+- **R07-1 (AC1)** Given TTY и mutated-файл, When `--review` и выбран `p`, Then
+  `protect: true` дописан атомарно (tmp+rename), файл больше не needs-decision.
+  Маппинг: `tests/unit/adapters/commands/memory-upgrade.here.test.ts` (инъекция
+  TTY и ответов).
+- **R07-2 (AC2)** Given non-TTY и 2 needs-decision, When `--review`, Then
+  напечатан нумерованный список с готовой командой `--resolve`, exit 2, файлы не
+  изменены (снапшот mtime+хэш).
+  Маппинг: `tests/unit/adapters/commands/memory-upgrade.here.test.ts`,
+  `tests/integration/upgrade-park.test.ts`.
+- **R07-3 (похожесть)** Given 4 цели: 3 agent/mutated и 1 skill/mutated, When
+  выбран `t` и подтверждено «ко всем похожим», Then применены 3 agent-цели, skill
+  остался; перечень показан до применения.
+  Маппинг: `tests/unit/use-cases/decisions.test.ts`.
+- **R07-4 (выход)** Given цикл, When `q` или EOF, Then уже принятые решения
+  применены, остальные не тронуты, дайджест и exit по остатку.
+  Маппинг: тот же файл.
+- **R07-5 (diverged, решение L0)** Given парк, где остались только `diverged`
+  лица (решений нет), When `--review` (TTY и non-TTY), Then напечатана отдельная
+  секция `steward zone` с `owner_skill`/версией, `--resolve`-команда для него не
+  предлагается, exit 2; When `--json --yes`, Then `diverged[]` непуст, exit 2.
+  When bare non-TTY без `--yes` (текст или `--json`), Then exit 0 — отменённый
+  проход (N01-3). Given `diverged` устранён Стюардом, When `--review`, Then exit 0,
+  секции нет.
+  Маппинг: `tests/unit/use-cases/decisions.test.ts`,
+  `tests/integration/upgrade-park.test.ts`.
+- **R07-6 (non-TTY, чистый парк)** Given non-TTY и **ноль** needs-decision, When
+  `--review`, Then напечатано «no decisions» (список пуст), exit **0** (не 2),
+  файлы не изменены.
+  Маппинг: `tests/unit/adapters/commands/memory-upgrade.here.test.ts`,
+  `tests/integration/upgrade-park.test.ts`.
+
+### REQ-08 — `--show`
+
+- **R08-1 (AC1)** Given `protect: 2.19.0` при базе 2.20.0, When
+  `--show <файл>`, Then напечатаны значение protect, обе версии и diff
+  локальный→эталон; файл и свидетель не изменены (снапшот).
+  Маппинг: `tests/unit/use-cases/decisions.test.ts`,
+  `tests/unit/domain/line-diff.test.ts`.
+- **R08-2 (AC2)** Given номер `N` из non-TTY списка, When `--show N`, Then вывод
+  идентичен `--show <файл>`.
+  Маппинг: `tests/unit/use-cases/decisions.test.ts`.
+- **R08-3 (граница)** Given файл, не входящий в решения (например идентичный),
+  When `--show <путь>`, Then вывод строится (эталон есть), exit 0; неизвестный
+  путь → exit 1 с подсказкой.
+  Маппинг: тот же файл.
+- **R08-4 (diff)** Given вход > лимита строк, When `line-diff`, Then вывод
+  обрезан по лимиту с `… ещё N строк`, детерминирован на повторе.
+  Маппинг: `tests/unit/domain/line-diff.test.ts`.
+- **R08-5 (файл вне карты)** Given защищённый файл вне карты (`renderFreshFile`
+  вернул `null`), When `--show <путь>`, Then напечатано `base: n/a (file outside
+the update map)`, diff не строится, подсказки `=take` нет, exit 0, файл не
+  изменён.
+  Маппинг: `tests/unit/use-cases/decisions.test.ts`.
+
+### REQ-09 — секция Protections
+
+- **R09-1 (AC1)** Given парк, где защищённые файлы в двух проектах, When
+  `--check`, Then секция Protections перечисляет все: путь, значение, дрейф.
+  Маппинг: `tests/integration/upgrade-check.test.ts`.
+- **R09-2 (AC2)** Given чистый парк без защит, When `--check`, Then секция
+  печатается со строкой `Protections: none`.
+  Маппинг: тот же файл.
+- **R09-3 (AC3)** Given проект, When `--check` дважды, Then вывод идентичен,
+  ни один файл (включая `wolf-sync-state.json`) не изменён.
+  Маппинг: тот же файл (снапшот mtime+sha256).
+- **R09-4 (граница)** Given значение вне грамматики (`protect: yes`), When
+  `--check`, Then строка `unrecognized — treated as protected`, exit 0.
+  Маппинг: `tests/integration/upgrade-check.test.ts`.
+- **R09-5 (`--here --check`, C-1)** Given проект с mutated/differ/protect и
+  `kept`-файлами, When `wolf upgrade --here --check` (в TTY и non-TTY), Then
+  печатается инспекция только этого проекта + секция Protections, exit 0,
+  снапшот mtime+sha256 всех файлов проекта (включая `wolf-sync-state.json`)
+  идентичен, sync-state и бэкапов нет; npm-фаза и re-exec не вызываются; Given
+  `--here --check` на файле, который был бы перезаписан проходом, Then файл не
+  изменён (read-only гарантия NFR-03).
+  Маппинг: `tests/integration/upgrade-check.test.ts`,
+  `tests/unit/adapters/commands/memory-upgrade.check.test.ts`,
+  `tests/integration/upgrade-here.test.ts`.
+
+### REQ-10 — `--yes` без TTY
+
+- **R10-1 (AC1)** Given не-TTY, необъявленная правка, When `wolf upgrade --yes`,
+  Then локальная копия в `.wolf/backup/upgrade/<дата>/<путь>`, взят эталон,
+  дайджест называет файл и путь бэкапа, exit 0.
+  Маппинг: `tests/integration/upgrade-park.test.ts`,
+  `tests/unit/adapters/commands/upgrade-projects.test.ts`.
+- **R10-2 (AC2)** Given бэкап из R10-1, When скопировать файл обратно и выполнить
+  `--resolve <файл>=protect`, Then файл заморожен (`protected`), проход его не
+  меняет.
+  Маппинг: `tests/unit/use-cases/decisions.test.ts`.
+- **R10-3 (AC3)** Given protect/pin/kept-файлы, When `--yes`, Then они не тронуты
+  и не бэкапированы (список бэкапов их не содержит).
+  Маппинг: `tests/unit/adapters/commands/upgrade-projects.test.ts`.
+- **R10-4 (отказные сценарии)** Given сбой бэкапа (мок хука бросает), When
+  `--yes`, Then файл не перезаписан, свидетель не изменён, exit 1; Given сбой
+  `saveSyncState`, When `--yes`, Then error-строка с явным предупреждением и
+  exit 1.
+  Маппинг: `tests/unit/adapters/render/opencode-renderer.test.ts`,
+  `tests/unit/use-cases/decisions.test.ts`.
+- **R10-5 (коллизия)** Given два take одного файла в один день, When `--yes` или
+  `--resolve`, Then второй бэкап получает суффикс `-2`, первый не перезаписан.
+  Маппинг: `tests/unit/use-cases/decisions.test.ts`.
+
+### REQ-11 — `--json`
+
+- **R11-1 (AC1)** Given проект с mutated-файлом и protect-файлом, When
+  `wolf upgrade --json --yes`, Then stdout парсится как JSON, содержит
+  `schema:"wolf.upgrade/1"`, per-project исходы с путями, `protections`.
+  Маппинг: `tests/integration/upgrade-park.test.ts`,
+  `tests/unit/adapters/commands/memory-upgrade.check.test.ts`.
+- **R11-2 (AC2)** Given non-TTY прогон, When сравнить `decisions[].n` в JSON и
+  номера текстового списка, Then совпадают один-в-один.
+  Маппинг: `tests/integration/upgrade-park.test.ts`.
+- **R11-3 (AC3)** Given три состояния (ok, needs-decision, error), When `--json`,
+  Then `exit` в документе и код процесса совпадают с текстовым режимом.
+  Маппинг: те же.
+- **R11-4 (re-exec)** Given устаревший CLI и мок re-exec, When `--json`, Then в
+  argv ребёнка есть `--json`, фаза 1 не печатает ни баннера, ни outcome; при
+  падении npm-фазы документ с `exit:1` и `error`.
+  Маппинг: `tests/unit/adapters/commands/memory-upgrade.check.test.ts` и
+  `tests/unit/adapters/commands/upgrade-projects.test.ts` (оба в allowlist T11;
+  отдельный новый файл не вводится).
+- **R11-5 (комбинации)** Given `--json --check`, When вызов, Then
+  `schema:"wolf.upgrade.check/1"`; Given `--json --review`, Then error и exit 1,
+  второй документ не печатается; Given `--json --resolve 2=keep`, Then
+  `mode:"resolve"`, `projects: []`, `backups` заполнены, `decisions` — остаток
+  реестра, exit совпадает с процессом; Given `--json --show <путь>`, Then
+  `mode:"show"`, `projects: []`.
+  Маппинг: те же.
+- **R11-6 (стабильность)** Given два non-TTY прогона без изменений состояния,
+  When сравнить stdout, Then байт-идентичны (NFR-06).
+  Маппинг: `tests/integration/upgrade-park.test.ts`.
+- **R11-7 (`--json` в TTY)** Given stdout — TTY, When `--json --yes`, Then
+  печатается тот же единственный документ, интерактивных вопросов нет, exit
+  совпадает с текстовым режимом.
+  Маппинг: `tests/unit/adapters/commands/memory-upgrade.check.test.ts`.
+- **R11-8 (argv ребёнка, design §4.18)** Given устаревший CLI, When парковый
+  `--json --yes`, Then argv ребёнка содержит `--json`, а `upgrade-projects`
+  принимает эту опцию и печатает ровно один документ; Given `--json` с
+  `--resolve`/`--show`, Then re-exec не вызывается вовсе.
+  Маппинг: `tests/unit/adapters/commands/upgrade-projects.test.ts`,
+  `tests/integration/upgrade-park.test.ts`.
+
+### NFR-01 — exit-модель
+
+- **N01-1** Given существующая таблица exit-модели unified-update (done/cancel/
+> worker-reviewer · code
+Теперь читаю код — ядро Ф2: `decisions.ts`.
+[0m→ [0mRead src/app/use-cases/decisions.ts 
+> worker-reviewer · code
+Ядро прочитано. Теперь CLI-диспетчеризация и рендерер.
+[0m→ [0mRead src/adapters/cli/commands/memory-upgrade.ts 
+> worker-reviewer · code
+[0m→ [0mRead src/adapters/cli/commands/memory-upgrade.ts [90m[offset=1143][0m
+> worker-reviewer · code
+Теперь дочитываю смежные модули: `upgrade-projects.ts` (app и CLI-ребёнок), `project-step.ts`, рендерер и `line-diff`.
+[0m→ [0mRead src/adapters/cli/commands/upgrade-projects.ts 
+[0m$ [0mgit diff bb4f560..HEAD -- src/app/use-cases/upgrade-projects.ts src/app/use-cases/project-step.ts src/adapters/render/opencode/opencode-renderer.ts | head -400
+diff --git a/src/adapters/render/opencode/opencode-renderer.ts b/src/adapters/render/opencode/opencode-renderer.ts
+index 4cefe50..d0a7617 100644
+--- a/src/adapters/render/opencode/opencode-renderer.ts
++++ b/src/adapters/render/opencode/opencode-renderer.ts
+@@ -457,6 +457,17 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
+ 
+   /** Свежий рендер одного файла карты (эталон для `--show` и `behind`); null — вне карты. */
+   renderFreshFile(baseDir: string, rel: string, opts?: RenderBaseSetOptions): string | null {
++    // AGENTS.md — цель карты (agents_md), но не файл templateFiles: эталон для
++    // `--show`/`take` (design §4.8/§4.10) — штампованный whole-file рендер.
++    if (rel === 'AGENTS.md') {
++      const paths = this.agentsMdPaths(baseDir);
++      if (!paths) return null;
++      return insertStamp(
++        this.agentsMdContent(paths.tplPath, opts?.models ?? 'omit'),
++        { base: 'AGENTS.md', set: this.setVersion },
++        'AGENTS.md'
++      );
++    }
+     for (const f of this.templateFiles(baseDir)) {
+       if (relative(baseDir, f.target) === rel) return this.renderContent(f, opts?.bake, opts?.models ?? 'omit');
+     }
+diff --git a/src/app/use-cases/project-step.ts b/src/app/use-cases/project-step.ts
+index 76de244..9c15943 100644
+--- a/src/app/use-cases/project-step.ts
++++ b/src/app/use-cases/project-step.ts
+@@ -9,7 +9,7 @@
+ import { existsSync, readFileSync } from 'fs';
+ import { mkdir, unlink } from 'fs/promises';
+ import { basename, extname, join } from 'path';
+-import type { BaseSetRenderer, ModelContext } from '../../ports/base-set-renderer.port.js';
++import type { BackupHook, BaseSetRenderer, ModelContext } from '../../ports/base-set-renderer.port.js';
+ import type { UpdateMap } from '../../adapters/fs/update-map.js';
+ import { ensureCurrentSchema } from '../../adapters/fs/schema-guard.js';
+ import { writeFileAtomic } from '../../adapters/fs/markdown-memory-store.js';
+@@ -41,6 +41,9 @@ export interface ProjectStepDeps extends Omit<SeedDeps, 'mode'> {
+  * оставшиеся removed-цели дают error сверки — план не доведён). */
+ export interface ProjectStepOpts {
+   confirmedRemovals?: string[];
++  /** `--yes` (§4.12): правило 6′ — mutated → бэкап → эталон → свидетель.
++   *  Хук собирается здесь, рядом с единственной реализацией формата бэкапа. */
++  takeMutated?: boolean;
+ }
+ 
+ /** Итог шага по exit-модели design §«Exit-модель»: 0-подобный / требует
+@@ -105,7 +108,16 @@ export async function runProjectStep(
+   const startedAt = now();
+ 
+   // 1. sync: перезапись / skip-mutated / identical; orphaned — вход шага удалений.
+-  const { outcomes: syncOutcomes, orphaned } = await syncBaseSet(deps.renderer, root, deps.models ?? 'omit');
++  // `--yes` включает режим take-on-mutated (§4.3 правило 6′, §4.12): бэкап-хук —
++  // та же backupLocalFile, что у удалений (второго формата бэкапа нет).
++  const backupHook: BackupHook = (rel, content) =>
++    backupLocalFile(root, rel, content, new Date(now())).then((copy) => copy.path);
++  const { outcomes: syncOutcomes, orphaned } = await syncBaseSet(
++    deps.renderer,
++    root,
++    deps.models ?? 'omit',
++    opts.takeMutated === true ? { takeMutated: { backup: backupHook } } : undefined
++  );
+ 
+   // 2. removals: удаляется только объявленное картой И подтверждённое списком
+   // REQ-02 (второго подтверждения нет — ADR-4). Прочий orphaned не трогаем.
+diff --git a/src/app/use-cases/upgrade-projects.ts b/src/app/use-cases/upgrade-projects.ts
+index b75eb7f..9bb9e3d 100644
+--- a/src/app/use-cases/upgrade-projects.ts
++++ b/src/app/use-cases/upgrade-projects.ts
+@@ -19,6 +19,7 @@ import type { Counter, Marker, ReportNode } from '../../adapters/cli/report-rend
+ import { runProjectStep, type ProjectReport, type ProjectStepDeps } from './project-step.js';
+ import { projectPath, type VerifyResult } from './verify-against-map.js';
+ import { scanUnregistered } from './scan-unregistered.js';
++import type { JsonPlan, JsonProject } from './decisions.js';
+ 
+ /** id lock'а параллельного upgrade (T4 UpgradeLock, design «Гварды прохода»). */
+ const LOCK_ID = 'wolf-upgrade';
+@@ -60,15 +61,20 @@ export interface UpgradeRunResult {
+   exitCode: 0 | 1 | 2;
+   report: ReportNode;
+   counters: Counter[];
++  /** Машинное представление прогона (design §4.13, `--json`): документ собирает
++   *  CLI-слой — здесь только факты прохода (без решений/лиц/защит). */
++  projects: JsonProject[];
++  plan: JsonPlan;
+ }
+ 
+ /** Статус проекта в проходе (REQ-05, палитра T3); T9 (--here) переиспользует
+  * словарь точечным импортом — единая семантика статусов для одной поверхности. */
+ export type OutcomeStatus = 'updated' | 'up-to-date' | 'needs-decision' | 'error';
+-/** Статус плана: показан, пропущен (гварды прохода). */
+-type PlanStatus = 'worktree' | 'pinned' | 'missing';
++/** Статус плана: показан, пропущен (гварды прохода). Экспорт (T7, §4.7):
++ *  реестр решений использует тот же фильтр — второй реализации статусов нет. */
++export type PlanStatus = 'worktree' | 'pinned' | 'missing';
+ 
+-interface ProjectPlan {
++export interface ProjectPlan {
+   name: string;
+   /** realpath (несуществующий путь — как есть в реестре). */
+   path: string;
+@@ -101,9 +107,49 @@ function guardFailure(message: string): UpgradeRunResult {
+       children: [line('error', message), line('error', 'Failed')],
+     },
+     counters: [],
++    projects: [],
++    plan: { projects: 0, new: 0, changed: 0, deprecated: 0, removed: 0, faces: 0 },
+   };
+ }
+ 
++/** План-счётчики §4.13: registry-проекты, категории карты, досеянные лица. */
++function planCounts(plans: ProjectPlan[], map: UpdateMap, facesSeeded: number): JsonPlan {
++  const cats = mapCategories(map);
++  return { projects: plans.length, ...cats, faces: facesSeeded };
++}
++
++/** Проект, до которого проход не дошёл: только статус плана (design §4.13). */
++function plannedProject(plan: ProjectPlan): JsonProject {
++  return {
++    name: plan.name,
++    path: plan.path,
++    status: 'skipped',
++    ...(plan.status !== null ? { skipReason: plan.status } : {}),
++    files: [],
++    protected: [],
++    backups: [],
++  };
++}
++
++/** Файлы прогона для `--json.projects[].files`: путь, код, признак карты. */
++export function jsonProjectFiles(report: ProjectReport, map: UpdateMap): JsonProject['files'] {
++  const inMap = new Set<string>(['AGENTS.md', ...map.files.map((e) => projectPath(e))]);
++  return report.sync.outcomes.map((o) => {
++    const code = o.protected
++      ? 'protected'
++      : o.kept
++        ? 'kept'
++        : o.action === 'skipped'
++          ? o.mutated
++            ? 'skipped-mutated'
++            : 'skipped-identical'
++          : o.action === 'appended'
++            ? 'updated'
++            : o.action;
++    return { path: o.file, code, inMap: inMap.has(o.file) };
++  });
++}
++
+ export async function runUpgradeProjects(
+   deps: UpgradeProjectsDeps,
+   opts: UpgradeProjectsOpts = {}
+@@ -143,6 +189,8 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
+         ],
+       },
+       counters: [],
++      projects: [],
++      plan: { projects: 0, new: 0, changed: 0, deprecated: 0, removed: 0, faces: 0 },
+     };
+   }
+ 
+@@ -178,6 +226,9 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
+         children: [plansSection(plans, registered.length, duplicates, map), line('info', finalText, true)],
+       },
+       counters: [],
++      // отменённый проход: только статусы плана (design §4.13)
++      projects: plans.map(plannedProject),
++      plan: planCounts(plans, map, 0),
+     };
+   }
+ 
+@@ -190,6 +241,7 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
+     try {
+       const report = await runStep(withNow(deps.makeStepDeps(plan.path), opts.now), plan.path, map, {
+         confirmedRemovals,
++        takeMutated: opts.yes === true, // §4.12: --yes = тихий take с бэкапом
+       });
+       outcomes.push({ plan, status: statusOf(report), report });
+     } catch (err) {
+@@ -241,6 +293,30 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
+   // не ошибка прохода (exitCode не меняется).
+   const scan = await scanLines(deps, registered);
+ 
++  // Подсказка §4.12: TTY без --yes и оставшиеся решения — путь к разбору.
++  const decisionsLeft = outcomes.reduce((n, o) => n + (o.report?.verify.summary.needsDecision ?? 0), 0);
++  const hint =
++    opts.tty === true && opts.yes !== true && decisionsLeft > 0
++      ? [
++          line(
++            'info',
++            `hint: ${decisionsLeft} ${decisionsLeft === 1 ? 'file needs' : 'files need'} a decision — run wolf upgrade --review`,
++            true
++          ),
++        ]
++      : [];
++
++  const jsonProjects: JsonProject[] = outcomes.map((o) => ({
++    name: o.plan.name,
++    path: o.plan.path,
++    status: o.status,
++    ...(o.error !== undefined ? { error: o.error } : {}),
++    files: o.report ? jsonProjectFiles(o.report, map) : [],
++    protected: [], // заполняет CLI-слой из listProtections (§4.13)
++    backups: o.report?.backups ?? [],
++  }));
++  for (const plan of plans) if (plan.status !== null) jsonProjects.push(plannedProject(plan));
++
+   return {
+     exitCode,
+     report: {
+@@ -248,21 +324,26 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
+       title: SECTION_TITLE,
+       children: [
+         plansSection(plans, registered.length, duplicates, map),
+-        projectsSection(outcomes),
++        projectsSection(outcomes, map),
+         // Суффикс summary у renderer фиксирован («— Done») и не выражает
+         // exit-таблицу — слово финальной строки передаёт оркестратор строкой.
+         { kind: 'summary', counters, done: false },
++        ...hint,
+         line(exitCode === 1 ? 'error' : exitCode === 2 ? 'warn' : 'ok', finalText),
+         ...scan,
+       ],
+     },
+     counters,
++    projects: jsonProjects,
++    plan: planCounts(plans, map, facesSeeded),
+   };
+ }
+ 
+ /** План одной записи реестра: realpath → статусы (порядок гвардов: missing →
+- * worktree → pinned); состав/штамп — справочно, только для активных планов. */
+-function planOf(entry: RegisteredProject): ProjectPlan {
++ * worktree → pinned); состав/штамп — справочно, только для активных планов.
++ * Экспорт (T7, design §4.7): `collectDecisions` нумерует те же активные проекты —
++ * второй реализации фильтра worktree/pinned/missing нет. */
++export function planOf(entry: RegisteredProject): ProjectPlan {
+   let real: string;
+   try {
+     real = realpathSync(entry.path);
+@@ -396,46 +477,54 @@ export const STATUS_TEXT: Record<OutcomeStatus, string> = {
+ 
+ /** Файловые строки деталей проекта (REQ-01, design §4.15): каждый needs-decision
+  *  назван путём (счётчики выше сохраняются дословно), защищённые и принятые
+- *  локальные — отдельными строками, лица памяти (diverged) — по owner_skill,
+- *  а не как пути файлов. Единственная реализация для прохода и `--here`. */
++ *  локальные — отдельными строками. Единственная реализация для прохода и
++ *  `--here`. Лица печатает владелец seed-строки (секция проекта) — иначе одно
++ *  diverged-лицо давало две строки `faces:` (m-1). */
+ /** Путь карты (`base/agents/x.md`) → проектный путь (`.opencode/agents/x.md`):
+- *  REQ-01 требует путь относительно корня проекта, а verify.items для целей
+- *  карты несут путь карты. Перевод — тем же projectPath, второй таблицы нет. */
+-const MAP_KINDS: Array<[string, FileKind]> = [
+-  ['base/agents/', 'agent'],
+-  ['base/skills/', 'skill'],
+-  ['base/commands/', 'command'],
+-  ['opencode/plugins/', 'plugin'],
+-];
+-
+-function displayName(i: VerifyResult['items'][number]): string {
++ *  REQ-01 требует путь относительно корня проекта, а verify.target для целей
++ *  карты несёт путь карты. `kind` берётся из `map.files` (m-3) — вторых таблиц
++ *  префиксов нет. */
++function kindIndex(map: UpdateMap): Map<string, FileKind> {
++  const kinds = new Map<string, FileKind>();
++  for (const entry of map.files) kinds.set(entry.path, entry.kind);
++  return kinds;
++}
++
++function displayName(i: VerifyResult['items'][number], kinds: Map<string, FileKind>): string {
+   if (i.kind !== 'file') return i.target;
+-  for (const [prefix, kind] of MAP_KINDS) {
+-    if (i.target.startsWith(prefix)) return projectPath({ path: i.target, kind, category: 'new' });
+-  }
+-  return i.target;
++  const kind = kinds.get(i.target);
++  return kind ? projectPath({ path: i.target, kind, category: 'new' }) : i.target;
+ }
+ 
+-export function verifyNameLines(verify: VerifyResult, report?: ProjectReport): ReportNode[] {
++export function verifyNameLines(verify: VerifyResult, map: UpdateMap): ReportNode[] {
+   const out: ReportNode[] = [];
++  const kinds = kindIndex(map);
+   const named = verify.items.filter((i) => i.needsDecision && i.code !== 'diverged');
+   if (named.length > 0) {
+-    out.push(line('warn', `needs decision: ${named.map((i) => `${displayName(i)} (${i.code})`).join(', ')}`, true));
++    out.push(
++      line('warn', `needs decision: ${named.map((i) => `${displayName(i, kinds)} (${i.code})`).join(', ')}`, true)
++    );
+   }
+   const protectedCount = verify.items.filter((i) => i.code === 'protected').length;
+   if (protectedCount > 0) out.push(line('info', `${protectedCount} protected (intentional)`, true));
+-  const kept = verify.items.filter((i) => i.code === 'kept').map(displayName);
++  const kept = verify.items.filter((i) => i.code === 'kept').map((i) => displayName(i, kinds));
+   if (kept.length > 0) out.push(line('info', `${kept.length} kept (local): ${kept.join(', ')}`, true));
+-  // Лицо — объект памяти (зона Стюарда), поэтому имя владельца, не путь шаблона.
+-  const diverged = (report?.seed ?? [])
+-    .filter((s) => s.kind === 'diverged')
+-    .map((s) => s.file.replace(/-playbook\.md$/, ''));
+-  if (diverged.length > 0) out.push(line('warn', `faces: ${diverged.map((f) => `${f} diverged`).join(', ')}`, true));
++  return out;
++}
++
++/** Дайджест бэкапов проекта (§4.12): файл и путь копии; take — «took base»,
++ *  удаление — «removed». Единственная реализация формата: проход и `--here`. */
++export function backupDigestLines(report: ProjectReport): ReportNode[] {
++  const out: ReportNode[] = [];
++  for (const b of report.backups ?? []) {
++    const took = report.sync.outcomes.some((o) => o.backup === b.backup);
++    out.push(line('info', `${took ? 'took base for' : 'removed'} ${b.file} (local saved: ${b.backup})`, true));
++  }
+   return out;
+ }
+ 
+ /** Секция проектов: строка-статус на проект + детали шага (REQ-05, палитра T3). */
+-function projectsSection(outcomes: StepOutcome[]): ReportNode {
++function projectsSection(outcomes: StepOutcome[], map: UpdateMap): ReportNode {
+   const children: ReportNode[] = [];
+   for (const o of outcomes) {
+     const marker: Marker = o.status === 'error' ? 'error' : o.status === 'needs-decision' ? 'warn' : 'ok';
+@@ -465,7 +554,8 @@ function projectsSection(outcomes: StepOutcome[]): ReportNode {
+     children.push(
+       line(v.errors > 0 ? 'error' : v.needsDecision > 0 ? 'warn' : 'info', `verify: ${parts.join(' · ')}`, true)
+     );
+-    children.push(...verifyNameLines(r.verify, r));
++    children.push(...verifyNameLines(r.verify, map));
++    children.push(...backupDigestLines(r));
+   }
+   return { kind: 'section', title: 'Projects', children };
+ }
+> worker-reviewer · code
+[0m→ [0mRead src/domain/line-diff.ts 
+[0m$ [0mgrep -n "inspectAgentsMd\|inspectBaseSet\|'foreign'\|detail\|action: 'mutated'\|mutated: true" src/adapters/render/opencode/opencode-renderer.ts | head -50
+181:          outcomes.push({ file: rel, action: 'skipped', mutated: true, reason: MUTATED_REASON });
+254:            outcomes.push({ file: rel, action: 'skipped', mutated: true, reason: MUTATED_REASON });
+382:  async inspectBaseSet(baseDir: string, opts?: RenderBaseSetOptions): Promise<InspectOutcome[]> {
+400:            detail: d.protect!.unrecognized ? 'protect value is not recognized — treated as protected' : undefined,
+404:          outcomes.push({ file: rel, action: 'foreign' });
+411:          outcomes.push({ file: rel, action: 'mutated' });
+421:    const agents = this.inspectAgentsMd(baseDir, ctx, state);
+482:  private inspectAgentsMd(baseDir: string, models: ModelContext | 'omit', state: SyncState): InspectOutcome | null {
+493:      if (entry && entry.hash !== hash) return { file: 'AGENTS.md', action: 'mutated' };
+499:    if (block === null) return { file: 'AGENTS.md', action: 'foreign' };
+501:      return { file: 'AGENTS.md', action: 'foreign', detail: 'onboarding markers broken' };
+591:      if (!backup) return [{ file: 'AGENTS.md', action: 'skipped', mutated: true, reason: MUTATED_REASON }];
+> worker-reviewer · code
+[0m$ [0msed -n '1,80p' src/app/use-cases/upgrade.ts 2>/dev/null | head -90; echo ---; cat package.json | grep -A3 '"check"'; echo ---; ls scripts/ | head; echo ---; grep -rn "english" package.json scripts/*.mjs 2>/dev/null | head -5
+import { sep } from 'path';
+
+// wolf upgrade (бриф 2026-09-02, 2.2.0): самообновление глобальной npm-установки.
+// Логика здесь чистая и покрыта unit-тестами; весь spawn npm — за DI-швом
+// (адаптер в memory-upgrade.ts), e2e подменяет npm фейком через PATH.
+
+export interface UpgradeDeps {
+  /** Версия установленного бинаря (package.json). */
+  currentVersion: string;
+  /** realpath запущенного скрипта (process.argv[1]); null = не резолвится. */
+  binaryPath: string | null;
+  /** realpath `npm prefix -g`; null = npm недоступен/ошибка → тип установки не проверить. */
+  npmPrefix: string | null;
+  /** `npm view mister-wolf version` — кидает при ошибке registry. */
+  registryVersion: () => Promise<string>;
+  /** `npm install -g mister-wolf@latest` (стримит вывод); кидает при сбое npm. */
+  installLatest: (from: string, to: string) => Promise<void>;
+}
+
+export type UpgradeOutcome =
+  | { kind: 'up-to-date'; current: string }
+  | { kind: 'available'; current: string; latest: string }
+  | { kind: 'local-newer'; current: string; latest: string }
+  | { kind: 'updated'; from: string; to: string }
+  | { kind: 'linked-refusal'; binaryPath: string | null };
+
+/** Семвер-сравнение X.Y.Z[-pre]: -1 (a<b) | 0 | 1 (a>b). Непарсибл-токен = 0. */
+export function compareVersions(a: string, b: string): number {
+  const pa = parseVersion(a);
+  const pb = parseVersion(b);
+  for (let i = 0; i < 3; i++) {
+    if (pa[i] !== pb[i]) return pa[i] < pb[i] ? -1 : 1;
+  }
+  return 0;
+}
+
+function parseVersion(v: string): [number, number, number] {
+  // npm view может вернуть с 'v'-префиксом; пре-релижную часть игнорируем:
+  // пре-релиз ниже релиза того же триплета — достаточно вычесть 1 с патча не выйдет,
+  // поэтому трактуем пре-релиз как тот же триплет (консервативно: не «новее»)
+  const m = v.trim().replace(/^v/, '').split('-')[0].split('.');
+  const n = (i: number): number => {
+    const x = Number.parseInt(m[i] ?? '0', 10);
+    return Number.isNaN(x) ? 0 : x;
+  };
+  return [n(0), n(1), n(2)];
+}
+
+/** Глобальная npm-установка = realpath бинаря внутри realpath-префикса.
+ *  null на любом конце = проверка невозможна → false (безопасный отказ, tested-фолбэк). */
+export function isUnderGlobalPrefix(binaryPath: string | null, npmPrefix: string | null): boolean {
+  if (!binaryPath || !npmPrefix) return false;
+  return binaryPath === npmPrefix || binaryPath.startsWith(npmPrefix + sep);
+}
+
+export async function runUpgrade(deps: UpgradeDeps, checkOnly: boolean): Promise<UpgradeOutcome> {
+  // install-путь применим только к глобальной установке: dev/linked-копия
+  // (npm link, запуск из репо) — честный отказ; `--check` read-only, работает всегда
+  if (!checkOnly && !isUnderGlobalPrefix(deps.binaryPath, deps.npmPrefix)) {
+    return { kind: 'linked-refusal', binaryPath: deps.binaryPath };
+  }
+  const latest = await deps.registryVersion();
+  const current = deps.currentVersion;
+  const cmp = compareVersions(latest, current);
+  if (cmp === 0) return { kind: 'up-to-date', current };
+  if (cmp < 0) return { kind: 'local-newer', current, latest };
+  if (checkOnly) return { kind: 'available', current, latest };
+  await deps.installLatest(current, latest);
+  return { kind: 'updated', from: current, to: latest };
+}
+---
+    "check": "node scripts/check-english-surface.mjs && npm run format:check && npm run lint && npm run build && npm run test:run",
+    "docs:dev": "vitepress dev docs/site",
+    "docs:build": "node scripts/generate-cli-reference.mjs && node scripts/sync-changelog.mjs && vitepress build docs/site",
+    "docs:preview": "vitepress preview docs/site"
+---
+bench
+bench-search.mjs
+bench-tokens.mjs
+check-english-surface.mjs
+demo
+generate-cli-reference.mjs
+generate-update-map.mjs
+playground-reset.sh
+sync-changelog.mjs
+---
+package.json:42:    "check": "node scripts/check-english-surface.mjs && npm run format:check && npm run lint && npm run build && npm run test:run",
+scripts/check-english-surface.mjs:75:  console.error('english-surface gate: Cyrillic in string literals of src/adapters/**');
+scripts/check-english-surface.mjs:80:console.log(`english-surface gate: OK (${files.length} files checked)`);
+> worker-reviewer · code
+[0m→ [0mRead tests/integration/upgrade-park.test.ts 
+> worker-reviewer · code
+[0m$ [0mgrep -n "it(" tests/unit/use-cases/decisions.test.ts tests/unit/adapters/commands/memory-upgrade.here.test.ts tests/integration/upgrade-here.test.ts tests/unit/adapters/commands/upgrade-projects.test.ts tests/unit/domain/line-diff.test.ts tests/unit/adapters/commands/memory-upgrade.check.test.ts | sed 's/^tests.*\///' | head -120
+N06-2: порядок карта → AGENTS.md, сквозная 1-based нумерация, два прогона идентичны', async () => {
+removed не нумеруются', async () => {
+decisions.test.ts:189:  it('skippedProjects: pinned и missing пропускаются с причиной', async () => {
+decisions.test.ts:209:  it('--here нумерует только cwd и не читает реестр', async () => {
+migration), не адресуются номером', async () => {
+decisions.test.ts:263:  it('пустое значение, пустой target, пустой verb, неизвестный глагол — ошибки', () => {
+decisions.test.ts:274:  it('R06-3: неизвестный номер + неизвестный путь — обе ошибки, ни одной записи', async () => {
+decisions.test.ts:299:  it('R06-7: дубль цели по номеру и по пути — target listed twice, записей нет', async () => {
+decisions.test.ts:326:  it('R06-6: матрица §4.8 — отказы с подсказкой, файл не меняется', async () => {
+<rel>; неоднозначный путь — ошибка с кандидатами', async () => {
+decisions.test.ts:393:  it('R06-7: применение идёт в порядке реестра, не ввода', async () => {
+N04-1: take — бэкап байт-в-байт, эталон, свидетель render, без *.tmp', async () => {
+decisions.test.ts:435:  it('R06-4: take на защищённом — ключ снят, эталон взят, свидетель render', async () => {
+N02-2: keep — файл байт-в-байт, свидетель keep, следующий проход не отменяет keep; правка → mutated', async () => {
+decisions.test.ts:484:  it('R06-1: protect — ключ true, свидетель по нормализованному; повтор идемпотентен (ни байта)', async () => {
+decisions.test.ts:514:  it('pin пишет версию базы; keep на защищённом снимает ключ (unprotect)', async () => {
+decisions.test.ts:531:  it('R10-5: два take одного файла в один день — второй бэкап с суффиксом -2', async () => {
+N05-2: сбой бэкапа — файл и свидетель не меняются, ошибка, записи нет', async () => {
+decisions.test.ts:573:  it('take на цели без эталона и на removed — отказ на валидации (⛔), записей нет', async () => {
+decisions.test.ts:591:  it('orphan: protect гасит конфликт (следующий проход → protected), pin пишет версию базы', async () => {
+decisions.test.ts:615:  it('m-1: одна строка faces: на одном diverged-лице (проход + --here)', async () => {
+decisions.test.ts:645:  it('N — только запись реестра; путь разрешён и для не-решений; unknown → ошибка', async () => {
+memory — UserFacingError с подсказкой init, шаг не собирается', async () => {
+memory-upgrade.here.test.ts:125:  it('подтверждение (REQ-02): --yes — без вопросов, шаг выполнен, exit 0 Done', async () => {
+memory-upgrade.here.test.ts:137:    const lines = plain(res).split('\n');
+memory-upgrade.here.test.ts:141:  it('подтверждение (REQ-02): не-TTY без --yes — «Cancelled: --yes is required», exit 0, шаг не выполнен', async () => {
+memory-upgrade.here.test.ts:159:  it('подтверждение (REQ-02): TTY confirm(план-узел) отклонён — «Cancelled — no changes», exit 0', async () => {
+memory-upgrade.here.test.ts:175:  it('exit-модель: needs-decision → 2 «Done with attention»; шаг throw → 1 «Failed»; без banner', async () => {
+memory-upgrade.here.test.ts:186:    expect(plain(decision).split('\n')).toContain('warn: Done with attention');
+memory-upgrade.here.test.ts:195:    expect(plain(failed).split('\n')).toContain('error: Failed');
+memory-upgrade.here.test.ts:199:  it('exit-модель: schema refused → статус error, «schema: refused» в деталях, exit 1', async () => {
+memory-upgrade.here.test.ts:212:    expect(plain(res).split('\n')).toContain('error: Failed');
+memory-upgrade.here.test.ts:216:  it('confirmedRemovals: шаг получает все removed-цели карты (ADR-4), root = cwd', async () => {
+memory-upgrade.here.test.ts:226:  it('статус-словарь = T7 statusOf: done без действий → up-to-date; с действиями → updated', async () => {
+--check с --resolve — ошибка', () => {
+memory-upgrade.here.test.ts:262:  it('парковый --resolve на пустом реестре: exit 1 по неизвестной цели, npm не позван', async () => {
+memory-upgrade.here.test.ts:304:  it('несовместимая пара --resolve --yes: UserFacingError, записей нет', async () => {
+--resolve — ошибка', () => {
+memory-upgrade.here.test.ts:398:  it('R07-1: TTY, выбор p → protect дописан, файл больше не решение, exit 0', async () => {
+mutated применены, skill остался; перечень до применения', async () => {
+memory-upgrade.here.test.ts:434:  it('R07-4: q и EOF завершают цикл — принятые решения остаются, остальные не тронуты', async () => {
+R07-6: non-TTY — список с готовой командой --resolve, exit 2, без записей; пусто → 0', async () => {
+N01-3: diverged — отдельная секция steward zone, держит exit 2; глагол не предлагается', async () => {
+upgrade-here.test.ts:241:  it('R14.1: cwd вне реестра, --yes — полный шаг по карте, npm не звался, реестр не изменён', async () => {
+upgrade-here.test.ts:254:    expect(text.split('\n')).toContain('ok: Done');
+upgrade-here.test.ts:277:  it('R14.2: проект pinned в фикстурном реестре — --here всё равно обновляет (ручной инструмент)', async () => {
+upgrade-here.test.ts:323:  it('R06-1: --resolve 1=protect защищает файл; следующий полный шаг его не трогает, exit 0', async () => {
+upgrade-here.test.ts:349:  it('R06-3: неизвестный путь — exit 1, ни один файл не изменён', async () => {
+R08-2: --show по номеру и по пути — одинаковый вывод, снапшот не изменён', async () => {
+R10-3: mutated взят с бэкапом; защищённый и kept не тронуты и не в бэкапах', async () => {
+mr-wolf.md'));
+upgrade-here.test.ts:464:      .split('\n')
+upgrade-projects.test.ts:82:  'process.exit(Number(process.env.WOLF_T8_EXIT ?? "0"));',
+--state), state-файл до spawn, env: process.env, stdio inherit (тот же fd 1), exit 0', async () => {
+upgrade-projects.test.ts:159:  it('без --yes флаг ребёнку не передаётся', async () => {
+upgrade-projects.test.ts:166:  it('проксирование exit-кода ребёнка: 1 и 2', async () => {
+upgrade-projects.test.ts:177:  it('сбой spawn (ENOENT) → UserFacingError «CLI updated; projects not touched», exit НЕ вызван', async () => {
+upgrade-projects.test.ts:186:  it('спай-spawn: опции ровно { stdio: inherit, env: process.env }; сигнал → exit 1', async () => {
+upgrade-projects.test.ts:194:    emitter.emit('close', 2);
+upgrade-projects.test.ts:210:    killed.emitter.emit('close', null, 'SIGINT');
+wolf; WOLF_UPGRADE_CHILD_BIN переопределяет; null-префикс не валит', async () => {
+upgrade-projects.test.ts:230:      emitter.emit('close', 0);
+upgrade-projects.test.ts:262:  it('updated → re-exec(from, to, prefix, { yes }); шапку печатает только фаза 1 (banner)', async () => {
+upgrade-projects.test.ts:272:  it('up-to-date → НЕ выход: фаза идемпотентна, re-exec вызван (from = to = current)', async () => {
+upgrade-projects.test.ts:284:  it('local-newer → spawn НЕ нужен; linked-refusal → отказ, re-exec НЕ вызван', async () => {
+upgrade-projects.test.ts:296:  it('npm-сбой → `└ Failed`, UserFacingError, spawn НЕ вызван (R01.3 юнит-часть)', async () => {
+upgrade-projects.test.ts:384:  it('--yes: проход без вопросов, отчёт renderer-ом, process.exitCode = exitCode', async () => {
+upgrade-projects.test.ts:396:  it('TTY-confirm: plans-узел отрендерен ДО вопроса; y → шаг выполнен', async () => {
+upgrade-projects.test.ts:407:  it('отказ (N) → Cancelled — no changes, exit 0, шаг не выполнялся', async () => {
+сверка 2.19.0, exit 0', async () => {
+R11-8: argv ребёнка содержит --json; без --json его нет', async () => {
+1, exit = документ', async () => {
+ единственный JSON-документ
+upgrade-projects.test.ts:534:  it('R11-7: --json в TTY не задаёт вопросов, шапка фазы 1 подавлена', async () => {
+upgrade-projects.test.ts:543:  it('R11-4: падение npm-фазы при --json → документ с exit:1 и error, spawn не вызван', async () => {
+line-diff.test.ts:11:  it('идентичные тексты — пустой diff, нулевые счётчики', () => {
++новой и верными счётчиками', () => {
+line-diff.test.ts:29:  it('вставка и удаление блоков — счётчики и строки', () => {
+line-diff.test.ts:39:  it('далёкие изменения — два хунка со своими заголовками', () => {
+line-diff.test.ts:47:  it('R08-4: вывод обрезан по лимиту с «… ещё N строк», вход — по maxInput', () => {
+line-diff.test.ts:61:  it('детерминизм: повтор даёт байт-идентичный вывод; CRLF не шумит', () => {
+memory-upgrade.check.test.ts:67:  it('все цели identical, removed-файла нет → current; deprecated — report-only', () => {
+memory-upgrade.check.test.ts:73:  it('changed-цель differs → behind; new-цель missing → behind', () => {
+memory-upgrade.check.test.ts:78:  it('removed-цель: файл существует → behind; отсутствует → не влияет (current)', () => {
+memory-upgrade.check.test.ts:83:  it('mutated (любая цель) → needs decision; foreign → unknown', () => {
+memory-upgrade.check.test.ts:88:  it('deprecated-цель differs — класс не меняет (report-only, REQ-11)', () => {
+kept — не behind и не needs-decision (§4.6, волна 2.20.0)', () => {
+memory-upgrade.check.test.ts:103:  it('detail наблюдения переносится полем, класс не меняет (§4.15)', () => {
+memory-upgrade.check.test.ts:113:  it('AGENTS.md — цель карты agents_md: differs → behind; outside-map — справочно', () => {
+memory-upgrade.check.test.ts:172:  it('AC3: loadMap throw → пометка недостоверности + штампы + unknown, никогда current', async () => {
+memory-upgrade.check.test.ts:199:    expect(text.split('\n')).toContain('ok: Done (read-only)');
+R01-2: differs печатаются путями, detail-причина — отдельной строкой (§4.15)', async () => {
+memory-upgrade.check.test.ts:225:  it('AC4: listStrict throw → error-строка, exit 0; пустой реестр → no projects, exit 0', async () => {
+memory-upgrade.check.test.ts:237:    expect(plain(broken).split('\n')).toContain('ok: Done (read-only)');
+memory-upgrade.check.test.ts:242:    expect(plain(empty).split('\n')).toContain('ok: Done (read-only)');
+memory-upgrade.check.test.ts:245:  it('CLI-строка: installed vs available; npm view throw → error-строка, exit 0', async () => {
+memory-upgrade.check.test.ts:258:    expect(plain(res).split('\n')).toContain('ok: Done (read-only)');
+memory-upgrade.check.test.ts:265:  it('runUpgrade checkOnly + printOutcome идут перед секцией check', async () => {
+memory-upgrade.check.test.ts:307:  it('верные actions по каждой цели; файлы и sync-state не тронуты (слепок)', async () => {
+1 с теми же классами, details и protections', async () => {
+memory-upgrade.check.test.ts:417:  it('R11-5: commander --json --check — в stdout ровно один JSON-документ, без человеческих строк', async () => {
+memory-upgrade.check.test.ts:445:    expect(stdout.trim().split('\n')).toHaveLength(1);
+memory-upgrade.check.test.ts:455:  it('R11-5: --review --json → error и exit 1, второй документ не печатается', async () => {
+> worker-reviewer · code
+[0m$ [0mgrep -n "it(\|describe(" tests/unit/use-cases/decisions.test.ts tests/unit/adapters/commands/memory-upgrade.here.test.ts | sed -n '1,60p'; echo ===; grep -rn "a/base\|a/local\|переспрос\|re-ask\|empty input" tests/unit/adapters/commands/memory-upgrade.here.test.ts tests/unit/use-cases/decisions.test.ts | head -20
+tests/unit/use-cases/decisions.test.ts:144:describe('collectDecisions (design §4.7): нумерация, порядок, детерминизм', () => {
+tests/unit/use-cases/decisions.test.ts:145:  it('R06-1/N06-2: порядок карта → AGENTS.md, сквозная 1-based нумерация, два прогона идентичны', async () => {
+tests/unit/use-cases/decisions.test.ts:164:  it('реестр задаёт порядок проектов; protected/kept/differs/missing/removed не нумеруются', async () => {
+tests/unit/use-cases/decisions.test.ts:189:  it('skippedProjects: pinned и missing пропускаются с причиной', async () => {
+tests/unit/use-cases/decisions.test.ts:209:  it('--here нумерует только cwd и не читает реестр', async () => {
+tests/unit/use-cases/decisions.test.ts:226:  it('diverged: read-only лица по owner_skill (не seed/migration), не адресуются номером', async () => {
+tests/unit/use-cases/decisions.test.ts:262:describe('parseResolveValues / planResolutions (§4.8): грамматика и двухфазная валидация', () => {
+tests/unit/use-cases/decisions.test.ts:263:  it('пустое значение, пустой target, пустой verb, неизвестный глагол — ошибки', () => {
+tests/unit/use-cases/decisions.test.ts:274:  it('R06-3: неизвестный номер + неизвестный путь — обе ошибки, ни одной записи', async () => {
+tests/unit/use-cases/decisions.test.ts:299:  it('R06-7: дубль цели по номеру и по пути — target listed twice, записей нет', async () => {
+tests/unit/use-cases/decisions.test.ts:326:  it('R06-6: матрица §4.8 — отказы с подсказкой, файл не меняется', async () => {
+tests/unit/use-cases/decisions.test.ts:354:  it('адресация: N, rel-путь, ./путь, <project>/<rel>; неоднозначный путь — ошибка с кандидатами', async () => {
+tests/unit/use-cases/decisions.test.ts:393:  it('R06-7: применение идёт в порядке реестра, не ввода', async () => {
+tests/unit/use-cases/decisions.test.ts:412:describe('applyResolutions: глаголы, свидетель, бэкапы (§4.8/§4.12, NFR-05)', () => {
+tests/unit/use-cases/decisions.test.ts:413:  it('R06-2/N05-1/N04-1: take — бэкап байт-в-байт, эталон, свидетель render, без *.tmp', async () => {
+tests/unit/use-cases/decisions.test.ts:435:  it('R06-4: take на защищённом — ключ снят, эталон взят, свидетель render', async () => {
+tests/unit/use-cases/decisions.test.ts:455:  it('R06-5/N02-2: keep — файл байт-в-байт, свидетель keep, следующий проход не отменяет keep; правка → mutated', async () => {
+tests/unit/use-cases/decisions.test.ts:484:  it('R06-1: protect — ключ true, свидетель по нормализованному; повтор идемпотентен (ни байта)', async () => {
+tests/unit/use-cases/decisions.test.ts:514:  it('pin пишет версию базы; keep на защищённом снимает ключ (unprotect)', async () => {
+tests/unit/use-cases/decisions.test.ts:531:  it('R10-5: два take одного файла в один день — второй бэкап с суффиксом -2', async () => {
+tests/unit/use-cases/decisions.test.ts:550:  it('R10-4/N05-2: сбой бэкапа — файл и свидетель не меняются, ошибка, записи нет', async () => {
+tests/unit/use-cases/decisions.test.ts:573:  it('take на цели без эталона и на removed — отказ на валидации (⛔), записей нет', async () => {
+tests/unit/use-cases/decisions.test.ts:591:  it('orphan: protect гасит конфликт (следующий проход → protected), pin пишет версию базы', async () => {
+tests/unit/use-cases/decisions.test.ts:615:  it('m-1: одна строка faces: на одном diverged-лице (проход + --here)', async () => {
+tests/unit/use-cases/decisions.test.ts:644:describe('resolveShowTarget (§4.10): номер, путь, цель вне карты', () => {
+tests/unit/use-cases/decisions.test.ts:645:  it('N — только запись реестра; путь разрешён и для не-решений; unknown → ошибка', async () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:96:describe('runUpgradeHere (T9: --here, REQ-14)', () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:107:  it('R14.3: cwd без .wolf/memory — UserFacingError с подсказкой init, шаг не собирается', async () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:125:  it('подтверждение (REQ-02): --yes — без вопросов, шаг выполнен, exit 0 Done', async () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:137:    const lines = plain(res).split('\n');
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:141:  it('подтверждение (REQ-02): не-TTY без --yes — «Cancelled: --yes is required», exit 0, шаг не выполнен', async () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:159:  it('подтверждение (REQ-02): TTY confirm(план-узел) отклонён — «Cancelled — no changes», exit 0', async () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:175:  it('exit-модель: needs-decision → 2 «Done with attention»; шаг throw → 1 «Failed»; без banner', async () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:186:    expect(plain(decision).split('\n')).toContain('warn: Done with attention');
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:195:    expect(plain(failed).split('\n')).toContain('error: Failed');
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:199:  it('exit-модель: schema refused → статус error, «schema: refused» в деталях, exit 1', async () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:212:    expect(plain(res).split('\n')).toContain('error: Failed');
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:216:  it('confirmedRemovals: шаг получает все removed-цели карты (ADR-4), root = cwd', async () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:226:  it('статус-словарь = T7 statusOf: done без действий → up-to-date; с действиями → updated', async () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:249:describe('upgradeRoute: порядок режимов и несовместимые пары (§4.18)', () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:250:  it('--check сильнее --here; --resolve — отдельный режим; --yes/--check с --resolve — ошибка', () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:261:describe('--resolve (commander): решение не теряется и npm-фаза не запускается (R06-9)', () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:262:  it('парковый --resolve на пустом реестре: exit 1 по неизвестной цели, npm не позван', async () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:304:  it('несовместимая пара --resolve --yes: UserFacingError, записей нет', async () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:313:describe('upgradeRoute: --show и несовместимые пары (T8, §4.10/§4.18)', () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:314:  it('--show — read-only режим до --resolve/--here; пары с --yes/--check/--resolve — ошибка', () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:397:describe('runUpgradeReview (T9): TTY-цикл, non-TTY рецепт, diverged', () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:398:  it('R07-1: TTY, выбор p → protect дописан, файл больше не решение, exit 0', async () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:412:  it('R07-3: «ко всем похожим» — 3 agent/mutated применены, skill остался; перечень до применения', async () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:434:  it('R07-4: q и EOF завершают цикл — принятые решения остаются, остальные не тронуты', async () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:450:  it('R07-2/R07-6: non-TTY — список с готовой командой --resolve, exit 2, без записей; пусто → 0', async () => {
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:475:  it('R07-5/N01-3: diverged — отдельная секция steward zone, держит exit 2; глагол не предлагается', async () => {
+zsh:1: == not found
+> worker-reviewer · code
+[0m$ [0mgrep -n "it(" tests/unit/adapters/commands/memory-upgrade.here.test.ts | tail -16; echo ---; grep -n "it(" tests/unit/use-cases/decisions.test.ts | tail -16; echo ---; grep -n "review\|tty\|io\." tests/unit/adapters/commands/memory-upgrade.here.test.ts | grep -in "diff\|base\|local\|similar\|skip\|enter" | head -20
+175:  it('exit-модель: needs-decision → 2 «Done with attention»; шаг throw → 1 «Failed»; без banner', async () => {
+186:    expect(plain(decision).split('\n')).toContain('warn: Done with attention');
+195:    expect(plain(failed).split('\n')).toContain('error: Failed');
+199:  it('exit-модель: schema refused → статус error, «schema: refused» в деталях, exit 1', async () => {
+212:    expect(plain(res).split('\n')).toContain('error: Failed');
+216:  it('confirmedRemovals: шаг получает все removed-цели карты (ADR-4), root = cwd', async () => {
+226:  it('статус-словарь = T7 statusOf: done без действий → up-to-date; с действиями → updated', async () => {
+250:  it('--check сильнее --here; --resolve — отдельный режим; --yes/--check с --resolve — ошибка', () => {
+262:  it('парковый --resolve на пустом реестре: exit 1 по неизвестной цели, npm не позван', async () => {
+304:  it('несовместимая пара --resolve --yes: UserFacingError, записей нет', async () => {
+314:  it('--show — read-only режим до --resolve/--here; пары с --yes/--check/--resolve — ошибка', () => {
+398:  it('R07-1: TTY, выбор p → protect дописан, файл больше не решение, exit 0', async () => {
+412:  it('R07-3: «ко всем похожим» — 3 agent/mutated применены, skill остался; перечень до применения', async () => {
+434:  it('R07-4: q и EOF завершают цикл — принятые решения остаются, остальные не тронуты', async () => {
+450:  it('R07-2/R07-6: non-TTY — список с готовой командой --resolve, exit 2, без записей; пусто → 0', async () => {
+475:  it('R07-5/N01-3: diverged — отдельная секция steward zone, держит exit 2; глагол не предлагается', async () => {
+---
+274:  it('R06-3: неизвестный номер + неизвестный путь — обе ошибки, ни одной записи', async () => {
+299:  it('R06-7: дубль цели по номеру и по пути — target listed twice, записей нет', async () => {
+326:  it('R06-6: матрица §4.8 — отказы с подсказкой, файл не меняется', async () => {
+354:  it('адресация: N, rel-путь, ./путь, <project>/<rel>; неоднозначный путь — ошибка с кандидатами', async () => {
+393:  it('R06-7: применение идёт в порядке реестра, не ввода', async () => {
+413:  it('R06-2/N05-1/N04-1: take — бэкап байт-в-байт, эталон, свидетель render, без *.tmp', async () => {
+435:  it('R06-4: take на защищённом — ключ снят, эталон взят, свидетель render', async () => {
+455:  it('R06-5/N02-2: keep — файл байт-в-байт, свидетель keep, следующий проход не отменяет keep; правка → mutated', async () => {
+484:  it('R06-1: protect — ключ true, свидетель по нормализованному; повтор идемпотентен (ни байта)', async () => {
+514:  it('pin пишет версию базы; keep на защищённом снимает ключ (unprotect)', async () => {
+531:  it('R10-5: два take одного файла в один день — второй бэкап с суффиксом -2', async () => {
+550:  it('R10-4/N05-2: сбой бэкапа — файл и свидетель не меняются, ошибка, записи нет', async () => {
+573:  it('take на цели без эталона и на removed — отказ на валидации (⛔), записей нет', async () => {
+591:  it('orphan: protect гасит конфликт (следующий проход → protected), pin пишет версию базы', async () => {
+615:  it('m-1: одна строка faces: на одном diverged-лице (проход + --here)', async () => {
+645:  it('N — только запись реестра; путь разрешён и для не-решений; unknown → ошибка', async () => {
+---
+1:50:    { template: 'base/playbooks/wolf-review-lenses.md', owner_skill: 'mr-wolf', category: 'deprecated', seed: false },
+> worker-reviewer · code
+[0m→ [0mRead tests/unit/adapters/commands/memory-upgrade.here.test.ts [90m[offset=330, limit=190][0m
+> worker-reviewer · code
+Тесты изучены. Теперь обязательные фактические проверки: полный гейт и точечные интеграционные тесты.
+[0m$ [0mnpm run check 2>&1 | tail -30
+✓ tests/unit/global-registry-isolation.test.ts  (1 test) 11ms
+ ✓ tests/unit/use-cases/init-project-memory.test.ts  (1 test) 18ms
+ ✓ tests/unit/domain/pricing.test.ts  (6 tests) 4ms
+ ✓ tests/unit/adapters/cli/memory-sync.test.ts  (1 test) 6ms
+ ✓ tests/unit/resolve-list-type.test.ts  (4 tests) 4ms
+ ✓ tests/unit/use-cases/gitignore-block.test.ts  (2 tests) 4ms
+ ✓ tests/unit/coordinator-frame-guard.test.ts  (1 test) 3ms
+ ✓ tests/unit/domain/project-scan-schema.test.ts  (2 tests) 23ms
+ ✓ tests/unit/adapters/mcp/mcp-catalog-guard.test.ts  (2 tests) 14ms
+ ✓ tests/unit/templates/version-rule.test.ts  (3 tests) 4ms
+ ✓ tests/unit/adapters/hash-id-generator.test.ts  (3 tests) 6ms
+ ✓ tests/unit/domain/write-protocol.test.ts  (2 tests) 4ms
+ ✓ tests/unit/domain/mechanical-advice.test.ts  (3 tests) 4ms
+ ✓ tests/unit/domain/memory-object-schema.test.ts  (2 tests) 8ms
+ ✓ tests/unit/intake-skill-guard.test.ts  (1 test) 3ms
+ ✓ tests/unit/domain/solve-relevance.test.ts  (3 tests) 6ms
+ ✓ tests/unit/adapters/complain-kind-heuristic.test.ts  (3 tests) 3ms
+ ✓ tests/unit/base-frames-guard.test.ts  (1 test) 2ms
+ ✓ tests/unit/adapters/platforms/jsonc.test.ts  (6 tests) 6ms
+ ✓ tests/unit/adapters/render/templates-root.test.ts  (4 tests) 5ms
+ ✓ tests/unit/domain/mask-secrets.test.ts  (3 tests) 5ms
+ ✓ tests/unit/domain/npx.test.ts  (4 tests) 3ms
+ ✓ tests/unit/adapters/busy-retry.test.ts  (2 tests) 159ms
+ ✓ tests/unit/cli-reference-guard.test.ts  (1 test) 19035ms
+
+ Test Files  214 passed (214)
+      Tests  1856 passed (1856)
+   Start at  13:28:41
+   Duration  54.62s (transform 4.16s, setup 1.31s, collect 26.48s, tests 109.23s, environment 54ms, prepare 28.66s)
+> worker-reviewer · code
+[0m$ [0mnpx vitest run tests/integration/upgrade-here.test.ts tests/integration/upgrade-park.test.ts tests/integration/upgrade-check.test.ts 2>&1 | tail -8
+✓ tests/integration/upgrade-here.test.ts  (6 tests) 615ms
+ ✓ tests/integration/upgrade-park.test.ts  (10 tests) 1519ms
+
+ Test Files  3 passed (3)
+      Tests  17 passed (17)
+   Start at  13:29:42
+   Duration  2.41s (transform 635ms, setup 49ms, collect 1.66s, tests 2.21s, environment 1ms, prepare 305ms)
+> worker-reviewer · code
+[0m$ [0mgrep -n "local-newer\|linked" tests/unit/adapters/commands/upgrade-projects.test.ts tests/unit/adapters/commands/memory-upgrade.check.test.ts | head; echo ---; grep -n "it(" tests/unit/adapters/commands/upgrade-projects.test.ts | sed -n '10,20p'; echo ---; grep -rn "R11-7\|R11-5\|R11-8\|--review --json\|is interactive" tests/unit/adapters/commands/memory-upgrade.check.test.ts | head -12
+tests/unit/adapters/commands/upgrade-projects.test.ts:5:// local-newer/linked-refusal → нет, npm-сбой → `└ Failed` без spawn, R01.3
+tests/unit/adapters/commands/upgrade-projects.test.ts:284:  it('local-newer → spawn НЕ нужен; linked-refusal → отказ, re-exec НЕ вызван', async () => {
+tests/unit/adapters/commands/upgrade-projects.test.ts:290:    const linked = phase1Deps({ binaryPath: '/somewhere/dev/wolf' });
+tests/unit/adapters/commands/upgrade-projects.test.ts:291:    await expect(runUpgradeWithProjects(linked, {})).rejects.toThrow(/dev\/linked copy/);
+tests/unit/adapters/commands/upgrade-projects.test.ts:292:    expect(linked.reExec).not.toHaveBeenCalled();
+---
+230:      emitter.emit('close', 0);
+262:  it('updated → re-exec(from, to, prefix, { yes }); шапку печатает только фаза 1 (banner)', async () => {
+272:  it('up-to-date → НЕ выход: фаза идемпотентна, re-exec вызван (from = to = current)', async () => {
+284:  it('local-newer → spawn НЕ нужен; linked-refusal → отказ, re-exec НЕ вызван', async () => {
+296:  it('npm-сбой → `└ Failed`, UserFacingError, spawn НЕ вызван (R01.3 юнит-часть)', async () => {
+384:  it('--yes: проход без вопросов, отчёт renderer-ом, process.exitCode = exitCode', async () => {
+396:  it('TTY-confirm: plans-узел отрендерен ДО вопроса; y → шаг выполнен', async () => {
+407:  it('отказ (N) → Cancelled — no changes, exit 0, шаг не выполнялся', async () => {
+431:  it('проект на 2.18.5 → штампы/сверка 2.19.0, exit 0', async () => {
+479:  it('R11-4/R11-8: argv ребёнка содержит --json; без --json его нет', async () => {
+500:  it('R11-1/R11-3: ребёнок фазы 2 печатает ровно один документ wolf.upgrade/1, exit = документ', async () => {
+---
+tests/unit/adapters/commands/memory-upgrade.check.test.ts:364:  it('R11-5: runUpgradeCheck отдаёт wolf.upgrade.check/1 с теми же классами, details и protections', async () => {
+tests/unit/adapters/commands/memory-upgrade.check.test.ts:417:  it('R11-5: commander --json --check — в stdout ровно один JSON-документ, без человеческих строк', async () => {
+tests/unit/adapters/commands/memory-upgrade.check.test.ts:455:  it('R11-5: --review --json → error и exit 1, второй документ не печатается', async () => {
+tests/unit/adapters/commands/memory-upgrade.check.test.ts:460:    ).rejects.toThrow(/--review is interactive; --json is not supported/);
+> worker-reviewer · code
+[0m→ [0mRead tests/unit/adapters/commands/upgrade-projects.test.ts [90m[limit=60, offset=255][0m
+> worker-reviewer · code
+[0m$ [0mgrep -rn "mode.*resolve\|'resolve'" tests/unit/adapters/commands/memory-upgrade.check.test.ts tests/integration/upgrade-park.test.ts tests/unit/adapters/commands/memory-upgrade.here.test.ts | head; echo ---; sed -n '460,530p' tests/unit/adapters/commands/memory-upgrade.check.test.ts
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:252:    expect(upgradeRoute({ resolve: ['1=keep'] })).toEqual({ mode: 'resolve' });
+tests/unit/adapters/commands/memory-upgrade.here.test.ts:253:    expect(upgradeRoute({ resolve: ['1=keep'], here: true })).toEqual({ mode: 'resolve' });
+---
+    ).rejects.toThrow(/--review is interactive; --json is not supported/);
+  });
+});
+> worker-reviewer · code
+[0m$ [0mgrep -rn "mode.*here\|mode.*show\|json.*here\|json.*show" tests/unit/adapters/commands/memory-upgrade.check.test.ts tests/unit/adapters/commands/memory-upgrade.here.test.ts tests/unit/adapters/commands/upgrade-projects.test.ts 2>/dev/null | grep -vi "route\|hereStepDeps\|--here\b" | head -10; echo ===; grep -c "" tests/unit/adapters/commands/memory-upgrade.check.test.ts
+zsh:1: == not found
+> worker-reviewer · code
+[0m$ [0mgrep -rn "mode" tests/unit/adapters/commands/memory-upgrade.check.test.ts | grep -v "node_modules" | head -12
+tests/unit/adapters/commands/memory-upgrade.check.test.ts:43:  agents_md: { category: 'changed', mode: 'append-block' },
+tests/unit/adapters/commands/memory-upgrade.check.test.ts:154:  await new OpencodeBaseSetRenderer(tplRoot, { setVersion }).renderBaseSet(proj, { models: 'omit' });
+tests/unit/adapters/commands/memory-upgrade.check.test.ts:328:    await new OpencodeBaseSetRenderer(v1, { setVersion: '2.18.5' }).renderBaseSet(proj, { models: 'omit' });
+tests/unit/adapters/commands/memory-upgrade.check.test.ts:341:      models: 'omit',
+> worker-reviewer · code
+[0m$ [0mgrep -rn "npmFailureJsonDoc\|failed to get the version\|exit\": 1\|exit.*1.*error" tests/unit/adapters/commands/upgrade-projects.test.ts tests/unit/adapters/commands/memory-upgrade.check.test.ts 2>/dev/null | head -8; echo ---; grep -n "R11-4\|json.*fail\|fail.*json" tests/unit/adapters/commands/upgrade-projects.test.ts tests/unit/adapters/commands/memory-upgrade.check.test.ts | head
+tests/unit/adapters/commands/upgrade-projects.test.ts:543:  it('R11-4: падение npm-фазы при --json → документ с exit:1 и error, spawn не вызван', async () => {
+---
+tests/unit/adapters/commands/upgrade-projects.test.ts:479:  it('R11-4/R11-8: argv ребёнка содержит --json; без --json его нет', async () => {
+tests/unit/adapters/commands/upgrade-projects.test.ts:543:  it('R11-4: падение npm-фазы при --json → документ с exit:1 и error, spawn не вызван', async () => {
+tests/unit/adapters/commands/upgrade-projects.test.ts:552:        throw new UserFacingError('npm install -g mister-wolf@latest failed (mock json)');
+> worker-reviewer · code
+[0m→ [0mRead src/adapters/render/opencode/opencode-renderer.ts [90m[limit=45, offset=482][0m
+> worker-reviewer · code
+[0m→ [0mRead tests/unit/use-cases/decisions.test.ts [90m[limit=70, offset=326][0m
+> worker-reviewer · code
+Все проверки завершены. Собираю вердикт.
+
+---
+
+```
+SUMMARY: 0 critical / 3 major / 8 minor
+VERDICT: CHANGES_REQUIRED
+```
+
+(токен по контракту playbook; эквивалентен `CHANGES_REQUESTED` из брифа)
+
+# Независимое ревью Ф2 (T7–T11), диапазон `bb4f560..e734a98`
+
+## Что сделано хорошо (подтверждаю)
+
+- **Диспетчеризация §4.18 — в точности**: порядок check → show → review → resolve → here → npm; `--check` сильнее `--here`; 9 несовместимых пар (7 из таблицы + `--review --show`, `--check --show`); режимные флаги до re-exec не доходят, argv ребёнка несёт только `--json` (`memory-upgrade.ts:1492-1505`); тесты R06-9/R11-8 зелёные.
+- **Двухфазность §4.8**: `planResolutions` собирает все ошибки до первой записи, применение по порядку реестра (не ввода), сбой k-й операции останавливает обход (`decisions.ts:600-650, 763-767`).
+- **Порядок «бэкап → эталон → свидетель»** во всех пишущих путях; сбой бэкапа отменяет запись (R10-4/N05-1/2); свидетель пишется полными `SyncEntry`; `--resolve` не запускает проход/npm.
+- **keep не отменяется следующим проходом** — сквозной тест R06-5/N02-2 (resolve → полный проход → байт-в-байт, exit 0; правка → снова mutated).
+- **Нумерация — один источник** (`collectDecisions`), паритет text↔json закреплён тестом (n = non-TTY список), байт-идентичный повтор (NFR-06).
+- **Read-only режимы не пишут** (снапшот-тесты review non-TTY, --show, inspect).
+- **Изменение park-теста R01.1 правомерно**: «требует решения» удержано conflict-файлом (`--yes` его не берёт по §4.12), добавлены ассерты бэкапа и сохранности правки — ослабления нет.
+- Отчёт исполнителя честный: 11 отклонений задокументированы, риски названы, allowlist-расширения (`renderFreshFile('AGENTS.md')`, `DecisionRegistry.projects`) оправданы и минимальны.
+
+## Findings
+
+### Major
+
+**M-1. `--json` pass: `local-newer`/`linked-refusal` — stdout пуст, exit-паритет сломан.**
+`src/adapters/cli/commands/memory-upgrade.ts:1545` — `if (!json) printOutcome(outcome)` глотает `throw` linked-refusal; `:1548-1552` — re-exec только для `updated`/`up-to-date`, для `local-newer` и `linked-refusal` функция молча возвращается.
+Нарушение: design §4.13 («в `--json` stdout содержит только JSON-документ»), REQ-11 AC1/AC3.
+Evidence: тест `local-newer → spawn НЕ нужен; linked-refusal → отказ…` (`upgrade-projects.test.ts:284`) прогоняется **без** `--json`; других тестов этих состояний в json нет.
+Impact: `wolf upgrade --json` на dev/linked-копии — пустой stdout и exit 0 (текстовый режим: exit 1); на local-newer — пустой stdout, машинный потребитель парсит `""`.
+Рекомендация: при `json` печатать документ-обёртку для local-newer (exit 0), а для linked-refusal — документ с `error` + rethrow (по образцу npm-сбоя, `:1541`), плюс тест.
+
+**M-2. `--json --resolve`: бэкапы не попадают в документ.**
+`memory-upgrade.ts:691-702` — `upgradeResolveAction` не передаёт `res.backups`; `decisions.ts:1417-1440` — `modeJsonDoc` не принимает backups, а `UpgradeJson` не имеет top-level `backups` и `projects: []`.
+Нарушение: design §4.13 «`--json` + `--resolve` → … заполненными `backups` и `decisions` после применения»; test-plan R11-5 («`backups` заполнены»).
+Evidence: подтест R11-5 для `--json --resolve`/`--json --show` вообще не написан (в `memory-upgrade.check.test.ts` покрыты только `--json --check` и `--review --json`).
+Impact: после `--json --resolve N=take` путь бэкапа существует только в тексте; машинный сценарий восстановления (REQ-10 AC2) по JSON невозможен.
+Рекомендация: аддитивное top-level поле `backups` (минор-совместимо по §4.13) или синтез-строка в `projects`; тест R11-5 добить.
+
+**M-3. AGENTS.md со сломанными onboarding-маркерами нумеруется как решение.**
+`src/app/use-cases/decisions.ts:172-174` — `foreign` → `conflict` без различения `detail`; рендерер отдаёт broken-маркеры как `{action:'foreign', detail:'onboarding markers broken'}` (`opencode-renderer.ts:499-501`).
+Нарушение: design §4.5 («needs-decision **не** выставляется»), §4.6 (broken → foreign, а не needs-decision; причина — полем `detail`), NFR-01 («exit не меняется»).
+Evidence: код читает только `action`, `InspectOutcome.detail` в `collectDecisions` не проверяется; теста на broken-маркеры в реестре нет.
+Impact: в `--review`/`--resolve` такой файл получает `N`, классифицируется как `agents-block` (take разрешён — замена всего файла шаблоном), exit 2 вместо «не решение»; расходится с `--check` (класс `unknown` + `detail:`-строка).
+Рекомендация: в `collectDecisions` исключать из нумерации исходы с `detail` (или конкретно этот), сохраняя их видимость (строка/секция); тест.
+
+### Minor
+
+- **m-1.** TTY `--review`: пустой ввод = skip, неизвестная клавиша = переход далее; «переспрос» из §4.9 не реализован (`memory-upgrade.ts:951-972`). Неблокирующе: пропущенное остаётся в остатке и держит exit 2, но случайный Enter молча пропускает цель.
+- **m-2.** Заголовок diff в review-экране инвертирован относительно тела: `--- a/base … +++ b/local` при `lineDiff(local, base)` (`memory-upgrade.ts:894-897`); в `--show` направление согласовано. Знаки `+/-` читаются наоборот в основном decision-UX.
+- **m-3.** «… ещё N строк» — русская строка в CLI-выводе (`src/domain/line-diff.ts:204-207`); english-surface-гейт покрывает только `src/adapters/**`, поэтому проходит. Смесь EN/RU поверхности.
+- **m-4.** `skippedProjects` собирается «для честного вывода» (§4.7), но нигде не печатается в `--resolve/--review/--show` (`decisions.ts:148-153`, потребителей вывода нет).
+- **m-5.** `--check --review` не отвергается — `upgradeRoute` молча берёт check, флаг review проглатывается (`memory-upgrade.ts:527`). В таблице §4.18 пары нет, но по принципу «два способа действия» и аналогии с `--check --show` должна быть ошибка.
+- **m-6.** Сообщение отказа `keep` на `conflict` — текст orphan-строки («conflict comes from the map…»), а не design-формулировка «use protect (hold) or take (base)»; тест фиксирует фактическую (`decisions.test.ts:337`).
+- **m-7.** Deprecated-цель в состоянии mutated попадает в реестр решений (`decisions.ts:165-171` фильтрует только `removed`), тогда как `--check` считает deprecated report-only (`classifyProject`) — расхождение поверхностей. Плюс мелочь отчёта: frontmatter `head: f42af98` устарел (HEAD `e734a98`, включая фикс `ea2df6a`).
+- **m-8.** `take` на защищённом: если локальный отличается от эталона **только** строкой `protect`, бэкап не делается (`decisions.ts:707` — сравнение по `normalizeManaged`), ключ исчезает без копии — матрица §4.8 говорит «локальное в бэкап». Потеря одной строки ключа, восстановимо повторным protect.
+
+## Проверено (фактически)
+
+- `npm run check` — свежий прогон, зелёный: english-surface → format → lint → tsc → build → vitest, **214 файлов / 1856 тестов passed**.
+- Точечные: `tests/integration/upgrade-here.test.ts` (6), `upgrade-park.test.ts` (10), `upgrade-check.test.ts` (1) — **17 passed**.
+- `git log bb4f560..HEAD` (8 коммитов), `git status` (в диапазоне чисто; незакоммичены только pre-existing `.opencode/skills/**` и артефакт ревью), полный `git diff --stat` + чтение всех изменённых исходников и тестов.
+- Статическая сверка контрактов §4.7/§4.8/§4.9/§4.10/§4.12/§4.13/§4.16/§4.18 против кода (матрица, грамматика, область целей, свидетель, read-only, нумерация, argv re-exec).
+
+## Ограничения
+
+- Код не запускал вживую на dist кроме гейта/тестов (M-1/M-3 — статический анализ путей кода + отсутствие тестов; пути однозначны).
+- Пробы провёл только во временных каталогах тестов; рабочее дерево не мутировал, ничего не коммитил.
+- T13-поверхность (секция Protections в тексте, `--here --check` полная инспекция, steward zone в текстовом `--check` §4.15) — вне Ф2: помечаю как **GAPS для маршрутизации** ведущему (закрывает T13 по плану), аналогично F1-остаткам rr-1/rr-2 (T14/T15).
+
+**Итог:** ядро Ф2 (реестр, глаголы, бэкапы, read-only, нумерация, диспетчеризация) реализовано добротно и доказано тестами; три major — все на периферии JSON/классификации (`--json` pass-исходы, `--json --resolve` backups, broken-маркеры в реестре), чинятся локально без пересмотра архитектуры. После исправления M-1…M-3 (+тесты) фаза готова к повторному ревью.
+REVIEW-EXIT=0

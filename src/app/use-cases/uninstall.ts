@@ -5,6 +5,7 @@
 // marker-append может содержать чужой контент (F-04).
 import { join } from 'path';
 import { parseStamp } from '../../adapters/render/stamp.js';
+import type { SyncStateFiles } from '../../adapters/render/sync-state.js';
 import type { PlatformAdapter } from '../../ports/platform-adapter.port.js';
 
 const STATE_REL = join('.opencode', 'wolf-sync-state.json');
@@ -19,7 +20,7 @@ const ROOT_DOCS = new Set(['AGENTS.md', 'CLAUDE.md']);
 export interface UninstallDeps {
   baseDir: string;
   /** Записи wolf-sync-state; null — файла нет; 'broken' — битый JSON (F-11: без fallback). */
-  syncStateFiles: () => Record<string, string> | null | 'broken';
+  syncStateFiles: () => SyncStateFiles | null | 'broken';
   readFile: (abs: string) => string | null;
   exists: (abs: string) => boolean;
   listFiles: (dir: string) => string[];

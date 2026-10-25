@@ -468,3 +468,125 @@ describe('R04.1: runUpgradeProjects с фикстурной картой нов�
     });
   });
 });
+
+/* ---------- --json (T11, REQ-11, design §4.13): документ сквозь re-exec ---------- */
+
+describe('--json: argv ребёнка, единственный документ, сквозь npm-фазу', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('R11-4/R11-8: argv ребёнка содержит --json; без --json его нет', async () => {
+    for (const json of [true, false]) {
+      setEnv('WOLF_T8_MARKER', markerPath);
+      setEnv('WOLF_T8_EXIT', '0');
+      await reExecUpgradeProjects('1.0.0', '2.0.0', '/fake-prefix', {
+        yes: true,
+        json,
+        childBin: fakeBin,
+        exit: vi.fn(),
+      });
+      const argv = (JSON.parse(readFileSync(markerPath, 'utf-8')) as ChildMarker).argv;
+      if (json) {
+        expect(argv).toContain('--json');
+        expect(argv.indexOf('--json')).toBe(argv.length - 1); // §4.18: единственный флаг вывода
+      } else {
+        expect(argv).not.toContain('--json');
+      }
+      rmSync(markerPath);
+    }
+  });
+
+  it('R11-1/R11-3: ребёнок фазы 2 печатает ровно один документ wolf.upgrade/1, exit = документ', async () => {
+    const proj = mkTmp('wolf-t11-proj-');
+    const runStep = vi.fn(async (_d: ProjectStepDeps, root: string) => stepReport(root));
+    const io = fakeIo(false);
+    const chunks: string[] = [];
+    const write = vi.spyOn(process.stdout, 'write').mockImplementation(((c: string) => {
+      chunks.push(String(c));
+      return true;
+    }) as typeof process.stdout.write);
+    const prevExit = process.exitCode;
+    try {
+      await upgradeProjectsAction(true, actionDeps(proj, runStep), io, true);
+      const exitCode = process.exitCode;
+      process.exitCode = prevExit;
+      const stdout = chunks.join('');
+      expect(stdout.trim().split('\n')).toHaveLength(1); // единственный JSON-документ
+      const doc = JSON.parse(stdout) as Record<string, unknown>;
+      expect(doc['schema']).toBe('wolf.upgrade/1');
+      expect(doc['mode']).toBe('pass');
+      expect(doc['exit']).toBe(0);
+      expect(doc['plan']).toMatchObject({ projects: 1, changed: 1 });
+      expect((doc['projects'] as Array<{ files: Array<{ path: string; inMap: boolean }> }>)[0]!.files).toEqual([
+        { path: '.opencode/agents/mr-wolf.md', code: 'updated', inMap: true },
+      ]);
+      expect(doc['decisions']).toEqual([]);
+      expect(doc['protections']).toEqual([]);
+      expect(exitCode).toBe(0);
+      expect(io.writes).toEqual([]); // баннер/человеческие строки подавлены
+      write.mockRestore();
+    } finally {
+      write.mockRestore();
+    }
+  });
+
+  it('M-1: --json local-newer → документ exit 0 с available; linked-refusal → документ exit 1 + throw', async () => {
+    const chunks: string[] = [];
+    const write = vi.spyOn(process.stdout, 'write').mockImplementation(((c: string) => {
+      chunks.push(String(c));
+      return true;
+    }) as typeof process.stdout.write);
+    try {
+      const newer = phase1Deps({ registryVersion: async () => '2.18.0' });
+      await runUpgradeWithProjects(newer, { json: true });
+      const doc = JSON.parse(chunks.join('')) as Record<string, unknown>;
+      expect(doc).toMatchObject({ schema: 'wolf.upgrade/1', mode: 'pass', exit: 0, projects: [] });
+      expect((doc['cli'] as { available: string | null }).available).toBe('2.18.0');
+      expect(doc['error']).toBeUndefined();
+      expect(newer.reExec).not.toHaveBeenCalled();
+
+      chunks.length = 0;
+      const linked = phase1Deps({ binaryPath: '/somewhere/dev/wolf' });
+      await expect(runUpgradeWithProjects(linked, { json: true })).rejects.toThrow(/dev\/linked copy/);
+      const failed = JSON.parse(chunks.join('')) as Record<string, unknown>;
+      expect(failed).toMatchObject({ schema: 'wolf.upgrade/1', mode: 'pass', exit: 1 });
+      expect(String(failed['error'])).toMatch(/dev\/linked copy/);
+      expect(linked.reExec).not.toHaveBeenCalled();
+    } finally {
+      write.mockRestore();
+    }
+  });
+
+  it('R11-7: --json в TTY не задаёт вопросов, шапка фазы 1 подавлена', async () => {
+    const spies = silenceStdio();
+    const deps = phase1Deps();
+    await runUpgradeWithProjects(deps, { yes: true, json: true });
+    expect(deps.reExec).toHaveBeenCalledWith('2.18.5', '2.19.0', '/fake-prefix', { yes: true, json: true });
+    expect((spies[1]!.mock.calls.map((c) => c[0]) as string[]).join('')).not.toContain('Mr Wolf upgrade');
+    expect(spies[0]).not.toHaveBeenCalled(); // printOutcome молчит
+  });
+
+  it('R11-4: падение npm-фазы при --json → документ с exit:1 и error, spawn не вызван', async () => {
+    const chunks: string[] = [];
+    const write = vi.spyOn(process.stdout, 'write').mockImplementation(((c: string) => {
+      chunks.push(String(c));
+      return true;
+    }) as typeof process.stdout.write);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const deps = phase1Deps({
+      installLatest: async () => {
+        throw new UserFacingError('npm install -g mister-wolf@latest failed (mock json)');
+      },
+    });
+    try {
+      await expect(runUpgradeWithProjects(deps, { json: true })).rejects.toThrow(UserFacingError);
+      const doc = JSON.parse(chunks.join('')) as Record<string, unknown>;
+      expect(doc).toMatchObject({ schema: 'wolf.upgrade/1', mode: 'pass', exit: 1, projects: [] });
+      expect(String(doc['error'])).toMatch(/npm install -g mister-wolf@latest failed/);
+      expect(deps.reExec).not.toHaveBeenCalled();
+    } finally {
+      write.mockRestore();
+    }
+  });
+});

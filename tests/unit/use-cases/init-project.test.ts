@@ -22,6 +22,7 @@ import {
 } from '../../../src/ports/platform-adapter.port.js';
 import type { ModelContext } from '../../../src/ports/base-set-renderer.port.js';
 import { CURRENT_SCHEMA_VERSION } from '../../../src/adapters/fs/schema-version.js';
+import { OpencodeAdapter } from '../../../src/adapters/platforms/opencode-adapter.js';
 import { configPath } from '../../../src/adapters/fs/project-paths.js';
 import type { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
 
@@ -475,6 +476,110 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     expect(result.platformOutcomes).toEqual([]);
     expect(oc.writeCalls).toBe(0);
     expect(claude.writeCalls).toBe(0);
+  });
+
+  /* ---------- §4.14 (REQ-04): init чинит mcp.wolf в существующем конфиге ---------- */
+
+  describe('§4.14 (REQ-04): без --platform восстанавливает mcp.wolf в существующем opencode.json', () => {
+    const MCP: McpCommand = { command: 'wolf', args: ['mcp'] };
+    const CANONICAL = { type: 'local', command: ['wolf', 'mcp'], enabled: true };
+    const configFile = (): string => join(dir, 'opencode.json');
+    const readCfg = (): Record<string, unknown> =>
+      JSON.parse(readFileSync(configFile(), 'utf-8')) as Record<string, unknown>;
+
+    /** Реальный OpencodeAdapter: идемпотентность и «надо ли писать» проверяются настоящим writeConfig. */
+    const realDeps = (): InitProjectDeps => makeDeps([new OpencodeAdapter()]).deps;
+
+    it('R04-1: конфиг есть, mcp.wolf нет → written, прочие ключи сохранены', async () => {
+      writeFileSync(join(dir, 'package.json'), '{}');
+      writeFileSync(
+        configFile(),
+        `${JSON.stringify(
+          {
+            $schema: 'https://opencode.ai/config.json',
+            theme: 'system',
+            mcp: { other: { type: 'local', command: ['x'], enabled: true } },
+          },
+          null,
+          2
+        )}\n`
+      );
+      const result = await initProject(realDeps(), dir, { models: MODELS });
+      expect(result.platformOutcomes).toMatchObject([
+        {
+          platform: 'opencode',
+          action: 'written',
+          reason: 'init: repaired missing/corrupted opencode wolf entry',
+          configFile: 'opencode.json',
+        },
+      ]);
+      const cfg = readCfg();
+      expect((cfg.mcp as Record<string, unknown>).wolf).toEqual(CANONICAL);
+      // остальной конфиг не тронут
+      expect(cfg.$schema).toBe('https://opencode.ai/config.json');
+      expect(cfg.theme).toBe('system');
+      expect((cfg.mcp as Record<string, unknown>).other).toEqual({ type: 'local', command: ['x'], enabled: true });
+    });
+
+    it('R04-2: повторный init → unchanged, файл байт-в-байт тот же (дубля нет)', async () => {
+      writeFileSync(join(dir, 'package.json'), '{}');
+      writeFileSync(configFile(), '{"theme":"system"}\n');
+      await initProject(realDeps(), dir, { models: MODELS });
+      const afterFirst = readFileSync(configFile(), 'utf-8');
+      const second = await initProject(realDeps(), dir, { models: MODELS, platformChoice: undefined });
+      expect(second.platformOutcomes).toMatchObject([{ platform: 'opencode', action: 'unchanged' }]);
+      expect(second.platformOutcomes[0]!.reason).toBeUndefined();
+      expect(readFileSync(configFile(), 'utf-8')).toBe(afterFirst);
+    });
+
+    it('R04-4: mcp.wolf строкой (некорректная запись) → replaced, канонический блок, остальное сохранено', async () => {
+      writeFileSync(join(dir, 'package.json'), '{}');
+      writeFileSync(
+        configFile(),
+        `${JSON.stringify({ theme: 'system', mcp: { wolf: 'wolf', other: { type: 'local' } } }, null, 2)}\n`
+      );
+      const result = await initProject(realDeps(), dir, { models: MODELS });
+      expect(result.platformOutcomes).toMatchObject([
+        { platform: 'opencode', action: 'replaced', reason: 'init: repaired missing/corrupted opencode wolf entry' },
+      ]);
+      const cfg = readCfg();
+      const mcp = cfg.mcp as Record<string, unknown>;
+      expect(mcp.wolf).toEqual(CANONICAL);
+      expect(mcp.other).toEqual({ type: 'local' });
+      expect(cfg.theme).toBe('system');
+    });
+
+    it('R04-5: битый JSONC → skipped с причиной, файл не изменён, init не падает', async () => {
+      writeFileSync(join(dir, 'package.json'), '{}');
+      writeFileSync(configFile(), '{"mcp": {\n');
+      const result = await initProject(realDeps(), dir, { models: MODELS });
+      expect(result.platformOutcomes).toEqual([
+        { platform: 'opencode', action: 'skipped', reason: 'config is not valid JSONC — fix it first' },
+      ]);
+      expect(readFileSync(configFile(), 'utf-8')).toBe('{"mcp": {\n');
+    });
+
+    it('R04-6: конфиг-файла нет (платформа детектится по .opencode) → не создаём, записей нет', async () => {
+      writeFileSync(join(dir, 'package.json'), '{}');
+      mkdirSync(join(dir, '.opencode'), { recursive: true });
+      const result = await initProject(realDeps(), dir, { models: MODELS });
+      expect(result.platformOutcomes).toEqual([]);
+      expect(existsSync(configFile())).toBe(false);
+      expect(existsSync(join(dir, 'opencode.jsonc'))).toBe(false);
+    });
+
+    it('R04-7: валидный mcp.wolf + кастомный default_agent → unchanged, чужое значение сохранено', async () => {
+      writeFileSync(join(dir, 'package.json'), '{}');
+      writeFileSync(
+        configFile(),
+        `${JSON.stringify({ mcp: { wolf: CANONICAL }, default_agent: 'my-agent', subagent_depth: 2 }, null, 2)}\n`
+      );
+      const before = readFileSync(configFile(), 'utf-8');
+      const result = await initProject(realDeps(), dir, { models: MODELS });
+      expect(result.platformOutcomes).toMatchObject([{ platform: 'opencode', action: 'unchanged' }]);
+      expect(readFileSync(configFile(), 'utf-8')).toBe(before);
+      expect(readCfg().default_agent).toBe('my-agent');
+    });
   });
 
   it('npx (§4 п.6): конфиги и набор не пишутся, отчёт НЕ создаётся', async () => {

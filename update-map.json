@@ -1,6 +1,6 @@
 {
-  "version": "2.19.0",
-  "prev": "2.18.5",
+  "version": "2.20.0",
+  "prev": "2.19.0",
   "files": [
     {
       "path": "base/agents/executor-lead.md",
@@ -192,7 +192,7 @@
     }
   ],
   "agents_md": {
-    "category": "unchanged",
+    "category": "changed",
     "mode": "append-block"
   },
   "schema_migrations": [],

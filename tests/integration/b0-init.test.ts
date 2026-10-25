@@ -4,12 +4,14 @@
 // .opencode/agents/*.md побайтово равны ожидаемому рендеру templates/base/agents;
 // guard-контракт design §3.4 (face_owner_skill === agent_id) в init-project.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync, readdirSync, readFileSync } from 'fs';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readdirSync, readFileSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, dirname, resolve, basename } from 'path';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
 import { insertStamp } from '../../src/adapters/render/stamp.js';
+import { sha256 } from '../../src/adapters/render/sync-state.js';
+import { normalizeManaged } from '../../src/domain/protect-key.js';
 import { substitute, OPENCODE_MANIFEST } from '../../src/adapters/render/manifest.js';
 import { wolfVersion } from '../../src/adapters/render/templates-root.js';
 import { baseSetFaceViolations } from '../../src/app/use-cases/init-project.js';
@@ -106,5 +108,142 @@ describe('baseSetFaceViolations: guard face_owner_skill === agent_id (design §3
   it('legacy-формат owner_skill (skill:<id>) не равен agent_id → нарушение', () => {
     const legacy = BASE_AGENTS.map((a) => (a === 'worker-implementer' ? `skill:${a}` : a));
     expect(baseSetFaceViolations(legacy)).toEqual(['worker-implementer']);
+  });
+});
+
+describe('§4.14 (REQ-04): init без --platform чинит mcp.wolf в существующем конфиге', () => {
+  let d: string;
+  const cfgPath = (): string => join(d, 'opencode.json');
+  const readCfg = (): Record<string, unknown> =>
+    JSON.parse(readFileSync(cfgPath(), 'utf-8')) as Record<string, unknown>;
+
+  beforeEach(() => {
+    d = mkdtempSync(join(tmpdir(), 'wolf-b0-repair-'));
+    writeFileSync(join(d, 'package.json'), '{ "name": "b0-repair-it" }');
+  });
+  afterEach(() => rmSync(d, { recursive: true, force: true }));
+
+  it('R04-1/R04-2: проект 2.19.0 с opencode.json без wolf-записи → запись добавлена, повторный init — no-op', () => {
+    // фикстура «2.19.0-проект»: чужой конфиг opencode без mcp.wolf
+    writeFileSync(
+      cfgPath(),
+      `${JSON.stringify(
+        {
+          $schema: 'https://opencode.ai/config.json',
+          theme: 'system',
+          mcp: { other: { type: 'local', command: ['other-mcp'], enabled: true } },
+        },
+        null,
+        2
+      )}\n`
+    );
+
+    expect(runCli(['init', '--full'], d).status).toBe(0); // БЕЗ --platform
+    const cfg = readCfg();
+    expect((cfg.mcp as Record<string, unknown>).wolf).toEqual({
+      type: 'local',
+      command: ['wolf', 'mcp'],
+      enabled: true,
+    });
+    expect(cfg.$schema).toBe('https://opencode.ai/config.json');
+    expect(cfg.theme).toBe('system');
+    expect((cfg.mcp as Record<string, unknown>).other).toEqual({
+      type: 'local',
+      command: ['other-mcp'],
+      enabled: true,
+    });
+
+    const once = readFileSync(cfgPath(), 'utf-8');
+    expect(runCli(['init', '--full', '--yes'], d).status).toBe(0);
+    expect(readFileSync(cfgPath(), 'utf-8')).toBe(once); // unchanged: ни дубля, ни перезаписи
+  });
+
+  it('R04-3: после init doctor больше не рапортует «wolf entry missing» (тот же проект)', async () => {
+    writeFileSync(cfgPath(), '{"theme":"system"}\n');
+    expect(runCli(['init', '--full'], d).status).toBe(0);
+
+    // in-process doctor: реестр фикстурный (tmp-путь не должен pruning'иться как sandbox)
+    const { runDoctor } = await import('../../src/app/use-cases/doctor.js');
+    const { readSchemaVersion } = await import('../../src/adapters/fs/schema-version.js');
+    const { OpencodeAdapter } = await import('../../src/adapters/platforms/opencode-adapter.js');
+    const report = await runDoctor({
+      registry: {
+        list: async () => [{ path: d, schema_version: 2, initialized_at: '2026-01-01T00:00:00.000Z' }],
+        remove: async () => false,
+      },
+      readSchema: (p: string) => readSchemaVersion(p),
+      exists: async (p: string) => existsSync(p),
+      adapters: [new OpencodeAdapter()],
+    });
+    const entry = report.entries.find((e) => e.path === d);
+    expect(entry?.status).toBe('ok');
+    expect(entry?.issues).not.toContain('opencode: wolf entry missing — run wolf init');
+  });
+});
+
+describe('onboarding-блок v3 в init (REQ-03 AC3/AC4, волна 2.20.0)', () => {
+  let d: string;
+  const agentsMd = () => join(d, 'AGENTS.md');
+
+  beforeEach(() => {
+    d = mkdtempSync(join(tmpdir(), 'wolf-b0-block-'));
+    writeFileSync(join(d, 'package.json'), '{ "name": "b0-block-it" }');
+  });
+  afterEach(() => rmSync(d, { recursive: true, force: true }));
+
+  it('R03-3/R03-4: блок дописывается append-веткой, повторный init не дублирует его', () => {
+    const own = '# Чужой конфиг\nне трогай\n';
+    writeFileSync(agentsMd(), own);
+    expect(runCli(['init', '--full', '--platform', 'opencode'], d).status).toBe(0);
+    const first = readFileSync(agentsMd(), 'utf-8');
+    expect(first.startsWith(own)).toBe(true);
+    expect(first).toContain('<!-- wolf:onboarding v3 -->');
+    expect(first.match(/<!-- wolf:onboarding/g)).toHaveLength(1);
+    expect(runCli(['init', '--full', '--platform', 'opencode', '--yes'], d).status).toBe(0);
+    expect(readFileSync(agentsMd(), 'utf-8')).toBe(first);
+  });
+
+  it('R03-4: init поднимает блок v2 до v3, чужой текст вокруг сохранён', () => {
+    const above = '# Мой текст\n\n';
+    const below = '\n\nхвост\n';
+    writeFileSync(
+      agentsMd(),
+      `${above}<!-- wolf:onboarding v2 -->\nстарое содержимое\n<!-- /wolf:onboarding -->${below}`
+    );
+    expect(runCli(['init', '--full', '--platform', 'opencode'], d).status).toBe(0);
+    const out = readFileSync(agentsMd(), 'utf-8');
+    expect(out.startsWith(above)).toBe(true);
+    expect(out.endsWith(below)).toBe(true);
+    expect(out).toContain('<!-- wolf:onboarding v3 -->');
+    expect(out).not.toContain('старое содержимое');
+    expect(out.match(/<!-- wolf:onboarding/g)).toHaveLength(1);
+  });
+
+  it('M-1: init на проекте 2.19.0 (штамп + блок v2) → эталон текущей базы, повторный init — no-op', () => {
+    const tplRaw = readFileSync(join(REPO, 'templates/base/AGENTS.md'), 'utf-8');
+    const oldBlock = tplRaw.replace('<!-- wolf:onboarding v3 -->', '<!-- wolf:onboarding v2 -->');
+    const legacy = insertStamp(oldBlock, { base: 'AGENTS.md', set: '2.19.0' }, 'AGENTS.md');
+    writeFileSync(agentsMd(), legacy);
+    mkdirSync(join(d, '.opencode'), { recursive: true });
+    writeFileSync(
+      join(d, '.opencode', 'wolf-sync-state.json'),
+      `${JSON.stringify(
+        { files: { 'AGENTS.md': { hash: sha256(normalizeManaged(legacy)), origin: 'render', base: '2.19.0' } } },
+        null,
+        2
+      )}\n`
+    );
+
+    expect(runCli(['init', '--full', '--platform', 'opencode'], d).status).toBe(0);
+    const expected = insertStamp(tplRaw, { base: 'AGENTS.md', set: wolfVersion() }, 'AGENTS.md');
+    expect(readFileSync(agentsMd(), 'utf-8')).toBe(expected);
+
+    // повторный init и следующий проход не дают ложного mutated (NFR-02)
+    expect(runCli(['init', '--full', '--platform', 'opencode', '--yes'], d).status).toBe(0);
+    expect(readFileSync(agentsMd(), 'utf-8')).toBe(expected);
+
+    const sync = runCli(['sync'], d);
+    expect(sync.stdout).not.toContain('mutated');
+    expect(readFileSync(agentsMd(), 'utf-8')).toBe(expected);
   });
 });

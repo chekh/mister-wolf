@@ -1,0 +1,47 @@
+# Ревью волны 2.20.0, Ф3 (T12 `544a419` + T13 `c30cc04`)
+
+Независимый reviewer: `opencode run --standalone --agent worker-reviewer`, свежий
+контекст, 2026-10-25, cwd worktree `wave-2-20-0-upgrade-intentions`, диапазон
+`git diff a8b0f85..c30cc04`. Вердикт приведён дословно.
+
+```
+SUMMARY: 0 critical / 0 major / 2 minor
+VERDICT: APPROVED
+```
+
+## Что сделано хорошо (по зонам мандата)
+
+**1. Read-only NFR-03 — доказано тестом, не заявлением.** `snapshotTree` (mtime+sha256, рекурсивно по ВСЕМ файлам проекта, включая `.opencode/wolf-sync-state.json` и `.wolf/**`) — в `tests/integration/upgrade-check.test.ts:180` (парковый `--check`, R09-3/N03-1) и `tests/integration/upgrade-here.test.ts:544` (`--here --check`): снапшот до/после идентичен, sync-state не создаётся, `.wolf/backup` нет, differ-файл байт-в-байт прежний. Скрытых записей в новом пути нет: `runUpgradeCheckHere` → `projectCheck` → только `inspectBaseSet`/`listProtections`/`stampNote` (чтение); grep по `saveSyncState|writeFileAtomic|backup|spawn` в этом потоке пуст; npm-фаза не доходит — `memory-upgrade.check.test.ts:595` доказывает npm-shim'ом (маркер не создан).
+
+**2. Идемпотентность init — одна копия условия.** Условие каноничности единственно и живёт в `writeConfig` (`opencode-adapter.ts:117` `mcpOk && da !== undefined && sd !== undefined`); `init-project.ts:332-364` повторяет его дословно по псевдокоду §4.14, без второй проверки. R04-2/R04-7 (unchanged, байт-в-байт, чужой `default_agent` сохранён), R04-5 (битый JSONC → `skipped`, файл не тронут), R04-6 (конфига нет → не создаётся: `cfg === null → continue`), replace-семантика `--platform` не тронута. Reason-контракт `written/replaced` → `init: repaired missing/corrupted …` соответствует §4.14.
+
+**3. Protections — полнота и согласованность.** `listProtections` (`opencode-renderer.ts:428`) обходит все 4 каталога base-set включая файлы вне карты (`behind: null` → `drift: n/a`); записи собираются в `row.protected` **до** try/catch инспекции — не теряются и при ошибке проекта; текст секции и `--json.protections` строятся из одного `rows.flatMap(row => row.protected)`; позиция — последняя секция перед `Done (read-only)` (закреплена и юнит-, и интеграционно). R09-1/R09-2/R09-4 покрыты.
+
+**4. T12 — все пять ветвей реальными путями.** Unit идёт через настоящий `OpencodeAdapter` (`realDeps()`), интеграция — через реальный CLI-процесс (`runCli` = `spawnSync('node', [cliPath, …])`), R04-3 doctor молчит — и in-process (`doctor.test.ts:115`), и после настоящего `init` (`b0-init.test.ts:166`). Фейков, доказывающих сами себя, нет.
+
+**5. Allowlist и регрессии.** Дифф трогает ровно 8 файлов из allowlist T12/T13. Прогоны: 6 файлов задач — 101 passed; общие поверхности `upgrade-park` + `memory-upgrade.here` — 29 passed (R11-5, R08.1, WP1 зелёные); `npx tsc --noEmit` — ok.
+
+**6. Диспетчеризация §4.18.** `upgradeRoute({check,here})` → `mode:'check'` (check сильнее here); ветка `--here --check` стоит до паркового check и до npm-фазы; `npmPrefix` в check-режиме даже не вычисляется.
+
+## Находки
+
+**m-1 (Minor) — деградации печатают «Protections: none», хотя сканирования не было.**
+Evidence: `src/adapters/cli/commands/memory-upgrade.ts:1342-1351` (map=null → rows без защит), `:1318-1323` (реестр не читается → rows пустые), `:1404-1408` (то же в here-режиме); CLI-обвязка передаёт `protections` только при наличии карты (`:1449`, `:1488`). Пользователь с защищёнными файлами и недоступной картой/реестром увидит «Protections: none» — фактически неверно. §4.11 этот случай не специфицирует, весь вывод помечен «unreliable», exit 0 — поэтому minor.
+Исправить: в деградированных ветках печатать отличимое состояние (например `Protections: not scanned (map/registry unavailable)`) вместо «none».
+
+**m-2 (Minor) — дубль хелпера `snapshotTree`.**
+Evidence: идентичные копии в `tests/integration/upgrade-check.test.ts:180` и `tests/integration/upgrade-here.test.ts:544`; рядом уже есть дом для него — `tests/helpers/park-snapshot.ts`.
+Исправить: перенести `snapshotTree` (mtime+sha256) в helpers одним экспортом при первом следующем касании файлов.
+
+## GAPS
+
+Нет. Существенных находок вне мандата не обнаружено; правки кода не вносил, прогоны — только точечные.
+
+---
+
+Пропустил: TTY-вариант `--here --check` (R09-5 «в TTY и non-TTY») проверен только non-TTY-рендером — путь кода тот же, риск низкий; e2e и полный `npm run check` оставлены гейту T14.
+
+## Ответ автора на раунд
+
+- **m-1 — ACCEPTED, исправлено** в `2c4b1d1`: `protectionNodes(entries, base, scanned)`; при недоступной карте/реестре печатается `Protections: not scanned (map or projects registry unavailable)` вместо ложного «none». Пустой реестр проектов остаётся честным «none» (сканировать нечего). Тест: `memory-upgrade.check.test.ts` «m-1: деградация не выдаёт «none»».
+- **m-2 — DEFERRED (обоснованно)**: `tests/helpers/park-snapshot.ts` вне allowlist T13 (и T14 допускает только `tests/e2e/**`), поэтому перенос хелпера не делался, чтобы не нарушать scope. Техдолг зафиксирован здесь; перенос — в волне, где helpers входят в allowlist.

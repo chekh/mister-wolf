@@ -57,3 +57,51 @@ describe('wolf sync: локальные мутации не перезаписы
     expect(readFileSync(mutated(), 'utf-8')).toContain('S-34: локальная правка пользователя');
   });
 });
+
+describe('onboarding-блок AGENTS.md: версия формата (REQ-03, волна 2.20.0)', () => {
+  let d: string;
+  const agentsMd = () => join(d, 'AGENTS.md');
+
+  beforeEach(() => {
+    d = mkdtempSync(join(tmpdir(), 'wolf-b0-agents-'));
+    writeFileSync(join(d, 'package.json'), '{ "name": "b0-agents-it" }');
+    expect(runCli(['init', '--full', '--platform', 'opencode'], d).status).toBe(0);
+  });
+  afterEach(() => rmSync(d, { recursive: true, force: true }));
+
+  it('R03-1/R03-2: блок v2 обновляется до шаблона; текст выше и ниже — байт-в-байт', () => {
+    const above = '# Мой проект\n\nМои правила.\n\n';
+    const below = '\n## Мой хвост\n\nпосле блока\n';
+    const v2 = '<!-- wolf:onboarding v2 -->\nстарый текст блока\n<!-- /wolf:onboarding -->';
+    writeFileSync(agentsMd(), `${above}${v2}${below}`);
+    const res = runCli(['sync'], d);
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain('AGENTS.md: updated');
+    const out = readFileSync(agentsMd(), 'utf-8');
+    expect(out.startsWith(above)).toBe(true);
+    expect(out.endsWith(below)).toBe(true);
+    expect(out).toContain('<!-- wolf:onboarding v3 -->');
+    expect(out).not.toContain('старый текст блока');
+    // R03-4: повторный проход блок не меняет
+    expect(runCli(['sync'], d).status).toBe(0);
+    expect(readFileSync(agentsMd(), 'utf-8')).toBe(out);
+  });
+
+  it('R03-7: AGENTS.md без блока и без штампа sync не трогает (wx-политика)', () => {
+    const own = '# Чужой конфиг\nне трогай\n';
+    writeFileSync(agentsMd(), own);
+    const res = runCli(['sync'], d);
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain('no onboarding block');
+    expect(readFileSync(agentsMd(), 'utf-8')).toBe(own);
+  });
+
+  it('R03-5: открывающий маркер без закрывающего → skipped с причиной, файл не тронут', () => {
+    const broken = '# Мой\n\n<!-- wolf:onboarding v3 -->\nбез закрывающего\n';
+    writeFileSync(agentsMd(), broken);
+    const res = runCli(['sync'], d);
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain('onboarding markers broken');
+    expect(readFileSync(agentsMd(), 'utf-8')).toBe(broken);
+  });
+});

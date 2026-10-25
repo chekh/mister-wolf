@@ -4,7 +4,12 @@ import { mkdtempSync, rmSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { syncBaseSet } from '../../../src/app/use-cases/sync-base-set.js';
-import type { BaseSetRenderer, ModelContext } from '../../../src/ports/base-set-renderer.port.js';
+import type {
+  BaseSetRenderer,
+  BackupHook,
+  ModelContext,
+  SyncBaseSetOptions,
+} from '../../../src/ports/base-set-renderer.port.js';
 import { memorySyncCommand } from '../../../src/adapters/cli/commands/memory-sync.js';
 import { createCli } from '../../../src/adapters/cli/cli-entry.js';
 import { UserFacingError } from '../../../src/domain/errors.js';
@@ -42,6 +47,47 @@ describe('syncBaseSet use-case (Task 7)', () => {
     await syncBaseSet(fr(), '/proj', 'omit');
     await syncBaseSet(fr(), '/proj'); // легаси-вызов без контекста
     expect(modelsSeen).toEqual([ctx, 'omit', undefined]);
+  });
+});
+
+describe('syncBaseSet — структурные исходы §4.3 (волна 2.20.0)', () => {
+  it('protected/kept/backup проходят через use-case без трансформаций', async () => {
+    const outcomes = [
+      { file: 'p.md', action: 'skipped' as const, protected: true, protect: 'true' },
+      { file: 'k.md', action: 'skipped' as const, kept: true },
+      { file: 'u.md', action: 'updated' as const, backup: '.wolf/backup/u.md' },
+    ];
+    const fake = {
+      id: 'fake',
+      async renderBaseSet() {
+        throw new Error('renderBaseSet не вызывается из sync');
+      },
+      async syncBaseSet() {
+        return { outcomes, orphaned: [] };
+      },
+    } as unknown as BaseSetRenderer;
+    const res = await syncBaseSet(fake, '/proj');
+    expect(res.outcomes).toEqual(outcomes);
+  });
+
+  it('pass-through §4.12: opts.takeMutated доходит до renderer.syncBaseSet без трансформаций', async () => {
+    const seen: unknown[] = [];
+    const backup: BackupHook = async (rel) => rel;
+    const fake = {
+      id: 'fake',
+      async renderBaseSet() {
+        throw new Error('renderBaseSet не вызывается из sync');
+      },
+      async syncBaseSet(_dir: string, _models?: unknown, opts?: unknown) {
+        seen.push(opts);
+        return { outcomes: [], orphaned: [] };
+      },
+    } as unknown as BaseSetRenderer;
+    const opts: SyncBaseSetOptions = { takeMutated: { backup } };
+    await syncBaseSet(fake, '/proj');
+    await syncBaseSet(fake, '/proj', 'omit', opts);
+    expect(seen[0]).toBeUndefined();
+    expect(seen[1]).toBe(opts); // тот же объект: второй обёртки/копии нет
   });
 });
 

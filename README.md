@@ -54,7 +54,18 @@ wolf bootstrap
 - **Path B — OpenCode organization:** `wolf init --full --platform opencode` renders the full base set (6 agent frames, 19 skills, 3 commands, 2 plugins, seeded playbook faces) and writes `opencode.json` (`mcp.wolf`, `default_agent=mr-wolf`, `subagent_depth=2`). **Restart opencode** after it — the MCP server and the default agent connect at startup. Claude Code will ask you to approve the project-scope MCP server on first start — that is expected.
 
 - **Try it without installing:** `npx mister-wolf init` — try-out mode: creates the `.wolf/` memory skeleton but never writes MCP configs or the base set. Like it? `npm install -g mister-wolf` and run `wolf init` again.
-- **Updating:** `wolf upgrade` — one command updates everything: the npm phase (`npm install -g mister-wolf@latest`) is followed by the update pass over all registered projects (stamped base-set files and seeded faces; deletions only with confirmation). `--check` reports CLI + park freshness without installing; `--here` updates only the current project (no npm, no registry); `--yes` skips the confirmation. Dev/linked installs are refused honestly. `wolf sync` is deprecated → `wolf upgrade --here` (removed in 2.20.0).
+- **Updating:** `wolf upgrade` — one command updates everything: the npm phase (`npm install -g mister-wolf@latest`) is followed by the update pass over all registered projects (stamped base-set files and seeded faces; deletions only with confirmation). `--check` reports CLI + park freshness without installing; `--here` updates only the current project (no npm, no registry); `--yes` skips the confirmation and backs up whatever it overwrites. Dev/linked installs are refused honestly. `wolf sync` is deprecated → `wolf upgrade --here` (still available in 2.20.0).
+- **Owner intent (2.20.0):** when a pass needs your word, it names the file and the reason (`mutated` / `conflict`, per path — no bare counters). `--review` walks the decisions with a diff, `--show <file|N>` prints local vs base, `--resolve <file|N>=take|keep|protect|pin` applies one, `--json` is the machine channel (`wolf.upgrade/1`, and `wolf.upgrade.check/1` with `--check`). `protect: true` (or `protect: X.Y.Z`) in an agent/skill/command frontmatter holds that file forever — never overwritten, never deleted, still visible in `--check`. A local conflict, start to finish:
+
+  ```bash
+  wolf upgrade --check                                     # needs decision: .opencode/agents/foo.md (mutated)
+  wolf upgrade --show 1                                    # local → base diff, read-only
+  wolf upgrade --resolve 1=protect                         # this file is mine from now on
+  wolf upgrade --check                                     # current · 1 protected (intentional)
+  ```
+
+  Full workflow, backups and limits: [Upgrading a Project and a Park](docs/site/guide/upgrade.md).
+
 - **Platforms v1:** opencode, Claude Code. Platform MCP configs are opt-in: `wolf init --platform opencode,claude` (the list replaces the current set); without the flag no platform configs are written.
 - **First run without barriers:** `wolf init` decides nothing for you — a minimal file set by default (`--full` for the complete base set), one interview question in a TTY (Enter to skip), no model pinning (`--model` is opt-in; model lines are omitted and the platform default applies). Re-init on a live project shows the plan and needs a confirmation (`--yes` skips it).
 - **OS/runtime:** macOS and Linux (glibc) on Node 22/24. Alpine/musl is not supported in v1; Windows is best-effort, not claimed. The native dependency better-sqlite3 installs from prebuilds — that is the dependency's own behavior; mister-wolf ships no install scripts of its own.

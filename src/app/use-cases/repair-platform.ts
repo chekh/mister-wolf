@@ -5,13 +5,14 @@ import { join } from 'path';
 import type { RenderOutcome } from '../../ports/base-set-renderer.port.js';
 import type { PlatformWriteResult } from '../../ports/platform-adapter.port.js';
 import { parseStamp } from '../../adapters/render/stamp.js';
+import type { SyncStateFiles } from '../../adapters/render/sync-state.js';
 
 export interface RepairPlatformDeps {
   baseDir: string;
   /** Платформа детектится по маркерам (конфиг/.opencode). */
   detect: () => boolean;
   /** Записи wolf-sync-state; null — файла нет. */
-  syncStateFiles: () => Record<string, string> | null;
+  syncStateFiles: () => SyncStateFiles | null;
   /** Прочитать файл проекта; null — нет/нечитаем (C-02: fallback-скан штампов). */
   readFile: (abs: string) => string | null;
   /** Файлы в каталоге (любая глубина); пусто — каталога нет. */

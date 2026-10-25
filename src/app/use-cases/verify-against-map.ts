@@ -21,7 +21,11 @@ export type VerifyCode =
   | 'deprecated-noted'
   | 'unchanged'
   | 'diverged'
-  | 'conflict';
+  | 'conflict'
+  /** Правило 2 §4.3 (волна 2.20.0): файл держится ключом protect — не needs-decision. */
+  | 'protected'
+  /** Правило 6.5 §4.3: принятый локальный контент (origin:'keep') — не needs-decision. */
+  | 'kept';
 
 /** Коды, всегда отображаемые как «требует решения» (view-код needs-decision). */
 export const NEEDS_DECISION_CODES: ReadonlySet<VerifyCode> = new Set(['skipped-mutated', 'diverged', 'conflict']);
@@ -86,6 +90,9 @@ export function projectPath(entry: FileEntry): string {
 
 /** Факт sync → код сверки. appended (AGENTS-блок init) ≈ updated. */
 function syncFact(o: SyncVerifyOutcome): VerifyCode {
+  // Порядок §4.6: protect/kept перекрывают ожидание категории и не являются решениями.
+  if (o.protected) return 'protected';
+  if (o.kept) return 'kept';
   if (o.action === 'conflict') return 'conflict';
   if (o.action === 'skipped') return o.mutated ? 'skipped-mutated' : 'skipped-identical';
   if (o.action === 'appended') return 'updated';
@@ -97,7 +104,20 @@ function syncFact(o: SyncVerifyOutcome): VerifyCode {
  * любое ожидание → «требует решения». created/updated/skipped-identical —
  * конечное состояние равно текущему рендеру (повтор прогона NFR-02 — exit 0).
  */
+/**
+ * Категория карты × факт → код. Мутант и unstamped-conflict перекрывают
+ * любое ожидание → «требует решения», кроме deprecated: цель этой категории
+ * остаётся в поставке, но только репортится (`deprecated-noted`, design §4.6) —
+ * решение владельца по ней не требуется, иначе `--check` и реестр расходятся.
+ */
 function fileVerdict(category: UpdateCategory, fact: VerifyCode): VerifyCode {
+  // Защищённая вариация и принятый локальный контент перекрывают ожидание категории (§4.6).
+  if (fact === 'protected' || fact === 'kept') return fact;
+  if (category === 'deprecated') {
+    // «файл на месте»: identical/updated/mutated → пометка; created → файла не было
+    // (удалён вручную до прохода) — факт ≠ ожиданию → «требует решения».
+    return fact === 'created' ? 'conflict' : 'deprecated-noted';
+  }
   if (fact === 'skipped-mutated' || fact === 'conflict') return fact;
   switch (category) {
     case 'new':
@@ -105,10 +125,6 @@ function fileVerdict(category: UpdateCategory, fact: VerifyCode): VerifyCode {
       return fact;
     case 'unchanged':
       return fact === 'skipped-identical' ? 'unchanged' : fact;
-    case 'deprecated':
-      // «файл на месте»: identical/updated → пометка; created → файла не было
-      // (удалён вручную до прохода) — факт ≠ ожиданию → «требует решения».
-      return fact === 'created' ? 'conflict' : 'deprecated-noted';
     case 'removed':
       return fact;
   }
@@ -143,7 +159,15 @@ export function verifyAgainstMap(map: UpdateMap, outcomes: VerifyOutcomes): Veri
         seenRemovals.add(path);
         items.push(item('file', entry.path, 'removed'));
       } else {
-        items.push(errorItem('file', entry.path, 'removed target got no removal status'));
+        // protect сильнее удаления (REQ-05, §4.3): защищённая removed-цель — факт
+        // `protected`/`kept`, а не error; без факта — прежний error (fail-safe).
+        const fact = syncByFile.get(path);
+        if (fact?.protected || fact?.kept) {
+          seenSync.add(path);
+          items.push(item('file', entry.path, syncFact(fact)));
+        } else {
+          items.push(errorItem('file', entry.path, 'removed target got no removal status'));
+        }
       }
       continue;
     }
@@ -170,9 +194,15 @@ export function verifyAgainstMap(map: UpdateMap, outcomes: VerifyOutcomes): Veri
   }
 
   // Факт без ожидания → conflict → «требует решения» (дрейф без объявления).
+  // Защищённый orphan и принятый локальный контент остаются своими кодами (§4.6):
+  // иначе санкционированная вариация снова стала бы needs-decision.
   for (const o of outcomes.syncOutcomes) {
     if (!seenSync.has(o.file)) {
-      items.push(item('file', o.file, 'conflict', 'sync outcome for a file outside the map'));
+      const fact = syncFact(o);
+      const code = fact === 'protected' || fact === 'kept' ? fact : 'conflict';
+      items.push(
+        item('file', o.file, code, code === 'conflict' ? 'sync outcome for a file outside the map' : undefined)
+      );
     }
   }
   for (const o of outcomes.seedOutcomes) {

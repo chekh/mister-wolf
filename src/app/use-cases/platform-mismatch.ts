@@ -4,6 +4,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { parseStamp } from '../../adapters/render/stamp.js';
+import type { SyncStateFiles } from '../../adapters/render/sync-state.js';
 import type { PlatformVersionInfo } from '../../ports/platform-adapter.port.js';
 
 /** Выпуск, с которого шаблоны плагинов dual (v1+v2 в одном файле) — hotfix 2.14.1. */
@@ -21,7 +22,7 @@ export interface MismatchDeps {
   /** Уже вычисленная версия рантайма платформы (adapter.detectVersion). */
   runtime: () => PlatformVersionInfo;
   /** Толерантная загрузка sync-state; null — файла/свидетельства нет. */
-  readSyncState: () => { files: Record<string, string> } | null;
+  readSyncState: () => { files: SyncStateFiles } | null;
   /** Прочитать файл проекта; null — нет/нечитаем. */
   readFile: (absPath: string) => string | null;
 }

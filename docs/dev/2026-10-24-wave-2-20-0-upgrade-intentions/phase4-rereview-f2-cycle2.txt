@@ -1,0 +1,2138 @@
+[0m
+> worker-reviewer · code
+[0m→ [0mRead docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/phase4-rereview-f2.txt 
+[0m$ [0mgit status && git log --oneline -15
+On branch dev/wave-2-20-0-upgrade-intentions
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .opencode/skills/using-skills/SKILL.md
+	modified:   .opencode/skills/wolf-execute/SKILL.md
+	modified:   .opencode/skills/wolf-sdd/SKILL.md
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.opencode/skills/wolf-draft/
+	docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/phase4-rereview-f2-cycle2.txt
+	docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/phase4-rereview-f2.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")
+be28fbf fix(2.20.0): F2 review cycle 1 — M-1..M-3 и minor'ы
+e80113f docs(2.20.0): отчёт Ф2 — evidence живого CLI-смоука (E15)
+e734a98 docs(2.20.0): отчёт фазы 2 (T7–T11) — статус, решения, evidence
+ea2df6a fix(2.20.0): T11 — повторяемый --resolve без default (collector)
+f42af98 docs(2.20.0): T7–T11 — регенерация CLI-справочника и отметки плана
+55737b6 feat(2.20.0): T11 — --json (схемы, сквозь re-exec, паритет с текстом)
+b32c5ff feat(2.20.0): T10 — --yes: тихий take с бэкапом и дайджест
+9a168bb feat(2.20.0): T9 — --review (TTY-цикл и non-TTY рецепт)
+1806c60 feat(2.20.0): T8 — --show и построчный diff
+8d1a2a3 feat(2.20.0): T7 — реестр решений и --resolve
+bb4f560 fix(2.20.0): F1 re-review minors — stamp stays on its place, block EOL from marker
+c7f69fb docs(2.20.0): F1 review — контрактные уточнения §4.3/4.5/4.8/4.12, остатки T7/T10/T14
+4e4232e fix(2.20.0): F1 review — protect blocks removal, backup before unlink
+55c8a79 fix(2.20.0): F1 review — init stamp witness, AGENTS.md take/backup, CRLF block
+47abbfa docs(2.20.0): phase 1 (F1) report — T1..T6 done, phase gate green
+> worker-reviewer · code
+Продолжаю чтение вердикта ревью 1 — нужны точные формулировки M-1…M-3 и m-1…m-8.
+[0m→ [0mRead docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/phase4-rereview-f2.txt [90m[offset=795][0m
+> worker-reviewer · code
+Ревью 1 прочитано. Теперь отчёт исполнителя (раздел «Цикл исправлений 1 → 2») и дельта-дифф.
+[0m$ [0mgrep -n "^#\|^## \|^### " docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/phase4-impl-f2-report.md | head -40
+14:# Ф2 — решения владельца: отчёт реализации (T7–T11)
+21:## Metadata
+31:## Summary
+45:## Changes (файлы)
+73:## Task Decomposition (классификация ДО исполнения)
+83:## Workers Used
+96:## Validation Results (EVIDENCE)
+115:## Гейт
+133:## Отклонения от контракта
+182:## Цикл исправлений 1 → 2 (по `phase4-rereview-f2.txt`)
+204:## Риски
+224:## FRICTION
+237:## COMPLAINT
+244:## ACCEPTANCE (по AC приёмки L0)
+[0m$ [0mgit log --oneline e734a98..HEAD && echo "---STAT---" && git diff --stat e734a98..HEAD && echo "---FULL---" && git diff --stat bb4f560..HEAD | tail -3
+be28fbf fix(2.20.0): F2 review cycle 1 — M-1..M-3 и minor'ы
+e80113f docs(2.20.0): отчёт Ф2 — evidence живого CLI-смоука (E15)
+---STAT---
+ .../phase4-impl-f2-report.md                       | 31 +++++++++-
+ src/adapters/cli/commands/memory-upgrade.ts        | 69 ++++++++++++++++++----
+ src/app/use-cases/decisions.ts                     | 22 ++++---
+ src/domain/line-diff.ts                            |  5 +-
+ tests/integration/upgrade-here.test.ts             | 65 ++++++++++++++++++++
+ .../adapters/commands/memory-upgrade.here.test.ts  | 15 +++++
+ .../adapters/commands/upgrade-projects.test.ts     | 27 +++++++++
+ tests/unit/domain/line-diff.test.ts                |  2 +-
+ tests/unit/use-cases/decisions.test.ts             | 17 +++++-
+ 9 files changed, 225 insertions(+), 28 deletions(-)
+---FULL---
+ tests/unit/use-cases/decisions.test.ts             |  677 +++++++++++++
+ tests/unit/use-cases/upgrade-projects.test.ts      |  108 ++
+ 19 files changed, 4353 insertions(+), 127 deletions(-)
+> worker-reviewer · code
+[0m$ [0msed -n '182,280p' docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/phase4-impl-f2-report.md
+## Цикл исправлений 1 → 2 (по `phase4-rereview-f2.txt`)
+
+Независимое ревью 1: `SUMMARY: 0 critical / 3 major / 8 minor`,
+`VERDICT: CHANGES_REQUIRED`. Узкий цикл исправлений (без пересмотра архитектуры):
+
+| Находка                                                                                    | Решение                                                                                                                                                                                  | Тест                                                                                       |
+| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| **M-1** `--json` pass: `local-newer`/`linked-refusal` — пустой stdout, exit-паритет сломан | `phase1JsonDoc` (exit/available/error): local-newer → документ `exit 0` с `cli.available`; linked-refusal → документ `exit 1` + `error` + `rethrow` (как npm-сбой)                       | `upgrade-projects.test.ts` «M-1: --json local-newer … linked-refusal»                      |
+| **M-2** `--json --resolve`: бэкапы не попадают в документ                                  | аддитивное top-level поле `backups` в `UpgradeJson` (минор-совместимо, §4.13): заполняется в resolve (пути бэкапов), pass (плоский список по проектам), here; `--show` — пусто           | `upgrade-here.test.ts` «M-2: --json --resolve …=take …» (путь из JSON существует на диске) |
+| **M-3** AGENTS.md со сломанными onboarding-маркерами нумеровался как решение               | `collectDecisions`: `foreign` с `detail` — наблюдение, не решение (§4.5 «needs-decision НЕ выставляется»)                                                                                | `decisions.test.ts` «M-3: сломанные onboarding-маркеры»                                    |
+| m-1 пустой/неизвестный ввод в TTY-`--review` = молчаливый skip                             | цикл переспрашивает экран до валидной клавиши/`q`/EOF (§4.9)                                                                                                                             | `memory-upgrade.here.test.ts` «R07-1/m-1: переспрос»                                       |
+| m-2 знаки diff в review инвертированы                                                      | diff строится `lineDiff(эталон, локальный)` — `−` эталон, `+` локальные (§4.9)                                                                                                           | тот же тест (строки `-# A base` / `+# A local`)                                            |
+| m-3 «… ещё N строк» — RU в CLI                                                             | `… N more lines` (EN-поверхность)                                                                                                                                                        | `line-diff.test.ts`                                                                        |
+| m-4 `skippedProjects` нигде не печатались                                                  | `skippedProjectLines`: `skipped projects: N` + `[reason]` в `--resolve` и non-TTY `--review`                                                                                             | покрыто отчётом; отдельный тест не добавлялся (строки видны в смоуке)                      |
+| m-5 `--check --review` молча брал check                                                    | несовместимая пара → error exit 1 (§4.18, по аналогии с `--check --show`)                                                                                                                | `memory-upgrade.here.test.ts` route-тест                                                   |
+| m-6 текст отказа `keep` на conflict                                                        | `conflict stays: use protect (hold) or take (base)` (design §4.8), orphan-строка не изменена                                                                                             | `decisions.test.ts` R06-6                                                                  |
+| m-7 deprecated-mutated в реестре vs report-only в `--check`                                | оставлено как есть: реестр следует поведению прохода (§4.7: mutated — решение), `--check`-классификация deprecated — поведение T6/REQ-11; расхождение поверхностей зафиксировано для T14 | —                                                                                          |
+| m-8 `take` на защищённом без бэкапа, если отличие только в строке `protect`                | отклонено: design §4.8 прямо исключает снятие ключа из NFR-05 («снятие ключа — намеренное действие владельца»); бэкап контента при реальном отличии есть                                 | R06-4                                                                                      |
+
+После исправлений: 184 точечных теста зелёные (12 файлов), `tsc` exit 0,
+`npm run check` — финальный прогон ниже по тексту (счётчики обновлены).
+
+## Риски
+
+1. `diverged`-предикат продублирован формулой (не общим кодом) — при изменении
+   правил посева лиц реестр решений может разойтись с проходом. Покрыто unit-тестом
+   (равенство тел, `seed/migration`, отсутствие лица).
+2. `--json.protections`/`diverged` в документе ребёнка считаются установленным
+   CLI (реестр + реальные шаблоны), а факты прохода — фикстурной картой в тестах;
+   продуктовый путь един (installed CLI), но тестовый контур смешивает шаблоны.
+3. `--resolve/--show/--review` в парке сканируют все активные проекты
+   (`inspectBaseSet` + лица + защиты) — read-only, но O(парка); на больших
+   парках это заметная задержка. Оптимизация (кэш/ленивый обход) — вне волны.
+4. `--here --check` пока идёт через парковую сводку (один проект), а не через
+   `upgradeCheckHereAction`: вывод отличается от §4.11 (нет секции Protections) —
+   закрывает T13; инвариант read-only соблюдён.
+5. `protect` для AGENTS.md отклоняется безусловно (даже при ручном frontmatter)
+   — решение L0; `--show` для AGENTS.md может показать `protect: none` у файла,
+   который пользователь считал защищённым.
+6. Остаточный риск провайдера: `protect` в модель-запрос не попадает (спайк
+   R-01, v2.1.4); regression-guard — T14.
+
+## FRICTION
+
+1. **`subagent` depth limit 1** — воркеры `worker-*` недоступны L1 (см.
+   «Workers Used»); линейное исполнение по `wolf-execute` с сохранением TDD и
+   гейтов. Системная проблема конфигурации, не тула задачи.
+2. Мелочь процесса: правки options/help делались текстовыми заменами, и после
+   prettier-переформатирования два якоря (`.option('--resolve …')`,
+   `.option('--show …')`) перестали совпадать — флаги `--show/--review/--json`
+   не попали в команду до финальной проверки `--json --check` (поймано тестом
+   R11-5). Урок: после prettier — проверять фактический help командой
+   `node dist/bootstrap/cli.js upgrade --help` (сделано на финальном дереве:
+   все флаги на месте, справочник сгенерирован).
+
+## COMPLAINT
+
+Нет. Триггеры W1–W4 не срабатывали: предписания playbook'а и брифа не
+противоречили друг другу; недоступность диспетчеризации — сбой инструмента
+(FRICTION), а не правило. `wolf list --type complaint --status open` → пусто:
+`COMPLAINT-TRIAGE: seen 0 → resolved 0 / rejected 0 / escalated 0 / open 0`.
+
+## ACCEPTANCE (по AC приёмки L0)
+
+| AC                                                                                   | Статус       | Evidence                                                                    |
+| ------------------------------------------------------------------------------------ | ------------ | --------------------------------------------------------------------------- |
+| (1) REQ-06/07/08/10/11 AC покрыты зелёными тестами, включая парковый режим и re-exec | подтверждено | E1–E5, E9; R06-9/R11-4/R11-8 (argv, npm не позван)                          |
+| (2) keep идемпотентен сквозным тестом                                                | подтверждено | E10                                                                         |
+| (3) ни одной перезаписи/удаления без бэкапа                                          | подтверждено | E11 (сбой бэкапа → файл и свидетель целы)                                   |
+| (4) `--check` read-only подтверждён снапшотом                                        | подтверждено | E12 (T13 расширит на Protections/`--here`)                                  |
+| (5) нумерация детерминирована и совпадает text↔json                                  | подтверждено | E9 (два прогона байт-идентичны; `n` = текст review)                         |
+| (6) `npm run check` зелёный, коммиты зелёные                                         | подтверждено | E6, E8, «Гейт»                                                              |
+| (7) независимое ревью без critical/major                                             | ожидает      | `phase4-rereview-f2.txt` (свежий worker-reviewer, диапазон `bb4f560..HEAD`) |
+| (8) план и отчёт отражают факт                                                       | подтверждено | `plan.md` T7–T11 `[x]` + коммиты; этот отчёт                                |
+[0m$ [0mgit diff e734a98..HEAD -- src/ | head -400
+diff --git a/src/adapters/cli/commands/memory-upgrade.ts b/src/adapters/cli/commands/memory-upgrade.ts
+index fb709fe..cc4c418 100644
+--- a/src/adapters/cli/commands/memory-upgrade.ts
++++ b/src/adapters/cli/commands/memory-upgrade.ts
+@@ -459,7 +459,15 @@ async function upgradeHereAction(cwd: string, yes: boolean, json = false): Promi
+     const map = loadUpdateMap();
+     const reg = await collectDecisions({ ...decisionProdDeps(cwd, renderer), loadMap: () => map });
+     printJson(
+-      await modeJsonDoc({ mode: 'here', exit: res.exitCode, registry: reg, map, renderer, projects: [res.project] })
++      await modeJsonDoc({
++        mode: 'here',
++        exit: res.exitCode,
++        registry: reg,
++        map,
++        renderer,
++        projects: [res.project],
++        backups: res.project.backups,
++      })
+     );
+   } else {
+     process.stdout.write(`${renderReport(res.report, env)}\n`);
+@@ -509,6 +517,9 @@ export function upgradeRoute(flags: UpgradeFlags): UpgradeRoute {
+   if (reviewGiven && showGiven) {
+     return { mode: 'pass', error: '--review and --show are different read-only modes — run one of them' };
+   }
++  if (reviewGiven && flags.check === true) {
++    return { mode: 'pass', error: '--check and --review are different modes — run one of them' };
++  }
+   if (showGiven && resolveGiven) {
+     return { mode: 'pass', error: '--show views a file, --resolve writes — run them separately' };
+   }
+@@ -545,6 +556,14 @@ export function decisionLines(reg: DecisionRegistry): ReportNode[] {
+   return out;
+ }
+ 
++/** Пропущенные проходом проекты (§4.7): причина видна, а не теряется. */
++export function skippedProjectLines(reg: DecisionRegistry): ReportNode[] {
++  if (reg.skippedProjects.length === 0) return [];
++  const out: ReportNode[] = [line('info', `skipped projects: ${reg.skippedProjects.length}`, true)];
++  for (const p of reg.skippedProjects) out.push(line('info', `  ${p.name}  [${p.reason}] — skipped`, true));
++  return out;
++}
++
+ /** Лица памяти: видны и держат exit 2, но адресуемого глагола нет (зона Стюарда). */
+ export function stewardZoneLines(diverged: DivergedFace[]): ReportNode[] {
+   if (diverged.length === 0) return [];
+@@ -625,6 +644,7 @@ export async function runUpgradeResolve(
+ 
+   for (const error of applied.errors) children.push(line('error', error));
+   children.push(...digestLines(applied.applied));
++  children.push(...skippedProjectLines(after));
+   children.push(...decisionLines(after));
+   children.push(...stewardZoneLines(after.diverged));
+   const exitCode: 0 | 1 | 2 =
+@@ -697,6 +717,7 @@ async function upgradeResolveAction(values: string[], here: boolean, json = fals
+         registry: res.registry,
+         map,
+         renderer,
++        backups: res.backups,
+         ...(res.errors.length > 0 ? { error: res.errors.join('; ') } : {}),
+       })
+     );
+@@ -861,6 +882,7 @@ function reviewRecipeNodes(reg: DecisionRegistry, base: string, here: boolean):
+     out.push(line('warn', `review (non-interactive): ${reg.targets.length} ${noun} a decision`, true));
+     for (const t of reg.targets) out.push(line('info', reviewTargetLine(t, base), true));
+   }
++  out.push(...skippedProjectLines(reg));
+   out.push(...stewardZoneLines(reg.diverged));
+   if (reg.targets.length > 0) {
+     const scope = here ? ' --here' : '';
+@@ -891,7 +913,8 @@ function reviewScreen(
+   } else if (current === null) {
+     lines.push(`  local: missing · base: ${baseLines} lines · take creates the file`);
+   } else {
+-    const diff = lineDiff(normalizeManaged(current), fresh, { maxOutput: 40 });
++    // a = эталон, b = локальный (§4.9): «−» — строки базы, «+» — локальные правки
++    const diff = lineDiff(fresh, normalizeManaged(current), { maxOutput: 40 });
+     lines.push(`  local: ${localLines} lines · base: ${baseLines} lines · −${diff.removed} +${diff.added}`);
+     lines.push(`  --- a/base ${map.version}   +++ b/local`);
+     for (const text of formatDiff(diff)) lines.push(`  ${text}`);
+@@ -947,10 +970,16 @@ export async function runUpgradeReview(
+   for (let i = 0; i < before.targets.length; i++) {
+     const target = before.targets[i]!;
+     if (handled.has(target.n)) continue;
+-    opts.io.write(`${reviewScreen(target, i + 1, total, map, deps.renderer).join('\n')}\n`);
+-    const answer = (await opts.io.ask('> '))?.trim().toLowerCase() ?? null;
++    // пустой ввод и неизвестная клавиша — переспрос без изменения файлов (§4.9)
++    let answer: string | null = null;
++    for (;;) {
++      opts.io.write(`${reviewScreen(target, i + 1, total, map, deps.renderer).join('\n')}\n`);
++      answer = (await opts.io.ask('> '))?.trim().toLowerCase() ?? null;
++      if (answer === null || answer === 'q' || answer === 's' || answer === 'a') break;
++      if (VERB_KEYS[answer] !== undefined) break;
++    }
+     if (answer === null || answer === 'q') break;
+-    if (answer === 's' || answer === '') {
++    if (answer === 's') {
+       handled.add(target.n);
+       continue;
+     }
+@@ -968,8 +997,7 @@ export async function runUpgradeReview(
+       for (const member of group) await applyOne(member, groupVerb);
+       continue;
+     }
+-    const verb = VERB_KEYS[answer];
+-    if (verb === undefined) continue; // пустой/неизвестный ввод — переспрос (без изменений)
++    const verb = VERB_KEYS[answer]!;
+     await applyOne(target, verb);
+     // «ко всем похожим» одним вопросом, если остались такие же цели
+     const similar = similarTargets(before, target).filter((t) => !handled.has(t.n));
+@@ -1411,6 +1439,7 @@ export async function buildPassJsonDoc(
+     decisions: jsonDecisions(reg),
+     diverged: jsonDiverged(reg),
+     protections,
++    backups: res.projects.flatMap((p) => p.backups),
+   };
+ }
+ 
+@@ -1422,6 +1451,7 @@ async function modeJsonDoc(args: {
+   map: UpdateMap;
+   renderer: OpencodeBaseSetRenderer;
+   projects?: JsonProject[];
++  backups?: Array<{ file: string; backup: string }>;
+   error?: string;
+ }): Promise<UpgradeJson> {
+   const protections = await collectProtections(args.registry, args.renderer, args.map);
+@@ -1436,25 +1466,30 @@ async function modeJsonDoc(args: {
+     decisions: jsonDecisions(args.registry),
+     diverged: jsonDiverged(args.registry),
+     protections,
++    backups: args.backups ?? [],
+   };
+ }
+ 
+-/** Документ фазы 1 при сбое npm-фазы: проекты не тронуты, exit 1, error (§4.13). */
+-function npmFailureJsonDoc(installed: string, error: string): UpgradeJson {
++/** Документ фазы 1, когда проход не дошёл до проектов (§4.13): npm-сбой,
++ *  linked-refusal (error + exit 1) или local-newer (exit 0, без error). */
++function phase1JsonDoc(installed: string, available: string | null, exit: 0 | 1, error?: string): UpgradeJson {
+   return {
+     schema: 'wolf.upgrade/1',
+-    exit: 1,
++    exit,
+     mode: 'pass',
+-    cli: { installed, available: null },
+-    error,
++    cli: { installed, available },
++    ...(error !== undefined ? { error } : {}),
+     plan: emptyPlan(),
+     projects: [],
+     decisions: [],
+     diverged: [],
+     protections: [],
++    backups: [],
+   };
+ }
+ 
++const npmFailureJsonDoc = (installed: string, error: string): UpgradeJson => phase1JsonDoc(installed, null, 1, error);
++
+ /* ---------- re-exec фазы 2 (T8, REQ-01/04, ADR-2/5): транспорт wolf upgrade ---------- */
+ 
+ export interface ReExecDeps {
+@@ -1543,6 +1578,16 @@ export async function runUpgradeWithProjects(
+     throw err;
+   }
+   if (!json) printOutcome(outcome); // §4.13: фаза 1 при --json молчит
++  // §4.13: документ печатает фаза 1, если до проектов дело не дошло
++  if (json && outcome.kind === 'linked-refusal') {
++    const message = `a dev/linked copy is installed (${outcome.binaryPath ?? 'path unknown'}) — upgrade not applicable; to update: npm rm -g mister-wolf && npm i -g mister-wolf`;
++    printJson(phase1JsonDoc(deps.currentVersion, null, 1, message));
++    throw new UserFacingError(message);
++  }
++  if (json && outcome.kind === 'local-newer') {
++    printJson(phase1JsonDoc(deps.currentVersion, outcome.latest, 0));
++    return; // реестру нечему обновляться: exit 0, без spawn
++  }
+   const reExec = deps.reExec ?? reExecUpgradeProjects;
+   const reExecOpts = { yes: opts.yes, ...(json ? { json } : {}) };
+   if (outcome.kind === 'updated') {
+diff --git a/src/app/use-cases/decisions.ts b/src/app/use-cases/decisions.ts
+index 57eb45f..cdcf922 100644
+--- a/src/app/use-cases/decisions.ts
++++ b/src/app/use-cases/decisions.ts
+@@ -162,16 +162,22 @@ export async function collectDecisions(deps: DecisionDeps): Promise<DecisionRegi
+     const add = (file: string, kind: DecisionKind, code: 'mutated' | 'conflict'): void => {
+       targets.push({ n: targets.length + 1, project: project.name, root: project.root, file, kind, code });
+     };
++    // `foreign` с `detail` — наблюдение (сломанные onboarding-маркеры), а не
++    // решение: design §4.5 «needs-decision НЕ выставляется», причина — полем.
++    const decisionCode = (outcome: InspectOutcome | undefined): 'mutated' | 'conflict' | null => {
++      if (outcome === undefined) return null;
++      if (outcome.action === 'mutated') return 'mutated';
++      if (outcome.action === 'foreign' && outcome.detail === undefined) return 'conflict';
++      return null;
++    };
+     for (const entry of map.files) {
+       if (entry.category === 'removed') continue;
+       const rel = projectPath(entry);
+-      const action = byFile.get(rel)?.action;
+-      if (action === 'mutated') add(rel, KIND_OF[entry.kind], 'mutated');
+-      else if (action === 'foreign') add(rel, KIND_OF[entry.kind], 'conflict');
++      const code = decisionCode(byFile.get(rel));
++      if (code !== null) add(rel, KIND_OF[entry.kind], code);
+     }
+-    const agents = byFile.get('AGENTS.md')?.action;
+-    if (agents === 'mutated') add('AGENTS.md', 'agents-md', 'mutated');
+-    else if (agents === 'foreign') add('AGENTS.md', 'agents-md', 'conflict');
++    const agentsCode = decisionCode(byFile.get('AGENTS.md'));
++    if (agentsCode !== null) add('AGENTS.md', 'agents-md', agentsCode);
+     diverged.push(...(await divergedFaces(project.root, map, deps)));
+   }
+ 
+@@ -241,6 +247,8 @@ export interface UpgradeJson {
+   decisions: JsonDecision[];
+   diverged: JsonDiverged[];
+   protections: JsonProtection[];
++  /** Бэкапы локального контента (§4.12): аддитивное поле в миноре (§4.13). */
++  backups: Array<{ file: string; backup: string }>;
+ }
+ 
+ export interface UpgradeCheckJson {
+@@ -411,7 +419,7 @@ const MATRIX: Record<TargetClass, Record<ResolutionVerb, true | string>> = {
+   mutated: { take: true, keep: true, protect: true, pin: true },
+   conflict: {
+     take: true,
+-    keep: 'conflict comes from the map, not the witness — use protect',
++    keep: 'conflict stays: use protect (hold) or take (base)',
+     protect: true,
+     pin: true,
+   },
+diff --git a/src/domain/line-diff.ts b/src/domain/line-diff.ts
+index a510bdc..2c1d559 100644
+--- a/src/domain/line-diff.ts
++++ b/src/domain/line-diff.ts
+@@ -201,10 +201,7 @@ export function formatDiff(result: LineDiffResult): string[] {
+       out.push(`${line.kind === 'del' ? '-' : line.kind === 'add' ? '+' : ' '}${line.text}`);
+     }
+   }
+-  if (result.truncated > 0) {
+-    const noun = result.truncated === 1 ? 'строка' : result.truncated < 5 ? 'строки' : 'строк';
+-    out.push(`… ещё ${result.truncated} ${noun}`);
+-  }
++  if (result.truncated > 0) out.push(`… ${result.truncated} more lines`);
+   if (result.inputTruncated) out.push('… input truncated to the line limit');
+   return out;
+ }
+> worker-reviewer · code
+Дельта-дифф изучен. Теперь смотрю код в текущем состоянии — критические места M-1/M-2/M-3 и review-цикл.
+[0m$ [0msed -n '1560,1650p' src/adapters/cli/commands/memory-upgrade.ts
+*  (склейка фаз, REQ-15 — фаза 2 идёт с --no-banner); npm-сбой закрывает
+ *  секцию `└ Failed` (REQ-01 AC3) и падает ДО spawn — проекты не тронуты;
+ *  up-to-date НЕ выход — фаза идемпотентна, идём к re-exec; local-newer —
+ *  реестру нечему обновляться, spawn не нужен (exit 0); linked-refusal —
+ *  отказ printOutcome. reExec-шов — юнит/R01.3-контур (шпион вместо spawn). */
+export async function runUpgradeWithProjects(
+  deps: UpgradeDeps & { reExec?: typeof reExecUpgradeProjects },
+  opts: { yes?: boolean; json?: boolean } = {}
+): Promise<void> {
+  const json = opts.json === true;
+  const env = termEnv(process.stdout, process.env);
+  if (!json) process.stdout.write(`${renderReport({ kind: 'banner', version: deps.currentVersion }, env)}\n`);
+  let outcome: UpgradeOutcome;
+  try {
+    outcome = await runUpgrade(deps, false);
+  } catch (err) {
+    if (json) printJson(npmFailureJsonDoc(deps.currentVersion, msg(err)));
+    else console.log('└ Failed'); // секция закрыта; Error:-строку и exit 1 даст runCli
+    throw err;
+  }
+  if (!json) printOutcome(outcome); // §4.13: фаза 1 при --json молчит
+  // §4.13: документ печатает фаза 1, если до проектов дело не дошло
+  if (json && outcome.kind === 'linked-refusal') {
+    const message = `a dev/linked copy is installed (${outcome.binaryPath ?? 'path unknown'}) — upgrade not applicable; to update: npm rm -g mister-wolf && npm i -g mister-wolf`;
+    printJson(phase1JsonDoc(deps.currentVersion, null, 1, message));
+    throw new UserFacingError(message);
+  }
+  if (json && outcome.kind === 'local-newer') {
+    printJson(phase1JsonDoc(deps.currentVersion, outcome.latest, 0));
+    return; // реестру нечему обновляться: exit 0, без spawn
+  }
+  const reExec = deps.reExec ?? reExecUpgradeProjects;
+  const reExecOpts = { yes: opts.yes, ...(json ? { json } : {}) };
+  if (outcome.kind === 'updated') {
+    await reExec(outcome.from, outcome.to, deps.npmPrefix, reExecOpts);
+  } else if (outcome.kind === 'up-to-date') {
+    await reExec(outcome.current, outcome.current, deps.npmPrefix, reExecOpts);
+  }
+}
+
+/** commander-коллектор повторяемого `--resolve` (значение может нести список через запятую). */
+function collectResolve(value: string, previous?: string[]): string[] {
+  return [...(previous ?? []), value];
+}
+
+export function memoryUpgradeCommand(): Command {
+  return new Command('upgrade')
+    .description(
+      'One command updates everything: npm phase (npm install -g mister-wolf@latest) followed by the registered-projects pass; --check only reports CLI + park freshness, no install; --here runs the full project update step in the current directory only (no npm self-update, no registry); --resolve applies owner decisions (<file|N>=take|keep|protect|pin) without a pass; --show prints one target with the local → base diff (read-only); --review walks the decisions with a diff (TTY) or prints the recipe; --json prints a single machine-readable document'
+    )
+    .option('--check', 'Only check for a newer version, do not install anything')
+    .option('--here', 'Update this project only: full project step in cwd (no npm, no re-exec, no registry)')
+    .option('--yes', 'Apply the plan without interactive confirmation (--here or the projects pass)')
+    .option(
+      '--resolve <target=verb>',
+      'Resolve a decision: <file|N>=take|keep|protect|pin (repeatable, comma-separated)',
+      collectResolve
+    )
+    .option('--show <file|N>', 'Show one target: protect, both versions and the local → base diff (read-only)')
+    .option('--review', 'Review decisions one by one with a diff (TTY); without a TTY prints the recipe')
+    .option('--json', 'Print a single machine-readable document (wolf.upgrade/1) on stdout')
+    .action(
+      async (options: {
+        check?: boolean;
+        here?: boolean;
+        yes?: boolean;
+        resolve?: string[];
+        show?: string;
+        review?: boolean;
+        json?: boolean;
+      }) => {
+        const json = options.json === true;
+        const route = upgradeRoute(options);
+        if (route.error !== undefined) {
+          // §4.13: при --json stdout содержит единственный документ с error
+          if (json) printJson(npmFailureJsonDoc(readInstalledVersion(), route.error));
+          throw new UserFacingError(route.error);
+        }
+        const cwd = safeCwd();
+        if (route.mode === 'review') {
+          await upgradeReviewAction(options.here === true);
+          return; // non-TTY ничего не пишет; TTY применяет по решениям (REQ-07)
+        }
+        if (route.mode === 'show') {
+          await upgradeShowAction(options.show!, options.here === true, json);
+          return; // read-only: файлы, свидетель и бэкапы не трогаются (NFR-03)
+        }
+        if (route.mode === 'resolve') {
+          // Решения применяются в фазе 1: без npm-фазы, re-exec и прохода (§4.18)
+          await upgradeResolveAction(options.resolve ?? [], options.here === true, json);
+          return;
+[0m$ [0msed -n '960,1060p' src/adapters/cli/commands/memory-upgrade.ts
+return {
+      exitCode,
+      report: { kind: 'section', title: REVIEW_TITLE, children: nodes },
+      applied,
+      errors,
+      registry: before,
+    };
+  }
+
+  const total = before.targets.length;
+  for (let i = 0; i < before.targets.length; i++) {
+    const target = before.targets[i]!;
+    if (handled.has(target.n)) continue;
+    // пустой ввод и неизвестная клавиша — переспрос без изменения файлов (§4.9)
+    let answer: string | null = null;
+    for (;;) {
+      opts.io.write(`${reviewScreen(target, i + 1, total, map, deps.renderer).join('\n')}\n`);
+      answer = (await opts.io.ask('> '))?.trim().toLowerCase() ?? null;
+      if (answer === null || answer === 'q' || answer === 's' || answer === 'a') break;
+      if (VERB_KEYS[answer] !== undefined) break;
+    }
+    if (answer === null || answer === 'q') break;
+    if (answer === 's') {
+      handled.add(target.n);
+      continue;
+    }
+    if (answer === 'a') {
+      // «применить ко всем похожим»: отдельный вопрос о глаголе для группы
+      const group = [target, ...similarTargets(before, target).filter((t) => !handled.has(t.n))];
+      opts.io.write(
+        `apply to all ${group.length} ${target.kind}/${target.code}: ${group.map((t) => t.file).join(', ')}\n`
+      );
+      const verbAnswer =
+        (await opts.io.ask('verb for all: [t]ake [k]eep [p]rotect [v]pin or [enter] back > '))?.trim().toLowerCase() ??
+        null;
+      const groupVerb = verbAnswer === null ? undefined : VERB_KEYS[verbAnswer];
+      if (groupVerb === undefined) continue; // без изменения файлов — возврат к текущей цели
+      for (const member of group) await applyOne(member, groupVerb);
+      continue;
+    }
+    const verb = VERB_KEYS[answer]!;
+    await applyOne(target, verb);
+    // «ко всем похожим» одним вопросом, если остались такие же цели
+    const similar = similarTargets(before, target).filter((t) => !handled.has(t.n));
+    if (similar.length > 0) {
+      opts.io.write(`apply "${verb}" to ${similar.length} more ${target.kind}/${target.code}?\n`);
+      for (const s of similar) opts.io.write(`  ${s.n}  ${s.project}  ${s.file}\n`);
+      const confirmed = (await opts.io.ask('[y/N] '))?.trim().toLowerCase() ?? null;
+      if (confirmed === 'y' || confirmed === 'yes') {
+        for (const member of similar) await applyOne(member, verb);
+      }
+    }
+  }
+
+  const after = await collectDecisions(collectDeps);
+  const digest = [...digestLines(applied), ...decisionLines(after), ...stewardZoneLines(after.diverged)];
+  for (const error of errors) opts.io.write(`error: ${error}\n`);
+  opts.io.write(`${digest.map((node) => (node.kind === 'line' ? node.text : '')).join('\n')}\n`);
+  const exitCode: 0 | 1 | 2 = errors.length > 0 ? 1 : after.targets.length > 0 || after.diverged.length > 0 ? 2 : 0;
+  opts.io.write(`${exitCode === 1 ? 'Failed' : exitCode === 2 ? 'Done with attention' : 'Done'}\n`);
+  return {
+    exitCode,
+    report: { kind: 'section', title: REVIEW_TITLE, children: digest },
+    applied,
+    errors,
+    registry: after,
+  };
+}
+
+/** Прод-IO цикла: stdout + readline; EOF/Ctrl-D → null (цикл завершается). */
+async function upgradeReviewAction(here: boolean): Promise<void> {
+  const cwd = safeCwd();
+  const renderer = new OpencodeBaseSetRenderer(templatesRoot(), {
+    harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
+  });
+  const tty = Boolean(process.stdout.isTTY && process.stdin.isTTY);
+  const rl = tty ? createInterface({ input: process.stdin, output: process.stdout }) : null;
+  const io: ReviewIo = {
+    tty,
+    write: (text) => process.stdout.write(text),
+    ask: async (prompt) => {
+      if (!rl) return null;
+      try {
+        return await rl.question(prompt);
+      } catch {
+        return null; // stdin закрыт (Ctrl-D/Ctrl-C)
+      }
+    },
+  };
+  try {
+    const res = await runUpgradeReview(
+      { ...decisionProdDeps(here ? cwd : null, renderer), renderer },
+      { here, cwd, io }
+    );
+    if (!tty) process.stdout.write(`${renderReport(res.report, termEnv(process.stdout, process.env))}\n`);
+    process.exitCode = res.exitCode;
+  } finally {
+    rl?.close();
+  }
+}
+> worker-reviewer · code
+Код M-1/M-3 в текущем дереве выглядит согласованно. Проверяю: куда пишет UserFacingError (не ломает ли «единственный JSON»), и новые тесты цикла 2.
+[0m$ [0mgrep -rn "UserFacingError" src/adapters/cli/run-cli.ts src/adapters/cli/*.ts 2>/dev/null | grep -v "new UserFacingError\|import" | head -10; echo ---; grep -rn "console.error\|process.stderr\|stderr" src/adapters/cli/run-cli.ts 2>/dev/null | head -10; echo ---; ls src/adapters/cli/
+src/adapters/cli/cli-entry.ts:488: * переводим его в UserFacingError (одна строка `Error: …`, exit 1, без стека).
+src/adapters/cli/cli-entry.ts:500:/** Единая точка запуска: UserFacingError → одна строка Error:, иначе стек (W4). */
+src/adapters/cli/cli-entry.ts:526:    if (err instanceof UserFacingError) {
+---
+---
+cli-entry.ts
+commands
+removed-commands.ts
+report-renderer.ts
+type-command-generator.ts
+[0m$ [0mgit diff e734a98..HEAD -- tests/ | head -350
+diff --git a/tests/integration/upgrade-here.test.ts b/tests/integration/upgrade-here.test.ts
+index 13be39b..9ef3c88 100644
+--- a/tests/integration/upgrade-here.test.ts
++++ b/tests/integration/upgrade-here.test.ts
+@@ -7,6 +7,7 @@
+ // tmp, слепок до/после равен (реестр не читаем и не пишем). Строки test-plan:
+ // R14.1, R14.2.
+ import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
++import { Command } from 'commander';
+ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs';
+ import { tmpdir } from 'os';
+ import { join } from 'path';
+@@ -15,6 +16,7 @@ import {
+   runUpgradeHere,
+   runUpgradeResolve,
+   runUpgradeShow,
++  memoryUpgradeCommand,
+   type UpgradeHereDeps,
+   type UpgradeHereResult,
+   type UpgradeResolveDeps,
+@@ -470,3 +472,66 @@ describe('runUpgradeHere --yes (T10): take-on-mutated, бэкап, protect/kept
+     expect(parseProtect(read(proj, protectedRel)).held).toBe(true);
+   });
+ });
++
++/* ---------- --json --resolve/--show (T11/M-2, design §4.13): документ и бэкапы ---------- */
++
++describe('--json --resolve/--show (M-2): backups в документе, mode show', () => {
++  it('R11-5: --json --resolve …=take отдаёт backups с путём; --json --show — mode show, projects []', async () => {
++    const park = mkTmp('wolf-json-resolve-');
++    const proj = await bootstrapProject(park, 'p-json-resolve');
++    const target = join(proj, '.opencode/agents/mr-wolf.md');
++    writeFileSync(target, `${readFileSync(target, 'utf-8')}\n<!-- local edit -->\n`);
++
++    // изолированный реестр через XDG: команда читает его, cwd не нужен (путь <project>/<rel>)
++    const xdg = mkTmp('wolf-json-resolve-xdg-');
++    const configDir = join(xdg, 'wolf');
++    mkdirSync(configDir, { recursive: true });
++    writeFileSync(
++      join(configDir, 'projects.yaml'),
++      yaml.dump({
++        projects: [{ path: proj, schema_version: 2, initialized_at: '2026-01-01T00:00:00.000Z' }],
++      })
++    );
++    const prevXdg = process.env.XDG_CONFIG_HOME;
++    process.env.XDG_CONFIG_HOME = xdg;
++
++    const run = async (argv: string[]): Promise<Record<string, unknown>> => {
++      const chunks: string[] = [];
++      const write = vi.spyOn(process.stdout, 'write').mockImplementation(((c: string) => {
++        chunks.push(String(c));
++        return true;
++      }) as typeof process.stdout.write);
++      const prevExit = process.exitCode;
++      try {
++        const program = new Command();
++        program.addCommand(memoryUpgradeCommand());
++        await program.parseAsync(['node', 'wolf', 'upgrade', ...argv], { from: 'node' });
++        process.exitCode = prevExit;
++      } finally {
++        write.mockRestore();
++      }
++      return JSON.parse(chunks.join('')) as Record<string, unknown>;
++    };
++
++    try {
++      const resolved = await run(['--resolve', 'p-json-resolve/.opencode/agents/mr-wolf.md=take', '--json']);
++      expect(resolved['schema']).toBe('wolf.upgrade/1');
++      expect(resolved['mode']).toBe('resolve');
++      expect(resolved['projects']).toEqual([]);
++      const backups = resolved['backups'] as Array<{ file: string; backup: string }>;
++      expect(backups).toHaveLength(1);
++      expect(backups[0]).toMatchObject({ file: '.opencode/agents/mr-wolf.md' });
++      expect(backups[0]!.backup).toMatch(/^\.wolf\/backup\/upgrade\/\d{4}-\d{2}-\d{2}\//);
++      expect(existsSync(join(proj, backups[0]!.backup))).toBe(true); // путь из JSON исполним
++
++      const shown = await run(['--show', 'p-json-resolve/.opencode/agents/mr-wolf.md', '--json']);
++      expect(shown['mode']).toBe('show');
++      expect(shown['projects']).toEqual([]);
++      expect(shown['decisions']).toEqual([]); // после take решений нет
++      expect(shown['backups']).toEqual([]);
++    } finally {
++      if (prevXdg === undefined) delete process.env.XDG_CONFIG_HOME;
++      else process.env.XDG_CONFIG_HOME = prevXdg;
++    }
++  });
++});
+diff --git a/tests/unit/adapters/commands/memory-upgrade.here.test.ts b/tests/unit/adapters/commands/memory-upgrade.here.test.ts
+index 922ecb6..d1d0442 100644
+--- a/tests/unit/adapters/commands/memory-upgrade.here.test.ts
++++ b/tests/unit/adapters/commands/memory-upgrade.here.test.ts
+@@ -317,6 +317,7 @@ describe('upgradeRoute: --show и несовместимые пары (T8, §4.1
+     expect(upgradeRoute({ show: 'x.md', resolve: ['1=keep'] }).error).toMatch(/--show views a file/);
+     expect(upgradeRoute({ show: 'x.md', yes: true }).error).toMatch(/--yes describes a pass/);
+     expect(upgradeRoute({ show: 'x.md', check: true }).error).toMatch(/different read-only modes/);
++    expect(upgradeRoute({ review: true, check: true }).error).toMatch(/--check and --review are different modes/);
+   });
+ });
+ 
+@@ -409,6 +410,20 @@ describe('runUpgradeReview (T9): TTY-цикл, non-TTY рецепт, diverged',
+     rmSync(proj, { recursive: true, force: true });
+   });
+ 
++  it('R07-1/m-1: пустой и неизвестный ввод — переспрос; diff направлен база→локальный (§4.9)', async () => {
++    const proj = reviewProject({ '.opencode/agents/a.md': REVIEW_FILES['.opencode/agents/a.md']! });
++    const io = fakeIo(true, ['', 'zzz', 'p']);
++    const res = await runUpgradeReview(reviewDeps(proj), { here: true, cwd: proj, io });
++    expect(res.exitCode).toBe(0);
++    expect(res.applied[0]).toMatchObject({ verb: 'protect', file: '.opencode/agents/a.md' });
++    const text = io.out.join('');
++    expect(text.match(/\[1\/1\]/g)).toHaveLength(3); // экран повторён на пустой и неизвестный ввод
++    expect(text).toContain('--- a/base 2.19.0   +++ b/local');
++    expect(text).toContain('  -# A base'); // «−» — эталон
++    expect(text).toContain('  +# A local'); // «+» — локальные правки
++    rmSync(proj, { recursive: true, force: true });
++  });
++
+   it('R07-3: «ко всем похожим» — 3 agent/mutated применены, skill остался; перечень до применения', async () => {
+     const proj = reviewProject();
+     const io = fakeIo(true, ['t', 'y']);
+diff --git a/tests/unit/adapters/commands/upgrade-projects.test.ts b/tests/unit/adapters/commands/upgrade-projects.test.ts
+index 9783b36..65837ca 100644
+--- a/tests/unit/adapters/commands/upgrade-projects.test.ts
++++ b/tests/unit/adapters/commands/upgrade-projects.test.ts
+@@ -531,6 +531,33 @@ describe('--json: argv ребёнка, единственный документ
+     }
+   });
+ 
++  it('M-1: --json local-newer → документ exit 0 с available; linked-refusal → документ exit 1 + throw', async () => {
++    const chunks: string[] = [];
++    const write = vi.spyOn(process.stdout, 'write').mockImplementation(((c: string) => {
++      chunks.push(String(c));
++      return true;
++    }) as typeof process.stdout.write);
++    try {
++      const newer = phase1Deps({ registryVersion: async () => '2.18.0' });
++      await runUpgradeWithProjects(newer, { json: true });
++      const doc = JSON.parse(chunks.join('')) as Record<string, unknown>;
++      expect(doc).toMatchObject({ schema: 'wolf.upgrade/1', mode: 'pass', exit: 0, projects: [] });
++      expect((doc['cli'] as { available: string | null }).available).toBe('2.18.0');
++      expect(doc['error']).toBeUndefined();
++      expect(newer.reExec).not.toHaveBeenCalled();
++
++      chunks.length = 0;
++      const linked = phase1Deps({ binaryPath: '/somewhere/dev/wolf' });
++      await expect(runUpgradeWithProjects(linked, { json: true })).rejects.toThrow(/dev\/linked copy/);
++      const failed = JSON.parse(chunks.join('')) as Record<string, unknown>;
++      expect(failed).toMatchObject({ schema: 'wolf.upgrade/1', mode: 'pass', exit: 1 });
++      expect(String(failed['error'])).toMatch(/dev\/linked copy/);
++      expect(linked.reExec).not.toHaveBeenCalled();
++    } finally {
++      write.mockRestore();
++    }
++  });
++
+   it('R11-7: --json в TTY не задаёт вопросов, шапка фазы 1 подавлена', async () => {
+     const spies = silenceStdio();
+     const deps = phase1Deps();
+diff --git a/tests/unit/domain/line-diff.test.ts b/tests/unit/domain/line-diff.test.ts
+index dc42a70..e2f3b7d 100644
+--- a/tests/unit/domain/line-diff.test.ts
++++ b/tests/unit/domain/line-diff.test.ts
+@@ -50,7 +50,7 @@ describe('lineDiff: LCS, хунки, счётчики (R08-1/R08-4)', () => {
+     const limited = lineDiff(before, after, { maxOutput: 10 });
+     expect(formatDiff(limited).length).toBeLessThanOrEqual(12); // заголовок хунка + 10 строк + «… ещё N»
+     expect(limited.truncated).toBeGreaterThan(0);
+-    expect(formatDiff(limited).at(-1)).toMatch(/^… ещё \d+ строк/);
++    expect(formatDiff(limited).at(-1)).toMatch(/^… \d+ more lines$/);
+ 
+     const big = text(Array.from({ length: 4500 }, (_, i) => `l${i}`));
+     const bigEdit = `${big}extra\n`;
+diff --git a/tests/unit/use-cases/decisions.test.ts b/tests/unit/use-cases/decisions.test.ts
+index 36ee225..f2a38d9 100644
+--- a/tests/unit/use-cases/decisions.test.ts
++++ b/tests/unit/use-cases/decisions.test.ts
+@@ -206,6 +206,21 @@ describe('collectDecisions (design §4.7): нумерация, порядок, 
+     expect(reg.targets).toEqual([]);
+   });
+ 
++  it('M-3: сломанные onboarding-маркеры (foreign + detail) — наблюдение, не решение', async () => {
++    const proj = await boot('p-broken');
++    const reg = await collectDecisions(
++      hereDeps(proj, {
++        inspect: async () => [{ file: AGENTS, action: 'foreign', detail: 'onboarding markers broken' }],
++      })
++    );
++    expect(reg.targets).toEqual([]); // §4.5: needs-decision не выставляется
++    // без detail тот же foreign — конфликт (решение), как и раньше
++    const plainConflict = await collectDecisions(
++      hereDeps(proj, { inspect: async () => [{ file: AGENTS, action: 'foreign' }] })
++    );
++    expect(plainConflict.targets).toEqual([expect.objectContaining({ file: AGENTS, code: 'conflict' })]);
++  });
++
+   it('--here нумерует только cwd и не читает реестр', async () => {
+     const proj = await boot('p-here');
+     touch(proj, MR_WOLF);
+@@ -334,7 +349,7 @@ describe('parseResolveValues / planResolutions (§4.8): грамматика и
+     const errors = (target: string, verb: 'take' | 'keep' | 'protect' | 'pin'): string =>
+       planResolutions(reg, MAP, [{ target, verb }], { here: true, cwd: proj }).errors.join('\n');
+ 
+-    expect(errors(COMPLAIN, 'keep')).toMatch(/conflict comes from the map, not the witness — use protect/);
++    expect(errors(COMPLAIN, 'keep')).toMatch(/conflict stays: use protect \(hold\) or take \(base\)/);
+     expect(errors('.opencode/agents/stray.md', 'keep')).toMatch(/conflict comes from the map/);
+     expect(errors('.opencode/agents/stray.md', 'take')).toMatch(/no base for a file outside the update map/);
+     expect(errors(AGENTS, 'protect')).toMatch(/AGENTS\.md has no YAML frontmatter/);
+> worker-reviewer · code
+Тесты цикла 2 чувствительные. Теперь проверяю: куда пишет cli-entry UserFacingError (гарантия единственного JSON), дизайн-контракты и collectDecisions целиком.
+[0m$ [0msed -n '480,540p' src/adapters/cli/cli-entry.ts
+);
+
+  return program;
+}
+
+/**
+ * process.cwd() с защитой от удалённого каталога (F13): если cwd удалён
+ * (например, это был wolf worktree), Node кидает сырой ENOENT uv_cwd —
+ * переводим его в UserFacingError (одна строка `Error: …`, exit 1, без стека).
+ */
+export function safeCwd(): string {
+  try {
+    return process.cwd();
+  } catch {
+    throw new UserFacingError(
+      'current directory does not exist (probably deleted) — cd into an existing directory and rerun the command'
+    );
+  }
+}
+
+/** Единая точка запуска: UserFacingError → одна строка Error:, иначе стек (W4). */
+export async function runCli(argv: string[]): Promise<void> {
+  try {
+    // спека §6: `init --recreate` — единственный путь восстановления при битом .wolf/config.yaml;
+    // guard на битом yaml бросает с хинтом на эту команду, поэтому она сама его обходит.
+    // Матч строгий: argv = [node, cli.js, <command>, ...], команда — ровно argv[2] === 'init'
+    // (не подстрока — иначе `wolf add --title "... init ..."` ложно обходил бы guard);
+    // `--recreate` проверяется точным токеном массива.
+    const isRecoveryInit = argv[2] === 'init' && argv.includes('--recreate');
+    const program = createCli();
+    // P101 (спека A3): schema-guard платится только выбранной командой — preAction-хук
+    // срабатывает после разбора argv и выбора команды, но ДО её action (side-effects).
+    // `--version` / top-level `--help` / неизвестная команда до action не доходят —
+    // guard не платят. Динамический import: schema-guard тянет yaml-стек.
+    program.hook('preAction', async () => {
+      if (!isRecoveryInit) {
+        const { ensureCurrentSchema } = await import('../../adapters/fs/schema-guard.js');
+        await ensureCurrentSchema(safeCwd());
+      }
+    });
+    // Волна 0 (0.2): per-invocation session-ключ CLI-канала (все writers процесса
+    // получают один id). `mcp` — исключение: long-lived сервер, один env на все
+    // запросы = фальшивая сессия, канал не сессионируется.
+    if (argv[2] !== 'mcp') ensureCliSessionId();
+    await program.parseAsync(argv);
+  } catch (err: unknown) {
+    if (err instanceof UserFacingError) {
+      console.error(`Error: ${err.message}`);
+      process.exit(1);
+    }
+    throw err; // неожиданное исключение — стек сохраняется (unhandled rejection)
+  }
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  void runCli(process.argv);
+}
+[0m$ [0mgrep -n "§4\.\(5\|6\|7\|8\|9\|10\|11\|12\|13\|16\|17\|18\)" docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/design.md | head -30
+35:| REQ-03     | `opencode-renderer.ts:syncAgentsMd` L290, `inspectAgentsMd` L230, `renderAgentsMd` L264, `templates/base/AGENTS.md` | §4.5                   | блок между маркерами обновляется при росте версии формата; текст выше/ниже байт-в-байт (AC1/AC2); append-ветка сохранена (AC3)                                                                   |
+37:| REQ-05     | новый `src/domain/protect-key.ts`, `src/adapters/render/sync-state.ts`, `verify-against-map.ts`                     | §4.1–§4.3, §4.6, §4.11 | `protect` — сигнал вне контента: три точки нормализации; protected не needs-decision; `grep` даёт реестр (AC4); добавление/снятие ключа не создаёт mutated (AC5)                                 |
+38:| REQ-06     | новый `src/app/use-cases/decisions.ts`, `memory-upgrade.ts`                                                         | §4.7–§4.8              | `--resolve <file \| N>=take\|keep\|protect\|pin`; атомарная валидация целей (AC3); protect-глагол атомарен и обновляет свидетель (AC4); `keep` держится до следующей правки (правило 6.5, ADR-8) |
+39:| REQ-07     | `memory-upgrade.ts` + `decisions.ts` (TTY-цикл)                                                                     | §4.9                   | TTY: разбор по одному с diff и «применить ко всем похожим»; non-TTY: нумерованный список + готовая команда, exit 2, без записей (AC1/AC2)                                                        |
+40:| REQ-08     | `memory-upgrade.ts:--show`, `src/domain/line-diff.ts` (новый)                                                       | §4.10                  | read-only вывод protect/base/diff; `--show N` ≡ `--show <файл>` (AC2)                                                                                                                            |
+41:| REQ-09     | `memory-upgrade.ts:runUpgradeCheck` L558, новый `renderer.listProtections`                                          | §4.11                  | секция Protections печатается всегда (и на чистом парке), полный реестр с дрейфом; `--check` не пишет (AC3)                                                                                      |
+42:| REQ-10     | `memory-upgrade.ts`, `decisions.ts` (бэкапы)                                                                        | §4.12                  | не-TTY `--yes`: mutated → эталон + бэкап, дайджест называет файл и бэкап, exit 0; защищённые не тронуты и не бэкапируются (AC3)                                                                  |
+43:| REQ-11     | `memory-upgrade.ts` (JSON-проекция), `decisions.ts`                                                                 | §4.13                  | валидный JSON: план, проекты с именами файлов, needs-decision с номерами, protections, бэкапы; `n` совпадает с текстом (AC2); exit совпадает (AC3)                                               |
+44:| NFR-01     | `upgrade-projects.ts:runPass` L127, `memory-upgrade.ts:runUpgradeHere` L264                                         | §4.16                  | exit 0/1/2 без изменения семантики; `protected`/исцеление не дают exit 2                                                                                                                         |
+45:| NFR-02     | `opencode-renderer.ts`, `project-step.ts:runProjectStep` L67                                                        | §4.4, §4.5, §4.12      | повторный прогон: exit 0 и ни одного изменённого файла                                                                                                                                           |
+46:| NFR-03     | `memory-upgrade.ts:runUpgradeCheck` L558                                                                            | §4.11, §4.17           | снапшот mtime+хэш до/после `--check` идентичен; состояние серверного каталога не пишется                                                                                                         |
+47:| NFR-04     | `markdown-memory-store.ts:writeFileAtomic` L366, `src/adapters/render/sync-state.ts:saveSyncState` L35              | §4.17                  | все новые записи (файлы, frontmatter, AGENTS-блок, sync-state, бэкапы) — tmp+rename                                                                                                              |
+48:| NFR-05     | `decisions.ts` (backup), `--yes`                                                                                    | §4.12                  | take/`--yes` перезаписывают только после бэкапа; сценарий восстановления (AC REQ-10 AC2)                                                                                                         |
+49:| NFR-06     | `decisions.ts:collectDecisions`                                                                                     | §4.7                   | два подряд non-TTY прогона дают идентичный вывод и нумерацию                                                                                                                                     |
+65:  `--show`, `--review` и `--json` (§4.7).
+96:  `saveSyncState` (становится атомарным, §4.17), `sha256`. Хэш всегда по
+103:  `backups` из рендерера/решений в отчёт (§4.12).
+269: 6'. mutated И включён режим take-on-mutated (--yes, §4.12)
+305:проход (`--yes`), а не post-фаза; подробности и порядок записей — §4.12.
+313:  вариацией и перестаёт быть конфликтом) либо удаление вручную (§4.8, матрица
+319:  — `protected` и в реестре Protections (§4.11).
+323:  `wolf upgrade --resolve <путь>=keep` (снятие ключа — матрица §4.8), а её
+324:  локальный контент не бэкапируется, потому что не меняется (§4.12).
+361:`protect`/`pin` отвечают отказом «нет frontmatter» (матрица §4.8). Намерение
+371:   свидетель» (§4.12); `opts` пробрасывается в `syncAgentsMd`, второго пути
+405:                          detail 'onboarding markers broken' (§4.6); в inspect: action 'foreign';
+430:  `InspectOutcome.detail` (§4.6), а не парсингом reason-строки; `--check`
+487:  /** Путь бэкапа, если файл был перезаписан по режиму take-on-mutated (§4.12). */
+504:  /** --yes (§4.12): mutated → бэкап + эталон. Без хука режим запрещён. */
+568:(§4.9, §4.16, решение L0 2026-10-25).
+> worker-reviewer · code
+runCli пишет ошибку в stderr — «единственный JSON» на stdout не ломается. Читаю дизайн-контракты §4.5–§4.13, §4.16–§4.18.
+[0m$ [0mgrep -n "^### \|^## " docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/design.md | sed -n '1,40p'
+29:## 1. Карта покрытия REQ/NFR
+51:## 2. Глоссарий
+79:## 3. Компоненты и ответственность
+118:## 4. Контракты
+120:### 4.1 Ключ `protect`: грамматика, нормализация, вставка и снятие (REQ-05)
+205:### 4.2 Свидетель: запись, три точки нормализации и происхождение (REQ-05 AC5, REQ-06)
+243:### 4.3 Классификация цели: единый порядок решающих правил
+326:### 4.4 Исцеление штамп-дрейфа (REQ-02)
+356:### 4.5 Onboarding-блок AGENTS.md (REQ-03)
+447:### 4.6 Verify-коды и действия инспекции (REQ-05, REQ-06, REQ-01)
+547:### 4.7 Реестр решений: сбор и нумерация (REQ-06, REQ-11, NFR-06)
+598:### 4.8 `--resolve` (REQ-06)
+729:### 4.9 `--review` (REQ-07)
+795:### 4.10 `--show` (REQ-08)
+833:### 4.11 Секция Protections в `--check` (REQ-09, NFR-03)
+883:### 4.12 `--yes`, бэкапы и восстановление (REQ-10, NFR-05)
+930:### 4.13 `--json` (REQ-11)
+1021:### 4.14 Восстановление `mcp.wolf` в init (REQ-04)
+1068:### 4.15 Имена файлов в выводе (REQ-01)
+1095:### 4.16 Матрица режимов и exit-код (NFR-01)
+1115:### 4.17 Отказные сценарии, атомарность и наблюдаемость
+1140:### 4.18 Диспетчеризация флагов и re-exec (REQ-06…REQ-11, NFR-01)
+1203:## 5. Spike R-01: неизвестный ключ `protect` в opencode
+1347:## 6. ADR-карточки
+1425:## 7. Ссылки на NFR
+1449:## 8. Открытые пункты
+1480:## 9. Влияние на существующие тесты и совместимость
+1504:## 10. Журнал ревью
+> worker-reviewer · code
+[0m$ [0msed -n '356,470p' docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/design.md
+### 4.5 Onboarding-блок AGENTS.md (REQ-03)
+
+Два режима владения, оба сохраняются. **`protect` у AGENTS.md не
+поддерживается** (решение L0, 2026-10-25): в штатном шаблоне у файла нет
+YAML-frontmatter, а ручной frontmatter не делает AGENTS.md защищаемым — глаголы
+`protect`/`pin` отвечают отказом «нет frontmatter» (матрица §4.8). Намерение
+выражается выбором режима: блочный сохраняет текст вне блока, штампованный
+принадлежит wolf целиком (ADR-7).
+
+1. **Whole-file (штампованный) AGENTS.md** — поведение 2.19.0 без изменения:
+   сравнение всего файла, свидетель, `mutated` при локальной правке, полная
+   перезапись при `differs`; правила 6/6.5/7 §4.3 применяются как к любому
+   штампованному файлу (`keep` на AGENTS.md держится по 6.5). Тихий режим
+   `--yes` берёт mutated AGENTS.md **тем же** механизмом, что файлы карты:
+   `syncBaseSet(..., { takeMutated: { backup } })` → правило 6′ «бэкап → эталон →
+   свидетель» (§4.12); `opts` пробрасывается в `syncAgentsMd`, второго пути
+   бэкапа нет. Правило 7 для AGENTS.md тоже требует бэкап, если записи свидетеля
+   нет (NFR-05).
+2. **Блочный (append) AGENTS.md** — файл без штампа, но с маркером. Управляется
+   **только блок между маркерами**; текст выше и ниже — байт-в-байт, блок
+   наследует EOL закрывающего маркера (CRLF-файл не смешивает `\r\n`/`\n`,
+   m-7; допущение: однородный файл — норма, смешанный наследует EOL маркера).
+
+**Init на штампованном файле с блоком (миграция 2.19.0 → 2.20.0).** Проект,
+инициализированный 2.19.0, имеет `AGENTS.md` со штампом `set=2.19.0` и блоком
+`v2`. `wolf init` обновляет блок по версии формата и **приводит штамп к текущей
+базе на его месте** (позицию задаёт `insertStamp`: после YAML-frontmatter, `---`
+остаётся первой строкой); свидетель пишется по нормализованному контенту, но только если файл
+совпал с эталоном (EOL отличием не считается). Иначе (пользовательский текст вне
+блока) свидетель не переписывается и файл остаётся `mutated` — иначе следующий
+проход по правилу 7 молча перезаписал бы этот текст. Следствие: повторный
+`init` — no-op, ближайший проход и `--check` показывают `current`/`identical`
+(REQ-03 AC4, NFR-02).
+
+```
+findOnboardingBlock(content) -> { version: number; start: number; end: number } | null | 'broken'
+  open  = первая строка, матчащая /<!-- wolf:onboarding v(\d+) -->/   (любая версия!)
+  close = первая строка '<!-- /wolf:onboarding -->' после open
+  open нет                 -> null        (блока нет: append-ветка init)
+  open есть, close нет     -> 'broken'
+  return { version: N, start: начало open-строки, end: конец close-строки }
+
+templateOnboardingVersion(templateContent) -> number   // из рендера шаблона; единственный источник
+
+syncAgentsBlock(content, templateContent, mode):   // mode: 'init' | 'sync'
+  // protect у AGENTS.md не поддерживается — гейта защиты в этой ветке нет
+  block == null        -> init: append-ветка renderAgentsMd (AC3)
+                          sync: skipped, reason 'no onboarding block — left untouched (wx policy)'
+  block == 'broken'    -> skipped, reason 'onboarding markers broken — file treated as foreign (wx policy)'
+                          detail 'onboarding markers broken' (§4.6); в inspect: action 'foreign';
+                          needs-decision НЕ выставляется
+  block.version < templateOnboardingVersion -> заменить [start, end) свежим блоком; writeFileAtomic; updated
+  иначе                -> сравнить только текст блока с блоком шаблона:
+                          равны -> identical; иначе -> заменить блок (updated)
+  init + файл штампован -> штамп := set текущей базы; свидетель := hash(normalize(файл))
+                          только если файл == эталон (иначе локальный текст вне
+                          блока остаётся mutated-решением, см. ниже)
+```
+
+- **Детект блока версионно-агностичен**: литерал `ONBOARDING_MARKER =
+'<!-- wolf:onboarding v2 -->'` (`opencode-renderer.ts:27`) удаляется; и
+  append-ветка `renderAgentsMd`, и `inspectAgentsMd`, и `doctor` используют
+  префикс `<!-- wolf:onboarding`. Иначе после смены версии шаблона на v3
+  существующий блок v2 не распознаётся, и init/append допишет второй блок
+  (ломает REQ-03 AC3/AC4 и NFR-02).
+- Версия формата инкрементируется **в шаблоне**; в коде константы версии нет →
+  риск ADR-3 «забыли инкремент» закрыт конструктивно.
+- В этой волне шаблон блока получает новую строку про `protect` и `--resolve`,
+  поэтому маркер становится `v3`; блоки `v2` распознаются и обновляются штатно
+  (миграция не нужна).
+- Сломанные маркеры трактуются как `foreign` (wx-политика), а не
+  needs-decision: файл не наш, пока пользователь сам не починит маркеры; строка
+  `onboarding markers broken — treated as foreign` печатается в деталях шага и
+  `--check` (класс `unknown`, вне покрытия). Причина передаётся структурно:
+  `InspectOutcome.detail` (§4.6), а не парсингом reason-строки; `--check`
+  печатает её в секции проекта (формат — §4.15). Никаких глаголов на этом файле
+  не требуется, exit не меняется (NFR-01).
+- Пользовательский текст **внутри** блока не сохраняется (блок — зона wolf);
+  это документируется в `docs/site/guide/upgrade.md`.
+- Свидетель для блочного режима не пишется и не проверяется (внешний контент —
+  не зона wolf); для штампованного режима — как раньше.
+- **Трактовка REQ-03 AC3 «init/upgrade … append-веткой (как сегодня)»
+  (решение L0, 2026-10-25):** append-ветка выполняется **только в `wolf init`**.
+  `wolf upgrade` безштампованный `AGENTS.md` не трогает — это действующая
+  wx-политика 2.19.0 («как сегодня»), и она сохраняется. Причина: `upgrade`
+  обрабатывает чужой файл без маркера, а молчаливое дописывание блока в файл,
+  который волф не создавал, нарушает wx-границу. Следствие для приёмки: AC3
+  покрыт сценарием `init` (R03-3) и **отдельным** сценарием «upgrade не меняет
+  AGENTS.md без блока и без штампа» (R03-7); формулировка требования не
+  переписывается.
+
+### 4.6 Verify-коды и действия инспекции (REQ-05, REQ-06, REQ-01)
+
+```
+VerifyCode += 'protected' | 'kept'          // оба вне needs-decision
+InspectAction += 'protected' | 'kept'       // защищённый и принятый локальный — не решения
+NEEDS_DECISION_CODES = { 'skipped-mutated', 'diverged', 'conflict' }   // без изменений
+
+syncFact(o):
+  o.protected            -> 'protected'
+  o.kept                 -> 'kept'
+  o.action == 'conflict' -> 'conflict'
+  o.action == 'skipped'  -> o.mutated ? 'skipped-mutated' : 'skipped-identical'
+  o.action == 'appended' -> 'updated'
+  иначе                  -> o.action
+
+fileVerdict(category, fact):
+  fact == 'protected'  -> 'protected'      (перекрывает ожидание категории)
+  fact == 'kept'       -> 'kept'           (принятый локальный контент, см. 6.5)
+  ... остальное как в baseline
+```
+
+`protected` и `kept` не входят в `NEEDS_DECISION_CODES` → `needsDecision=false`,
+exit не меняется (NFR-01). Наблюдаемость: `summary.byCode.protected|kept`,
+строки `N protected (intentional)` и `N kept (local)` в деталях шага и в
+[0m$ [0msed -n '547,600p' docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/design.md
+### 4.7 Реестр решений: сбор и нумерация (REQ-06, REQ-11, NFR-06)
+
+```
+interface DecisionTarget {
+  n: number;                       // 1-based, сквозная нумерация прогона
+  project: string;                 // basename корня проекта
+  root: string;                    // abs
+  file: string;                    // rel-путь от корня проекта
+  kind: 'agent' | 'skill' | 'command' | 'plugin' | 'agents-md';
+  code: 'mutated' | 'conflict';
+}
+
+collectDecisions(deps) -> {
+  targets: DecisionTarget[];                       // адресуемые решения (N, --resolve)
+  diverged: { project: string; file: string; ownerSkill: string | null; version: string | null }[];
+  skippedProjects: { name: string; reason: 'worktree' | 'pinned' | 'missing' }[];
+}
+```
+
+`diverged` возвращается отдельным списком: он не адресуем (у владельца проекта нет
+легального глагола — это зона Стюарда), но обязан быть видимым и учитываться в exit
+(§4.9, §4.16, решение L0 2026-10-25).
+
+Правила:
+
+- Проекты — в порядке `registry.listStrict()` после `dedupeByRealpath`; проекты
+  со статусом `worktree`/`pinned`/`missing` не сканируются (они и в проходе
+  пропускаются); причина попадает в `skippedProjects` для честного вывода.
+  Фильтр и realpath-дедуп **не дублируются**: `planOf`/`PlanStatus`/`ProjectPlan`
+  экспортируются из `src/app/use-cases/upgrade-projects.ts` (сегодня `planOf`
+  приватный, `statusOf` уже экспортирован); `upgrade-projects.ts` входит в
+  allowlist T7. Второй реализации статусов нет — иначе нумерация прохода и
+  `--check` разойдутся (NFR-06).
+- Внутри проекта сначала цели карты в порядке `map.files`, затем `AGENTS.md`,
+  затем цели инспекции вне карты — по алфавиту. Один и тот же порядок задаёт и
+  нумерацию, и порядок строк текстового вывода (NFR-06).
+- В реестр попадают `mutated` (по свидетелю) и `conflict` (безштампованный файл
+  на месте цели карты). `differs`/`missing` — не решения: проход сделает их сам.
+- Защищённые файлы не попадают (они `protected`).
+- Нумерация сквозная по прогону, 1-based, стабильна при неизменном состоянии
+  (NFR-06); `--here` нумерует только свой проект.
+- Дрейф `orphan` (штамп вне карты) реестром **не** нумеруется: решается путём
+  (`--resolve <path>=protect`, §4.8), печатается по имени (REQ-01). `diverged`
+  лица тоже не получает `N` (нет глагола), но возвращается списком `diverged` и
+  печатается отдельной секцией (§4.9), учитывается в exit (§4.16) — это явное
+  ограничение, зафиксировано в help и docs.
+
+`collectDecisions` строго read-only: `inspectBaseSet` + `loadSyncState` +
+`parseProtect`. Он же — источник `decisions[]` в `--json` и нумерованного
+списка в `--review`/`--resolve`/`--show` (REQ-11 AC2).
+
+### 4.8 `--resolve` (REQ-06)
+
+**Грамматика CLI.** Флаг повторяемый; в одном значении допускается список
+> worker-reviewer · code
+§4.5 подтверждает: broken-маркеры — наблюдение, видимость требуется в деталях шага и `--check`, не в review. Теперь читаю collectDecisions целиком и матрицу §4.8.
+[0m$ [0msed -n '598,795p' docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/design.md
+### 4.8 `--resolve` (REQ-06)
+
+**Грамматика CLI.** Флаг повторяемый; в одном значении допускается список
+через запятую:
+
+```
+wolf upgrade [--here] --resolve <target>=<verb>[,<target>=<verb>]...
+target := <rel-путь> | <project>/<rel-путь> | <N>
+verb   := take | keep | protect | pin
+```
+
+Разбор:
+
+1. Пустое значение, пустой target, пустой verb → error `--resolve: expected
+<file|N>=take|keep|protect|pin` (exit 1, без записей).
+2. Неизвестный глагол → error со списком допустимых.
+3. `N` — целое ≥ 1 (`/^\d+$/`); иначе трактуется как путь (путь, начинающийся с
+   цифры, задаётся как `./3=…` — документируется в help).
+4. Путь: в `--here` — относительно cwd; в парковом режиме — `<project>/<rel>`
+   либо `<rel>`, если он уникален среди реестра решений. Несколько совпадений →
+   error со списком кандидатов (ничего не применено).
+5. Дубликат цели в одной команде (по пути или по номеру) → error «target listed
+   twice» (защита от двойного применения).
+
+**Область целей (что вообще можно адресовать).** Цель валидна, если она
+принадлежит **множеству управляемых целей** проекта:
+
+1. файл из реестра решений (§4.7) — адресуется и по `N`, и по пути;
+2. цель карты (`map.files[].path` → проектный путь) или `AGENTS.md` — даже если
+   она сейчас защищена, идентична или отсутствует; только по пути (`N` для неё
+   нет);
+3. wolf-управляемый файл в каталогах base-set вне карты (orphan) — только по
+   пути.
+
+Всё остальное — `error: unknown target <…>`, печатается актуальный нумерованный
+список, записей нет. Так `--resolve` работает и на защищённых целях (REQ-05 AC3:
+`--resolve <файл>=take` снимает ключ и берёт эталон), и на orphan, а `N`
+остаётся стабильным ключом реестра.
+
+**Матрица «глагол × класс цели»** (закрывает область применения; ⛔ — error с
+подсказкой, записей нет):
+
+| Класс цели                                 | take                                                  | keep                                                                              | protect                                                               | pin                              |
+| ------------------------------------------ | ----------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------- |
+| `mutated` (реестр)                         | ✅ бэкап → эталон → свидетель                         | ✅ свидетель `{hash(local), origin:'keep', base}` (правило 6.5 держит его дальше) | ✅ keep + `protect: true`                                             | ✅ keep + `protect: <base>`      |
+| `conflict` (безштампованный на месте цели) | ✅ бэкап → эталон (файл становится штампованным)      | ⛔ не гасит конфликт: `use protect (hold) or take (base)`                         | ✅ защищённая вариация (правило 2 §4.3)                               | ✅ то же, с версией базы         |
+| `protected` (вне реестра)                  | ✅ снять ключ → эталон, локальное в бэкап             | ✅ снять ключ, свидетель `{hash(local), origin:'keep', base}`                     | ✅ идемпотентно (`true`)                                              | ✅ обновить значение на `<base>` |
+| `orphan` (штамп вне карты, эталона нет)    | ⛔ `no base for a file outside the update map`        | ⛔ `conflict comes from the map, not the witness — use protect`                   | ✅ `protected` (конфликт гаснет)                                      | ✅ `protected` с версией базы    |
+| `AGENTS.md` со штампом (без frontmatter)   | ✅ бэкап → эталон (штампованный whole-file)           | ✅ свидетель `{hash(local), origin:'keep', base}`, правило 6.5 §4.3               | ⛔ `AGENTS.md has no YAML frontmatter`                                | ⛔ то же                         |
+| `AGENTS.md` блочный (без штампа)           | ✅ бэкап → свежий целиком (append-режим прекращается) | ✅ ничего не меняется, файл остаётся вне синка                                    | ⛔ нет frontmatter                                                    | ⛔ нет frontmatter               |
+| `kept` (принятый локальный контент)        | ✅ бэкап → эталон → свидетель `origin:'render'`       | ✅ идемпотентно: свидетель остаётся `origin:'keep'`, база обновляется             | ✅ keep + `protect: true`                                             | ✅ keep + `protect: <base>`      |
+| `removed` (цель удаления, подтверждённая)  | ⛔ `no base for a file outside the update map`        | ✅ снять `protect` (unprotect, REQ-05): файл снова попадает в список удалений     | ✅ ключ держит: файл не удаляется, исход `protected` + подсказка      | ✅ то же, `protect: <base>`      |
+| файл без frontmatter (любой)               | ✅ по общим правилам                                  | ✅ по общим правилам                                                              | ⛔ `cannot protect <path>: no YAML frontmatter — add one or use keep` | ⛔ то же                         |
+
+`protect` у AGENTS.md не поддерживается ни в одном режиме (решение L0,
+2026-10-25): в матрице остаются отказы ⛔ «нет frontmatter», отдельной строки
+`protected` для AGENTS.md нет, ручной frontmatter защищаемым файл не делает
+(§4.5, §4.11).
+
+`take` всегда идёт через бэкап, если локальный контент отличается от эталона
+(NFR-05); `keep`/`protect`/`pin` контент не переписывают и бэкап не требуют.
+
+**`protect` × удаление (решение L0, 2026-10-25).** Защита сильнее подтверждения
+списка: защищённая `removed`-цель не удаляется ни проходом, ни `--yes`; в сверке
+она получает `protected` (вне needs-decision) и подсказку
+`wolf upgrade --resolve <путь>=keep`. `keep` на защищённой цели снимает ключ
+(unprotect, REQ-05) — после этого файл снова попадает в список удалений
+следующего прохода. Обратный порядок (`confirmedRemovals` сильнее `protect`)
+не допускается: он означал бы потерю локального контента вопреки REQ-05.
+
+**Разбор и двухфазность (AC3 «к другим файлам ничего не применено»).**
+
+```
+1) collectDecisions() -> targets                     // для N и для проверки «это решение?»
+2) parse всех аргументов -> ops[]
+   ошибки разбора (пусто, неизвестный глагол, дубль цели, N вне реестра,
+   путь вне управляемых целей, глагол ⛔ по матрице) собираются ВСЕ
+   если ops.errors непуст -> печать всех ошибок + список решений, exit 1, записей нет
+3) apply по порядку реестра (не по порядку ввода), детерминированно:
+     prepare(verb, target) -> { backup?: true, fileWrite?: content, stateWrite: hash }
+     backup (если нужен) -> fileWrite (atomic) -> saveSyncState (atomic)
+4) re-collect decisions -> печать дайджеста: применено / осталось
+5) exit: 1 при любой ошибке записи; 2 если остались адресуемые решения
+   или `diverged`; 0 иначе
+```
+
+Сбой на шаге k: применённые 1..k−1 остаются (каждая операция идемпотентна,
+повтор безопасен), печатается `error: <файл> — <причина>`, оставшиеся цели не
+трогаются, exit 1.
+
+**Семантика глаголов и свидетель.**
+
+| Глагол    | Файл                                           | `protect` | Свидетель                                         | Бэкап                              |
+| --------- | ---------------------------------------------- | --------- | ------------------------------------------------- | ---------------------------------- |
+| `take`    | `fresh` (эталон), atomic; ключ снимается       | снят      | `{hash(fresh), origin:'render', base}`            | да, если локальный контент ≠ fresh |
+| `keep`    | не пишется, кроме снятия строки ключа (atomic) | снят      | `{hash(normalize(current)), origin:'keep', base}` | нет                                |
+| `protect` | `insertProtect(current, 'true')` (atomic)      | `true`    | `{hash(normalize(current)), origin:'keep', base}` | нет, если файл не менялся иначе    |
+| `pin`     | `insertProtect(current, map.version)` (atomic) | `X.Y.Z`   | `{hash(normalize(current)), origin:'keep', base}` | нет                                |
+
+- `pin` фиксирует **текущую версию базы** = `map.version` (глоссарий §2);
+  loader карты уже гарантирует `map.version === package.json.version`.
+- `keep` у защищённой цели **без** свидетеля создаёт свидетель `origin:'keep'`:
+  это и есть «принять локальный как канон»; правка файла после этого снова
+  ловится правилом 6 как mutated, а до правки действует 6.5 (файл остаётся
+  локальным). У `conflict`/`orphan` глагол `keep` не применяется (матрица выше) —
+  там «локальный» не гасит конфликт; у блочного `AGENTS.md` `keep` — законный
+  no-op (файл и так вне синка).
+- `protect`/`pin` при отсутствии свидетеля тоже пишут свидетель (симметрия;
+  защищённые цели свидетель не проверяют).
+- `take` на защищённом файле — единственный глагол сильнее `protect` (REQ-05):
+  ключ снимается, берётся эталон, локальный контент уходит в бэкап.
+- `keep`/`protect`/`pin` не меняют контент, поэтому NFR-05 (бэкап) не требует
+  копии: потери нет. Исключение — снятие ключа: строка ключа исчезает, но это
+  намеренное действие владельца.
+- `stateWrite` в prepare всегда несёт полную запись `SyncEntry` (хэш +
+  происхождение + база) — не строку; смешивать форматы в одном файле
+  запрещено, `loadSyncState` нормализует легаси (§4.2).
+- Валидация после вставки (§4.1 правило 3): структурная целостность блока +
+  распознавание вставленного значения + обратимость с `normalizeManaged`,
+  иначе отказ без записи. Причина — spike R-01: opencode молча выбрасывает
+  агента с битым frontmatter (§5).
+
+**Взаимодействие с проходом.** `--resolve` не запускает проектный проход: он
+применяет ровно заказанные решения и печатает дайджест. Остальные категории
+(`new`/`changed`/`removed`) применяются следующим `wolf upgrade` — это
+идемпотентно (NFR-02). `--resolve` совместим с `--here` (один проект) и с
+`--json` (дайджест в JSON). Режим **завершается до npm-фазы и re-exec** (§4.18):
+`wolf upgrade --resolve …` в парке никогда не самообновляет CLI и не запускает
+полный проход; `--yes` вместе с `--resolve` — ошибка аргументов (exit 1, записей
+нет), потому что `--yes` описывает проход, а не отдельные решения.
+
+### 4.9 `--review` (REQ-07)
+
+**TTY.** Цикл по `collectDecisions()` в порядке нумерации; файлы не меняются до
+ответа.
+
+```
+[3/7] .opencode/agents/foo.md — mutated · base 2.20.0
+  локальный: 42 строки · эталон: 38 строк · −12 +8
+  --- a/эталон 2.20.0
+  +++ b/локальный
+  @@ … (не более 40 строк diff; «… ещё N строк»)
+  выбор: [t]ake [k]eep [p]rotect [v]pin [s]kip  (a — применить ко всем похожим, q — выйти)
+```
+
+- Клавиши — ровно `t`/`k`/`p`/`v`/`s` из требования (v = pin), плюс `a`
+  («применить ко всем похожим») и `q`.
+- **Критерий похожести** (закрывает открытый пункт): та же пара
+  `kind` + `code` (например все `agent`/`mutated`). После выбора глагола, если
+  в остатке есть похожие цели, задаётся один вопрос:
+  `применить «take» ко всем 3 оставшимся agent/mutated? [y/N]`; перечень целей
+  печатается до применения (пользователь видит, что затронет).
+- Пустой ввод/неизвестная клавиша → переспрос (без изменения файлов); `q` или
+  EOF (Ctrl-D/Ctrl-C) → цикл завершается, уже принятые решения остаются
+  применёнными (каждое — атомарная операция), печатается дайджест.
+- Применение — те же `applyResolution`, что у `--resolve` (одна семантика,
+  один бэкап-путь).
+- **`diverged` (лица памяти) в TTY-цикл не входят** — у владельца проекта нет
+  легального глагола; после цикла они печатаются отдельной секцией
+  `faces (steward zone): <owner_skill> diverged (v<версия>)` с пометкой, что
+  разбор — зона Стюарда.
+- После цикла: `re-collect` → дайджест; exit 2, если остались решения **или
+  `diverged`**, иначе 0.
+- Diff строится `line-diff.ts` (§4.10) между нормализованным локальным
+  контентом и `fresh`.
+
+**Non-TTY (AC2).**
+
+```
+wolf upgrade --review            (stdout не TTY)
+upgrade — review (non-interactive): 2 files need a decision
+
+  1  my-proj            .opencode/agents/foo.md       mutated   base 2.20.0
+  2  my-proj            .opencode/skills/bar/SKILL.md conflict  —
+
+steward zone (not addressable by --resolve): 1
+  my-proj            faces/executor-lead.md         diverged  v2.19.0
+
+разобрать по одному:  wolf upgrade --review          (в TTY)
+применить решение:    wolf upgrade --resolve 1=keep --resolve 2=protect
+посмотреть файл:      wolf upgrade --show 1
+
+exit 2, файлы не изменены
+```
+
+(`conflict` на файле без YAML-frontmatter, например `AGENTS.md`, глаголом
+`protect` не решается — матрица §4.8; в примере взят skill-файл с frontmatter.)
+
+Секция `steward zone` печатается всегда, когда есть `diverged`, и не исчезает от
+`--yes`: она видима, помимо `--resolve` (глагола для неё нет), и держит exit 2,
+пока лицо не приведено в порядок Стюардом. Это следует из NFR-01 (2 = есть
+needs-decision) и REQ-07 (каждый needs-decision виден), но **не** расширяет
+`--resolve`: адресуемого глагола для `diverged` не вводится (решение L0
+2026-10-25).
+
+`--review` в non-TTY никогда не пишет (NFR-03-подобная гарантия для этой ветки).
+
+### 4.10 `--show` (REQ-08)
+[0m$ [0msed -n '120,250p' src/app/use-cases/decisions.ts
+out.push({
+      project: basename(root),
+      file: `faces/${face.owner_skill}.md`,
+      ownerSkill: face.owner_skill,
+      version: active.version ?? null,
+    });
+  }
+  return out;
+}
+
+/**
+ * Реестр решений (design §4.7): строго read-only — `inspectBaseSet` +
+ * свидетель + чтение лиц. Порядок: реестр проектов → цели карты в порядке
+ * `map.files` → AGENTS.md; нумерация сквозная 1-based и стабильна при
+ * неизменном состоянии (NFR-06). `removed`-цели не нумеруются (их решает
+ * проход, адресация — только по пути), orphan-дрейф — тоже (решается путём).
+ */
+export async function collectDecisions(deps: DecisionDeps): Promise<DecisionRegistry> {
+  const map = deps.loadMap();
+  const projects: ProjectRef[] = [];
+  const skippedProjects: SkippedProject[] = [];
+
+  if (deps.here !== undefined) {
+    projects.push({ name: basename(deps.here), root: deps.here });
+  } else {
+    const registered = deps.registry ? await deps.registry.listStrict() : [];
+    const { unique } = dedupeByRealpath(registered);
+    for (const entry of unique) {
+      const plan = planOf(entry);
+      if (plan.status !== null) {
+        skippedProjects.push({ name: plan.name, reason: plan.status });
+        continue;
+      }
+      projects.push({ name: plan.name, root: plan.path });
+    }
+  }
+
+  const targets: DecisionTarget[] = [];
+  const diverged: DivergedFace[] = [];
+  for (const project of projects) {
+    const outcomes = await deps.inspect(project.root);
+    const byFile = new Map(outcomes.map((o) => [o.file, o]));
+    const add = (file: string, kind: DecisionKind, code: 'mutated' | 'conflict'): void => {
+      targets.push({ n: targets.length + 1, project: project.name, root: project.root, file, kind, code });
+    };
+    // `foreign` с `detail` — наблюдение (сломанные onboarding-маркеры), а не
+    // решение: design §4.5 «needs-decision НЕ выставляется», причина — полем.
+    const decisionCode = (outcome: InspectOutcome | undefined): 'mutated' | 'conflict' | null => {
+      if (outcome === undefined) return null;
+      if (outcome.action === 'mutated') return 'mutated';
+      if (outcome.action === 'foreign' && outcome.detail === undefined) return 'conflict';
+      return null;
+    };
+    for (const entry of map.files) {
+      if (entry.category === 'removed') continue;
+      const rel = projectPath(entry);
+      const code = decisionCode(byFile.get(rel));
+      if (code !== null) add(rel, KIND_OF[entry.kind], code);
+    }
+    const agentsCode = decisionCode(byFile.get('AGENTS.md'));
+    if (agentsCode !== null) add('AGENTS.md', 'agents-md', agentsCode);
+    diverged.push(...(await divergedFaces(project.root, map, deps)));
+  }
+
+  return { targets, diverged, skippedProjects, projects };
+}
+
+/* ---------- машинный вывод (§4.13, REQ-11): общая схема документов ---------- */
+
+export interface JsonCli {
+  installed: string;
+  available: string | null;
+}
+
+export interface JsonPlan {
+  projects: number;
+  new: number;
+  changed: number;
+  deprecated: number;
+  removed: number;
+  faces: number;
+}
+
+export interface JsonDecision {
+  n: number;
+  project: string;
+  path: string;
+  code: 'mutated' | 'conflict';
+}
+
+export interface JsonDiverged {
+  project: string;
+  face: string;
+  version: string | null;
+  ownerSkill: string | null;
+}
+
+export interface JsonProtection {
+  project: string;
+  path: string;
+  value: string;
+  recognized: boolean;
+  behind: boolean | null;
+}
+
+export interface JsonProject {
+  name: string;
+  path: string;
+  status: 'updated' | 'up-to-date' | 'needs-decision' | 'error' | 'skipped';
+  skipReason?: 'worktree' | 'pinned' | 'missing';
+  error?: string;
+  files: Array<{ path: string; code: string; inMap: boolean }>;
+  protected: JsonProtection[];
+  backups: Array<{ file: string; backup: string }>;
+}
+
+/** `wolf.upgrade/1` (design §4.13): аддитивные поля — в миноре, переименование
+ *  или удаление — новый мажор (`/2`). `exit` совпадает с кодом процесса (AC3). */
+export interface UpgradeJson {
+  schema: 'wolf.upgrade/1';
+  exit: 0 | 1 | 2;
+  mode: 'pass' | 'here' | 'check' | 'resolve' | 'show';
+  cli: JsonCli;
+  /** Заполняется, когда режим не дошёл до проектов (npm-фаза, реестр, карта). */
+  error?: string;
+  plan: JsonPlan;
+  projects: JsonProject[];
+  decisions: JsonDecision[];
+  diverged: JsonDiverged[];
+  protections: JsonProtection[];
+  /** Бэкапы локального контента (§4.12): аддитивное поле в миноре (§4.13). */
+> worker-reviewer · code
+Матрица §4.8 подтверждает формулировку m-6. Читаю §4.12, §4.13, §4.16–§4.18.
+[0m$ [0msed -n '883,1021p' docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/design.md
+### 4.12 `--yes`, бэкапы и восстановление (REQ-10, NFR-05)
+
+**Тихий режим.** Не-TTY + `--yes` (или TTY + `--yes`):
+
+- `mutated` → `take` с бэкапом. **Механизм — один:** проход включает режим
+  `syncBaseSet(..., { takeMutated: { backup } })` (правило 6′ §4.3); бэкап-хук
+  собирает `decisions.ts` (`backupLocalFile`), рендерер только требует порядок
+  «бэкап → запись → свидетель». Post-фазы и повторного прохода нет: отчёт шага
+  уже содержит исход `updated` с полем `backup`, поэтому verify, счётчики,
+  дайджест и `--json` строятся из одного прохода.
+- `conflict` (безштампованный файл на месте цели) — **не** разрешается
+  автоматически: wx-политика сильнее `--yes`; остаётся needs-decision → exit 2.
+- `diverged` лица — память, зона Стюарда; остаётся needs-decision, exit 2.
+- `protect`/`pin`/`kept` — держатся молча, не бэкапируются (REQ-10 AC3: их не
+  меняют); `kept` — принятый локальный контент (правило 6.5 §4.3), тихий режим
+  его не отменяет.
+- Дайджест называет файл и путь бэкапа:
+  `took base for .opencode/agents/foo.md (local saved: .wolf/backup/upgrade/2026-10-25/.opencode/agents/foo.md)`.
+- exit 0, если решений не осталось (сценарий AC1), иначе 2 (см. выше).
+- Bare `wolf upgrade` в TTY: существующее подтверждение списка + при
+  needs-decision подсказка `hint: 3 files need a decision — run wolf upgrade --review`.
+
+**Формат бэкапа.**
+
+```
+backupLocalFile(root, rel, content, now) -> { path: string; created: boolean }
+  dir = <root>/.wolf/backup/upgrade/<YYYY-MM-DD>     // локальная дата, одна на прогон
+  target = join(dir, rel)
+  если существует: base.ext, base-2.ext, base-3.ext … (первый свободный, без перезаписи)
+  mkdir -p dirname(target); writeFileAtomic(target, content)
+```
+
+- Порядок записи: **бэкап → эталон → свидетель**; сбой записи эталона оставляет
+  бэкап (безвреден), сбой бэкапа отменяет перезапись файла.
+- **Удаление `removed`-цели — тот же бэкап** (F1, `runProjectStep`): у цели нет
+  эталона, поэтому копия делается **всегда** — `backupLocalFile(root, rel,
+content, now)` → `.wolf/backup/upgrade/<date>/<rel>` → `unlink`; путь копии
+  попадает в `ProjectReport.backups` и в дайджест. Реализация функции живёт в
+  `src/app/use-cases/project-step.ts` и переиспользуется `--resolve`/`--yes`
+  (второй копии формата нет). Защищённая цель не удаляется вовсе (§4.8), поэтому
+  и копии не требует — её контент не меняется.
+- Восстановление: копирование файла из бэкапа обратно; после этого файл —
+  обычный `mutated` (локальный контент ≠ свидетель и ≠ эталон), и
+  `--resolve <файл>=protect` легально его замораживает (REQ-10 AC2). GC не
+  предусмотрен (не-цель волны), путь документируется.
+- Права/время бэкапа не сохраняются (копия контента, не артефакт ФС) — осознанно.
+
+### 4.13 `--json` (REQ-11)
+
+Схема — версия в поле `schema`; стабильность в мажоре: аддитивные поля
+допускаются в миноре, переименование/удаление — новый мажор (`/2`).
+
+```ts
+interface UpgradeJson {
+  schema: 'wolf.upgrade/1';
+  exit: 0 | 1 | 2; // совпадает с кодом процесса (AC3)
+  mode: 'pass' | 'here' | 'check' | 'resolve' | 'show';
+  cli: { installed: string; available: string | null };
+  /** Заполняется, когда проход не дошёл до проектов (npm-фаза, lock, реестр, карта). */
+  error?: string;
+  plan: { projects: number; new: number; changed: number; deprecated: number; removed: number; faces: number };
+  projects: Array<{
+    name: string;
+    path: string;
+    status: 'updated' | 'up-to-date' | 'needs-decision' | 'error' | 'skipped';
+    skipReason?: 'worktree' | 'pinned' | 'missing';
+    error?: string;
+    files: Array<{ path: string; code: string; inMap: boolean }>;
+    protected: Array<{ path: string; value: string; behind: boolean | null }>;
+    backups: Array<{ file: string; backup: string }>;
+  }>;
+  decisions: Array<{
+    n: number;
+    project: string;
+    path: string;
+    code: 'mutated' | 'conflict';
+    /* номер, проект и путь — те же, что в текстовом списке; значение ключа здесь не нужно */
+  }>;
+  /** Лица памяти: видны и учитываются в exit, но не адресуемы (зона Стюарда). */
+  diverged: Array<{ project: string; face: string; version: string | null; ownerSkill: string | null }>;
+  protections: Array<{ project: string; path: string; value: string; recognized: boolean; behind: boolean | null }>;
+}
+interface UpgradeCheckJson {
+  schema: 'wolf.upgrade.check/1';
+  exit: 0;
+  cli: { installed: string; available: string | null };
+  projects: Array<{
+    name: string;
+    path: string;
+    class: 'current' | 'behind' | 'needs-decision' | 'unknown';
+    differ: string[];
+    missing: string[];
+    mutated: string[];
+    foreign: string[];
+    /** Причины наблюдений (`onboarding markers broken`), не парсятся из текста. */
+    details: string[];
+    protected: Array<{ path: string; value: string; behind: boolean | null }>;
+  }>;
+  diverged: UpgradeJson['diverged'];
+  protections: UpgradeJson['protections'];
+}
+```
+
+Правила:
+
+- `decisions[].n` — та же нумерация, что в текстовом non-TTY выводе (AC2); оба
+  берутся из `collectDecisions` (§4.7), второй реализации нет.
+- В `--json` stdout содержит **только** JSON-документ (`JSON.stringify(doc)` без
+  отступов + `\n`); баннер, логотип и человеческие строки подавлены, чтобы вывод
+  был парсабельным. Диагностика попадает в `error`/`projects[].error`/`files[]`,
+  а не в свободный текст stderr.
+- **Сквозь npm-фазу и re-exec.** `--json` прокидывается в argv ребёнка
+  (`upgrade-projects … --json`) — базовый `reExecUpgradeProjects`
+  (`memory-upgrade.ts:643`) собирает argv явно, поэтому список флагов
+  расширяется; дочерняя команда `upgrade-projects` получает опцию `--json`
+  (`src/adapters/cli/commands/upgrade-projects.ts`, allowlist T11) и печатает
+  единственный документ. Фаза 1 при `--json` **ничего не печатает** (ни баннер, ни
+  `printOutcome`): единственный JSON-документ печатает фаза 2 — у неё полный
+  результат прохода. Если npm-фаза падает, документ печатает фаза 1 с
+  `exit: 1`, `error: <причина>`, `projects: []`. Полный контракт диспетчеризации
+  (какие режимы доходят до re-exec) — §4.18.
+- `--json` без `--yes` в non-TTY = отменённый проход: `projects` содержит только
+  статусы плана, `decisions` заполнен, `exit: 0` (паритет с текстом). Отмена —
+  не разбор состояния: даже если в парке есть `diverged`, отменённый проход
+  остаётся 0 (поведение 2.19.0 сохраняется, NFR-01). `--json` в TTY печатает тот
+  же документ и **не** задаёт интерактивных вопросов: JSON — это машинный режим
+  вывода, а не TTY-интерактив.
+- `--json` + `--check`: re-exec нет (check-ветка возвращается раньше) →
+  `UpgradeCheckJson` из того же процесса; `--json --check --here` — тот же
+  `UpgradeCheckJson` с единственным проектом (cwd), §4.18.
+- Комбинации: `--json` + `--resolve` → `UpgradeJson` с `mode:'resolve'`,
+  `projects: []` (прохода нет), заполненными `backups` и `decisions` после
+  применения (остаток реестра); `--json` + `--show` → `mode:'show'`, `decisions`
+  — остаток реестра, `projects: []`, diff в текстовом `--show` не дублируется в
+  JSON (документ остаётся стабильным); `--json` + `--review` → error
+  `--review is interactive; --json is not supported` (exit 1, единственный
+  документ с `error`).
+
+### 4.14 Восстановление `mcp.wolf` в init (REQ-04)
+[0m$ [0msed -n '1095,1203p' docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/design.md
+### 4.16 Матрица режимов и exit-код (NFR-01)
+
+| Режим                     | Записи                     | exit                                                                                                         |
+| ------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `--check` (парк)          | нет                        | всегда 0                                                                                                     |
+| `--here --check`          | нет                        | всегда 0 (read-only инспекция cwd; `--check` сильнее `--here`, §4.18)                                        |
+| `--check --json`          | нет                        | всегда 0                                                                                                     |
+| `--show`                  | нет                        | 0 (в т.ч. файл вне карты — diff не строится); 1 при неизвестной цели                                         |
+| `--review` (TTY)          | по решениям                | 0, если решений и `diverged` не осталось; 2 если остались; 1 при сбое записи                                 |
+| `--review` (non-TTY)      | нет                        | 0 при отсутствии решений и `diverged`; 2 если они есть (NFR-01, §4.9)                                        |
+| `--resolve`               | по решениям                | 0 / 2 (остались решения или `diverged`) / 1 (ошибка)                                                         |
+| `--yes` (non-TTY или TTY) | проход                     | 0 / 2 (остались conflict/diverged) / 1 (error проекта)                                                       |
+| bare `upgrade` (TTY)      | проход после подтверждения | 0 / 1 / 2 как в 2.19.0                                                                                       |
+| bare `upgrade` (non-TTY)  | нет                        | 0 (`Cancelled: --yes is required`) + список решений; отмена не даёт 2 даже при `diverged` (поведение 2.19.0) |
+| любая несовместимая пара  | нет                        | 1 (ошибка аргументов/комбинации: `--review --json`, `--resolve --yes`, `--show --resolve`, …), §4.18         |
+
+`protected` и исцеление (исход `updated` с reason) в needs-decision не входят →
+exit 2 не производят. `diverged` — единственный needs-decision без адресуемого
+глагола: он держит exit 2, но не входит в нумерацию `--resolve` (§4.7, §4.9).
+
+### 4.17 Отказные сценарии, атомарность и наблюдаемость
+
+| Сценарий                                        | Поведение                                                                                                                                | Наблюдаемость                                                        |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| сбой бэкапа (EACCES/ENOSPC)                     | перезапись файла **отменяется**, файл и свидетель не меняются                                                                            | `error: backup failed …`; exit 1                                     |
+| сбой записи эталона после бэкапа                | бэкап остаётся (безвреден), свидетель не обновляется                                                                                     | error-строка; exit 1                                                 |
+| сбой записи свидетеля после записи файла        | файл уже обновлён; свидетель отстаёт → ошибка с явным предупреждением: локальные `keep`-правки могут быть перезаписаны следующим `--yes` | `error: sync-state not saved — do not run --yes until fixed`; exit 1 |
+| вставка `protect` даёт непарсящийся frontmatter | отказ до rename; файл байт-в-байт прежний                                                                                                | `error: … frontmatter would break`; exit 1                           |
+| файл без frontmatter, `protect`                 | отказ, подсказка `add one or use keep`                                                                                                   | error; exit 1                                                        |
+| read-only `--check`, сбой инспекции проекта     | error-строка проекта, остальные проекты считаются, exit 0                                                                                | `error:` в секции проекта                                            |
+| битый `opencode.json` при init                  | `skipped` + причина, конфиг не тронут, остальной init идёт                                                                               | строка платформы в выводе init                                       |
+| коллизия бэкапов в один день                    | суффикс `-2`, `-3`, …; существующий бэкап не перезаписывается                                                                            | путь в дайджесте                                                     |
+| удалённый проект в реестре во время `--resolve` | цель не найдена при валидации → error, записей нет                                                                                       | error + список                                                       |
+
+Атомарность (NFR-04): все записи — `writeFileAtomic`
+(`markdown-memory-store.ts:366`, tmp + rename). `saveSyncState` сегодня пишет
+`writeFileSync` напрямую (`src/adapters/render/sync-state.ts:35`) — переводится на
+`writeFileSync(tmp) + renameSync(tmp, path)` в том же каталоге (атомарный rename),
+сигнатура остаётся синхронной (её вызывают из синхронных веток рендерера).
+Бэкапы пишутся тем же атомарным способом.
+
+Наблюдаемость: строки отчёта (`ReportNode`) + JSON-схема (§4.13). Новых событий
+телеметрии волна не вводит (вне scope; память не мутируется, кроме посева лиц,
+как и в 2.19.0).
+
+### 4.18 Диспетчеризация флагов и re-exec (REQ-06…REQ-11, NFR-01)
+
+Baseline: `memoryUpgradeCommand().action` проверяет `--here` **раньше** `--check`
+(`memory-upgrade.ts:718-721`), а любой парковый маршрут уходит в npm-фазу и
+`reExecUpgradeProjects`, чей argv содержит только
+`--from/--to/--yes/--no-banner/--state` (`memory-upgrade.ts:653-663`); дочерняя
+команда `upgrade-projects` знает только эти опции
+(`upgrade-projects.ts:79-96`). Без явного контракта новый флаг теряется при
+re-exec, и `wolf upgrade --resolve 3=protect` в парке сначала самообновит CLI и
+запустит полный проход без `--resolve`.
+
+**Порядок разбора (единственная точка — `memoryUpgradeCommand().action`):**
+
+```
+1. Проверка совместимости флагов (таблица ниже) → exit 1, записей и сети нет.
+2. --check       → check-режим; --here сужает его до cwd; return ДО npm/реестра.
+3. --show        → read-only по реестру; return.
+4. --review      → TTY-цикл / non-TTY рецепт; return.
+5. --resolve     → применение решений; return.
+6. --here        → проектный шаг в cwd (без npm, без реестра) — как сегодня.
+7. иначе         → npm-фаза + re-exec `upgrade-projects` (--yes опционален).
+```
+
+**Приоритет:** `--check` сильнее `--here` (проверяется первым); `--json` — не
+режим, а формат вывода (совместим со всеми, кроме `--review`); повтор флагов
+одного действия (`--check --show`) — ошибка.
+
+**Несовместимые комбинации** (exit 1, печатается причина, ничего не пишется):
+
+| Комбинация               | Причина                                                |
+| ------------------------ | ------------------------------------------------------ |
+| `--review` + `--json`    | review интерактивен, JSON машинный (REQ-07/REQ-11)     |
+| `--review` + `--resolve` | два способа применить решения в одном вызове           |
+| `--review` + `--yes`     | `--yes` описывает проход, а не разбор                  |
+| `--show` + `--resolve`   | просмотр и запись в одном вызове                       |
+| `--show` + `--yes`       | то же                                                  |
+| `--resolve` + `--yes`    | `--yes` описывает проход, `--resolve` — решения (§4.8) |
+| `--check` + `--resolve`  | check read-only, resolve пишет                         |
+
+**Что доходит до npm-фазы и re-exec:** только маршрут 7 (bare `upgrade`,
+`--yes`). `--check` (парк и `--here`), `--show`, `--review`, `--resolve`
+завершаются в фазе 1 на установленном CLI; им не нужен ни self-update, ни
+дочерний процесс, и они не могут «потерять» флаг.
+
+**argv ребёнка** (`reExecUpgradeProjects`) расширяется одним флагом вывода:
+
+```
+upgrade-projects --from <v> --to <v> [--yes] --no-banner --state <path> [--json]
+```
+
+`src/adapters/cli/commands/upgrade-projects.ts` получает опцию `--json` и в этом
+режиме печатает ровно один документ `wolf.upgrade/1` (`mode:'pass'`), без баннера
+и человеческих строк; exit ребёнка = `exit` документа = код процесса. Новые
+режимные флаги в argv не передаются — они не доходят до re-exec по построению;
+если это когда-нибудь изменится, список argv и опции дочерней команды обязаны
+меняться вместе (тест R11-4 фиксирует argv).
+
+**Владельцы:** диспетчеризация и argv ребёнка — T11 (allowlist
+`memory-upgrade.ts`, `upgrade-projects.ts`); ветка `--here --check`
+(`upgradeCheckHereAction` + печать секции Protections; сам `listProtections`
+реализует T3) — T13, мержится после T11. Оба файла —
+общие, порядок слияния зафиксирован в plan.md («Конфликты»).
+
+## 5. Spike R-01: неизвестный ключ `protect` в opencode
+> worker-reviewer · code
+Дизайн-контракты сверены. Проверяю printOutcome (паритет exit для local-newer/linked-refusal в тексте) и текущее состояние modeJsonDoc/buildPassJsonDoc.
+[0m$ [0mgrep -n "function printOutcome" -A 20 src/adapters/cli/commands/memory-upgrade.ts; echo ===; sed -n '1430,1500p' src/adapters/cli/commands/memory-upgrade.ts
+148:function printOutcome(outcome: UpgradeOutcome): void {
+149-  switch (outcome.kind) {
+150-    case 'up-to-date':
+151-      console.log(`already the latest version (${outcome.current})`);
+152-      return;
+153-    case 'local-newer':
+154-      console.log(
+155-        `installed ${outcome.current} is newer than the registry version (${outcome.latest}) — no update needed`
+156-      );
+157-      return;
+158-    case 'available':
+159-      console.log(`available ${outcome.latest} (installed ${outcome.current}) — run wolf upgrade`);
+160-      return;
+161-    case 'updated':
+162-      console.log('updated; the new wolf version takes effect on the next run');
+163-      return;
+164-    case 'linked-refusal':
+165-      throw new UserFacingError(
+166-        `a dev/linked copy is installed (${outcome.binaryPath ?? 'path unknown'}) — upgrade not applicable; to update: npm rm -g mister-wolf && npm i -g mister-wolf`
+167-      );
+168-  }
+zsh:1: == not found
+> worker-reviewer · code
+[0m$ [0msed -n '1400,1500p' src/adapters/cli/commands/memory-upgrade.ts
+/** Реестр защит всех активных проектов (`--json.protections`, §4.11/§4.13). */
+async function collectProtections(
+  reg: DecisionRegistry,
+  renderer: OpencodeBaseSetRenderer,
+  map: UpdateMap
+): Promise<JsonProtection[]> {
+  const out: JsonProtection[] = [];
+  for (const project of reg.projects) {
+    const entries = await renderer.listProtections(project.root, map.version);
+    out.push(...jsonProtections(entries));
+  }
+  return out;
+}
+
+/** Документ `wolf.upgrade/1` режима pass (§4.13): факты прохода + остаток
+ *  решений, лица и защиты (read-only, после прохода). */
+export async function buildPassJsonDoc(
+  deps: { registry: { listStrict(): Promise<RegisteredProject[]> }; loadMap: () => UpdateMap },
+  res: UpgradeRunResult,
+  cli: { installed: string; available: string | null },
+  error?: string
+): Promise<UpgradeJson> {
+  const renderer = new OpencodeBaseSetRenderer(templatesRoot(), {
+    harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
+  });
+  const map = deps.loadMap();
+  const reg = await collectDecisions({ ...decisionProdDeps(null, renderer, deps.registry), loadMap: () => map });
+  const protections = await collectProtections(reg, renderer, map);
+  return {
+    schema: 'wolf.upgrade/1',
+    exit: res.exitCode,
+    mode: 'pass',
+    cli,
+    ...(error !== undefined ? { error } : {}),
+    plan: res.plan,
+    projects: res.projects.map((p) => ({
+      ...p,
+      protected: protections.filter((x) => x.project === p.name),
+    })),
+    decisions: jsonDecisions(reg),
+    diverged: jsonDiverged(reg),
+    protections,
+    backups: res.projects.flatMap((p) => p.backups),
+  };
+}
+
+/** Документ `wolf.upgrade/1` для режимов без прохода (resolve/show/here). */
+async function modeJsonDoc(args: {
+  mode: 'resolve' | 'show' | 'here';
+  exit: 0 | 1 | 2;
+  registry: DecisionRegistry;
+  map: UpdateMap;
+  renderer: OpencodeBaseSetRenderer;
+  projects?: JsonProject[];
+  backups?: Array<{ file: string; backup: string }>;
+  error?: string;
+}): Promise<UpgradeJson> {
+  const protections = await collectProtections(args.registry, args.renderer, args.map);
+  return {
+    schema: 'wolf.upgrade/1',
+    exit: args.exit,
+    mode: args.mode,
+    cli: { installed: readInstalledVersion(), available: null },
+    ...(args.error !== undefined ? { error: args.error } : {}),
+    plan: emptyPlan(),
+    projects: args.projects ?? [],
+    decisions: jsonDecisions(args.registry),
+    diverged: jsonDiverged(args.registry),
+    protections,
+    backups: args.backups ?? [],
+  };
+}
+
+/** Документ фазы 1, когда проход не дошёл до проектов (§4.13): npm-сбой,
+ *  linked-refusal (error + exit 1) или local-newer (exit 0, без error). */
+function phase1JsonDoc(installed: string, available: string | null, exit: 0 | 1, error?: string): UpgradeJson {
+  return {
+    schema: 'wolf.upgrade/1',
+    exit,
+    mode: 'pass',
+    cli: { installed, available },
+    ...(error !== undefined ? { error } : {}),
+    plan: emptyPlan(),
+    projects: [],
+    decisions: [],
+    diverged: [],
+    protections: [],
+    backups: [],
+  };
+}
+
+const npmFailureJsonDoc = (installed: string, error: string): UpgradeJson => phase1JsonDoc(installed, null, 1, error);
+
+/* ---------- re-exec фазы 2 (T8, REQ-01/04, ADR-2/5): транспорт wolf upgrade ---------- */
+
+export interface ReExecDeps {
+  /** Инжект spawn для юнит-контура (шпион опций/эмиттер); дефолт — child_process.spawn. */
+  spawnImpl?: typeof spawn;
+  /** Путь ребёнка; дефолт — env WOLF_UPGRADE_CHILD_BIN (существует ТОЛЬКО для
+   *  тестового контура, test-plan решение №1; продуктовое поведение не меняет)
+   *  либо `<npmPrefix>/bin/wolf`. */
+> worker-reviewer · code
+Код M-1/M-2/M-3 подтверждён. Запускаю обязательные фактические проверки: полный гейт (в фоне не буду — нужен свежий результат) и параллельно смотрю plan/report.
+[0m$ [0mnpm run check 2>&1 | tail -12
+✓ tests/unit/base-frames-guard.test.ts  (1 test) 3ms
+ ✓ tests/unit/adapters/render/templates-root.test.ts  (4 tests) 3ms
+ ✓ tests/unit/domain/mask-secrets.test.ts  (3 tests) 7ms
+ ✓ tests/unit/domain/npx.test.ts  (4 tests) 4ms
+ ✓ tests/unit/adapters/busy-retry.test.ts  (2 tests) 160ms
+ ✓ tests/unit/cli-reference-guard.test.ts  (1 test) 18140ms
+
+ Test Files  214 passed (214)
+      Tests  1860 passed (1860)
+   Start at  13:52:06
+   Duration  50.28s (transform 3.98s, setup 1.11s, collect 23.78s, tests 99.73s, environment 47ms, prepare 25.17s)
+> worker-reviewer · code
+Гейт зелёный: 214 файлов / 1860 тестов (+4 к циклу 1 — ровно новые M-1/M-2/M-3/m-1). Точечные интеграционные:
+[0m$ [0msed -n '21,44p' docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/phase4-impl-f2-report.md; echo '---PLAN---'; grep -n "T7\|T8\|T9\|T10\|T11" docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/plan.md | head -20
+## Metadata
+
+- task_id: `wave-2-20-0-impl-f2`; входы: `plan.md` (approved), `design.md`
+  (approved), `test-plan.md`, `phase4-review-f1.md`, `phase4-rereview-f1.md`.
+- Диапазон: `bb4f560..f42af98` (6 коммитов).
+- Методики: wolf-execute (исполнение линейное — см. FRICTION), TDD
+  (RED/GREEN зафиксированы), verification-before-completion (гейт ниже).
+- Коммит-гигиена: каждый коммит прошёл свои точечные тесты и `npx tsc --noEmit`.
+  `db40309` (Ф1, known-red) остаётся `git bisect: skip` — история не переписана.
+
+## Summary
+
+Реализованы пять задач Ф2 строго последовательно на общих файлах
+(`decisions.ts` + `memory-upgrade.ts`):
+
+| Задача | Что сделано                                                                                                                                                                                                                                                                                                                                                                                                                        | Коммит    |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| T7     | `collectDecisions` (read-only, нумерация реестр → карта → AGENTS.md, `diverged` по `owner_skill`), матрица §4.8 «глагол × класс», двухфазная валидация, `applyResolutions` (take/keep/protect/pin, бэкап §4.12, свидетель `{hash, origin, base}`), `--resolve` в CLI, диспетчеризация §4.18 (`--check` > `--here`, `--resolve` до npm-фазы), m-1 (одна строка `faces:`), m-3 (`kind` из `map.files`), `renderFreshFile(AGENTS.md)` | `8d1a2a3` |
+| T8     | `line-diff.ts` (LCS, лимиты 4000/200, хунки с контекстом, CRLF-нормализация, детерминизм), `--show <file\|N>` read-only (protect, обе версии, diff, подсказка `=take`; вне карты — `base: n/a`, без `=take`), `resolveShowTarget`                                                                                                                                                                                                  | `1806c60` |
+| T9     | `--review`: TTY-цикл `[n/m]` с diff ≤ 40 строк, клавиши `t/k/p/v/s` + `a` («ко всем похожим»: вопрос о глаголе, перечень до применения) + `q`, EOF завершает; non-TTY — нумерованный список + готовая команда `--resolve`, exit 2, ни байта записей; `diverged` — секция `steward zone`, держит exit 2 и не адресуется                                                                                                             | `9a168bb` |
+| T10    | Правило 6′ §4.3 включается проходом (`--yes`) в парке и `--here`: mutated → `backupLocalFile` → эталон → свидетель; дайджест §4.12 называет файл и путь бэкапа (`took base` / `removed`), protect/pin/kept не бэкапируются; `hint: … run wolf upgrade --review` в TTY без `--yes`                                                                                                                                                  | `b32c5ff` |
+| T11    | `wolf.upgrade/1` и `wolf.upgrade.check/1`: единственный JSON в stdout, фаза 1 молчит, argv ребёнка несёт `--json` (`upgrade-projects --json`), npm-сбой → документ `exit 1` с `error`; `mode` resolve/show/here печатают свой документ и до npm-фазы не доходят; `decisions[].n` из `collectDecisions` (паритет с non-TTY текстом), `diverged`/`protections` — из тех же данных; `--review --json` → ошибка                        | `55737b6` |
+| —      | Регенерация `docs/reference/cli.md` (генератор) + отметки T7–T11 в `plan.md`; help без `(default: [])`                                                                                                                                                                                                                                                                                                                             | `f42af98` |
+
+---PLAN---
+33:Ф2 решения   T3,T5 ─> T7 (реестр + глаголы) ─> T8 (--show) ─> T9 (--review) ─> T10 (--yes) ─> T11 (--json)
+34:Ф3 периферия T12 (init/doctor) — параллельно Ф1–Ф2; T13 (Protections + --here --check) после T5, T6 и T11
+40:чего, но правит `init-project.ts`, который T5/T10 не трогают. T8 → T9 → T10 идут
+42:мержится после T6 и T11 (общий `memory-upgrade.ts`) и после T3 (рендерер).
+98:      **Порт целиком — здесь:** ни T5, ни T7, ни T13 `base-set-renderer.port.ts`
+171:- [x] **T7. Реестр решений и глаголы `--resolve`.**
+201:      `--resolve` в CLI; T9 дополняет тот же файл позже, мерж последовательный).
+207:- [x] **T8. `--show` и построчный diff.**
+215:      Зависимости: T7 (последовательно, не параллельно с T9/T10). Allowlist:
+224:- [x] **T9. `--review`: TTY-цикл и non-TTY рецепт.**
+233:      Зависимости: T8 (последовательно). Allowlist:
+244:- [x] **T10. `--yes`: тихий take с бэкапом, дайджест, подсказка `--review`.**
+257:      Зависимости: T9 (последовательно). Allowlist:
+271:- [x] **T11. `--json`: схема, сквозь re-exec, паритет с текстом.**
+288:      Зависимости: T10. Allowlist: `src/adapters/cli/commands/memory-upgrade.ts`,
+321:      из T11, здесь только ветка; секция Protections — последняя секция
+326:      Зависимости: T3, T5, T6, T11. Allowlist:
+339:      Цель: волна сходится: порядок слияния T1→T2→T3→(T4,T5,T6)→T7→T8→T9→T10→T11,
+340:      T12 в любой момент после T2, T13 после T6 и T11; проверить взаимодействия
+342:      Конфликты: общий файл `memory-upgrade.ts` правят T6, T7, T8, T9, T10, T11,
+[0m$ [0mnpx vitest run tests/integration/upgrade-here.test.ts tests/integration/upgrade-park.test.ts tests/integration/upgrade-check.test.ts 2>&1 | tail -8
+✓ tests/integration/upgrade-here.test.ts  (7 tests) 590ms
+ ✓ tests/integration/upgrade-park.test.ts  (10 tests) 1332ms
+
+ Test Files  3 passed (3)
+      Tests  18 passed (18)
+   Start at  13:53:20
+   Duration  2.25s (transform 623ms, setup 52ms, collect 1.65s, tests 1.98s, environment 1ms, prepare 332ms)
+> worker-reviewer · code
+Все точечные зелёные. Проверяю раздел «Гейт» отчёта и актуальность метаданных (m-7 упоминал устаревший head).
+[0m$ [0msed -n '96,135p' docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/phase4-impl-f2-report.md
+## Validation Results (EVIDENCE)
+
+| #   | Claim / AC                              | Команда / процедура                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | cwd | revision             | exit / результат                                  |
+| --- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | -------------------- | ------------------------------------------------- |
+| E1  | T7 green                                | `npx vitest run tests/unit/use-cases/decisions.test.ts tests/integration/upgrade-here.test.ts tests/integration/upgrade-park.test.ts tests/unit/adapters/commands/memory-upgrade.here.test.ts tests/unit/use-cases/upgrade-projects.test.ts tests/unit/adapters/render/opencode-renderer.test.ts`                                                                                                                                                                                                                                                                               | wt  | `8d1a2a3`            | exit 0, 6 файлов / **106 passed**                 |
+| E2  | T8 green                                | `npx vitest run tests/unit/domain/line-diff.test.ts tests/unit/use-cases/decisions.test.ts tests/integration/upgrade-here.test.ts tests/integration/upgrade-park.test.ts tests/unit/adapters/commands/memory-upgrade.here.test.ts`                                                                                                                                                                                                                                                                                                                                              | wt  | `1806c60`            | exit 0, 5 файлов / **52 passed**                  |
+| E3  | T9 green                                | `npx vitest run tests/unit/use-cases/decisions.test.ts tests/unit/domain/line-diff.test.ts tests/unit/adapters/commands/memory-upgrade.here.test.ts tests/integration/upgrade-here.test.ts tests/integration/upgrade-park.test.ts`                                                                                                                                                                                                                                                                                                                                              | wt  | `9a168bb`            | exit 0, 5 файлов / **58 passed**                  |
+| E4  | T10 green                               | `npx vitest run tests/unit/use-cases/upgrade-projects.test.ts tests/unit/use-cases/decisions.test.ts tests/unit/use-cases/sync-base-set.test.ts tests/unit/adapters/commands/upgrade-projects.test.ts tests/unit/adapters/render/opencode-renderer.test.ts tests/integration/upgrade-here.test.ts tests/integration/upgrade-park.test.ts tests/integration/project-step.test.ts`                                                                                                                                                                                                | wt  | `b32c5ff`            | exit 0, 8 файлов / **134 passed**                 |
+| E5  | T11 green                               | `npx vitest run tests/unit/adapters/commands/memory-upgrade.check.test.ts tests/unit/adapters/commands/upgrade-projects.test.ts tests/unit/adapters/commands/memory-upgrade.here.test.ts tests/unit/use-cases/decisions.test.ts tests/unit/domain/line-diff.test.ts tests/unit/use-cases/upgrade-projects.test.ts tests/unit/use-cases/sync-base-set.test.ts tests/integration/upgrade-here.test.ts tests/integration/upgrade-park.test.ts tests/integration/upgrade-check.test.ts tests/integration/project-step.test.ts tests/unit/adapters/render/opencode-renderer.test.ts` | wt  | `55737b6`            | exit 0, 12 файлов / **180 passed**                |
+| E6  | Типы на каждом коммите                  | `npx tsc --noEmit`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | wt  | каждый из 6 коммитов | exit 0 (`TypeScript: No errors found`)            |
+| E7  | Формат                                  | `npx prettier --check <изменённые файлы>`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | wt  | `f42af98`            | exit 0                                            |
+| E8  | Полный гейт                             | `npm run check` (english-surface → format:check → tsc → build → vitest)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | wt  | `f42af98`            | см. «Гейт» ниже (свежий прогон после правки help) |
+| E9  | Паритет text↔json                       | park-тест R11-1/R11-2: номера non-TTY `--review` = `decisions[].n`, два прогона `--json` байт-идентичны; `exit` документа = `process.exitCode`                                                                                                                                                                                                                                                                                                                                                                                                                                  | wt  | `55737b6`            | exit 0, 10 тестов `upgrade-park`                  |
+| E10 | keep идемпотентен сквозным тестом       | `decisions.test` R06-5/N02-2 + `upgrade-park` R06-5: `--resolve …=keep` → полный проход → файл байт-в-байт, `kept`, exit 0; правка → `mutated`                                                                                                                                                                                                                                                                                                                                                                                                                                  | wt  | `8d1a2a3`            | exit 0                                            |
+| E11 | Ни одной перезаписи/удаления без бэкапа | `take`/`--yes`/правило 7 — только после `backupLocalFile` (N05-1/2, R10-1/3/5); сбой бэкапа отменяет запись (файл и свидетель байт-в-байт)                                                                                                                                                                                                                                                                                                                                                                                                                                      | wt  | `8d1a2a3`, `b32c5ff` | exit 0                                            |
+| E12 | `--check` read-only                     | `inspectBaseSet`/`listProtections` не пишут; снапшот mtime+sha256 в `opencode-renderer.test` и `upgrade-check` не изменён                                                                                                                                                                                                                                                                                                                                                                                                                                                       | wt  | `55737b6`            | exit 0                                            |
+| E13 | Неизвестная цель — без записей          | `planResolutions` собирает все ошибки до записи (R06-3, дубли R06-7); снапшот не меняется                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | wt  | `8d1a2a3`            | exit 0                                            |
+| E14 | Рабочее дерево                          | `git status --short`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | wt  | `f42af98`            | только pre-existing `.opencode/skills/**`         |
+
+## Гейт
+
+- `npx tsc --noEmit` — exit 0 на каждом коммите (E6).
+- `npm run check` — финальный прогон на дереве после цикла исправлений 1 → 2:
+  **exit 0, 214 файлов / 1860 passed**. Предыдущий прогон на дереве после `ea2df6a` (collector
+  повторяемого `--resolve` без default + перегенерированный справочник). Два
+  промежуточных прогона были красными по двум причинам, обе устранены и
+  перепроверены: (а) `cli-reference-guard` — справочник отставал от новых
+  флагов (регенерация, Отклонения п.7); (б) `previous is not iterable` в
+  collector'е `--resolve` после снятия `(default: [])` (`collectResolve`
+  получает `previous = undefined`) — исправлено `[...(previous ?? []), value]`,
+  тест R06-9 зелёный.
+- Живой CLI-смоук на собранном `dist` (E15) — все новые режимы вне тестового
+  контура: check-json → review → show → resolve-json → check-json.
+- Целевые интеграционные: `tests/integration/upgrade-here.test.ts` (6),
+  `upgrade-park.test.ts` (10), `upgrade-check.test.ts` (1) — зелёные.
+- `npm run e2e` — не входит в гейт Ф2 (T14, правило проекта «E2E после плана»).
+
+## Отклонения от контракта
+
+1. **Allowlist T7 расширен lead'ом:** `opencode-renderer.ts` + его unit-тест —
+[0m$ [0mgrep -rn "backups" docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/design.md | head -5; echo '---'; grep -n "R11-2\|R11-5" tests/integration/upgrade-park.test.ts | head -5; echo '---STATUS---'; git status --short
+docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/design.md:103:  `backups` из рендерера/решений в отчёт (§4.12).
+docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/design.md:920:  попадает в `ProjectReport.backups` и в дайджест. Реализация функции живёт в
+docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/design.md:952:    backups: Array<{ file: string; backup: string }>;
+docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/design.md:1014:  `projects: []` (прохода нет), заполненными `backups` и `decisions` после
+---
+700:  it('R11-1/R11-2/R11-3/R11-6: один документ, n = текст review, exit = процесс, два прогона идентичны', async () => {
+---STATUS---
+ M .opencode/skills/using-skills/SKILL.md
+ M .opencode/skills/wolf-execute/SKILL.md
+ M .opencode/skills/wolf-sdd/SKILL.md
+?? .opencode/skills/wolf-draft/
+?? docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/phase4-rereview-f2-cycle2.txt
+?? docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/phase4-rereview-f2.txt
+> worker-reviewer · code
+[0m$ [0mgrep -n "R11" tests/integration/upgrade-park.test.ts | head -8; echo "---"; git status --short; echo "---"; grep -c "it(" tests/integration/upgrade-here.test.ts tests/integration/upgrade-park.test.ts tests/integration/upgrade-check.test.ts
+378:    // счётчики парка + досеяно лиц (R05.1/R11.6)
+700:  it('R11-1/R11-2/R11-3/R11-6: один документ, n = текст review, exit = процесс, два прогона идентичны', async () => {
+---
+ M .opencode/skills/using-skills/SKILL.md
+ M .opencode/skills/wolf-execute/SKILL.md
+ M .opencode/skills/wolf-sdd/SKILL.md
+?? .opencode/skills/wolf-draft/
+?? docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/phase4-rereview-f2-cycle2.txt
+?? docs/dev/2026-10-24-wave-2-20-0-upgrade-intentions/phase4-rereview-f2.txt
+---
+tests/integration/upgrade-here.test.ts:10
+tests/integration/upgrade-park.test.ts:15
+tests/integration/upgrade-check.test.ts:2
+> worker-reviewer · code
+Паритет text↔json на месте (park:700). Последняя проверка — полный upgradeRoute (все несовместимые пары §4.18) и «Цикл исправлений» в plan.md.
+[0m$ [0msed -n '495,560p' src/adapters/cli/commands/memory-upgrade.ts
+export interface UpgradeRoute {
+  mode: UpgradeMode;
+  /** Несовместимая пара флагов: exit 1 без записей и без сети (§4.18). */
+  error?: string;
+}
+
+/** Чистый разбор режима (тестируется без IO); T8/T9/T11 расширяют набор флагов. */
+export function upgradeRoute(flags: UpgradeFlags): UpgradeRoute {
+  const resolve = flags.resolve ?? [];
+  const resolveGiven = resolve.length > 0;
+  const showGiven = flags.show !== undefined;
+  const reviewGiven = flags.review === true;
+  // Несовместимые комбинации (§4.18): два способа действия в одном вызове
+  if (reviewGiven && flags.json === true) {
+    return { mode: 'pass', error: '--review is interactive; --json is not supported' };
+  }
+  if (reviewGiven && resolveGiven) {
+    return { mode: 'pass', error: '--review and --resolve are two ways to apply decisions — run one of them' };
+  }
+  if (reviewGiven && flags.yes === true) {
+    return { mode: 'pass', error: '--yes describes a pass, not a review — drop one of --review/--yes' };
+  }
+  if (reviewGiven && showGiven) {
+    return { mode: 'pass', error: '--review and --show are different read-only modes — run one of them' };
+  }
+  if (reviewGiven && flags.check === true) {
+    return { mode: 'pass', error: '--check and --review are different modes — run one of them' };
+  }
+  if (showGiven && resolveGiven) {
+    return { mode: 'pass', error: '--show views a file, --resolve writes — run them separately' };
+  }
+  if (showGiven && flags.yes === true) {
+    return { mode: 'pass', error: '--yes describes a pass, not a view — drop one of --show/--yes' };
+  }
+  if (showGiven && flags.check === true) {
+    return { mode: 'pass', error: '--check and --show are different read-only modes — run one of them' };
+  }
+  if (resolveGiven && flags.yes === true) {
+    return { mode: 'pass', error: '--yes describes a pass, not single decisions — drop one of --resolve/--yes' };
+  }
+  if (resolveGiven && flags.check === true) {
+    return { mode: 'pass', error: '--check is read-only and --resolve writes — run them separately' };
+  }
+  if (flags.check === true) return { mode: 'check' }; // --check сильнее --here (§4.18)
+  if (showGiven) return { mode: 'show' };
+  if (reviewGiven) return { mode: 'review' };
+  if (resolveGiven) return { mode: 'resolve' };
+  if (flags.here === true) return { mode: 'here' };
+  return { mode: 'pass' };
+}
+
+/* ---------- --resolve (T7, REQ-06, design §4.7/§4.8/§4.12) ---------- */
+
+const RESOLVE_TITLE = 'wolf upgrade — resolve';
+
+/** Нумерованный список решений (§4.7/§4.9): один источник для --resolve и --review. */
+export function decisionLines(reg: DecisionRegistry): ReportNode[] {
+  if (reg.targets.length === 0) return [line('info', 'no decisions — nothing needs a decision', true)];
+  const noun = reg.targets.length === 1 ? 'file needs' : 'files need';
+  const out: ReportNode[] = [line('warn', `${reg.targets.length} ${noun} a decision`, true)];
+  for (const t of reg.targets) out.push(line('info', `  ${t.n}  ${t.project}  ${t.file}  ${t.code}`, true));
+  return out;
+}
+
+/** Пропущенные проходом проекты (§4.7): причина видна, а не теряется. */
+export function skippedProjectLines(reg: DecisionRegistry): ReportNode[] {
+> worker-reviewer · code
+Маршрутизация §4.18 полная (10 пар). Проверяю одно подозрительное место в review-цикле: `continue` в ветке «a» — был ли он до цикла 2 (комментарий обещает «возврат к текущей цели», а `continue` внешнего цикла идёт к следующей).
+[0m$ [0mgit show e734a98:src/adapters/cli/commands/memory-upgrade.ts | sed -n '940,975p'
+applied,
+      errors,
+      registry: before,
+    };
+  }
+
+  const total = before.targets.length;
+  for (let i = 0; i < before.targets.length; i++) {
+    const target = before.targets[i]!;
+    if (handled.has(target.n)) continue;
+    opts.io.write(`${reviewScreen(target, i + 1, total, map, deps.renderer).join('\n')}\n`);
+    const answer = (await opts.io.ask('> '))?.trim().toLowerCase() ?? null;
+    if (answer === null || answer === 'q') break;
+    if (answer === 's' || answer === '') {
+      handled.add(target.n);
+      continue;
+    }
+    if (answer === 'a') {
+      // «применить ко всем похожим»: отдельный вопрос о глаголе для группы
+      const group = [target, ...similarTargets(before, target).filter((t) => !handled.has(t.n))];
+      opts.io.write(
+        `apply to all ${group.length} ${target.kind}/${target.code}: ${group.map((t) => t.file).join(', ')}\n`
+      );
+      const verbAnswer =
+        (await opts.io.ask('verb for all: [t]ake [k]eep [p]rotect [v]pin or [enter] back > '))?.trim().toLowerCase() ??
+        null;
+      const groupVerb = verbAnswer === null ? undefined : VERB_KEYS[verbAnswer];
+      if (groupVerb === undefined) continue; // без изменения файлов — возврат к текущей цели
+      for (const member of group) await applyOne(member, groupVerb);
+      continue;
+    }
+    const verb = VERB_KEYS[answer];
+    if (verb === undefined) continue; // пустой/неизвестный ввод — переспрос (без изменений)
+    await applyOne(target, verb);
+    // «ко всем похожим» одним вопросом, если остались такие же цели
+    const similar = similarTargets(before, target).filter((t) => !handled.has(t.n));
+> worker-reviewer · code
+Все проверки завершены. Собираю вердикт.
+
+---
+
+```
+SUMMARY: 0 critical / 0 major / 3 minor
+VERDICT: APPROVED
+```
+
+(токен playbook; в словаре брифа эквивалентен `APPROVED` — противоречия нет)
+
+# Независимое ревью ЦИКЛ 2, Ф2 (T7–T11), диапазоны `bb4f560..HEAD` и `e734a98..HEAD`
+
+## Что сделано хорошо (подтверждаю)
+
+- **Все три major ревью 1 закрыты фактически, с чувствительными тестами** — см. разбор ниже. Ни одна правка не ослабила существующие ожидания: дельта тестов — только добавления и два намеренных обновления строк (m-3 EN-строка, m-6 формулировка дизайн-матрицы); 1856 → 1860 тестов, минусовых нет.
+- **M-2 решён по букве дизайна**: §4.13 прямо требует для `--json --resolve` «заполненными `backups` и `decisions`» при `projects: []` — топ-левел `backups` аддитивен (минор-совместимость §4.13), заполнен во всех пишущих режимах (resolve/pass/here), в `show` — пусто, как и положено.
+- **M-3 закрыт канонично**: `foreign`+`detail` исключён из нумерации ровно как требует §4.5 («needs-decision НЕ выставляется»); видимость broken-маркеров остаётся там, где её требует дизайн — в деталях шага и `--check` (класс `unknown`, причина полем `detail`, покрытие F1: `memory-upgrade.check.test.ts:103`). Контрольный тест сохраняет прежний `conflict` для `foreign` без `detail` — регрессии классификации нет.
+- Отклонения m-7/m-8 оформлены честно и **опираются на дизайн**: §4.8 дословно исключает снятие ключа из NFR-05 («намеренное действие владельца») — m-8 отклонён обоснованно; m-7 (deprecated-mutated в реестре) маршрутизирован в T14 с внятным прочтением §4.7.
+- Диспетчеризация §4.18 теперь полная: 10 несовместимых пар (7 таблицы + `--review --show` + `--check --show` + новый `--check --review`), порядок check → show → review → resolve → here → pass сохранён.
+
+## Разбор major ревью 1 (фактическая проверка закрытия)
+
+| # | Проверка | Evidence |
+|---|---|---|
+| **M-1** | ✅ закрыт | `memory-upgrade.ts:1581-1590`: linked-refusal + `--json` → `phase1JsonDoc(exit 1, error)` + rethrow (`UserFacingError` уходит в **stderr** через `cli-entry.ts:526-529` — stdout хранит единственный документ, §4.13 не нарушен); local-newer → документ `exit 0` c `cli.available`, без spawn. Exit-паритет с текстом подтверждён (`printOutcome:148-168`: local-newer — без throw, linked-refusal — throw). Тест `upgrade-projects.test.ts:534` («M-1: --json local-newer … linked-refusal») парсит документ из stdout, сверяет exit/available/error, `reExec` не вызван. |
+| **M-2** | ✅ закрыт | `decisions.ts:249-251` — `UpgradeJson.backups`; `memory-upgrade.ts:717` (resolve: `res.backups`), `:1442` (pass: flatMap), `:465` (here). Интеграционный тест `upgrade-here.test.ts:476` идёт через commander + реальную ФС: путь бэкапа из JSON **существует на диске** (`existsSync`), формат `.wolf/backup/upgrade/<дата>/…`; `--json --show` → `mode:'show'`, `projects: []`, `backups: []`. |
+| **M-3** | ✅ закрыт, регрессий нет | `decisions.ts:172-179`: `decisionCode` — `foreign`+`detail` → не решение; `mutated` и `foreign`-без-detail — как раньше. Единственный продюсер `foreign`+`detail` — broken-маркеры AGENTS.md (`opencode-renderer.ts:501`); у карт-файлов `foreign` без detail (`:404`) → `conflict` по §4.7 сохранён. Тест `decisions.test.ts:210` («M-3») проверяет обе ветки. |
+| **m-1/m-2** | ✅ | Переспрос-цикл до валидной клавиши/`q`/EOF (`memory-upgrade.ts:973-980`); diff развёрнут `lineDiff(fresh, local)` — `−`=эталон, `+`=локальный (`:916`). Тест `memory-upgrade.here.test.ts:413`: экран `[1/1]` повторён 3 раза, строки `-# A base`/`+# A local`. |
+| **m-3, m-5, m-6** | ✅ | `… N more lines` (`line-diff.ts:204`); `--check --review` → error (`memory-upgrade.ts:520`); конфликт-сообщение = дословно §4.8 `use protect (hold) or take (base)`, orphan-строка не тронута (матрица различает классы — правильно). |
+
+## Findings
+
+### Minor
+
+**m-1. Метаданные отчёта отстают от дерева.**
+`phase4-impl-f2-report.md:24` — «Диапазон: `bb4f560..f42af98` (6 коммитов)»: не покрывает `e80113f`, `be28fbf`; там же в «Гейт» — «upgrade-here.test.ts (6)», фактически 7 (добавлен M-2-тест).
+Контракт: AC8 «план и отчёт отражают факт».
+Impact: секция «Цикл исправлений 1 → 2» и счётчик 1860 актуальны (сверено моим прогоном), но метаданные противоречат им — читатель брифа видит два разных диапазона.
+Рекомендация: в метаданных указать `bb4f560..be28fbf` (8 коммитов) или добавить строку «+ цикл исправлений 1→2 (2 коммита)».
+
+**m-2. `skippedProjectLines` (m-4 ревью 1) не имеет теста.**
+`memory-upgrade.ts:558-564` — печать в `--resolve` и non-TTY `--review` добавлена; отчёт честно признаёт: «отдельный тест не добавлялся (строки видны в смоуке)». Существующий тест (`decisions.test.ts:189`) проверяет только поле реестра, не вывод.
+Контракт: §4.7 «причина попадает в `skippedProjects` для честного вывода».
+Impact: print-only, риск низкий, но регрессия строк пройдёт гейт незаметно.
+Рекомендация: 3 строки expect в существующий non-TTY review-тест (`memory-upgrade.here.test.ts:450`) при ближайшем касании файла (можно в T13/T14).
+
+**m-3. (pre-existing, цикла 1 — НЕ регрессия цикла 2) Ветка `a` в TTY `--review`: «back» уходит вперёд.**
+`memory-upgrade.ts:994` — при невалидном глаголе в «verb for all … [enter] back» `continue` относится к внешнему циклу по целям: текущая цель пропускается (остаётся в остатке, exit 2), а не возвращается на переспрос — вопреки собственному комментарию «возврат к текущей цели». Код идентичен `e734a98` (проверено `git show`), т.е. вне зоны правок m-1; потери данных нет.
+Рекомендация: `i--` перед `continue` или пометка цели не-handled и явный retry; поправить комментарий.
+
+## Проверено (фактически)
+
+- `npm run check` — свежий прогон: **exit 0, 214 файлов / 1860 тестов** (совпадает с заявленным в отчёте, +4 к циклу 1 = ровно новые M-1/M-2/M-3/m-1 тесты).
+- Точечные: `upgrade-here` (7) + `upgrade-park` (10) + `upgrade-check` (1) — **18 passed**.
+- `git log`/`git status` — в диапазоне чисто (незакоммичены только pre-existing `.opencode/skills/**` и артефакты ревью); полный diff `bb4f560..HEAD` прочитан в цикле 1, дельта `e734a98..HEAD` — целиком, построчно.
+- Контракты по мандату: §4.8 (матрица/двухфазность/порядок реестра), §4.12 (бэкап → эталон → свидетель; `--yes` не берёт conflict; keep держится — R06-5 зелёный в гейте), §4.13 (единственный JSON на stdout, error-диагностика в документе, argv ребёнка `--json`, N01-3 отмена exit 0, режимные документы), §4.18 (порядок и 10 пар) — статическая сверка против кода.
+- Риск потери данных: дельта не добавляет пишущих путей (только вывод/диспетчеризация/классификация); `backupLocalFile` и порядок записей не тронуты; protect/pin-валидация до записи — без изменений.
+- Нумерация: `collectDecisions` — единственный источник N (реестр → map.files → AGENTS.md, `removed` мимо), паритет text↔json закреплён `upgrade-park.test.ts:700`, не ослаблен.
+
+## Ограничения
+
+- Пробы — только через тестовый контур и `dist`-смоук из отчёта (E15); самостоятельно CLI вживую не гонял, кроме гейта/тестов.
+- GAPS вне мандата Ф2 (без изменений с ревью 1, маршрутизация уже есть): T13-поверхность (секция Protections в тексте, `--here --check` через `upgradeCheckHereAction`), F1-остатки rr-1/rr-2 (T14/T15), риск №4 отчёта.
+- m-7/m-8 приняты как задокументированные отклонения (оба опираются на дизайн-текст) — обжалованию не подлежат в рамках Ф2.
+
+**Итог:** цикл исправлений закрыл M-1…M-3 и m-1/m-2/m-3/m-5/m-6 точно по контракту, с тестами, чувствительными к каждому исправлению; регрессий не внесено; гейт зелёный и воспроизведён независимо. Три minor — документационная точность и непроверенная мелочь вывода, ни одна не блокирует фазу.
+
+REVIEW-EXIT=0
+REVIEW-EXIT=0
