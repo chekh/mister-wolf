@@ -6,16 +6,19 @@
 // = все removed-цели карты, статус-словарь T7 (statusOf). Моки runStep/
 // makeStepDeps; полный шаг на реальных адаптерах — integration/upgrade-here.test.ts.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { basename, join } from 'path';
 import { Command } from 'commander';
 import {
   memoryUpgradeCommand,
   runUpgradeHere,
+  runUpgradeReview,
   upgradeRoute,
+  type ReviewIo,
   type UpgradeHereDeps,
   type UpgradeHereResult,
+  type UpgradeResolveDeps,
 } from '../../../../src/adapters/cli/commands/memory-upgrade.js';
 import { UserFacingError } from '../../../../src/domain/errors.js';
 import {
@@ -24,6 +27,8 @@ import {
   type ProjectStepDeps,
 } from '../../../../src/app/use-cases/project-step.js';
 import { projectPath } from '../../../../src/app/use-cases/verify-against-map.js';
+import { parseProtect } from '../../../../src/domain/protect-key.js';
+import { takeParkSnapshot } from '../../../helpers/park-snapshot.js';
 import { statusOf, STATUS_TEXT } from '../../../../src/app/use-cases/upgrade-projects.js';
 import { renderReport } from '../../../../src/adapters/cli/report-renderer.js';
 import type { UpdateMap } from '../../../../src/adapters/fs/update-map.js';
@@ -311,5 +316,194 @@ describe('upgradeRoute: --show и несовместимые пары (T8, §4.1
     expect(upgradeRoute({ show: 'x.md', resolve: ['1=keep'] }).error).toMatch(/--show views a file/);
     expect(upgradeRoute({ show: 'x.md', yes: true }).error).toMatch(/--yes describes a pass/);
     expect(upgradeRoute({ show: 'x.md', check: true }).error).toMatch(/different read-only modes/);
+  });
+});
+
+/* ---------- --review (T9, REQ-07, design §4.9): TTY-цикл и non-TTY рецепт ---------- */
+
+const REVIEW_MAP: UpdateMap = {
+  version: '2.19.0',
+  prev: '2.17.1',
+  files: [
+    { path: 'base/agents/a.md', kind: 'agent', category: 'changed' },
+    { path: 'base/agents/b.md', kind: 'agent', category: 'changed' },
+    { path: 'base/agents/c.md', kind: 'agent', category: 'changed' },
+    { path: 'base/skills/s/SKILL.md', kind: 'skill', category: 'changed' },
+  ],
+  faces: [],
+  agents_md: { category: 'unchanged', mode: 'append-block' },
+  schema_migrations: [],
+  outside_v1: [],
+};
+
+const REVIEW_FILES: Record<string, string> = {
+  '.opencode/agents/a.md': '---\nname: a\n---\n# A local\n',
+  '.opencode/agents/b.md': '---\nname: b\n---\n# B local\n',
+  '.opencode/agents/c.md': '---\nname: c\n---\n# C local\n',
+  '.opencode/skills/s/SKILL.md': '---\nname: s\n---\n# S local\n',
+};
+
+const REVIEW_FRESH: Record<string, string> = {
+  '.opencode/agents/a.md': '---\nname: a\n---\n# A base\n',
+  '.opencode/agents/b.md': '---\nname: b\n---\n# B base\n',
+  '.opencode/agents/c.md': '---\nname: c\n---\n# C base\n',
+  '.opencode/skills/s/SKILL.md': '---\nname: s\n---\n# S base\n',
+};
+
+/** Проект-фикстура ревью: файлы на диске + read-only инспекция по факту. */
+function reviewProject(files: Record<string, string> = REVIEW_FILES): string {
+  const proj = mkdtempSync(join(tmpdir(), 'wolf-review-'));
+  for (const [rel, content] of Object.entries(files)) {
+    mkdirSync(join(proj, rel, '..'), { recursive: true });
+    writeFileSync(join(proj, rel), content);
+  }
+  mkdirSync(join(proj, '.opencode'), { recursive: true });
+  return proj;
+}
+
+function reviewDeps(proj: string, over: Partial<UpgradeResolveDeps> = {}): UpgradeResolveDeps {
+  return {
+    here: proj,
+    loadMap: () => REVIEW_MAP,
+    inspect: async (root) =>
+      REVIEW_MAP.files.map((entry) => {
+        const rel = projectPath(entry);
+        const abs = join(root, rel);
+        if (!existsSync(abs)) return { file: rel, action: 'missing' as const };
+        const content = readFileSync(abs, 'utf-8');
+        if (parseProtect(content).held) return { file: rel, action: 'protected' as const, protected: true as const };
+        return { file: rel, action: content === REVIEW_FRESH[rel] ? ('identical' as const) : ('mutated' as const) };
+      }),
+    renderer: { renderFreshFile: (_root: string, rel: string) => REVIEW_FRESH[rel] ?? null },
+    ...over,
+  };
+}
+
+interface FakeIo extends ReviewIo {
+  out: string[];
+}
+
+function fakeIo(tty: boolean, answers: Array<string | null>): FakeIo {
+  const out: string[] = [];
+  return {
+    tty,
+    out,
+    write: (text) => out.push(text),
+    ask: async () => (answers.length > 0 ? answers.shift()! : null),
+  };
+}
+
+describe('runUpgradeReview (T9): TTY-цикл, non-TTY рецепт, diverged', () => {
+  it('R07-1: TTY, выбор p → protect дописан, файл больше не решение, exit 0', async () => {
+    const proj = reviewProject({ '.opencode/agents/a.md': REVIEW_FILES['.opencode/agents/a.md']! });
+    const io = fakeIo(true, ['p']);
+    const res = await runUpgradeReview(reviewDeps(proj), { here: true, cwd: proj, io });
+
+    expect(res.exitCode).toBe(0);
+    expect(res.applied).toHaveLength(1);
+    expect(res.applied[0]).toMatchObject({ verb: 'protect', file: '.opencode/agents/a.md' });
+    expect(parseProtect(readFileSync(join(proj, '.opencode/agents/a.md'), 'utf-8')).held).toBe(true);
+    expect(io.out.join('')).toContain('[1/1] ');
+    expect(io.out.join('')).toContain('[t]ake [k]eep [p]rotect [v]pin [s]kip');
+    rmSync(proj, { recursive: true, force: true });
+  });
+
+  it('R07-3: «ко всем похожим» — 3 agent/mutated применены, skill остался; перечень до применения', async () => {
+    const proj = reviewProject();
+    const io = fakeIo(true, ['t', 'y']);
+    const res = await runUpgradeReview(reviewDeps(proj), { here: true, cwd: proj, io });
+
+    expect(res.exitCode).toBe(2); // skill/mutated остался решением
+    expect(res.applied.map((a) => a.file).sort()).toEqual([
+      '.opencode/agents/a.md',
+      '.opencode/agents/b.md',
+      '.opencode/agents/c.md',
+    ]);
+    for (const rel of ['.opencode/agents/a.md', '.opencode/agents/b.md', '.opencode/agents/c.md']) {
+      expect(readFileSync(join(proj, rel), 'utf-8')).toBe(REVIEW_FRESH[rel]);
+    }
+    expect(readFileSync(join(proj, '.opencode/skills/s/SKILL.md'), 'utf-8')).toBe(
+      REVIEW_FILES['.opencode/skills/s/SKILL.md']
+    );
+    const text = io.out.join('');
+    expect(text).toContain('apply "take" to 2 more agent/mutated?');
+    expect(text).toContain('  .opencode/agents/b.md'); // перечень целей до применения
+  });
+
+  it('R07-4: q и EOF завершают цикл — принятые решения остаются, остальные не тронуты', async () => {
+    const proj = reviewProject();
+    const quitIo = fakeIo(true, ['t', 'n', 'q']);
+    const quit = await runUpgradeReview(reviewDeps(proj), { here: true, cwd: proj, io: quitIo });
+    expect(quit.exitCode).toBe(2); // b/c agent + skill остались
+    expect(quit.applied.map((a) => a.file)).toEqual(['.opencode/agents/a.md']);
+    expect(readFileSync(join(proj, '.opencode/agents/b.md'), 'utf-8')).toBe(REVIEW_FILES['.opencode/agents/b.md']);
+
+    const eofIo = fakeIo(true, [null]);
+    const eof = await runUpgradeReview(reviewDeps(proj), { here: true, cwd: proj, io: eofIo });
+    expect(eof.exitCode).toBe(2);
+    expect(eof.applied).toEqual([]);
+    expect(eofIo.out.join('')).toContain('Done with attention');
+    rmSync(proj, { recursive: true, force: true });
+  });
+
+  it('R07-2/R07-6: non-TTY — список с готовой командой --resolve, exit 2, без записей; пусто → 0', async () => {
+    const proj = reviewProject();
+    const io = fakeIo(false, []);
+    const before = takeParkSnapshot(proj);
+    const res = await runUpgradeReview(reviewDeps(proj), { here: true, cwd: proj, io });
+
+    expect(res.exitCode).toBe(2);
+    expect(res.applied).toEqual([]);
+    const text = renderReport(res.report, { tty: false, colors: 'mono', width: 400 });
+    expect(text).toContain('review (non-interactive): 4 files need a decision');
+    expect(text).toMatch(/1\s+\S+\s+\.opencode\/agents\/a\.md\s+mutated\s+base 2\.19\.0/);
+    expect(text).toContain('wolf upgrade --here --resolve 1=take --resolve 2=take');
+    expect(text).toContain('wolf upgrade --here --show 1');
+    expect(takeParkSnapshot(proj)).toEqual(before); // ни одного байта
+
+    const clean = reviewProject(
+      Object.fromEntries(Object.entries(REVIEW_FRESH).map(([rel, content]) => [rel, content]))
+    );
+    const empty = await runUpgradeReview(reviewDeps(clean), { here: true, cwd: clean, io: fakeIo(false, []) });
+    expect(empty.exitCode).toBe(0);
+    expect(renderReport(empty.report, { tty: false, colors: 'mono', width: 400 })).toContain('no decisions');
+    rmSync(proj, { recursive: true, force: true });
+    rmSync(clean, { recursive: true, force: true });
+  });
+
+  it('R07-5/N01-3: diverged — отдельная секция steward zone, держит exit 2; глагол не предлагается', async () => {
+    const proj = reviewProject({
+      '.opencode/agents/a.md': REVIEW_FRESH['.opencode/agents/a.md']!,
+      '.opencode/agents/b.md': REVIEW_FRESH['.opencode/agents/b.md']!,
+      '.opencode/agents/c.md': REVIEW_FRESH['.opencode/agents/c.md']!,
+      '.opencode/skills/s/SKILL.md': REVIEW_FRESH['.opencode/skills/s/SKILL.md']!,
+    });
+    const deps = reviewDeps(proj, {
+      loadMap: () => ({
+        ...REVIEW_MAP,
+        faces: [
+          {
+            template: 'base/playbooks/executor-lead-playbook.md',
+            owner_skill: 'executor-lead',
+            category: 'new',
+            seed: true,
+          },
+        ],
+      }),
+      liveFaces: async () => [
+        { ownerSkill: 'executor-lead', version: '2', body: 'Local body.\n', initiator: 'steward' },
+      ],
+      faceTemplates: new Map([['executor-lead-playbook.md', '---\nowner_skill: executor-lead\n---\nTemplate body.\n']]),
+    });
+    const nonTty = await runUpgradeReview(deps, { here: true, cwd: proj, io: fakeIo(false, []) });
+    expect(nonTty.exitCode).toBe(2);
+    const text = renderReport(nonTty.report, { tty: false, colors: 'mono', width: 400 });
+    expect(text).toContain('steward zone (not addressable by --resolve): 1');
+    expect(text).toContain('faces/executor-lead.md  diverged  v2');
+    expect(text).not.toContain('--resolve 1=take'); // решений нет — рецепт не печатается
+
+    const tty = await runUpgradeReview(deps, { here: true, cwd: proj, io: fakeIo(true, []) });
+    expect(tty.exitCode).toBe(2);
+    rmSync(proj, { recursive: true, force: true });
   });
 });

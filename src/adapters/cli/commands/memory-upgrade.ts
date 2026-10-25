@@ -21,7 +21,9 @@ import {
   parseResolveValues,
   planResolutions,
   resolveShowTarget,
+  similarTargets,
   type AppliedResolution,
+  type DecisionTarget,
   type DecisionDeps,
   type DecisionRegistry,
   type DivergedFace,
@@ -417,7 +419,7 @@ async function upgradeHereAction(cwd: string, yes: boolean): Promise<void> {
 // --show (T8) → --review (T9) → --resolve → --here → npm+re-exec. Новые режимы
 // завершаются в фазе 1 на установленном CLI: флаг не теряется в re-exec.
 
-export type UpgradeMode = 'check' | 'show' | 'resolve' | 'here' | 'pass';
+export type UpgradeMode = 'check' | 'show' | 'review' | 'resolve' | 'here' | 'pass';
 
 export interface UpgradeFlags {
   check?: boolean;
@@ -425,6 +427,7 @@ export interface UpgradeFlags {
   yes?: boolean;
   resolve?: string[];
   show?: string;
+  review?: boolean;
 }
 
 export interface UpgradeRoute {
@@ -438,7 +441,17 @@ export function upgradeRoute(flags: UpgradeFlags): UpgradeRoute {
   const resolve = flags.resolve ?? [];
   const resolveGiven = resolve.length > 0;
   const showGiven = flags.show !== undefined;
+  const reviewGiven = flags.review === true;
   // Несовместимые комбинации (§4.18): два способа действия в одном вызове
+  if (reviewGiven && resolveGiven) {
+    return { mode: 'pass', error: '--review and --resolve are two ways to apply decisions — run one of them' };
+  }
+  if (reviewGiven && flags.yes === true) {
+    return { mode: 'pass', error: '--yes describes a pass, not a review — drop one of --review/--yes' };
+  }
+  if (reviewGiven && showGiven) {
+    return { mode: 'pass', error: '--review and --show are different read-only modes — run one of them' };
+  }
   if (showGiven && resolveGiven) {
     return { mode: 'pass', error: '--show views a file, --resolve writes — run them separately' };
   }
@@ -456,6 +469,7 @@ export function upgradeRoute(flags: UpgradeFlags): UpgradeRoute {
   }
   if (flags.check === true) return { mode: 'check' }; // --check сильнее --here (§4.18)
   if (showGiven) return { mode: 'show' };
+  if (reviewGiven) return { mode: 'review' };
   if (resolveGiven) return { mode: 'resolve' };
   if (flags.here === true) return { mode: 'here' };
   return { mode: 'pass' };
@@ -703,6 +717,212 @@ async function upgradeShowAction(value: string, here: boolean): Promise<void> {
   );
   process.stdout.write(`${renderReport(res.report, termEnv(process.stdout, process.env))}\n`);
   process.exitCode = res.exitCode;
+}
+
+/* ---------- --review (T9, REQ-07, design §4.9): TTY-цикл и non-TTY рецепт ---------- */
+
+const REVIEW_TITLE = 'wolf upgrade — review';
+const VERB_KEYS: Record<string, ResolutionVerb> = { t: 'take', k: 'keep', p: 'protect', v: 'pin' };
+
+/** IO-шов юнит-контура: реальный stdio в проде, очередь ответов в тестах. */
+export interface ReviewIo {
+  tty: boolean;
+  write(text: string): void;
+  /** Ответ пользователя; `null` — EOF/закрытый stdin. */
+  ask(prompt: string): Promise<string | null>;
+}
+
+export interface UpgradeReviewResult {
+  exitCode: 0 | 1 | 2;
+  /** Итоговая секция (в non-TTY — весь рецепт, в TTY — дайджест). */
+  report: ReportNode;
+  applied: AppliedResolution[];
+  errors: string[];
+  registry: DecisionRegistry;
+}
+
+/** Строка цели в списке §4.9: номер, проект, путь, код, база. */
+function reviewTargetLine(t: DecisionTarget, base: string): string {
+  return `  ${t.n}  ${t.project}  ${t.file}  ${t.code}  base ${base}`;
+}
+
+/** Non-TTY рецепт (design §4.9, AC2): список + готовые команды, без записей. */
+function reviewRecipeNodes(reg: DecisionRegistry, base: string, here: boolean): ReportNode[] {
+  const out: ReportNode[] = [];
+  if (reg.targets.length === 0) {
+    out.push(line('info', 'review (non-interactive): no decisions — nothing needs a decision', true));
+  } else {
+    const noun = reg.targets.length === 1 ? 'file needs' : 'files need';
+    out.push(line('warn', `review (non-interactive): ${reg.targets.length} ${noun} a decision`, true));
+    for (const t of reg.targets) out.push(line('info', reviewTargetLine(t, base), true));
+  }
+  out.push(...stewardZoneLines(reg.diverged));
+  if (reg.targets.length > 0) {
+    const scope = here ? ' --here' : '';
+    const resolves = reg.targets.map((t) => `--resolve ${t.n}=take`).join(' ');
+    out.push(line('info', `review interactively: wolf upgrade${scope} --review  (in a TTY)`, true));
+    out.push(line('info', `apply a decision:    wolf upgrade${scope} ${resolves}  (or keep|protect|pin)`, true));
+    out.push(line('info', `inspect a file:      wolf upgrade${scope} --show ${reg.targets[0]!.n}`, true));
+  }
+  return out;
+}
+
+/** Экран одного решения (design §4.9): заголовок, размеры, diff ≤ 40 строк, клавиши. */
+function reviewScreen(
+  t: DecisionTarget,
+  index: number,
+  total: number,
+  map: UpdateMap,
+  renderer: UpgradeResolveDeps['renderer']
+): string[] {
+  const lines: string[] = [`[${index}/${total}] ${t.project}/${t.file} — ${t.code} · base ${map.version}`];
+  const abs = join(t.root, t.file);
+  const current = existsSync(abs) ? readFileSync(abs, 'utf-8') : null;
+  const fresh = renderer.renderFreshFile(t.root, t.file);
+  const localLines = current === null ? 0 : normalizeManaged(current).replace(/\r\n/g, '\n').split('\n').length;
+  const baseLines = fresh === null ? 0 : fresh.replace(/\r\n/g, '\n').split('\n').length;
+  if (fresh === null) {
+    lines.push(`  local: ${localLines} lines · base: n/a (file outside the update map) · no diff`);
+  } else if (current === null) {
+    lines.push(`  local: missing · base: ${baseLines} lines · take creates the file`);
+  } else {
+    const diff = lineDiff(normalizeManaged(current), fresh, { maxOutput: 40 });
+    lines.push(`  local: ${localLines} lines · base: ${baseLines} lines · −${diff.removed} +${diff.added}`);
+    lines.push(`  --- a/base ${map.version}   +++ b/local`);
+    for (const text of formatDiff(diff)) lines.push(`  ${text}`);
+  }
+  lines.push('  choice: [t]ake [k]eep [p]rotect [v]pin [s]kip  (a — apply to all similar, q — quit)');
+  return lines;
+}
+
+/**
+ * `--review`: TTY-цикл по реестру (экраны с diff, клавиши t/k/p/v/s/a/q; EOF
+ * завершает цикл) или non-TTY рецепт без единой записи. Применение — тот же
+ * `applyResolutions`, что у `--resolve` (одна семантика, один бэкап-путь).
+ */
+export async function runUpgradeReview(
+  deps: UpgradeResolveDeps,
+  opts: { here: boolean; cwd: string; io: ReviewIo }
+): Promise<UpgradeReviewResult> {
+  const map = deps.loadMap();
+  const collectDeps: DecisionDeps = { ...deps, loadMap: () => map };
+  const before = await collectDecisions(collectDeps);
+  const applied: AppliedResolution[] = [];
+  const errors: string[] = [];
+  const handled = new Set<number>();
+
+  const applyOne = async (target: DecisionTarget, verb: ResolutionVerb): Promise<void> => {
+    const plan = planResolutions(before, map, [{ target: String(target.n), verb }], {
+      here: opts.here,
+      cwd: opts.cwd,
+    });
+    if (plan.errors.length > 0) {
+      errors.push(...plan.errors);
+      return;
+    }
+    const res = await applyResolutions(plan.ops, { map, renderer: deps.renderer, now: deps.now });
+    applied.push(...res.applied);
+    errors.push(...res.errors);
+    handled.add(target.n);
+  };
+
+  if (!opts.io.tty) {
+    const nodes = reviewRecipeNodes(before, map.version, opts.here);
+    const exitCode: 0 | 1 | 2 = before.targets.length > 0 || before.diverged.length > 0 ? 2 : 0;
+    return {
+      exitCode,
+      report: { kind: 'section', title: REVIEW_TITLE, children: nodes },
+      applied,
+      errors,
+      registry: before,
+    };
+  }
+
+  const total = before.targets.length;
+  for (let i = 0; i < before.targets.length; i++) {
+    const target = before.targets[i]!;
+    if (handled.has(target.n)) continue;
+    opts.io.write(`${reviewScreen(target, i + 1, total, map, deps.renderer).join('\n')}\n`);
+    const answer = (await opts.io.ask('> '))?.trim().toLowerCase() ?? null;
+    if (answer === null || answer === 'q') break;
+    if (answer === 's' || answer === '') {
+      handled.add(target.n);
+      continue;
+    }
+    if (answer === 'a') {
+      // «применить ко всем похожим»: отдельный вопрос о глаголе для группы
+      const group = [target, ...similarTargets(before, target).filter((t) => !handled.has(t.n))];
+      opts.io.write(
+        `apply to all ${group.length} ${target.kind}/${target.code}: ${group.map((t) => t.file).join(', ')}\n`
+      );
+      const verbAnswer =
+        (await opts.io.ask('verb for all: [t]ake [k]eep [p]rotect [v]pin or [enter] back > '))?.trim().toLowerCase() ??
+        null;
+      const groupVerb = verbAnswer === null ? undefined : VERB_KEYS[verbAnswer];
+      if (groupVerb === undefined) continue; // без изменения файлов — возврат к текущей цели
+      for (const member of group) await applyOne(member, groupVerb);
+      continue;
+    }
+    const verb = VERB_KEYS[answer];
+    if (verb === undefined) continue; // пустой/неизвестный ввод — переспрос (без изменений)
+    await applyOne(target, verb);
+    // «ко всем похожим» одним вопросом, если остались такие же цели
+    const similar = similarTargets(before, target).filter((t) => !handled.has(t.n));
+    if (similar.length > 0) {
+      opts.io.write(`apply "${verb}" to ${similar.length} more ${target.kind}/${target.code}?\n`);
+      for (const s of similar) opts.io.write(`  ${s.n}  ${s.project}  ${s.file}\n`);
+      const confirmed = (await opts.io.ask('[y/N] '))?.trim().toLowerCase() ?? null;
+      if (confirmed === 'y' || confirmed === 'yes') {
+        for (const member of similar) await applyOne(member, verb);
+      }
+    }
+  }
+
+  const after = await collectDecisions(collectDeps);
+  const digest = [...digestLines(applied), ...decisionLines(after), ...stewardZoneLines(after.diverged)];
+  for (const error of errors) opts.io.write(`error: ${error}\n`);
+  opts.io.write(`${digest.map((node) => (node.kind === 'line' ? node.text : '')).join('\n')}\n`);
+  const exitCode: 0 | 1 | 2 = errors.length > 0 ? 1 : after.targets.length > 0 || after.diverged.length > 0 ? 2 : 0;
+  opts.io.write(`${exitCode === 1 ? 'Failed' : exitCode === 2 ? 'Done with attention' : 'Done'}\n`);
+  return {
+    exitCode,
+    report: { kind: 'section', title: REVIEW_TITLE, children: digest },
+    applied,
+    errors,
+    registry: after,
+  };
+}
+
+/** Прод-IO цикла: stdout + readline; EOF/Ctrl-D → null (цикл завершается). */
+async function upgradeReviewAction(here: boolean): Promise<void> {
+  const cwd = safeCwd();
+  const renderer = new OpencodeBaseSetRenderer(templatesRoot(), {
+    harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
+  });
+  const tty = Boolean(process.stdout.isTTY && process.stdin.isTTY);
+  const rl = tty ? createInterface({ input: process.stdin, output: process.stdout }) : null;
+  const io: ReviewIo = {
+    tty,
+    write: (text) => process.stdout.write(text),
+    ask: async (prompt) => {
+      if (!rl) return null;
+      try {
+        return await rl.question(prompt);
+      } catch {
+        return null; // stdin закрыт (Ctrl-D/Ctrl-C)
+      }
+    },
+  };
+  try {
+    const res = await runUpgradeReview(
+      { ...decisionProdDeps(here ? cwd : null, renderer), renderer },
+      { here, cwd, io }
+    );
+    if (!tty) process.stdout.write(`${renderReport(res.report, termEnv(process.stdout, process.env))}\n`);
+    process.exitCode = res.exitCode;
+  } finally {
+    rl?.close();
+  }
 }
 
 /* ---------- --check парковая сводка (REQ-08, T10): read-only, 0 мутаций ---------- */ // Состав — истина, штамп — свидетель (инвентаризация §3.4): класс проекта —
@@ -1054,7 +1274,7 @@ function collectResolve(value: string, previous: string[]): string[] {
 export function memoryUpgradeCommand(): Command {
   return new Command('upgrade')
     .description(
-      'One command updates everything: npm phase (npm install -g mister-wolf@latest) followed by the registered-projects pass; --check only reports CLI + park freshness, no install; --here runs the full project update step in the current directory only (no npm self-update, no registry); --resolve applies owner decisions (<file|N>=take|keep|protect|pin) without a pass; --show prints one target with the local → base diff (read-only)'
+      'One command updates everything: npm phase (npm install -g mister-wolf@latest) followed by the registered-projects pass; --check only reports CLI + park freshness, no install; --here runs the full project update step in the current directory only (no npm self-update, no registry); --resolve applies owner decisions (<file|N>=take|keep|protect|pin) without a pass; --show prints one target with the local → base diff (read-only); --review walks the decisions with a diff (TTY) or prints the recipe'
     )
     .option('--check', 'Only check for a newer version, do not install anything')
     .option('--here', 'Update this project only: full project step in cwd (no npm, no re-exec, no registry)')
@@ -1065,44 +1285,57 @@ export function memoryUpgradeCommand(): Command {
       collectResolve,
       []
     )
-    .action(async (options: { check?: boolean; here?: boolean; yes?: boolean; resolve?: string[]; show?: string }) => {
-      const route = upgradeRoute(options);
-      if (route.error !== undefined) throw new UserFacingError(route.error);
-      const cwd = safeCwd();
-      if (route.mode === 'show') {
-        await upgradeShowAction(options.show!, options.here === true);
-        return; // read-only: файлы, свидетель и бэкапы не трогаются (NFR-03)
+    .action(
+      async (options: {
+        check?: boolean;
+        here?: boolean;
+        yes?: boolean;
+        resolve?: string[];
+        show?: string;
+        review?: boolean;
+      }) => {
+        const route = upgradeRoute(options);
+        if (route.error !== undefined) throw new UserFacingError(route.error);
+        const cwd = safeCwd();
+        if (route.mode === 'review') {
+          await upgradeReviewAction(options.here === true);
+          return; // non-TTY ничего не пишет; TTY применяет по решениям (REQ-07)
+        }
+        if (route.mode === 'show') {
+          await upgradeShowAction(options.show!, options.here === true);
+          return; // read-only: файлы, свидетель и бэкапы не трогаются (NFR-03)
+        }
+        if (route.mode === 'resolve') {
+          // Решения применяются в фазе 1: без npm-фазы, re-exec и прохода (§4.18)
+          await upgradeResolveAction(options.resolve ?? [], options.here === true);
+          return;
+        }
+        if (route.mode === 'here') {
+          await upgradeHereAction(cwd, options.yes === true);
+          return; // npm-ветка при --here не выполняется вообще (REQ-14)
+        }
+        const checkOnly = route.mode === 'check';
+        // npm view один на запуск: CLI-часть и парковая сводка делят результат
+        let available: string | null = null;
+        const viewOnce = async (): Promise<string> => {
+          if (available === null) available = await registryVersion();
+          return available;
+        };
+        const deps: UpgradeDeps = {
+          currentVersion: readInstalledVersion(),
+          binaryPath: process.argv[1] ? realPathOrNull(process.argv[1]) : null,
+          npmPrefix: checkOnly ? null : await npmGlobalPrefix(), // --check тип установки не проверяет
+          registryVersion: viewOnce,
+          installLatest,
+        };
+        if (route.mode === 'check') {
+          printOutcome(await runUpgrade(deps, true));
+          // порядок: CLI-версии → парк (REQ-08); --here сужает до cwd (read-only)
+          await upgradeCheckAction(viewOnce, options.here === true ? cwd : undefined);
+          return;
+        }
+        // npm-фаза + re-exec фазы 2 (T8): режимы выше вышли раньше, re-exec там нет
+        await runUpgradeWithProjects(deps, { yes: options.yes === true });
       }
-      if (route.mode === 'resolve') {
-        // Решения применяются в фазе 1: без npm-фазы, re-exec и прохода (§4.18)
-        await upgradeResolveAction(options.resolve ?? [], options.here === true);
-        return;
-      }
-      if (route.mode === 'here') {
-        await upgradeHereAction(cwd, options.yes === true);
-        return; // npm-ветка при --here не выполняется вообще (REQ-14)
-      }
-      const checkOnly = route.mode === 'check';
-      // npm view один на запуск: CLI-часть и парковая сводка делят результат
-      let available: string | null = null;
-      const viewOnce = async (): Promise<string> => {
-        if (available === null) available = await registryVersion();
-        return available;
-      };
-      const deps: UpgradeDeps = {
-        currentVersion: readInstalledVersion(),
-        binaryPath: process.argv[1] ? realPathOrNull(process.argv[1]) : null,
-        npmPrefix: checkOnly ? null : await npmGlobalPrefix(), // --check тип установки не проверяет
-        registryVersion: viewOnce,
-        installLatest,
-      };
-      if (route.mode === 'check') {
-        printOutcome(await runUpgrade(deps, true));
-        // порядок: CLI-версии → парк (REQ-08); --here сужает до cwd (read-only)
-        await upgradeCheckAction(viewOnce, options.here === true ? cwd : undefined);
-        return;
-      }
-      // npm-фаза + re-exec фазы 2 (T8): режимы выше вышли раньше, re-exec там нет
-      await runUpgradeWithProjects(deps, { yes: options.yes === true });
-    });
+    );
 }

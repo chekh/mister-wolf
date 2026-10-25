@@ -177,6 +177,11 @@ export async function collectDecisions(deps: DecisionDeps): Promise<DecisionRegi
   return { targets, diverged, skippedProjects, projects };
 }
 
+/** Похожие цели (§4.9, критерий «все к похожим»): та же пара `kind` + `code`. */
+export function similarTargets(reg: DecisionRegistry, target: DecisionTarget): DecisionTarget[] {
+  return reg.targets.filter((t) => t.n !== target.n && t.kind === target.kind && t.code === target.code);
+}
+
 /* ---------- разбор `--resolve` (§4.8) ---------- */
 
 export type ResolutionVerb = 'take' | 'keep' | 'protect' | 'pin';

@@ -20,6 +20,7 @@ import {
 // T8: npm-фаза CLI (мок installLatest → throw) — сбой до spawn, слепок парка.
 import {
   runUpgradeResolve,
+  runUpgradeReview,
   runUpgradeWithProjects,
   type UpgradeResolveDeps,
 } from '../../src/adapters/cli/commands/memory-upgrade.js';
@@ -596,5 +597,42 @@ describe('runUpgradeResolve парк (T7): нумерация реестра, ke
     expect(text).toContain('Done with attention');
     expect(diverged.registry.targets).toEqual([]); // адресуемое решение применено
     expect(diverged.registry.diverged).toHaveLength(1);
+  });
+});
+
+/* ---------- парковый --review (T9, REQ-07): non-TTY рецепт без записей ---------- */
+
+describe('runUpgradeReview парк (T9): non-TTY рецепт, exit 2, ни байта записей', () => {
+  it('R07-2/N06-1: список по реестру с номером/путём/базой и готовой командой --resolve', async () => {
+    const park = mkTmp('wolf-upgrade-park-review-');
+    const clean = await bootstrapProject(park, 'p-clean');
+    const mutated = await bootstrapProject(park, 'p-mutated');
+    const target = join(mutated, '.opencode/agents/mr-wolf.md');
+    writeFileSync(target, `${readFileSync(target, 'utf-8')}\n<!-- local user edit -->\n`);
+    const configDir = mkTmp('wolf-upgrade-cfg-');
+    writeRegistry(configDir, [entryOf(clean), entryOf(mutated)]);
+
+    const out: string[] = [];
+    const io = {
+      tty: false,
+      write: (text: string) => out.push(text),
+      ask: async () => null,
+    };
+    const before = takeParkSnapshot(park);
+    const res = await runUpgradeReview(resolveDeps(configDir), { here: false, cwd: park, io });
+
+    expect(res.exitCode).toBe(2);
+    expect(res.applied).toEqual([]);
+    const text = renderReport(res.report, { tty: false, colors: 'mono', width: 400 });
+    expect(text).toContain('review (non-interactive): 1 file needs a decision');
+    expect(text).toMatch(/1\s+p-mutated\s+\.opencode\/agents\/mr-wolf\.md\s+mutated\s+base 2\.19\.0/);
+    expect(text).toContain('wolf upgrade --resolve 1=take');
+    expect(text).toContain('wolf upgrade --show 1');
+    expect(out).toEqual([]); // non-TTY не пишет в stdout напрямую — только секция отчёта
+    expect(takeParkSnapshot(park)).toEqual(before);
+
+    // N06-1: повтор даёт тот же текст (детерминизм)
+    const again = await runUpgradeReview(resolveDeps(configDir), { here: false, cwd: park, io });
+    expect(renderReport(again.report, { tty: false, colors: 'mono', width: 400 })).toBe(text);
   });
 });
