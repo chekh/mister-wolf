@@ -298,7 +298,9 @@ base:'0.0.0'|<stamp>}`, `saveSyncState` → `writeFileSync(tmp)` + `renameSync`;
 
 ### Ф3 — периферия
 
-- [ ] **T12. init восстанавливает `mcp.wolf`, doctor подтверждает.**
+- [x] **T12. init восстанавливает `mcp.wolf`, doctor подтверждает.**
+      Сделано → коммит `544a419` (init-project-unit 39, doctor-unit 11,
+      b0-init-int 13; `npx tsc --noEmit` ok, `npm run check` exit 0).
       Цель: совет doctor становится выполнимым (design §4.14, REQ-04 AC1–AC3).
       Контракт: ветка «без `--platform`» — только для существующего конфига
       detected-платформы, через `adapter.writeConfig`; битый JSONC → `skipped`;
@@ -311,7 +313,9 @@ base:'0.0.0'|<stamp>}`, `saveSyncState` → `writeFileSync(tmp)` + `renameSync`;
       `npx tsc --noEmit`. RESULT: DONE; существующий кейс WP1 «конфига нет →
       не пишем» сохранён, новый кейс «конфиг есть, записи нет → пишем».
 
-- [ ] **T13. Секция Protections и `--here --check` (read-only).**
+- [x] **T13. Секция Protections и `--here --check` (read-only).**
+      Сделано → коммит `c30cc04` (check-unit 24, upgrade-check 5,
+      upgrade-here 9; `npx tsc --noEmit` ok, `npm run check` exit 0).
       Цель: реестр защит виден всегда, `--check` в одиночном проекте ничего не
       пишет (design §4.11, §4.18, REQ-09 AC1–AC3, NFR-03).
       Контракт: `renderer.listProtections(root, base)` (read-only, каталоги
