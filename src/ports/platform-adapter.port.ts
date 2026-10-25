@@ -45,14 +45,15 @@ export interface PlatformAdapter {
    * Идемпотентная запись wolf-сервера (ключ идемпотентности — имя MCP-сервера 'wolf'):
    * 'written' — создан, 'replaced' — существующая запись wolf перезаписана (в т.ч. ручная
    * dev-запись), 'unchanged' — уже канонический. Чужие серверы и секции не трогаются.
-   * opencode мерджит ещё и default_agent/subagent_depth (§6.1): конфликт — unchanged + reason.
+   * opencode мерджит ещё и default_agent/subagent_depth (§6.1) — глубина живёт в
+   * `experimental.subagent_depth` (opencode v2; верхнеуровневый ключ deprecated): конфликт — unchanged + reason.
    */
   writeConfig(projectRoot: string, cmd: McpCommand): Promise<PlatformWriteResult>;
   /** Удалить wolf-запись (для --platform replace-семантики); true если удалил. */
   removeWolf(projectRoot: string): Promise<boolean>;
   /**
    * 2.16.2 (uninstall): удалить ТОЛЬКО wolf-ключи с ТОЧНЫМ нашим значением
-   * (mcp.wolf / mcpServers.wolf; default_agent === mr-wolf; subagent_depth === 2 —
+   * (mcp.wolf / mcpServers.wolf; default_agent === mr-wolf; experimental.subagent_depth === 2 —
    * пользовательскую повышенную настройку не трогаем). Отсутствующий конфиг —
    * { action: 'skipped', reason }.
    */

@@ -114,7 +114,8 @@ describe('platform repair v1→v2 (REQ-02, e2e)', () => {
     const cfg = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));
     expect(cfg.mcp?.wolf?.command).toEqual(['wolf', 'mcp']);
     expect(cfg.default_agent).toBe('mr-wolf');
-    expect(cfg.subagent_depth).toBe(2);
+    expect(cfg.experimental.subagent_depth).toBe(2);
+    expect(cfg.subagent_depth).toBeUndefined(); // deprecated в opencode v2
     // Повторный doctor — чисто (идемпотентность).
     const again = run(['doctor'], project, xdg, fakeBin);
     expect(again.status).toBe(0);

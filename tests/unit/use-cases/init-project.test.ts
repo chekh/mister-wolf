@@ -572,7 +572,7 @@ describe('initProject v2 (§4: без скана, платформы/модел�
       writeFileSync(join(dir, 'package.json'), '{}');
       writeFileSync(
         configFile(),
-        `${JSON.stringify({ mcp: { wolf: CANONICAL }, default_agent: 'my-agent', subagent_depth: 2 }, null, 2)}\n`
+        `${JSON.stringify({ mcp: { wolf: CANONICAL }, default_agent: 'my-agent', experimental: { subagent_depth: 2 } }, null, 2)}\n`
       );
       const before = readFileSync(configFile(), 'utf-8');
       const result = await initProject(realDeps(), dir, { models: MODELS });

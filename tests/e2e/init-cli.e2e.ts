@@ -48,7 +48,8 @@ describe('wolf init CLI (спека §3 уровень 1; WP2 unpin: --model opt
     const cfg = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));
     expect(cfg.mcp.wolf).toEqual({ type: 'local', command: ['wolf', 'mcp'], enabled: true });
     expect(cfg.default_agent).toBe('mr-wolf'); // F4 закрыт: default_agent первым init'ом
-    expect(cfg.subagent_depth).toBe(2); // F15: subagent_depth первым init'ом
+    expect(cfg.experimental.subagent_depth).toBe(2); // opencode v2: действующий путь — experimental
+    expect(cfg.subagent_depth).toBeUndefined(); // deprecated верхнеуровневый ключ не пишется
     expect(readFileSync(join(xdg, 'wolf', 'projects.yaml'), 'utf-8')).toContain(project);
 
     const before = readFileSync(join(project, 'opencode.json'), 'utf-8');

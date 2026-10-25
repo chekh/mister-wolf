@@ -70,7 +70,7 @@ export async function repairPlatform(
     ...mismatchLines.map((m) => `mismatch: ${m}`),
     `syncBaseSet: re-render ${owned.length} stamped file(s) under current templates:`,
     ...fileList,
-    'writeConfig: canonicalize mcp.wolf / default_agent / subagent_depth',
+    'writeConfig: canonicalize mcp.wolf / default_agent / experimental.subagent_depth',
   ];
   if (opts.dryRun) return { ...empty, plan };
   const { outcomes, orphaned } = await deps.syncBaseSet();
