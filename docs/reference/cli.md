@@ -1041,7 +1041,7 @@ Options:
   --yes                    Apply the plan without interactive confirmation
                            (--here or the projects pass)
   --resolve <target=verb>  Resolve a decision: <file|N>=take|keep|protect|pin
-                           (repeatable, comma-separated) (default: [])
+                           (repeatable, comma-separated)
   --show <file|N>          Show one target: protect, both versions and the
                            local → base diff (read-only)
   --review                 Review decisions one by one with a diff (TTY);

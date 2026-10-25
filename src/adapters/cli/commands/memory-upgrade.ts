@@ -1553,8 +1553,8 @@ export async function runUpgradeWithProjects(
 }
 
 /** commander-коллектор повторяемого `--resolve` (значение может нести список через запятую). */
-function collectResolve(value: string, previous: string[]): string[] {
-  return [...previous, value];
+function collectResolve(value: string, previous?: string[]): string[] {
+  return [...(previous ?? []), value];
 }
 
 export function memoryUpgradeCommand(): Command {
