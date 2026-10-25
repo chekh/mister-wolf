@@ -1,0 +1,18 @@
+Продолжаю чтение design.md (с §4.8) и test-plan.md.
+Читаю остаток design.md (§4.18 и далее) — нужен для всех трёх пунктов.
+Финальная проверка фактов: существуют ли указанные в маппингах тестовые файлы (для R01-1 и R06-9).
+VERDICT: CHANGES_REQUIRED
+SUMMARY: 0 critical / 1 major / 4 minor
+
+**NEW-1: closed** — evidence plan.md:399-400, design.md:1150-1154, plan.md:282-286 — раздел «Общие файлы и порядок слияния» теперь говорит ровно наоборот от старой претензии: `opencode-renderer.ts` — T3 → T4, «T13 рендерер не правит: `listProtections` реализует T3, T13 только печатает»; §4.18 дублирует это явно («ветка `--here --check` (`upgradeCheckHereAction` + печать секции Protections; сам `listProtections` реализует T3) — T13»), §4.6 (design.md:479-483) закрепляет порт за T3 (T13 «только потребляют»). Allowlist T13 (plan.md:283-286) — только `memory-upgrade.ts` + три тестовых файла, без рендерера и порта. Противоречащих мест не нашёл.
+
+**NEW-2: not-closed** — evidence test-plan.md:236 (R07-5) — R07-5 для diverged-only парка утверждает «When `--json`, Then `diverged[]` непуст, **exit 2**». По зафиксированному тайбрейку bare `--json` (non-TTY, без `--yes`) — отменённый проход → exit 0 даже при `diverged` (design.md:957-960; N01-3 test-plan.md:372-374 «bare `--json` … exit **0** … даже если `diverged` есть»); 2 корректно только для `--json --yes`. Тест, написанный по R07-5 буквально, будет ожидать неверный код. Design-сторона согласована (§4.8 шаг 5 — design.md:640-641; §4.13 — 957-960; §4.16 строки `--review`/`--yes`/bare — 1056-1061; §4.9 — 719-720, 746-751). Доп. остаток в той же точке проверки: N01-3 (test-plan.md:374) «When `--review --json --yes`, Then exit 0» — это одна несовместимая комбинация (даже две: design.md:1124, 1126) → по §4.13/§4.18 exit **1**, а не 0; корректно только при чтении как три отдельных вызова.
+
+**NEW-3: not-closed** — evidence test-plan.md:212 vs plan.md:206, 168-176, 244-249 — парковые маппинги закрыты: `upgrade-park.test.ts` в allowlist T7 (plan.md:174, сценарий R06-9 явно: «парк-уровневый сценарий `--resolve` без npm/re-exec»), T9 (plan.md:207, non-TTY рецепт = R07-2), T10 (225), T11 (249); R11-4 маппится на `memory-upgrade.check.test.ts` + `upgrade-projects.test.ts`, оба в T11 (plan.md:247-248), «отдельный новый файл не вводится» — ✓. Но второй маппинг R06-9 — `tests/unit/adapters/commands/memory-upgrade.here.test.ts` — есть только в allowlist T9, а R06-9 («диспетчеризация, design §4.18») исполняют T7 и T11 (design.md:1150-1151: «диспетчеризация и argv ребёнка — T11»; T7 вводит `--resolve` в CLI): у T7 (plan.md:168-176) и T11 (244-249) этого файла нет, T9 review-UX сценарий не исполняет; часть «`--resolve --yes` → exit 1» реализуется вообще только к T11. Маппинг не имеет исполняющей задачи с файлом в allowlist.
+
+NEW ISSUES:
+- minor — test-plan.md:37 (R01-1): маппинг `tests/unit/use-cases/upgrade-projects.test.ts` (файл существует); R01-1 (имена в выводе) исполняет T6, но в allowlist T6 (plan.md:150-154) этого файла нет — он только у T5 (plan.md:137), которая R01-1 не исполняет.
+- minor — test-plan.md:229, 231 (R07-3, R07-4): маппинг `tests/unit/use-cases/decisions.test.ts`; сценарии «похожесть» и «выход q/EOF» — это T9 (§4.9), но `decisions.test.ts` в allowlist только T7/T8 (plan.md:172, 191), у T9 (203-207) его нет (есть только src `decisions.ts`).
+- Замечание вне трёх пунктов не нашёл; обе проблемы — тот же класс, что NEW-3 (маппинг↔allowlist), чинятся одной правкой plan.md.
+
+Не проверял: остальную поверхность тест-плана вне маппингов (ожидания сценариев) и актуальный код — ревью только документов.
