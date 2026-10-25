@@ -10,6 +10,7 @@ import { mkdir } from 'fs/promises';
 import { basename, dirname, join } from 'path';
 import { dedupeByRealpath, type RegisteredProject } from '../../adapters/fs/projects-registry.js';
 import type { FileKind, UpdateMap } from '../../adapters/fs/update-map.js';
+import type { ProtectEntry } from '../../ports/base-set-renderer.port.js';
 import type { InspectOutcome } from '../../ports/base-set-renderer.port.js';
 import { loadSyncState, saveSyncState, sha256, type SyncEntry } from '../../adapters/render/sync-state.js';
 import { parseStamp } from '../../adapters/render/stamp.js';
@@ -176,6 +177,115 @@ export async function collectDecisions(deps: DecisionDeps): Promise<DecisionRegi
 
   return { targets, diverged, skippedProjects, projects };
 }
+
+/* ---------- машинный вывод (§4.13, REQ-11): общая схема документов ---------- */
+
+export interface JsonCli {
+  installed: string;
+  available: string | null;
+}
+
+export interface JsonPlan {
+  projects: number;
+  new: number;
+  changed: number;
+  deprecated: number;
+  removed: number;
+  faces: number;
+}
+
+export interface JsonDecision {
+  n: number;
+  project: string;
+  path: string;
+  code: 'mutated' | 'conflict';
+}
+
+export interface JsonDiverged {
+  project: string;
+  face: string;
+  version: string | null;
+  ownerSkill: string | null;
+}
+
+export interface JsonProtection {
+  project: string;
+  path: string;
+  value: string;
+  recognized: boolean;
+  behind: boolean | null;
+}
+
+export interface JsonProject {
+  name: string;
+  path: string;
+  status: 'updated' | 'up-to-date' | 'needs-decision' | 'error' | 'skipped';
+  skipReason?: 'worktree' | 'pinned' | 'missing';
+  error?: string;
+  files: Array<{ path: string; code: string; inMap: boolean }>;
+  protected: JsonProtection[];
+  backups: Array<{ file: string; backup: string }>;
+}
+
+/** `wolf.upgrade/1` (design §4.13): аддитивные поля — в миноре, переименование
+ *  или удаление — новый мажор (`/2`). `exit` совпадает с кодом процесса (AC3). */
+export interface UpgradeJson {
+  schema: 'wolf.upgrade/1';
+  exit: 0 | 1 | 2;
+  mode: 'pass' | 'here' | 'check' | 'resolve' | 'show';
+  cli: JsonCli;
+  /** Заполняется, когда режим не дошёл до проектов (npm-фаза, реестр, карта). */
+  error?: string;
+  plan: JsonPlan;
+  projects: JsonProject[];
+  decisions: JsonDecision[];
+  diverged: JsonDiverged[];
+  protections: JsonProtection[];
+}
+
+export interface UpgradeCheckJson {
+  schema: 'wolf.upgrade.check/1';
+  exit: 0;
+  cli: JsonCli;
+  projects: Array<{
+    name: string;
+    path: string;
+    class: 'current' | 'behind' | 'needs-decision' | 'unknown';
+    differ: string[];
+    missing: string[];
+    mutated: string[];
+    foreign: string[];
+    /** Причины наблюдений (`onboarding markers broken`), не парсятся из текста. */
+    details: string[];
+    protected: JsonProtection[];
+  }>;
+  diverged: JsonDiverged[];
+  protections: JsonProtection[];
+}
+
+export const emptyPlan = (): JsonPlan => ({
+  projects: 0,
+  new: 0,
+  changed: 0,
+  deprecated: 0,
+  removed: 0,
+  faces: 0,
+});
+
+export const jsonDecisions = (reg: DecisionRegistry): JsonDecision[] =>
+  reg.targets.map((t) => ({ n: t.n, project: t.project, path: t.file, code: t.code }));
+
+export const jsonDiverged = (reg: DecisionRegistry): JsonDiverged[] =>
+  reg.diverged.map((d) => ({ project: d.project, face: d.file, version: d.version, ownerSkill: d.ownerSkill }));
+
+export const jsonProtections = (entries: ProtectEntry[]): JsonProtection[] =>
+  entries.map((e) => ({
+    project: basename(e.project),
+    path: e.file,
+    value: e.value,
+    recognized: e.recognized,
+    behind: e.behind,
+  }));
 
 /** Похожие цели (§4.9, критерий «все к похожим»): та же пара `kind` + `code`. */
 export function similarTargets(reg: DecisionRegistry, target: DecisionTarget): DecisionTarget[] {

@@ -27,6 +27,7 @@ import {
 import { UserFacingError } from '../../src/domain/errors.js';
 import { runProjectStep, type ProjectReport, type ProjectStepDeps } from '../../src/app/use-cases/project-step.js';
 import { loadUpdateMap, type UpdateMap } from '../../src/adapters/fs/update-map.js';
+import { upgradeProjectsAction } from '../../src/adapters/cli/commands/upgrade-projects.js';
 import { ProjectsRegistry, type RegisteredProject } from '../../src/adapters/fs/projects-registry.js';
 import { UpgradeLock } from '../../src/adapters/fs/upgrade-lock.js';
 import { scanUnregistered } from '../../src/app/use-cases/scan-unregistered.js';
@@ -690,5 +691,92 @@ describe('runUpgradeProjects --yes (T10): take-on-mutated в проходе, pro
     expect(parseProtect(protectedContent).held).toBe(true);
     // свидетели взятых файлов — render (§4.12 порядок бэкап → эталон → свидетель)
     expect((loadSyncState(mutated).files['.opencode/agents/mr-wolf.md'] as { origin: string }).origin).toBe('render');
+  });
+});
+
+/* ---------- --json (T11, REQ-11, design §4.13): документ парка ---------- */
+
+describe('--json парк (T11): wolf.upgrade/1, паритет с текстом, детерминизм', () => {
+  it('R11-1/R11-2/R11-3/R11-6: один документ, n = текст review, exit = процесс, два прогона идентичны', async () => {
+    const park = mkTmp('wolf-upgrade-park-json-');
+    const clean = await bootstrapProject(park, 'p-clean');
+    const mutated = await bootstrapProject(park, 'p-mutated');
+    const target = join(mutated, '.opencode/agents/mr-wolf.md');
+    writeFileSync(target, `${readFileSync(target, 'utf-8')}\n<!-- local user edit -->\n`);
+    const configDir = mkTmp('wolf-upgrade-cfg-');
+    writeRegistry(configDir, [entryOf(clean), entryOf(mutated)]);
+
+    // номера текстового non-TTY списка (§4.9) — второй реализации нумерации нет
+    const review = await runUpgradeReview(resolveDeps(configDir), {
+      here: false,
+      cwd: park,
+      io: { tty: false, write: () => {}, ask: async () => null },
+    });
+    const reviewText = renderReport(review.report, { tty: false, colors: 'mono', width: 400 });
+    const textNumbers = [...reviewText.matchAll(/^[-*]\s+(\d+)\s+\S+\s+\.opencode/gm)].map((m) => Number(m[1]));
+
+    const run = async (yes: boolean): Promise<{ doc: Record<string, unknown>; exit: number; stdout: string }> => {
+      const chunks: string[] = [];
+      const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(((c: string) => {
+        chunks.push(String(c));
+        return true;
+      }) as typeof process.stdout.write);
+      const prevExit = process.exitCode;
+      try {
+        await upgradeProjectsAction(
+          yes,
+          parkDeps(configDir, mkTmp('wolf-upgrade-lockdir-'), park, []),
+          { tty: false, env: { tty: false, colors: 'mono', width: 400 }, write: () => {}, ask: async () => false },
+          true
+        );
+        const exit = process.exitCode as number;
+        process.exitCode = prevExit;
+        return { doc: JSON.parse(chunks.join('')) as Record<string, unknown>, exit, stdout: chunks.join('') };
+      } finally {
+        writeSpy.mockRestore();
+      }
+    };
+
+    const cancelled = await run(false);
+    expect(cancelled.doc['schema']).toBe('wolf.upgrade/1');
+    expect(cancelled.doc['mode']).toBe('pass');
+    expect(cancelled.doc['exit']).toBe(0); // отменённый проход — не разбор состояния
+    expect(cancelled.exit).toBe(0);
+    expect(cancelled.stdout.trim().split('\n')).toHaveLength(1); // единственный документ
+    const decisions = cancelled.doc['decisions'] as Array<{ n: number; project: string; path: string; code: string }>;
+    expect(decisions.map((d) => d.n)).toEqual(textNumbers);
+    expect(decisions).toContainEqual({
+      n: 1,
+      project: 'p-mutated',
+      path: '.opencode/agents/mr-wolf.md',
+      code: 'mutated',
+    });
+    // отменённый проход: только статусы плана, файлов не трогаем
+    expect((cancelled.doc['projects'] as Array<{ status: string }>).map((p) => p.status)).toEqual([
+      'skipped',
+      'skipped',
+    ]);
+
+    const again = await run(false);
+    expect(again.stdout).toBe(cancelled.stdout); // NFR-06: байт-идентичный повтор
+
+    const executed = await run(true);
+    expect(executed.doc['exit']).toBe(0);
+    expect(executed.exit).toBe(0);
+    const projects = executed.doc['projects'] as Array<{
+      name: string;
+      status: string;
+      files: Array<{ path: string; code: string; inMap: boolean }>;
+      backups: Array<{ file: string; backup: string }>;
+    }>;
+    const pMutated = projects.find((p) => p.name === 'p-mutated')!;
+    expect(pMutated.status).toBe('updated');
+    expect(pMutated.files).toContainEqual({
+      path: '.opencode/agents/mr-wolf.md',
+      code: 'updated',
+      inMap: true,
+    });
+    expect(pMutated.backups.some((b) => b.file === '.opencode/agents/mr-wolf.md')).toBe(true);
+    expect(executed.doc['decisions']).toEqual([]); // после take решений нет
   });
 });

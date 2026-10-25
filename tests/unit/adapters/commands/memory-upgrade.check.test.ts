@@ -357,3 +357,106 @@ describe('inspectBaseSet (AC6: differs/mutated/missing/foreign, 0 записей
     expect(diff.changedFiles).toEqual([]);
   });
 });
+
+/* ---------- --json (T11, REQ-11, design §4.13): wolf.upgrade.check/1 ---------- */
+
+describe('--json --check: единственный документ, паритет с текстом', () => {
+  it('R11-5: runUpgradeCheck отдаёт wolf.upgrade.check/1 с теми же классами, details и protections', async () => {
+    const park = mkTmp('wolf-check-json-');
+    const proj = join(park, 'p-json');
+    mkdirSync(proj, { recursive: true });
+    const res = await runUpgradeCheck(
+      checkDeps({
+        registry: { listStrict: async () => [{ path: proj, schema_version: 2, initialized_at: 't' }] },
+        inspect: async () => [
+          { file: CHANGED_REL, action: 'mutated' },
+          { file: NEW_REL, action: 'differs' },
+          { file: UNCHANGED_REL, action: 'identical' },
+          { file: DEPRECATED_REL, action: 'identical' },
+          { file: AGENTS_MD, action: 'foreign', detail: 'onboarding markers broken' },
+        ],
+        protections: async () => [
+          {
+            project: proj,
+            file: CHANGED_REL,
+            value: '2.18.5',
+            recognized: true,
+            stamp: '2.18.5',
+            base: '2.19.0',
+            behind: true,
+          },
+        ],
+        diverged: [{ project: 'p-json', face: 'faces/executor-lead.md', version: '2', ownerSkill: 'executor-lead' }],
+      })
+    );
+    expect(res.exitCode).toBe(0);
+    expect(res.json.schema).toBe('wolf.upgrade.check/1');
+    expect(res.json.exit).toBe(0);
+    expect(res.json.cli).toEqual({ installed: '2.18.5', available: '2.19.0' });
+    expect(res.json.projects).toHaveLength(1);
+    expect(res.json.projects[0]).toMatchObject({
+      name: 'p-json',
+      class: 'needs-decision',
+      differ: [NEW_REL],
+      mutated: [CHANGED_REL],
+      foreign: [AGENTS_MD],
+      details: ['onboarding markers broken'],
+    });
+    expect(res.json.protections).toEqual([
+      { project: 'p-json', path: CHANGED_REL, value: '2.18.5', recognized: true, behind: true },
+    ]);
+    expect(res.json.diverged).toEqual([
+      { project: 'p-json', face: 'faces/executor-lead.md', version: '2', ownerSkill: 'executor-lead' },
+    ]);
+    // текст и JSON из одного прохода: differ/mutated — те же пути
+    const text = plain(res);
+    expect(text).toContain(`1 differ: ${NEW_REL}`);
+    expect(text).toContain(`mutated: ${CHANGED_REL}`);
+  });
+
+  it('R11-5: commander --json --check — в stdout ровно один JSON-документ, без человеческих строк', async () => {
+    const home = mkTmp('wolf-check-json-cli-');
+    const shimDir = join(home, 'npm-shim');
+    mkdirSync(shimDir, { recursive: true });
+    const shim = join(shimDir, 'npm');
+    writeFileSync(shim, "#!/bin/sh\nprintf '%s\\n' 9.9.9\n");
+    chmodSync(shim, 0o755);
+
+    const out: string[] = [];
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(((c: string) => {
+      out.push(String(c));
+      return true;
+    }) as typeof process.stdout.write);
+    const prevPath = process.env.PATH;
+    const prevXdg = process.env.XDG_CONFIG_HOME;
+    process.env.PATH = `${shimDir}:${prevPath ?? ''}`;
+    process.env.XDG_CONFIG_HOME = join(home, '.config');
+    try {
+      const program = new Command();
+      program.addCommand(memoryUpgradeCommand());
+      await program.parseAsync(['node', 'wolf', 'upgrade', '--check', '--json'], { from: 'node' });
+    } finally {
+      process.env.PATH = prevPath;
+      if (prevXdg === undefined) delete process.env.XDG_CONFIG_HOME;
+      else process.env.XDG_CONFIG_HOME = prevXdg;
+      writeSpy.mockRestore();
+    }
+    const stdout = out.join('');
+    expect(stdout.trim().split('\n')).toHaveLength(1);
+    const doc = JSON.parse(stdout) as Record<string, unknown>;
+    expect(doc).toMatchObject({ schema: 'wolf.upgrade.check/1', exit: 0 });
+    expect(doc['cli']).toEqual({ installed: expect.any(String), available: '9.9.9' });
+    expect(doc['projects']).toEqual([]);
+    expect(stdout).not.toContain('wolf upgrade — check');
+  });
+});
+
+describe('--json: несовместимая пара с --review (design §4.18)', () => {
+  it('R11-5: --review --json → error и exit 1, второй документ не печатается', async () => {
+    const program = new Command();
+    program.addCommand(memoryUpgradeCommand());
+    await expect(
+      program.parseAsync(['node', 'wolf', 'upgrade', '--review', '--json'], { from: 'node' })
+    ).rejects.toThrow(/--review is interactive; --json is not supported/);
+  });
+});

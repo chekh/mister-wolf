@@ -19,6 +19,7 @@ import type { Counter, Marker, ReportNode } from '../../adapters/cli/report-rend
 import { runProjectStep, type ProjectReport, type ProjectStepDeps } from './project-step.js';
 import { projectPath, type VerifyResult } from './verify-against-map.js';
 import { scanUnregistered } from './scan-unregistered.js';
+import type { JsonPlan, JsonProject } from './decisions.js';
 
 /** id lock'а параллельного upgrade (T4 UpgradeLock, design «Гварды прохода»). */
 const LOCK_ID = 'wolf-upgrade';
@@ -60,6 +61,10 @@ export interface UpgradeRunResult {
   exitCode: 0 | 1 | 2;
   report: ReportNode;
   counters: Counter[];
+  /** Машинное представление прогона (design §4.13, `--json`): документ собирает
+   *  CLI-слой — здесь только факты прохода (без решений/лиц/защит). */
+  projects: JsonProject[];
+  plan: JsonPlan;
 }
 
 /** Статус проекта в проходе (REQ-05, палитра T3); T9 (--here) переиспользует
@@ -102,7 +107,47 @@ function guardFailure(message: string): UpgradeRunResult {
       children: [line('error', message), line('error', 'Failed')],
     },
     counters: [],
+    projects: [],
+    plan: { projects: 0, new: 0, changed: 0, deprecated: 0, removed: 0, faces: 0 },
   };
+}
+
+/** План-счётчики §4.13: registry-проекты, категории карты, досеянные лица. */
+function planCounts(plans: ProjectPlan[], map: UpdateMap, facesSeeded: number): JsonPlan {
+  const cats = mapCategories(map);
+  return { projects: plans.length, ...cats, faces: facesSeeded };
+}
+
+/** Проект, до которого проход не дошёл: только статус плана (design §4.13). */
+function plannedProject(plan: ProjectPlan): JsonProject {
+  return {
+    name: plan.name,
+    path: plan.path,
+    status: 'skipped',
+    ...(plan.status !== null ? { skipReason: plan.status } : {}),
+    files: [],
+    protected: [],
+    backups: [],
+  };
+}
+
+/** Файлы прогона для `--json.projects[].files`: путь, код, признак карты. */
+export function jsonProjectFiles(report: ProjectReport, map: UpdateMap): JsonProject['files'] {
+  const inMap = new Set<string>(['AGENTS.md', ...map.files.map((e) => projectPath(e))]);
+  return report.sync.outcomes.map((o) => {
+    const code = o.protected
+      ? 'protected'
+      : o.kept
+        ? 'kept'
+        : o.action === 'skipped'
+          ? o.mutated
+            ? 'skipped-mutated'
+            : 'skipped-identical'
+          : o.action === 'appended'
+            ? 'updated'
+            : o.action;
+    return { path: o.file, code, inMap: inMap.has(o.file) };
+  });
 }
 
 export async function runUpgradeProjects(
@@ -144,6 +189,8 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
         ],
       },
       counters: [],
+      projects: [],
+      plan: { projects: 0, new: 0, changed: 0, deprecated: 0, removed: 0, faces: 0 },
     };
   }
 
@@ -179,6 +226,9 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
         children: [plansSection(plans, registered.length, duplicates, map), line('info', finalText, true)],
       },
       counters: [],
+      // отменённый проход: только статусы плана (design §4.13)
+      projects: plans.map(plannedProject),
+      plan: planCounts(plans, map, 0),
     };
   }
 
@@ -256,6 +306,17 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
         ]
       : [];
 
+  const jsonProjects: JsonProject[] = outcomes.map((o) => ({
+    name: o.plan.name,
+    path: o.plan.path,
+    status: o.status,
+    ...(o.error !== undefined ? { error: o.error } : {}),
+    files: o.report ? jsonProjectFiles(o.report, map) : [],
+    protected: [], // заполняет CLI-слой из listProtections (§4.13)
+    backups: o.report?.backups ?? [],
+  }));
+  for (const plan of plans) if (plan.status !== null) jsonProjects.push(plannedProject(plan));
+
   return {
     exitCode,
     report: {
@@ -273,6 +334,8 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
       ],
     },
     counters,
+    projects: jsonProjects,
+    plan: planCounts(plans, map, facesSeeded),
   };
 }
 

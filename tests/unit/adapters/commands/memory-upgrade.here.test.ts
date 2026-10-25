@@ -219,6 +219,7 @@ describe('runUpgradeHere (T9: --here, REQ-14)', () => {
 
     expect(runStep).toHaveBeenCalledWith(expect.anything(), proj, MINI_MAP, {
       confirmedRemovals: MINI_MAP.files.filter((f) => f.category === 'removed').map(projectPath),
+      takeMutated: true, // §4.12: --yes = тихий take с бэкапом и в --here (T10)
     });
   });
 

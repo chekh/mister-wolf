@@ -10,11 +10,13 @@ import { UserFacingError } from '../../../domain/errors.js';
 import { runProjectStep, type ProjectReport, type ProjectStepDeps } from '../../../app/use-cases/project-step.js';
 import {
   backupDigestLines,
+  jsonProjectFiles,
   mapCategories,
   STATUS_TEXT,
   statusOf,
   verifyNameLines,
   type OutcomeStatus,
+  type UpgradeRunResult,
 } from '../../../app/use-cases/upgrade-projects.js';
 import {
   applyResolutions,
@@ -23,8 +25,17 @@ import {
   planResolutions,
   resolveShowTarget,
   similarTargets,
+  emptyPlan,
+  jsonDecisions,
+  jsonDiverged,
+  jsonProtections,
   type AppliedResolution,
   type DecisionTarget,
+  type JsonDiverged,
+  type JsonProject,
+  type JsonProtection,
+  type UpgradeCheckJson,
+  type UpgradeJson,
   type DecisionDeps,
   type DecisionRegistry,
   type DivergedFace,
@@ -36,7 +47,7 @@ import { projectPath } from '../../../app/use-cases/verify-against-map.js';
 import { compareVersions, loadUpdateMap, type UpdateMap } from '../../fs/update-map.js';
 import { ProjectsRegistry, type RegisteredProject } from '../../fs/projects-registry.js';
 import { wolfUserConfigDir } from '../../fs/user-config.js';
-import type { InspectOutcome } from '../../../ports/base-set-renderer.port.js';
+import type { InspectOutcome, ProtectEntry } from '../../../ports/base-set-renderer.port.js';
 import { loadSyncState } from '../../render/sync-state.js';
 import { parseStamp } from '../../render/stamp.js';
 import { harnessTemplatesRoot, templatesRoot } from '../../render/templates-root.js';
@@ -186,6 +197,8 @@ export interface UpgradeHereOpts {
 export interface UpgradeHereResult {
   exitCode: 0 | 1 | 2;
   report: ReportNode;
+  /** Машинное представление проекта (design §4.13, mode 'here'). */
+  project: JsonProject;
 }
 
 const HERE_TITLE = 'wolf upgrade — here';
@@ -307,6 +320,14 @@ export async function runUpgradeHere(deps: UpgradeHereDeps, opts: UpgradeHereOpt
     return {
       exitCode: 0,
       report: { kind: 'section', title: HERE_TITLE, children: [plan, line('info', finalText, true)] },
+      project: {
+        name: basename(deps.cwd),
+        path: deps.cwd,
+        status: 'skipped',
+        files: [],
+        protected: [],
+        backups: [],
+      },
     };
   }
 
@@ -350,7 +371,23 @@ export async function runUpgradeHere(deps: UpgradeHereDeps, opts: UpgradeHereOpt
     { kind: 'summary', counters, done: false },
     line(marker, finalText),
   ];
-  return { exitCode, report: { kind: 'section', title: HERE_TITLE, children } };
+  const project: JsonProject = {
+    name: basename(deps.cwd),
+    path: deps.cwd,
+    status:
+      status === 'up-to-date'
+        ? 'up-to-date'
+        : status === 'needs-decision'
+          ? 'needs-decision'
+          : status === 'error'
+            ? 'error'
+            : 'updated',
+    ...(error !== null ? { error } : {}),
+    files: report ? jsonProjectFiles(report, map) : [],
+    protected: [],
+    backups: report?.backups ?? [],
+  };
+  return { exitCode, report: { kind: 'section', title: HERE_TITLE, children }, project };
 }
 
 /** Прод-deps шага для root (контейнер-прецедент по адаптерам, но БЕЗ
@@ -396,7 +433,7 @@ export function termEnv(stdout: { isTTY?: boolean; columns?: number }, env: Node
 
 /** CLI-обвязка --here: прод-deps + TTY-подтверждение (план показан ДО вопроса,
  * REQ-02) + печать отчёта renderer'ом и простановка exit-кода. */
-async function upgradeHereAction(cwd: string, yes: boolean): Promise<void> {
+async function upgradeHereAction(cwd: string, yes: boolean, json = false): Promise<void> {
   const isTty = Boolean(process.stdout.isTTY);
   const env = termEnv(process.stdout, process.env);
   const confirm = isTty
@@ -413,9 +450,20 @@ async function upgradeHereAction(cwd: string, yes: boolean): Promise<void> {
     : undefined;
   const res = await runUpgradeHere(
     { cwd, loadMap: () => loadUpdateMap(), makeStepDeps: hereStepDeps },
-    { yes, tty: isTty, confirm }
+    { yes, tty: json ? false : isTty, confirm: json ? undefined : confirm }
   );
-  process.stdout.write(`${renderReport(res.report, env)}\n`);
+  if (json) {
+    const renderer = new OpencodeBaseSetRenderer(templatesRoot(), {
+      harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
+    });
+    const map = loadUpdateMap();
+    const reg = await collectDecisions({ ...decisionProdDeps(cwd, renderer), loadMap: () => map });
+    printJson(
+      await modeJsonDoc({ mode: 'here', exit: res.exitCode, registry: reg, map, renderer, projects: [res.project] })
+    );
+  } else {
+    process.stdout.write(`${renderReport(res.report, env)}\n`);
+  }
   process.exitCode = res.exitCode;
 }
 
@@ -433,6 +481,7 @@ export interface UpgradeFlags {
   resolve?: string[];
   show?: string;
   review?: boolean;
+  json?: boolean;
 }
 
 export interface UpgradeRoute {
@@ -448,6 +497,9 @@ export function upgradeRoute(flags: UpgradeFlags): UpgradeRoute {
   const showGiven = flags.show !== undefined;
   const reviewGiven = flags.review === true;
   // Несовместимые комбинации (§4.18): два способа действия в одном вызове
+  if (reviewGiven && flags.json === true) {
+    return { mode: 'pass', error: '--review is interactive; --json is not supported' };
+  }
   if (reviewGiven && resolveGiven) {
     return { mode: 'pass', error: '--review and --resolve are two ways to apply decisions — run one of them' };
   }
@@ -532,6 +584,8 @@ export interface UpgradeResolveResult {
   /** Реестр после применения (остаток решений). */
   registry: DecisionRegistry;
   backups: Array<{ file: string; backup: string }>;
+  /** Ошибки разбора/записи (для `--json.error`; уже напечатаны в отчёте). */
+  errors: string[];
 }
 
 /** `--resolve` целиком: сбор реестра (read-only) → разбор всех аргументов →
@@ -557,7 +611,13 @@ export async function runUpgradeResolve(
     for (const error of errors) children.push(line('error', error));
     children.push(...decisionLines(before));
     children.push(line('error', 'Failed'));
-    return { exitCode: 1, report: { kind: 'section', title: RESOLVE_TITLE, children }, registry: before, backups: [] };
+    return {
+      exitCode: 1,
+      report: { kind: 'section', title: RESOLVE_TITLE, children },
+      registry: before,
+      backups: [],
+      errors,
+    };
   }
 
   const applied = await applyResolutions(plan.ops, { map, renderer: deps.renderer, now: deps.now });
@@ -576,6 +636,7 @@ export async function runUpgradeResolve(
     report: { kind: 'section', title: RESOLVE_TITLE, children },
     registry: after,
     backups: applied.backups,
+    errors: applied.errors,
   };
 }
 
@@ -592,9 +653,13 @@ function faceTemplates(): Map<string, string> {
 }
 
 /** Прод-deps реестра решений: парк (реестр проектов) или `--here` (только cwd). */
-function decisionProdDeps(here: string | null, renderer: OpencodeBaseSetRenderer): DecisionDeps {
+function decisionProdDeps(
+  here: string | null,
+  renderer: OpencodeBaseSetRenderer,
+  registry: { listStrict(): Promise<RegisteredProject[]> } = new ProjectsRegistry(wolfUserConfigDir())
+): DecisionDeps {
   return {
-    ...(here === null ? { registry: new ProjectsRegistry(wolfUserConfigDir()) } : { here }),
+    ...(here === null ? { registry } : { here }),
     loadMap: () => loadUpdateMap(),
     inspect: (root) => renderer.inspectBaseSet(root, { models: 'omit' }),
     liveFaces: async (root) => {
@@ -614,7 +679,7 @@ function decisionProdDeps(here: string | null, renderer: OpencodeBaseSetRenderer
 }
 
 /** CLI-обвязка `--resolve`: прод-deps + печать отчёта + exit-код. */
-async function upgradeResolveAction(values: string[], here: boolean): Promise<void> {
+async function upgradeResolveAction(values: string[], here: boolean, json = false): Promise<void> {
   const cwd = safeCwd();
   const renderer = new OpencodeBaseSetRenderer(templatesRoot(), {
     harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
@@ -623,7 +688,21 @@ async function upgradeResolveAction(values: string[], here: boolean): Promise<vo
     { ...decisionProdDeps(here ? cwd : null, renderer), renderer },
     { here, cwd, values }
   );
-  process.stdout.write(`${renderReport(res.report, termEnv(process.stdout, process.env))}\n`);
+  if (json) {
+    const map = loadUpdateMap();
+    printJson(
+      await modeJsonDoc({
+        mode: 'resolve',
+        exit: res.exitCode,
+        registry: res.registry,
+        map,
+        renderer,
+        ...(res.errors.length > 0 ? { error: res.errors.join('; ') } : {}),
+      })
+    );
+  } else {
+    process.stdout.write(`${renderReport(res.report, termEnv(process.stdout, process.env))}\n`);
+  }
   process.exitCode = res.exitCode;
 }
 
@@ -634,6 +713,9 @@ const SHOW_TITLE = 'wolf upgrade — show';
 export interface UpgradeShowResult {
   exitCode: 0 | 1;
   report: ReportNode;
+  /** Реестр решений на момент просмотра (для `--json.decisions`). */
+  registry: DecisionRegistry;
+  errors: string[];
 }
 
 const protectText = (p: ReturnType<typeof parseProtect>): string => {
@@ -664,7 +746,12 @@ export async function runUpgradeShow(
     children.push(line('error', resolved.error ?? `unknown target ${opts.value}`));
     children.push(...decisionLines(reg));
     children.push(line('error', 'Failed'));
-    return { exitCode: 1, report: { kind: 'section', title: SHOW_TITLE, children } };
+    return {
+      exitCode: 1,
+      report: { kind: 'section', title: SHOW_TITLE, children },
+      registry: reg,
+      errors: [resolved.error ?? `unknown target ${opts.value}`],
+    };
   }
 
   const t = resolved.target;
@@ -686,7 +773,7 @@ export async function runUpgradeShow(
     );
     children.push(line('info', 'ⓘ no base to take; the file is held as a sanctioned local variation', true));
     children.push(line('info', `release:   wolf upgrade --resolve ${t.file}=protect|pin`, true));
-    return { exitCode: 0, report: { kind: 'section', title: SHOW_TITLE, children } };
+    return { exitCode: 0, report: { kind: 'section', title: SHOW_TITLE, children }, registry: reg, errors: [] };
   }
 
   const drift =
@@ -707,11 +794,11 @@ export async function runUpgradeShow(
     for (const text of formatDiff(diff)) children.push(line(markerOf(text), `  ${text}`, true));
   }
   children.push(line('info', `release:   wolf upgrade --resolve ${t.file}=take`, true));
-  return { exitCode: 0, report: { kind: 'section', title: SHOW_TITLE, children } };
+  return { exitCode: 0, report: { kind: 'section', title: SHOW_TITLE, children }, registry: reg, errors: [] };
 }
 
 /** CLI-обвязка `--show`: прод-deps реестра решений + печать отчёта + exit-код. */
-async function upgradeShowAction(value: string, here: boolean): Promise<void> {
+async function upgradeShowAction(value: string, here: boolean, json = false): Promise<void> {
   const cwd = safeCwd();
   const renderer = new OpencodeBaseSetRenderer(templatesRoot(), {
     harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
@@ -720,7 +807,20 @@ async function upgradeShowAction(value: string, here: boolean): Promise<void> {
     { ...decisionProdDeps(here ? cwd : null, renderer), renderer },
     { here, cwd, value }
   );
-  process.stdout.write(`${renderReport(res.report, termEnv(process.stdout, process.env))}\n`);
+  if (json) {
+    printJson(
+      await modeJsonDoc({
+        mode: 'show',
+        exit: res.exitCode,
+        registry: res.registry,
+        map: loadUpdateMap(),
+        renderer,
+        ...(res.errors.length > 0 ? { error: res.errors.join('; ') } : {}),
+      })
+    );
+  } else {
+    process.stdout.write(`${renderReport(res.report, termEnv(process.stdout, process.env))}\n`);
+  }
   process.exitCode = res.exitCode;
 }
 
@@ -1042,15 +1142,23 @@ export interface UpgradeCheckDeps {
   installedVersion: () => string;
   /** Read-only инспекция base-set проекта (реализация — renderer.inspectBaseSet). */
   inspect: (root: string) => Promise<InspectOutcome[]>;
+  /** Read-only реестр защит проекта (§4.11): вход `--json.protections`. */
+  protections?: (root: string) => Promise<ProtectEntry[]>;
+  /** Лица памяти (read-only, собраны вызывающим слоем): вход `--json.diverged`. */
+  diverged?: JsonDiverged[];
 }
 
 export interface UpgradeCheckResult {
   /** Read-only сводка не падает — exit всегда 0 (design exit-таблица: --check). */
   exitCode: 0;
   report: ReportNode;
+  /** `wolf.upgrade.check/1` (§4.13): печатает CLI при `--json`. */
+  json: UpgradeCheckJson;
 }
 
 const CHECK_TITLE = 'wolf upgrade — check';
+
+type JsonCheckProject = UpgradeCheckJson['projects'][number];
 
 /** Детали проекта одной строкой: `2 differ · 1 missing · mutated: …`. */
 function freshnessDetails(f: ProjectFreshness): string | null {
@@ -1074,16 +1182,34 @@ const stampNote = (root: string): string => {
   return `stamps ${stamps.max ?? 'unknown'}${floor}`;
 };
 
-/** Секция одного проекта (REQ-08): имя · путь · класс · штамп/состав (справочно) ·
- *  детали · deprecated-строка. Сбой инспекции — error-строка, не крах (REQ-06). */
-async function projectCheckLines(
+/** Пустая строка документа `--json` (нет чтения/ошибка/карты). */
+function emptyCheckRow(name: string, path: string, protectedFiles: JsonProtection[]): JsonCheckProject {
+  return {
+    name,
+    path,
+    class: 'unknown',
+    differ: [],
+    missing: [],
+    mutated: [],
+    foreign: [],
+    details: [],
+    protected: protectedFiles,
+  };
+}
+
+/** Секция одного проекта (REQ-08): строки отчёта + машинная строка (§4.13). */
+async function projectCheck(
   entry: RegisteredProject,
   map: UpdateMap,
   deps: UpgradeCheckDeps
-): Promise<ReportNode[]> {
+): Promise<{ lines: ReportNode[]; row: JsonCheckProject }> {
   const name = basename(entry.path);
+  const protections = deps.protections ? jsonProtections(await deps.protections(entry.path)) : [];
   if (!existsSync(entry.path)) {
-    return [line('info', `${name} · ${entry.path} — ${CLASS_TEXT.unknown} (path does not exist)`, true)];
+    return {
+      lines: [line('info', `${name} · ${entry.path} — ${CLASS_TEXT.unknown} (path does not exist)`, true)],
+      row: emptyCheckRow(name, entry.path, protections),
+    };
   }
   try {
     const outcomes = await deps.inspect(entry.path);
@@ -1104,22 +1230,40 @@ async function projectCheckLines(
     if (f.deprecated.length > 0) {
       lines.push(line('info', `deprecated: ${f.deprecated.join(', ')} (report-only)`, true));
     }
-    return lines;
+    return {
+      lines,
+      row: {
+        name,
+        path: entry.path,
+        class: f.cls,
+        differ: f.differs,
+        missing: f.missing,
+        mutated: f.mutated,
+        foreign: f.foreign,
+        details: f.details.map((d) => d.detail),
+        protected: protections,
+      },
+    };
   } catch (err) {
-    return [line('error', `${name} — error: ${msg(err)}`)];
+    return {
+      lines: [line('error', `${name} — error: ${msg(err)}`)],
+      row: emptyCheckRow(name, entry.path, protections),
+    };
   }
 }
 
 /** `--check`-сводка парка (REQ-08): CLI-строка (installed vs available) →
  *  перечисление проектов реестра. Деградации не крахят: битый реестр/npm —
  *  error-строка; карты нет — штампы с пометкой недостоверности и классом
- *  unknown (никогда current); пустой реестр — «no projects». exit 0. */
+ *  unknown (никогда current); пустой реестр — «no projects». exit 0.
+ *  Документ `--json` строится из тех же строк (§4.13: текст и JSON не расходятся). */
 export async function runUpgradeCheck(deps: UpgradeCheckDeps): Promise<UpgradeCheckResult> {
   const children: ReportNode[] = [];
+  const rows: JsonCheckProject[] = [];
+  let available: string | null = null;
   try {
-    children.push(
-      line('info', `cli: installed ${deps.installedVersion()} · available ${await deps.registryVersion()}`)
-    );
+    available = await deps.registryVersion();
+    children.push(line('info', `cli: installed ${deps.installedVersion()} · available ${available}`));
   } catch (err) {
     children.push(line('error', `cli: installed ${deps.installedVersion()} · available unknown — ${msg(err)}`));
   }
@@ -1142,7 +1286,11 @@ export async function runUpgradeCheck(deps: UpgradeCheckDeps): Promise<UpgradeCh
         map = null;
       }
       if (map) {
-        for (const entry of registered) children.push(...(await projectCheckLines(entry, map, deps)));
+        for (const entry of registered) {
+          const checked = await projectCheck(entry, map, deps);
+          children.push(...checked.lines);
+          rows.push(checked.row);
+        }
       } else {
         // Деградация (design §«--check»): карты нет у самого CLI — только штампы
         // (свидетель касания, не истина) с явной пометкой недостоверности.
@@ -1150,12 +1298,24 @@ export async function runUpgradeCheck(deps: UpgradeCheckDeps): Promise<UpgradeCh
         for (const entry of registered) {
           children.push(line('info', `${basename(entry.path)} · ${entry.path} — ${CLASS_TEXT.unknown}`));
           children.push(line('info', stampNote(entry.path), true));
+          rows.push(emptyCheckRow(basename(entry.path), entry.path, []));
         }
       }
     }
   }
   children.push(line('ok', 'Done (read-only)'));
-  return { exitCode: 0, report: { kind: 'section', title: CHECK_TITLE, children } };
+  return {
+    exitCode: 0,
+    report: { kind: 'section', title: CHECK_TITLE, children },
+    json: {
+      schema: 'wolf.upgrade.check/1',
+      exit: 0,
+      cli: { installed: deps.installedVersion(), available },
+      projects: rows,
+      diverged: deps.diverged ?? [],
+      protections: rows.flatMap((row) => row.protected),
+    },
+  };
 }
 
 /** CLI-обвязка check-сводки (REQ-08): реестр — как projects (wolfUserConfigDir),
@@ -1163,21 +1323,136 @@ export async function runUpgradeCheck(deps: UpgradeCheckDeps): Promise<UpgradeCh
  *  exit не меняется (--check всегда 0). `--here` сужает сводку до cwd без
  *  чтения реестра (design §4.18: `--check` сильнее `--here`); полная
  *  here-инспекция с секцией Protections — T13. */
-async function upgradeCheckAction(viewVersion: () => Promise<string>, here?: string): Promise<void> {
+async function upgradeCheckAction(viewVersion: () => Promise<string>, here?: string, json = false): Promise<void> {
   const renderer = new OpencodeBaseSetRenderer(templatesRoot(), {
     harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
   });
+  const registry =
+    here === undefined
+      ? new ProjectsRegistry(wolfUserConfigDir())
+      : { listStrict: async () => [{ path: here, schema_version: 2, initialized_at: '' }] };
+  let map: UpdateMap | null = null;
+  try {
+    map = loadUpdateMap();
+  } catch {
+    map = null; // деградация уже обработана runUpgradeCheck
+  }
+  let diverged: JsonDiverged[] | undefined;
+  if (json) {
+    // `--json.diverged` (§4.13): read-only сбор реестра решений (только при --json)
+    const reg = await collectDecisions({
+      ...decisionProdDeps(here ?? null, renderer, registry),
+      loadMap: () => loadUpdateMap(),
+    });
+    diverged = jsonDiverged(reg);
+  }
   const res = await runUpgradeCheck({
-    registry:
-      here === undefined
-        ? new ProjectsRegistry(wolfUserConfigDir())
-        : { listStrict: async () => [{ path: here, schema_version: 2, initialized_at: '' }] },
-    loadMap: () => loadUpdateMap(),
+    registry,
+    loadMap: () => {
+      if (!map) throw new Error('update map is not available in this CLI');
+      return map;
+    },
     registryVersion: viewVersion,
     installedVersion: readInstalledVersion,
     inspect: (root) => renderer.inspectBaseSet(root, { models: 'omit' }),
+    ...(map ? { protections: (root: string) => renderer.listProtections(root, map.version) } : {}),
+    ...(diverged !== undefined ? { diverged } : {}),
   });
-  process.stdout.write(`${renderReport(res.report, termEnv(process.stdout, process.env))}\n`);
+  if (json) printJson(res.json);
+  else process.stdout.write(`${renderReport(res.report, termEnv(process.stdout, process.env))}\n`);
+}
+
+/* ---------- --json (T11, REQ-11, design §4.13): единственный документ в stdout ---------- */
+
+/** Единственный JSON в stdout: `JSON.stringify` без отступов + перевод строки. */
+export function printJson(doc: UpgradeJson | UpgradeCheckJson): void {
+  process.stdout.write(`${JSON.stringify(doc)}\n`);
+}
+
+/** Реестр защит всех активных проектов (`--json.protections`, §4.11/§4.13). */
+async function collectProtections(
+  reg: DecisionRegistry,
+  renderer: OpencodeBaseSetRenderer,
+  map: UpdateMap
+): Promise<JsonProtection[]> {
+  const out: JsonProtection[] = [];
+  for (const project of reg.projects) {
+    const entries = await renderer.listProtections(project.root, map.version);
+    out.push(...jsonProtections(entries));
+  }
+  return out;
+}
+
+/** Документ `wolf.upgrade/1` режима pass (§4.13): факты прохода + остаток
+ *  решений, лица и защиты (read-only, после прохода). */
+export async function buildPassJsonDoc(
+  deps: { registry: { listStrict(): Promise<RegisteredProject[]> }; loadMap: () => UpdateMap },
+  res: UpgradeRunResult,
+  cli: { installed: string; available: string | null },
+  error?: string
+): Promise<UpgradeJson> {
+  const renderer = new OpencodeBaseSetRenderer(templatesRoot(), {
+    harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
+  });
+  const map = deps.loadMap();
+  const reg = await collectDecisions({ ...decisionProdDeps(null, renderer, deps.registry), loadMap: () => map });
+  const protections = await collectProtections(reg, renderer, map);
+  return {
+    schema: 'wolf.upgrade/1',
+    exit: res.exitCode,
+    mode: 'pass',
+    cli,
+    ...(error !== undefined ? { error } : {}),
+    plan: res.plan,
+    projects: res.projects.map((p) => ({
+      ...p,
+      protected: protections.filter((x) => x.project === p.name),
+    })),
+    decisions: jsonDecisions(reg),
+    diverged: jsonDiverged(reg),
+    protections,
+  };
+}
+
+/** Документ `wolf.upgrade/1` для режимов без прохода (resolve/show/here). */
+async function modeJsonDoc(args: {
+  mode: 'resolve' | 'show' | 'here';
+  exit: 0 | 1 | 2;
+  registry: DecisionRegistry;
+  map: UpdateMap;
+  renderer: OpencodeBaseSetRenderer;
+  projects?: JsonProject[];
+  error?: string;
+}): Promise<UpgradeJson> {
+  const protections = await collectProtections(args.registry, args.renderer, args.map);
+  return {
+    schema: 'wolf.upgrade/1',
+    exit: args.exit,
+    mode: args.mode,
+    cli: { installed: readInstalledVersion(), available: null },
+    ...(args.error !== undefined ? { error: args.error } : {}),
+    plan: emptyPlan(),
+    projects: args.projects ?? [],
+    decisions: jsonDecisions(args.registry),
+    diverged: jsonDiverged(args.registry),
+    protections,
+  };
+}
+
+/** Документ фазы 1 при сбое npm-фазы: проекты не тронуты, exit 1, error (§4.13). */
+function npmFailureJsonDoc(installed: string, error: string): UpgradeJson {
+  return {
+    schema: 'wolf.upgrade/1',
+    exit: 1,
+    mode: 'pass',
+    cli: { installed, available: null },
+    error,
+    plan: emptyPlan(),
+    projects: [],
+    decisions: [],
+    diverged: [],
+    protections: [],
+  };
 }
 
 /* ---------- re-exec фазы 2 (T8, REQ-01/04, ADR-2/5): транспорт wolf upgrade ---------- */
@@ -1208,7 +1483,7 @@ export async function reExecUpgradeProjects(
   from: string,
   to: string,
   npmPrefix: string | null,
-  opts: { yes?: boolean } & ReExecDeps = {}
+  opts: { yes?: boolean; json?: boolean } & ReExecDeps = {}
 ): Promise<void> {
   const stateDir = opts.stateDir ?? mkdtempSync(join(tmpdir(), 'wolf-upgrade-state-'));
   const statePath = join(stateDir, 'state.json');
@@ -1224,6 +1499,9 @@ export async function reExecUpgradeProjects(
     '--no-banner',
     '--state',
     statePath,
+    // §4.18: единственный флаг вывода, который доходит до ребёнка; режимные
+    // флаги (--resolve/--show/--review/--check) до re-exec не доходят вовсе.
+    ...(opts.json === true ? ['--json'] : []),
   ];
   const child = (opts.spawnImpl ?? spawn)(childBin, argv, { stdio: 'inherit', env: process.env });
   const exit = opts.exit ?? ((code: number) => process.exit(code));
@@ -1251,23 +1529,26 @@ export async function reExecUpgradeProjects(
  *  отказ printOutcome. reExec-шов — юнит/R01.3-контур (шпион вместо spawn). */
 export async function runUpgradeWithProjects(
   deps: UpgradeDeps & { reExec?: typeof reExecUpgradeProjects },
-  opts: { yes?: boolean } = {}
+  opts: { yes?: boolean; json?: boolean } = {}
 ): Promise<void> {
+  const json = opts.json === true;
   const env = termEnv(process.stdout, process.env);
-  process.stdout.write(`${renderReport({ kind: 'banner', version: deps.currentVersion }, env)}\n`);
+  if (!json) process.stdout.write(`${renderReport({ kind: 'banner', version: deps.currentVersion }, env)}\n`);
   let outcome: UpgradeOutcome;
   try {
     outcome = await runUpgrade(deps, false);
   } catch (err) {
-    console.log('└ Failed'); // секция закрыта; Error:-строку и exit 1 даст runCli
+    if (json) printJson(npmFailureJsonDoc(deps.currentVersion, msg(err)));
+    else console.log('└ Failed'); // секция закрыта; Error:-строку и exit 1 даст runCli
     throw err;
   }
-  printOutcome(outcome);
+  if (!json) printOutcome(outcome); // §4.13: фаза 1 при --json молчит
   const reExec = deps.reExec ?? reExecUpgradeProjects;
+  const reExecOpts = { yes: opts.yes, ...(json ? { json } : {}) };
   if (outcome.kind === 'updated') {
-    await reExec(outcome.from, outcome.to, deps.npmPrefix, { yes: opts.yes });
+    await reExec(outcome.from, outcome.to, deps.npmPrefix, reExecOpts);
   } else if (outcome.kind === 'up-to-date') {
-    await reExec(outcome.current, outcome.current, deps.npmPrefix, { yes: opts.yes });
+    await reExec(outcome.current, outcome.current, deps.npmPrefix, reExecOpts);
   }
 }
 
@@ -1279,7 +1560,7 @@ function collectResolve(value: string, previous: string[]): string[] {
 export function memoryUpgradeCommand(): Command {
   return new Command('upgrade')
     .description(
-      'One command updates everything: npm phase (npm install -g mister-wolf@latest) followed by the registered-projects pass; --check only reports CLI + park freshness, no install; --here runs the full project update step in the current directory only (no npm self-update, no registry); --resolve applies owner decisions (<file|N>=take|keep|protect|pin) without a pass; --show prints one target with the local → base diff (read-only); --review walks the decisions with a diff (TTY) or prints the recipe'
+      'One command updates everything: npm phase (npm install -g mister-wolf@latest) followed by the registered-projects pass; --check only reports CLI + park freshness, no install; --here runs the full project update step in the current directory only (no npm self-update, no registry); --resolve applies owner decisions (<file|N>=take|keep|protect|pin) without a pass; --show prints one target with the local → base diff (read-only); --review walks the decisions with a diff (TTY) or prints the recipe; --json prints a single machine-readable document'
     )
     .option('--check', 'Only check for a newer version, do not install anything')
     .option('--here', 'Update this project only: full project step in cwd (no npm, no re-exec, no registry)')
@@ -1290,6 +1571,9 @@ export function memoryUpgradeCommand(): Command {
       collectResolve,
       []
     )
+    .option('--show <file|N>', 'Show one target: protect, both versions and the local → base diff (read-only)')
+    .option('--review', 'Review decisions one by one with a diff (TTY); without a TTY prints the recipe')
+    .option('--json', 'Print a single machine-readable document (wolf.upgrade/1) on stdout')
     .action(
       async (options: {
         check?: boolean;
@@ -1298,25 +1582,31 @@ export function memoryUpgradeCommand(): Command {
         resolve?: string[];
         show?: string;
         review?: boolean;
+        json?: boolean;
       }) => {
+        const json = options.json === true;
         const route = upgradeRoute(options);
-        if (route.error !== undefined) throw new UserFacingError(route.error);
+        if (route.error !== undefined) {
+          // §4.13: при --json stdout содержит единственный документ с error
+          if (json) printJson(npmFailureJsonDoc(readInstalledVersion(), route.error));
+          throw new UserFacingError(route.error);
+        }
         const cwd = safeCwd();
         if (route.mode === 'review') {
           await upgradeReviewAction(options.here === true);
           return; // non-TTY ничего не пишет; TTY применяет по решениям (REQ-07)
         }
         if (route.mode === 'show') {
-          await upgradeShowAction(options.show!, options.here === true);
+          await upgradeShowAction(options.show!, options.here === true, json);
           return; // read-only: файлы, свидетель и бэкапы не трогаются (NFR-03)
         }
         if (route.mode === 'resolve') {
           // Решения применяются в фазе 1: без npm-фазы, re-exec и прохода (§4.18)
-          await upgradeResolveAction(options.resolve ?? [], options.here === true);
+          await upgradeResolveAction(options.resolve ?? [], options.here === true, json);
           return;
         }
         if (route.mode === 'here') {
-          await upgradeHereAction(cwd, options.yes === true);
+          await upgradeHereAction(cwd, options.yes === true, json);
           return; // npm-ветка при --here не выполняется вообще (REQ-14)
         }
         const checkOnly = route.mode === 'check';
@@ -1334,13 +1624,14 @@ export function memoryUpgradeCommand(): Command {
           installLatest,
         };
         if (route.mode === 'check') {
-          printOutcome(await runUpgrade(deps, true));
+          // §4.13: при --json фаза 1 молчит — единственный документ печатает check
+          if (!json) printOutcome(await runUpgrade(deps, true));
           // порядок: CLI-версии → парк (REQ-08); --here сужает до cwd (read-only)
-          await upgradeCheckAction(viewOnce, options.here === true ? cwd : undefined);
+          await upgradeCheckAction(viewOnce, options.here === true ? cwd : undefined, json);
           return;
         }
         // npm-фаза + re-exec фазы 2 (T8): режимы выше вышли раньше, re-exec там нет
-        await runUpgradeWithProjects(deps, { yes: options.yes === true });
+        await runUpgradeWithProjects(deps, { yes: options.yes === true, json });
       }
     );
 }
