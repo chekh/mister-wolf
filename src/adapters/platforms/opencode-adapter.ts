@@ -24,19 +24,22 @@ import {
   MCP_SERVERS,
   SUBAGENT_DEPTH,
   SUBAGENT_DEPTH_KEY,
+  WOLF_MCP_COMMAND,
   deletePath,
   getPath,
   getRecordAt,
   isWolfMcpEntry,
   legacyPathOf,
   mcpEntryNative,
+  pathWritable,
+  readWolfMcp,
   setPath,
 } from './opencode-config-keys.js';
 
 export { DEFAULT_AGENT, SUBAGENT_DEPTH };
 
 /** Каноническая команда wolf: removeWolf/configIssues не получают cmd, ownership проверяем ею. */
-const WOLF_CMD: McpCommand = { command: 'wolf', args: ['mcp'] };
+const WOLF_CMD: McpCommand = WOLF_MCP_COMMAND;
 
 /** Значение глубины в действующем месте — наше или совместимое (>= SUBAGENT_DEPTH). */
 function depthIsOurs(value: unknown): boolean {
@@ -126,13 +129,19 @@ export class OpencodeAdapter implements PlatformAdapter {
 
     // 6.3: пишем нативную форму mcp.servers.wolf, легаси mcp.wolf снимаем только если он наш
     const desired = mcpEntryNative(cmd);
+    const mcpWritable = pathWritable(cfg, MCP_KEY.writePath);
     const nativeEntry = getPath(cfg, MCP_KEY.writePath);
-    const mcpOk = JSON.stringify(nativeEntry) === JSON.stringify(desired);
+    const mcpOk = mcpWritable && JSON.stringify(nativeEntry) === JSON.stringify(desired);
     const legacyMcpPath = legacyPathOf(MCP_KEY)!;
     const legacyMcp = getRecordAt(cfg, legacyMcpPath);
     const legacyMcpOurs = legacyMcp !== undefined && isWolfMcpEntry(legacyMcp, cmd);
 
     const reasons: string[] = [];
+    if (!mcpWritable) {
+      reasons.push(
+        `${MCP_ROOT} path is not an object; ${MCP_KEY.label} is not written — fix the conflicting key manually`
+      );
+    }
 
     // §6.1: default_agent и experimental.subagent_depth мерджатся рядом с mcp.servers.wolf
     const da = getPath(cfg, DEFAULT_AGENT_KEY.writePath);
@@ -166,7 +175,8 @@ export class OpencodeAdapter implements PlatformAdapter {
     const legacyOurs = legacySd === SUBAGENT_DEPTH;
     let setDepth = false;
     let dropLegacy = false;
-    if (getPath(cfg, depthPath.slice(0, -1)) !== undefined && experimental === undefined) {
+    const depthWritable = pathWritable(cfg, depthPath);
+    if (!depthWritable) {
       reasons.push(
         `experimental is not an object; ${depthLeaf} is not written — set ${depthLabel}: ${SUBAGENT_DEPTH} manually`
       );
@@ -197,7 +207,7 @@ export class OpencodeAdapter implements PlatformAdapter {
     // F6 (спека 2.1.0 §2.4): фактические wolf-ключи после ensured — только наши
     // (mcp.servers.wolf каноничен; default_agent/subagent_depth — если ключ наш, не занят чужим значением)
     const ours = (): string[] => {
-      const keys = [MCP_KEY.label];
+      const keys = mcpWritable ? [MCP_KEY.label] : [];
       if (getPath(cfg, DEFAULT_AGENT_KEY.writePath) === DEFAULT_AGENT)
         keys.push(`${DEFAULT_AGENT_KEY.label}=${DEFAULT_AGENT}`);
       const sd = getRecordAt(cfg, depthPath.slice(0, -1))?.[depthLeaf];
@@ -208,10 +218,10 @@ export class OpencodeAdapter implements PlatformAdapter {
     // unchanged — по ВСЕМ ключам: корректный mcp.servers.wolf не маскирует отсутствие default_agent/subagent_depth;
     // занятое чужим значением место depth тоже settled (не перезаписываем — только reason);
     // наш легаси mcp.wolf — не settled: его надо снять записью.
-    if (mcpOk && da !== undefined && !setDepth && !dropLegacy && !migrateLegacyMcp)
+    if ((mcpOk || !mcpWritable) && da !== undefined && !setDepth && !dropLegacy && !migrateLegacyMcp)
       return { action: 'unchanged', reason, configFile: basename(file), keys: ours() };
 
-    setPath(cfg, MCP_KEY.writePath, desired);
+    if (mcpWritable) setPath(cfg, MCP_KEY.writePath, desired);
     if (migrateLegacyMcp) deletePath(cfg, legacyMcpPath);
     if (da === undefined) setPath(cfg, DEFAULT_AGENT_KEY.writePath, DEFAULT_AGENT); // конфликтный ключ не трогаем
     if (setDepth) setPath(cfg, depthPath, SUBAGENT_DEPTH);
@@ -298,7 +308,13 @@ export class OpencodeAdapter implements PlatformAdapter {
    * Строки идут в общий `issues` проекта и маскируются doctor'ом как обычно.
    */
   async configIssues(projectRoot: string): Promise<string[]> {
-    const cfg = await this.readConfig(projectRoot).catch(() => null);
+    let cfg: PlatformConfig | null;
+    try {
+      cfg = await this.readConfig(projectRoot);
+    } catch {
+      // битый JSONC: «missing» советовал бы init, который честно скипает такой конфиг
+      return [`${this.id}: config is not valid JSONC — fix it or remove the file, then run wolf init`];
+    }
     if (cfg === null) return [`${this.id}: wolf entry missing — run wolf init`];
     return [
       ...mcpIssues(cfg),
@@ -311,13 +327,12 @@ export class OpencodeAdapter implements PlatformAdapter {
 
 /** 6.3: wolf-сервер отсутствует в обеих формах / легаси-форма подлежит миграции. */
 function mcpIssues(cfg: PlatformConfig): string[] {
+  const wolf = readWolfMcp(cfg, WOLF_CMD);
+  if (wolf.form === 'none') return [`opencode: wolf entry missing — run wolf init`];
+  if (wolf.legacyEntry === undefined) return [];
   const legacyPath = legacyPathOf(MCP_KEY)!;
-  const native = getPath(cfg, MCP_KEY.writePath);
-  const legacy = getPath(cfg, legacyPath);
-  if (native === undefined && legacy === undefined) return [`opencode: wolf entry missing — run wolf init`];
-  if (legacy === undefined) return [];
   return [
-    isWolfMcpEntry(legacy, WOLF_CMD)
+    wolf.legacyOurs
       ? `opencode: wolf entry is in the deprecated top-level ${legacyPath.join('.')} form — run wolf init to migrate it to ${MCP_KEY.label}`
       : `opencode: top-level ${legacyPath.join('.')} is foreign and deprecated (opencode v2 reads ${MCP_ROOT}.${MCP_SERVERS}) — wolf leaves it untouched`,
   ];

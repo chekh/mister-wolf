@@ -127,6 +127,25 @@ export function deletePath(obj: Record<string, unknown>, path: readonly string[]
   return true;
 }
 
+/** Каноническая команда wolf MCP: единственный источник для записи и ownership-проверок. */
+export const WOLF_MCP_COMMAND = { command: 'wolf', args: ['mcp'] };
+
+/**
+ * true, если путь можно записать: каждый промежуточный сегмент либо отсутствует,
+ * либо объект. Занятый чужим не-объектом сегмент — конфликт, а не молчаливый no-op.
+ */
+export function pathWritable(obj: Record<string, unknown>, path: readonly string[]): boolean {
+  let cur: unknown = obj;
+  for (let i = 0; i < path.length - 1; i++) {
+    const record = asRecord(cur);
+    if (record === undefined) return false;
+    const next = record[path[i]!];
+    if (next === undefined) return true; // дальше создаём новые объекты
+    cur = next;
+  }
+  return asRecord(cur) !== undefined;
+}
+
 /** Нативная запись MCP: { type: 'local', command: [cmd.command, ...cmd.args], disabled: false }. Без codemode. */
 export function mcpEntryNative(cmd: { command: string; args: string[] }): Record<string, unknown> {
   return { type: 'local', command: [cmd.command, ...cmd.args], disabled: false };
@@ -141,28 +160,33 @@ export function isWolfMcpEntry(value: unknown, cmd: { command: string; args: str
   return command.length === expected.length && expected.every((part, i) => command[i] === part);
 }
 
-/** Двухформенное чтение: нативная приоритетна. */
+/** Двухформенное чтение: нативная приоритетна; ownership считается по точной команде wolf. */
 export function readWolfMcp(
   cfg: Record<string, unknown>,
   cmd: { command: string; args: string[] }
 ): {
   form: 'native' | 'legacy' | 'both' | 'none';
-  entry?: Record<string, unknown>; // нативная или легаси-запись (что действует)
+  entry?: Record<string, unknown>; // действующая запись (нативная приоритетна)
   legacyEntry?: Record<string, unknown>; // легаси, если есть
+  ours: boolean; // действующая запись — наша
+  legacyOurs: boolean; // легаси-запись — наша
 } {
-  // ownership не фильтруем: наличие wolf-записи нужно doctor'у в любой форме;
-  // «своя ли она» решает isWolfMcpEntry (cmd — часть общего контракта API).
-  void cmd;
   const nativeEntry = getRecordAt(cfg, MCP_KEY.writePath);
   const legacyPath = legacyPathOf(MCP_KEY);
   const legacyEntry = legacyPath === undefined ? undefined : getRecordAt(cfg, legacyPath);
+  const legacyOurs = legacyEntry !== undefined && isWolfMcpEntry(legacyEntry, cmd);
   if (nativeEntry !== undefined) {
-    return legacyEntry !== undefined
-      ? { form: 'both', entry: nativeEntry, legacyEntry }
-      : { form: 'native', entry: nativeEntry };
+    return {
+      form: legacyEntry !== undefined ? 'both' : 'native',
+      entry: nativeEntry,
+      ...(legacyEntry !== undefined ? { legacyEntry } : {}),
+      ours: isWolfMcpEntry(nativeEntry, cmd),
+      legacyOurs,
+    };
   }
-  if (legacyEntry !== undefined) return { form: 'legacy', entry: legacyEntry };
-  return { form: 'none' };
+  if (legacyEntry !== undefined)
+    return { form: 'legacy', entry: legacyEntry, legacyEntry, ours: legacyOurs, legacyOurs };
+  return { form: 'none', ours: false, legacyOurs: false };
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {

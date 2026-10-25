@@ -544,6 +544,21 @@ describe('6.3: обе формы MCP — нативная приоритетна
   });
 });
 
+describe('OpencodeAdapter.writeConfig: не-объектный контейнер (конфликт, а не молчаливый no-op)', () => {
+  it('mcp строкой → reason, файл не перезаписан, mcp в keys не заявлен', async () => {
+    writeFileSync(
+      join(dir, 'opencode.json'),
+      JSON.stringify({ mcp: 'broken', default_agent: 'mr-wolf', experimental: { subagent_depth: 2 } })
+    );
+    const before = readFileSync(join(dir, 'opencode.json'), 'utf-8');
+    const result = await new OpencodeAdapter().writeConfig(dir, cmd);
+    expect(result.action).toBe('unchanged');
+    expect(result.reason).toContain('mcp path is not an object');
+    expect(result.keys).toEqual(['default_agent=mr-wolf', 'subagent_depth=2']);
+    expect(readFileSync(join(dir, 'opencode.json'), 'utf-8')).toBe(before);
+  });
+});
+
 describe('OpencodeAdapter.removeWolf (6.3: обе формы, только наша запись)', () => {
   it('removes only the native wolf entry, keeps other servers', async () => {
     writeFileSync(
@@ -729,6 +744,12 @@ describe('OpencodeAdapter.configIssues (6.3: doctor видит обе формы
     const issues = await new OpencodeAdapter().configIssues(dir);
     expect(issues).toHaveLength(1);
     expect(issues[0]).toContain('deprecated top-level mcp.wolf');
+  });
+
+  it('битый JSONC → issue «fix it», а не совет запустить init', async () => {
+    writeFileSync(join(dir, 'opencode.json'), '{ broken');
+    const issues = await new OpencodeAdapter().configIssues(dir);
+    expect(issues).toEqual(['opencode: config is not valid JSONC — fix it or remove the file, then run wolf init']);
   });
 
   it('обе формы: нативная приоритетна, чужой легаси помечен', async () => {

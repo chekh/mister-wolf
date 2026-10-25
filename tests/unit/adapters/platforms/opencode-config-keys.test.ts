@@ -230,16 +230,35 @@ describe('6.3: формы wolf-записи в MCP', () => {
     const nativeEntry = { type: 'local', command: ['wolf', 'mcp'], disabled: false };
     const legacyEntry = { type: 'local', command: ['wolf', 'mcp'], enabled: true };
 
-    expect(readWolfMcp({}, cmd)).toEqual({ form: 'none' });
+    expect(readWolfMcp({}, cmd)).toEqual({ form: 'none', ours: false, legacyOurs: false });
     expect(readWolfMcp({ mcp: { servers: { wolf: nativeEntry } } }, cmd)).toEqual({
       form: 'native',
       entry: nativeEntry,
+      ours: true,
+      legacyOurs: false,
     });
-    expect(readWolfMcp({ mcp: { wolf: legacyEntry } }, cmd)).toEqual({ form: 'legacy', entry: legacyEntry });
+    expect(readWolfMcp({ mcp: { wolf: legacyEntry } }, cmd)).toEqual({
+      form: 'legacy',
+      entry: legacyEntry,
+      legacyEntry,
+      ours: true,
+      legacyOurs: true,
+    });
     expect(readWolfMcp({ mcp: { servers: { wolf: nativeEntry }, wolf: legacyEntry } }, cmd)).toEqual({
       form: 'both',
       entry: nativeEntry,
       legacyEntry,
+      ours: true,
+      legacyOurs: true,
+    });
+    // чужая команда — не наша ни в одной форме
+    const foreign = { type: 'local', command: ['node', 'dist/mcp.js'] };
+    expect(readWolfMcp({ mcp: { servers: { wolf: foreign }, wolf: foreign } }, cmd)).toEqual({
+      form: 'both',
+      entry: foreign,
+      legacyEntry: foreign,
+      ours: false,
+      legacyOurs: false,
     });
   });
 });
