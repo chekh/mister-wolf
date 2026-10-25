@@ -15,7 +15,7 @@ import {
   SyncBaseSetOptions,
 } from '../../../ports/base-set-renderer.port.js';
 import { OPENCODE_MANIFEST, substitute } from '../manifest.js';
-import { insertStamp, parseStamp, stripStampLines } from '../stamp.js';
+import { insertStamp, parseStamp, renderStamp, stripStampLines } from '../stamp.js';
 import { loadSyncState, saveSyncState, sha256, type SyncEntry, type SyncState } from '../sync-state.js';
 import { normalizeManaged, parseProtect, type ProtectValue } from '../../../domain/protect-key.js';
 import { wolfVersion } from '../templates-root.js';
@@ -69,6 +69,12 @@ function templateBlock(template: string): { version: number; text: string } | nu
   const block = findOnboardingBlock(template);
   if (block === null || block === 'broken') return null;
   return { version: block.version, text: template.slice(block.start, block.end) };
+}
+
+/** EOL файла по первой строке: блок получает EOL файла, а не шаблона (m-7). */
+function fileEol(content: string): '\n' | '\r\n' {
+  const nl = content.indexOf('\n');
+  return nl > 0 && content[nl - 1] === '\r' ? '\r\n' : '\n';
 }
 
 const MUTATED_REASON = 'mutated after render — differs from recorded render and fresh render; left untouched';
@@ -286,7 +292,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
         }
       }
     }
-    outcomes.push(...(await this.syncAgentsMd(baseDir, ctx, state)));
+    outcomes.push(...(await this.syncAgentsMd(baseDir, ctx, state, backup)));
     const orphaned: string[] = [];
     const scanRoots = [
       join(baseDir, '.opencode/agents'),
@@ -305,8 +311,16 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
   }
 
   /** Блочный режим AGENTS.md (§4.5): управляется только текст между маркерами;
-   *  контент выше и ниже — байт-в-байт. protect у AGENTS.md не поддерживается. */
-  private async syncAgentsBlock(target: string, current: string, template: string): Promise<RenderOutcome> {
+   *  контент выше и ниже — байт-в-байт. protect у AGENTS.md не поддерживается.
+   *  Штампованная цель с блоком (миграция 2.19.0 → 2.20.0, M-1) после замены
+   *  блока получает штамп текущей базы и свидетель; `state` передаёт только
+   *  init-ветка (блочный файл без штампа свидетеля не имеет). */
+  private async syncAgentsBlock(
+    target: string,
+    current: string,
+    template: string,
+    state?: SyncState
+  ): Promise<RenderOutcome> {
     const block = findOnboardingBlock(current);
     if (block === null) {
       return {
@@ -323,11 +337,42 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
         reason: 'onboarding markers broken — file treated as foreign (wx policy)',
       };
     }
-    if (block.version >= tpl.version && current.slice(block.start, block.end) === tpl.text) {
+    // [start,end) включает завершающий `\r` закрывающего маркера: подстановка
+    // в CRLF-файл кончается им же, иначе после маркера остаётся LF (m-7).
+    const eol = fileEol(current);
+    const text = eol === '\r\n' ? `${tpl.text.replace(/\n/g, '\r\n')}\r` : tpl.text;
+    const replaced = `${current.slice(0, block.start)}${text}${current.slice(block.end)}`;
+    const updated = this.restampAgents(replaced);
+    if (updated === current) {
       return { file: 'AGENTS.md', action: 'skipped', reason: 'content identical (onboarding block)' };
     }
-    await this.writeFresh(target, `${current.slice(0, block.start)}${tpl.text}${current.slice(block.end)}`);
-    return { file: 'AGENTS.md', action: 'updated', reason: `onboarding block ${block.version} → ${tpl.version}` };
+    await this.writeFresh(target, updated);
+    if (state) this.recordAgentsBase(state, updated, template);
+    const blockChanged = current.slice(block.start, block.end) !== text;
+    return {
+      file: 'AGENTS.md',
+      action: 'updated',
+      reason: blockChanged
+        ? `onboarding block ${block.version} → ${tpl.version}`
+        : `stamp drift healed (base ${this.setVersion})`,
+    };
+  }
+
+  /** Штампованная цель с блоком: штамп приводится к текущей базе. Без нового
+   *  регекса штампа (§4.4) — strip + render; EOL файла сохраняется. */
+  private restampAgents(content: string): string {
+    const stamp = parseStamp(content);
+    if (stamp === null || stamp.set === this.setVersion) return content;
+    const line = renderStamp({ base: 'AGENTS.md', set: this.setVersion }, 'AGENTS.md');
+    return `${line}${fileEol(content)}${stripStampLines(content)}`;
+  }
+
+  /** Свидетель после обновления блока: только если файл совпал с эталоном
+   *  (EOL отличием не считается — проход приводит его правилом 7). Иначе
+   *  локальный текст вне блока остаётся решением `mutated` и не перезаписывается. */
+  private recordAgentsBase(state: SyncState, written: string, template: string): void {
+    const fresh = insertStamp(template, { base: 'AGENTS.md', set: this.setVersion }, 'AGENTS.md');
+    if (written === fresh || written.replace(/\r\n/g, '\n') === fresh) this.record(state, 'AGENTS.md', written);
   }
 
   /** T10 (REQ-08): read-only инспекция целей base-set — предикат того, что
@@ -490,7 +535,7 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
     }
     if (findOnboardingBlock(current) !== null) {
       // блок уже есть: и init обновляет его по версии формата (§4.5), а не «вечно пропускает»
-      return [await this.syncAgentsBlock(paths.target, current, content)];
+      return [await this.syncAgentsBlock(paths.target, current, content, state)];
     }
     // marker-append: маркированный блок без штампа в конец; чужой контент не трогаем
     const block = content.endsWith('\n') ? content : `${content}\n`;
@@ -500,11 +545,13 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
   }
 
   /** Sync-ветка AGENTS.md: только штампованный цельный файл; append-блок синку не принадлежит.
-   *  protect у AGENTS.md не поддерживается (§4.5); правила 6/6.5/7 §4.3 действуют. */
+   *  protect у AGENTS.md не поддерживается (§4.5); правила 6/6.5/7 §4.3 действуют,
+   *  включая take-on-mutated (6′) с бэкапом — механизм тот же, что у файлов карты (§4.12). */
   private async syncAgentsMd(
     baseDir: string,
     models: ModelContext | 'omit',
-    state: SyncState
+    state: SyncState,
+    backup?: BackupHook
   ): Promise<RenderOutcome[]> {
     const paths = this.agentsMdPaths(baseDir);
     if (!paths) return [];
@@ -531,7 +578,19 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
     const entry = asEntry(state.files['AGENTS.md']);
     const hash = sha256(normalizeManaged(current));
     if (entry && entry.hash !== hash) {
-      return [{ file: 'AGENTS.md', action: 'skipped', mutated: true, reason: MUTATED_REASON }];
+      if (!backup) return [{ file: 'AGENTS.md', action: 'skipped', mutated: true, reason: MUTATED_REASON }];
+      // Правило 6′ §4.3/§4.12: бэкап → эталон → свидетель (порядок обязателен, NFR-05)
+      const backupPath = await backup('AGENTS.md', current);
+      await this.writeFresh(paths.target, fresh);
+      this.record(state, 'AGENTS.md', fresh);
+      return [
+        {
+          file: 'AGENTS.md',
+          action: 'updated',
+          backup: backupPath,
+          reason: 'take-on-mutated (--yes): local copy saved',
+        },
+      ];
     }
     if (entry && entry.origin === 'keep') {
       return [
@@ -543,9 +602,11 @@ export class OpencodeBaseSetRenderer implements BaseSetRenderer {
         },
       ];
     }
+    // Правило 7: записи свидетеля нет — локальный контент сначала в бэкап (NFR-05).
+    const backupPath = !entry && backup ? await backup('AGENTS.md', current) : undefined;
     await this.writeFresh(paths.target, fresh);
     this.record(state, 'AGENTS.md', fresh);
-    return [{ file: 'AGENTS.md', action: 'updated' }];
+    return [{ file: 'AGENTS.md', action: 'updated', ...(backupPath ? { backup: backupPath } : {}) }];
   }
 
   /** Единый порядок решающих правил §4.3: missing → protect → unstamped →

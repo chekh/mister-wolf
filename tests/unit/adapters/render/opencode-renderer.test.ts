@@ -14,7 +14,7 @@ import {
 import { tmpdir } from 'os';
 import { join, relative } from 'path';
 import { OpencodeBaseSetRenderer } from '../../../../src/adapters/render/opencode/opencode-renderer.js';
-import { parseStamp } from '../../../../src/adapters/render/stamp.js';
+import { insertStamp, parseStamp } from '../../../../src/adapters/render/stamp.js';
 import { loadSyncState, sha256 } from '../../../../src/adapters/render/sync-state.js';
 import { normalizeManaged } from '../../../../src/domain/protect-key.js';
 
@@ -553,5 +553,206 @@ describe('protect, исцеление штампа, kept, take (§4.3)', () => {
   it('renderFreshFile: эталон цели карты, null для файла вне карты', () => {
     expect(renderer().renderFreshFile!(proj, AGENT)).toContain('wolf:rendered base=mr-wolf.md');
     expect(renderer().renderFreshFile!(proj, '.opencode/agents/nope.md')).toBeNull();
+  });
+});
+
+// F1-ревью (волна 2.20.0): M-1 (init на штампованном AGENTS.md 2.19.0),
+// m-2 (take/бэкап для whole-file AGENTS.md), m-7 (EOL блока), m-8.1 (kept
+// для AGENTS.md), m-5 (исцеление выше keep — фиксация порядка §4.3).
+describe('AGENTS.md: миграция 2.19.0, бэкапы, EOL, kept (F1-ревью)', () => {
+  const AGENTS = 'AGENTS.md';
+  const AGENT = '.opencode/agents/mr-wolf.md';
+  const V2_BLOCK = '<!-- wolf:onboarding v2 -->\n# Wolf 2.19\nСтарое правило.\n<!-- /wolf:onboarding -->\n';
+  const V3_TEMPLATE =
+    '<!-- wolf:onboarding v3 -->\n# Wolf 2.20\nНовое правило про protect.\n<!-- /wolf:onboarding -->\n';
+  const agentsPath = (): string => join(proj, AGENTS);
+  const statePath = (): string => join(proj, '.opencode', 'wolf-sync-state.json');
+  const freshAgents = (template: string): string => insertStamp(template, { base: AGENTS, set: '9.9.9' }, AGENTS);
+  const seedWitness = (files: Record<string, unknown>): void => {
+    mkdirSync(join(proj, '.opencode'), { recursive: true });
+    writeFileSync(statePath(), `${JSON.stringify({ files }, null, 2)}\n`);
+  };
+
+  it('M-1: init на штампованном 2.19.0 с блоком v2 → эталон + свидетель; повтор — no-op; sync/inspect — identical', async () => {
+    writeFileSync(join(base, 'AGENTS.md'), V3_TEMPLATE);
+    const old = insertStamp(V2_BLOCK, { base: AGENTS, set: '2.19.0' }, AGENTS);
+    writeFileSync(agentsPath(), old);
+    seedWitness({ [AGENTS]: { hash: sha256(normalizeManaged(old)), origin: 'render', base: '2.19.0' } });
+
+    const out = await renderer().renderBaseSet(proj);
+    expect(out.find((o) => o.file === AGENTS)?.action).toBe('updated');
+
+    const after = readFileSync(agentsPath(), 'utf-8');
+    expect(after).toBe(freshAgents(V3_TEMPLATE));
+    expect(parseStamp(after)?.set).toBe('9.9.9');
+    expect(loadSyncState(proj).files[AGENTS]).toEqual({
+      hash: sha256(normalizeManaged(after)),
+      origin: 'render',
+      base: '9.9.9',
+    });
+
+    // повторный init — no-op (NFR-02)
+    const again = await renderer().renderBaseSet(proj);
+    expect(again.find((o) => o.file === AGENTS)?.action).toBe('skipped');
+    expect(readFileSync(agentsPath(), 'utf-8')).toBe(after);
+
+    // следующий проход — консистентен: не mutated (NFR-02)
+    const res = await renderer().syncBaseSet(proj);
+    expect(res.outcomes.find((o) => o.file === AGENTS)?.mutated).toBeFalsy();
+    expect(res.outcomes.find((o) => o.file === AGENTS)?.action).toBe('skipped');
+    expect(readFileSync(agentsPath(), 'utf-8')).toBe(after);
+
+    // --check: не решение (REQ-03 AC4)
+    expect((await renderer().inspectBaseSet(proj)).find((o) => o.file === AGENTS)?.action).toBe('identical');
+  });
+
+  it('M-1 heal: блок уже v3, штамп старый (след предыдущего init) → штамп приведён, свидетель записан', async () => {
+    writeFileSync(join(base, 'AGENTS.md'), V3_TEMPLATE);
+    const stale = insertStamp(V3_TEMPLATE, { base: AGENTS, set: '2.19.0' }, AGENTS);
+    writeFileSync(agentsPath(), stale);
+    seedWitness({ [AGENTS]: { hash: sha256(normalizeManaged(stale)), origin: 'render', base: '2.19.0' } });
+
+    const out = await renderer().renderBaseSet(proj);
+    expect(out.find((o) => o.file === AGENTS)?.action).toBe('updated');
+    const after = readFileSync(agentsPath(), 'utf-8');
+    expect(after).toBe(freshAgents(V3_TEMPLATE));
+    expect(loadSyncState(proj).files[AGENTS]).toMatchObject({ base: '9.9.9' });
+    expect((await renderer().syncBaseSet(proj)).outcomes.find((o) => o.file === AGENTS)?.mutated).toBeFalsy();
+  });
+
+  it('M-1 guard: локальный текст вне блока → блок/штамп обновлены, свидетель не переписан → mutated, текст цел', async () => {
+    writeFileSync(join(base, 'AGENTS.md'), V3_TEMPLATE);
+    const old = insertStamp(`${V2_BLOCK}\nMY LOCAL RULES\n`, { base: AGENTS, set: '2.19.0' }, AGENTS);
+    writeFileSync(agentsPath(), old);
+    seedWitness({ [AGENTS]: { hash: sha256(normalizeManaged(old)), origin: 'render', base: '2.19.0' } });
+
+    const out = await renderer().renderBaseSet(proj);
+    expect(out.find((o) => o.file === AGENTS)?.action).toBe('updated');
+    const after = readFileSync(agentsPath(), 'utf-8');
+    expect(after).toContain('MY LOCAL RULES');
+    expect(parseStamp(after)?.set).toBe('9.9.9');
+    // свидетель остался старым: локальный текст не выдаётся за эталон
+    expect(loadSyncState(proj).files[AGENTS]).toMatchObject({ base: '2.19.0' });
+
+    const res = await renderer().syncBaseSet(proj);
+    const o = res.outcomes.find((x) => x.file === AGENTS);
+    expect(o?.action).toBe('skipped');
+    expect(o?.mutated).toBe(true);
+    expect(readFileSync(agentsPath(), 'utf-8')).toContain('MY LOCAL RULES');
+  });
+
+  it('m-7: CRLF-файл — блок получает EOL файла, текст выше/ниже байт-в-байт, повтор — skipped', async () => {
+    const above = '# Мой текст\r\n\r\n';
+    const below = '\r\nхвост\r\n';
+    writeFileSync(
+      agentsPath(),
+      `${above}<!-- wolf:onboarding v2 -->\r\nстарое содержимое\r\n<!-- /wolf:onboarding -->${below}`
+    );
+
+    const out = await renderer().renderBaseSet(proj);
+    expect(out.find((o) => o.file === AGENTS)?.action).toBe('updated');
+    const after = readFileSync(agentsPath(), 'utf-8');
+    expect(after.startsWith(above)).toBe(true);
+    expect(after.endsWith(below)).toBe(true);
+    // ни одного LF без CR: блок не смешивает EOL с файлом
+    expect(after.replace(/\r\n/g, '')).not.toContain('\n');
+    expect(after).not.toContain('старое содержимое');
+
+    const again = await renderer().renderBaseSet(proj);
+    expect(again.find((o) => o.file === AGENTS)?.action).toBe('skipped');
+    expect(readFileSync(agentsPath(), 'utf-8')).toBe(after);
+  });
+
+  it('m-8.1: kept для AGENTS.md — sync skipped+kept, inspect kept+keepBase, файл цел (6.5)', async () => {
+    await renderer().renderBaseSet(proj);
+    const local = `${readFileSync(agentsPath(), 'utf-8')}\nMY LOCAL\n`;
+    writeFileSync(agentsPath(), local);
+    seedWitness({ [AGENTS]: { hash: sha256(normalizeManaged(local)), origin: 'keep', base: '1.0.0' } });
+
+    const res = await renderer().syncBaseSet(proj);
+    const o = res.outcomes.find((x) => x.file === AGENTS);
+    expect(o?.kept).toBe(true);
+    expect(o?.reason).toContain('locally accepted');
+    expect(readFileSync(agentsPath(), 'utf-8')).toBe(local);
+
+    const insp = (await renderer().inspectBaseSet(proj)).find((x) => x.file === AGENTS);
+    expect(insp).toMatchObject({ action: 'kept', kept: true, keepBase: '1.0.0' });
+  });
+
+  it('m-5: исцеление выше keep — отличие только в штампе при origin keep → healed, свидетель render', async () => {
+    await renderer().syncBaseSet(proj);
+    const p = join(proj, AGENT);
+    const canon = readFileSync(p, 'utf-8');
+    writeFileSync(p, canon.replace('set=9.9.9', 'set=9.9.8'));
+    seedWitness({ [AGENT]: { hash: sha256(normalizeManaged(canon)), origin: 'keep', base: '1.0.0' } });
+
+    const res = await renderer().syncBaseSet(proj);
+    const o = res.outcomes.find((x) => x.file === AGENT);
+    expect(o?.action).toBe('updated');
+    expect(o?.reason).toContain('stamp drift healed');
+    expect(readFileSync(p, 'utf-8')).toBe(canon);
+    expect(loadSyncState(proj).files[AGENT]).toEqual({
+      hash: sha256(normalizeManaged(canon)),
+      origin: 'render',
+      base: '9.9.9',
+    });
+  });
+
+  it('m-2: take-on-mutated для AGENTS.md — бэкап до записи, файл = эталон, свидетель render', async () => {
+    await renderer().renderBaseSet(proj);
+    const canon = readFileSync(agentsPath(), 'utf-8');
+    const local = `${canon}\nLOCAL AGENTS EDIT\n`;
+    writeFileSync(agentsPath(), local);
+    const calls: Array<{ rel: string; content: string }> = [];
+
+    const res = await renderer().syncBaseSet(proj, undefined, {
+      takeMutated: {
+        backup: async (rel, content) => {
+          calls.push({ rel, content });
+          // порядок §4.12: на диске ещё локальная версия — бэкап раньше записи
+          expect(readFileSync(join(proj, rel), 'utf-8')).toBe(content);
+          return `.wolf/backup/upgrade/2026-10-25/${rel}`;
+        },
+      },
+    });
+    const o = res.outcomes.find((x) => x.file === AGENTS);
+    expect(o?.action).toBe('updated');
+    expect(o?.backup).toBe(`.wolf/backup/upgrade/2026-10-25/${AGENTS}`);
+    expect(calls).toEqual([{ rel: AGENTS, content: local }]);
+    expect(readFileSync(agentsPath(), 'utf-8')).toBe(canon);
+    expect(loadSyncState(proj).files[AGENTS]).toMatchObject({ origin: 'render', hash: sha256(canon) });
+  });
+
+  it('m-2 без хука: mutated AGENTS.md остаётся skipped+mutated, файл цел', async () => {
+    await renderer().renderBaseSet(proj);
+    const local = `${readFileSync(agentsPath(), 'utf-8')}\nLOCAL AGENTS EDIT\n`;
+    writeFileSync(agentsPath(), local);
+    const o = (await renderer().syncBaseSet(proj)).outcomes.find((x) => x.file === AGENTS);
+    expect(o?.action).toBe('skipped');
+    expect(o?.mutated).toBe(true);
+    expect(readFileSync(agentsPath(), 'utf-8')).toBe(local);
+  });
+
+  it('m-2 правило 7: свидетеля AGENTS.md нет → бэкап локального до перезаписи (NFR-05)', async () => {
+    await renderer().renderBaseSet(proj);
+    const canon = readFileSync(agentsPath(), 'utf-8');
+    rmSync(statePath());
+    writeFileSync(agentsPath(), `${canon}\nLOCAL WRONG\n`);
+    const calls: string[] = [];
+
+    const res = await renderer().syncBaseSet(proj, undefined, {
+      takeMutated: {
+        backup: async (rel) => {
+          calls.push(rel);
+          return `.wolf/backup/${rel}`;
+        },
+      },
+    });
+    expect(calls).toContain(AGENTS);
+    expect(res.outcomes.find((x) => x.file === AGENTS)).toMatchObject({
+      action: 'updated',
+      backup: `.wolf/backup/${AGENTS}`,
+    });
+    expect(readFileSync(agentsPath(), 'utf-8')).toBe(canon);
   });
 });

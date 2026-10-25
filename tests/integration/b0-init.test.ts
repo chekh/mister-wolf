@@ -4,12 +4,14 @@
 // .opencode/agents/*.md побайтово равны ожидаемому рендеру templates/base/agents;
 // guard-контракт design §3.4 (face_owner_skill === agent_id) в init-project.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync, readdirSync, readFileSync } from 'fs';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readdirSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, dirname, resolve, basename } from 'path';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
 import { insertStamp } from '../../src/adapters/render/stamp.js';
+import { sha256 } from '../../src/adapters/render/sync-state.js';
+import { normalizeManaged } from '../../src/domain/protect-key.js';
 import { substitute, OPENCODE_MANIFEST } from '../../src/adapters/render/manifest.js';
 import { wolfVersion } from '../../src/adapters/render/templates-root.js';
 import { baseSetFaceViolations } from '../../src/app/use-cases/init-project.js';
@@ -145,5 +147,33 @@ describe('onboarding-блок v3 в init (REQ-03 AC3/AC4, волна 2.20.0)', (
     expect(out).toContain('<!-- wolf:onboarding v3 -->');
     expect(out).not.toContain('старое содержимое');
     expect(out.match(/<!-- wolf:onboarding/g)).toHaveLength(1);
+  });
+
+  it('M-1: init на проекте 2.19.0 (штамп + блок v2) → эталон текущей базы, повторный init — no-op', () => {
+    const tplRaw = readFileSync(join(REPO, 'templates/base/AGENTS.md'), 'utf-8');
+    const oldBlock = tplRaw.replace('<!-- wolf:onboarding v3 -->', '<!-- wolf:onboarding v2 -->');
+    const legacy = insertStamp(oldBlock, { base: 'AGENTS.md', set: '2.19.0' }, 'AGENTS.md');
+    writeFileSync(agentsMd(), legacy);
+    mkdirSync(join(d, '.opencode'), { recursive: true });
+    writeFileSync(
+      join(d, '.opencode', 'wolf-sync-state.json'),
+      `${JSON.stringify(
+        { files: { 'AGENTS.md': { hash: sha256(normalizeManaged(legacy)), origin: 'render', base: '2.19.0' } } },
+        null,
+        2
+      )}\n`
+    );
+
+    expect(runCli(['init', '--full', '--platform', 'opencode'], d).status).toBe(0);
+    const expected = insertStamp(tplRaw, { base: 'AGENTS.md', set: wolfVersion() }, 'AGENTS.md');
+    expect(readFileSync(agentsMd(), 'utf-8')).toBe(expected);
+
+    // повторный init и следующий проход не дают ложного mutated (NFR-02)
+    expect(runCli(['init', '--full', '--platform', 'opencode', '--yes'], d).status).toBe(0);
+    expect(readFileSync(agentsMd(), 'utf-8')).toBe(expected);
+
+    const sync = runCli(['sync'], d);
+    expect(sync.stdout).not.toContain('mutated');
+    expect(readFileSync(agentsMd(), 'utf-8')).toBe(expected);
   });
 });
