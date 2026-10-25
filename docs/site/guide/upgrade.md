@@ -285,7 +285,7 @@ Broken markers (an opening marker without a closing one) make the file foreign: 
 
 ## `init` and a missing `mcp.wolf`
 
-`wolf doctor` used to advise `wolf init` when the `mcp.wolf` entry was missing, while a minimal `init` wrote no platform configs. Now a minimal `init` on a project whose platform config already exists repairs the entry (and `default_agent` / `subagent_depth`), keeping the rest of the JSON untouched. It still does not **create** a config file that was absent — minimal init stays minimal, and `--platform opencode` remains the explicit way to write a platform config. A broken JSONC config is not touched: `init` reports `skipped` with the reason and exits `0`. A second `init` reports `unchanged`.
+`wolf doctor` used to advise `wolf init` when the `mcp.wolf` entry was missing, while a minimal `init` wrote no platform configs. Now a minimal `init` on a project whose platform config already exists repairs the entry (and `default_agent` / `experimental.subagent_depth`), keeping the rest of the JSON untouched. It still does not **create** a config file that was absent — minimal init stays minimal, and `--platform opencode` remains the explicit way to write a platform config. A broken JSONC config is not touched: `init` reports `skipped` with the reason and exits `0`. A second `init` reports `unchanged`.
 
 ## Limitations, stated plainly
 
