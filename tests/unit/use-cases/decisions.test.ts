@@ -13,6 +13,7 @@ import {
   collectDecisions,
   parseResolveValues,
   planResolutions,
+  resolveShowTarget,
   type DecisionDeps,
   type DecisionRegistry,
 } from '../../../src/app/use-cases/decisions.js';
@@ -637,5 +638,25 @@ describe('applyResolutions: глаголы, свидетель, бэкапы (§
     const text = renderReport(res.report, { tty: false, colors: 'mono', width: 400 });
     expect(text.match(/faces:/g)).toHaveLength(1);
     expect(text).toContain('faces: executor-lead diverged');
+  });
+});
+
+describe('resolveShowTarget (§4.10): номер, путь, цель вне карты', () => {
+  it('N — только запись реестра; путь разрешён и для не-решений; unknown → ошибка', async () => {
+    const proj = await boot('p-show');
+    touch(proj, MR_WOLF);
+    writeFileSync(join(proj, LEAD), insertProtect(read(proj, LEAD), '2.17.1').content); // protected
+    const orphan = '.opencode/agents/variant.md';
+    writeFileSync(join(proj, orphan), '---\nname: variant\n---\n# Variant\n');
+    const reg = await registryFor(proj);
+    const opts = { here: true, cwd: proj };
+
+    expect(resolveShowTarget(reg, MAP, '1', opts).target).toMatchObject({ file: MR_WOLF, cls: 'mutated' });
+    expect(resolveShowTarget(reg, MAP, LEAD, opts).target).toMatchObject({ file: LEAD, cls: 'protected' });
+    expect(resolveShowTarget(reg, MAP, AGENTS, opts).target).toMatchObject({ file: AGENTS, cls: 'agents-stamped' });
+    expect(resolveShowTarget(reg, MAP, orphan, opts).target).toMatchObject({ file: orphan, cls: 'orphan' });
+    // N для защищённого файла нет: нумерация — только у решений
+    expect(resolveShowTarget(reg, MAP, '2', opts).error).toMatch(/unknown target 2/);
+    expect(resolveShowTarget(reg, MAP, 'missing.md', opts).error).toMatch(/unknown target/);
   });
 });

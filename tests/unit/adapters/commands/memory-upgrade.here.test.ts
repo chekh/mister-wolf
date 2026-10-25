@@ -303,3 +303,13 @@ describe('--resolve (commander): решение не теряется и npm-ф�
     ).rejects.toThrow(/--yes describes a pass/);
   });
 });
+
+describe('upgradeRoute: --show и несовместимые пары (T8, §4.10/§4.18)', () => {
+  it('--show — read-only режим до --resolve/--here; пары с --yes/--check/--resolve — ошибка', () => {
+    expect(upgradeRoute({ show: '.opencode/agents/x.md' })).toEqual({ mode: 'show' });
+    expect(upgradeRoute({ show: '1', here: true })).toEqual({ mode: 'show' }); // --here сужает проект
+    expect(upgradeRoute({ show: 'x.md', resolve: ['1=keep'] }).error).toMatch(/--show views a file/);
+    expect(upgradeRoute({ show: 'x.md', yes: true }).error).toMatch(/--yes describes a pass/);
+    expect(upgradeRoute({ show: 'x.md', check: true }).error).toMatch(/different read-only modes/);
+  });
+});

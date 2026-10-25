@@ -426,6 +426,57 @@ function pathCandidates(
   return { candidates };
 }
 
+/** Одна цель по адресу: `N` — только запись реестра; путь — §4.8 область целей. */
+function candidateFor(
+  reg: DecisionRegistry,
+  map: UpdateMap,
+  raw: string,
+  opts: { here: boolean; cwd: string }
+): { candidate?: Candidate; error?: string } {
+  if (/^\d+$/.test(raw)) {
+    const n = Number(raw);
+    const target = reg.targets.find((t) => t.n === n);
+    if (!target) {
+      return { error: `unknown target ${raw} (the decision list has ${reg.targets.length} entries)` };
+    }
+    return { candidate: { root: target.root, project: target.project, file: target.file } };
+  }
+  const found = pathCandidates(reg, map, raw, opts.here);
+  if (found.error !== undefined) return { error: found.error };
+  return { candidate: found.candidates[0]! };
+}
+
+/** Цель `--show` (design §4.10): как у `--resolve`, но разрешены и файлы, которые
+ *  сейчас не требуют решения (защищённые/kept/идентичные) — только по пути. */
+export interface ShowTarget {
+  root: string;
+  project: string;
+  file: string;
+  kind: DecisionKind | 'unknown';
+  cls: TargetClass;
+}
+
+export function resolveShowTarget(
+  reg: DecisionRegistry,
+  map: UpdateMap,
+  raw: string,
+  opts: { here: boolean; cwd: string }
+): { target?: ShowTarget; error?: string } {
+  const found = candidateFor(reg, map, raw, opts);
+  if (found.candidate === undefined) return { error: found.error };
+  const { root, project, file } = found.candidate;
+  const target = reg.targets.find((t) => t.root === root && t.file === file);
+  return {
+    target: {
+      root,
+      project,
+      file,
+      kind: target ? target.kind : file === 'AGENTS.md' ? 'agents-md' : 'unknown',
+      cls: classifyTarget(root, file, map, reg),
+    },
+  };
+}
+
 /**
  * Разбор и валидация ВСЕХ аргументов (design §4.8, шаг 2): ошибки собираются
  * полностью, ни одна не пишет; `ops` — только при пустом списке ошибок.
@@ -449,25 +500,13 @@ export function planResolutions(
   }
 
   for (const request of requests) {
-    let candidates: Candidate[] = [];
-    if (/^\d+$/.test(request.target)) {
-      const n = Number(request.target);
-      const target = reg.targets.find((t) => t.n === n);
-      if (!target) {
-        errors.push(`unknown target ${request.target} (the decision list has ${reg.targets.length} entries)`);
-        continue;
-      }
-      candidates = [{ root: target.root, project: target.project, file: target.file }];
-    } else {
-      const found = pathCandidates(reg, map, request.target, opts.here);
-      if (found.error !== undefined) {
-        errors.push(found.error);
-        continue;
-      }
-      candidates = found.candidates;
+    const found = candidateFor(reg, map, request.target, opts);
+    if (found.candidate === undefined) {
+      errors.push(found.error!);
+      continue;
     }
 
-    const candidate = candidates[0]!;
+    const candidate = found.candidate;
     const key = `${candidate.root}\u0000${candidate.file}`;
     if (seen.has(key)) {
       errors.push(`target listed twice: ${request.target}`);

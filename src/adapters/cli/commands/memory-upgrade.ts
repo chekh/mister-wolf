@@ -20,12 +20,15 @@ import {
   collectDecisions,
   parseResolveValues,
   planResolutions,
+  resolveShowTarget,
   type AppliedResolution,
   type DecisionDeps,
   type DecisionRegistry,
   type DivergedFace,
   type ResolutionVerb,
 } from '../../../app/use-cases/decisions.js';
+import { lineDiff, formatDiff } from '../../../domain/line-diff.js';
+import { normalizeManaged, parseProtect } from '../../../domain/protect-key.js';
 import { projectPath } from '../../../app/use-cases/verify-against-map.js';
 import { compareVersions, loadUpdateMap, type UpdateMap } from '../../fs/update-map.js';
 import { ProjectsRegistry, type RegisteredProject } from '../../fs/projects-registry.js';
@@ -414,13 +417,14 @@ async function upgradeHereAction(cwd: string, yes: boolean): Promise<void> {
 // --show (T8) → --review (T9) → --resolve → --here → npm+re-exec. Новые режимы
 // завершаются в фазе 1 на установленном CLI: флаг не теряется в re-exec.
 
-export type UpgradeMode = 'check' | 'resolve' | 'here' | 'pass';
+export type UpgradeMode = 'check' | 'show' | 'resolve' | 'here' | 'pass';
 
 export interface UpgradeFlags {
   check?: boolean;
   here?: boolean;
   yes?: boolean;
   resolve?: string[];
+  show?: string;
 }
 
 export interface UpgradeRoute {
@@ -433,6 +437,17 @@ export interface UpgradeRoute {
 export function upgradeRoute(flags: UpgradeFlags): UpgradeRoute {
   const resolve = flags.resolve ?? [];
   const resolveGiven = resolve.length > 0;
+  const showGiven = flags.show !== undefined;
+  // Несовместимые комбинации (§4.18): два способа действия в одном вызове
+  if (showGiven && resolveGiven) {
+    return { mode: 'pass', error: '--show views a file, --resolve writes — run them separately' };
+  }
+  if (showGiven && flags.yes === true) {
+    return { mode: 'pass', error: '--yes describes a pass, not a view — drop one of --show/--yes' };
+  }
+  if (showGiven && flags.check === true) {
+    return { mode: 'pass', error: '--check and --show are different read-only modes — run one of them' };
+  }
   if (resolveGiven && flags.yes === true) {
     return { mode: 'pass', error: '--yes describes a pass, not single decisions — drop one of --resolve/--yes' };
   }
@@ -440,6 +455,7 @@ export function upgradeRoute(flags: UpgradeFlags): UpgradeRoute {
     return { mode: 'pass', error: '--check is read-only and --resolve writes — run them separately' };
   }
   if (flags.check === true) return { mode: 'check' }; // --check сильнее --here (§4.18)
+  if (showGiven) return { mode: 'show' };
   if (resolveGiven) return { mode: 'resolve' };
   if (flags.here === true) return { mode: 'here' };
   return { mode: 'pass' };
@@ -587,6 +603,103 @@ async function upgradeResolveAction(values: string[], here: boolean): Promise<vo
   const res = await runUpgradeResolve(
     { ...decisionProdDeps(here ? cwd : null, renderer), renderer },
     { here, cwd, values }
+  );
+  process.stdout.write(`${renderReport(res.report, termEnv(process.stdout, process.env))}\n`);
+  process.exitCode = res.exitCode;
+}
+
+/* ---------- --show (T8, REQ-08, design §4.10): read-only просмотр цели ---------- */
+
+const SHOW_TITLE = 'wolf upgrade — show';
+
+export interface UpgradeShowResult {
+  exitCode: 0 | 1;
+  report: ReportNode;
+}
+
+const protectText = (p: ReturnType<typeof parseProtect>): string => {
+  if (!p.held) return 'none';
+  const value = p.value ?? p.raw ?? '';
+  const kind = p.value === 'true' ? 'held' : p.unrecognized ? 'raw' : 'pinned';
+  return `${value || '∅'}  (${kind}${p.unrecognized ? '; unrecognized — treated as protected' : '; recognized'})`;
+};
+
+/** Отпечаток свидетеля: `origin @ base` либо `n/a` (записи нет). */
+const witnessText = (entry: unknown, protectedFile: boolean): string => {
+  if (protectedFile) return 'n/a (protected)';
+  if (entry === undefined || typeof entry !== 'object' || entry === null) return 'n/a';
+  const e = entry as { origin?: string; base?: string; hash?: string };
+  return `${e.origin ?? 'render'} @ ${e.base ?? '?'} (${(e.hash ?? '').slice(0, 12)}…)`;
+};
+
+/** `--show <file|N>`: protect, обе версии и diff локальный → эталон; ничего не пишет. */
+export async function runUpgradeShow(
+  deps: UpgradeResolveDeps,
+  opts: { here: boolean; cwd: string; value: string }
+): Promise<UpgradeShowResult> {
+  const map = deps.loadMap();
+  const reg = await collectDecisions({ ...deps, loadMap: () => map });
+  const resolved = resolveShowTarget(reg, map, opts.value, { here: opts.here, cwd: opts.cwd });
+  const children: ReportNode[] = [];
+  if (resolved.target === undefined) {
+    children.push(line('error', resolved.error ?? `unknown target ${opts.value}`));
+    children.push(...decisionLines(reg));
+    children.push(line('error', 'Failed'));
+    return { exitCode: 1, report: { kind: 'section', title: SHOW_TITLE, children } };
+  }
+
+  const t = resolved.target;
+  const abs = join(t.root, t.file);
+  const current = existsSync(abs) ? readFileSync(abs, 'utf-8') : null;
+  const protect = current !== null ? parseProtect(current) : { held: false, value: null, raw: null };
+  const protectHeld = protect.held === true;
+  const stamp = current !== null ? parseStamp(current) : null;
+  const witness = witnessText(loadSyncState(t.root).files[t.file], protectHeld);
+  const fresh = deps.renderer.renderFreshFile(t.root, t.file);
+
+  children.push(line('info', `file:      ${t.file}   (project: ${t.project} ${t.root})`));
+  children.push(line('info', `protect:   ${protectText(protect)}`));
+
+  if (fresh === null) {
+    // Файл вне карты: эталона нет, take запрещён матрицей §4.8
+    children.push(
+      line('info', `base:      n/a (file outside the update map)   stamp: ${stamp?.set ?? 'n/a'}   drift: n/a`)
+    );
+    children.push(line('info', 'ⓘ no base to take; the file is held as a sanctioned local variation', true));
+    children.push(line('info', `release:   wolf upgrade --resolve ${t.file}=protect|pin`, true));
+    return { exitCode: 0, report: { kind: 'section', title: SHOW_TITLE, children } };
+  }
+
+  const drift =
+    current === null ? 'missing' : normalizeManaged(current) === fresh ? 'none (content equals base)' : 'local ≠ base';
+  children.push(
+    line(
+      'info',
+      `base:      ${map.version}   file stamp: ${stamp?.set ?? 'n/a'}   witness: ${witness}   drift: ${drift}`
+    )
+  );
+
+  if (current !== null) {
+    const diff = lineDiff(normalizeManaged(current), fresh);
+    children.push(
+      line('info', `--- a/local (as is)   +++ b/base ${map.version}   (what --resolve …=take gives you)`, true)
+    );
+    const markerOf = (text: string): Marker => (text.startsWith('+') ? 'ok' : text.startsWith('-') ? 'warn' : 'info');
+    for (const text of formatDiff(diff)) children.push(line(markerOf(text), `  ${text}`, true));
+  }
+  children.push(line('info', `release:   wolf upgrade --resolve ${t.file}=take`, true));
+  return { exitCode: 0, report: { kind: 'section', title: SHOW_TITLE, children } };
+}
+
+/** CLI-обвязка `--show`: прод-deps реестра решений + печать отчёта + exit-код. */
+async function upgradeShowAction(value: string, here: boolean): Promise<void> {
+  const cwd = safeCwd();
+  const renderer = new OpencodeBaseSetRenderer(templatesRoot(), {
+    harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
+  });
+  const res = await runUpgradeShow(
+    { ...decisionProdDeps(here ? cwd : null, renderer), renderer },
+    { here, cwd, value }
   );
   process.stdout.write(`${renderReport(res.report, termEnv(process.stdout, process.env))}\n`);
   process.exitCode = res.exitCode;
@@ -941,7 +1054,7 @@ function collectResolve(value: string, previous: string[]): string[] {
 export function memoryUpgradeCommand(): Command {
   return new Command('upgrade')
     .description(
-      'One command updates everything: npm phase (npm install -g mister-wolf@latest) followed by the registered-projects pass; --check only reports CLI + park freshness, no install; --here runs the full project update step in the current directory only (no npm self-update, no registry); --resolve applies owner decisions (<file|N>=take|keep|protect|pin) without a pass'
+      'One command updates everything: npm phase (npm install -g mister-wolf@latest) followed by the registered-projects pass; --check only reports CLI + park freshness, no install; --here runs the full project update step in the current directory only (no npm self-update, no registry); --resolve applies owner decisions (<file|N>=take|keep|protect|pin) without a pass; --show prints one target with the local → base diff (read-only)'
     )
     .option('--check', 'Only check for a newer version, do not install anything')
     .option('--here', 'Update this project only: full project step in cwd (no npm, no re-exec, no registry)')
@@ -952,10 +1065,14 @@ export function memoryUpgradeCommand(): Command {
       collectResolve,
       []
     )
-    .action(async (options: { check?: boolean; here?: boolean; yes?: boolean; resolve?: string[] }) => {
+    .action(async (options: { check?: boolean; here?: boolean; yes?: boolean; resolve?: string[]; show?: string }) => {
       const route = upgradeRoute(options);
       if (route.error !== undefined) throw new UserFacingError(route.error);
       const cwd = safeCwd();
+      if (route.mode === 'show') {
+        await upgradeShowAction(options.show!, options.here === true);
+        return; // read-only: файлы, свидетель и бэкапы не трогаются (NFR-03)
+      }
       if (route.mode === 'resolve') {
         // Решения применяются в фазе 1: без npm-фазы, re-exec и прохода (§4.18)
         await upgradeResolveAction(options.resolve ?? [], options.here === true);
