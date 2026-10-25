@@ -14,10 +14,10 @@ import { dedupeByRealpath, type RegisteredProject } from '../../adapters/fs/proj
 import { resolveMemoryRoot } from '../../adapters/fs/memory-root.js';
 import { loadSyncState } from '../../adapters/render/sync-state.js';
 import { parseStamp } from '../../adapters/render/stamp.js';
-import { compareVersions, type UpdateMap } from '../../adapters/fs/update-map.js';
+import { compareVersions, type FileKind, type UpdateMap } from '../../adapters/fs/update-map.js';
 import type { Counter, Marker, ReportNode } from '../../adapters/cli/report-renderer.js';
 import { runProjectStep, type ProjectReport, type ProjectStepDeps } from './project-step.js';
-import { projectPath } from './verify-against-map.js';
+import { projectPath, type VerifyResult } from './verify-against-map.js';
 import { scanUnregistered } from './scan-unregistered.js';
 
 /** id lock'а параллельного upgrade (T4 UpgradeLock, design «Гварды прохода»). */
@@ -394,6 +394,46 @@ export const STATUS_TEXT: Record<OutcomeStatus, string> = {
   error: 'error',
 };
 
+/** Файловые строки деталей проекта (REQ-01, design §4.15): каждый needs-decision
+ *  назван путём (счётчики выше сохраняются дословно), защищённые и принятые
+ *  локальные — отдельными строками, лица памяти (diverged) — по owner_skill,
+ *  а не как пути файлов. Единственная реализация для прохода и `--here`. */
+/** Путь карты (`base/agents/x.md`) → проектный путь (`.opencode/agents/x.md`):
+ *  REQ-01 требует путь относительно корня проекта, а verify.items для целей
+ *  карты несут путь карты. Перевод — тем же projectPath, второй таблицы нет. */
+const MAP_KINDS: Array<[string, FileKind]> = [
+  ['base/agents/', 'agent'],
+  ['base/skills/', 'skill'],
+  ['base/commands/', 'command'],
+  ['opencode/plugins/', 'plugin'],
+];
+
+function displayName(i: VerifyResult['items'][number]): string {
+  if (i.kind !== 'file') return i.target;
+  for (const [prefix, kind] of MAP_KINDS) {
+    if (i.target.startsWith(prefix)) return projectPath({ path: i.target, kind, category: 'new' });
+  }
+  return i.target;
+}
+
+export function verifyNameLines(verify: VerifyResult, report?: ProjectReport): ReportNode[] {
+  const out: ReportNode[] = [];
+  const named = verify.items.filter((i) => i.needsDecision && i.code !== 'diverged');
+  if (named.length > 0) {
+    out.push(line('warn', `needs decision: ${named.map((i) => `${displayName(i)} (${i.code})`).join(', ')}`, true));
+  }
+  const protectedCount = verify.items.filter((i) => i.code === 'protected').length;
+  if (protectedCount > 0) out.push(line('info', `${protectedCount} protected (intentional)`, true));
+  const kept = verify.items.filter((i) => i.code === 'kept').map(displayName);
+  if (kept.length > 0) out.push(line('info', `${kept.length} kept (local): ${kept.join(', ')}`, true));
+  // Лицо — объект памяти (зона Стюарда), поэтому имя владельца, не путь шаблона.
+  const diverged = (report?.seed ?? [])
+    .filter((s) => s.kind === 'diverged')
+    .map((s) => s.file.replace(/-playbook\.md$/, ''));
+  if (diverged.length > 0) out.push(line('warn', `faces: ${diverged.map((f) => `${f} diverged`).join(', ')}`, true));
+  return out;
+}
+
 /** Секция проектов: строка-статус на проект + детали шага (REQ-05, палитра T3). */
 function projectsSection(outcomes: StepOutcome[]): ReportNode {
   const children: ReportNode[] = [];
@@ -425,6 +465,7 @@ function projectsSection(outcomes: StepOutcome[]): ReportNode {
     children.push(
       line(v.errors > 0 ? 'error' : v.needsDecision > 0 ? 'warn' : 'info', `verify: ${parts.join(' · ')}`, true)
     );
+    children.push(...verifyNameLines(r.verify, r));
   }
   return { kind: 'section', title: 'Projects', children };
 }

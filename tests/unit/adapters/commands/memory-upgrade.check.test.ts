@@ -91,6 +91,25 @@ describe('classifyProject (AC2: чистая классификация по к�
     expect(f.deprecated).toEqual([DEPRECATED_REL]);
   });
 
+  it('protected/kept — не behind и не needs-decision (§4.6, волна 2.20.0)', () => {
+    const p = classifyProject(MINI_MAP, outcomes({ [CHANGED_REL]: 'protected' }), []);
+    const k = classifyProject(MINI_MAP, outcomes({ [CHANGED_REL]: 'kept' }), []);
+    expect(p.cls).toBe('current');
+    expect(p.protected).toEqual([CHANGED_REL]);
+    expect(k.cls).toBe('current');
+    expect(k.kept).toEqual([CHANGED_REL]);
+  });
+
+  it('detail наблюдения переносится полем, класс не меняет (§4.15)', () => {
+    const list = [
+      ...outcomes({ [AGENTS_MD]: 'foreign' }),
+      { file: AGENTS_MD, action: 'foreign' as const, detail: 'onboarding markers broken' },
+    ];
+    const f = classifyProject(MINI_MAP, list, []);
+    expect(f.details).toEqual([{ file: AGENTS_MD, detail: 'onboarding markers broken' }]);
+    expect(f.cls).toBe('unknown');
+  });
+
   it('AGENTS.md — цель карты agents_md: differs → behind; outside-map — справочно', () => {
     expect(classifyProject(MINI_MAP, outcomes({ [AGENTS_MD]: 'differs' }), []).cls).toBe('behind');
     const f = classifyProject(MINI_MAP, outcomes({ '.opencode/agents/stray.md': 'identical' }), []);
@@ -178,6 +197,29 @@ describe('runUpgradeCheck: деградации, реестр, exit 0 (AC3/AC4/A
     expect(text).not.toContain('— current');
     expect(inspect).not.toHaveBeenCalled(); // без карты инспекция не нужна
     expect(text.split('\n')).toContain('ok: Done (read-only)');
+  });
+
+  it('R03-5/R01-2: differs печатаются путями, detail-причина — отдельной строкой (§4.15)', async () => {
+    const park = mkTmp('wolf-check-detail-');
+    const proj = join(park, 'p-detail');
+    mkdirSync(proj, { recursive: true });
+    const outcomes: InspectOutcome[] = [
+      { file: CHANGED_REL, action: 'differs' },
+      { file: NEW_REL, action: 'differs' },
+      { file: UNCHANGED_REL, action: 'identical' },
+      { file: DEPRECATED_REL, action: 'identical' },
+      { file: AGENTS_MD, action: 'foreign', detail: 'onboarding markers broken' },
+    ];
+    const res = await runUpgradeCheck(
+      checkDeps({
+        registry: { listStrict: async () => [{ path: proj, schema_version: 2, initialized_at: 't' }] },
+        inspect: async () => outcomes,
+      })
+    );
+    const text = plain(res);
+    expect(text).toContain(`2 differ: ${NEW_REL}, ${CHANGED_REL}`); // порядок карты, оба пути без усечения
+    expect(text).toContain('detail: onboarding markers broken — treated as foreign (AGENTS.md)');
+    expect(res.exitCode).toBe(0);
   });
 
   it('AC4: listStrict throw → error-строка, exit 0; пустой реестр → no projects, exit 0', async () => {

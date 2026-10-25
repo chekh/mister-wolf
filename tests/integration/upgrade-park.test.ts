@@ -337,6 +337,9 @@ describe('runUpgradeProjects: фикстурный парк (T7)', () => {
     expect(takeParkSnapshot(mutated).files['.opencode/agents/mr-wolf.md']!).toBe(mutatedSha);
     expect(text).toContain('p-mutated — needs decision');
     expect(text).toContain('1 mutated');
+    // REQ-01 AC1: путь каждого needs-decision назван, счётчик verify сохранён (AC3)
+    expect(text).toContain('needs decision: .opencode/agents/mr-wolf.md (skipped-mutated)');
+    expect(text).toMatch(/verify: \d+\/\d+ ok · \d+ needs decision/);
 
     // R13.1: pinned показан со статусом, не изменён
     expect(text).toContain('[pinned] — skipped');

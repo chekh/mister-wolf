@@ -8,7 +8,13 @@ import { Command } from 'commander';
 import { runUpgrade, type UpgradeDeps, type UpgradeOutcome } from '../../../app/use-cases/upgrade.js';
 import { UserFacingError } from '../../../domain/errors.js';
 import { runProjectStep, type ProjectReport, type ProjectStepDeps } from '../../../app/use-cases/project-step.js';
-import { mapCategories, STATUS_TEXT, statusOf, type OutcomeStatus } from '../../../app/use-cases/upgrade-projects.js';
+import {
+  mapCategories,
+  STATUS_TEXT,
+  statusOf,
+  verifyNameLines,
+  type OutcomeStatus,
+} from '../../../app/use-cases/upgrade-projects.js';
 import { projectPath } from '../../../app/use-cases/verify-against-map.js';
 import { compareVersions, loadUpdateMap, type UpdateMap } from '../../fs/update-map.js';
 import { ProjectsRegistry, type RegisteredProject } from '../../fs/projects-registry.js';
@@ -244,6 +250,7 @@ function stepDetailLines(report: ProjectReport): ReportNode[] {
   if (v.needsDecision > 0) parts.push(`${v.needsDecision} needs decision`);
   if (v.errors > 0) parts.push(`${v.errors} errors`);
   out.push(line(v.errors > 0 ? 'error' : v.needsDecision > 0 ? 'warn' : 'info', `verify: ${parts.join(' · ')}`, true));
+  out.push(...verifyNameLines(report.verify, report));
   return out;
 }
 
@@ -422,6 +429,12 @@ export interface ProjectFreshness {
   deprecated: string[];
   /** Цели инспекции вне карты — справочно, класс не меняют. */
   outsideMap: string[];
+  /** Защищённые цели (§4.3 правило 2): не differs, не changed — держатся владельцем. */
+  protected: string[];
+  /** Принятый локальный контент (правило 6.5): не отставание, не решение. */
+  kept: string[];
+  /** Причины наблюдений из InspectOutcome.detail (не из reason-строк). */
+  details: Array<{ file: string; detail: string }>;
 }
 
 /** Чистая классификация (design §«--check»), приоритет правил — как в брифе:
@@ -444,7 +457,13 @@ export function classifyProject(
     removedPresent: [...removedExisting],
     deprecated: [],
     outsideMap: [],
+    protected: [],
+    kept: [],
+    details: [],
   };
+  for (const o of outcomes) {
+    if (o.detail) out.details.push({ file: o.file, detail: o.detail });
+  }
   const byFile = new Map(outcomes.map((o) => [o.file, o.action]));
   const targetRels = new Set<string>();
   const absorb = (rel: string, action: InspectOutcome['action'] | undefined): void => {
@@ -453,6 +472,8 @@ export function classifyProject(
     else if (action === 'unknown') out.uncertain.push(rel);
     else if (action === 'differs') out.differs.push(rel);
     else if (action === 'missing') out.missing.push(rel);
+    else if (action === 'protected') out.protected.push(rel);
+    else if (action === 'kept') out.kept.push(rel);
   };
   for (const entry of map.files) {
     const rel = projectPath(entry);
@@ -502,13 +523,16 @@ const CHECK_TITLE = 'wolf upgrade — check';
 /** Детали проекта одной строкой: `2 differ · 1 missing · mutated: …`. */
 function freshnessDetails(f: ProjectFreshness): string | null {
   const parts: string[] = [];
-  if (f.differs.length > 0) parts.push(`${f.differs.length} differ`);
+  // REQ-01 AC2: путь каждого differ — не выборка и не усечение (§4.15).
+  if (f.differs.length > 0) parts.push(`${f.differs.length} differ: ${f.differs.join(', ')}`);
   if (f.missing.length > 0) parts.push(`${f.missing.length} missing`);
   if (f.mutated.length > 0) parts.push(`mutated: ${f.mutated.join(', ')}`);
   if (f.foreign.length > 0) parts.push(`foreign: ${f.foreign.join(', ')}`);
   if (f.uncertain.length > 0) parts.push(`unknown: ${f.uncertain.join(', ')}`);
   if (f.removedPresent.length > 0) parts.push(`removed present: ${f.removedPresent.join(', ')}`);
   if (f.outsideMap.length > 0) parts.push(`${f.outsideMap.length} files outside the map`);
+  if (f.kept.length > 0) parts.push(`kept (local): ${f.kept.join(', ')}`);
+  if (f.protected.length > 0) parts.push(`${f.protected.length} protected (intentional)`);
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 
@@ -542,6 +566,9 @@ async function projectCheckLines(
     ];
     const details = freshnessDetails(f);
     if (details) lines.push(line('info', details, true));
+    for (const d of f.details) {
+      lines.push(line('info', `detail: ${d.detail} — treated as foreign (${d.file})`, true));
+    }
     if (f.deprecated.length > 0) {
       lines.push(line('info', `deprecated: ${f.deprecated.join(', ')} (report-only)`, true));
     }

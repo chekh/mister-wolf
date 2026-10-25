@@ -474,3 +474,36 @@ describe('project-step: orphan protect/kept и бэкапы (волна 2.20.0, 
     }
   });
 });
+
+describe('детали проекта: имена needs-decision и коды §4.6 (REQ-01, волна 2.20.0)', () => {
+  it('R01.1: путь каждого needs-decision назван; protected/kept/faces — отдельными строками', async () => {
+    const proj = mkdtempSync(join(tmpdir(), 'wolf-upg-names-'));
+    try {
+      const runStep = fakeRunStep({
+        [basename(proj)]: {
+          exitKind: 'needs-decision',
+          verify: {
+            items: [
+              { kind: 'file', target: '.opencode/agents/foo.md', code: 'skipped-mutated', needsDecision: true },
+              { kind: 'agents-md', target: 'AGENTS.md', code: 'conflict', needsDecision: true },
+              { kind: 'file', target: '.opencode/agents/p.md', code: 'protected', needsDecision: false },
+              { kind: 'file', target: '.opencode/agents/k.md', code: 'kept', needsDecision: false },
+            ],
+            summary: { byCode: {}, needsDecision: 2, errors: 0 },
+          },
+          seed: [{ file: 'executor-lead-playbook.md', action: 'diverged', kind: 'diverged' }],
+        },
+      });
+      const res = await runUpgradeProjects(makeDeps({ runStep, registry: registryOf([entry(proj)]) }), { yes: true });
+      const text = plain(res);
+      // счётчик сохранён дословно (AC3), имена — дополнительная строка
+      expect(text).toMatch(/verify: \d+\/\d+ ok · 2 needs decision/);
+      expect(text).toContain('needs decision: .opencode/agents/foo.md (skipped-mutated), AGENTS.md (conflict)');
+      expect(text).toContain('1 protected (intentional)');
+      expect(text).toContain('1 kept (local): .opencode/agents/k.md');
+      expect(text).toContain('faces: executor-lead diverged');
+    } finally {
+      rmSync(proj, { recursive: true, force: true });
+    }
+  });
+});

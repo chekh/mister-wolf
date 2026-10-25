@@ -144,11 +144,13 @@ describe('runUpgradeCheck: R08.1 — парк 2 проектов, npm view (мо
     expect(text).toContain('stamps 2.17.1');
     expect(text).toContain('p-216');
     expect(text).toContain('p-217');
-    // класс обоих проектов — behind: mr-wolf/AGENTS.md/using-skills differ
-    // (тело AGENTS.md и mr-wolf сменились, using-skills — штамп set=) +
-    // executor-lead missing (new) + gone-skill ещё на месте (removed)
+    // класс обоих проектов — behind: mr-wolf/AGENTS.md differ (тела сменились) +
+    // executor-lead missing (new) + gone-skill ещё на месте (removed).
+    // using-skills отличается только штампом set= → inspect отдаёт identical
+    // (design §4.4: «проходу нечего решать»), поэтому differ 2, а не 3.
     expect(text.match(/— behind/g)).toHaveLength(2);
-    expect(text).toContain('3 differ');
+    expect(text).toContain('2 differ: .opencode/agents/mr-wolf.md, AGENTS.md'); // R01-2: оба пути, без усечения
+    expect(text).not.toContain('3 differ');
     expect(text).toContain('1 missing'); // executor-lead.md (new)
     expect(text).toContain('removed present: .opencode/skills/gone-skill/SKILL.md');
     expect(text).toContain('deprecated: .opencode/command/complain.md (report-only)');
