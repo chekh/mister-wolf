@@ -21,7 +21,9 @@ import { takeParkSnapshot, takeTreeSnapshot } from '../helpers/park-snapshot.js'
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const CLI = join(REPO, 'dist', 'bootstrap', 'cli.js');
-const SET = '2.19.0';
+// Версия набора = версия пакета (единственный источник, правило репозитория):
+// тест проверяет штампы/карту текущего релиза, а не конкретный номер.
+const SET = (JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf-8')) as { version: string }).version;
 const OLD_SET = '2.17.1';
 
 interface Run {
