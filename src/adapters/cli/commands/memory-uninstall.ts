@@ -6,6 +6,7 @@ import { rm } from 'fs/promises';
 import { join } from 'path';
 import { PLATFORM_ADAPTERS } from '../../../adapters/platforms/index.js';
 import { executeUninstall, planUninstall, type UninstallDeps } from '../../../app/use-cases/uninstall.js';
+import type { SyncStateFiles } from '../../../adapters/render/sync-state.js';
 import { safeCwd } from '../cli-entry.js';
 
 function makeDeps(baseDir: string): UninstallDeps {
@@ -14,7 +15,7 @@ function makeDeps(baseDir: string): UninstallDeps {
     syncStateFiles: () => {
       try {
         const raw = readFileSync(join(baseDir, '.opencode', 'wolf-sync-state.json'), 'utf-8');
-        const parsed = JSON.parse(raw) as { files?: Record<string, string> };
+        const parsed = JSON.parse(raw) as { files?: SyncStateFiles };
         return parsed.files && typeof parsed.files === 'object' ? parsed.files : 'broken';
       } catch (err) {
         // Битый JSON ≠ отсутствующий файл: различаем для fallback-решения (F-11).

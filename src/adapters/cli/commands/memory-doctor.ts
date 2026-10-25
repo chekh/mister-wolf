@@ -17,6 +17,7 @@ import { templatesRoot, harnessTemplatesRoot } from '../../../adapters/render/te
 import { OpencodeBaseSetRenderer } from '../../../adapters/render/opencode/opencode-renderer.js';
 import { PLATFORM_ADAPTERS, CANONICAL_MCP_COMMAND } from '../../../adapters/platforms/index.js';
 import type { PlatformAdapter } from '../../../ports/platform-adapter.port.js';
+import type { SyncStateFiles } from '../../../adapters/render/sync-state.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { worktreeScopeToken } from '../../../adapters/fs/memory-root.js';
 import { safeCwd } from '../cli-entry.js';
@@ -64,11 +65,11 @@ function readFileSyncOrNull(p: string): string | null {
   }
 }
 
-function loadSyncStateFiles(baseDir: string): Record<string, string> | null {
+function loadSyncStateFiles(baseDir: string): SyncStateFiles | null {
   const raw = readFileSyncOrNull(join(baseDir, '.opencode', 'wolf-sync-state.json'));
   if (raw === null) return null;
   try {
-    const parsed = JSON.parse(raw) as { files?: Record<string, string> };
+    const parsed = JSON.parse(raw) as { files?: SyncStateFiles };
     return parsed.files && typeof parsed.files === 'object' ? parsed.files : null;
   } catch {
     return null;

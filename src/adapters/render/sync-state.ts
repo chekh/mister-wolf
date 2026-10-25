@@ -17,9 +17,12 @@ export interface SyncEntry {
   base: string;
 }
 
+/** Сырой срез файла свидетеля: легаси-строки 2.19.0 и записи `SyncEntry` вперемешку. */
+export type SyncStateFiles = Record<string, string | SyncEntry>;
+
 export interface SyncState {
   /** rel-путь от baseDir → свидетель; строка — легаси-запись 2.19.0 (читается как render). */
-  files: Record<string, string | SyncEntry>;
+  files: SyncStateFiles;
 }
 
 const statePath = (baseDir: string): string => join(baseDir, '.opencode', 'wolf-sync-state.json');

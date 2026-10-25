@@ -6,7 +6,13 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { loadSyncState, saveSyncState, sha256, type SyncEntry } from '../../../../src/adapters/render/sync-state.js';
+import {
+  loadSyncState,
+  saveSyncState,
+  sha256,
+  type SyncEntry,
+  type SyncStateFiles,
+} from '../../../../src/adapters/render/sync-state.js';
 import { detectPlatformMismatch } from '../../../../src/app/use-cases/platform-mismatch.js';
 import { planUninstall } from '../../../../src/app/use-cases/uninstall.js';
 
@@ -111,30 +117,40 @@ describe('saveSyncState — запись', () => {
 });
 
 describe('key-only потребители объектной формы (ADR-8)', () => {
-  it('detectPlatformMismatch использует только ключи (platform-mismatch + memory-doctor)', async () => {
+  /** Сырой JSON свидетеля — ровно то, что читают production-пути
+   *  (`loadSyncStateFiles`/`memory-uninstall`), без нормализации `loadSyncState`. */
+  const rawStateFiles = (dir: string): SyncStateFiles =>
+    (JSON.parse(readFileSync(join(dir, STATE), 'utf-8')) as { files: SyncStateFiles }).files;
+
+  it('detectPlatformMismatch на сыром JSON: объект + легаси-строка (platform-mismatch + memory-doctor)', async () => {
     const dir = project();
     writeState(dir, {
       '.opencode/plugins/p.ts': { hash: 'h', origin: 'render', base: '2.13.0' },
+      '.opencode/agents/legacy.md': 'abc', // легаси-запись 2.19.0 в том же файле
     });
     mkdirSync(join(dir, '.opencode/plugins'), { recursive: true });
     writeFileSync(join(dir, '.opencode/plugins/p.ts'), '// wolf:rendered base=p.ts set=2.13.0\n');
     const found = await detectPlatformMismatch({
       baseDir: dir,
       runtime: () => ({ status: 'v2' }) as never,
-      readSyncState: () => ({ files: loadSyncState(dir).files as unknown as Record<string, string> }),
+      readSyncState: () => ({ files: rawStateFiles(dir) }),
       readFile: (p) => (existsSync(p) ? readFileSync(p, 'utf-8') : null),
     });
     expect(found?.installedSet).toBe('2.13.0');
   });
 
-  it('planUninstall перечисляет записи по ключам объектной формы', async () => {
+  it('planUninstall на сыром JSON: объект + легаси-строка перечислены по ключам', async () => {
     const dir = project();
-    writeState(dir, { '.opencode/agents/a.md': { hash: 'h', origin: 'render', base: '2.20.0' } });
+    writeState(dir, {
+      '.opencode/agents/a.md': { hash: 'h', origin: 'render', base: '2.20.0' },
+      '.opencode/agents/legacy.md': 'abc',
+    });
     mkdirSync(join(dir, '.opencode/agents'), { recursive: true });
     writeFileSync(join(dir, '.opencode/agents/a.md'), stamped('2.20.0'));
+    writeFileSync(join(dir, '.opencode/agents/legacy.md'), stamped('2.19.0'));
     const plan = await planUninstall({
       baseDir: dir,
-      syncStateFiles: () => loadSyncState(dir).files as unknown as Record<string, string>,
+      syncStateFiles: () => rawStateFiles(dir),
       readFile: (p) => (existsSync(p) ? readFileSync(p, 'utf-8') : null),
       exists: existsSync,
       listFiles: () => [],
@@ -145,6 +161,7 @@ describe('key-only потребители объектной формы (ADR-8)'
       adapters: [],
     });
     expect(plan.entries.map((e) => `${e.kind}:${e.target}`)).toContain('file:.opencode/agents/a.md');
+    expect(plan.entries.map((e) => `${e.kind}:${e.target}`)).toContain('file:.opencode/agents/legacy.md');
     expect(plan.entries.map((e) => e.target)).toContain(STATE);
   });
 });
