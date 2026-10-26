@@ -11,7 +11,10 @@ export type PlatformConfig = Record<string, unknown>;
 export interface PlatformWriteResult {
   action: 'written' | 'replaced' | 'unchanged' | 'removed' | 'skipped';
   reason?: string;
-  /** F6 (спека 2.1.0 §2.4): имя конфиг-файла платформы для честного лога (напр. 'opencode.json'). */
+  /**
+   * F6 (спека 2.1.0 §2.4): имя(и) конфиг-файла(ов) платформы, где реально лежат wolf-ключи
+   * (напр. 'opencode.json'; при нескольких локациях — через ', ').
+   */
   configFile?: string;
   /** F6 (спека 2.1.0 §2.4): фактические wolf-ключи после записи (напр. ['mcp.wolf', 'default_agent=mr-wolf']). */
   keys?: string[];
@@ -47,8 +50,12 @@ export interface PlatformAdapter {
    * dev-запись), 'unchanged' — уже канонический. Чужие серверы и секции не трогаются.
    * opencode мерджит ещё и default_agent/subagent_depth (§6.1) — глубина живёт в
    * `experimental.subagent_depth` (opencode v2; верхнеуровневый ключ deprecated): конфликт — unchanged + reason.
+   *
+   * opts.createFile=false — режим repair-only: конфиг-файл платформы НЕ создаётся, если
+   * его нет (минимальный init чинит существующий конфиг и никогда не создаёт платформенный).
+   * По умолчанию (opts не передан / createFile=true) поведение прежнее: файл создаётся.
    */
-  writeConfig(projectRoot: string, cmd: McpCommand): Promise<PlatformWriteResult>;
+  writeConfig(projectRoot: string, cmd: McpCommand, opts?: { createFile?: boolean }): Promise<PlatformWriteResult>;
   /** Удалить wolf-запись (для --platform replace-семантики); true если удалил. */
   removeWolf(projectRoot: string): Promise<boolean>;
   /**

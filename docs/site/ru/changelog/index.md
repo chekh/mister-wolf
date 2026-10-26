@@ -10,6 +10,19 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.21.0] - 2026-10-26
+
+### Changed
+
+- **Wolf reads the opencode config from both places opencode reads it from**: the project root `opencode.json(c)` and `.opencode/opencode.json(c)`. opencode merges the root file first and the `.opencode` file afterwards, so a key declared in `.opencode` overrides the same key in the root file — Wolf now follows that order and works with the same effective config the platform sees. Why it matters: a project that keeps its opencode config inside `.opencode/` (the directory opencode itself documents for project-level setup) looked to Wolf like a project with no config at all, and every wolf key in it was invisible.
+- **`doctor`, `init` and `uninstall` know both locations**: a wolf server declared only in `.opencode/opencode.json(c)` is recognised as declared — no false `wolf entry missing`, no false "`default_agent` is not set" or "`experimental.subagent_depth` is not set"; `wolf init` does not add a second `mcp.servers.wolf` next to a server that is already declared there; `wolf uninstall` removes the server from the file where it is really declared — the root one, the `.opencode` one, or both. Wolf still _writes_ its own keys to the root config: the write target did not move, only the read surface grew, and a minimal `wolf init` still repairs an existing platform config without ever creating one — a project whose config lives only in `.opencode/opencode.json(c)` keeps a single config file, and `wolf init --platform opencode` remains the explicit way to add the root one. A deprecated flat `mcp.wolf` kept in `.opencode` is reported with the file name and needs a manual migration, because wolf does not write into that directory. Note that `wolf uninstall` rewrites the config files it touches as plain JSON, so comments inside a `.jsonc` config are lost — the shortcut that already applied to the root config.
+
+### Fixed
+
+- **A broken config file is named instead of being taken for a missing config, and it no longer hides the other location**: `wolf doctor` says which file it cannot read (`opencode: <file> is not valid JSONC — …`) instead of reporting the project as having no platform config, and a broken or unreadable file in one location does not disable the other: `wolf uninstall` still removes the wolf keys from the healthy config, and a broken root config is still never overwritten. With two config locations in play, one unreadable file must not make the whole platform look unconfigured.
+
+Supported OpenCode range: v1 ≥ 1.18.29 and v2 (native `mcp.servers` is accepted from 1.18.29).
+
 ## [2.20.1] - 2026-10-25
 
 ### Changed

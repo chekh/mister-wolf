@@ -22,6 +22,8 @@ MCP-конфиги платформ — opt-in: их пишет `wolf init --pla
 { "mcp": { "servers": { "wolf": { "type": "local", "command": ["wolf", "mcp"], "disabled": false } } } }
 ```
 
+Wolf читает и второе место, откуда opencode берёт конфиг проекта, — `.opencode/opencode.json(c)`: opencode мержит его после корневого файла, поэтому он перекрывает корневой. Сервер, объявленный только там, считается объявленным: `doctor` не сообщает, что его нет, `init` не дописывает рядом второй ключ, а `uninstall` снимает его оттуда, где он объявлен.
+
 ### Claude Code
 
 Пишется в `.mcp.json`, ключ `mcpServers.wolf`:

@@ -126,7 +126,7 @@ export async function planUninstall(deps: UninstallDeps): Promise<UninstallPlan>
       entries.push({
         target: `config:${adapter.id}`,
         kind: 'config',
-        detail: 'no config file — will be skipped with reason',
+        detail: 'no readable config file — will be skipped with reason',
       });
     } else {
       entries.push({

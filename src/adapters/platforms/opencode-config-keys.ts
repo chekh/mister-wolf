@@ -168,37 +168,97 @@ export function isWolfMcpEntry(value: unknown, cmd: { command: string; args: str
   return command.length === expected.length && expected.every((part, i) => command[i] === part);
 }
 
-/** Двухформенное чтение: нативная приоритетна; ownership считается по точной команде wolf. */
-export function readWolfMcp(
-  cfg: Record<string, unknown>,
-  cmd: { command: string; args: string[] }
-): {
-  form: 'native' | 'legacy' | 'both' | 'none';
-  entry?: Record<string, unknown>; // действующая запись (нативная приоритетна)
-  legacyEntry?: Record<string, unknown>; // легаси, если есть
-  ours: boolean; // действующая запись — наша
-  legacyOurs: boolean; // легаси-запись — наша
-} {
-  const nativeEntry = getRecordAt(cfg, MCP_KEY.writePath);
-  const legacyPath = legacyPathOf(MCP_KEY);
-  const legacyEntry = legacyPath === undefined ? undefined : getRecordAt(cfg, legacyPath);
-  const legacyOurs = legacyEntry !== undefined && isWolfMcpEntry(legacyEntry, cmd);
-  if (nativeEntry !== undefined) {
-    return {
-      form: legacyEntry !== undefined ? 'both' : 'native',
-      entry: nativeEntry,
-      ...(legacyEntry !== undefined ? { legacyEntry } : {}),
-      ours: isWolfMcpEntry(nativeEntry, cmd),
-      legacyOurs,
-    };
-  }
-  if (legacyEntry !== undefined)
-    return { form: 'legacy', entry: legacyEntry, legacyEntry, ours: legacyOurs, legacyOurs };
-  return { form: 'none', ours: false, legacyOurs: false };
-}
-
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : undefined;
+}
+
+/* ------------------------------------------------------------------ 6.7: локации конфига */
+
+/** Локации конфига opencode (6.7): корень проекта и .opencode. */
+export type ConfigLocationId = 'dot-opencode' | 'root';
+
+export interface ConfigLocation {
+  id: ConfigLocationId;
+  /** каталог локации относительно корня проекта ('' — сам корень) */
+  dir: string;
+  /** базовое имя файла конфига */
+  fileBase: string;
+}
+
+/** id корневой локации. */
+export const ROOT_LOCATION_ID: ConfigLocationId = 'root';
+/** id локации .opencode. */
+export const DOT_OPENCODE_LOCATION_ID: ConfigLocationId = 'dot-opencode';
+
+/** Локации в порядке приоритета чтения: .opencode перекрывает корень (opencode v2: root → .opencode). */
+export const CONFIG_LOCATIONS: readonly ConfigLocation[] = [
+  { id: DOT_OPENCODE_LOCATION_ID, dir: '.opencode', fileBase: 'opencode' },
+  { id: ROOT_LOCATION_ID, dir: '', fileBase: 'opencode' },
+];
+
+/** Локация, куда wolf пишет свои ключи: корневой конфиг (текущее поведение). */
+export const WRITE_LOCATION_ID: ConfigLocationId = ROOT_LOCATION_ID;
+
+/** Локация записи wolf-ключей (корень проекта) — из реестра, без литералов путей в адаптере. */
+export const WRITE_LOCATION: ConfigLocation = CONFIG_LOCATIONS.find((location) => location.id === WRITE_LOCATION_ID)!;
+
+/** Канонический путь конфига локации относительно корня проекта: 'opencode.json' | '.opencode/opencode.json'. */
+export function relPathOf(location: ConfigLocation): string {
+  return location.dir === '' ? `${location.fileBase}.json` : `${location.dir}/${location.fileBase}.json`;
+}
+
+/** Пара «локация + разобранный конфиг» — вход для просмотра поверхности. */
+export interface ConfigFileRef {
+  location: ConfigLocationId;
+  cfg: Record<string, unknown>;
+}
+
+/**
+ * Эффективное значение пути: первая локация (по приоритету CONFIG_LOCATIONS),
+ * где путь определён. undefined — путь не объявлен ни в одной локации.
+ */
+export function locatePath(
+  files: readonly ConfigFileRef[],
+  path: readonly string[]
+): { location: ConfigLocationId; value: unknown } | undefined {
+  for (const location of CONFIG_LOCATIONS) {
+    for (const file of files) {
+      if (file.location !== location.id) continue;
+      const value = getPath(file.cfg, path);
+      if (value !== undefined) return { location: location.id, value };
+    }
+  }
+  return undefined;
+}
+
+/** Глубокое слияние конфигов: побеждает high (оба ключа — объекты → слияние рекурсивно). */
+export function mergeConfigs(low: Record<string, unknown>, high: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...low };
+  for (const [key, highValue] of Object.entries(high)) {
+    const lowRecord = asRecord(out[key]);
+    const highRecord = asRecord(highValue);
+    out[key] = lowRecord !== undefined && highRecord !== undefined ? mergeConfigs(lowRecord, highRecord) : highValue;
+  }
+  return out;
+}
+
+/**
+ * Слияние поверхности конфигов — единственное место, где задан порядок (6.7).
+ * Файлы перечислены в порядке приоритета чтения (.opencode выше корня), но
+ * мержимся мы от низкого приоритета к высокому: корень раньше, .opencode позже.
+ * `override` — конфиг локации, который заменил файл (обновлённый после записи).
+ */
+export function mergeSurface(files: readonly ConfigFileRef[], override?: ConfigFileRef): Record<string, unknown> {
+  const byLocation = new Map<ConfigLocationId, ConfigFileRef>();
+  for (const file of files) byLocation.set(file.location, file);
+  if (override !== undefined) byLocation.set(override.location, override);
+  let effective: Record<string, unknown> = {};
+  for (const location of [...CONFIG_LOCATIONS].reverse()) {
+    const file = byLocation.get(location.id);
+    if (file === undefined) continue;
+    effective = mergeConfigs(effective, file.cfg);
+  }
+  return effective;
 }

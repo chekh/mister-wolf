@@ -154,7 +154,7 @@ wolf validate --fix
 
 Проверить все зарегистрированные проекты: binary vs schema version, платформенные конфиги, чистка мёртвых записей.
 
-У найденного конфига opencode проверяется и то, что пишет адаптер: `default_agent`, `experimental.subagent_depth` ≥ 2, deprecated верхнеуровневый `subagent_depth` (сообщается как игнорируемый opencode v2), легаси-плоская запись `mcp.wolf` (сообщается как deprecated: наша — «migrate», чужая — не трогается), а также frontmatter managed-агента со смешанными v1/v2-полями. `--repair` канонизирует конфиг — пишет нативную MCP-запись и `experimental.subagent_depth` — помимо ремонта хранилища.
+У найденного конфига opencode проверяется и то, что пишет адаптер: `default_agent`, `experimental.subagent_depth` ≥ 2, deprecated верхнеуровневый `subagent_depth` (сообщается как игнорируемый opencode v2), легаси-плоская запись `mcp.wolf` (сообщается как deprecated: наша — «migrate», чужая — не трогается), а также frontmatter managed-агента со смешанными v1/v2-полями. Читаются обе проектные локации конфига — корневой `opencode.json(c)` и `.opencode/opencode.json(c)`, где последний перекрывает первый, как их мержит opencode. `--repair` канонизирует конфиг — пишет нативную MCP-запись и `experimental.subagent_depth` — помимо ремонта хранилища.
 
 | Опция       | Описание                                                                               |
 | ----------- | -------------------------------------------------------------------------------------- |
