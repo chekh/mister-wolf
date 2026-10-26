@@ -22,7 +22,6 @@ __pycache__/
 .pytest_cache/
 !wolf-experiment/opencode.json
 
-.autorefine/
 docs/site/.vitepress/dist/
 docs/site/.vitepress/cache/
 
