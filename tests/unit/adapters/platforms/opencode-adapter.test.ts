@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, chmodSync, statSync } from 'fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, chmodSync, statSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { OpencodeAdapter, parseOpencodeVersion } from '../../../../src/adapters/platforms/opencode-adapter.js';
@@ -746,16 +746,20 @@ describe('OpencodeAdapter.configIssues (6.3: doctor видит обе формы
     expect(issues[0]).toContain('deprecated top-level mcp.wolf');
   });
 
-  it('битый JSONC → issue «fix it», а не совет запустить init', async () => {
+  it('битый JSONC → issue «fix it» с именем файла, а не совет запустить init', async () => {
     writeFileSync(join(dir, 'opencode.json'), '{ broken');
     const issues = await new OpencodeAdapter().configIssues(dir);
-    expect(issues).toEqual(['opencode: config is not valid JSONC — fix it or remove the file, then run wolf init']);
+    expect(issues).toEqual([
+      'opencode: opencode.json is not valid JSONC — fix it or remove the file, then run wolf init',
+    ]);
   });
 
   it('валидный JSON-не-объект → отдельный ярлык (не «invalid JSONC»)', async () => {
     writeFileSync(join(dir, 'opencode.json'), '[]');
     const issues = await new OpencodeAdapter().configIssues(dir);
-    expect(issues).toEqual(['opencode: config is not a JSON object — fix it or remove the file, then run wolf init']);
+    expect(issues).toEqual([
+      'opencode: opencode.json is not a JSON object — fix it or remove the file, then run wolf init',
+    ]);
   });
 
   it('не-объектный mcp → конфликт вместо совета init (init его не вылечит)', async () => {
@@ -780,5 +784,270 @@ describe('OpencodeAdapter.configIssues (6.3: doctor видит обе формы
     const issues = await new OpencodeAdapter().configIssues(dir);
     expect(issues).toHaveLength(1);
     expect(issues[0]).toContain('foreign and deprecated');
+  });
+});
+
+/* ---------------------------------------------------------------- 6.7: поверхность конфига */
+
+describe('6.7: поверхность конфига opencode — корень + .opencode (приоритет у .opencode)', () => {
+  /** Конфиг локации .opencode. */
+  const writeDot = (cfg: unknown): void => {
+    mkdirSync(join(dir, '.opencode'), { recursive: true });
+    writeFileSync(join(dir, '.opencode', 'opencode.json'), JSON.stringify(cfg, null, 2));
+  };
+  const readDot = (): Record<string, any> => JSON.parse(readFileSync(join(dir, '.opencode', 'opencode.json'), 'utf-8'));
+  /** Сырой (битый) конфиг локации .opencode. */
+  const writeDotRaw = (raw: string): void => {
+    mkdirSync(join(dir, '.opencode'), { recursive: true });
+    writeFileSync(join(dir, '.opencode', 'opencode.json'), raw);
+  };
+
+  it('readConfig: ключ из корня + ключ из .opencode → оба в выдаче; одинаковый ключ → побеждает .opencode', async () => {
+    writeFileSync(join(dir, 'opencode.json'), JSON.stringify({ theme: 'system', default_agent: 'mr-wolf' }));
+    writeDot({ default_agent: 'other', model: 'local/coder' });
+    expect(await new OpencodeAdapter().readConfig(dir)).toEqual({
+      theme: 'system',
+      default_agent: 'other',
+      model: 'local/coder',
+    });
+  });
+
+  it('readConfig: конфига нет ни в одной локации → null', async () => {
+    expect(await new OpencodeAdapter().readConfig(dir)).toBeNull();
+  });
+
+  it('configIssues: сервер объявлен ТОЛЬКО в .opencode → нет «wolf entry missing»', async () => {
+    writeDot({
+      mcp: { servers: { wolf: WOLF_ENTRY } },
+      default_agent: 'mr-wolf',
+      experimental: { subagent_depth: 2 },
+    });
+    expect(await new OpencodeAdapter().configIssues(dir)).toEqual([]);
+  });
+
+  it('configIssues: default_agent и experimental.subagent_depth только в .opencode → нет «is not set»', async () => {
+    writeFileSync(join(dir, 'opencode.json'), JSON.stringify({ mcp: { servers: { wolf: WOLF_ENTRY } } }));
+    writeDot({ default_agent: 'mr-wolf', experimental: { subagent_depth: 2 } });
+    const issues = await new OpencodeAdapter().configIssues(dir);
+    expect(issues.filter((i) => i.includes('is not set'))).toEqual([]);
+  });
+
+  it('configIssues: легаси mcp.wolf в .opencode → сообщение называет файл, а не совет «run wolf init»', async () => {
+    writeDot({ mcp: { wolf: { type: 'local', command: ['wolf', 'mcp'], enabled: true } } });
+    const issues = await new OpencodeAdapter().configIssues(dir);
+    expect(issues.some((i) => i.includes('wolf entry missing'))).toBe(false);
+    const legacy = issues.find((i) => i.includes('mcp.wolf'))!;
+    expect(legacy).toContain('.opencode/opencode.json');
+    expect(legacy).toContain('manually');
+  });
+
+  it('writeConfig: сервер ТОЛЬКО в .opencode → второй ключ в корне не появляется', async () => {
+    writeDot({
+      mcp: { servers: { wolf: WOLF_ENTRY } },
+      default_agent: 'mr-wolf',
+      experimental: { subagent_depth: 2 },
+    });
+    const result = await new OpencodeAdapter().writeConfig(dir, cmd);
+    expect(result.action).toBe('unchanged');
+    expect(existsSync(join(dir, 'opencode.json'))).toBe(false);
+  });
+
+  it('writeConfig: неканоничный сервер ТОЛЬКО в .opencode → корень не перекрывается, reason честный', async () => {
+    writeDot({
+      mcp: { servers: { wolf: { type: 'local', command: ['node', 'dist/mcp.js'] } } },
+      default_agent: 'mr-wolf',
+      experimental: { subagent_depth: 2 },
+    });
+    const result = await new OpencodeAdapter().writeConfig(dir, cmd);
+    expect(result.action).toBe('unchanged');
+    expect(result.reason).toContain('wolf leaves it untouched');
+    expect(existsSync(join(dir, 'opencode.json'))).toBe(false);
+  });
+
+  it('writeConfig: наш легаси mcp.wolf в .opencode → нативная форма в корень не пишется', async () => {
+    writeDot({
+      mcp: { wolf: { type: 'local', command: ['wolf', 'mcp'], enabled: true } },
+      default_agent: 'mr-wolf',
+      experimental: { subagent_depth: 2 },
+    });
+    const result = await new OpencodeAdapter().writeConfig(dir, cmd);
+    expect(result.action).toBe('unchanged');
+    expect(result.reason).toContain('migrate it to mcp.servers.wolf manually');
+    expect(existsSync(join(dir, 'opencode.json'))).toBe(false);
+  });
+
+  it('writeConfig: чужой легаси mcp.wolf в .opencode → нативная форма в корне, легаси цело', async () => {
+    writeDot({
+      mcp: { wolf: { type: 'local', command: ['node', 'dist/mcp.js'] } },
+      default_agent: 'mr-wolf',
+      experimental: { subagent_depth: 2 },
+    });
+    const result = await new OpencodeAdapter().writeConfig(dir, cmd);
+    expect(result.action).toBe('written');
+    expect(result.reason).toContain('deprecated and foreign (command differs)');
+    expect(readCfg().mcp.servers.wolf).toEqual(WOLF_ENTRY);
+    expect(readDot().mcp.wolf).toEqual({ type: 'local', command: ['node', 'dist/mcp.js'] });
+  });
+
+  it('writeConfig: легаси верхнеуровневый subagent_depth=2 в .opencode → экспериментальная форма в корне, легаси цело', async () => {
+    writeDot({ subagent_depth: 2 });
+    const result = await new OpencodeAdapter().writeConfig(dir, cmd);
+    expect(result.action).toBe('written');
+    expect(result.reason).toContain('top-level subagent_depth=2 in .opencode/opencode.json');
+    expect(readCfg().experimental).toEqual({ subagent_depth: 2 });
+    expect(readDot().subagent_depth).toBe(2);
+  });
+
+  it('removeWolf: сервер ТОЛЬКО в .opencode → удалён из .opencode, корень не тронут', async () => {
+    writeDot({ mcp: { servers: { wolf: WOLF_ENTRY } } });
+    expect(await new OpencodeAdapter().removeWolf(dir)).toBe(true);
+    expect(readDot().mcp).toBeUndefined();
+    expect(existsSync(join(dir, 'opencode.json'))).toBe(false);
+  });
+
+  it('removeWolfKeys: сервер ТОЛЬКО в .opencode → ключ снят из .opencode, корень не тронут', async () => {
+    writeDot({ mcp: { servers: { wolf: WOLF_ENTRY } } });
+    const r = await new OpencodeAdapter().removeWolfKeys(dir);
+    expect(r.action).toBe('removed');
+    expect(r.keys).toEqual(['mcp.servers.wolf']);
+    expect(r.configFile).toBe('.opencode/opencode.json');
+    expect(readDot().mcp).toBeUndefined();
+    expect(existsSync(join(dir, 'opencode.json'))).toBe(false);
+  });
+
+  it('removeWolfKeys: ключи в обеих локациях → сняты в обеих, configFile содержит оба пути', async () => {
+    writeFileSync(join(dir, 'opencode.json'), JSON.stringify({ default_agent: 'mr-wolf' }));
+    writeDot({ mcp: { servers: { wolf: WOLF_ENTRY } }, experimental: { subagent_depth: 2 } });
+    const r = await new OpencodeAdapter().removeWolfKeys(dir);
+    expect(r.action).toBe('removed');
+    expect(r.configFile).toBe('opencode.json, .opencode/opencode.json');
+    expect(r.keys).toEqual(['mcp.servers.wolf', 'default_agent=mr-wolf', 'subagent_depth=2']);
+    expect(readCfg().default_agent).toBeUndefined();
+    expect(readDot().mcp).toBeUndefined();
+    expect(readDot().experimental).toBeUndefined();
+  });
+});
+
+/* ------------------------------- F-01/F-02/F-10: изоляция по файлу, repair-only, имя файла */
+
+describe('6.7 (F-01/F-02/F-10): изоляция по файлу, repair-only и честное имя файла', () => {
+  const writeDotRaw = (raw: string): void => {
+    mkdirSync(join(dir, '.opencode'), { recursive: true });
+    writeFileSync(join(dir, '.opencode', 'opencode.json'), raw);
+  };
+
+  it('F-01: битый .opencode + здоровый корень → removeWolfKeys снимает wolf-ключи ИЗ КОРНЯ, битый назван', async () => {
+    writeFileSync(
+      join(dir, 'opencode.json'),
+      JSON.stringify({ mcp: { servers: { wolf: WOLF_ENTRY } }, default_agent: 'mr-wolf' })
+    );
+    writeDotRaw('{ broken');
+    const r = await new OpencodeAdapter().removeWolfKeys(dir);
+    expect(r.action).toBe('removed');
+    expect(r.keys).toEqual(['mcp.servers.wolf', 'default_agent=mr-wolf']);
+    expect(r.reason).toContain('.opencode/opencode.json is not valid JSONC');
+    expect(readCfg().mcp).toBeUndefined();
+    expect(readCfg().default_agent).toBeUndefined();
+  });
+
+  it.skipIf(isRoot)('F-01: нечитаемый .opencode + здоровый корень → root очищен, файл назван', async () => {
+    writeFileSync(join(dir, 'opencode.json'), JSON.stringify({ mcp: { servers: { wolf: WOLF_ENTRY } } }));
+    mkdirSync(join(dir, '.opencode'), { recursive: true });
+    const dotFile = join(dir, '.opencode', 'opencode.json');
+    writeFileSync(dotFile, JSON.stringify({ theme: 'system' }));
+    chmodSync(dotFile, 0o000);
+    try {
+      const r = await new OpencodeAdapter().removeWolfKeys(dir);
+      expect(r.action).toBe('removed');
+      expect(r.reason).toContain('.opencode/opencode.json is not readable');
+      expect(readCfg().mcp).toBeUndefined();
+    } finally {
+      chmodSync(dotFile, 0o644);
+    }
+  });
+
+  it('F-01: конфиг-файлов нет ни в одной локации → skipped с «no opencode.json»', async () => {
+    const r = await new OpencodeAdapter().removeWolfKeys(dir);
+    expect(r.action).toBe('skipped');
+    expect(r.reason).toContain('no opencode.json');
+  });
+
+  it('F-01/F-04: битый корневой opencode.json → writeConfig бросает, файл не тронут; configIssues называет файл', async () => {
+    const raw = '{ broken';
+    writeFileSync(join(dir, 'opencode.json'), raw);
+    await expect(new OpencodeAdapter().writeConfig(dir, cmd)).rejects.toThrow(/not valid JSONC/);
+    expect(readFileSync(join(dir, 'opencode.json'), 'utf-8')).toBe(raw);
+    const issues = await new OpencodeAdapter().configIssues(dir);
+    expect(issues[0]).toContain('opencode.json is not valid JSONC');
+  });
+
+  it('F-01: битый .opencode → configIssues называет путь к файлу, читаемая локация проверяется дальше', async () => {
+    writeFileSync(
+      join(dir, 'opencode.json'),
+      JSON.stringify({
+        mcp: { servers: { wolf: WOLF_ENTRY } },
+        default_agent: 'mr-wolf',
+        experimental: { subagent_depth: 2 },
+      })
+    );
+    writeDotRaw('{ broken');
+    const issues = await new OpencodeAdapter().configIssues(dir);
+    expect(issues[0]).toBe(
+      'opencode: .opencode/opencode.json is not valid JSONC — fix it or remove the file, then run wolf init'
+    );
+    expect(issues.some((i) => i.includes('wolf entry missing'))).toBe(false);
+  });
+
+  it('F-01: битый .opencode не мешает починке корня — проблема названа в reason', async () => {
+    writeFileSync(join(dir, 'opencode.json'), JSON.stringify({ theme: 'system' }));
+    writeDotRaw('{ broken');
+    const result = await new OpencodeAdapter().writeConfig(dir, cmd);
+    expect(result.action).toBe('written');
+    expect(result.reason).toContain('.opencode/opencode.json is not valid JSONC');
+    expect(readCfg().mcp.servers.wolf).toEqual(WOLF_ENTRY);
+  });
+
+  it('F-02: repair-only (createFile:false) без корневого конфига → skipped, локация названа', async () => {
+    mkdirSync(join(dir, '.opencode'), { recursive: true });
+    writeFileSync(join(dir, '.opencode', 'opencode.json'), JSON.stringify({ mcp: { servers: { wolf: WOLF_ENTRY } } }));
+    const result = await new OpencodeAdapter().writeConfig(dir, cmd, { createFile: false });
+    expect(result.action).toBe('skipped');
+    expect(result.reason).toContain('.opencode/opencode.json');
+    expect(result.reason).toContain('wolf init --platform opencode');
+    expect(existsSync(join(dir, 'opencode.json'))).toBe(false);
+  });
+
+  it('F-02: repair-only без корневого конфига и без .opencode → skipped с подсказкой', async () => {
+    const result = await new OpencodeAdapter().writeConfig(dir, cmd, { createFile: false });
+    expect(result.action).toBe('skipped');
+    expect(result.reason).toContain('no root opencode.json to repair');
+    expect(existsSync(join(dir, 'opencode.json'))).toBe(false);
+  });
+
+  it('F-02: createFile по умолчанию (true) — файл создаётся (прежнее поведение --platform)', async () => {
+    const result = await new OpencodeAdapter().writeConfig(dir, cmd);
+    expect(result.action).toBe('written');
+    expect(existsSync(join(dir, 'opencode.json'))).toBe(true);
+  });
+
+  it('F-10: wolf-ключи только в .opencode → configFile называет файл в .opencode', async () => {
+    mkdirSync(join(dir, '.opencode'), { recursive: true });
+    writeFileSync(
+      join(dir, '.opencode', 'opencode.json'),
+      JSON.stringify({
+        mcp: { servers: { wolf: WOLF_ENTRY } },
+        default_agent: 'mr-wolf',
+        experimental: { subagent_depth: 2 },
+      })
+    );
+    const result = await new OpencodeAdapter().writeConfig(dir, cmd);
+    expect(result.action).toBe('unchanged');
+    expect(result.configFile).toBe('.opencode/opencode.json');
+  });
+
+  it('F-10: корень с wolf-ключами → configFile = корневой файл (прежнее поведение)', async () => {
+    writeFileSync(join(dir, 'opencode.json'), JSON.stringify({ mcp: { servers: { wolf: WOLF_ENTRY } } }));
+    const result = await new OpencodeAdapter().writeConfig(dir, cmd);
+    expect(result.configFile).toBe('opencode.json');
   });
 });

@@ -5,17 +5,20 @@ import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import {
   CONFIG_KEYS,
+  CONFIG_LOCATIONS,
   DEFAULT_AGENT,
   MCP_ROOT,
   MCP_SERVERS,
   MCP_SERVER_NAME,
   SUBAGENT_DEPTH,
+  WRITE_LOCATION_ID,
   deletePath,
   getPath,
   getRecordAt,
   isWolfMcpEntry,
+  locatePath,
   mcpEntryNative,
-  readWolfMcp,
+  mergeConfigs,
   setPath,
 } from '../../../../src/adapters/platforms/opencode-config-keys.js';
 
@@ -225,40 +228,64 @@ describe('6.3: формы wolf-записи в MCP', () => {
     expect(isWolfMcpEntry({ type: 'remote', command: ['wolf', 'mcp'] }, cmd)).toBe(false);
     expect(isWolfMcpEntry('wolf', cmd)).toBe(false);
   });
+});
 
-  it('readWolfMcp: none / native / legacy / both; нативная приоритетна', () => {
-    const nativeEntry = { type: 'local', command: ['wolf', 'mcp'], disabled: false };
-    const legacyEntry = { type: 'local', command: ['wolf', 'mcp'], enabled: true };
+/* ------------------------------------------------------------------ 6.7 */
 
-    expect(readWolfMcp({}, cmd)).toEqual({ form: 'none', ours: false, legacyOurs: false });
-    expect(readWolfMcp({ mcp: { servers: { wolf: nativeEntry } } }, cmd)).toEqual({
-      form: 'native',
-      entry: nativeEntry,
-      ours: true,
-      legacyOurs: false,
+describe('6.7: реестр локаций конфига — приоритет и слияние', () => {
+  it('локации: .opencode выше корня, писать wolf пишет в корень', () => {
+    expect(CONFIG_LOCATIONS.map((l) => l.id)).toEqual(['dot-opencode', 'root']);
+    expect(WRITE_LOCATION_ID).toBe('root');
+  });
+
+  it('locatePath: локация с наивысшим приоритетом побеждает', () => {
+    const files = [
+      { location: 'root' as const, cfg: { mcp: { servers: { wolf: 'root-entry' } } } },
+      { location: 'dot-opencode' as const, cfg: { mcp: { servers: { wolf: 'dot-entry' } } } },
+    ];
+    expect(locatePath(files, ['mcp', 'servers', 'wolf'])).toEqual({
+      location: 'dot-opencode',
+      value: 'dot-entry',
     });
-    expect(readWolfMcp({ mcp: { wolf: legacyEntry } }, cmd)).toEqual({
-      form: 'legacy',
-      entry: legacyEntry,
-      legacyEntry,
-      ours: true,
-      legacyOurs: true,
+  });
+
+  it('locatePath: путь, объявленный только в корне → корневая локация', () => {
+    const files = [
+      { location: 'dot-opencode' as const, cfg: { theme: 'system' } },
+      { location: 'root' as const, cfg: { mcp: { servers: { wolf: 'root-entry' } } } },
+    ];
+    expect(locatePath(files, ['mcp', 'servers', 'wolf'])).toEqual({
+      location: 'root',
+      value: 'root-entry',
     });
-    expect(readWolfMcp({ mcp: { servers: { wolf: nativeEntry }, wolf: legacyEntry } }, cmd)).toEqual({
-      form: 'both',
-      entry: nativeEntry,
-      legacyEntry,
-      ours: true,
-      legacyOurs: true,
+  });
+
+  it('locatePath: путь не объявлен нигде → undefined', () => {
+    expect(locatePath([{ location: 'root', cfg: {} }], ['mcp'])).toBeUndefined();
+  });
+
+  it('mergeConfigs: глубокое слияние, high побеждает, вложенные объекты сливаются', () => {
+    const low = {
+      theme: 'system',
+      mcp: { servers: { wolf: 'low' } },
+      experimental: { subagent_depth: 2, todo: true },
+    };
+    const high = {
+      mcp: { servers: { wolf: 'high', other: 'x' } },
+      experimental: { subagent_depth: 3 },
+    };
+    expect(mergeConfigs(low, high)).toEqual({
+      theme: 'system',
+      mcp: { servers: { wolf: 'high', other: 'x' } },
+      experimental: { subagent_depth: 3, todo: true },
     });
-    // чужая команда — не наша ни в одной форме
-    const foreign = { type: 'local', command: ['node', 'dist/mcp.js'] };
-    expect(readWolfMcp({ mcp: { servers: { wolf: foreign }, wolf: foreign } }, cmd)).toEqual({
-      form: 'both',
-      entry: foreign,
-      legacyEntry: foreign,
-      ours: false,
-      legacyOurs: false,
-    });
+  });
+
+  it('mergeConfigs: входы не мутируются', () => {
+    const low = { a: { b: 1 } };
+    const high = { a: { c: 2 } };
+    mergeConfigs(low, high);
+    expect(low).toEqual({ a: { b: 1 } });
+    expect(high).toEqual({ a: { c: 2 } });
   });
 });

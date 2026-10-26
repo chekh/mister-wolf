@@ -604,6 +604,36 @@ describe('initProject v2 (§4: без скана, платформы/модел�
       expect(readFileSync(configFile(), 'utf-8')).toBe(before);
       expect(readCfg().default_agent).toBe('my-agent');
     });
+
+    it('F-02: минимальный init не создаёт корневой конфиг, если проектный конфиг лежит в .opencode', async () => {
+      writeFileSync(join(dir, 'package.json'), '{}');
+      mkdirSync(join(dir, '.opencode'), { recursive: true });
+      writeFileSync(
+        join(dir, '.opencode', 'opencode.json'),
+        `${JSON.stringify({ mcp: { servers: { wolf: CANONICAL } } }, null, 2)}\n`
+      );
+      const result = await initProject(realDeps(), dir, { models: MODELS });
+      expect(existsSync(configFile())).toBe(false);
+      expect(result.platformOutcomes).toHaveLength(1);
+      expect(result.platformOutcomes[0]!.action).toBe('skipped');
+      expect(result.platformOutcomes[0]!.reason).toContain('.opencode/opencode.json');
+    });
+
+    it('F-02: --platform opencode — корневой файл создаётся, второго mcp.servers.wolf нет', async () => {
+      writeFileSync(join(dir, 'package.json'), '{}');
+      mkdirSync(join(dir, '.opencode'), { recursive: true });
+      writeFileSync(
+        join(dir, '.opencode', 'opencode.json'),
+        `${JSON.stringify({ mcp: { servers: { wolf: CANONICAL } } }, null, 2)}\n`
+      );
+      const result = await initProject(realDeps(), dir, { platformChoice: ['opencode'], models: MODELS });
+      expect(existsSync(configFile())).toBe(true);
+      const cfg = readCfg();
+      const mcp = (cfg.mcp ?? {}) as Record<string, unknown>;
+      const servers = (mcp.servers ?? {}) as Record<string, unknown>;
+      expect(servers.wolf).toBeUndefined(); // сервер уже объявлен в .opencode — дубля нет
+      expect(result.platformOutcomes[0]!.action).toBe('written');
+    });
   });
 
   it('npx (§4 п.6): конфиги и набор не пишутся, отчёт НЕ создаётся', async () => {

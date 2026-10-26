@@ -352,7 +352,9 @@ export async function initProject(
         });
         continue;
       }
-      const r = await adapter.writeConfig(baseDir, deps.mcpCommand);
+      // минимальный init только ЧИНИТ существующий конфиг платформы: файл не создаём
+      // (обещание «a plain wolf init writes none»); создание — только в ветке --platform
+      const r = await adapter.writeConfig(baseDir, deps.mcpCommand, { createFile: false });
       const repaired = r.action === 'written' || r.action === 'replaced';
       platformOutcomes.push({
         platform: adapter.id,

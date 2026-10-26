@@ -2,7 +2,7 @@ import * as fs from 'fs/promises';
 import { existsSync } from 'fs';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import { basename, join } from 'path';
+import { basename, join, relative } from 'path';
 import {
   PlatformAdapter,
   McpCommand,
@@ -17,6 +17,9 @@ import { parseStamp } from '../render/stamp.js';
 import yaml from 'js-yaml';
 import {
   ConfigKeySpec,
+  ConfigLocation,
+  ConfigLocationId,
+  CONFIG_LOCATIONS,
   DEFAULT_AGENT,
   DEFAULT_AGENT_KEY,
   MCP_KEY,
@@ -25,15 +28,19 @@ import {
   SUBAGENT_DEPTH,
   SUBAGENT_DEPTH_KEY,
   WOLF_MCP_COMMAND,
+  WRITE_LOCATION,
+  WRITE_LOCATION_ID,
   deletePath,
   getPath,
   getRecordAt,
   isWolfMcpEntry,
   legacyPathOf,
   blockedSegment,
+  locatePath,
   mcpEntryNative,
+  mergeSurface,
   pathWritable,
-  readWolfMcp,
+  relPathOf,
   setPath,
 } from './opencode-config-keys.js';
 
@@ -41,6 +48,38 @@ export { DEFAULT_AGENT, SUBAGENT_DEPTH };
 
 /** Каноническая команда wolf: removeWolf/configIssues не получают cmd, ownership проверяем ею. */
 const WOLF_CMD: McpCommand = WOLF_MCP_COMMAND;
+
+/**
+ * Конфиг одной локации (6.7): корень проекта или .opencode.
+ * `rel` — путь относительно корня проекта (для логов и сообщений).
+ */
+interface LoadedConfig {
+  location: ConfigLocationId;
+  file: string; // абсолютный путь
+  rel: string; // путь относительно корня проекта
+  cfg: Record<string, unknown>;
+}
+
+/** Битый/нечитаемый конфиг одной локации: файл исключается из поверхности, но называется. */
+interface ConfigFileError {
+  location: ConfigLocationId;
+  file: string; // абсолютный путь
+  rel: string; // путь относительно корня проекта
+  kind: 'not valid JSONC' | 'not a JSON object' | 'not readable';
+  message: string; // текст UserFacingError (те же формулировки, что и раньше)
+}
+
+/**
+ * Поверхность конфига opencode (6.7): обе локации + эффективный вид.
+ * `files` — читаемые конфиги в порядке приоритета чтения (.opencode выше корня);
+ * `errors` — битые/нечитаемые файлы (изоляция по файлу, а не по всей поверхности);
+ * `effective` — слияние читаемых: корень мержится раньше, .opencode позже.
+ */
+interface ConfigSurface {
+  files: LoadedConfig[];
+  errors: ConfigFileError[];
+  effective: Record<string, unknown>;
+}
 
 /** Значение глубины в действующем месте — наше или совместимое (>= SUBAGENT_DEPTH). */
 function depthIsOurs(value: unknown): boolean {
@@ -98,71 +137,184 @@ export class OpencodeAdapter implements PlatformAdapter {
     }
   }
 
-  /** Существующий конфиг (jsonc — только если нет json); для новой установки — opencode.json. */
-  private configFile(projectRoot: string): string {
-    if (existsSync(join(projectRoot, 'opencode.jsonc')) && !existsSync(join(projectRoot, 'opencode.json'))) {
-      return join(projectRoot, 'opencode.jsonc');
-    }
-    return join(projectRoot, 'opencode.json');
+  /**
+   * Файл локации: jsonc — только если json отсутствует (правило прежнее),
+   * иначе json. Если файла нет — возвращается дефолтный путь (цель записи).
+   */
+  private locationFile(projectRoot: string, location: ConfigLocation): string {
+    const dir = location.dir === '' ? projectRoot : join(projectRoot, location.dir);
+    const jsonc = join(dir, `${location.fileBase}.jsonc`);
+    const json = join(dir, `${location.fileBase}.json`);
+    return existsSync(jsonc) && !existsSync(json) ? jsonc : json;
   }
 
+  /** Корневой конфиг — единственное место, куда wolf пишет свои ключи. */
+  private rootFile(projectRoot: string): string {
+    return this.locationFile(projectRoot, WRITE_LOCATION);
+  }
+
+  /**
+   * Поверхность конфига (6.7): обе локации + эффективный (слейдженный) вид.
+   * Битый/нечитаемый файл ИЗОЛИРУЕТСЯ: он попадает в `errors`, а остальные локации
+   * читаются как обычно (прежнее поведение «всё или ничего» чинило в обратную сторону).
+   */
+  private async loadSurface(projectRoot: string): Promise<ConfigSurface> {
+    const files: LoadedConfig[] = [];
+    const errors: ConfigFileError[] = [];
+    for (const location of CONFIG_LOCATIONS) {
+      const file = this.locationFile(projectRoot, location);
+      if (!existsSync(file)) continue;
+      const rel = relative(projectRoot, file);
+      let raw: string;
+      try {
+        raw = await fs.readFile(file, 'utf-8');
+      } catch (err) {
+        errors.push({
+          location: location.id,
+          file,
+          rel,
+          kind: 'not readable',
+          message: `${file} is not readable: ${err instanceof Error ? err.message : err}`,
+        });
+        continue;
+      }
+      let parsed: unknown;
+      try {
+        parsed = parseJsonc(raw);
+      } catch (err) {
+        // паритет с ClaudeAdapter: ошибки парсинга — UserFacingError, не сырой SyntaxError
+        errors.push({
+          location: location.id,
+          file,
+          rel,
+          kind: 'not valid JSONC',
+          message: `${file} is not valid JSONC: ${err instanceof Error ? err.message : err}`,
+        });
+        continue;
+      }
+      const cfg = asRecord(parsed);
+      if (cfg === undefined) {
+        errors.push({
+          location: location.id,
+          file,
+          rel,
+          kind: 'not a JSON object',
+          message: `${file} is not a JSON object — refusing to touch it`,
+        });
+        continue;
+      }
+      files.push({ location: location.id, file, rel, cfg });
+    }
+    return { files, errors, effective: mergeSurface(files) };
+  }
+
+  /** Битая/нечитаемая корневая локация (та, куда wolf пишет) — прежний контракт: ошибка наружу. */
+  private static rootError(surface: ConfigSurface): ConfigFileError | undefined {
+    return surface.errors.find((error) => error.location === WRITE_LOCATION_ID);
+  }
+
+  /**
+   * Эффективный конфиг обеих локаций; null — конфиг-файлов нет ни в одной локации.
+   * Битый корневой файл — UserFacingError (прежний контракт для корня);
+   * битый `.opencode` — не мешает: возвращаем вид читаемых файлов.
+   */
   async readConfig(projectRoot: string): Promise<PlatformConfig | null> {
-    const file = this.configFile(projectRoot);
-    let raw: string | null = null;
-    try {
-      raw = await fs.readFile(file, 'utf-8');
-    } catch {
-      return null;
-    }
-    let parsed: unknown;
-    try {
-      parsed = parseJsonc(raw);
-    } catch (err) {
-      // паритет с ClaudeAdapter: ошибки парсинга — UserFacingError, не сырой SyntaxError
-      throw new UserFacingError(`${file} is not valid JSONC: ${err instanceof Error ? err.message : err}`);
-    }
-    return asConfig(parsed, file);
+    const surface = await this.loadSurface(projectRoot);
+    const rootError = OpencodeAdapter.rootError(surface);
+    if (rootError !== undefined) throw new UserFacingError(rootError.message);
+    if (surface.files.length === 0) return null;
+    return surface.effective;
   }
 
-  async writeConfig(projectRoot: string, cmd: McpCommand): Promise<PlatformWriteResult> {
-    const file = this.configFile(projectRoot);
-    const cfg = (await this.readConfig(projectRoot)) ?? {};
+  /**
+   * Запись wolf-ключей (6.7): решения принимаются по эффективному виду обеих
+   * локаций, запись — только в корневой конфиг (в .opencode wolf не пишет).
+   *
+   * opts.createFile=false — режим repair-only: файл конфига не создаётся, если его нет
+   * (минимальный init чинит существующий конфиг и никогда не создаёт платформенный).
+   */
+  async writeConfig(
+    projectRoot: string,
+    cmd: McpCommand,
+    opts?: { createFile?: boolean }
+  ): Promise<PlatformWriteResult> {
+    const surface = await this.loadSurface(projectRoot);
+    // битый/нечитаемый корень — прежнее поведение: файл не трогаем, ошибка наружу
+    const rootError = OpencodeAdapter.rootError(surface);
+    if (rootError !== undefined) throw new UserFacingError(rootError.message);
+    const file = this.rootFile(projectRoot);
+    const rootExists = surface.files.some((f) => f.location === WRITE_LOCATION_ID);
+    if (!rootExists && opts?.createFile === false) {
+      // минимальный init: конфига нет — не создаём (документированное обещание)
+      const other = surface.files.find((f) => f.location !== WRITE_LOCATION_ID);
+      const reason =
+        other !== undefined
+          ? `no root ${relPathOf(WRITE_LOCATION)} to repair — the project config is ${other.rel}; a minimal init never creates a platform config (use wolf init --platform ${this.id})`
+          : `no root ${relPathOf(WRITE_LOCATION)} to repair — a minimal init never creates a platform config (use wolf init --platform ${this.id})`;
+      return { action: 'skipped', reason };
+    }
+    const rootCfg = rootConfigOf(surface);
 
     // 6.3: пишем нативную форму mcp.servers.wolf, легаси mcp.wolf снимаем только если он наш
     const desired = mcpEntryNative(cmd);
-    const mcpWritable = pathWritable(cfg, MCP_KEY.writePath);
-    const nativeEntry = getPath(cfg, MCP_KEY.writePath);
-    const mcpOk = mcpWritable && JSON.stringify(nativeEntry) === JSON.stringify(desired);
     const legacyMcpPath = legacyPathOf(MCP_KEY)!;
-    const legacyMcp = getRecordAt(cfg, legacyMcpPath);
-    const legacyMcpOurs = legacyMcp !== undefined && isWolfMcpEntry(legacyMcp, cmd);
+    const nativeAt = locatePath(surface.files, MCP_KEY.writePath);
+    const legacyAt = locatePath(surface.files, legacyMcpPath);
+    const legacyMcpOurs = legacyAt !== undefined && isWolfMcpEntry(legacyAt.value, cmd);
+    const mcpWritable = pathWritable(rootCfg, MCP_KEY.writePath);
 
-    const reasons: string[] = [];
-    const mcpBlocked = blockedSegment(cfg, MCP_KEY.writePath);
+    const blockedReasons: string[] = [];
+    const agentReasons: string[] = [];
+    const depthReasons: string[] = [];
+
+    const mcpBlocked = blockedSegment(rootCfg, MCP_KEY.writePath);
     if (mcpBlocked !== undefined) {
-      reasons.push(
+      blockedReasons.push(
         `${mcpBlocked} is not an object; ${MCP_KEY.label} is not written — fix the conflicting key manually`
       );
     }
 
-    // §6.1: default_agent и experimental.subagent_depth мерджатся рядом с mcp.servers.wolf
-    const da = getPath(cfg, DEFAULT_AGENT_KEY.writePath);
+    // §6.1: default_agent — по эффективному виду (корень + .opencode)
+    const da = locatePath(surface.files, DEFAULT_AGENT_KEY.writePath)?.value;
     if (da !== undefined && da !== DEFAULT_AGENT) {
-      reasons.push(`${DEFAULT_AGENT_KEY.label}=${da} is taken; ${DEFAULT_AGENT} not assigned`);
+      agentReasons.push(`${DEFAULT_AGENT_KEY.label}=${da} is taken; ${DEFAULT_AGENT} not assigned`);
     }
 
-    if (legacyMcp !== undefined) {
-      if (legacyMcpOurs) {
-        reasons.push(`removed deprecated top-level ${legacyMcpPath.join('.')} (migrated to ${MCP_KEY.label})`);
+    // 6.7: объявленное в .opencode не перекрываем вторым ключом в корне
+    let writeMcp = false;
+    let replaceMcp = false;
+    let mcpNativeReason: string | undefined;
+    if (nativeAt !== undefined) {
+      if (JSON.stringify(nativeAt.value) === JSON.stringify(desired)) {
+        // уже канонично — писать нечего
+      } else if (nativeAt.location === WRITE_LOCATION_ID) {
+        if (mcpWritable) {
+          writeMcp = true;
+          replaceMcp = true;
+          mcpNativeReason = `replaced non-canonical ${MCP_KEY.label} entry with the canonical Wolf entry`;
+        }
       } else {
-        reasons.push(
-          `top-level ${legacyMcpPath.join('.')} is deprecated and foreign (command differs); ${MCP_KEY.label} is used`
-        );
+        mcpNativeReason = `${MCP_KEY.label} is declared in ${relOf(surface, nativeAt.location)} — the .opencode value overrides the root one, so a root entry would have no effect; wolf leaves it untouched (wolf writes the root config)`;
+      }
+    } else if (legacyAt === undefined || !legacyMcpOurs || legacyAt.location === WRITE_LOCATION_ID) {
+      writeMcp = mcpWritable;
+    }
+
+    // легаси-форма: снимаем только свою и только в корне (писать можно лишь туда)
+    let dropLegacyMcp = false;
+    let mcpLegacyReason: string | undefined;
+    if (legacyAt !== undefined) {
+      if (!legacyMcpOurs) {
+        mcpLegacyReason = `top-level ${legacyMcpPath.join('.')} is deprecated and foreign (command differs); ${MCP_KEY.label} is used`;
+      } else if (legacyAt.location === WRITE_LOCATION_ID) {
+        dropLegacyMcp = true;
+        mcpLegacyReason = `removed deprecated top-level ${legacyMcpPath.join('.')} (migrated to ${MCP_KEY.label})`;
+      } else if (nativeAt === undefined) {
+        mcpLegacyReason = `wolf entry is in the deprecated top-level ${legacyMcpPath.join('.')} form in ${relOf(surface, legacyAt.location)} — the .opencode value overrides the root one, so a root entry would have no effect; migrate it to ${MCP_KEY.label} manually`;
+      } else {
+        mcpLegacyReason = `deprecated top-level ${legacyMcpPath.join('.')} in ${relOf(surface, legacyAt.location)} is ignored by opencode v2 — the .opencode value overrides the root one; remove it manually`;
       }
     }
-    const migrateLegacyMcp = legacyMcpOurs;
-    const replaced = nativeEntry !== undefined && !mcpOk;
-    if (replaced) reasons.push(`replaced non-canonical ${MCP_KEY.label} entry with the canonical Wolf entry`);
 
     // opencode v2: действует только experimental.subagent_depth. Верхнеуровневый ключ —
     // deprecated: наше точное значение мигрируем, чужое не трогаем и сообщаем.
@@ -170,87 +322,134 @@ export class OpencodeAdapter implements PlatformAdapter {
     const depthLeaf = leaf(SUBAGENT_DEPTH_KEY);
     const depthLabel = dotted(SUBAGENT_DEPTH_KEY);
     const legacyDepthPath = legacyPathOf(SUBAGENT_DEPTH_KEY)!;
-    const experimental = getRecordAt(cfg, depthPath.slice(0, -1));
-    const expSd = experimental?.[depthLeaf];
-    const legacySd = getPath(cfg, legacyDepthPath);
-    const depthOk = depthIsOurs(expSd);
-    const legacyOurs = legacySd === SUBAGENT_DEPTH;
+    const depthAt = locatePath(surface.files, depthPath);
+    const legacyDepthAt = locatePath(surface.files, legacyDepthPath);
+    const depth = depthAt?.value;
+    const legacyDepth = legacyDepthAt?.value;
+    const depthOk = depthIsOurs(depth);
+    const legacyOurs = legacyDepth === SUBAGENT_DEPTH;
     let setDepth = false;
     let dropLegacy = false;
-    const depthWritable = pathWritable(cfg, depthPath);
+    const depthWritable = pathWritable(rootCfg, depthPath);
     if (!depthWritable) {
-      reasons.push(
+      depthReasons.push(
         `experimental is not an object; ${depthLeaf} is not written — set ${depthLabel}: ${SUBAGENT_DEPTH} manually`
       );
     } else if (depthOk) {
       if (legacyOurs) {
-        dropLegacy = true; // оба ключа наши: легаси — только шум, убираем
-        reasons.push(`removed deprecated top-level ${depthLeaf}=${SUBAGENT_DEPTH} (ignored by opencode v2)`);
-      } else if (legacySd !== undefined) {
-        reasons.push(
-          `top-level ${depthLeaf}=${legacySd} is deprecated and ignored by opencode v2; ${depthLabel} is used`
+        if (legacyDepthAt!.location === WRITE_LOCATION_ID) {
+          dropLegacy = true; // оба ключа наши: легаси — только шум, убираем
+          depthReasons.push(`removed deprecated top-level ${depthLeaf}=${SUBAGENT_DEPTH} (ignored by opencode v2)`);
+        } else {
+          depthReasons.push(
+            `top-level ${depthLeaf}=${SUBAGENT_DEPTH} in ${relOf(surface, legacyDepthAt!.location)} is deprecated and ignored by opencode v2 — the .opencode value overrides the root one; remove it manually`
+          );
+        }
+      } else if (legacyDepth !== undefined) {
+        depthReasons.push(
+          `top-level ${depthLeaf}=${legacyDepth} is deprecated and ignored by opencode v2; ${depthLabel} is used`
         );
       }
-    } else if (expSd !== undefined) {
-      reasons.push(`${depthLabel}=${expSd} is taken; the three-level scheme will not work, set >=2`);
+    } else if (depth !== undefined) {
+      depthReasons.push(`${depthLabel}=${depth} is taken; the three-level scheme will not work, set >=2`);
     } else if (legacyOurs) {
       setDepth = true;
-      dropLegacy = true;
-      reasons.push(`migrated ${depthLeaf} to ${depthLabel}`);
-    } else if (legacySd !== undefined) {
-      reasons.push(
-        `top-level ${depthLeaf}=${legacySd} is taken; the key is deprecated and ignored by opencode v2 — set ${depthLabel} >=${SUBAGENT_DEPTH}`
+      if (legacyDepthAt!.location === WRITE_LOCATION_ID) {
+        dropLegacy = true;
+        depthReasons.push(`migrated ${depthLeaf} to ${depthLabel}`);
+      } else {
+        // легаси в .opencode удалить не можем (wolf пишет только в корень) — но и второй
+        // ключ не нужен: каноническую форму wolf записывает в корневой конфиг сам.
+        depthReasons.push(
+          `top-level ${depthLeaf}=${SUBAGENT_DEPTH} in ${relOf(surface, legacyDepthAt!.location)} is deprecated and ignored by opencode v2 — wolf wrote ${depthLabel}=${SUBAGENT_DEPTH} in the root config; remove the deprecated key manually`
+        );
+      }
+    } else if (legacyDepth !== undefined) {
+      depthReasons.push(
+        `top-level ${depthLeaf}=${legacyDepth} is taken; the key is deprecated and ignored by opencode v2 — set ${depthLabel} >=${SUBAGENT_DEPTH}`
       );
     } else {
       setDepth = true;
     }
+
+    const reasons = [
+      ...blockedReasons,
+      ...agentReasons,
+      ...(mcpLegacyReason !== undefined ? [mcpLegacyReason] : []),
+      ...(mcpNativeReason !== undefined ? [mcpNativeReason] : []),
+      ...depthReasons,
+      // битая/нечитаемая локация не мешает починке корня — но называем её
+      ...surface.errors.map((error) => `skipped: ${error.rel} is ${error.kind}`),
+    ];
     const reason = reasons.length > 0 ? reasons.join('; ') : undefined;
 
-    // F6 (спека 2.1.0 §2.4): фактические wolf-ключи после ensured — только наши
+    // F6 (спека 2.1.0 §2.4): фактические wolf-ключи после ensured — по эффективному виду
     // (mcp.servers.wolf каноничен; default_agent/subagent_depth — если ключ наш, не занят чужим значением)
     const ours = (): string[] => {
-      const keys = mcpWritable ? [MCP_KEY.label] : [];
-      if (getPath(cfg, DEFAULT_AGENT_KEY.writePath) === DEFAULT_AGENT)
+      const effective = effectiveAfter(surface, rootCfg);
+      const keys: string[] = [];
+      if (isWolfMcpEntry(getPath(effective, MCP_KEY.writePath), cmd)) keys.push(MCP_KEY.label);
+      if (getPath(effective, DEFAULT_AGENT_KEY.writePath) === DEFAULT_AGENT)
         keys.push(`${DEFAULT_AGENT_KEY.label}=${DEFAULT_AGENT}`);
-      const sd = getRecordAt(cfg, depthPath.slice(0, -1))?.[depthLeaf];
+      const sd = getPath(effective, depthPath);
       if (depthIsOurs(sd)) keys.push(`${depthLeaf}=${sd}`);
       return keys;
+    };
+
+    // F-10: отчёт init называет файл, где реально лежат wolf-ключи (при отсутствии
+    // записи — файл, где объявлен эффективный wolf-ключ; иначе — файл записи).
+    const wolfKeyFile = (): string | undefined => {
+      const mcp = locatePath(surface.files, MCP_KEY.writePath);
+      if (mcp !== undefined) return relOf(surface, mcp.location);
+      const agent = locatePath(surface.files, DEFAULT_AGENT_KEY.writePath);
+      if (agent !== undefined) return relOf(surface, agent.location);
+      const depth = locatePath(surface.files, SUBAGENT_DEPTH_KEY.writePath);
+      if (depth !== undefined) return relOf(surface, depth.location);
+      return undefined;
     };
 
     // unchanged — по ВСЕМ ключам: корректный mcp.servers.wolf не маскирует отсутствие default_agent/subagent_depth;
     // занятое чужим значением место depth тоже settled (не перезаписываем — только reason);
     // наш легаси mcp.wolf — не settled: его надо снять записью.
-    if ((mcpOk || !mcpWritable) && da !== undefined && !setDepth && !dropLegacy && !migrateLegacyMcp)
-      return { action: 'unchanged', reason, configFile: basename(file), keys: ours() };
+    const setAgent = da === undefined;
+    if (!writeMcp && !dropLegacyMcp && !setAgent && !setDepth && !dropLegacy)
+      return { action: 'unchanged', reason, configFile: wolfKeyFile() ?? basename(file), keys: ours() };
 
-    if (mcpWritable) setPath(cfg, MCP_KEY.writePath, desired);
-    if (migrateLegacyMcp) deletePath(cfg, legacyMcpPath);
-    if (da === undefined) setPath(cfg, DEFAULT_AGENT_KEY.writePath, DEFAULT_AGENT); // конфликтный ключ не трогаем
-    if (setDepth) setPath(cfg, depthPath, SUBAGENT_DEPTH);
-    if (dropLegacy) deletePath(cfg, legacyDepthPath);
-    await writeFileAtomic(file, JSON.stringify(cfg, null, 2) + '\n');
-    return { action: replaced ? 'replaced' : 'written', reason, configFile: basename(file), keys: ours() };
+    if (writeMcp) setPath(rootCfg, MCP_KEY.writePath, desired);
+    if (dropLegacyMcp) deletePath(rootCfg, legacyMcpPath);
+    if (setAgent) setPath(rootCfg, DEFAULT_AGENT_KEY.writePath, DEFAULT_AGENT); // конфликтный ключ не трогаем
+    if (setDepth) setPath(rootCfg, depthPath, SUBAGENT_DEPTH);
+    if (dropLegacy) deletePath(rootCfg, legacyDepthPath);
+    await writeFileAtomic(file, JSON.stringify(rootCfg, null, 2) + '\n');
+    return { action: replaceMcp ? 'replaced' : 'written', reason, configFile: basename(file), keys: ours() };
   }
 
+  /**
+   * 6.7: wolf-запись MCP (нативная и легаси, только если она наша) удаляется
+   * из ВСЕХ локаций, где она реально объявлена.
+   */
   async removeWolf(projectRoot: string): Promise<boolean> {
-    const file = this.configFile(projectRoot);
-    const cfg = await this.readConfig(projectRoot);
-    if (cfg === null) return false;
+    const surface = await this.loadSurface(projectRoot);
+    if (surface.files.length === 0) return false;
     const legacyMcpPath = legacyPathOf(MCP_KEY)!;
-    const nativeEntry = getPath(cfg, MCP_KEY.writePath);
-    const legacyEntry = getPath(cfg, legacyMcpPath);
     let removed = false;
-    if (nativeEntry !== undefined && isWolfMcpEntry(nativeEntry, WOLF_CMD)) {
-      deletePath(cfg, MCP_KEY.writePath);
+    for (const file of surface.files) {
+      let changed = false;
+      const nativeEntry = getPath(file.cfg, MCP_KEY.writePath);
+      const legacyEntry = getPath(file.cfg, legacyMcpPath);
+      if (nativeEntry !== undefined && isWolfMcpEntry(nativeEntry, WOLF_CMD)) {
+        deletePath(file.cfg, MCP_KEY.writePath);
+        changed = true;
+      }
+      if (legacyEntry !== undefined && isWolfMcpEntry(legacyEntry, WOLF_CMD)) {
+        deletePath(file.cfg, legacyMcpPath);
+        changed = true;
+      }
+      if (!changed) continue;
       removed = true;
+      await writeFileAtomic(file.file, JSON.stringify(file.cfg, null, 2) + '\n');
     }
-    if (legacyEntry !== undefined && isWolfMcpEntry(legacyEntry, WOLF_CMD)) {
-      deletePath(cfg, legacyMcpPath);
-      removed = true;
-    }
-    if (!removed) return false;
-    await writeFileAtomic(file, JSON.stringify(cfg, null, 2) + '\n');
-    return true;
+    return removed;
   }
 
   /**
@@ -258,92 +457,151 @@ export class OpencodeAdapter implements PlatformAdapter {
    * Пользовательские default_agent/subagent_depth (не наши точные значения) не трогаем.
    * Глубина: `experimental.subagent_depth === 2` (действующий путь) + легаси верхнеуровневый.
    * 6.3: удаляем обе формы MCP (нативную и легаси) — только если запись наша.
+   * 6.7: снимаем ключи из ВСЕХ локаций, где они объявлены; битый файл — в причину.
    */
   async removeWolfKeys(projectRoot: string): Promise<PlatformWriteResult> {
-    const file = this.configFile(projectRoot);
-    const cfg = await this.readConfig(projectRoot).catch(() => null);
-    if (cfg === null) return { action: 'skipped', reason: `no ${basename(file)}`, configFile: basename(file) };
-    const removed: string[] = [];
+    const file = this.rootFile(projectRoot);
+    const surface = await this.loadSurface(projectRoot);
+    const broken = surface.errors.map((error) => `skipped: ${error.rel} is ${error.kind}`);
+    if (surface.files.length === 0) {
+      // «no opencode.json» — только когда конфиг-файлов нет НИ В ОДНОЙ локации
+      return {
+        action: 'skipped',
+        reason: broken.length > 0 ? broken.join('; ') : `no ${basename(file)}`,
+        configFile: basename(file),
+      };
+    }
+    let mcpRemoved = false;
+    let agentRemoved = false;
+    let depthRemoved = false;
+    const changed: string[] = [];
     const legacyMcpPath = legacyPathOf(MCP_KEY)!;
-    const nativeEntry = getPath(cfg, MCP_KEY.writePath);
-    const legacyEntry = getPath(cfg, legacyMcpPath);
-    if (nativeEntry !== undefined && isWolfMcpEntry(nativeEntry, WOLF_CMD)) {
-      deletePath(cfg, MCP_KEY.writePath);
-      removed.push(MCP_KEY.label);
-    }
-    if (legacyEntry !== undefined && isWolfMcpEntry(legacyEntry, WOLF_CMD)) {
-      deletePath(cfg, legacyMcpPath);
-      if (!removed.includes(MCP_KEY.label)) removed.push(MCP_KEY.label);
-    }
-    if (getPath(cfg, DEFAULT_AGENT_KEY.writePath) === DEFAULT_AGENT) {
-      deletePath(cfg, DEFAULT_AGENT_KEY.writePath);
-      removed.push(`${DEFAULT_AGENT_KEY.label}=${DEFAULT_AGENT}`);
-    }
     const depthLeaf = leaf(SUBAGENT_DEPTH_KEY);
     const legacyDepthPath = legacyPathOf(SUBAGENT_DEPTH_KEY)!;
-    let depthRemoved = false;
-    if (getPath(cfg, SUBAGENT_DEPTH_KEY.writePath) === SUBAGENT_DEPTH) {
-      deletePath(cfg, SUBAGENT_DEPTH_KEY.writePath);
-      depthRemoved = true;
+    // корень первым — так же, как в configFile списке результата
+    for (const file of [...surface.files].reverse()) {
+      let touched = false;
+      const nativeEntry = getPath(file.cfg, MCP_KEY.writePath);
+      const legacyEntry = getPath(file.cfg, legacyMcpPath);
+      if (nativeEntry !== undefined && isWolfMcpEntry(nativeEntry, WOLF_CMD)) {
+        deletePath(file.cfg, MCP_KEY.writePath);
+        mcpRemoved = true;
+        touched = true;
+      }
+      if (legacyEntry !== undefined && isWolfMcpEntry(legacyEntry, WOLF_CMD)) {
+        deletePath(file.cfg, legacyMcpPath);
+        mcpRemoved = true;
+        touched = true;
+      }
+      if (getPath(file.cfg, DEFAULT_AGENT_KEY.writePath) === DEFAULT_AGENT) {
+        deletePath(file.cfg, DEFAULT_AGENT_KEY.writePath);
+        agentRemoved = true;
+        touched = true;
+      }
+      if (getPath(file.cfg, SUBAGENT_DEPTH_KEY.writePath) === SUBAGENT_DEPTH) {
+        deletePath(file.cfg, SUBAGENT_DEPTH_KEY.writePath);
+        depthRemoved = true;
+        touched = true;
+      }
+      if (getPath(file.cfg, legacyDepthPath) === SUBAGENT_DEPTH) {
+        // легаси верхнеуровневый ключ (deprecated в opencode v2) — тоже наш
+        deletePath(file.cfg, legacyDepthPath);
+        depthRemoved = true;
+        touched = true;
+      }
+      if (!touched) continue; // перезаписываем только файлы, из которых сняты наши ключи
+      changed.push(file.rel);
+      await writeFileAtomic(file.file, JSON.stringify(file.cfg, null, 2) + '\n');
     }
-    if (getPath(cfg, legacyDepthPath) === SUBAGENT_DEPTH) {
-      // легаси верхнеуровневый ключ (deprecated в opencode v2) — тоже наш
-      deletePath(cfg, legacyDepthPath);
-      depthRemoved = true;
-    }
-    if (depthRemoved) removed.push(`${depthLeaf}=${SUBAGENT_DEPTH}`);
+    const removed = [
+      ...(mcpRemoved ? [MCP_KEY.label] : []),
+      ...(agentRemoved ? [`${DEFAULT_AGENT_KEY.label}=${DEFAULT_AGENT}`] : []),
+      ...(depthRemoved ? [`${depthLeaf}=${SUBAGENT_DEPTH}`] : []),
+    ];
     if (removed.length === 0) {
       return {
         action: 'unchanged',
-        reason: 'no wolf keys with our exact values',
+        reason: ['no wolf keys with our exact values', ...broken].join('; '),
         configFile: basename(file),
         keys: [],
       };
     }
-    await writeFileAtomic(file, JSON.stringify(cfg, null, 2) + '\n');
-    return { action: 'removed', configFile: basename(file), keys: removed };
+    return {
+      action: 'removed',
+      ...(broken.length > 0 ? { reason: broken.join('; ') } : {}),
+      configFile: changed.join(', '),
+      keys: removed,
+    };
   }
 
   /**
    * 6.1/6.3/6.4: doctor-проверки, которые знает только opencode-адаптер —
    * все ключи, которые Wolf пишет, + смешанный frontmatter managed-агентов.
    * Строки идут в общий `issues` проекта и маскируются doctor'ом как обычно.
+   * 6.7: проверки — по эффективному виду обеих локаций; битый файл — свой issue с именем.
    */
   async configIssues(projectRoot: string): Promise<string[]> {
-    let cfg: PlatformConfig | null;
-    try {
-      cfg = await this.readConfig(projectRoot);
-    } catch (err) {
-      // «missing» советовал бы init, который честно скипает такой конфиг; различаем
-      // битый JSONC и валидный JSON не-объект (массив/строка) — советы разные по смыслу.
-      const message = err instanceof Error ? err.message : String(err);
-      const kind = message.includes('not valid JSONC') ? 'not valid JSONC' : 'not a JSON object';
-      return [`${this.id}: config is ${kind} — fix it or remove the file, then run wolf init`];
+    const surface = await this.loadSurface(projectRoot);
+    const issues: string[] = surface.errors.map(
+      (error) => `${this.id}: ${error.rel} is ${error.kind} — fix it or remove the file, then run wolf init`
+    );
+    if (surface.files.length === 0) {
+      // «missing» советовал бы init, который честно скипает битый конфиг
+      if (issues.length === 0) return [`${this.id}: wolf entry missing — run wolf init`];
+      return issues;
     }
-    if (cfg === null) return [`${this.id}: wolf entry missing — run wolf init`];
     return [
-      ...mcpIssues(cfg),
-      ...defaultAgentIssues(cfg),
-      ...depthIssues(cfg),
+      ...issues,
+      ...mcpIssues(surface),
+      ...defaultAgentIssues(surface.effective),
+      ...depthIssues(surface),
       ...(await mixedFrontmatterIssues(projectRoot, this.id)),
     ];
   }
 }
 
-/** 6.3: wolf-сервер отсутствует в обеих формах / легаси-форма подлежит миграции. */
-function mcpIssues(cfg: PlatformConfig): string[] {
+/** Собственный конфиг корневой локации (не слейдженный): в него wolf пишет. */
+function rootConfigOf(surface: ConfigSurface): Record<string, unknown> {
+  return surface.files.find((f) => f.location === WRITE_LOCATION_ID)?.cfg ?? {};
+}
+
+/** Путь файла локации относительно корня проекта (для сообщений). */
+function relOf(surface: ConfigSurface, location: ConfigLocationId): string {
+  return surface.files.find((f) => f.location === location)?.rel ?? '';
+}
+
+/** Эффективный вид после записи: обновлённый корень + .opencode (порядок — в mergeSurface). */
+function effectiveAfter(surface: ConfigSurface, rootCfg: Record<string, unknown>): Record<string, unknown> {
+  return mergeSurface(surface.files, { location: WRITE_LOCATION_ID, cfg: rootCfg });
+}
+
+/** 6.3/6.7: wolf-сервер отсутствует в обеих формах / легаси-форма подлежит миграции. */
+function mcpIssues(surface: ConfigSurface): string[] {
+  const cfg = surface.effective;
   // запись невозможна: init не вылечит такой конфиг — не советуем его
   const blocked = blockedSegment(cfg, MCP_KEY.writePath);
   if (blocked !== undefined)
     return [`opencode: ${blocked} is not an object — ${MCP_KEY.label} is not written; fix it manually`];
-  const wolf = readWolfMcp(cfg, WOLF_CMD);
-  if (wolf.form === 'none') return [`opencode: wolf entry missing — run wolf init`];
-  if (wolf.legacyEntry === undefined) return [];
   const legacyPath = legacyPathOf(MCP_KEY)!;
+  const nativeAt = locatePath(surface.files, MCP_KEY.writePath);
+  const legacyAt = locatePath(surface.files, legacyPath);
+  // сервер не объявлен НИ В ОДНОЙ локации — только тогда «wolf entry missing»
+  if (nativeAt === undefined && legacyAt === undefined) return [`opencode: wolf entry missing — run wolf init`];
+  if (legacyAt === undefined) return [];
+  const ours = isWolfMcpEntry(legacyAt.value, WOLF_CMD);
+  // легаси в .opencode: init туда не пишет — советуем ручную миграцию с именем файла
+  if (legacyAt.location === WRITE_LOCATION_ID) {
+    return [
+      ours
+        ? `opencode: wolf entry is in the deprecated top-level ${legacyPath.join('.')} form — run wolf init to migrate it to ${MCP_KEY.label}`
+        : `opencode: top-level ${legacyPath.join('.')} is foreign and deprecated (opencode v2 reads ${MCP_ROOT}.${MCP_SERVERS}) — wolf leaves it untouched`,
+    ];
+  }
+  const rel = relOf(surface, legacyAt.location);
   return [
-    wolf.legacyOurs
-      ? `opencode: wolf entry is in the deprecated top-level ${legacyPath.join('.')} form — run wolf init to migrate it to ${MCP_KEY.label}`
-      : `opencode: top-level ${legacyPath.join('.')} is foreign and deprecated (opencode v2 reads ${MCP_ROOT}.${MCP_SERVERS}) — wolf leaves it untouched`,
+    ours
+      ? `opencode: wolf entry is in the deprecated top-level ${legacyPath.join('.')} form in ${rel} — migrate it to ${MCP_KEY.label} manually`
+      : `opencode: top-level ${legacyPath.join('.')} in ${rel} is foreign and deprecated (opencode v2 reads ${MCP_ROOT}.${MCP_SERVERS}) — wolf leaves it untouched`,
   ];
 }
 
@@ -361,8 +619,9 @@ function defaultAgentIssues(cfg: PlatformConfig): string[] {
   return [];
 }
 
-/** 6.1: experimental.subagent_depth >= 2 + deprecated верхнеуровневый ключ. */
-function depthIssues(cfg: PlatformConfig): string[] {
+/** 6.1/6.7: experimental.subagent_depth >= 2 + deprecated верхнеуровневый ключ (по эффективному виду). */
+function depthIssues(surface: ConfigSurface): string[] {
+  const cfg = surface.effective;
   const out: string[] = [];
   const depthPath = SUBAGENT_DEPTH_KEY.writePath;
   const parentPath = depthPath.slice(0, -1);
@@ -383,13 +642,24 @@ function depthIssues(cfg: PlatformConfig): string[] {
     );
   }
   const legacyPath = legacyPathOf(SUBAGENT_DEPTH_KEY)!;
-  const legacy = getPath(cfg, legacyPath);
-  if (legacy !== undefined) {
-    out.push(
-      legacy === SUBAGENT_DEPTH
-        ? `opencode: top-level ${legacyPath.join('.')}=${SUBAGENT_DEPTH} is deprecated and ignored by opencode v2 — run wolf init to migrate it to ${depthLabel}`
-        : `opencode: top-level ${legacyPath.join('.')}=${String(legacy)} is deprecated and ignored by opencode v2 — foreign value, set ${depthLabel} >=${SUBAGENT_DEPTH} manually`
-    );
+  const legacyAt = locatePath(surface.files, legacyPath);
+  if (legacyAt !== undefined) {
+    const legacy = legacyAt.value;
+    // легаси в .opencode: init туда не пишет — миграция ручная, с именем файла
+    if (legacyAt.location === WRITE_LOCATION_ID) {
+      out.push(
+        legacy === SUBAGENT_DEPTH
+          ? `opencode: top-level ${legacyPath.join('.')}=${SUBAGENT_DEPTH} is deprecated and ignored by opencode v2 — run wolf init to migrate it to ${depthLabel}`
+          : `opencode: top-level ${legacyPath.join('.')}=${String(legacy)} is deprecated and ignored by opencode v2 — foreign value, set ${depthLabel} >=${SUBAGENT_DEPTH} manually`
+      );
+    } else {
+      const rel = relOf(surface, legacyAt.location);
+      out.push(
+        legacy === SUBAGENT_DEPTH
+          ? `opencode: top-level ${legacyPath.join('.')}=${SUBAGENT_DEPTH} in ${rel} is deprecated and ignored by opencode v2 — migrate it to ${depthLabel} manually`
+          : `opencode: top-level ${legacyPath.join('.')}=${String(legacy)} in ${rel} is deprecated and ignored by opencode v2 — foreign value, set ${depthLabel} >=${SUBAGENT_DEPTH} manually`
+      );
+    }
   }
   return out;
 }
@@ -435,14 +705,6 @@ function frontmatterOf(raw: string): Record<string, unknown> | undefined {
   } catch {
     return undefined;
   }
-}
-
-function asConfig(value: unknown, file: string): PlatformConfig {
-  const cfg = asRecord(value);
-  if (cfg === undefined) {
-    throw new UserFacingError(`${file} is not a JSON object — refusing to touch it`);
-  }
-  return cfg;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
