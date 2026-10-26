@@ -34,7 +34,8 @@
 Q-01…Q-08 его не задавал.
 
 **Приземлено в git:** коммит `8d6220a` (ветка `docs/wave-2-22-0-requirements`), merge --no-ff в `main` →
-`17dcfa8`. Ветка сохранена, worktree удалён, `main` чист. Записка в памяти: `mem_20261026_volna_2_22_0_etap_1_trebovaniya_sobrany_53c87a`; статус треда
+`17dcfa8`; затем уточнение отчёта — `9d5ffaa` → merge `6fa450d`. Ветки сохранены, worktree'ы удалены,
+`main` чист. Записка в памяти: `mem_20261026_volna_2_22_0_etap_1_trebovaniya_sobrany_53c87a`; статус треда
 `mem_20261026_volna_2_22_0_obnovlenie_skillov_i_komand_ced1ae` **не менялся** (`active`).
 
 ## 1. Сводка требований
@@ -312,14 +313,23 @@ _Блок для показа без чтения остального отчё�
 ### 6.2. Гейт проекта
 
 `npm run check` (english-surface → prettier → `tsc --noEmit` → build → unit-тесты) — **пройден, exit 0** на
-слитом состоянии `main` (ревизия `17dcfa8`, дерево чистое). Лог:
-`/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/wave-2.22.0-requirements-check-merged.log`
-(cwd `/Users/chekh/Development/mister-wolf`, revision `17dcfa8…`, started/finished — в шапке лога, exit 0).
+финальном состоянии `main` (ревизия `6fa450d`, дерево чистое): **215/215 файлов тестов, 1982/1982 тестов**.
+Лог: `/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/final-main-6fa450d-check.log`
+(cwd `/Users/chekh/Development/mister-wolf`, revision `6fa450d…`, started `15:39:36Z`, finished `15:41:26Z`,
+exit 0).
 
-Промежуточный прогон (до исправлений по ревью) дал 16 падений в 5 файлах при полном параллельном прогоне
-vitest; **все 5 файлов проходят изолированно** (38/38) — это таймауты 5-секундного лимита под нагрузкой
-(параллельно работали ревью и фактчек), а не регрессия: код продукства не менялся, изменены только
-markdown-документы под `docs/dev/`. Лог: `wave-2.22.0-requirements-check.log` (тот же каталог).
+**Сравнение с базой — падения были и до этого этапа.** Тот же гейт на **чистой базе `5926e41`**, до любых
+коммитов этапа, даёт **exit 1**: падает `tests/integration/upgrade-park.test.ts` — «Test timed out in 5000ms»
+(лог `baseline-5926e41-check.log`, started `15:34:26Z`, finished `15:39:26Z`). Красный `upgrade-park` —
+**предсуществующее** состояние 2.21.0, а не регрессия этого этапа.
+
+Промежуточные прогоны давали разное число падений (16 → 4 → 8) — всегда с одним признаком «Test timed out
+in 5000ms» в нагрузочных файлах (`upgrade-park`, `face-recover-cli`, `project-step`, `memory-archive`,
+`memory-update`, `bootstrap-project`, `propose-cli`); каждый из них **проходит изолированно** (5 упавших
+файлов → 38/38; `upgrade-park` на чистой базе → то же падение). Причина — 5-секундный лимит vitest при
+полном параллельном прогоне, а не дефект: код продукта на этом этапе не менялся, изменены только
+markdown-документы под `docs/dev/`. Логи: `wave-2.22.0-requirements-check.log` (первый прогон),
+`wave-2.22.0-requirements-check-final.log`, `wave-2.22.0-requirements-check-merged.log` (тот же каталог).
 
 `npm run e2e` на этом этапе **не запускался** (осознанное ограничение): код продукта не менялся — изменены
 только markdown-документы под `docs/dev/`; затраты (полный e2e-прогон) не пропорциональны среде изменений.
