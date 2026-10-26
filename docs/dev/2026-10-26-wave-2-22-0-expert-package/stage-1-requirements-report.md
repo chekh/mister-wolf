@@ -34,8 +34,10 @@
 Q-01…Q-08 его не задавал.
 
 **Приземлено в git:** коммит `8d6220a` (ветка `docs/wave-2-22-0-requirements`), merge --no-ff в `main` →
-`17dcfa8`; затем уточнение отчёта — `9d5ffaa` → merge `6fa450d`. Ветки сохранены, worktree'ы удалены,
-`main` чист. Записка в памяти: `mem_20261026_volna_2_22_0_etap_1_trebovaniya_sobrany_53c87a`; статус треда
+`17dcfa8`; затем уточнения отчёта — `9d5ffaa` → merge `6fa450d`, `f8898b4` → merge. Ветки сохранены
+(`docs/wave-2-22-0-requirements`, `docs/wave-2-22-0-requirements-report`, `docs/wave-2-22-0-report-final`),
+worktree'ы удалены, `main` чист. Финальная ревизия `main` — merge-коммит последнего обновления этого отчёта
+(актуальный SHA указан lead'ом в ответе L0). Записка в памяти: `mem_20261026_volna_2_22_0_etap_1_trebovaniya_sobrany_53c87a`; статус треда
 `mem_20261026_volna_2_22_0_obnovlenie_skillov_i_komand_ced1ae` **не менялся** (`active`).
 
 ## 1. Сводка требований
