@@ -153,9 +153,9 @@ wolf analytics --view acceptance
 
 ## 15. `doctor`: wolf entry missing
 
-- **Symptom:** `wolf doctor` reports `opencode: wolf entry missing — run wolf init` on a project whose `opencode.json` does have a wolf MCP server — typically after the config was migrated, by opencode itself or by hand, from the flat `mcp.wolf` to the native `mcp.servers.wolf`.
-- **Cause:** releases before 2.20.1 looked only at the flat `mcp.wolf` key. The native form was invisible to them, so the entry read as missing, `wolf init` would have added a second key, and `wolf uninstall` would have left the server behind.
-- **Fix:** on 2.20.1 and newer `wolf doctor` and `wolf uninstall` understand both forms, so re-run `wolf doctor` and the false positive is gone. If the entry is genuinely absent, restore it — repair only, the rest of the JSON is preserved:
+- **Symptom:** `wolf doctor` reports `opencode: wolf entry missing — run wolf init` on a project whose opencode config does have a wolf MCP server — either in `opencode.json` (typically after the config was migrated, by opencode itself or by hand, from the flat `mcp.wolf` to the native `mcp.servers.wolf`) or in `.opencode/opencode.json(c)`, the second place opencode reads a project config from.
+- **Cause:** releases before 2.20.1 looked only at the flat `mcp.wolf` key, and releases before 2.21.0 looked only at the config in the project root. The native form, and a config kept in `.opencode`, were invisible to them, so the entry read as missing, `wolf init` would have added a second key, and `wolf uninstall` would have left the server behind.
+- **Fix:** on 2.20.1 and newer `wolf doctor` and `wolf uninstall` understand both forms, and on 2.21.0 and newer they read `.opencode/opencode.json(c)` as well (opencode merges it after the root file, so it wins there) — re-run `wolf doctor` and the false positive is gone. If the entry is genuinely absent, restore it — repair only, the rest of the JSON is preserved:
 
   ```bash
   wolf init               # existing config: restores mcp.servers.wolf / default_agent / experimental.subagent_depth

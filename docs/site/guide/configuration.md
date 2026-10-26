@@ -123,12 +123,31 @@ Platform configs (`opencode.json`, Claude's `.mcp.json`) are written by `wolf in
 
 - platform config file **exists** and the platform is detected → the wolf MCP entry is restored if it is missing or corrupted (recognized in either form, written as the native `mcp.servers.wolf`), alongside `default_agent` / `experimental.subagent_depth`, and the rest of the JSON is preserved untouched;
 - the entry is already canonical → `unchanged` (idempotent; a second `init` writes nothing);
-- the config file **does not exist** → nothing is created — a minimal init stays minimal, and `--platform opencode` remains the explicit way to write a platform config;
+- the config file **does not exist in either location** → nothing is created — a minimal init stays minimal, and `--platform opencode` remains the explicit way to write a platform config;
 - the config is broken JSONC → not touched at all: `init` reports `skipped` with the reason and exits `0` (`wolf init --recreate` is the escape hatch for a corrupted `.wolf/config.yaml`, not for platform configs).
 
 This is what makes the `wolf doctor` advice (`run wolf init` when the wolf entry is missing) actionable: after a successful repair the doctor no longer reports `wolf entry missing`. Foreign MCP entries in the same file are never touched.
 
 Supported OpenCode range: v1 ≥ 1.18.29 and v2 — the native `mcp.servers` form is accepted from 1.18.29 (v1 hoists it into its flat map itself), so the written shape does not depend on the installed version.
+
+### Where the config file lives
+
+opencode reads a project config from two places, and since 2.21.0 Wolf reads both of them:
+
+| Location                               | Role                                                          |
+| -------------------------------------- | ------------------------------------------------------------- |
+| `<project>/opencode.json(c)`           | the project root config — the only place Wolf writes its keys |
+| `<project>/.opencode/opencode.json(c)` | the project-local config inside the `.opencode/` directory    |
+
+opencode merges the root file first and the `.opencode` file afterwards, so a key declared in `.opencode` overrides the same key in the root file. Wolf follows that order: it reads both files and takes the `.opencode` value wherever the two disagree.
+
+The write target did not move — `wolf init` still writes the wolf keys into the root `opencode.json(c)`, and never into `.opencode/`. A minimal `init` repairs an existing platform config and does not create one, so a project whose config lives only in `.opencode/opencode.json(c)` keeps exactly one config file; `wolf init --platform opencode` is the explicit way to add the root one. What changed is what Wolf _sees_:
+
+- `wolf doctor` no longer reports `wolf entry missing` when the server is declared in `.opencode/opencode.json(c)` — it is declared, and the doctor reads the file the platform reads;
+- `wolf init` does not add a second `mcp.servers.wolf` next to a server that is already declared in `.opencode`;
+- `wolf uninstall` removes the server from the file where it really is — the root one, the `.opencode` one, or both.
+
+A config file that exists but cannot be parsed or read is named in the doctor's report (`opencode: <file> is not valid JSONC — …`) instead of being taken for a missing config — Wolf no longer mistakes it for "there is no config here", and a broken file in one location no longer hides the other one. Note that `wolf uninstall` rewrites the config files it touches as plain JSON: comments inside a `.jsonc` config are lost (the same shortcut that already applied to the root config).
 
 ### Where each key lives
 

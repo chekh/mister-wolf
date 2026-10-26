@@ -254,7 +254,7 @@ Options:
 
 Check all registered projects: binary vs schema version, platform configs, prune dead entries.
 
-For a detected opencode config it also checks what the adapter writes: `default_agent`, `experimental.subagent_depth` ≥ 2, the deprecated top-level `subagent_depth` (reported as ignored by opencode v2), a legacy flat `mcp.wolf` entry (reported as deprecated: ours as `migrate`, a foreign one as left untouched), and a managed agent file whose frontmatter mixes v1 and v2 fields. `--repair` canonicalizes the config — it writes the native MCP entry and `experimental.subagent_depth` — besides repairing storage.
+For a detected opencode config it also checks what the adapter writes: `default_agent`, `experimental.subagent_depth` ≥ 2, the deprecated top-level `subagent_depth` (reported as ignored by opencode v2), a legacy flat `mcp.wolf` entry (reported as deprecated: ours as `migrate`, a foreign one as left untouched), and a managed agent file whose frontmatter mixes v1 and v2 fields. Both project config locations are read — the root `opencode.json(c)` and `.opencode/opencode.json(c)`, the latter overriding the former, as opencode merges them. `--repair` canonicalizes the config — it writes the native MCP entry and `experimental.subagent_depth` — besides repairing storage.
 
 ```text
 Usage: wolf doctor [options]

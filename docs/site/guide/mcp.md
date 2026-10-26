@@ -18,6 +18,8 @@ Written to `opencode.json`, key `mcp.servers.wolf` (the flat `mcp.wolf` map is d
 { "mcp": { "servers": { "wolf": { "type": "local", "command": ["wolf", "mcp"], "disabled": false } } } }
 ```
 
+Wolf also reads the second place opencode reads a project config from — `.opencode/opencode.json(c)`, which opencode merges after the root file and therefore lets override it. A server declared only there is recognised as declared: `doctor` does not report it missing, `init` does not add a second key next to it, and `uninstall` removes it from the file where it is.
+
 ### Claude Code
 
 Written to `.mcp.json`, key `mcpServers.wolf`:
