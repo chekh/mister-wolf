@@ -44,7 +44,6 @@
 - [Экономика инструментов](./guide/tool-economy.md) — переиспользование tool-объектов, счётчики, weighted-экономика.
 - [Панель эффективности и A/B-бенчмарки](./guide/effectiveness.md) — `wolf effectiveness`: пороги OK/WARN/BAD, действия при BAD; методика `scripts/bench/`.
 - [Аналитика эффективности](./guide/analytics.md) — `wolf analytics`/`dashboard`/`task-eval`: честные метрики, lifecycle памяти и атрибуция, кампании и per-memory ROI, data-quality.
-- [Master plan template](./templates/master-plan-template.md) — шаблон мастер-плана фичи (5 стадий).
 - [UX scenarios](./ux-scenarios/README.md) — 12 сценариев использования как requirements-материал.
 
 ### Самообучение (действующий контур)
@@ -81,7 +80,7 @@
 - Incremental indexing — [spec](./superpowers/specs/2026-07-02-incremental-indexing-blocker-resolution-design.md)
 - Phase 6 (governance + flat namespace) — [spec](./superpowers/specs/2026-07-02-phase-6-governance-design.md)
 - Session wrap-up habit — [spec](./superpowers/specs/2026-07-02-session-wrap-up-habit-design.md)
-- Deterministic refinement pipeline — [spec](./superpowers/specs/2026-07-29-deterministic-refinement-pipeline-design.md) (реализован как `tools/pipeline/autorefine.sh`)
+- Deterministic refinement pipeline — [spec](./superpowers/specs/2026-07-29-deterministic-refinement-pipeline-design.md) (реализация удалена)
 - Phase 8 (schema-driven taxonomy) — [spec/plan](./superpowers/specs/2026-08-23-phase-8-schema-taxonomy.md)
 - Phase 9 (solve/call) — [spec](./superpowers/specs/2026-08-23-phase-9-solve-call.md)
 - Phase 10 (insights) — [spec](./superpowers/specs/2026-08-26-phase-10-insights.md)
