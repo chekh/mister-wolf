@@ -33,11 +33,17 @@ function resolveTypeAlias(base: MemoryObject): MemoryObject | null {
   return out;
 }
 
-let typeSchemaCache: Map<MemoryType, z.ZodTypeAny> | null = null;
+/**
+ * PATCH-2-21-1: кэш схем разделён по корню проекта (паттерн syncConfigCache
+ * в config-file.ts) — общий на процесс кэш навязывал таксономию первого
+ * проекта всем следующим (wolf upgrade создаёт store для чужих root).
+ */
+const typeSchemaCache = new Map<string, Map<MemoryType, z.ZodTypeAny>>();
 let configLoadWarned = false;
 
 function getTypeSchemas(baseDir: string, onProblem?: (msg: string) => void): Map<MemoryType, z.ZodTypeAny> {
-  if (typeSchemaCache) return typeSchemaCache;
+  const cached = typeSchemaCache.get(baseDir);
+  if (cached) return cached;
   const cache = new Map<MemoryType, z.ZodTypeAny>();
   try {
     const cfg = loadWolfConfigSync(baseDir);
@@ -54,7 +60,7 @@ function getTypeSchemas(baseDir: string, onProblem?: (msg: string) => void): Map
       cache.set(decl.name, buildTypeSchema(decl));
     }
   }
-  typeSchemaCache = cache;
+  typeSchemaCache.set(baseDir, cache);
   return cache;
 }
 
