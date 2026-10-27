@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.21.1] - 2026-10-27
+
+### Fixed — Memory type schemas are isolated per project
+
+- **Each project validates memory objects against its own type schema**: the schema cache of the markdown memory store was one module-level value for the whole process, so the taxonomy of the first project read in that process was reused for every project afterwards — a memory object could be accepted (or rejected) by the rules of another project. `wolf upgrade`, which creates a store for foreign project roots within one process, was the visible path to this. The cache is now keyed by the project root, the same way the project config cache already was. Reading and validating memory objects inside a single project behaves exactly as before.
+- **The documentation audit no longer fails on the roadmap review package**: the audit of removed commands (`wolf learn`, `wolf run`) treated the roadmap v4 review package of 2026-10-27 as a public instruction document, although it is a document of the current phase that mentions the removed command on purpose. The package is now excluded from the audit the same way the previous phase document was; the exclusion is revisited once the package is replaced by the effective roadmap v4.
+
 ## [2.21.0] - 2026-10-26
 
 ### Changed
