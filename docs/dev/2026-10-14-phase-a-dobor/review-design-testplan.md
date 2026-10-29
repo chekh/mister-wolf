@@ -92,9 +92,9 @@ documents:
 ### F-02 (minor) — plan.md T-A10 «≥ 30 файлов»
 
 - **Где:** `docs/dev/2026-10-14-phase-a-dobor/plan.md` §2 T-A10 AC.
-- **Проблема:** «≥ 30 файлов в `docs/superpowers/specs/`» — оценка; реальный счёт зависит от того, какие файлы фактически описывают удалённые команды.
+- **Проблема:** «≥ 30 файлов в `docs/specs/`» — оценка; реальный счёт зависит от того, какие файлы фактически описывают удалённые команды.
 - **Влияние:** low — оценка; T-A10 уточнит на старте.
-- **Рекомендация:** T-A10 первым шагом — `find docs/superpowers/specs -name '*.md' | xargs grep -l 'wolf learn\|Sandbox Replay\|STOP-гейт' | wc -l` для точного числа.
+- **Рекомендация:** T-A10 первым шагом — `find docs/specs -name '*.md' | xargs grep -l 'wolf learn\|Sandbox Replay\|STOP-гейт' | wc -l` для точного числа.
 - **Блокирует:** нет.
 
 ## SUMMARY

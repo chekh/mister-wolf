@@ -2,7 +2,7 @@
 
 > **Date:** 2026-07-29
 > **Status:** Draft
-> **Design doc:** `docs/superpowers/specs/2026-07-29-deterministic-refinement-pipeline-design.md`
+> **Design doc:** `docs/specs/2026-07-29-deterministic-refinement-pipeline-design.md`
 > **Supercedes:** POC in `tools/pipeline/autorefine.sh`
 
 ---
@@ -125,9 +125,9 @@ The resolver+applier pattern extracts more value from early rounds by resolving 
                      └─┘                             └───→ code
 ```
 
-**Stage 1 — Requirements (Spec):** Standard superpowers `brainstorming` → spec in `docs/superpowers/specs/`. Unchanged.
+**Stage 1 — Requirements (Spec):** Standard superpowers `brainstorming` → spec in `docs/specs/`. Unchanged.
 
-**Stage 2 — Plan generation:** Standard superpowers `writing-plans` → plan in `docs/superpowers/plans/`. The plan is the **primary artifact** refined by the pipeline.
+**Stage 2 — Plan generation:** Standard superpowers `writing-plans` → plan in `docs/plans/`. The plan is the **primary artifact** refined by the pipeline.
 
 **Stage 3 — Autorefine:** The deterministic multi-round loop described in this document.
 
@@ -136,7 +136,7 @@ The resolver+applier pattern extracts more value from early rounds by resolving 
 ### 3.2 Artifact Structure
 
 ```
-docs/superpowers/
+docs/
 ├── specs/YYYY-MM-DD-<feature>.md         ← spec (input, static)
 └── plans/YYYY-MM-DD-<feature>.plan.md    ← plan (mutated by pipeline)
 
@@ -518,10 +518,10 @@ brainstorming skill → writing-plans skill → [autorefine] → executing-plans
 
 The pipeline sits **between** plan creation and plan execution. It does not replace or require changes to the superpowers skills:
 
-- `brainstorming` produces specs in `docs/superpowers/specs/` (unchanged)
-- `writing-plans` produces plans in `docs/superpowers/plans/` (unchanged)
-- `autorefine` reads the plan from `docs/superpowers/plans/` and writes artifacts to `.autorefine/`
-- `executing-plans` reads the refined plan from `docs/superpowers/plans/` (changed by applier) and can optionally read `.autorefine/final/summary.md` for context
+- `brainstorming` produces specs in `docs/specs/` (unchanged)
+- `writing-plans` produces plans in `docs/plans/` (unchanged)
+- `autorefine` reads the plan from `docs/plans/` and writes artifacts to `.autorefine/`
+- `executing-plans` reads the refined plan from `docs/plans/` (changed by applier) and can optionally read `.autorefine/final/summary.md` for context
 
 The master-plan template (`docs/templates/master-plan-template.md`) gains a reference to the pipeline orchestrator.
 

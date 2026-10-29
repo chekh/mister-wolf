@@ -17,7 +17,7 @@ Mr. Wolf — local-first project memory harness for AI coding agents («I solve 
 
 ## Указатели
 
-- План работ: `docs/superpowers/plans/roadmap-v2.md`
+- Роадмап: `docs/dev/roadmap/roadmap-v4.md` (активный); история — `docs/dev/roadmap/roadmap-v2.md`, `roadmap-v3.md`
 - Документация: `README.md`, `docs/README.md`
 - Версии: только `npm version X.Y.Z`; тег `v*` = релиз; запись в `CHANGELOG.md` при релизе обязательна
 

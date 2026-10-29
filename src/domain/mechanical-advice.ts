@@ -3,7 +3,7 @@
  * без LLM (инвариант записи §9). Дефолтный режим генерации draft'ов
  * propose→validate→activate работает на ней; «обязательный LLM-слой» генерации
  * отклонён (спека §2.3, §7): LLM подключается позже за интерфейсом DraftGenerator.
- * Спека: docs/superpowers/specs/2026-08-26-self-learning-design.md §2.3, §7.
+ * Спека: docs/specs/2026-08-26-self-learning-design.md §2.3, §7.
  */
 
 /** id класса ошибки (DEFAULT_ERROR_CLASS_RULES + 'uncategorized') → императив. */

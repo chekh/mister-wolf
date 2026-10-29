@@ -36,7 +36,7 @@
 - **commands** — депрекированы. Перешли на skills.
 - **workflows** — да, неявно. Последовательность skills: `brainstorming` → `using-git-worktrees` → `writing-plans` → `subagent-driven-development`/`executing-plans` → `test-driven-development` → `requesting-code-review` → `finishing-a-development-branch`. Но это prompt-level workflow, не исполняемый граф.
 - **hooks** — да. Session-start hook для bootstrap-инжекции.
-- **artifacts** — минимально. Создаются markdown-файлы: design docs (`docs/superpowers/specs/`), implementation plans. Нет выделенной artifact-системы.
+- **artifacts** — минимально. Создаются markdown-файлы: design docs (`docs/specs/`), implementation plans. Нет выделенной artifact-системы.
 - **memory** — нет. Нет persistent memory между сессиями.
 - **context** — да. Skills загружаются в prompt по требованию через `Skill` tool. Bootstrap (using-superpowers) инжектируется в каждую сессию.
 - **policies** — да. Иерархия приоритетов: user instructions > superpowers skills > default system prompt.
@@ -65,7 +65,7 @@
 
 ### Artifact / memory model
 
-**Какие файлы создаются:** Markdown design specs (`docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`), implementation plans, git commits. Работа ведётся в git worktrees на изолированных ветках.
+**Какие файлы создаются:** Markdown design specs (`docs/specs/YYYY-MM-DD-<topic>-design.md`), implementation plans, git commits. Работа ведётся в git worktrees на изолированных ветках.
 
 **Markdown artifacts:** да, основной формат.
 

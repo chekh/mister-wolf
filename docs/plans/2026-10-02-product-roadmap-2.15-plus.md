@@ -485,8 +485,8 @@ status-triage / отложено (2.16+) / отклонить-предложен
   2026-10-01: product-gap D6, правки гайдов item D9), `78f441` (mixed-model итоги и метки), тред
   `b0368a` (продуктовая сессия, init-ядро, хвосты №8/№9).
 
-Файлы: `docs/superpowers/plans/2026-09-30-wave-2.14-steward-transfer-plan.md` (состав 2.14),
-`docs/superpowers/plans/roadmap-v2.md` / `roadmap-v3.md` (не изменены), гайды docs/ (касания T1;
+Файлы: `docs/plans/2026-09-30-wave-2.14-steward-transfer-plan.md` (состав 2.14),
+`docs/dev/roadmap/roadmap-v2.md` / `roadmap-v3.md` (не изменены), гайды docs/ (касания T1;
 архивные пометки steward-learn и точечные правки живых гайдов — карта расхождений `fb9ea0`, item D9).
 
 ## 9. Дальнейшие шаги (вне этой задачи)

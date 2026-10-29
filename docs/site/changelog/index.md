@@ -452,7 +452,7 @@ Supported OpenCode range: v1 ≥ 1.18.29 and v2 (tested against 2.0.24).
 
 ### Added
 
-- Campaigns, cohorts and per-memory ROI analytics (P3, spec `docs/superpowers/specs/2026-09-04-p3-campaigns-roi-design.md`):
+- Campaigns, cohorts and per-memory ROI analytics (P3, spec `docs/specs/2026-09-04-p3-campaigns-roi-design.md`):
   - `wolf run --campaign <id>` writes a top-level `campaign_id` into the run signal; `wolf task-eval --campaign <id>` propagates it into `task_evaluated` (`detail.campaign_id`); without the flag nothing is written (backward-compatible optional schema field, `task_id` pattern from P1).
   - `wolf analytics --view campaign` (CLI and MCP): runs grouped by `campaign_id`, split into `with_memory`/`no_memory` cohorts by injected-memory presence in the run session (`session_id` join over `memory_stage injected`, attribution pattern from P2); per cohort — n, median weighted, accepted-verdict share, process-failure rate; cohorts below 3 runs report honest `n/a` with reason, campaigns without verdicts report `n/a` verdict columns.
   - `wolf analytics --view memory`: per-memory ROI section — `associatedAccepted` / `associatedApplied` / `injectedTotal` / last activity per memory id, sorted by `associatedAccepted` desc, under a "correlational, not causal" disclaimer.
@@ -462,7 +462,7 @@ Supported OpenCode range: v1 ≥ 1.18.29 and v2 (tested against 2.0.24).
 
 ### Added
 
-- Memory lifecycle, attribution and coordination events (P2, spec `docs/superpowers/specs/2026-09-04-p2-lifecycle-attribution-design.md`):
+- Memory lifecycle, attribution and coordination events (P2, spec `docs/specs/2026-09-04-p2-lifecycle-attribution-design.md`):
   - `memory_stage` signal event (`detail.stage`: `retrieved`|`injected`|`cited`|`applied`, `detail.memory_ids: string[]` non-empty): auto-writers in `wolf search`/`get` (retrieved, ids from the result set) and `wolf brief`/`call` (injected, ids of delivered injections; no event when empty); new CLI `wolf memory-stage --stage <s> --ids <id,...> [--actor <a>] [--session <id>]` for external actors (cited/applied — harness responsibility). Telemetry failures never break the wrapped command; `WOLF_SESSION` env links auto-writers to the agent session (attribution key, symmetry with `WOLF_ACTOR`).
   - `coord_event` signal event (`detail.kind`: `handoff`|`review`|`acceptance`|`blocker`|`escalation`, `actor_from`, optional `actor_to`, `refs`, `note`): new CLI `wolf coord --kind <k> [--from a] [--to b] [--ref id,...] [--note s]` for all orchestration levels.
   - `mcp_call` signals now carry `detail.wolf_version` (runtime version from package.json, single cached read).
@@ -478,7 +478,7 @@ Supported OpenCode range: v1 ≥ 1.18.29 and v2 (tested against 2.0.24).
 
 ### Added
 
-- End-to-end telemetry identity (P1, spec `docs/superpowers/specs/2026-09-04-p1-telemetry-identity-design.md`):
+- End-to-end telemetry identity (P1, spec `docs/specs/2026-09-04-p1-telemetry-identity-design.md`):
   - `SignalEventSchema` v2: optional identity fields on every signal — `event_id` (uuid), `schema_version: 2`, `run_id`, `trace_id`, `parent_span_id`, `role_level` (L0/L1/L2), `attempt`, `task_id`, `config_hash`, `prompt_hash`, `tools: string[]`. Records without `schema_version` read as v1 (upcast on read, history is never rewritten); unknown fields are stripped by Zod.
   - `wolf run` writes v2 fields into the run signal: generates `event_id`/`run_id` (uuid), `trace_id` (uuid or new `--trace-id`), `attempt` (new `--attempt`), `config_hash` = sha256(`.wolf/config.yaml`).slice(0,12), `prompt_hash` = sha256(prompt).slice(0,12), `tools` from `--tool`; `--task-id` is promoted from experiment-only to a general flag (always written when passed).
   - `mcp_call` signal event (P1 D5): the `registerMemoryTools` wrapper logs every `mr-wolf_*` tool call with `tool_name`, `duration_ms`, `outcome: 'ok'|'error'`, `detail.method`; telemetry failures never break the wrapped call.
@@ -502,7 +502,7 @@ Supported OpenCode range: v1 ≥ 1.18.29 and v2 (tested against 2.0.24).
 
 ### Added
 
-- Task verdicts (P0 analytics honesty, spec `docs/superpowers/specs/2026-09-04-p0-analytics-honesty-design.md`):
+- Task verdicts (P0 analytics honesty, spec `docs/specs/2026-09-04-p0-analytics-honesty-design.md`):
   - New signal event `task_evaluated` (`detail.verdict accepted|rejected|partial|inconclusive`, `detail.scorer human|deterministic|llm_judge|hidden_tests`, optional `criteria_passed`/`criteria_total`/`critical_failure`/`note`, linked by `session_id` and/or `detail.task_id`).
   - New CLI command `wolf task-eval --verdict <v> [--scorer <s>] [--session <id>] [--task-id <id>] [--criteria-passed N --criteria-total M] [--critical-failure] [--note <text>]` — human/L0 verdict writer.
   - `acceptance` block in the analytics report: `accepted` (strict session-link: only accepted verdicts with ≥1 run signal sharing the `session_id`) and `costPerAcceptedTask` (`sumWeighted` of linked runs ÷ accepted; `null` without data).
@@ -543,7 +543,7 @@ Supported OpenCode range: v1 ≥ 1.18.29 and v2 (tested against 2.0.24).
 
 ### Added
 
-- Effectiveness analytics system (spec `docs/superpowers/specs/2026-09-03-analytics-metrics-dashboard-design.md`):
+- Effectiveness analytics system (spec `docs/specs/2026-09-03-analytics-metrics-dashboard-design.md`):
   - `wolf run` now records a raw token breakdown (`input`/`output`/`cache_read`), wall-clock `duration_ms`, and optional experiment primitives (`--experiment`, `--arm wolf|baseline`, `--task-id`) into both the run log and the signal log; existing records stay compatible.
   - `wolf effectiveness --snapshot` — append-only report snapshots (`.wolf/metrics/effectiveness-snapshots.jsonl`); regular runs print a numeric delta against the last snapshot.
   - Absolute totals block in `wolf effectiveness`: runs/failures, weighted and raw token sums, cache-hit ratio, average duration, per-model cost-per-success, and optional `$` conversion via `pricing` in `.wolf/config.yaml` (hidden when no pricing is configured).

@@ -114,11 +114,11 @@ review: pending
   - `README.md`, `README.ru.md`, `docs/concept/concept.md`, `docs/README.md` — вычищены ссылки на удалённые команды.
   - Счётчик «25 типов» заменён на «8 core + расширения».
   - `docs/concept/concept.md` — добавлен раздел «Действующий контракт v2.18.0» в начало.
-  - `docs/superpowers/specs/*.md` (≥ 30 файлов) — frontmatter `historical: true` (только описывающие удалённые команды).
-  - `docs/superpowers/plans/roadmap-v2.md` и аналогичные — frontmatter `historical: true`.
+  - `docs/specs/*.md` (≥ 30 файлов) — frontmatter `historical: true` (только описывающие удалённые команды).
+  - `docs/dev/roadmap/roadmap-v2.md` и аналогичные — frontmatter `historical: true`.
 - **baseline:** merge T-A9 + T-A11 + T-B0 → T-A10 стартует от интегрированного state.
 - **cwd/worktree:** `.worktrees/2.18.0-a10` (после интеграции промежуточных результатов).
-- **allowlist записи:** `tests/e2e/docs-audit.test.ts`, `README.md`, `README.ru.md`, `docs/concept/concept.md`, `docs/README.md`, `docs/superpowers/specs/*.md` (только frontmatter), `docs/superpowers/plans/*.md` (только frontmatter), `docs/dev/INDEX.md`.
+- **allowlist записи:** `tests/e2e/docs-audit.test.ts`, `README.md`, `README.ru.md`, `docs/concept/concept.md`, `docs/README.md`, `docs/specs/*.md` (только frontmatter), `docs/plans/*.md` (только frontmatter), `docs/dev/INDEX.md`.
 - **Зависимости:** T-A9, T-B0 (нужны финальные формулировки A9-полей и B0-агентов, чтобы корректно отразить в README/concept).
 - **Ссылки:** design.md §3.2; test-plan S-10..S-15, S-60, S-61.
 - **Проверки:** `npm run check` (включает docs-audit), `npm run test:e2e` (S-10..S-15).
@@ -152,7 +152,7 @@ review: pending
   - `package.json` = `2.18.0`; `git tag v2.18.0`; `npm publish` — успешно.
   - Сайт собран + задеплоен; страница Changelog синхронизирована.
   - `CHANGELOG.md` — секция `## 2.18.0`.
-  - `docs/superpowers/plans/roadmap-v3.md` — обновлён.
+  - `docs/dev/roadmap/roadmap-v3.md` — обновлён.
   - L0 принимает по ACCEPTANCE.
 - **Зависимости:** T-INT.
 - **Процедура:** L0 грузит wolf-release-docs (правило `mem_20261013_podgotovka_versii_wolf_k_vypusku_snachal_ce1a8f`); L1 — исполнитель шагов.

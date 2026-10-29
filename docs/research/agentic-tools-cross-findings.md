@@ -103,7 +103,7 @@
 - **Agentic** — `thoughts/` (architecture, tickets, research, plans, reviews, archive).
 - **Oh My OpenAgent** — `.sisyphus/tasks/` (JSON tasks), AGENTS.md hierarchy.
 - **OpenAgents Control** — `.opencode/context/` (core → workflows → development → project-intelligence).
-- **Superpowers** — `docs/superpowers/specs/` (design docs).
+- **Superpowers** — `docs/specs/` (design docs).
 
 **Pattern:** Иерархическая файловая структура = project knowledge base. Local files override global. Git как source of truth.
 

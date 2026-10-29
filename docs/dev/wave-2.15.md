@@ -7,7 +7,7 @@ created: 2026-10-08
 
 # Волна 2.15 — конвейер артефактов + skill intake
 
-Состав и порядок — план `docs/superpowers/plans/2026-10-08-wave-2.15-artifact-pipeline-skill-intake-plan.md`
+Состав и порядок — план `docs/plans/2026-10-08-wave-2.15-artifact-pipeline-skill-intake-plan.md`
 (последний план старой конвенции; следующие циклы — папками `docs/dev/<дата>-<slug>/`).
 
 ## Состав (потоки)

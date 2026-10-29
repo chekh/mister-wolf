@@ -6,8 +6,8 @@ summary: Историческое основание — план v2; блок �
 # Mr. Wolf — Roadmap v2
 
 > Date: 2026-07-02  
-> Status: active (rev. 2026-08-29) — реализованы фазы 6–12 (Phase 11 — structured thinking, влита в dev 2026-08-26; Phase 9 semantic-часть deferred, см. Phase 9); superpowers-интеграция: Phases 15–17, 19 сделаны, 18 слита с Phase 23 (см. блок Superpowers Integration); добавлен блок Self-Learning Phases 20–26 (дизайн: `docs/superpowers/specs/2026-08-26-self-learning-design.md`; разработка — после утверждения плана; rev. 2026-08-27 — поправки внешнего эксперта; rev. 2026-08-29 — единая ревизия блока 20–26 по итогам внешнего исследования (expert-013: 43 позиции) и решений владельца (Стюард, пост-аудит, пробег, playbook); детали — в спеке (§21 Changelog), см. блок 2a)  
-> Supersedes: `docs/superpowers/plans/roadmap.md` (архив: roadmap-v1.md — git-история до `b31cbdd`)
+> Status: active (rev. 2026-08-29) — реализованы фазы 6–12 (Phase 11 — structured thinking, влита в dev 2026-08-26; Phase 9 semantic-часть deferred, см. Phase 9); superpowers-интеграция: Phases 15–17, 19 сделаны, 18 слита с Phase 23 (см. блок Superpowers Integration); добавлен блок Self-Learning Phases 20–26 (дизайн: `docs/specs/2026-08-26-self-learning-design.md`; разработка — после утверждения плана; rev. 2026-08-27 — поправки внешнего эксперта; rev. 2026-08-29 — единая ревизия блока 20–26 по итогам внешнего исследования (expert-013: 43 позиции) и решений владельца (Стюард, пост-аудит, пробег, playbook); детали — в спеке (§21 Changelog), см. блок 2a)  
+> Supersedes: `docs/plans/roadmap.md` (архив: roadmap-v1.md — git-история до `b31cbdd`)
 
 ## 1. Концептуальные изменения
 
@@ -201,7 +201,7 @@ Schema-driven подход:
 
 ### Phase 8 — Schema-Driven Taxonomy
 
-> **Superseded:** реализация Phase 8 выполнена по `docs/superpowers/specs/2026-08-23-phase-8-schema-taxonomy.md` (concept v2 §6); этот раздел устарел и оставлен для истории.
+> **Superseded:** реализация Phase 8 выполнена по `docs/specs/2026-08-23-phase-8-schema-taxonomy.md` (concept v2 §6); этот раздел устарел и оставлен для истории.
 
 **Goal:** Сделать типы памяти конфигурируемыми через `.wolf/config.yaml` с immutable core pack и project-specific extensions.
 
@@ -469,7 +469,7 @@ Schema-driven подход:
 
 ## 2a. Self-Learning Phases (20–26) — контур самообучения
 
-> Дизайн: `docs/superpowers/specs/2026-08-26-self-learning-design.md` (контур:
+> Дизайн: `docs/specs/2026-08-26-self-learning-design.md` (контур:
 > сигналы → паттерны → кандидаты → grounding → принятие → доставка).
 > Источник решений: `mem_20260826_reshenie_teoriya_samoobucheniya_wolf_opr_8e7089`,
 > `mem_20260826_reshenie_sostav_mekhanizmov_samoobucheni_60c8cb` — состав v1:
@@ -660,7 +660,7 @@ Schema-driven подход:
 5. **Phase 10** — insights.
 6. **Phase 11** — structured thinking.
 7. **Phases 15–17, 19 (superpowers-интеграция)** — сделаны 2026-08-26; Phase 18 слита с Phase 23 (STOP-гейт).
-8. **Phases 20–26 (самообучение)** — после утверждения плана пользователем; причинный порядок: 20 (сигнальный лог: `session-metrics.jsonl` + классификатор error_class + delivery_event) → 21 (паттерны: детерминированная кластеризация по ключу `tool_name:error_class_id` + опциональный semantic-слой) → 22 (Стюард: пост-аудит, Analyzer-Worker на фронтирной модели, Sandbox Replay, negative constraints, playbook-тип, `wolf complain`) → 23 (STOP-гейт + read-only зоны) → 24 (GEPA: фронтир-рефлектор, 20–100 примеров, лимит 1500 символов) → 25 (AFlow: эвристики, гейт человека) → 26 (decay в пробеге + drift-индикаторы; A-MEM — условная, по триггеру деградации recall); после блока — bootstrap-адаптация, динамический состав агентов, scaffold, мультиплатформа (v1.1+, см. «Направления после блока 20–26»). Спека: `docs/superpowers/specs/2026-08-26-self-learning-design.md`.
+8. **Phases 20–26 (самообучение)** — после утверждения плана пользователем; причинный порядок: 20 (сигнальный лог: `session-metrics.jsonl` + классификатор error_class + delivery_event) → 21 (паттерны: детерминированная кластеризация по ключу `tool_name:error_class_id` + опциональный semantic-слой) → 22 (Стюард: пост-аудит, Analyzer-Worker на фронтирной модели, Sandbox Replay, negative constraints, playbook-тип, `wolf complain`) → 23 (STOP-гейт + read-only зоны) → 24 (GEPA: фронтир-рефлектор, 20–100 примеров, лимит 1500 символов) → 25 (AFlow: эвристики, гейт человека) → 26 (decay в пробеге + drift-индикаторы; A-MEM — условная, по триггеру деградации recall); после блока — bootstrap-адаптация, динамический состав агентов, scaffold, мультиплатформа (v1.1+, см. «Направления после блока 20–26»). Спека: `docs/specs/2026-08-26-self-learning-design.md`.
 9. **Phase 12** — session wrap-up.
 10. **Phase 13** — document ingest.
 11. **Phase 14** — cross-project (when needed).

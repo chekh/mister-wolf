@@ -52,7 +52,7 @@ function seedSynthetic(project: string): void {
   const files: Array<[id: string, path: string, title: string]> = [
     ['doc_docs_guide_architecture_md', 'docs/guide/architecture.md', 'Architecture guide'],
     ['doc_README_md', 'README.md', 'Readme overview'],
-    ['doc_docs_superpowers_plans_roadmap_2_md', 'docs/superpowers/plans/roadmap-v2.md', 'Roadmap v2 plan'],
+    ['doc_docs_superpowers_plans_roadmap_2_md', 'docs/dev/roadmap/roadmap-v2.md', 'Roadmap v2 plan'],
     ['doc_src_adapters_fs_document_id_ts', 'src/adapters/fs/document-id.ts', 'Document id generator'],
     ['doc_package_json', 'package.json', 'Package manifest'],
   ];

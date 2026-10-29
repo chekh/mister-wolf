@@ -23,13 +23,14 @@
 - [Maturity](./concept/maturity.md) — зрелость компонентов по двум осям: Implementation (I0–I3) / Evidence (E0–E5).
 - [Evidence](./concept/evidence.md) — доказательная база: PoC, исследования, программа benchmark'ов E1a–E1e, claim/evidence-реестр.
 - [Coverage](./concept/coverage.md) — смысловое покрытие канона (контроль анти-регрессионного принципа).
-- [Roadmap v3](./superpowers/plans/roadmap-v3.md) — канонический план работ: фазы A–E (продукт из доказанного → самообучение → экосистема).
-- [Roadmap v2](./superpowers/plans/roadmap-v2.md) — детальный план контура Ф20–26 (= Фаза D v3); историческое значение для остальных фаз.
+- [Roadmap v4](./dev/roadmap/roadmap-v4.md) — активный роадмап (этапы A–I, разбиение на релизы 2.22.0+).
+- История роадмапа: [Roadmap v3](./dev/roadmap/roadmap-v3.md) — фазы A–E; [Roadmap v2](./dev/roadmap/roadmap-v2.md) — контур Ф20–26 (детальный план Фазы D v3).
 
 ## Design specs
 
-- [Self-Learning Design](./superpowers/specs/2026-08-26-self-learning-design.md) — историческое основание (`historical: true`): дизайн контура самообучения Ф20–26, не реализованного в 2.18.0.
-- [Superpowers adoption](./superpowers/superpowers-adoption.md) — перенос механизмов superpowers в Wolf (D1–D5).
+- [Self-Learning Design](./specs/2026-08-26-self-learning-design.md) — историческое основание (`historical: true`): дизайн контура самообучения Ф20–26, не реализованного в 2.18.0.
+- [Superpowers adoption](./research/superpowers-adoption.md) — перенос механизмов superpowers в Wolf (D1–D5).
+- [Индекс спек](./specs/README.md) — все исторические дизайн-спеки по датам.
 
 ## Guides & process
 
@@ -48,7 +49,7 @@
 
 ### Самообучение (действующий контур)
 
-Автономный learn-конвейер (digest/propose/validate/activate, эволюция шаблонов) удалён в 2.13 по решению владельца — протокол сохранён как историческое основание: [steward-learn.md](./guide/steward-learn.md), спека — [self-learning-design.md](./superpowers/specs/2026-08-26-self-learning-design.md). Сейчас:
+Автономный learn-конвейер (digest/propose/validate/activate, эволюция шаблонов) удалён в 2.13 по решению владельца — протокол сохранён как историческое основание: [steward-learn.md](./guide/steward-learn.md), спека — [self-learning-design.md](./specs/2026-08-26-self-learning-design.md). Сейчас:
 
 1. Уроки пишутся вручную: `wolf add --type lesson "текст урока"`.
 2. Жалобы — `wolf complain`: hot-signal для мутаций playbook (контур Наставника).
@@ -61,30 +62,30 @@
 
 `wolf sync` — регенерация набора из шаблонов установленного пакета: обновляет только штампованные файлы; файлы без штампа не трогает (конфликт «unstamped на месте шаблонного» — в отчёт, решает владелец); orphaned-файлы (шаблон исчез из пакета) — только в отчёт, авто-удаления нет. Локально правленные штампованные файлы не перезаписываются: skip + предупреждение `skipped — mutated` в отчёте (вернуть канон — удалить файл или снять правку, sync пересоздаст/обновит).
 
-Мутации playbook'ов — зона Стюарда: `init`/`sync` память не трогают (посев идёт один раз; скип по `owner_skill`). Документированный сценарий Стюарда D4: после смены версии набора Стюард инициирует `wolf sync`. Детали: [спека базового набора](./superpowers/specs/2026-08-31-base-sets-design.md).
+Мутации playbook'ов — зона Стюарда: `init`/`sync` память не трогают (посев идёт один раз; скип по `owner_skill`). Документированный сценарий Стюарда D4: после смены версии набора Стюард инициирует `wolf sync`. Детали: [спека базового набора](./specs/2026-08-31-base-sets-design.md).
 
 ## Аудит и планирование
 
 - [Аудит использования памяти (2026-08-29)](./planning/memory-audit-2026-08-29.md) — распределение объектов по типам/статусам, пустующие типы (A8a).
 - [Ideas backlog](./planning/ideas-backlog.md) — реестр зафиксированных, но не реализованных идей.
 
-## Phase specs & implementation plans
+## Phase specs — история решений
 
 Спецификации реализованных фаз (история решений, ADR-ценность). Планы реализации удалены 2026-09-01 — git-история до `b31cbdd` (каталог plans той эпохи); живы спеки:
 
-- MVP-A — [spec](./superpowers/specs/2026-06-29-project-semantic-memory-core-design.md)
-- MVP-B (scan + brief) — [spec](./superpowers/specs/2026-06-29-mvp-b-project-scan-agent-brief-design.md)
+- MVP-A — [spec](./specs/2026-06-29-project-semantic-memory-core-design.md)
+- MVP-B (scan + brief) — [spec](./specs/2026-06-29-mvp-b-project-scan-agent-brief-design.md)
 - Phase 1 (threads / info requests / articles) — план в git-истории до `b31cbdd`
-- Phase 2 (decisions / blockers) — [spec](./superpowers/specs/2026-06-30-phase-2-decisions-and-blockers-design.md)
-- MCP integration — [spec](./superpowers/specs/2026-07-01-mcp-server-integration-design.md)
-- Incremental indexing — [spec](./superpowers/specs/2026-07-02-incremental-indexing-blocker-resolution-design.md)
-- Phase 6 (governance + flat namespace) — [spec](./superpowers/specs/2026-07-02-phase-6-governance-design.md)
-- Session wrap-up habit — [spec](./superpowers/specs/2026-07-02-session-wrap-up-habit-design.md)
-- Deterministic refinement pipeline — [spec](./superpowers/specs/2026-07-29-deterministic-refinement-pipeline-design.md) (реализация удалена)
-- Phase 8 (schema-driven taxonomy) — [spec/plan](./superpowers/specs/2026-08-23-phase-8-schema-taxonomy.md)
-- Phase 9 (solve/call) — [spec](./superpowers/specs/2026-08-23-phase-9-solve-call.md)
-- Phase 10 (insights) — [spec](./superpowers/specs/2026-08-26-phase-10-insights.md)
-- Phase 11 (structured thinking) — [spec](./superpowers/specs/2026-08-26-phase-11-thinking.md)
+- Phase 2 (decisions / blockers) — [spec](./specs/2026-06-30-phase-2-decisions-and-blockers-design.md)
+- MCP integration — [spec](./specs/2026-07-01-mcp-server-integration-design.md)
+- Incremental indexing — [spec](./specs/2026-07-02-incremental-indexing-blocker-resolution-design.md)
+- Phase 6 (governance + flat namespace) — [spec](./specs/2026-07-02-phase-6-governance-design.md)
+- Session wrap-up habit — [spec](./specs/2026-07-02-session-wrap-up-habit-design.md)
+- Deterministic refinement pipeline — [spec](./specs/2026-07-29-deterministic-refinement-pipeline-design.md) (реализация удалена)
+- Phase 8 (schema-driven taxonomy) — [spec/plan](./specs/2026-08-23-phase-8-schema-taxonomy.md)
+- Phase 9 (solve/call) — [spec](./specs/2026-08-23-phase-9-solve-call.md)
+- Phase 10 (insights) — [spec](./specs/2026-08-26-phase-10-insights.md)
+- Phase 11 (structured thinking) — [spec](./specs/2026-08-26-phase-11-thinking.md)
 - Master plans по фазам — [./master-plans/](./master-plans/)
 
 ## Research
@@ -100,4 +101,4 @@
 
 ---
 
-_Documentation index. Canonical concept: [Concept v3.3.1](./concept/concept.md). План: [roadmap-v3](./superpowers/plans/roadmap-v3.md). Регистр идей: [ideas-backlog](./planning/ideas-backlog.md)._
+_Documentation index. Canonical concept: [Concept v3.3.1](./concept/concept.md). Роадмап: [roadmap-v4](./dev/roadmap/roadmap-v4.md). Регистр идей: [ideas-backlog](./planning/ideas-backlog.md)._

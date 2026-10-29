@@ -4,7 +4,7 @@
 > Status: research / proposal  
 > Sources:
 >
-> - Recallium: README, install guide, SKILL.md, website (`recallium.ai`, `/help`, `/concepts`, `/comparisons`), GitHub repo structure.> - Mr. Wolf: current codebase (`src/` on branch `dev`, commit `a7a3290`), `docs/concept-v3.md`, `docs/guide/user-guide.md`, `docs/superpowers/specs/2026-06-30-project-memory-harness-base-concept.md`, `docs/superpowers/specs/2026-06-30-phase-2-decisions-and-blockers-design.md`, `docs/superpowers/specs/2026-07-01-mcp-server-integration-design.md`, `docs/superpowers/specs/2026-07-02-phase-6-governance-design.md`, `docs/superpowers/specs/2026-07-02-session-wrap-up-habit-design.md`, `MEMORY.md`. <!-- MEMORY.md заархивирован 2026-08-25; с 2026-09-01 — только git-история до b31cbdd -->
+> - Recallium: README, install guide, SKILL.md, website (`recallium.ai`, `/help`, `/concepts`, `/comparisons`), GitHub repo structure.> - Mr. Wolf: current codebase (`src/` on branch `dev`, commit `a7a3290`), `docs/concept-v3.md`, `docs/guide/user-guide.md`, `docs/specs/2026-06-30-project-memory-harness-base-concept.md`, `docs/specs/2026-06-30-phase-2-decisions-and-blockers-design.md`, `docs/specs/2026-07-01-mcp-server-integration-design.md`, `docs/specs/2026-07-02-phase-6-governance-design.md`, `docs/specs/2026-07-02-session-wrap-up-habit-design.md`, `MEMORY.md`. <!-- MEMORY.md заархивирован 2026-08-25; с 2026-09-01 — только git-история до b31cbdd -->
 
 ## 1. Предмет сравнения
 

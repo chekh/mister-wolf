@@ -1,7 +1,7 @@
 /**
  * M5 (ядро L2): `wolf analytics` — реестры и недельная активность (Q1–Q4, Q6, Q8, Q10–Q12).
  * Чистая детерминированная агрегация store + signals + event-log + run-log, без LLM.
- * Дизайн: docs/superpowers/specs/2026-09-03-analytics-metrics-dashboard-design.md §5 M5, §6.2.
+ * Дизайн: docs/specs/2026-09-03-analytics-metrics-dashboard-design.md §5 M5, §6.2.
  */
 import type { MemoryStore } from '../../ports/memory-store.port.js';
 import type { EventLog } from '../../ports/event-log.port.js';

@@ -1,6 +1,6 @@
 /**
  * Ф20 (D1.2): детерминированный классификатор ошибок — hot path, без LLM.
- * Спека: docs/superpowers/specs/2026-08-26-self-learning-design.md §2.1 (M20-03/04):
+ * Спека: docs/specs/2026-08-26-self-learning-design.md §2.1 (M20-03/04):
  * error_class_id по таблице; uncategorized — резерв для холодного ErrorClassRefiner
  * (D2, не в D1). Инвариант «запись без LLM» (§9): чистая функция, одинаковый
  * вход → одинаковый id.

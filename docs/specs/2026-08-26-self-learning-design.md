@@ -25,8 +25,8 @@ summary: Историческое основание — дизайн конту
 > `mem_20260826_reshenie_sostav_mekhanizmov_samoobucheni_60c8cb`,
 > `mem_20260826_llm_sintez_wolf_cherez_adapter_opencode_56d96c`;
 > отчёты `.wolf/orchestration/report-2026-08-26-superpowers-{research,wip-d1-d2,d3-d5}.md`;
-> `docs/superpowers/superpowers-adoption.md`. Реализация — Phases 20–26 в
-> `docs/superpowers/plans/roadmap-v2.md`.
+> `docs/research/superpowers-adoption.md`. Реализация — Phases 20–26 в
+> `docs/dev/roadmap/roadmap-v2.md`.
 
 ## 1. Цель и определение обучения
 

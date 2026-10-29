@@ -27,17 +27,17 @@ const FORBIDDEN_TOKENS = [
 // frontmark `historical: true` (S-12/S-13). steward-learn.md — протокол
 // целиком удалённого контура (T-A10 бриф).
 const ALLOWED_FILES_WITH_HISTORICAL = new Set<string>([
-  'docs/superpowers/specs/2026-08-26-self-learning-design.md',
-  'docs/superpowers/plans/roadmap-v2.md',
-  'docs/superpowers/plans/2026-10-02-product-roadmap-2.15-plus.md',
-  'docs/superpowers/plans/2026-10-10-wave-2.16-init2-unpin-hygiene-plan.md',
+  'docs/specs/2026-08-26-self-learning-design.md',
+  'docs/dev/roadmap/roadmap-v2.md',
+  'docs/plans/2026-10-02-product-roadmap-2.15-plus.md',
+  'docs/plans/2026-10-10-wave-2.16-init2-unpin-hygiene-plan.md',
   'docs/guide/steward-learn.md',
   // F-01 (2.18.0): спеки аналитики 2026-09-03/04 описывают writer'ы удалённой
   // в 2.13 run-обёртки — архив с historical: true.
-  'docs/superpowers/specs/2026-09-03-analytics-metrics-dashboard-design.md',
-  'docs/superpowers/specs/2026-09-04-p0-analytics-honesty-design.md',
-  'docs/superpowers/specs/2026-09-04-p1-telemetry-identity-design.md',
-  'docs/superpowers/specs/2026-09-04-p3-campaigns-roi-design.md',
+  'docs/specs/2026-09-03-analytics-metrics-dashboard-design.md',
+  'docs/specs/2026-09-04-p0-analytics-honesty-design.md',
+  'docs/specs/2026-09-04-p1-telemetry-identity-design.md',
+  'docs/specs/2026-09-04-p3-campaigns-roi-design.md',
 ]);
 
 // Документы текущей фазы — аудит их не касается (T-INT ведёт отдельно).
@@ -96,7 +96,7 @@ describe('A10 docs audit (REQ-02)', () => {
   });
 
   it('S-11: спека self-learning-design помечена historical: true', () => {
-    const text = readFileSync(join(ROOT, 'docs/superpowers/specs/2026-08-26-self-learning-design.md'), 'utf-8');
+    const text = readFileSync(join(ROOT, 'docs/specs/2026-08-26-self-learning-design.md'), 'utf-8');
     expect(hasHistoricalFlag(text)).toBe(true);
   });
 

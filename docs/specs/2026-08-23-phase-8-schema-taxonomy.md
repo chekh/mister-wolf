@@ -38,7 +38,7 @@
 | D-dev4 | Narrowed lifecycles для schema-less типов (например, session-checkpoint `[active]`) | Генератор пишет код-канон: полные 14 статусов для типов без per-type enum (lesson, observation, open-question, context, session-checkpoint, session-summary, document) | Canon-first: конфиг — зеркало кода, не пожеланий. Сужение — отдельное микро-решение после Phase 8                                                          |
 | D-dev5 | Конфиги советов `.wolf/councils/*.yaml`                                             | Out of scope Phase 8; quorum/threshold — параметры use-case'ов                                                                                                         | Советам нужен роутер/агенты (Phase 9–10); конфиг-файлы вводим вместе с ними                                                                                |
 
-Примечание: `docs/superpowers/plans/roadmap-v2.md` §Phase 8 устарел (там `debug/code-snippet/design`, `wolf type add/remove`). Канон — concept.md v2 §6 (changelog 2026-08-23). Задача T8 обновляет roadmap-v2 пометкой.
+Примечание: `docs/dev/roadmap/roadmap-v2.md` §Phase 8 устарел (там `debug/code-snippet/design`, `wolf type add/remove`). Канон — concept.md v2 §6 (changelog 2026-08-23). Задача T8 обновляет roadmap-v2 пометкой.
 
 ---
 
@@ -1424,12 +1424,12 @@ objects:    scanned 42, broken 1
 
 **Files:**
 
-- Modify: `AGENTS.md`, `README.md`, `MEMORY.md`, `docs/superpowers/plans/roadmap-v2.md` <!-- MEMORY.md заархивирован 2026-08-25; с 2026-09-01 — только git-история до b31cbdd -->
+- Modify: `AGENTS.md`, `README.md`, `MEMORY.md`, `docs/dev/roadmap/roadmap-v2.md` <!-- MEMORY.md заархивирован 2026-08-25; с 2026-09-01 — только git-история до b31cbdd -->
 
 - [ ] **Step 8.1:** `AGENTS.md`: Completed phases += Phase 8 (кратко: taxonomy via config, orchestration types, layout v2 migrated, write reliability); Next phase += Phase 9; Architecture notes — упомянуть `CORE_TAXONOMY` как канон и layout `threads/ + shared/`.
 - [ ] **Step 8.2:** `README.md`: команды `wolf taxonomy sync/show`, `wolf migrate`, `wolf validate [--fix]`, `wolf council tally/synthesize`; раздел про layout v2 и правило «без config.yaml работает на дефолтах».
 - [ ] **Step 8.3:** `MEMORY.md`: запись решения (layout v2 naming deviations D-dev1/D-dev2, canon D2). <!-- MEMORY.md заархивирован 2026-08-25; с 2026-09-01 — только git-история до b31cbdd -->
-- [ ] **Step 8.4:** `roadmap-v2.md` §Phase 8: пометка `> Superseded by docs/superpowers/specs/2026-08-23-phase-8-schema-taxonomy.md (concept v2)`.
+- [ ] **Step 8.4:** `roadmap-v2.md` §Phase 8: пометка `> Superseded by docs/specs/2026-08-23-phase-8-schema-taxonomy.md (concept v2)`.
 - [ ] **Step 8.5:** Полный гейт:
 
 ```bash

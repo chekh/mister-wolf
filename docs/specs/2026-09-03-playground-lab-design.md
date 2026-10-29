@@ -143,7 +143,7 @@ md), `generated/` (агрегаты вручную), собственный SKIL
   пути на `…/playground-lab/archive/scenario-lab/`, добавить пометку
   «кампания завершена, материал в архиве полигона».
 - Поправить ссылку на старый путь в
-  `docs/superpowers/specs/2026-08-31-base-sets-design.md`.
+  `docs/specs/2026-08-31-base-sets-design.md`.
 - Решение о поглощении — `wolf add --type decision`.
 
 ## 8. Критерии приёмки

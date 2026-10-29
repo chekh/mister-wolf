@@ -14,7 +14,7 @@ summary: Историческое основание — протокол learn-
 
 **Версия:** Phase D3 / Ф20–26 (roadmap v3) — контур самообучения замкнут
 **Статус:** продукт-минимум; LLM-генерация — протокол вложенного вызова (§5, §9), CLI работает без LLM
-**Канон:** спека `docs/superpowers/specs/2026-08-26-self-learning-design.md` §2.3 (кандидаты),
+**Канон:** спека `docs/specs/2026-08-26-self-learning-design.md` §2.3 (кандидаты),
 §2.5 (создание ≠ активация), §5 (Sandbox Replay Holdout, STOP-гейт, read-only зоны),
 §6 (negative constraints, decay, observability), §3 (GEPA-границы, AFlow-класс).
 

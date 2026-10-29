@@ -124,15 +124,15 @@ review: pending
 - Then: все `ok === true`.
 - Oracle: REQ-02 AC-1.
 
-**S-12** (unit, A10) — `docs/superpowers/specs/*.md` имеют `historical: true` ИЛИ раздел «Историческое основание».
+**S-12** (unit, A10) — `docs/specs/*.md` имеют `historical: true` ИЛИ раздел «Историческое основание».
 
-- Given: список файлов в `docs/superpowers/specs/`.
+- Given: список файлов в `docs/specs/`.
 - When: для каждого — проверить frontmatter или наличие раздела в первых 50 строках.
 - Then: все либо `historical: true`, либо содержат heading `Историческое основание` в первых 50 строках.
 - Oracle: REQ-02 AC-3.
 - Допустимое исключение: файлы, не описывающие удалённые команды (определяется по наличию `wolf learn|wolf run|Sandbox Replay|STOP-гейт` в первых 100 строках).
 
-**S-13** (unit, A10) — `docs/superpowers/plans/*.md` — аналогично S-12.
+**S-13** (unit, A10) — `docs/plans/*.md` — аналогично S-12.
 
 - Oracle: REQ-02 AC-3.
 
@@ -273,7 +273,7 @@ review: pending
 
 - Oracle: REQ-05 AC + правило `mem_20260929_sayt_soderzhit_stranitsu_changelog_s_ist_c0ac8b`.
 
-**S-43** (manual) — `docs/superpowers/plans/roadmap-v3.md` обновлён (A9/A10/A11 = доставлено; B0 = доставлено).
+**S-43** (manual) — `docs/dev/roadmap/roadmap-v3.md` обновлён (A9/A10/A11 = доставлено; B0 = доставлено).
 
 - Oracle: REQ-05 AC.
 

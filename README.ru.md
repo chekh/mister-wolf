@@ -222,7 +222,7 @@ wolf tool revive check       # deprecated → active
 
 ### MCP-сервер
 
-`wolf mcp` — запуск MCP-сервера (stdio): вся память и процессы доступны агентам любой MCP-совместимой платформы. Список тулов и конфигурация — в [спеке MCP-интеграции](docs/superpowers/specs/2026-07-01-mcp-server-integration-design.md).
+`wolf mcp` — запуск MCP-сервера (stdio): вся память и процессы доступны агентам любой MCP-совместимой платформы. Список тулов и конфигурация — в [спеке MCP-интеграции](docs/specs/2026-07-01-mcp-server-integration-design.md).
 
 ### opencode-плагины
 
@@ -238,12 +238,12 @@ wolf tool revive check       # deprecated → active
 
 - **opencode-first**: мультиплатформенность — архитектурный принцип (концепт §6.6), но нити других платформ — после зрелости Уровней 1–2.
 - **Что не делает Wolf** (концепт §10): редактирование кода как проектная функция · IDE-интеграция · веб-интерфейс · распределённая работа · оркестрация общего назначения (только протоколы, доказанные практикой).
-- План: [roadmap-v3](docs/superpowers/plans/roadmap-v3.md) — фазы A–E.
+- План: [roadmap-v4](docs/dev/roadmap/roadmap-v4.md) — активный роадмап; история: [v3](docs/dev/roadmap/roadmap-v3.md), [v2](docs/dev/roadmap/roadmap-v2.md).
 
 ## Документация
 
 - [Концепция v3](docs/concept/concept.md) — четыре слоя, конвейер активации, Стюард, УТП
-- [Roadmap v3](docs/superpowers/plans/roadmap-v3.md) — фазы A–E, статус и основания
+- [Roadmap v4](docs/dev/roadmap/roadmap-v4.md) — активный роадмап; история: [v3](docs/dev/roadmap/roadmap-v3.md), [v2](docs/dev/roadmap/roadmap-v2.md)
 - [User guide](docs/guide/user-guide.md) — базовые команды и workflow
 - [CLI reference](docs/reference/cli.md) — полный справочник команд
 - [Architecture](docs/guide/architecture.md) — устройство системы

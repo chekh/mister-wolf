@@ -241,7 +241,7 @@ wolf article add \
 relations.jsonl — canonical source of truth для связей. SQLite перестраивается при необходимости.' \
   --answers <info-request-id> \
   --supports "Phase 4 design" \
-  --evidence "docs/superpowers/specs/2026-06-29-memory-control-plane-design.md"
+  --evidence "docs/specs/2026-06-29-memory-control-plane-design.md"
 ```
 
 `--answers`, `--supports`, `--evidence` — списки через запятую.

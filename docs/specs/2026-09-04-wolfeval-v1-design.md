@@ -12,7 +12,7 @@
   `playground-lab/experiments/2026-09-03-x2-memory-critical.md`, L1v2
   (port-trap, `scenarios.md` §L1v2, F24/F25);
   `playground-lab/scripts/wolf-session.sh`; `scripts/bench/b{1,2,3}-*.sh`; P1 —
-  `docs/superpowers/specs/2026-09-04-p1-telemetry-identity-design.md`
+  `docs/specs/2026-09-04-p1-telemetry-identity-design.md`
 - Предшественники: PoC #1–4 (EVD-POC-1…4), EXP-20260903 (X1), EXP-20260903-x2,
   EXP-20260904-l1v2
 - Центральный вопрос (из предложения §14): создал ли Wolf за несколько сессий
@@ -600,4 +600,4 @@ claims:
 6. Честность границ: §7 (варианс, MPE, stopping rule), §11 (может/не может,
    human-minutes, F21/F25-классы).
 7. Файл prettier-clean: `npx prettier --check` зелёный; объём ~600 строк; стиль соответствует
-   `docs/superpowers/specs/2026-09-03-playground-lab-design.md`.
+   `docs/specs/2026-09-03-playground-lab-design.md`.

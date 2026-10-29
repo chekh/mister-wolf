@@ -89,7 +89,7 @@ Use-case'ы (сценарии) в `src/app/use-cases/` по факту: `add-mem
 
 Дизайн контура Ф20–26 (паттерны N≥3 → draft → holdout-валидация → активация → decay по пробегу) не реализован в 2.18.0: автономные learn-команды удалены в 2.13 по решению владельца. Сохранившиеся части: сигнальный лог (§3.6), read-only зоны (§3.5), принцип «создание ≠ активация» в ручных операциях (§3.2). Действующий контур обучения: `wolf add --type lesson` (уроки), `wolf complain` → мутация playbook Наставником, агрегация зрелых уроков в одну замену (`aggregated-lesson`, 2.14+).
 
-Канон истории — спека [docs/superpowers/specs/2026-08-26-self-learning-design.md](../superpowers/specs/2026-08-26-self-learning-design.md) (`historical: true`), продуктовый протокол — [steward-learn.md](steward-learn.md) (`historical: true`).
+Канон истории — спека [docs/specs/2026-08-26-self-learning-design.md](../superpowers/specs/2026-08-26-self-learning-design.md) (`historical: true`), продуктовый протокол — [steward-learn.md](steward-learn.md) (`historical: true`).
 
 ## 5. Стюард — фоновый агент контура
 

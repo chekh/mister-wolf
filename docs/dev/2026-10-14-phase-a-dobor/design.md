@@ -22,13 +22,13 @@ review: pending
 
 ## 2. Карта покрытия REQ → компонент → контракт → проверка
 
-| REQ              | Компонент                                                                                                                                                                          | Контракт                                                                                                           | Где проверяется                                                                                                                        | NFR                                                  |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| REQ-01 (A9)      | `src/domain/memory-types.ts` + `src/app/use-cases/build-analytics.ts` + `.wolf/SKILL.md` + `templates/base/skills/wolf-brainstorm/SKILL.md` (consilium)                            | `CouncilOpinionV2` (см. §3.1) + `SynthesisV2` (см. §3.1)                                                           | unit (vitest): schema validation; integration: extractVote + new fields readable; e2e: new opinion + synthesis записываются и читаются | NFR-01 (обратная совместимость чтения legacy `vote`) |
-| REQ-02 (A10)     | `tests/e2e/docs-audit.test.ts` (новый) + правки в `README.md`, `README.ru.md`, `docs/concept/concept.md`, `docs/README.md`, `docs/superpowers/specs/*`, `docs/superpowers/plans/*` | скрипт grep по `wolf learn`, `wolf run`, `Sandbox Replay`, `STOP-гейт` + frontmatter `historical: true` (см. §3.2) | e2e (CI): grep-скрипт зелёный                                                                                                          | NFR-02 (тест в CI)                                   |
-| REQ-03 (A11)     | `src/adapters/fs/claim-registry.ts` + `src/app/use-cases/claim-artifact.ts` + `src/adapters/cli/commands/claim.ts` (новый подкоманд `heartbeat`)                                   | `heartbeatFilePath`, `readHeartbeat`, `writeHeartbeat`, `isStale` (расширенный, см. §3.3)                          | unit (vitest): synth-тест `claim-registry.test.ts` + heartbeat-файл                                                                    | NFR-03 (обратная совместимость 2.17.1 claim-файлов)  |
-| REQ-04 (B0)      | `templates/base/agents/*.md` + `src/app/use-cases/init-project.ts` + `src/app/use-cases/sync-base-set.ts` + `src/app/use-cases/scaffold-agent.ts`                                  | per-agent face owner_skill consistency (см. §3.4)                                                                  | integration: tmp-каталог `wolf init` + `wolf call` + `wolf face show`; playground-lab e2e                                              | NFR-04 (совместимость 2.17.x)                        |
-| REQ-05 (Release) | `package.json` + `CHANGELOG.md` + `npm version` + `git tag` + сайт `docs:build`                                                                                                    | релизный цикл (см. §3.5)                                                                                           | wolf-release-docs чек-лист                                                                                                             | NFR-05 (полный цикл)                                 |
+| REQ              | Компонент                                                                                                                                                  | Контракт                                                                                                           | Где проверяется                                                                                                                        | NFR                                                  |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| REQ-01 (A9)      | `src/domain/memory-types.ts` + `src/app/use-cases/build-analytics.ts` + `.wolf/SKILL.md` + `templates/base/skills/wolf-brainstorm/SKILL.md` (consilium)    | `CouncilOpinionV2` (см. §3.1) + `SynthesisV2` (см. §3.1)                                                           | unit (vitest): schema validation; integration: extractVote + new fields readable; e2e: new opinion + synthesis записываются и читаются | NFR-01 (обратная совместимость чтения legacy `vote`) |
+| REQ-02 (A10)     | `tests/e2e/docs-audit.test.ts` (новый) + правки в `README.md`, `README.ru.md`, `docs/concept/concept.md`, `docs/README.md`, `docs/specs/*`, `docs/plans/*` | скрипт grep по `wolf learn`, `wolf run`, `Sandbox Replay`, `STOP-гейт` + frontmatter `historical: true` (см. §3.2) | e2e (CI): grep-скрипт зелёный                                                                                                          | NFR-02 (тест в CI)                                   |
+| REQ-03 (A11)     | `src/adapters/fs/claim-registry.ts` + `src/app/use-cases/claim-artifact.ts` + `src/adapters/cli/commands/claim.ts` (новый подкоманд `heartbeat`)           | `heartbeatFilePath`, `readHeartbeat`, `writeHeartbeat`, `isStale` (расширенный, см. §3.3)                          | unit (vitest): synth-тест `claim-registry.test.ts` + heartbeat-файл                                                                    | NFR-03 (обратная совместимость 2.17.1 claim-файлов)  |
+| REQ-04 (B0)      | `templates/base/agents/*.md` + `src/app/use-cases/init-project.ts` + `src/app/use-cases/sync-base-set.ts` + `src/app/use-cases/scaffold-agent.ts`          | per-agent face owner_skill consistency (см. §3.4)                                                                  | integration: tmp-каталог `wolf init` + `wolf call` + `wolf face show`; playground-lab e2e                                              | NFR-04 (совместимость 2.17.x)                        |
+| REQ-05 (Release) | `package.json` + `CHANGELOG.md` + `npm version` + `git tag` + сайт `docs:build`                                                                            | релизный цикл (см. §3.5)                                                                                           | wolf-release-docs чек-лист                                                                                                             | NFR-05 (полный цикл)                                 |
 
 **NFR (наследуются из 2.17.1 + новые):**
 
@@ -118,7 +118,7 @@ interface SynthesisV2 {
 **Файл:** `tests/e2e/docs-audit.test.ts` (новый) — vitest-тест, проверяющий:
 
 - `README.md`, `README.ru.md`, `docs/concept/concept.md`, `docs/README.md` НЕ содержат инструкций (т.е. повелительного наклонения или фрагментов кода) с `wolf learn`, `wolf run`, `Sandbox Replay`, `STOP-гейт`. Допустимы: явные пометки «историческое основание», «архив», ссылки на архивные файлы.
-- `docs/superpowers/specs/2026-08-26-self-learning-design.md`, `docs/superpowers/plans/roadmap-v2.md` и аналогичные — frontmatter содержит `historical: true` ИЛИ раздел «Историческое основание» в первых 50 строках.
+- `docs/specs/2026-08-26-self-learning-design.md`, `docs/dev/roadmap/roadmap-v2.md` и аналогичные — frontmatter содержит `historical: true` ИЛИ раздел «Историческое основание» в первых 50 строках.
 - Все публичные документы ≥ 5 KB имеют раздел «Действующий контракт» (heading `^#+ Действующий контракт` или эквивалентный) с указанием версии (`2.17.x` или `2.18.0`).
 - Счётчик типов: в README, concept.md, docs/README.md нет «25 типов» / «25+ типов»; допустимо «8 core-типов» / «8 core + расширения».
 
@@ -316,7 +316,7 @@ interface BaseSetSpec {
 - **Контекст:** L0-решение (OQ-05) — полный проход `docs/**` с маркером `historical: true` для удалённых команд.
 - **Альтернативы:** (a) полный аудит всех `docs/**`; (b) минимальный (только README/concept).
 - **Решение:** (a) — выбран L0.
-- **Последствия:** больше работы (≈ 30+ спецификаций в `docs/superpowers/specs/`); но системно: ни один документ не врёт.
+- **Последствия:** больше работы (≈ 30+ спецификаций в `docs/specs/`); но системно: ни один документ не врёт.
 - **Объём работы:** A10 — worktree `2.18.0-a10` (после A9 + B0), scope = `docs/**` (read+write в allowlist). Скрипт `tests/e2e/docs-audit.test.ts` — регрессия в CI.
 
 ## 5. NFR (детализация)
@@ -329,7 +329,7 @@ interface BaseSetSpec {
 ### NFR-02 — docs-audit-тест в CI
 
 - `tests/e2e/docs-audit.test.ts` — vitest с `readFileSync` + grep-логикой; входит в `npm run check` (или эквивалент — TBD с учётом профиля проекта).
-- Покрытие: 4 ключевых файла (README*, concept.md, docs/README.md) + frontmatter `historical: true` в `docs/superpowers/specs/*.md`+`docs/superpowers/plans/\*.md`.
+- Покрытие: 4 ключевых файла (README*, concept.md, docs/README.md) + frontmatter `historical: true` в `docs/specs/*.md`+`docs/plans/\*.md`.
 
 ### NFR-03 — claim-файлы 2.17.1 совместимы
 

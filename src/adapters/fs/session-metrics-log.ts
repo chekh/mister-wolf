@@ -4,7 +4,7 @@
  * Формат: OTEL GenAI-совместимые поля по спеке §2.1 (session_id, gen_ai.*, orchestration.*,
  * outcome); gen_ai.modelID — обязательное поле (PoC#4, §21 п.23; null — модель неизвестна).
  * Документация формата: docs/guide/signal-log.md. Спека:
- * docs/superpowers/specs/2026-08-26-self-learning-design.md §2.1, §2.2.
+ * docs/specs/2026-08-26-self-learning-design.md §2.1, §2.2.
  *
  * Writer-матрица D1 (M20-07, решение Q3): writer'ы — сами CLI-команды (complain,
  * scaffold, tool expose); `wolf metrics emit` не вводится.
@@ -13,7 +13,7 @@
  * role_level, attempt, task_id, config_hash, prompt_hash, tools) — все опциональные,
  * записи v1 валидны без изменений. Upcast-совместимость (P1 D2): записи без
  * schema_version = v1, поля остаются undefined; писатели переходят на v2 отдельно.
- * Спека: docs/superpowers/specs/2026-09-04-p1-telemetry-identity-design.md.
+ * Спека: docs/specs/2026-09-04-p1-telemetry-identity-design.md.
  */
 import {
   appendFileSync,

@@ -15,7 +15,7 @@
 | Модель    | opencode/big-pickle                                                                                                                                       |
 | Агент     | requirements-builder                                                                                                                                      |
 | Вход      | `concept-2026-08-18-v2.0-memory-substrate.md` (git-история до `b31cbdd`) §1.2, §1.4, §6 Phase 8; `src/domain/memory-types.ts`; `src/domain/governance.ts` |
-| Выход     | `docs/superpowers/specs/2026-08-23-phase-8-schema-taxonomy.md`                                                                                            |
+| Выход     | `docs/specs/2026-08-23-phase-8-schema-taxonomy.md`                                                                                                        |
 | Гейт      | **обязательный** — человек одобряет спеку                                                                                                                 |
 
 Ключевые вопросы спеке:
@@ -37,20 +37,20 @@ opencode run --agent requirements-builder --model opencode/big-pickle --auto \
 
 ## Стадия 2: План реализации
 
-| Параметр  | Значение                                                       |
-| --------- | -------------------------------------------------------------- |
-| Сложность | структурная                                                    |
-| Модель    | opencode/big-pickle                                            |
-| Агент     | plan-builder                                                   |
-| Вход      | спека стадии 1                                                 |
-| Выход     | `docs/superpowers/plans/2026-08-23-phase-8-schema-taxonomy.md` |
-| Гейт      | **обязательный** — человек одобряет план                       |
+| Параметр  | Значение                                           |
+| --------- | -------------------------------------------------- |
+| Сложность | структурная                                        |
+| Модель    | opencode/big-pickle                                |
+| Агент     | plan-builder                                       |
+| Вход      | спека стадии 1                                     |
+| Выход     | `docs/plans/2026-08-23-phase-8-schema-taxonomy.md` |
+| Гейт      | **обязательный** — человек одобряет план           |
 
 Команда:
 
 ```bash
 opencode run --agent plan-builder --model opencode/big-pickle --auto \
-  "Создай план реализации по спеке @docs/superpowers/specs/2026-08-23-phase-8-schema-taxonomy.md"
+  "Создай план реализации по спеке @docs/specs/2026-08-23-phase-8-schema-taxonomy.md"
 ```
 
 ---
@@ -60,7 +60,7 @@ opencode run --agent plan-builder --model opencode/big-pickle --auto \
 | Параметр   | Значение                                                                               |
 | ---------- | -------------------------------------------------------------------------------------- |
 | Скрипт     | `./tools/pipeline/autorefine.sh`                                                       |
-| Цель       | `docs/superpowers/plans/2026-08-23-phase-8-schema-taxonomy.md`                         |
+| Цель       | `docs/plans/2026-08-23-phase-8-schema-taxonomy.md`                                     |
 | Раундов    | 3                                                                                      |
 | Проверщики | check-coverage, check-placeholders, check-types (+ check-architecture если >10 тасков) |
 | Гейт       | **обязательный** — человек ревьюит изменения                                           |
@@ -68,7 +68,7 @@ opencode run --agent plan-builder --model opencode/big-pickle --auto \
 Команда:
 
 ```bash
-./tools/pipeline/autorefine.sh docs/superpowers/plans/2026-08-23-phase-8-schema-taxonomy.md 3 \
+./tools/pipeline/autorefine.sh docs/plans/2026-08-23-phase-8-schema-taxonomy.md 3 \
   check-coverage check-placeholders check-types
 ```
 
@@ -97,7 +97,7 @@ opencode run --agent plan-builder --model opencode/big-pickle --auto \
 
 ```bash
 opencode run --agent executor --model opencode/big-pickle --auto \
-  "Реализуй план @docs/superpowers/plans/2026-08-23-phase-8-schema-taxonomy.md"
+  "Реализуй план @docs/plans/2026-08-23-phase-8-schema-taxonomy.md"
 ```
 
 ---

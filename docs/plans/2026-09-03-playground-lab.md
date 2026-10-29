@@ -5,7 +5,7 @@
 
 **Цель:** создать постоянную зону полигона испытаний `playground-lab/`, мигрировать туда находки/сценарии/протоколы, поглотить `scenario-lab/`, отфильтровать шум reset-снапшота.
 
-**Архитектура:** работа только с markdown/bash/git — кода TypeScript нет. Три зоны: `playground/` — расходный pristine-инстанс; `playground-lab/` — постоянный материал (карты, реестры, методика, скрипты); память Wolf — индекс состояния (обновляет координатор после мержа, НЕ воркеры). Спека: `docs/superpowers/specs/2026-09-03-playground-lab-design.md`.
+**Архитектура:** работа только с markdown/bash/git — кода TypeScript нет. Три зоны: `playground/` — расходный pristine-инстанс; `playground-lab/` — постоянный материал (карты, реестры, методика, скрипты); память Wolf — индекс состояния (обновляет координатор после мержа, НЕ воркеры). Спека: `docs/specs/2026-09-03-playground-lab-design.md`.
 
 **Стек:** bash, markdown, git, wolf CLI (`node dist/bootstrap/cli.js` — только в финальных шагах координатора).
 
@@ -459,7 +459,7 @@ git commit -m "feat(playground-lab): образец карты эксперим�
 
 - Move (git mv): `scenario-lab/` → `playground-lab/archive/scenario-lab/` (26 трекаемых файлов)
 - Delete: `playground-lab/archive/.gitkeep` (маркер не нужен после mv)
-- Modify: `docs/superpowers/specs/2026-08-31-base-sets-design.md:156` (строка «Не берём: mr-wolf-scenario-lab …»)
+- Modify: `docs/specs/2026-08-31-base-sets-design.md:156` (строка «Не берём: mr-wolf-scenario-lab …»)
 - Modify (вне репо): `~/.config/opencode/superpowers/skills/mr-wolf-scenario-lab/SKILL.md`
 
 - [ ] **Шаг 1: Переместить каталог с историей**
@@ -476,7 +476,7 @@ git status --short | head -30
 
 - [ ] **Шаг 2: Поправить упоминание в спеке base-sets**
 
-В `docs/superpowers/specs/2026-08-31-base-sets-design.md` найти строку
+В `docs/specs/2026-08-31-base-sets-design.md` найти строку
 (≈156): `**Не берём**: \`mr-wolf-scenario-lab\` (машино-специфичные абсолютные пути),`и дописать в конец строки:`материал лаборатории заархивирован в playground-lab/archive/scenario-lab (2026-09-03)`.
 
 - [ ] **Шаг 3: Обновить глобальный скилл**
@@ -506,7 +506,7 @@ grep -n "scenario-lab" ~/.config/opencode/superpowers/skills/mr-wolf-scenario-la
 - [ ] **Шаг 4: Закоммитить (репо; правка скилла вне git)**
 
 ```bash
-git add playground-lab/archive docs/superpowers/specs/2026-08-31-base-sets-design.md
+git add playground-lab/archive docs/specs/2026-08-31-base-sets-design.md
 git commit -m "feat(playground-lab): поглощение scenario-lab — архив кампании концепта"
 ```
 

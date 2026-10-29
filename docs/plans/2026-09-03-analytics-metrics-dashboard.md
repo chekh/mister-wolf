@@ -9,7 +9,7 @@
 
 **Стек:** TypeScript (Node ≥22, ESM), commander, zod, vitest; валидация `npm run check`.
 
-**Спека (единственный источник требований):** `docs/superpowers/specs/2026-09-03-analytics-metrics-dashboard-design.md` (rev.4).
+**Спека (единственный источник требований):** `docs/specs/2026-09-03-analytics-metrics-dashboard-design.md` (rev.4).
 
 ## Структура файлов
 
@@ -58,7 +58,7 @@
 
 ### Задача 1: M1a — сырые токены в parseRunMetrics
 
-Спека: `docs/superpowers/specs/2026-09-03-analytics-metrics-dashboard-design.md` §5 M1 (первый пункт), D3 (сырые токены — опциональные поля рядом с weighted, weighted не меняем), Q7 (источник cache-hit ratio), §8 критерий 1 (частично: raw-токены в записях прогона).
+Спека: `docs/specs/2026-09-03-analytics-metrics-dashboard-design.md` §5 M1 (первый пункт), D3 (сырые токены — опциональные поля рядом с weighted, weighted не меняем), Q7 (источник cache-hit ratio), §8 критерий 1 (частично: raw-токены в записях прогона).
 
 **Файлы:**
 
@@ -836,7 +836,7 @@ git commit -m "feat(effectiveness): --snapshot flag + delta print (M2)"
 
 ### Задача 4: M3 — pricing в конфиге + блок totals из run-сигналов
 
-Спека: `docs/superpowers/specs/2026-09-03-analytics-metrics-dashboard-design.md` (§2 D4/D7/D9, §5 M3, §4 Q5–Q7, §8 критерий 3).
+Спека: `docs/specs/2026-09-03-analytics-metrics-dashboard-design.md` (§2 D4/D7/D9, §5 M3, §4 Q5–Q7, §8 критерий 3).
 Методологическое ограничение rev.4: блок абсолютов (totals) считается из run-СИГНАЛОВ
 (`SignalEvent event='run'` — там outcome/tokens/duration_ms), run-log остаётся для
 economy/routing. $-поля скрыты (null) без pricing (D9).
@@ -1450,7 +1450,7 @@ git commit -m "feat(effectiveness): totals block from run signals + pricing conf
 
 ### Задача 5: M4 — недельные мутации в insights
 
-Спека: `docs/superpowers/specs/2026-09-03-analytics-metrics-dashboard-design.md` §5 M4, §4 Q6. Зависимости: задачи 1–3 влиты (`SignalEvent`/`mondayOf` не нужны — эта задача сама экспортирует `mondayOf` для задач 6–8).
+Спека: `docs/specs/2026-09-03-analytics-metrics-dashboard-design.md` §5 M4, §4 Q6. Зависимости: задачи 1–3 влиты (`SignalEvent`/`mondayOf` не нужны — эта задача сама экспортирует `mondayOf` для задач 6–8).
 
 **Файлы:**
 
@@ -1689,7 +1689,7 @@ git commit -m "feat(insights): weekly mutation buckets from event log (M4)"
 
 ### Задача 6: M5-ядро — memory ledger, lifecycle-классификация, view filter
 
-Спека: `docs/superpowers/specs/2026-09-03-analytics-metrics-dashboard-design.md` §2 (D7, D11), §4 (Q1–Q4, Q6, Q8, Q10–Q12), §5 M5, §6.2, §8 (критерии 4–6). Ревизия 4 (c9009fd): prevented в недельную воронку НЕ входит (holdout-счётчики кумулятивны) — только суммарно в rule ranking.
+Спека: `docs/specs/2026-09-03-analytics-metrics-dashboard-design.md` §2 (D7, D11), §4 (Q1–Q4, Q6, Q8, Q10–Q12), §5 M5, §6.2, §8 (критерии 4–6). Ревизия 4 (c9009fd): prevented в недельную воронку НЕ входит (holdout-счётчики кумулятивны) — только суммарно в rule ranking.
 
 **Предусловия (задачи 1–5 уже в ветке):**
 
@@ -1959,7 +1959,7 @@ describe('buildAnalyticsReport: memory ledger (Q1/Q2)', () => {
 /**
  * M5 (ядро L2): `wolf analytics` — реестры и воронка (Q1–Q4, Q6, Q8, Q10–Q12).
  * Чистая детерминированная агрегация store + signals + event-log + run-log, без LLM.
- * Дизайн: docs/superpowers/specs/2026-09-03-analytics-metrics-dashboard-design.md §5 M5, §6.2.
+ * Дизайн: docs/specs/2026-09-03-analytics-metrics-dashboard-design.md §5 M5, §6.2.
  */
 import type { MemoryStore } from '../../ports/memory-store.port.js';
 import type { EventLog } from '../../ports/event-log.port.js';
@@ -4565,7 +4565,7 @@ describe('analytics + dashboard golden scenarios (spec 2026-09-03)', () => {
 ````markdown
 # Аналитика эффективности: `wolf analytics`, `wolf dashboard`, снапшоты
 
-Канон — спека `docs/superpowers/specs/2026-09-03-analytics-metrics-dashboard-design.md`.
+Канон — спека `docs/specs/2026-09-03-analytics-metrics-dashboard-design.md`.
 Этот гайд — практическая документация команд витрины: что вызывать, как настраивать,
 что лежит в JSON. Аналитика — только агрегация существующих логов, без LLM.
 

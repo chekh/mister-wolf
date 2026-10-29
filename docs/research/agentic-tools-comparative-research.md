@@ -100,7 +100,7 @@ All safety mechanisms in existing projects rely on the agent **following instruc
 
 Every project creates files, but none treats them as **managed artifacts** (except OpenSpec, which has the best artifact model but still file-based):
 
-- **Superpowers:** Design specs in `docs/superpowers/specs/` — no lifecycle, no relationships.
+- **Superpowers:** Design specs in `docs/specs/` — no lifecycle, no relationships.
 - **Agentic:** `thoughts/` directory with YAML frontmatter — good structure, but no query interface, no versioning.
 - **Oh My OpenAgent:** Task JSON with `blockedBy`/`blocks` — task dependencies, not artifact graph.
 - **OpenAgents Control:** `.tmp/` ephemeral files — no persistence, no versioning.

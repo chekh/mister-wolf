@@ -1,7 +1,7 @@
 # План исполнения: dogfooding-hardening волны 0–3
 
 Версия: v2 (после ревью итерации 1: исполнимость/минимализм/доки; отчёты `.wolf/orchestration/report-2026-09-28-plan-review-*.md`).
-Дата: 2026-09-28. Спека: `docs/superpowers/specs/2026-09-27-dogfooding-hardening-design.md` (reviewed). Правила: CHANGELOG при релизе, доки+сайт при каждом релизе (`mem_20260928_..._fb4166`), теги EN-only, коммит после работы, полное E2E после плана.
+Дата: 2026-09-28. Спека: `docs/specs/2026-09-27-dogfooding-hardening-design.md` (reviewed). Правила: CHANGELOG при релизе, доки+сайт при каждом релизе (`mem_20260928_..._fb4166`), теги EN-only, коммит после работы, полное E2E после плана.
 
 ## Порядок и релизы
 

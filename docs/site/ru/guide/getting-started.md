@@ -30,7 +30,7 @@ wolf bootstrap
 - **Путь Б — организация OpenCode:** `wolf init --full --platform opencode` отрисовывает полный базовый набор — 6 рамок агентов, 19 скиллов, 3 команды, 2 плагина, посев playbook-лиц — и пишет `opencode.json` (`mcp.servers.wolf`, `default_agent=mr-wolf`, `experimental.subagent_depth=2`). MCP-конфиги платформ — opt-in: `wolf init --platform opencode,claude` (список заменяет текущий набор). После init, записавшего MCP-конфиги, **перезапустите opencode** — сервер и агент по умолчанию подключаются при старте. Claude Code при первом старте попросит approve project-scope MCP-сервер — это штатно.
 - `wolf bootstrap` сканирует проект и создаёт черновую стартовую память: proposed-правила и work-thread.
 
-Init считается завершённым, когда `wolf doctor` на проекте сообщает 0 issues; метрика активации и окно приёмки определены в спеке волны (`docs/superpowers/specs/2026-10-10-wave-2.16-init2-unpin-hygiene-design.md`, §11).
+Init считается завершённым, когда `wolf doctor` на проекте сообщает 0 issues; метрика активации и окно приёмки определены в спеке волны (`docs/specs/2026-10-10-wave-2.16-init2-unpin-hygiene-design.md`, §11).
 
 ## Быстрый try-out
 

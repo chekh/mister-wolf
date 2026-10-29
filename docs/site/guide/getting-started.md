@@ -37,7 +37,7 @@ What each path does:
 3. **Path B — OpenCode organization:** `wolf init --full --platform opencode` renders the full base set — 6 agent frames, 19 skills, 3 commands, 2 plugins, seeded playbook faces — and writes `opencode.json` (`mcp.servers.wolf`, `default_agent=mr-wolf`, `experimental.subagent_depth=2`). Platform configs are opt-in: `wolf init --platform opencode,claude` (the list replaces the current set). **Restart opencode** after an init that wrote MCP configs — the server and the default agent connect at startup. Claude Code will ask you to approve the project-scope MCP server on first start; that is expected.
 4. `wolf bootstrap` scans the project and drafts starting memory: proposed rules and a work thread.
 
-An init counts as completed when `wolf doctor` reports 0 issues on the project; the activation metric and the acceptance window are defined in the wave spec (`docs/superpowers/specs/2026-10-10-wave-2.16-init2-unpin-hygiene-design.md`, §11).
+An init counts as completed when `wolf doctor` reports 0 issues on the project; the activation metric and the acceptance window are defined in the wave spec (`docs/specs/2026-10-10-wave-2.16-init2-unpin-hygiene-design.md`, §11).
 
 ## Quick try-out (no installation)
 
