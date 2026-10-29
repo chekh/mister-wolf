@@ -36,6 +36,14 @@ Since 2.13 Wolf's taxonomy is **eight types** — down from 26, plus `face` in 2
 | "An agent's playbook needs a new version"                               | `wolf face`    |
 | Everything else — an observation, context, a metric, a piece of history | `note` + facet |
 
+## Working state shared across agents
+
+Use `note/history` for intermediate results, checkpoints and handoffs; `note/context` for the current mandate and hypotheses; and `note/metric` for measurements worth retaining. L0/L1 saves meaningful checkpoints and passes exact IDs with a short relevant summary. L2 returns a message and does not bypass memory permissions by editing `.wolf` files directly.
+
+Working records explicitly use `memory_class: working`, `truth_role: proposed_knowledge`, `lifetime: short_term` (or `session` for disposable context), `review_state: proposed` and `status: active`. These records are neither lessons nor rule proposals. The Steward aggregates `lesson/active` and triages `complaint/open`; `review_state` alone does not add working notes to either queue. Extract a real transferable lesson or rule defect separately, retaining the evidence link.
+
+Link a record to its thread using the supported `related_to` relation and include task/thread IDs and next steps in its body. Do not invent note fields. Lifetime is metadata rather than automatic TTL, and scope is not read access control. After confirmed handoff or completion, the responsible agent archives unnecessary state while retaining the required audit trail and references. Do not inject the entire archive into every worker or replace the four core FULL documents in `docs/dev/` with working notes.
+
 ## Facets
 
 A facet is the **character of a record**. The default vocabulary is closed — eight values: `howto`, `pitfall`, `context`, `metric`, `history`, `legacy`, `constraint`, `proposal`.

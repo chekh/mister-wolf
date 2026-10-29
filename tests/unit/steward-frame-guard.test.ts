@@ -22,10 +22,11 @@ describe('steward frame guard (steward.md)', () => {
     expect(frame).toContain('## Было');
     expect(frame).toContain('## Стало');
     expect(frame).toContain('## Почему');
-    // двухшаговость: подтверждение владельцем + перераспределение доставки
+    // двухшаговость proposed → apply техническая; применение — без
+    // повторного разрешения владельца (автономная агрегация)
     expect(frame).toContain('wolf aggregate apply');
     expect(frame).toContain('trigger_keywords');
-    expect(frame).toContain('перераспределение');
+    expect(frame).toContain('без повторного разрешения');
     // мутация лица — через память с исходом
     expect(frame).toContain('outcome_of');
   });

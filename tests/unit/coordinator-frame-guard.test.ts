@@ -4,8 +4,9 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 // 2.14 §7.1 (триггер 1): цикловой триггер Стюарда в рамке координатора —
-// recap после приёмки отчётов + вложенный вызов steward + подтверждение
-// владельцем. Гард против регресса шаблона (дизъюнктен с base-frames-guard).
+// recap после приёмки отчётов + вложенный вызов steward + автономное
+// применение aggregate apply без повторного разрешения владельца.
+// Гард против регресса шаблона (дизъюнктен с base-frames-guard).
 describe('coordinator frame guard (mr-wolf.md)', () => {
   it('keeps aggregation cycle-trigger markers: recap + steward + apply', () => {
     const frame = readFileSync(
@@ -16,8 +17,9 @@ describe('coordinator frame guard (mr-wolf.md)', () => {
     expect(frame).toContain('wolf recap');
     expect(frame).toContain('Стюард: агрегация');
     // диспетчеризация вложенным вызовом, не автоспавн
-    expect(frame).toContain('opencode run --agent steward');
-    // двухшаговость: подтверждает владелец
+    expect(frame).toContain('вложенный вызов Стюарда');
+    // применение: Стюард сам, без повторного запроса разрешения
     expect(frame).toContain('wolf aggregate apply');
+    expect(frame).toContain('без повторного');
   });
 });

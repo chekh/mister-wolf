@@ -42,7 +42,16 @@ const ALLOWED_FILES_WITH_HISTORICAL = new Set<string>([
 
 // Документы текущей фазы — аудит их не касается (T-INT ведёт отдельно).
 // docs/site/{,ru/}changelog/ — зеркала CHANGELOG, исторические токены ожидаемы.
-const EXCLUDED_DIRS = ['docs/dev/2026-10-14-phase-a-dobor', 'docs/site/changelog', 'docs/site/ru/changelog'];
+// docs/dev/2026-10-27-roadmap-v4-review/ — пакет обзора роадмапа 2026-10-27: документ
+// текущей фазы со служебными ссылками на удалённую команду `wolf run` (прецедент —
+// docs/dev/2026-10-14-phase-a-dobor). При замене пакета действующим роадмапом v4
+// исключение пересматривается.
+const EXCLUDED_DIRS = [
+  'docs/dev/2026-10-14-phase-a-dobor',
+  'docs/dev/2026-10-27-roadmap-v4-review',
+  'docs/site/changelog',
+  'docs/site/ru/changelog',
+];
 
 function scanText(text: string): string[] {
   return FORBIDDEN_TOKENS.filter((t) => text.includes(t));

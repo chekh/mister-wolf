@@ -10,6 +10,23 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.21.1] - 2026-10-29
+
+### Changed — Wolf efficiency update (instructions-only; no runtime source, scripts, dependencies or schemas)
+
+- **Short bounded L2 mandates with early return**: worker frames and the executor-lead playbook define one finite result per L2 call — ready inputs, a check, a budget and stop rules; unexpected complexity or a missing required input returns to L1 immediately instead of open-ended digging; a COMPLEX parent task is no longer a valid whole L2 mandate; independent ready tasks run in parallel with isolated write sets while dependent tasks block locally, not the whole wave.
+- **Tool reuse and bounded consultation**: L1 first resolves missing inputs and reuses a proven library tool or an active `wolf tool list` contract — a reusable new script is a separate authorized task; one precise expertise gap may justify one expert, and a council is an expensive reserve for a materially blocking decision: BLOCKED, a tool failure or risk alone no longer triggers it; advice stays advisory and goal changes go to L0/owner.
+- **Clean `docs/dev` composition**: FULL keeps its core requirements/design/plan/test-plan documents and only individually justified additions; private reports, drafts, checkpoints, raw logs and scripts stay out of `docs/dev` (including subdirectories); Wolf memory is the first cross-session exchange route, files are the fallback.
+- **Addressed working memory — `note/context`, `note/history`, `note/metric`**: intermediate results live as working notes with explicit `memory_class=working`, `truth_role=proposed_knowledge`, `lifetime`/`review_state` metadata (supported fields, not a new schema); working notes are neither lessons nor rule proposals, are excluded from the Steward's aggregation and complaint-triage pools, and a filesystem report is a fallback rather than a mandatory new file per subtask; L2 returns a message.
+- **Autonomous, bounded Steward lesson aggregation** (owner-authorized): the Steward prepares **and applies** suitable aggregates without asking the user again; the technical proposed → apply sequence stays, one invocation handles one small cluster, mandatory preflight (aggregate/source type, distinct IDs, freshness, no self-link, no competing aggregate) runs immediately before `wolf aggregate apply <id> --created-by agent:steward`, an interrupted apply is resumed on the same ID, and an unsafe cluster is skipped with a reason instead of requesting approval for a known-unsafe action.
+- **Delivery contour tightened**: L2 receives the assigned face/method and relevant policies from L1 and no longer re-runs general onboarding or `wolf search` lookups for already-delivered instructions (the steward keeps its full plugin-inject + fallback contour); the coordinator triggers the nested Steward call and the Steward applies the aggregate itself.
+- **Live faces move through the authorized Steward route with full G17**: template seeds do not silently replace active faces; the next real face version is created via `wolf face new` with reason/minimal-change/boundaries/example-helps/example-keep/verification/rollback.
+
+### Fixed
+
+- **`worker-reviewer` keeps the explicit destructive-command ban**: the compressed frame preserves "no sudo, no `rm -rf` outside the system tmp, no destructive git, no `curl | sh`, no secrets" alongside its read-only role contract (restored while applying the update).
+- **docs-audit S-10 unblocked** (owner decision 2026-10-27): the 2026-10-27 roadmap-v4 review package is excluded from the removed-commands audit as a current-phase document; frame/skill guard tests updated to pin the new wording (nested Steward call, autonomous aggregation, `SUMMARY/VERDICT/FINDINGS/SCOPE/LIMITS/EVIDENCE` contract, reviewer complaint-by-frame W1–W4, verdict vocabulary pinned in the `worker-reviewer` frame).
+
 ## [2.21.0] - 2026-10-26
 
 ### Changed

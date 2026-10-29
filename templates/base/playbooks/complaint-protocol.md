@@ -2,7 +2,7 @@
 title: Жалобный протокол v2 — подача и триаж
 owner_skill: mr-wolf
 version: 2
-steps: Проверь критерии W1–W4 (плохое ПРАВИЛО, не тул) | Подай объектом wolf complain --about/--rule/--evidence/--proposal | Укажи жалобу строкой COMPLAINT в отчёте после FRICTION | Диспетчер: wolf list --type complaint --status open при каждой приёмке до вердикта | Триаж по дереву 6 ветвей, исход — transition + update --set resolution | Мутация — только Стюард и только через ветвь steward-mutation
+steps: "Проверь критерии W1–W4 (плохое ПРАВИЛО, не тул) | Подай объектом wolf complain --about/--rule/--evidence/--proposal | Укажи жалобу строкой COMPLAINT в отчёте после FRICTION | Диспетчер: wolf list --type complaint --status open при каждой приёмке до вердикта | Триаж по дереву 6 ветвей, исход — transition + update --set resolution | Мутация — только Стюард и только через ветвь steward-mutation"
 tags: complaint,playbook
 ---
 
@@ -82,9 +82,14 @@ tags: complaint,playbook
    - **fix-instruction** — правило ок, чинится инструкцией: уточнение в
      следующий бриф → `resolved` + `resolution="инструкция: <что>"`;
    - **steward-mutation** — правило систематически плохое: вложенный
-     вызов Стюарда `opencode run --agent steward` (вход = id жалобы);
+     вызов Стюарда через разрешённый task-канал с обеспеченной launcher-атрибуцией
+     (вход = id жалобы; запрет не обходить shell-запуском);
      после его отчёта `resolved` +
      `resolution="мутация: <face-id> v<N> через wolf face new"`;
+     Запись новой версии — исправление правила, не доказательство качества:
+     следующий относящийся TASK получает face-id/revision, короткую проверку
+     исходного сбоя и сохранённого полезного поведения. Одного доказанного W1–W4
+     достаточно для триажа; зрелость агрегации уроков здесь не требуется.
    - **reject** — необоснована (автор ошибся): `rejected` + причина в
      resolution, разъяснение автору в следующем промпте;
    - **obsolete** — правило-цель исчезло (playbook superseded и т.п.):
