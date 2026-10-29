@@ -76,7 +76,6 @@ The Steward's faces — Mentor, Librarian, Archivist — and the frame/face/muta
 
 Sources are retained. Unsafe clusters are skipped with a reason rather than an approval request. Automatic lesson aggregation does not authorize product decisions, new rules, face mutations or complaint closure. Face changes remain a separate authorized G17 workflow with `outcome_of`; the owner retains `wolf face restore` and `wolf face breakglass`.
 
-
 **Does it work? The decay metric.** `wolf analytics --view steward` answers the real question — did aggregation reduce the flow of same-class lessons and complaints: for every active aggregate, how many new lessons and complaints of the same class (≥ 1 shared tag) appeared in the 7 days before vs after `memory.aggregated`. The class is a free-tag heuristic; the upgrade path is `pattern_key` — see [Analytics](/guide/cli/analytics).
 
 Honest status: rule mutation through the Steward is proven in PoC #3; the organization-learning effect (fewer same-class lessons and complaints over time) is a **target, validating (E1d)** — see [maturity](https://github.com/chekh/mister-wolf/blob/main/docs/concept/maturity.md).
