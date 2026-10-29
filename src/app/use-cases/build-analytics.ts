@@ -2101,7 +2101,7 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
  * Только агрегация существующих данных (store, relations, event-log, signals,
  * run-log), без LLM и без выдуманных чисел: мало данных → null → панель печатает n/a.
  *
- * Методика шума: docs/planning/memory-audit-2026-08-29.md «пишется-но-не-читается» —
+ * Методика шума: docs/research/memory-audit-2026-08-29.md «пишется-но-не-читается» —
  * объект шум, если нет ни одной связи (relations) и ни одного события в event-log
  * кроме memory.added; memory.scan.updated = подтверждение актуальности сканом =
  * использование. Объекты document-ref — функциональный «индекс документов»

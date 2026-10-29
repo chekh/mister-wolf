@@ -66,8 +66,8 @@
 
 ## Аудит и планирование
 
-- [Аудит использования памяти (2026-08-29)](./planning/memory-audit-2026-08-29.md) — распределение объектов по типам/статусам, пустующие типы (A8a).
-- [Ideas backlog](./planning/ideas-backlog.md) — реестр зафиксированных, но не реализованных идей.
+- [Аудит использования памяти (2026-08-29)](./research/memory-audit-2026-08-29.md) — распределение объектов по типам/статусам, пустующие типы (A8a).
+- [Ideas backlog](./dev/roadmap/ideas-backlog.md) — реестр зафиксированных, но не реализованных идей.
 
 ## Phase specs — история решений
 
@@ -82,11 +82,10 @@
 - Phase 6 (governance + flat namespace) — [spec](./specs/2026-07-02-phase-6-governance-design.md)
 - Session wrap-up habit — [spec](./specs/2026-07-02-session-wrap-up-habit-design.md)
 - Deterministic refinement pipeline — [spec](./specs/2026-07-29-deterministic-refinement-pipeline-design.md) (реализация удалена)
-- Phase 8 (schema-driven taxonomy) — [spec/plan](./specs/2026-08-23-phase-8-schema-taxonomy.md)
+- Phase 8 (schema-driven taxonomy) — [spec](./specs/2026-08-23-phase-8-schema-taxonomy.md)
 - Phase 9 (solve/call) — [spec](./specs/2026-08-23-phase-9-solve-call.md)
 - Phase 10 (insights) — [spec](./specs/2026-08-26-phase-10-insights.md)
 - Phase 11 (structured thinking) — [spec](./specs/2026-08-26-phase-11-thinking.md)
-- Master plans по фазам — [./master-plans/](./master-plans/)
 
 ## Research
 
@@ -101,4 +100,4 @@
 
 ---
 
-_Documentation index. Canonical concept: [Concept v3.3.1](./concept/concept.md). Роадмап: [roadmap-v4](./dev/roadmap/roadmap-v4.md). Регистр идей: [ideas-backlog](./planning/ideas-backlog.md)._
+_Documentation index. Canonical concept: [Concept v3.3.1](./concept/concept.md). Роадмап: [roadmap-v4](./dev/roadmap/roadmap-v4.md). Регистр идей: [ideas-backlog](./dev/roadmap/ideas-backlog.md)._
