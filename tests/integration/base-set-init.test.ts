@@ -19,6 +19,7 @@ function runCli(args: string[], cwd: string): { stdout: string; stderr: string; 
 
 const AGENTS = ['executor-lead', 'mr-wolf', 'steward', 'worker-implementer', 'worker-researcher', 'worker-reviewer'];
 const WORKERS_PLUS_STEWARD = ['steward', 'worker-implementer', 'worker-researcher', 'worker-reviewer'];
+const WORKERS = ['worker-implementer', 'worker-researcher', 'worker-reviewer'];
 
 describe('wolf init: базовый набор (спека §7, §11.1–11.3)', () => {
   let dir: string;
@@ -66,8 +67,10 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
 
     // триггер жалобы в воркерских лицах (лица живут в shared/faces/) —
     // процедурный, не декларативный (дефект догфудинга фазы C: декларативное
-    // правило воркеры не исполняли)
-    for (const f of ['worker-implementer', 'worker-researcher', 'worker-reviewer']) {
+    // правило воркеры не исполняли). Исключение 2.21.1: у reviewer жалоба
+    // переведена на рамку (W1–W4 + «Жалоба — по рамке»), без
+    // playbook-триггера
+    for (const f of ['worker-implementer', 'worker-researcher']) {
       const seeded = readdirSync(join(dir, '.wolf/memory/shared/faces'))
         .map((p) => readFileSync(join(dir, '.wolf/memory/shared/faces', p), 'utf-8'))
         .find((body) => body.includes(`owner_skill: ${f}`));
@@ -75,6 +78,12 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
       expect(seeded, f).toContain('ТРИГГЕР ЖАЛОБЫ');
       expect(seeded, f).toContain('НЕ заменяет');
     }
+    const reviewerFace = readdirSync(join(dir, '.wolf/memory/shared/faces'))
+      .map((p) => readFileSync(join(dir, '.wolf/memory/shared/faces', p), 'utf-8'))
+      .find((body) => body.includes('owner_skill: worker-reviewer'));
+    expect(reviewerFace, 'worker-reviewer').toBeDefined();
+    expect(reviewerFace, 'worker-reviewer').toContain('W1–W4');
+    expect(reviewerFace, 'worker-reviewer').toContain('Жалоба — по рамке');
   });
 
   it("повторный init: все файловые outcomes skipped, playbook'ы не задвоены (§11.2)", () => {
@@ -93,7 +102,7 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
     expect((list.match(/\[face\]/g) ?? []).length).toBe(6); // снова 6, не 12
   });
 
-  it('контент отрендеренных агентов: agent-id ×6, тройка «рамка/лицо/доставка», wolf search у воркеров (§11.3, §11.8)', () => {
+  it('контент отрендеренных агентов: agent-id ×6, ЛИЦО доставлено L1/plugin у воркеров, steward — тройка с plugin-inject (§11.3, §11.8)', () => {
     expect(runCli(['init', '--full', '--model', 'zai-coding-plan/glm-5.3'], dir).status).toBe(0);
 
     for (const a of AGENTS) {
@@ -102,13 +111,23 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
       expect(body, a).toContain('wolf:rendered base='); // штамп рендера
     }
 
-    // тройка: ЛИЦО (тег playbook) + ДОСТАВКА (plugin-inject / pull через wolf search)
-    for (const a of WORKERS_PLUS_STEWARD) {
+    // тройка у воркеров (2.21.1): ЛИЦО доставляет L1/plugin — рамка ссылается
+    // на доставленное лицо, самостоятельного wolf search у воркеров больше нет;
+    // steward сохраняет полный контур plugin-inject + wolf search
+    for (const a of WORKERS) {
       const body = readFileSync(join(dir, '.opencode/agents', `${a}.md`), 'utf-8');
-      expect(body, a).toContain('playbook');
-      expect(body, a).toContain('plugin-inject');
-      expect(body, a).toContain('wolf search');
+      // 'playbook' в любом регистре: reviewer пишет «Playbook не расширяет TASK»
+      expect(body.toLowerCase(), a).toContain('playbook');
+      expect(body, a).toContain('доставленное лицо');
+      expect(body, a).not.toContain('plugin-inject');
     }
+    const stewardBody = readFileSync(join(dir, '.opencode/agents', 'steward.md'), 'utf-8');
+    expect(stewardBody).toContain('plugin-inject');
+    expect(stewardBody).toContain('wolf search');
+
+    // словарь вердиктов ревьюера — полный enum в рамке worker-reviewer
+    const reviewerBody = readFileSync(join(dir, '.opencode/agents', 'worker-reviewer.md'), 'utf-8');
+    expect(reviewerBody).toContain('VERDICT: APPROVED | CHANGES_REQUIRED | INCONCLUSIVE');
 
     // using-skills в rendered-виде: инварианты редакции 2026-10-09
     const using = readFileSync(join(dir, '.opencode/skills/using-skills/SKILL.md'), 'utf-8');

@@ -52,11 +52,14 @@ describe('conveyor skills guard (2.15)', () => {
   it('wolf-review keeps verdict vocabulary, budget stop and security-lens log', () => {
     const s = read('wolf-review');
     expect(s).toContain('UNRESOLVED');
-    expect(s).toContain('VERDICT: APPROVED | CHANGES_REQUIRED | INCONCLUSIVE');
+    // словарь вердиктов — через контракт отчёта ревьюера (SUMMARY/VERDICT/…);
+    // полный enum APPROVED | CHANGES_REQUIRED | INCONCLUSIVE живёт в рамке
+    // worker-reviewer и пинится в base-set-init (§11.3)
+    expect(s).toContain('SUMMARY/VERDICT/FINDINGS/SCOPE/LIMITS/EVIDENCE');
     expect(s).toContain('artifact revision');
-    expect(s).toContain('security-линзы зафиксируй в review.md');
-    expect(s).toContain('Гейты');
-    expect(s).toContain('прежнее одобрение не переносится');
+    expect(s).toContain('Security/trust обязателен');
+    expect(s).toContain('## Гейт');
+    expect(s).toContain('неизменённые результаты переиспользуй только при доказанной применимости');
   });
 
   it('wolf-sdd/wolf-execute keep worker-no-commit and linear fallback semantics', () => {
@@ -71,7 +74,7 @@ describe('conveyor skills guard (2.15)', () => {
     const exec = read('wolf-execute');
     expect(exec).toContain('TASK/RESULT/EVIDENCE');
     expect(exec).toContain('диспетчеризация недоступна');
-    expect(exec).toContain('саморевью не выдавай за независимое');
+    expect(exec).toContain('Саморевью не независимо');
   });
 
   it('discipline axis: review labels, RED/GREEN, evidence and worktree ownership', () => {
