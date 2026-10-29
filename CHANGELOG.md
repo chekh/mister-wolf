@@ -18,8 +18,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ### Fixed
 
-- **`worker-reviewer` keeps the explicit destructive-command ban**: the compressed frame preserves "no sudo, no `rm -rf` outside the system tmp, no destructive git, no `curl | sh`, no secrets" alongside its read-only role contract (restored while applying the update).
+- **Each project validates memory objects against its own type schema**: the schema cache of the markdown memory store was one module-level value for the whole process, so the taxonomy of the first project read in that process was reused for every project afterwards — a memory object could be accepted (or rejected) by the rules of another project. `wolf upgrade`, which creates a store for foreign project roots within one process, was the visible path to this. The cache is now keyed by the project root, the same way the project config cache already was. Reading and validating memory objects inside a single project behaves exactly as before.
 - **docs-audit S-10 unblocked** (owner decision 2026-10-27): the 2026-10-27 roadmap-v4 review package is excluded from the removed-commands audit as a current-phase document; frame/skill guard tests updated to pin the new wording (nested Steward call, autonomous aggregation, `SUMMARY/VERDICT/FINDINGS/SCOPE/LIMITS/EVIDENCE` contract, reviewer complaint-by-frame W1–W4, verdict vocabulary pinned in the `worker-reviewer` frame).
+- **`worker-reviewer` keeps the explicit destructive-command ban**: the compressed frame preserves "no sudo, no `rm -rf` outside the system tmp, no destructive git, no `curl | sh`, no secrets" alongside its read-only role contract (restored while applying the update).
 
 ## [2.21.0] - 2026-10-26
 
