@@ -8,6 +8,19 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.21.2] - 2026-10-30
+
+### Fixed — the multi-project memory schema isolation is actually delivered
+
+- **Each project validates memory objects against its own type schema**: the fix announced in the 2.21.1 notes was not in that release — the published `v2.21.1` tag still carried a single process-wide `typeSchemaCache` in the markdown memory store, so the taxonomy of the first project read in a process was reused for every project afterwards. The cache is now keyed by the project root (`Map` keyed by `baseDir`, the same pattern the project config cache already used), so one project no longer decides what another project accepts. `wolf upgrade`, which opens stores for foreign project roots inside one process, is the visible path this replaces.
+- **Regression test that fails without the fix**: `tests/unit/adapters/markdown-memory-store-schema-isolation.test.ts` drives four project roots with different `memory_types` and `facets` in one process and pins that each is validated by its own schema; on the pre-fix source all three cases fail.
+
+### Limitations — unchanged by this patch
+
+- The schema cache is not invalidated inside a process: editing `.wolf/config.yaml` after the first read is picked up by the next process only. Behavior of 2.21.0/2.21.1, kept as is (minimal patch).
+- The process-wide `configLoadWarned` flag still means only the first project with a broken config reports it; later projects silently fall back to the core schema.
+- The cache key is the raw `baseDir` string, so reaching the same project through a different path form (trailing slash, symlink) builds a second schema entry — duplicated work, not a correctness issue.
+
 ## [2.21.1] - 2026-10-29
 
 ### Changed — Wolf efficiency update (instructions-only; no runtime source, scripts, dependencies or schemas)
@@ -22,8 +35,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ### Fixed
 
-- **`worker-reviewer` keeps the explicit destructive-command ban**: the compressed frame preserves "no sudo, no `rm -rf` outside the system tmp, no destructive git, no `curl | sh`, no secrets" alongside its read-only role contract (restored while applying the update).
+- **Each project validates memory objects against its own type schema**: the schema cache of the markdown memory store was one module-level value for the whole process, so the taxonomy of the first project read in that process was reused for every project afterwards — a memory object could be accepted (or rejected) by the rules of another project. `wolf upgrade`, which creates a store for foreign project roots within one process, was the visible path to this. The cache is now keyed by the project root, the same way the project config cache already was. Reading and validating memory objects inside a single project behaves exactly as before.
 - **docs-audit S-10 unblocked** (owner decision 2026-10-27): the 2026-10-27 roadmap-v4 review package is excluded from the removed-commands audit as a current-phase document; frame/skill guard tests updated to pin the new wording (nested Steward call, autonomous aggregation, `SUMMARY/VERDICT/FINDINGS/SCOPE/LIMITS/EVIDENCE` contract, reviewer complaint-by-frame W1–W4, verdict vocabulary pinned in the `worker-reviewer` frame).
+- **`worker-reviewer` keeps the explicit destructive-command ban**: the compressed frame preserves "no sudo, no `rm -rf` outside the system tmp, no destructive git, no `curl | sh`, no secrets" alongside its read-only role contract (restored while applying the update).
 
 ## [2.21.0] - 2026-10-26
 

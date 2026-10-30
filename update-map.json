@@ -1,36 +1,36 @@
 {
-  "version": "2.21.1",
-  "prev": "2.21.0",
+  "version": "2.21.2",
+  "prev": "2.21.1",
   "files": [
     {
       "path": "base/agents/executor-lead.md",
       "kind": "agent",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/agents/mr-wolf.md",
       "kind": "agent",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/agents/steward.md",
       "kind": "agent",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/agents/worker-implementer.md",
       "kind": "agent",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/agents/worker-researcher.md",
       "kind": "agent",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/agents/worker-reviewer.md",
       "kind": "agent",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/commands/analyze-doc.md",
@@ -55,12 +55,12 @@
     {
       "path": "base/skills/receiving-code-review/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/requesting-code-review/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/test-driven-development/SKILL.md",
@@ -75,12 +75,12 @@
     {
       "path": "base/skills/using-skills/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/verification-before-completion/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-brainstorm/SKILL.md",
@@ -90,7 +90,7 @@
     {
       "path": "base/skills/wolf-debug/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-design/SKILL.md",
@@ -100,7 +100,7 @@
     {
       "path": "base/skills/wolf-execute/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-explain/SKILL.md",
@@ -110,22 +110,22 @@
     {
       "path": "base/skills/wolf-handoff/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-plan/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-review/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-sdd/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-skill-intake/SKILL.md",
@@ -157,42 +157,42 @@
     {
       "template": "base/playbooks/complaint-protocol.md",
       "owner_skill": "mr-wolf",
-      "category": "changed",
+      "category": "unchanged",
       "seed": true
     },
     {
       "template": "base/playbooks/executor-lead-playbook.md",
       "owner_skill": "executor-lead",
-      "category": "changed",
+      "category": "unchanged",
       "seed": true
     },
     {
       "template": "base/playbooks/steward-nastavnik.md",
       "owner_skill": "steward",
-      "category": "changed",
+      "category": "unchanged",
       "seed": true
     },
     {
       "template": "base/playbooks/worker-implementer-playbook.md",
       "owner_skill": "worker-implementer",
-      "category": "changed",
+      "category": "unchanged",
       "seed": true
     },
     {
       "template": "base/playbooks/worker-researcher-playbook.md",
       "owner_skill": "worker-researcher",
-      "category": "changed",
+      "category": "unchanged",
       "seed": true
     },
     {
       "template": "base/playbooks/worker-reviewer-playbook.md",
       "owner_skill": "worker-reviewer",
-      "category": "changed",
+      "category": "unchanged",
       "seed": true
     }
   ],
   "agents_md": {
-    "category": "changed",
+    "category": "unchanged",
     "mode": "append-block"
   },
   "schema_migrations": [],
