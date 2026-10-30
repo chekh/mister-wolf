@@ -2,7 +2,7 @@
 description: Анализ документа по методике из памяти Wolf (playbook worker-researcher). Использование: /analyze-doc <путь-к-файлу>
 agent: worker-researcher
 ---
-<!-- wolf:rendered base=analyze-doc.md set=2.20.1 -->
+<!-- wolf:rendered base=analyze-doc.md set=2.21.1 -->
 Проанализируй документ: $ARGUMENTS
 
 Протокол (рамочная команда — методика в памяти Wolf):

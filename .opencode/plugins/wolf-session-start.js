@@ -1,4 +1,4 @@
-// wolf:rendered base=wolf-session-start.js set=2.20.1
+// wolf:rendered base=wolf-session-start.js set=2.21.1
 /**
  * Mr.Wolf session-start plugin (шаблон базового набора, спека §5.4).
  *
