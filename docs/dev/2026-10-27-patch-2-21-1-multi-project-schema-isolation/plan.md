@@ -61,6 +61,29 @@ mode: FIX
 - [ ] **T-9 — Релиз 2.21.2** (`npm version`, CHANGELOG, update-map, generated docs, тег, публикация).
 - [ ] **T-10 — Независимое ревью** свежим контекстом на релизной revision; вердикт привязан к SHA.
 
+### Результат выпуска (2026-10-30)
+
+- [x] **T-9 — Релиз 2.21.2 выполнен.** Релизная revision — `2d88c58` (parent: мерж `28ee47e`),
+      тег `v2.21.2` на ней, `origin/main` = `2d88c58`. `package.json`/`update-map.json` — 2.21.2;
+      `update-map.json` и зеркала CHANGELOG сгенерированы скриптами. Публикация: npm
+      (`mister-wolf@2.21.2`, dist-tag `latest`), GitHub Release
+      https://github.com/chekh/mister-wolf/releases/tag/v2.21.2, docs-site
+      (Deploy Docs green). Локальная установка `npm i -g mister-wolf@2.21.2` → `wolf --version` 2.21.2.
+      Сайт: navbar `v2.21.2` на главной и на `/changelog/`, запись `[2.21.2] - 2026-10-30` в EN- и
+      RU-зеркале.
+- [x] **T-10 — Независимое ревью выполнено** (свежий контекст, read-only, revision `2d88c58`):
+      APPROVED_WITH_MINOR, 0 critical / 0 major / 3 minor. Диспозиция: R-1 (`docs/dev/INDEX.md`
+      не закоммичен — чужая незавершённая правка индекса, в релиз не включена, оставлена владельцу);
+      R-2 (чекбоксы T-9/T-10 и запись выпуска — закрыты этим разделом); R-3 (E2E привязан к
+      релизной revision — выполнен повторно на `2d88c58`, см. §«Приёмка AC §5»).
+
+### Команды и evidence релиза
+
+- `npm run check` на `2d88c58`: 216 файлов / 1985 тестов passed, exit 0.
+- `npm run e2e` на `2d88c58`: 61 файл / 233 теста passed, exit 0 (1351 с, singleFork).
+- `npm run docs:build` на `2d88c58`: generate-cli-reference + sync-changelog + VitePress build, exit 0.
+- CI (main) и Publish (tag `v2.21.2`), Deploy Docs: все завершились success.
+
 ### Приёмка AC §5 (FIX-CACHE)
 
 | AC                                                                          | Проверка                                                                                                                                                                                                                                                                     | Результат                                                   |
