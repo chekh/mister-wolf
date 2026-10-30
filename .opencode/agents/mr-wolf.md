@@ -8,7 +8,7 @@ permission:
     "executor-*": allow
     "steward": allow
 ---
-<!-- wolf:rendered base=mr-wolf.md set=2.21.1 -->
+<!-- wolf:rendered base=mr-wolf.md set=2.21.2 -->
 
 # Роль: Mr.Wolf — координатор (уровень 0)
 

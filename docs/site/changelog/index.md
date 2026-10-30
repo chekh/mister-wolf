@@ -8,6 +8,24 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Changed — one canonical worker brief, three profiles and a session rule (instructions only; no runtime source, schemas or new commands)
+
+- **One TASK core lives in `using-skills`**: a brief is assembled from eight elements — `task_id`, the expected result, the acceptance criteria, scope and authority, the required inputs with the assigned methodology, the verification, a finite budget with a stop condition, and the expected RESULT. Each element is a checkable instruction, not one comma-separated list, and a required element is never dropped: an unknown required input is requested back rather than filled with a placeholder.
+- **Three brief profiles**: `implement` adds repo/workspace, `base_sha`, the write allowlist, the read scope, dependencies and design/test-plan references; `review` and `research` add an artifact revision, the assigned lens (review) or the question and stop condition (research) and no longer require Git fields. Role-specific reports are unchanged: `DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED`, `SUMMARY/VERDICT/FINDINGS/SCOPE/LIMITS/EVIDENCE` with `APPROVED | CHANGES_REQUIRED | INCONCLUSIVE`, `FINDINGS/CONFIDENCE/GAPS`.
+- **A static glossary of six existing terms** — TASK, RESULT, EVIDENCE, ACCEPTANCE, SCOPE, LIMITS/GAPS — sits next to the core. It fixes wording that already exists; it introduces no live dictionary and no generation mechanism.
+- **One canonical session rule in the `executor-lead` frame**: after the decision to delegate, `fresh` starts a new worker for a new independently acceptable result, `continue` keeps the same worker for the same not-yet-accepted result, and `replace` starts a new worker for the same task through a handoff. The rule states that `task_id` is not a session id, that `continue` does not widen scope, and that an accepted task does not free the previous worker for the next one. The four replace steps are distinct — stop writing, preserve the result, hand ownership over, close the old session — and a timeout is not proof that writing stopped.
+- **Dependent methodologies point at the canon instead of restating it**: `wolf-plan`, `wolf-sdd`, `wolf-execute`, `wolf-review` and `wolf-handoff` reference the core or the session rule. The injection body a worker receives now says that the methodology and the brief's core arrive with the assignment by reference, so a worker does not copy a catalog.
+- **Stamp drift healed for the delivered set**: `wolf upgrade --here` (or `wolf sync`, still accepted) re-rendered the installed `.opencode/**` files to the current set stamp. No file was held back by `protect:`, and a second run changes nothing.
+
+### What this release does not do
+
+- No runtime source, public schema, status set or `permission:` boundary changed: the release is instructional and the schema diff is empty.
+- No TASK parser, scheduler, model default or hidden reasoning control was introduced. The session rule is guidance for L1, not machine enforcement.
+- The worker-fallback path in `wolf-router` (P-02) is not fixed here, so any delivery scenario that depends on that fallback is not claimed as covered.
+- No token or cost saving is claimed. Fresh workers and shorter briefs are not measured in this release; an effect figure belongs to the analytics work, not to these notes.
+
 ## [2.21.2] - 2026-10-30
 
 ### Fixed — the multi-project memory schema isolation is actually delivered

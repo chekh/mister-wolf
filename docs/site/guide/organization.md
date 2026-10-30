@@ -44,6 +44,14 @@ The clean-session rule is also what makes workers cheap to replace. A worker tha
 
 The last step feeds the first: lessons, complaints and metrics recorded at the checkpoint shape the next cycle — this is where the working cycle hands off to the learning loop.
 
+## The shape of a brief, and which worker gets it
+
+A brief is not prose written from scratch each time. It is assembled from a core of eight elements — the task identity (never the session id), the expected result, the acceptance criteria, scope and authority, the required inputs with the assigned methodology, the verification, a finite budget with a stop condition, and the expected report. A profile then adds only the fields that suit the work: `implement` adds the repository, `base_sha`, the write allowlist and the read scope; `review` and `research` add an artifact revision instead and carry no Git fields. A field that does not apply is left out rather than filled with a placeholder, while a required field nobody supplied comes back as a question.
+
+The session rule is decided **after** deciding to delegate, and it has three answers. `fresh` starts a new worker for a new independently acceptable result, so no new task inherits an old task's context. `continue` keeps the same worker for the same result that has not been accepted yet. `replace` starts a new worker for the same task when the previous run no longer fits — and then the order matters: stop writing, preserve the result and the handoff, hand ownership over, and only then close the old session. A timeout is not proof that writing stopped.
+
+A small related piece of work is not a reason to hire: L1 does it itself, and the independent acceptance comes from another authorized participant — never from the executor's own review.
+
 ## Acceptance by verifiable artifacts
 
 A verdict is never taken on someone's word. L0 accepts or returns work against an **acceptance package** — machine-checkable evidence attached to the report:
