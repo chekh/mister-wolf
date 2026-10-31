@@ -186,6 +186,8 @@ revision и возврат предыдущей версии инструкци�
 
 Экспертный обзор: docs/external/reviews/2026-10-27-roadmap-review/mr-wolf-roadmap-2026-10-27.md (в git). Пакет обзора: docs/dev/2026-10-27-roadmap-v4-review/01-fact-check-stages-a-i.md, 02-fact-check-old-items.md, 03-wave-statuses.md, 04-roadmap-v4-draft.md, 05-proposal-requirements-2-22-0-realignment.md.
 
+Обзор TokenEconomizer 2026-10-31 — основание редакций 8 и 9: docs/external/reviews/2026-10-31-roadmap-review/economizer.md и mister-wolf-tokeneconomizer-recommendations.md (в git).
+
 Requirements: docs/dev/2026-10-26-wave-2-22-0-expert-package/requirements.md; 30 REQ, NFR §5, риски R-01…R-04, AC-01…AC-09 Приложения Ж. Короткая синхронизация указателя очереди и применимости §14 входит в подготовку P-03a. Формулировки требований и evidence обзора сохраняются; две конкурирующие активные очереди не поддерживаются.
 
 **Git-регламент:** [git-collaboration-policy.md — версия 1.0 от 26.10.2026][GIT1], документ владельца /Mr.Wolf/git-collaboration-policy.md. Прочитаны все разделы, включая §3 полномочия, §8–9 сохранение/handoff, §16 G0–G9 и §19 границы реализации. Ссылка идентифицирует документ; immutable Git-ревизия его поставки появится при B0-01. Пометка «проект регламента» в источнике не отменяет уже полученное поручение на внедрение и не доказывает активацию правил/защит в конкретной установке.
