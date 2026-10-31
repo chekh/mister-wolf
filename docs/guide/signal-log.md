@@ -377,5 +377,7 @@ wolf usage import --db ~/.local/share/opencode/opencode.db --task-map tasks.json
 
 Run-итог в отчёте агрегирует записанные и уже существующие run-события окна по `run_id`:
 `appended` / `duplicate` / `skipped incomplete`, строки run'ов (agent, model, tokens,
-duration, task, attempt) и блок `source limitations`. Неизвестные значения печатаются как
+`generation_ms`, task, attempt) и блок `source limitations`. `generation_ms` — сумма
+`duration_ms` turn'ов run'а (время генерации), а не wall-clock всего run'а; `busy_ms`
+выводится только в `--json`. Неизвестные значения печатаются как
 `unknown`, не как `0`.

@@ -50,7 +50,7 @@ function printResult(result: ImportUsageResult): void {
   if (result.runs.length === 0) {
     console.log('no run events in window: unknown coverage, not zero usage');
   } else {
-    console.log(['run_id', 'agent', 'model', 'tokens', 'duration_ms', 'task', 'attempt'].join(' | '));
+    console.log(['run_id', 'agent', 'model', 'tokens', 'generation_ms', 'task', 'attempt'].join(' | '));
     for (const run of result.runs) {
       const tokens = run.tokens ? `${run.tokens.input}/${run.tokens.output}/${run.tokens.cacheRead}` : null;
       console.log(
