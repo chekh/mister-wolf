@@ -1,11 +1,11 @@
 {
-  "version": "2.22.0",
-  "prev": "2.21.2",
+  "version": "2.22.1",
+  "prev": "2.22.0",
   "files": [
     {
       "path": "base/agents/executor-lead.md",
       "kind": "agent",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/agents/mr-wolf.md",
@@ -75,7 +75,7 @@
     {
       "path": "base/skills/using-skills/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/verification-before-completion/SKILL.md",
@@ -110,22 +110,27 @@
     {
       "path": "base/skills/wolf-handoff/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-plan/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
+    },
+    {
+      "path": "base/skills/wolf-release-docs/SKILL.md",
+      "kind": "skill",
+      "category": "new"
     },
     {
       "path": "base/skills/wolf-review/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-sdd/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-skill-intake/SKILL.md",
@@ -150,7 +155,7 @@
     {
       "path": "opencode/plugins/wolf-session-start.js",
       "kind": "plugin",
-      "category": "changed"
+      "category": "unchanged"
     }
   ],
   "faces": [

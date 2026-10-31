@@ -22,6 +22,7 @@ const cliItems = [
   { text: 'Thinking', link: '/guide/cli/thinking-council' },
   { text: 'Analytics', link: '/guide/cli/analytics' },
   { text: 'Platform & Maintenance', link: '/guide/cli/platform' },
+  { text: 'Command Reference', link: '/guide/cli/command-reference' },
 ];
 
 const ruCliItems = [
@@ -33,6 +34,7 @@ const ruCliItems = [
   { text: 'Мышление', link: '/ru/guide/cli/thinking-council' },
   { text: 'Аналитика', link: '/ru/guide/cli/analytics' },
   { text: 'Платформа и обслуживание', link: '/ru/guide/cli/platform' },
+  { text: 'Справочник команд', link: '/ru/guide/cli/command-reference' },
 ];
 
 export default defineConfig({

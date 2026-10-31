@@ -4,6 +4,36 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.22.1] - 2026-10-31
+
+### Added — a generated CLI command reference on the site, and the release-documentation skill in the base set
+
+- **The site's full command list is generated from the registry.** `docs/site/guide/cli/command-reference.md` and its Russian mirror are built by `scripts/generate-cli-site-page.mjs` from the same `COMMANDS` registry that already produces `docs/reference/cli.md`, so a command cannot be added to the CLI and silently missing from the site. `npm run docs:build` runs the new generator; a guard test compares both pages byte-for-byte with a fresh generation and checks that every full path in the reference appears on the page (97 of 97 covered, up from 55). The hand-maintained section pages — memory, sessions, analytics and the rest — keep their prose and examples; this page is the complete index next to them.
+- **`wolf-release-docs` now ships in the base set** (`templates/base/skills/`, 20 skills instead of 19). It was previously a project-local intake in this repository only, so the release-documentation pass — coverage map, EN/RU agreement, generated pages, independent review — was not delivered to your project at all. It now arrives with `wolf init --full` and on the next `wolf upgrade` pass.
+
+### Changed — repository hygiene accepted earlier lands in a release
+
+The hygiene work merged before this tag had no version of its own; 2.22.1 is its first published release. It is documentation and repository structure, not runtime behaviour:
+
+- **External evidence has one home.** `.external-research/` and `.external_experts_review/` moved under `docs/external/` (`program/` and `reviews/`), 36 files relocated without content change. `docs/README.md` names the new section, and the concept and evidence files point at the new paths. Text of the evidence is not edited — it is a quote, not documentation.
+- **`docs/dev/` holds only current packages.** 63 stale per-wave reports, review journals and one-off audit files were removed from the tree — recoverable at `5830279` (the `main` state immediately before the hygiene pass): `git show 5830279:<path>` prints one file, and `git diff --diff-filter=D --name-only 5830279 HEAD -- docs/dev` lists all 63 removed paths. The recovery pointer is documented in `docs/external/README.md`, next to the evidence it points at. Remaining packages are the ones still describing work in flight.
+- **The repository stopped shipping its own debris.** `templates/.wolf/router.log` no longer ends up in the npm tarball (`package.json` `files` does not apply `.gitignore`), the build starts from a clean `dist/` (`rm -rf dist && tsc`), two unused site logos were deleted, and a redundant project-local `.opencode.json` was dropped.
+- **`wolf init` describes the ignore block honestly.** The generated `.gitignore` comment no longer claims the memory directory is portable; see the limitation below.
+
+### What this release does not do
+
+- No runtime source, public schema, status set or `permission:` boundary changed. Against 2.22.0 the only `src/**` change is comment text in `src/app/use-cases/gitignore-block.ts` — the JSDoc and the comment line the generated `.gitignore` block carries; `buildGitignoreBlock()` behaviour is identical. Against the branch base `ae3a10e`, `src/**` is untouched entirely.
+- No behavioural change is claimed for the hygiene part: it moves and deletes documentation, prunes repository artifacts and renames a section. Nothing about how Wolf stores, searches or delivers memory is different.
+- **A documented contradiction is not resolved here.** `docs/site/guide/transfer.md` (EN and RU) still states that `.wolf/memory/` "is the durable core — commit it", while the `.gitignore` block this release ships says the memory is not committed and is not restored on another machine. Both shipped in this line; the code behaviour is that a plain `wolf init` does **not** ignore `.wolf/memory/` (so committing it does work today), and the new comment describes a different policy. Choosing the direction — make the memory portable and commit it, or finish making it machine-local — is an owner decision, and the contradictory wording stays visible rather than being quietly patched to match one side.
+- The worker-fallback path in `wolf-router` (P-02) is still not fixed, and `.wolf/` retention is still not implemented. Neither is part of this release.
+- No token or cost saving is claimed.
+
+### Upgrade notes
+
+- **Nothing migrates.** `npm install -g mister-wolf@2.22.1` (or `wolf upgrade`) is enough; the memory store, its schema, the config and the public CLI surface are unchanged.
+- **One new skill arrives on the next pass.** An existing project gets `.opencode/skills/wolf-release-docs/SKILL.md` as `created`; `protect:` files stay put and local edits to stamped files keep their documented handling. If a project already carries its own `wolf-release-docs` from an earlier intake, that file is reported as a conflict and left for the owner to resolve — rename, delete or accept it. This repository is exactly that case, and the conflict is expected, not a regression.
+- **The installed set re-stamps on the next project pass** — the `set=` value follows the running package version. `update-map.json` records 31 file targets (the new skill is `new`, the rest `unchanged`), so `wolf upgrade --check` reports no content drift; only the stamp line differs.
+
 ## [2.22.0] - 2026-10-31
 
 ### Changed — one canonical worker brief, three profiles and a session rule (instructions only; no runtime source, schemas or new commands)

@@ -15,29 +15,30 @@ The composition below is the catalog of `templates/base/` in the package.
 | `worker-researcher`  | Investigates code, documents and the web against one question; returns findings with sources and confidence                                                                            |
 | `worker-reviewer`    | Reviews workers' code and documents against the brief requirements; verdict via the VERDICT/SUMMARY contract                                                                           |
 
-## Skills — 19 → `.opencode/skills/`
+## Skills — 20 → `.opencode/skills/`
 
-| Skill                            | Purpose                                                                |
-| -------------------------------- | ---------------------------------------------------------------------- |
-| `finishing-a-development-branch` | choose how to integrate finished work — merge, PR or cleanup           |
-| `receiving-code-review`          | receive review feedback with rigor, no performative agreement          |
-| `requesting-code-review`         | verify work against requirements before merging                        |
-| `test-driven-development`        | red-green-refactor discipline before any implementation code           |
-| `using-git-worktrees`            | isolated worktrees for feature work and plan execution                 |
-| `using-skills`                   | load the required methodology before responding or acting              |
-| `verification-before-completion` | run the checks before any "done" claim — evidence first                |
-| `wolf-brainstorm`                | structured dialogue before any creative work                           |
-| `wolf-debug`                     | root-cause phases before proposing fixes                               |
-| `wolf-design`                    | design.md produced from requirements.md before implementation          |
-| `wolf-execute`                   | flat linear plan execution without subagents (fallback mode)           |
-| `wolf-explain`                   | clear coordinator responses that preserve facts and limitations        |
-| `wolf-handoff`                   | continue an overloaded session in a fresh one, without losing progress |
-| `wolf-plan`                      | zero-context plans where every task is a self-sufficient worker brief  |
-| `wolf-review`                    | multi-lens document review loop                                        |
-| `wolf-sdd`                       | subagent-driven development for plans with independent tasks           |
-| `wolf-skill-intake`              | connect external skills through the Wolf quality loop, owner-gated     |
-| `wolf-testplan`                  | test-plan.md with Given/When/Then per requirement                      |
-| `writing-skills`                 | Wolf skill lifecycle: create, edit, verify                             |
+| Skill                            | Purpose                                                                    |
+| -------------------------------- | -------------------------------------------------------------------------- |
+| `finishing-a-development-branch` | choose how to integrate finished work — merge, PR or cleanup               |
+| `receiving-code-review`          | receive review feedback with rigor, no performative agreement              |
+| `requesting-code-review`         | verify work against requirements before merging                            |
+| `test-driven-development`        | red-green-refactor discipline before any implementation code               |
+| `using-git-worktrees`            | isolated worktrees for feature work and plan execution                     |
+| `using-skills`                   | load the required methodology before responding or acting                  |
+| `verification-before-completion` | run the checks before any "done" claim — evidence first                    |
+| `wolf-brainstorm`                | structured dialogue before any creative work                               |
+| `wolf-debug`                     | root-cause phases before proposing fixes                                   |
+| `wolf-design`                    | design.md produced from requirements.md before implementation              |
+| `wolf-execute`                   | flat linear plan execution without subagents (fallback mode)               |
+| `wolf-explain`                   | clear coordinator responses that preserve facts and limitations            |
+| `wolf-handoff`                   | continue an overloaded session in a fresh one, without losing progress     |
+| `wolf-plan`                      | zero-context plans where every task is a self-sufficient worker brief      |
+| `wolf-release-docs`              | release documentation pass: coverage map, EN/RU alignment, generated pages |
+| `wolf-review`                    | multi-lens document review loop                                            |
+| `wolf-sdd`                       | subagent-driven development for plans with independent tasks               |
+| `wolf-skill-intake`              | connect external skills through the Wolf quality loop, owner-gated         |
+| `wolf-testplan`                  | test-plan.md with Given/When/Then per requirement                          |
+| `writing-skills`                 | Wolf skill lifecycle: create, edit, verify                                 |
 
 For L0/L1, bootstrap delivers the complete installed `using-skills` body rather than a separate summary. The agent checks the route when the goal or stage changes and loads other skills before applying them. L2 receives the passive worker protocol and assigned methodologies. Missing bootstrap content is reported explicitly.
 
