@@ -154,7 +154,15 @@ T4 зависит только от T1. T5/T6 последовательны п�
       идентичные, код `M2`) → `npm run docs:build` → `npm run check`.
       Гейты на финальной revision: `npm run check` exit 0 (1985/1985 тестов, 216 файлов);
       `node scripts/generate-update-map.mjs --verify` exit 0; `npm run docs:build` exit 0
-      (генерация CLI-справочника и зеркал CHANGELOG).
+      (генерация CLI-справочника и зеркал CHANGELOG); `npm run e2e` exit 0 (233 теста,
+      61 файл).
+      Публикация: main `5ec4e4f..b79f96c`, тег `v2.22.0` (annotated) → `b79f96c`,
+      npm `mister-wolf@2.22.0`, GitHub Release, деплой сайта (workflows CI 41148986918,
+      Deploy Docs 41148986932, Publish 41148996841 — все success).
+      Сверка доставки раздельно: байты (30 штампов `set=2.22.0`) → доступность версии
+      (npm + tarball) → фактическая загрузка (чистая установка во временный префикс:
+      `wolf --version` 2.22.0, ядро/профили/правило сеанса в `templates/base/**`) →
+      поведение (фикстура `wolf init --full`: 30 файлов `set=2.22.0`, `--check` → `current`).
 
 ## Владелец интеграции общих файлов
 
