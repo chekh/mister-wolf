@@ -23,6 +23,11 @@ const shippedPolicyPath = join(skillDir, 'reference', POLICY_FILE);
 
 const sha256 = (buf: Buffer): string => createHash('sha256').update(buf).digest('hex');
 
+/** Охранное условие «поставляемая копия = канон»: те же два предиката, что в гарде
+ *  ниже. Вынесено, чтобы негативный контроль проверял именно его, а не SHA-256. */
+const matchesCanon = (shipped: Buffer, canon: Buffer): boolean =>
+  sha256(shipped) === CANON_SHA256 && shipped.equals(canon);
+
 const tmpDirs: string[] = [];
 afterAll(() => {
   for (const dir of tmpDirs) rmSync(dir, { recursive: true, force: true });
@@ -38,7 +43,7 @@ describe('wolf-git: канон регламента и поставляемая 
     const canon = readFileSync(canonPath);
     // Байтовое равенство — прямое; sha256 отдельно, чтобы отчёт падения был внятным
     expect(sha256(shipped)).toBe(CANON_SHA256);
-    expect(shipped.equals(canon)).toBe(true);
+    expect(matchesCanon(shipped, canon)).toBe(true);
     expect(shipped.toString('utf-8')).toBe(canon.toString('utf-8'));
   });
 });
@@ -126,17 +131,23 @@ describe('wolf-git: рендер base-set в tmp (REQ-03, NFR-02)', () => {
   });
 });
 
-describe('wolf-git: функция сравнения различает расхождение (негативный контроль NFR-02)', () => {
-  it('две копии, отличающиеся одним байтом, дают разные sha256 и не равны', () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'wolf-git-neg-'));
-    tmpDirs.push(tmpDir);
-    const a = join(tmpDir, 'a.md');
-    const b = join(tmpDir, 'b.md');
-    writeFileSync(a, 'policy: allow\n');
-    writeFileSync(b, 'policy: deny!\n');
-    const bytesA = readFileSync(a);
-    const bytesB = readFileSync(b);
-    expect(bytesA.equals(bytesB)).toBe(false);
-    expect(sha256(bytesA)).not.toBe(sha256(bytesB));
+describe('wolf-git: охранное условие различает расхождение (негативный контроль NFR-02)', () => {
+  it('копия, отличающаяся на один байт от канона, не проходит matchesCanon', () => {
+    const canon = readFileSync(canonPath);
+    // Испорченная копия: тот же текст, но один байт тела изменён (не sha, а содержимое)
+    const mutatedDir = mkdtempSync(join(tmpdir(), 'wolf-git-neg-'));
+    tmpDirs.push(mutatedDir);
+    const mutatedPath = join(mutatedDir, POLICY_FILE);
+    const mutated = Buffer.from(canon);
+    const at = mutated.indexOf(Buffer.from('Регламент совместной работы с Git'));
+    expect(at).toBeGreaterThanOrEqual(0);
+    mutated[at] = mutated[at] ^ 0x01;
+    writeFileSync(mutatedPath, mutated);
+
+    const shipped = readFileSync(mutatedPath);
+    expect(sha256(shipped)).not.toBe(CANON_SHA256);
+    expect(matchesCanon(shipped, canon)).toBe(false);
+    // Непорченный канон тем же предикатом проходит — контроль не вырожден
+    expect(matchesCanon(canon, canon)).toBe(true);
   });
 });
