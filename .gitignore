@@ -10,27 +10,22 @@ dist/
 coverage/
 *.tsbuildinfo
 .worktrees/
-docs/discussions/
 .codegraph/
 opencode.json
 .external_experts_review/
-# wolf-experiment sandbox artifacts
+# python artifacts (playground-lab scripts, tracked .py)
 __pycache__/
 *.pyc
-*.nbi
-*.nbc
 .pytest_cache/
-!wolf-experiment/opencode.json
 
 docs/site/.vitepress/dist/
 docs/site/.vitepress/cache/
 
 # playground: независимая площадка-снапшот (свой git, git init внутри)
 playground/
-node_modules
 
 # wolf-gitignore:v1
-# wolf: machine-local state; .wolf/memory is portable — commit it
+# wolf: machine-local state; .wolf/memory is NOT committed and is not restored on another machine
 .wolf/cache/
 .wolf/memory/.lock
 .wolf/backup/

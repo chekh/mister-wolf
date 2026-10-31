@@ -2,12 +2,12 @@ import { join } from 'path';
 
 export const GITIGNORE_MARKER = '# wolf-gitignore:v1';
 
-/** WP4 (спека §7): игнорировать машинно-локальное, коммитить память —
- * формула переноса 2.14 §8.3 («память коммитится — клонирование переносит»). */
+/** WP4 (спека §7): состояние Wolf машинно-локальное — память (.wolf/memory)
+ * не коммитится и на другой машине не восстанавливается. */
 export function buildGitignoreBlock(): string {
   return [
     GITIGNORE_MARKER,
-    '# wolf: machine-local state; .wolf/memory is portable — commit it',
+    '# wolf: machine-local state; .wolf/memory is NOT committed and is not restored on another machine',
     '.wolf/cache/',
     '.wolf/memory/.lock',
     '.wolf/backup/',
