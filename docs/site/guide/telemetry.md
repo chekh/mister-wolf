@@ -11,7 +11,7 @@ Mr. Wolf measures its own usage — locally, deterministically, without an LLM i
 
 The signal log is the canonical telemetry source. A malformed line never breaks the loop: it is counted (`malformedLines`) and skipped.
 
-This page covers the two events you will actually meet: `mcp_call` — every tool/command invocation — and `delivery` — memory injected into an agent's context.
+This page covers the three events you will actually meet: `mcp_call` — every tool/command invocation, `delivery` — memory injected into an agent's context, and `run` — a finished turn imported from the OpenCode database.
 
 ## mcp_call
 
@@ -42,6 +42,22 @@ Written when memory is actually delivered into an agent's context (`wolf brief` 
 | `detail.target`          | delivery target, truncated to 200 chars                      |
 | `detail.injection_bytes` | payload size in bytes                                        |
 | `session_id`             | session key on the CLI channel (`null` over MCP — see below) |
+
+## run
+
+`wolf usage import` reads the local OpenCode 2.2.5 SQLite database (`~/.local/share/opencode/opencode.db`) **read-only** and copies finished assistant turns into the same signal log through the same `appendSignal` writer — there is no second writer. Options: `--db`, `--since`, `--until`, `--task-map <json {session_id: task_id}>`, `--dry-run`, `--json`; the default window starts at the beginning of yesterday. Deduplication: `event_id = sha256("opencode-usage:v1|" + message_id)`, so re-importing an unchanged source adds no lines.
+
+| Field                                    | Semantics                                     |
+| ---------------------------------------- | --------------------------------------------- |
+| `ts`                                     | turn completion time (`time.completed`)       |
+| `tokens`                                 | `{input, output, cache_read}`                 |
+| `weighted`                               | `input + 0.1*cache_read + 5*output`           |
+| `duration_ms`                            | `completed − created`                         |
+| `outcome`                                | `stop`/`tool-calls` → `ok`, `error` → `error` |
+| `run_id` · `trace_id`                    | session id of the run · parent session        |
+| `attempt` · `task_id` · `schema_version` | only on retry · only from `--task-map` · `2`  |
+
+Limits: the model `variant` is not carried over, `cost` is not computed, `reasoning` and `cache.write` do not enter `output`/`weighted`, unfinished turns are skipped, and an empty set means unknown coverage, not zero spend. Command details: [CLI reference](/guide/cli/command-reference).
 
 ## Session keys
 
