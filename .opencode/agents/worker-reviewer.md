@@ -6,7 +6,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=worker-reviewer.md set=2.22.0 -->
+<!-- wolf:rendered base=worker-reviewer.md set=2.22.1 -->
 
 # Worker Reviewer
 
