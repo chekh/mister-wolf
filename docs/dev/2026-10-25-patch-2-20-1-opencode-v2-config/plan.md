@@ -1,7 +1,5 @@
 # План: патч 2.20.1 — Wolf ↔ конфиг opencode v2 (пункты 6.1–6.5)
 
-> Удалённые при гигиене 2026-10-31 файлы, цитируемые ниже, восстановимы: `git show 5830279:<путь>` — см. `docs/external/README.md`.
-
 Metadata
 
 - task_id: `patch-2-20-1-opencode-v2-config`
@@ -9,6 +7,8 @@ Metadata
 - основание: `docs/dev/2026-10-25-opencode-v2-config-audit/audit.md` §6 (утверждено владельцем)
 - база: `main` @ `38aceab`; ветка `fix/2.20.1-opencode-v2-config`, worktree `.worktrees/patch-2-20-1-opencode-v2-config`
 - режим: FULL; версия не поднимается, merge/тег/публикация — отдельным релизным шагом
+
+> Удалённые при гигиене 2026-10-31 файлы, цитируемые ниже, восстановимы: `git show 5830279:<путь>` — см. `docs/external/README.md`.
 
 ## Решения уровня плана (в рамках аудита)
 

@@ -1,12 +1,12 @@
 # Тест-план: патч 2.20.1 — Wolf ↔ конфиг opencode v2 (6.1–6.5)
 
-> Удалённые при гигиене 2026-10-31 файлы, цитируемые ниже, восстановимы: `git show 5830279:<путь>` — см. `docs/external/README.md`.
-
 Metadata
 
 - task_id: `patch-2-20-1-opencode-v2-config`
 - основание: `docs/dev/2026-10-25-opencode-v2-config-audit/audit.md` §6, §8
 - подход: TDD по каждой задаче; unit → точечный vitest → `npx tsc --noEmit`; e2e — только на гейте
+
+> Удалённые при гигиене 2026-10-31 файлы, цитируемые ниже, восстановимы: `git show 5830279:<путь>` — см. `docs/external/README.md`.
 
 ## 6.1 — doctor валидирует то, что пишет адаптер
 
