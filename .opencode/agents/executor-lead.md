@@ -8,7 +8,7 @@ permission:
     "worker-*": allow
     "steward": allow
 ---
-<!-- wolf:rendered base=executor-lead.md set=2.21.2 -->
+<!-- wolf:rendered base=executor-lead.md set=2.22.0 -->
 
 # Роль: Executor Lead — уровень 1
 
