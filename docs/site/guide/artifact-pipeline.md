@@ -73,7 +73,7 @@ Two axes grow the skill set around the pipeline:
 - **Artifact axis** — a new artifact type gets its own skill that teaches agents how to produce it.
 - **Disciplinary axis** — a repeatedly breached discipline gets an enforcement skill; the detector is the complaint loop ([Learning Loop](/guide/feedback)).
 
-The default set ships 19 skills (verified against `templates/base/skills` in the package; the set itself is described in [Base Set](/guide/base-set)):
+The default set ships 20 skills (verified against `templates/base/skills` in the package; the set itself is described in [Base Set](/guide/base-set)):
 
 | Skill                            | Axis         | Purpose                                                             |
 | -------------------------------- | ------------ | ------------------------------------------------------------------- |
@@ -95,6 +95,7 @@ The default set ships 19 skills (verified against `templates/base/skills` in the
 | `wolf-handoff`                   | workflow     | continue in a fresh session without losing progress                 |
 | `wolf-review`                    | workflow     | multi-lens document review                                          |
 | `wolf-sdd`                       | workflow     | subagent-driven development                                         |
+| `wolf-release-docs`              | workflow     | release documentation pass: coverage map, EN/RU, generated pages    |
 | `wolf-skill-intake`              | workflow     | connect external skills through the intake loop with the owner gate |
 
 Two things are deliberately not in the default set. Security is an optional lens, switched on per feature. Capability skills from the outside world — external knowledge and tools — arrive through [Skill Intake](/guide/skill-intake), never pre-installed.
