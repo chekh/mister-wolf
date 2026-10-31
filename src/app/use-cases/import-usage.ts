@@ -77,6 +77,7 @@ export function importUsage(baseDir: string, opts: ImportUsageOptions = {}): Imp
       taskId: opts.taskMap?.[turn.sessionId] ?? null,
       traceId: run?.parentSessionId ?? null,
       sessionModel,
+      sessionAgent: run?.agent ?? null,
     });
     if (!event) {
       skippedIncomplete += 1;
@@ -88,17 +89,11 @@ export function importUsage(baseDir: string, opts: ImportUsageOptions = {}): Imp
     appended += 1;
   }
 
-  // Run-итог включает уже импортированные события окна: повтор печатает те же строки.
-  const sinceIso = new Date(sinceMs).toISOString();
-  const untilIso = new Date(untilMs).toISOString();
+  // Run-итог агрегирует весь run, а не события окна: фильтра по ts нет, берём
+  // ранее записанные run-события тех же сессий (повтор печатает те же строки).
   const runIds = new Set(source.runs.map((run) => run.sessionId));
   const existingRunEvents = log.events.filter(
-    (event) =>
-      event.event === 'run' &&
-      event.run_id !== undefined &&
-      runIds.has(event.run_id) &&
-      event.ts >= sinceIso &&
-      event.ts < untilIso
+    (event) => event.event === 'run' && event.run_id !== undefined && runIds.has(event.run_id)
   );
   const runs = summarizeRuns([...existingRunEvents, ...written], source.runs);
 

@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -20,11 +21,17 @@ function tempDir(prefix: string): string {
 
 const WINDOW = { sinceMs: 0, untilMs: 10_000_000 };
 
+function sha256(path: string): string {
+  return createHash('sha256').update(readFileSync(path)).digest('hex');
+}
+
 interface TurnRow {
   id: string;
   sessionId: string;
   created: number;
   completed?: number | null;
+  /** пишет data.time.streamed без completed (незавершённый turn). */
+  streamed?: boolean;
   retry?: number;
   tokens?: { input: number; output: number; cacheRead: number };
 }
@@ -48,6 +55,7 @@ function sourceDb(turns: TurnRow[]): string {
   for (const turn of turns) {
     const time: Record<string, unknown> = { created: turn.created };
     if (turn.completed !== null) time.completed = turn.completed ?? turn.created + 500;
+    if (turn.streamed === true) time.streamed = turn.created + 200;
     const data: Record<string, unknown> = {
       time,
       agent: 'executor-lead',
@@ -80,6 +88,7 @@ describe('importUsage', () => {
   it('appends completed turns as run events and is idempotent on repeat', () => {
     const baseDir = tempDir('wolf-usage-base-');
     const dbPath = sourceDb(TWO_RUNS);
+    const sourceHash = sha256(dbPath);
 
     const first = importUsage(baseDir, { dbPath, ...WINDOW });
     expect(first.appended).toBe(2);
@@ -100,6 +109,8 @@ describe('importUsage', () => {
     expect(second.duplicate).toBe(2);
     expect(readFileSync(metricsLogPath(baseDir), 'utf-8')).toBe(contentAfterFirst);
     expect(second.runs).toHaveLength(2);
+    // NFR-03: импорт не меняет файл источника
+    expect(sha256(dbPath)).toBe(sourceHash);
   });
 
   it('counts unfinished turns as skipped and writes nothing on dry run', () => {
@@ -120,6 +131,18 @@ describe('importUsage', () => {
     expect(readSignalLog(baseDir).totalLines).toBe(1);
   });
 
+  it('does not import turns that only have a streamed timestamp', () => {
+    const baseDir = tempDir('wolf-usage-base-');
+    const dbPath = sourceDb([
+      { id: 'msg_streamed', sessionId: 'ses_a', created: 1000, completed: null, streamed: true },
+    ]);
+
+    const result = importUsage(baseDir, { dbPath, ...WINDOW });
+    expect(result.appended).toBe(0);
+    expect(result.skippedIncomplete).toBe(1);
+    expect(readSignalLog(baseDir).totalLines).toBe(0);
+  });
+
   it('applies the session task map and reports unknowns plus source limitations', () => {
     const baseDir = tempDir('wolf-usage-base-');
     const dbPath = sourceDb([{ id: 'msg_a', sessionId: 'ses_a', created: 1000, completed: 1500 }]);
@@ -136,14 +159,8 @@ describe('importUsage', () => {
   it('keeps v1 records and tolerates malformed lines', () => {
     const baseDir = tempDir('wolf-usage-base-');
     mkdirSync(metricsDir(baseDir), { recursive: true });
-    const v1 = {
-      ts: '2026-09-03T12:00:00.000Z',
-      event: 'run',
-      session_id: 's-v1',
-      gen_ai: { modelID: 'legacy/model', agent: null },
-      orchestration: { task: null, actor: 'user:cli' },
-    };
-    writeFileSync(metricsLogPath(baseDir), `${JSON.stringify(v1)}\nnot json\n`);
+    const fixture = readFileSync(new URL('../../fixtures/usage-signal-log.jsonl', import.meta.url), 'utf-8');
+    writeFileSync(metricsLogPath(baseDir), fixture);
 
     const dbPath = sourceDb([{ id: 'msg_a', sessionId: 'ses_a', created: 1000, completed: 1500 }]);
     const result = importUsage(baseDir, { dbPath, ...WINDOW });
@@ -151,7 +168,7 @@ describe('importUsage', () => {
     expect(result.appended).toBe(1);
     const log = readSignalLog(baseDir);
     expect(log.malformedLines).toBe(1);
-    expect(log.events.some((event) => event.session_id === 's-v1')).toBe(true);
-    expect(readFileSync(metricsLogPath(baseDir), 'utf-8')).toContain(JSON.stringify(v1));
+    expect(log.events.filter((event) => event.session_id === 's-v1' || event.session_id === 's-v1b')).toHaveLength(2);
+    expect(readFileSync(metricsLogPath(baseDir), 'utf-8').startsWith(fixture)).toBe(true);
   });
 });

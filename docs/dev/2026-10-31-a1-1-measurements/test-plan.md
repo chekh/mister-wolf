@@ -39,14 +39,14 @@ created: 2026-10-31
   и с `attempt=2`, When `summarizeRuns`,
   Then две строки, у первой `attempt` неизвестен (не 0), у второй `2`;
   `task_id` — из карты, иначе неизвестен.
-  Маппинг: `tests/unit/domain/usage-signal.test.ts`.
+  Маппинг: `tests/unit/app/usage-signal.test.ts`.
 - Given fixture-источник и пустой лог, When импорт дважды,
   Then первый прогон `appended = N`, второй `appended = 0`, `duplicate = N`,
   размер лога не изменился.
   Маппинг: `tests/unit/app/import-usage.test.ts`.
 - Given повтор первого исходного события внутри одного прогона,
   Then одно событие (дедуп по `event_id`).
-  Маппинг: `tests/unit/domain/usage-signal.test.ts`.
+  Маппинг: `tests/unit/app/usage-signal.test.ts`.
 
 ### RQ-04 (старые и неполные логи)
 
@@ -58,7 +58,7 @@ created: 2026-10-31
 - Given turn без `time.completed`,
   When маппинг,
   Then событие не создаётся и не попадает в счётчик расхода.
-  Маппинг: `tests/unit/domain/usage-signal.test.ts`.
+  Маппинг: `tests/unit/app/usage-signal.test.ts`.
 
 ### RQ-05 (суррогаты и ограничения)
 
@@ -66,11 +66,11 @@ created: 2026-10-31
   When маппинг,
   Then `weighted` считается только из `input/output/cache_read`, `output` не
   включает `reasoning`.
-  Маппинг: `tests/unit/domain/usage-signal.test.ts`.
+  Маппинг: `tests/unit/app/usage-signal.test.ts`.
 - Given turn без блока `tokens`,
   Then `tokens`/`weighted` отсутствуют (undefined), а не нули; run-итог
   показывает `tokens: unknown`.
-  Маппинг: `tests/unit/domain/usage-signal.test.ts` +
+  Маппинг: `tests/unit/app/usage-signal.test.ts` +
   `tests/unit/app/import-usage.test.ts`.
 - Given вывод команды,
   Then содержит блок ограничений источника (model variant, reasoning/cache
@@ -90,7 +90,7 @@ created: 2026-10-31
 
 ## Прогоны
 
-- Точечные: `npx vitest run tests/unit/domain/usage-signal.test.ts`,
+- Точечные: `npx vitest run tests/unit/app/usage-signal.test.ts`,
   `npx vitest run tests/unit/adapters/opencode-usage-db.test.ts`,
   `npx vitest run tests/unit/app/import-usage.test.ts`.
 - Полный гейт: `npm run check` (включает генераторы справочников).

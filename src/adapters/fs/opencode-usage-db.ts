@@ -73,7 +73,8 @@ function mapTurn(row: MessageRow): UsageTurn {
     sessionId: row.session_id ?? '',
     seq: row.seq,
     createdMs: num(time.created) ?? row.time_created,
-    completedMs: num(time.completed) ?? num(time.streamed),
+    // design §Маппинг инвариант 5: streamed не считается завершением (RQ-04).
+    completedMs: num(time.completed),
     agent: str(data.agent),
     modelId: str(model.id),
     providerId: str(model.providerID),

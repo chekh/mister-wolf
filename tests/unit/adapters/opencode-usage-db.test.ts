@@ -1,4 +1,5 @@
-import { mkdtempSync, rmSync } from 'fs';
+import { createHash } from 'crypto';
+import { mkdtempSync, readFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import Database from 'better-sqlite3';
@@ -14,6 +15,10 @@ function tempPath(): string {
   const dir = mkdtempSync(join(tmpdir(), 'wolf-usage-db-'));
   dirs.push(dir);
   return join(dir, 'opencode.db');
+}
+
+function sha256(path: string): string {
+  return createHash('sha256').update(readFileSync(path)).digest('hex');
 }
 
 interface TurnRow {
@@ -80,7 +85,8 @@ describe('readUsageSource', () => {
           id: 'msg_b',
           sessionId: 'ses_b',
           created: 3000,
-          data: { time: { created: 3000 } },
+          // streamed есть, completed нет → turn незавершён (design §Маппинг инвариант 5)
+          data: { time: { created: 3000, streamed: 3200 } },
         },
       ],
       [
@@ -139,5 +145,15 @@ describe('readUsageSource', () => {
     const path = tempPath();
     new Database(path).close();
     expect(() => readUsageSource(path, { sinceMs: 0, untilMs: 1 })).toThrow(/lacks session_message, session_v2/);
+  });
+
+  it('does not modify the source database file (NFR-03)', () => {
+    const path = buildDb(
+      [{ id: 'msg_a', sessionId: 'ses_a', created: 2000, data: { time: { created: 2000, completed: 2600 } } }],
+      [{ id: 'ses_a' }]
+    );
+    const before = sha256(path);
+    readUsageSource(path, { sinceMs: 0, untilMs: 10_000 });
+    expect(sha256(path)).toBe(before);
   });
 });

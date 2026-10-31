@@ -51,25 +51,25 @@ session_v2.model/parent_id/agent/time_busy/idle_outcome — на уровне ru
 
 ### Маппинг turn → `SignalEvent` (событие `run`)
 
-| SignalEvent           | Источник                                                         | Если нет данных                         |
-| --------------------- | ---------------------------------------------------------------- | --------------------------------------- | --- |
-| `ts`                  | ISO(`data.time.completed`)                                       | turn не импортируется                   |
-| `event`               | `'run'`                                                          | —                                       |
-| `session_id`          | `session_message.session_id`                                     | null                                    |
-| `gen_ai.modelID`      | `data.model` → `${providerID}/${id}`; иначе `session_v2.model`   | `null`                                  |
-| `gen_ai.agent`        | `data.agent`, иначе `session_v2.agent`                           | `null`                                  |
-| `orchestration.task`  | всегда `null` (нет достоверной связи)                            | `null`                                  |
-| `orchestration.actor` | `agent:<agent>`, иначе `opencode:unknown`                        | `opencode:unknown`                      |
-| `tokens`              | `{input, output, cache_read}` из `data.tokens`                   | блок опущен                             |
-| `weighted`            | `input + 0.1*cache_read + 5*output` — только при полном `tokens` | опущен                                  |
-| `duration_ms`         | `completed - created` (оба поля есть, разница ≥ 0)               | опущен                                  |
-| `outcome`             | `stop`/`tool-calls` → `ok`; `error` → `error`                    | опущен                                  |
-| `run_id`              | `session_id`                                                     | опущен                                  |
-| `trace_id`            | `session_v2.parent_id` (подтверждённая связь parent→child)       | опущен                                  |
-| `attempt`             | `data.retry.attempt`                                             | опущен                                  |
-| `task_id`             | явная карта `--task-map` (session → task)                        | опущен                                  |
-| `event_id`            | `sha256("opencode-usage:v1                                       | " + message_id)` hex, первые 32 символа | —   |
-| `schema_version`      | `2`                                                              | —                                       |
+| SignalEvent           | Источник                                                         | Если нет данных       |
+| --------------------- | ---------------------------------------------------------------- | --------------------- |
+| `ts`                  | ISO(`data.time.completed`)                                       | turn не импортируется |
+| `event`               | `'run'`                                                          | —                     |
+| `session_id`          | `session_message.session_id`                                     | null                  |
+| `gen_ai.modelID`      | `data.model` → `${providerID}/${id}`; иначе `session_v2.model`   | `null`                |
+| `gen_ai.agent`        | `data.agent`, иначе `session_v2.agent`                           | `null`                |
+| `orchestration.task`  | всегда `null` (нет достоверной связи)                            | `null`                |
+| `orchestration.actor` | `agent:<agent>`, иначе `opencode:unknown`                        | `opencode:unknown`    |
+| `tokens`              | `{input, output, cache_read}` из `data.tokens`                   | блок опущен           |
+| `weighted`            | `input + 0.1*cache_read + 5*output` — только при полном `tokens` | опущен                |
+| `duration_ms`         | `completed - created` (оба поля есть, разница ≥ 0)               | опущен                |
+| `outcome`             | `stop`/`tool-calls` → `ok`; `error` → `error`                    | опущен                |
+| `run_id`              | `session_id`                                                     | опущен                |
+| `trace_id`            | `session_v2.parent_id` (подтверждённая связь parent→child)       | опущен                |
+| `attempt`             | `data.retry.attempt`                                             | опущен                |
+| `task_id`             | явная карта `--task-map` (session → task)                        | опущен                |
+| `event_id`            | `sha256("opencode-usage:v1&#124;" + message_id)` hex, 32 символа | —                     |
+| `schema_version`      | `2`                                                              | —                     |
 
 Инварианты:
 
@@ -102,13 +102,18 @@ for turn of turns:                       # детерминированный п
 
 ```
 RunSummary = {
-  run_id, session_id, trace_id|null, task_id|null, attempt|null,
+  run_id, session_id, trace_id|null, task_id|null, attempts: number[]|null,
   model|null, agent|null,
-  tokens: {input, output, cache_read} | 'unknown',
-  duration: {generation_ms, busy_ms|null} | 'unknown',
-  events, outcomes: {ok, error, unknown}
+  tokens: {input, output, cache_read} | null,      // null = неизвестно
+  generation_ms: number|null, busy_ms: number|null, // null = неизвестно
+  events, outcomes: {ok, error, unknown}, unknowns: string[]
 }
 ```
+
+`attempts` — уникальные номера попыток run'а по возрастанию; `null` — источник
+не содержит `retry` ни в одном turn'е (неизвестно, не ноль). Сводка
+агрегирует **весь run**, а не «события окна импорта»: ранее записанные
+`run`-события тех же `run_id` входят в итог.
 
 `generation_ms` — сумма `duration_ms` импортированных turn'ов;
 `busy_ms` — `session_v2.time_busy - session_v2.time_created`, если оба есть.
@@ -124,9 +129,11 @@ RunSummary = {
 
 ## Компоненты и ответственность
 
-- `src/domain/usage-signal.ts` — чистый маппинг и агрегация: `usageEventId`,
-  `signalFromTurn`, `summarizeRuns`, типы `UsageTurn`/`UsageRun`.
-  Ответственность: детерминированные значения и честные «неизвестно».
+- `src/app/use-cases/usage-signal.ts` — чистый маппинг и агрегация:
+  `usageEventId`, `signalFromTurn`, `summarizeRuns`, типы
+  `UsageTurn`/`UsageRun`/`RunSummary`. Контекст `signalFromTurn` принимает
+  `taskId`, `traceId`, `sessionModel`, `sessionAgent` — fallback'и на уровень
+  сессии. Ответственность: детерминированные значения и честные «неизвестно».
 - `src/adapters/fs/opencode-usage-db.ts` — read-only чтение источника:
   `readUsageSource(dbPath, {since, until})` → `{runs, turns}`.
   Ответственность: SQL, режим read-only, отказ при недоступной БД.

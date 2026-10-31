@@ -99,12 +99,14 @@ export function signalFromTurn(
     taskId?: string | null;
     traceId?: string | null;
     sessionModel?: { id: string; providerID: string } | null;
+    /** session_v2.agent — fallback, когда у turn агент не записан (design §Маппинг). */
+    sessionAgent?: string | null;
   }
 ): SignalEvent | null {
   const { completedMs, createdMs } = turn;
   if (completedMs == null || !turn.sessionId) return null;
 
-  const agent = turn.agent || null;
+  const agent = turn.agent || ctx?.sessionAgent || null;
   const modelId =
     modelRef(turn.modelId, turn.providerId) ?? modelRef(ctx?.sessionModel?.id, ctx?.sessionModel?.providerID);
 

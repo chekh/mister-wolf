@@ -130,6 +130,16 @@ describe('signalFromTurn', () => {
     expect(bare.orchestration.actor).toBe('opencode:unknown');
   });
 
+  it('агент: fallback на агент сессии, без обоих — null и actor unknown', () => {
+    const fromSession = asEvent(signalFromTurn(baseTurn({ agent: null }), { sessionAgent: 'executor-lead' }));
+    expect(fromSession.gen_ai.agent).toBe('executor-lead');
+    expect(fromSession.orchestration.actor).toBe('agent:executor-lead');
+
+    const bare = asEvent(signalFromTurn(baseTurn({ agent: null }), { sessionAgent: null }));
+    expect(bare.gen_ai.agent).toBeNull();
+    expect(bare.orchestration.actor).toBe('opencode:unknown');
+  });
+
   it('trace_id и task_id берутся из контекста', () => {
     const ev = asEvent(signalFromTurn(baseTurn(), { traceId: 'tr_1', taskId: 'A1-1-IMP-1' }));
     expect(ev.trace_id).toBe('tr_1');
