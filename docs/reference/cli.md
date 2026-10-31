@@ -1019,6 +1019,40 @@ Options:
   -h, --help         display help for command
 ```
 
+### wolf usage
+
+```text
+Usage: wolf usage [options] [command]
+
+Import OpenCode session usage into the signal log
+
+Options:
+  -h, --help        display help for command
+
+Commands:
+  import [options]  Import OpenCode session usage into the signal log
+  help [command]    display help for command
+```
+
+#### wolf usage import
+
+```text
+Usage: wolf usage import [options]
+
+Import OpenCode session usage into the signal log
+
+Options:
+  --db <path>        Path to opencode.db (read-only) (default:
+                     "/Users/chekh/.local/share/opencode/opencode.db")
+  --since <date>     Start date (YYYY-MM-DD, local midnight)
+  --until <date>     End date (YYYY-MM-DD, inclusive local day)
+  --task-map <path>  JSON object {session_id: task_id}
+  --dry-run          Read and report without writing the signal log (default:
+                     false)
+  --json             Print ImportUsageResult as JSON (default: false)
+  -h, --help         display help for command
+```
+
 ### wolf upgrade
 
 ```text

@@ -16,7 +16,7 @@ rebuildable, в git не коммитится); markdown-отчёты конту
 
 | Событие          | Кто пишет                                                                                          | Когда                                                                               |
 | ---------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `run`            | run-обёртка (команда run удалена в 2.13)                                                           | исторические записи прогонов (с P1 — единственный источник run-метрик)              |
+| `run`            | `wolf usage import` (импорт usage OpenCode); исторические записи — до 2.13                         | при импорте завершённых turn'ов; единственный источник run-метрик                   |
 | `complaint`      | `wolf complain`                                                                                    | при каждой жалобе                                                                   |
 | `delivery`       | `wolf scaffold`, `wolf tool expose`                                                                | доставка методики (рамка+playbook / SKILL.md)                                       |
 | `tool_error`     | run-обёртка (ошибка spawn; удалена в 2.13) + `recordToolError()`                                   | ошибка тула, класс — через классификатор                                            |
@@ -329,3 +329,55 @@ error_class_taxonomy:
 derived-файл: отсутствует/битый → один полный rebuild-scan лога при следующей записи,
 консистентность восстанавливается; счётчик монотонный (считаем события, не окна —
 повторной фиксации кластера при снижении порога нет).
+
+## Импорт usage из OpenCode: `wolf usage import`
+
+Команда читает локальную SQLite-базу площадки OpenCode (2.2.5) **только на чтение** и
+переносит завершённые assistant-turn'ы в сигнальный лог как события `run` через тот же
+writer `appendSignal` (второго писателя нет). Контракт и ADR:
+`docs/dev/2026-10-31-a1-1-measurements/design.md` (§«Источник», §«Маппинг», §«Дедупликация»).
+
+```bash
+wolf usage import                      # окно по умолчанию: с начала вчерашнего дня до сейчас
+wolf usage import --since 2026-10-30 --until 2026-10-31 --dry-run
+wolf usage import --db ~/.local/share/opencode/opencode.db --task-map tasks.json --json
+```
+
+| Опция                  | Смысл                                                                     |
+| ---------------------- | ------------------------------------------------------------------------- |
+| `--db <path>`          | путь к `opencode.db` (по умолчанию `~/.local/share/opencode/opencode.db`) |
+| `--since <YYYY-MM-DD>` | начало окна, локальная полночь                                            |
+| `--until <YYYY-MM-DD>` | конец окна, день включительно                                             |
+| `--task-map <path>`    | JSON `{session_id: task_id}`; связь turn → задача только явная            |
+| `--dry-run`            | прочитать и напечатать отчёт, ничего не записывая                         |
+| `--json`               | напечатать `ImportUsageResult` как JSON                                   |
+
+Источник — таблицы `session_message` (`type='assistant'`) и `session_v2`; окно
+ограничено полем `time_created` (индекс `session_message_time_created_idx`), поэтому
+полного сканирования таблицы нет. Один turn = одно событие `run` (`run_id` = `session_id`,
+`event_id` = `sha256("opencode-usage:v1|" + message_id)`): повторный импорт неизменного
+источника не добавляет строк, а два разных run одной задачи остаются двумя записями.
+
+Маппинг полей: `ts` = `time.completed`; `tokens` = `{input, output, cache_read}` из
+`data.tokens` (блок только если все три — числа); `weighted = input + 0.1×cache_read +
+5×output`; `duration_ms` = `completed − created`; `outcome`: `stop`/`tool-calls` → `ok`,
+`error` → `error`; `trace_id` = `session_v2.parent_id`; модель — из turn, иначе из сессии.
+
+### Ограничения источника
+
+- `variant` модели не переносится — поля в схеме сигнала нет.
+- `reasoning` и `cache.write` имеют недокументированную семантику и не прибавляются к
+  `output`/`cache_read` и не входят в `weighted`.
+- `cost` не вычисляется: в источнике нет таблицы цен.
+- `task_id` появляется только из явной карты `--task-map`.
+- `attempt` есть только там, где источник записал retry; иначе unknown.
+- `duration_ms` — время turn (wall-clock), не длина ответа.
+- Незавершённые turn'ы (нет `completed`) не импортируются и считаются как `skipped incomplete`.
+- Пустой набор событий означает неизвестное покрытие, а не нулевой расход.
+
+Run-итог в отчёте агрегирует записанные и уже существующие run-события окна по `run_id`:
+`appended` / `duplicate` / `skipped incomplete`, строки run'ов (agent, model, tokens,
+`generation_ms`, task, attempt) и блок `source limitations`. `generation_ms` — сумма
+`duration_ms` turn'ов run'а (время генерации), а не wall-clock всего run'а; `busy_ms`
+выводится только в `--json`. Неизвестные значения печатаются как
+`unknown`, не как `0`.
