@@ -8,7 +8,7 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [2.22.0] - 2026-10-31
 
 ### Changed — one canonical worker brief, three profiles and a session rule (instructions only; no runtime source, schemas or new commands)
 
@@ -16,8 +16,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - **Three brief profiles**: `implement` adds repo/workspace, `base_sha`, the write allowlist, the read scope, dependencies and design/test-plan references; `review` and `research` add an artifact revision, the assigned lens (review) or the question and stop condition (research) and no longer require Git fields. Role-specific reports are unchanged: `DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED`, `SUMMARY/VERDICT/FINDINGS/SCOPE/LIMITS/EVIDENCE` with `APPROVED | CHANGES_REQUIRED | INCONCLUSIVE`, `FINDINGS/CONFIDENCE/GAPS`.
 - **A static glossary of six existing terms** — TASK, RESULT, EVIDENCE, ACCEPTANCE, SCOPE, LIMITS/GAPS — sits next to the core. It fixes wording that already exists; it introduces no live dictionary and no generation mechanism.
 - **One canonical session rule in the `executor-lead` frame**: after the decision to delegate, `fresh` starts a new worker for a new independently acceptable result, `continue` keeps the same worker for the same not-yet-accepted result, and `replace` starts a new worker for the same task through a handoff. The rule states that `task_id` is not a session id, that `continue` does not widen scope, and that an accepted task does not free the previous worker for the next one. The four replace steps are distinct — stop writing, preserve the result, hand ownership over, close the old session — and a timeout is not proof that writing stopped.
-- **Dependent methodologies point at the canon instead of restating it**: `wolf-plan`, `wolf-sdd`, `wolf-execute`, `wolf-review` and `wolf-handoff` reference the core or the session rule. The injection body a worker receives now says that the methodology and the brief's core arrive with the assignment by reference, so a worker does not copy a catalog.
-- **Stamp drift healed for the delivered set**: `wolf upgrade --here` (or `wolf sync`, still accepted) re-rendered the installed `.opencode/**` files to the current set stamp. No file was held back by `protect:`, and a second run changes nothing.
+- **Dependent methodologies point at the canon instead of restating it**: `wolf-plan`, `wolf-sdd`, `wolf-review` and `wolf-handoff` now reference the core or the session rule; `wolf-execute` already pointed at `using-skills` and needed no change. The injection body a worker receives now says that the methodology and the brief's core arrive with the assignment by reference, so a worker does not copy a catalog.
+- **The delivered set was re-stamped during this release**: running the pass over this repository re-rendered the installed `.opencode/**` files to `set=2.22.0`. No file was held back by `protect:`, and a second run changes nothing. That is the dogfood run on this repo, not a behaviour change for your project.
 
 ### What this release does not do
 
@@ -25,6 +25,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 - No TASK parser, scheduler, model default or hidden reasoning control was introduced. The session rule is guidance for L1, not machine enforcement.
 - The worker-fallback path in `wolf-router` (P-02) is not fixed here, so any delivery scenario that depends on that fallback is not claimed as covered.
 - No token or cost saving is claimed. Fresh workers and shorter briefs are not measured in this release; an effect figure belongs to the analytics work, not to these notes.
+
+### Upgrade notes
+
+- **Nothing migrates.** `npm install -g mister-wolf@2.22.0` (or `wolf upgrade`) is enough; the memory store, its schema, the config and the public CLI surface are unchanged.
+- **The installed set re-stamps on the next project pass.** The `set=` value in a `wolf:rendered` stamp is the version of the running package, not a value the update map carries. So a project keeps the old stamp until the pass runs over it. `wolf upgrade` then counts those files as `updated` — their content differed only in the stamp line, so nothing of yours is overwritten — while `wolf sync`, the deprecated per-file alias, still prints the reason next to each path (`stamp drift healed (base 2.22.0)`). That is not a local edit and needs no decision.
+- **`protect:` files stay where they are** — a held file keeps the `set=` of its last render by design, so one project can carry several stamps: `wolf upgrade --check` prints the newest one and appends `(stamps from <oldest>)`. The `protect:` value records the release only in its `X.Y.Z` form; `protect: true` carries no version.
+- **Read the new wording before the next delegation.** The session rule in the `executor-lead` frame applies to the lead's next decision to delegate — there is nothing to enable; the frame and the methodologies arrive with the set.
 
 ## [2.21.2] - 2026-10-30
 

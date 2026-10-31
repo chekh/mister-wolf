@@ -52,6 +52,8 @@ A stamped file that differs from the base **only** by its `wolf:rendered …` li
 
 The map number (`map 2.20.0`) is the release whose update map is used. It is generated from the actual template diff of that release, so `map: 0 new · 0 changed …` for a release that only touched the `AGENTS.md` block is honest, not a bug.
 
+The stamps number answers a different question, so the two can differ — and that difference is normal, not drift. `stamps X` is the newest `set=` value found in the installed files (`X` is the maximum; when files disagree, the line adds `(stamps from <oldest>)`), and `map Y` is the release being installed. That is why a project can show `stamps 2.21.2 · map 2.22.0` before the pass has run over it: [Base Set](/guide/base-set) explains where the number comes from. After the pass the stamps read `2.22.0` and the line above says `current`. Files you hold with `protect:` keep their old stamp, which is why one project can legitimately show two versions.
+
 ## Reviewing decisions one by one
 
 ```bash

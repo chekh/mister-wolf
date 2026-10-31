@@ -267,7 +267,7 @@ Options:
 
 ## wolf sync
 
-> **Deprecated in 2.19.0** — superseded by `wolf upgrade --here`; the alias still works in 2.20.0 (it prints a DEPRECATED notice and re-renders stamped files). The notice text still says `removed in 2.20.0` — stale wording, the command is alive.
+> **Deprecated in 2.19.0** — superseded by `wolf upgrade --here`; the alias still works (it prints a DEPRECATED notice and re-renders stamped files). The notice text still says `removed in 2.20.0` — stale wording, the command is alive.
 
 Re-render the wolf base set (stamped files only; memory untouched). What the set contains and how stamping works: [Base Set](/guide/base-set).
 

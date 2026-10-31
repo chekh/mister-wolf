@@ -82,6 +82,8 @@ The agents, skills, commands and plugins of the set are delivered and updated as
 - `kept` — you accepted the local content of a stamped file (`wolf upgrade --resolve <file>=keep`): the witness records it as accepted and the next pass leaves it alone instead of reverting your edit;
 - `orphaned` — a stamped file whose template is gone from the package; you may delete it, or hold it with `protect`.
 
+The `set=` value records the version of the package that last rendered the file: the update pass takes it from the running CLI, not from the update map, so it is the release you installed and ran — not necessarily the release you read about. That is why `wolf upgrade --check` can show `stamps 2.21.2 · map 2.22.0`: nothing has been written yet. A file held under `protect:` is never re-rendered, so it keeps the `set=` of its last render; the `protect:` value records the release only in its `X.Y.Z` form — `protect: true` carries no version.
+
 An unstamped file is yours (the `wx` policy): `wolf init` skips it, the update pass reports the conflict instead of overwriting. The source of truth is always `templates/` in the npm package — template updates arrive with the package (`wolf upgrade`) and land in the project via its projects pass. Note: npx try-out mode never writes the base set.
 
 ### The onboarding block in `AGENTS.md`
