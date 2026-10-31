@@ -341,6 +341,12 @@ export const COMMANDS: CommandSpec[] = [
     load: () => import('./commands/task-eval.js').then((m) => m.taskEvalCommand()),
   },
   {
+    name: 'usage',
+    description: 'Import OpenCode session usage into the signal log',
+    usage: 'import [options]',
+    load: () => import('./commands/usage.js').then((m) => m.usageCommand()),
+  },
+  {
     name: 'bootstrap',
     description: 'Scan the project and draft starting memory: proposed rules, document-refs, work thread',
     usage: '[options]',

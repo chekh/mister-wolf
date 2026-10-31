@@ -1,0 +1,123 @@
+{
+  "_comment": "Синтетические записи в форме источника OpenCode 2.2.5: строка session_message с type='assistant' — id, session_id, data.time.{created,streamed,completed}, data.agent, data.model.{id,providerID,variant}, data.tokens.{input,output,reasoning,cache.{read,write}}, data.cost, data.finish, data.retry.attempt. Текст сообщения не сохраняется.",
+  "turns": [
+    {
+      "id": "msg_fixture001complete",
+      "session_id": "ses_fixture001",
+      "type": "assistant",
+      "data": {
+        "time": {
+          "created": 1793475397271,
+          "streamed": 1793475402233,
+          "completed": 1793475402426
+        },
+        "agent": "executor-lead",
+        "model": {
+          "id": "ds-cp/deepseek-flash",
+          "providerID": "company",
+          "variant": "default"
+        },
+        "tokens": {
+          "input": 88727,
+          "output": 114,
+          "reasoning": 0,
+          "cache": {
+            "read": 0,
+            "write": 0
+          }
+        },
+        "cost": 0,
+        "finish": "tool-calls"
+      }
+    },
+    {
+      "id": "msg_fixture002retry",
+      "session_id": "ses_fixture001",
+      "type": "assistant",
+      "data": {
+        "time": {
+          "created": 1793475410000,
+          "streamed": 1793475416000,
+          "completed": 1793475416500
+        },
+        "agent": "worker-implementer",
+        "model": {
+          "id": "ds-cp/deepseek-flash",
+          "providerID": "company",
+          "variant": "default"
+        },
+        "tokens": {
+          "input": 1200,
+          "output": 340,
+          "reasoning": 96,
+          "cache": {
+            "read": 4096,
+            "write": 512
+          }
+        },
+        "cost": 0,
+        "finish": "stop",
+        "retry": {
+          "attempt": 2,
+          "at": 1793475410000
+        }
+      }
+    },
+    {
+      "id": "msg_fixture003error",
+      "session_id": "ses_fixture002",
+      "type": "assistant",
+      "data": {
+        "time": {
+          "created": 1793475420000,
+          "streamed": 1793475421000,
+          "completed": 1793475421800
+        },
+        "agent": "worker-implementer",
+        "model": {
+          "id": "ds-cp/deepseek-flash",
+          "providerID": "company",
+          "variant": "default"
+        },
+        "tokens": {
+          "input": 800,
+          "output": 12,
+          "reasoning": 0,
+          "cache": {
+            "read": 0,
+            "write": 0
+          }
+        },
+        "cost": 0,
+        "finish": "error"
+      }
+    },
+    {
+      "id": "msg_fixture004unfinished",
+      "session_id": "ses_fixture002",
+      "type": "assistant",
+      "data": {
+        "time": {
+          "created": 1793475430000,
+          "streamed": 1793475432500
+        },
+        "agent": "executor-lead",
+        "model": {
+          "id": "ds-cp/deepseek-pro",
+          "providerID": "company",
+          "variant": "default"
+        },
+        "tokens": {
+          "input": 20,
+          "output": 0,
+          "reasoning": 0,
+          "cache": {
+            "read": 0,
+            "write": 0
+          }
+        },
+        "cost": 0
+      }
+    }
+  ]
+}
