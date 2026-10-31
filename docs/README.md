@@ -94,6 +94,10 @@
 - [Agentic tools comparative research](./research/agentic-tools-comparative-research.md) + [project cards](./research/agentic-tools-project-cards.md) + [cross-findings](./research/agentic-tools-cross-findings.md)
 - [Wolf concept implications](./research/wolf-concept-implications.md) / [FUP implications](./research/wolf-fup-implications.md)
 
+## External evidence
+
+- [Внешние материалы](./external/README.md) — доказательная база решений (программа исследования концепта, обзоры и пакеты ревью внешних моделей). Это evidence, а не документация продукта: тексты хранятся дословно и не правятся.
+
 ## Historical / Archive
 
 Архив устаревших документов — эволюция концепта v1–v3, roadmap v1, FUP-требования эпохи standalone-CLI, orchestrator-era guides, архитектурные дискуссии, MVP1A–MVP7 specs — удалён из дерева 2026-09-01: git-история до коммита `b31cbdd`.

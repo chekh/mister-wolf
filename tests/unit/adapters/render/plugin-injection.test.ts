@@ -13,6 +13,10 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 const { execFileMock } = vi.hoisted(() => {
+  // WOLF_ROUTER_LOG-шов (как в wolf-router-plugin.test.ts): лог пишется в tmp,
+  // а не в templates/.wolf/router.log репо — иначе после npm test файл уезжает
+  // в npm-пакет (files:["templates"] не применяет .gitignore).
+  process.env.WOLF_ROUTER_LOG = '/tmp/wolf-plugin-injection-test/router.log';
   const execFileMock = vi.fn((_file: unknown, _args: string[], _opts: unknown, cb?: unknown) => {
     const done = (typeof _opts === 'function' ? _opts : cb) as
       | ((err: Error | null, res?: { stdout: string }) => void)

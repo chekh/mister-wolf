@@ -812,7 +812,7 @@ revision и возврат предыдущей версии инструкци�
 
 ### Основания
 
-Экспертный обзор: .external_experts_review/2026-10-27-roadmap-review/mr-wolf-roadmap-2026-10-27.md (вне git). Пакет обзора: docs/dev/2026-10-27-roadmap-v4-review/01-fact-check-stages-a-i.md, 02-fact-check-old-items.md, 03-wave-statuses.md, 04-roadmap-v4-draft.md, 05-proposal-requirements-2-22-0-realignment.md.
+Экспертный обзор: docs/external/reviews/2026-10-27-roadmap-review/mr-wolf-roadmap-2026-10-27.md (в git). Пакет обзора: docs/dev/2026-10-27-roadmap-v4-review/01-fact-check-stages-a-i.md, 02-fact-check-old-items.md, 03-wave-statuses.md, 04-roadmap-v4-draft.md, 05-proposal-requirements-2-22-0-realignment.md.
 
 Requirements: docs/dev/2026-10-26-wave-2-22-0-expert-package/requirements.md; 30 REQ, NFR §5, риски R-01…R-04, AC-01…AC-09 Приложения Ж. Короткая синхронизация указателя очереди и применимости §14 входит в подготовку P-03a. Формулировки требований и evidence обзора сохраняются; две конкурирующие активные очереди не поддерживаются.
 
