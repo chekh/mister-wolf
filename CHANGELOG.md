@@ -4,6 +4,33 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.23.0] - 2026-11-01
+
+### Added — a read-only usage importer for local OpenCode sessions, and the Git-collaboration skill in the base set
+
+- **`wolf usage import` reads a local OpenCode database and writes `run` events.** The new command opens the platform's SQLite database (`~/.local/share/opencode/opencode.db`, OpenCode 2.2.5) **read-only** and transfers completed assistant turns into the signal log as `run` events through the existing `appendSignal` writer — there is no second writer. The event id is stable, `sha256("opencode-usage:v1|" + message_id)`, so importing an unchanged source again adds no rows, while two runs of one task stay two records.
+- **The window and the task mapping are explicit options.** `--db` points at a database, `--since` and `--until` bound the window (the default starts at the beginning of yesterday), `--task-map` takes a JSON `{session_id: task_id}` map, `--dry-run` reports without writing and `--json` prints the machine-readable form. The selection is served by the `time_created` index; there is no full scan.
+- **The report answers "what was imported" before "what it cost".** Totals by `run_id` — appended, duplicate, skipped as incomplete — then one line per run with agent, model, tokens, `generation_ms`, task and attempt, and a block of source limitations. `generation_ms` is the sum of turn durations (generation time), not wall-clock; `busy_ms` appears only in `--json`.
+- **Docs and tests ship with it**: `docs/reference/cli.md` and `docs/guide/signal-log.md` describe the command, and the import is covered by three new unit-test files and two fixtures.
+- **`wolf-git` ships in the base set** (21 skills instead of 20). It delivers the Git-collaboration policy v1.1 — `templates/base/skills/wolf-git/SKILL.md` with `reference/git-collaboration-policy-v1.1.md` (553 lines, also kept in this repository as `docs/reference/git-collaboration-policy-v1.1.md`) — and routes the Git stages: G0 entry and resume (§6), G1 branch or worktree (§7, §4.1), saving a checkpoint (§8), handoff G2 (§9), finishing and cleanup G9 (§15). §22 fixes merge `--no-ff` as the standard with squash only as an explicit exception; §16 covers the gates; §10 covers acceptance, integration and release.
+
+### Changed — four existing skills point at the new one
+
+- `using-skills`, `wolf-handoff`, `using-git-worktrees` and `finishing-a-development-branch` each gained one or two lines of cross-reference to `wolf-git`, so the Git stages are reachable from the skills a session already loads. Nothing else in those skills changed.
+
+### What this release does not do
+
+- **The skill automates nothing.** There is no merge-request status and no hosting adapter, no CI check, no integration queue, no tag, registry or release step, no structural read-only `git inspect` and no JSON verdict — those are later slices (B0.5, B1). Gates G3–G8 are not automated and are performed by people.
+- **The importer states its own limits.** It does not carry the model `variant` (the signal schema has no field for it) and does not compute `cost` (there is no price table); `task_id` appears only from an explicit `--task-map`; `reasoning` and `cache.write` are not added to `output` or `cache_read` and do not enter `weighted`. An empty event set means unknown coverage, not zero spend.
+- No public memory schema, status set or `permission:` boundary changed: `schema_migrations` is empty and `CURRENT_SCHEMA_VERSION` is untouched.
+- No token or cost saving is claimed. This release makes local usage visible; the measurement is the next slice (A1.2).
+
+### Upgrade notes
+
+- **Nothing migrates.** `npm install -g mister-wolf@2.23.0` (or `wolf upgrade`) is enough; the memory store, its schema, the config and the public CLI surface are unchanged.
+- **One new skill arrives on the next pass.** An existing project gets `.opencode/skills/wolf-git/SKILL.md` and its reference file as `created`. `update-map.json` records 33 file targets — 2 `new` (the skill and its reference), 4 `changed` (the cross-references) and 27 `unchanged` — with 6 faces and an empty `schema_migrations`.
+- **The installed set re-stamps on the next project pass** — the `set=` value follows the running package version. Files under `protect:` keep the `set=` of their last render, by design.
+
 ## [2.22.1] - 2026-10-31
 
 ### Added — a generated CLI command reference on the site, and the release-documentation skill in the base set

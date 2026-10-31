@@ -1,6 +1,6 @@
 {
-  "version": "2.22.1",
-  "prev": "2.22.0",
+  "version": "2.23.0",
+  "prev": "2.22.1",
   "files": [
     {
       "path": "base/agents/executor-lead.md",
@@ -130,7 +130,7 @@
     {
       "path": "base/skills/wolf-release-docs/SKILL.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-review/SKILL.md",
