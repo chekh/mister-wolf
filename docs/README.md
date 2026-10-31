@@ -24,6 +24,7 @@
 - [Evidence](./concept/evidence.md) — доказательная база: PoC, исследования, программа benchmark'ов E1a–E1e, claim/evidence-реестр.
 - [Coverage](./concept/coverage.md) — смысловое покрытие канона (контроль анти-регрессионного принципа).
 - [Roadmap v4](./dev/roadmap/roadmap-v4.md) — активный роадмап (этапы A–I, разбиение на релизы 2.22.0+).
+- [Roadmap v4 — ledger](./dev/roadmap/roadmap-v4-ledger.md) — история редакций, решения, поручения; активная очередь — в roadmap-v4.md.
 - История роадмапа: [Roadmap v3](./dev/roadmap/roadmap-v3.md) — фазы A–E; [Roadmap v2](./dev/roadmap/roadmap-v2.md) — контур Ф20–26 (детальный план Фазы D v3).
 
 ## Design specs

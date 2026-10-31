@@ -210,12 +210,12 @@ Mutation attribution: every memory object has an author. Priority: the `--create
 
 - **opencode-first**: multi-platform support is an architectural principle (concept §6.6), but the threads for other platforms come after Levels 1–2 mature.
 - **What Wolf does not do** (concept §10): code editing as a project function · IDE integration · web UI · distributed work · general-purpose orchestration (only protocols proven by practice).
-- Plan: [roadmap-v4 (RU)](docs/dev/roadmap/roadmap-v4.md) — active roadmap; history: [v3](docs/dev/roadmap/roadmap-v3.md), [v2](docs/dev/roadmap/roadmap-v2.md).
+- Plan: [roadmap-v4 (RU)](docs/dev/roadmap/roadmap-v4.md) — active roadmap; revisions history, decisions and assignments: [ledger](docs/dev/roadmap/roadmap-v4-ledger.md); roadmap history: [v3](docs/dev/roadmap/roadmap-v3.md), [v2](docs/dev/roadmap/roadmap-v2.md).
 
 ## Documentation
 
 - [Concept v3 (RU)](docs/concept/concept.md) — four layers, the activation pipeline, the Steward, USP
-- [Roadmap v4 (RU)](docs/dev/roadmap/roadmap-v4.md) — active roadmap; history: [v3](docs/dev/roadmap/roadmap-v3.md), [v2](docs/dev/roadmap/roadmap-v2.md)
+- [Roadmap v4 (RU)](docs/dev/roadmap/roadmap-v4.md) — active roadmap; revisions history, decisions and assignments: [ledger](docs/dev/roadmap/roadmap-v4-ledger.md); roadmap history: [v3](docs/dev/roadmap/roadmap-v3.md), [v2](docs/dev/roadmap/roadmap-v2.md)
 - [User guide (RU)](docs/guide/user-guide.md) — basic commands and workflow
 - [CLI reference (RU)](docs/reference/cli.md) — full command reference
 - [Architecture (RU)](docs/guide/architecture.md) — how the system is built
