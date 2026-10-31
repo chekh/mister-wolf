@@ -17,7 +17,7 @@ Baseline: `main` = `9a67d82` (roadmap v4 ред. 9 фиксирует релиз
 
 ## Задачи
 
-- [ ] **IMP-1 — чистый маппинг и агрегация** (`task_id A1-1-IMP-1`)
+- [x] **IMP-1 — чистый маппинг и агрегация** (`task_id A1-1-IMP-1`)
       Цель: `src/domain/usage-signal.ts` + адресные тесты + fixture исходных
       записей. Проверяемый результат: детерминированный `event_id`, полный
       маппинг turn → `run`-событие по design §Контракты, `summarizeRuns` с
@@ -26,7 +26,7 @@ Baseline: `main` = `9a67d82` (roadmap v4 ред. 9 фиксирует релиз
       Проверка: `npx vitest run tests/unit/domain/usage-signal.test.ts`.
       Зависимостей нет.
 
-- [ ] **IMP-2 — адаптер источника, use-case, CLI, документация**
+- [x] **IMP-2 — адаптер источника, use-case, CLI, документация**
       (`task_id A1-1-IMP-2`, зависит от IMP-1)
       Цель: `src/adapters/fs/opencode-usage-db.ts` (read-only чтение
       `session_v2`/`session_message`), `src/app/use-cases/import-usage.ts`
@@ -38,12 +38,12 @@ Baseline: `main` = `9a67d82` (roadmap v4 ред. 9 фиксирует релиз
       Проверка: адресные тесты + `node scripts/generate-cli-reference.mjs` и
       `node scripts/generate-cli-site-page.mjs` идемпотентны.
 
-- [ ] **REV-1 — независимое ревью** (`task_id A1-1-REV-1`, после IMP-1/IMP-2)
+- [x] **REV-1 — независимое ревью** (`task_id A1-1-REV-1`, после IMP-1/IMP-2)
       Линза: соответствие requirements/design и AC среза; отдельно — качество
       (идемпотентность, честные unknown, отсутствие второго писателя,
       неизменность схемы). Вердикт + findings.
 
-- [ ] **INT-1 — интеграция и гейт** (`task_id A1-1-INT-1`, владелец L1)
+- [x] **INT-1 — интеграция и гейт** (`task_id A1-1-INT-1`, владелец L1)
       Коммит в `a1-1-measurements`, прогон `npm run check` на точной revision,
       сбор ACCEPTANCE по AC 1–7, запись в память Wolf. Merge/тег — только
       после приёмки L0, вне этого плана.
@@ -55,3 +55,20 @@ Baseline: `main` = `9a67d82` (roadmap v4 ред. 9 фиксирует релиз
 - `better-sqlite3` на живом WAL: проверено чтение `readonly: true` при
   существующих `-wal/-shm` (Slice Reality Check). Отсутствие файла — отказ.
 - Промежуточная точка: после IMP-1 адресный тест зелёный до начала IMP-2.
+
+## Итог исполнения
+
+- IMP-1 — сделано → коммит `5c4eff8`; evidence: 21 адресный тест, `tsc --noEmit`
+  exit 0.
+- IMP-2 — сделано → коммит `5c4eff8`; evidence: адресные тесты 29 → 32 после
+  фикса, `npm run build` exit 0, генераторы справочников идемпотентны,
+  smoke на временной SQLite.
+- REV-1 — ревью на `5c4eff8`: CHANGES_REQUIRED (R1 blocker, R2 major, R3/R4–R7
+  minor); повторное ревью на `b3cc9df`: APPROVED (N1/N2 minor закрыты в
+  `9ca71bd`).
+- INT-1 — интеграция: `npm run check` exit 0, 220 файлов / 2019 тестов на
+  итоговой revision `aaf4e98` (очередное переименование колонки отчёта
+  `generation_ms` — по итогам реального прогона); worktree-ветка
+  `a1-1-measurements`, дерево чистое. E2E на реальном источнике:
+  `usage import --since 2026-10-30 --until 2026-10-31 --dry-run` →
+  `appended=8424 duplicate=0 skipped incomplete=7`, 24 run-строки, 5.2 с.
