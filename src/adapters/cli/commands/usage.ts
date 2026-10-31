@@ -1,7 +1,6 @@
 import { readFileSync } from 'fs';
 import { Command, Option } from 'commander';
 import { safeCwd } from '../cli-entry.js';
-import { DEFAULT_USAGE_DB_PATH } from '../../fs/opencode-usage-db.js';
 import { importUsage, type ImportUsageOptions, type ImportUsageResult } from '../../../app/use-cases/import-usage.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -75,7 +74,10 @@ export function usageCommand(baseDir: string = safeCwd()): Command {
   usage.addCommand(
     new Command('import')
       .description('Import OpenCode session usage into the signal log')
-      .option('--db <path>', 'Path to opencode.db (read-only)', DEFAULT_USAGE_DB_PATH)
+      // default только в описании: commander печатает значение по умолчанию
+      // в --help дословно, и абсолютный домашний путь делал справочник
+      // машинно-зависимым (guard падал на CI). Серьёзное значение — в use case.
+      .option('--db <path>', 'Path to opencode.db (read-only) (default: ~/.local/share/opencode/opencode.db)')
       .option('--since <date>', 'Start date (YYYY-MM-DD, local midnight)')
       .addOption(new Option('--until <date>', 'End date (YYYY-MM-DD, inclusive local day)'))
       .option('--task-map <path>', 'JSON object {session_id: task_id}')

@@ -22,6 +22,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 - `using-skills`, `wolf-handoff`, `using-git-worktrees` and `finishing-a-development-branch` each gained one or two lines of cross-reference to `wolf-git`, so the Git stages are reachable from the skills a session already loads. Nothing else in those skills changed.
 
+### Fixed — the generated CLI reference is machine-independent
+
+- **`wolf usage import --db` no longer bakes the generating machine's home path into the reference.** The default is stated in the option's description as `~/.local/share/opencode/opencode.db` and resolved by the use case, so `docs/reference/cli.md` is identical on every machine. A guard now fails when an absolute home path leaks back into the reference, which turns the reference-drift failure from "CI only" into "fails where the file is generated".
+
 ### What this release does not do
 
 - **The skill automates nothing.** There is no merge-request status and no hosting adapter, no CI check, no integration queue, no tag, registry or release step, no structural read-only `git inspect` and no JSON verdict — those are later slices (B0.5, B1). Gates G3–G8 are not automated and are performed by people.

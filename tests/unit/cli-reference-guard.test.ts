@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 
@@ -16,5 +17,14 @@ describe('guard: docs/reference/cli.md is generated from the CLI registry (P224)
     const expected = await generateReference();
     const onDisk = readFileSync(join(process.cwd(), 'docs/reference/cli.md'), 'utf8');
     expect(onDisk, 'drift detected — run: node scripts/generate-cli-reference.mjs').toBe(expected);
+  });
+
+  // Регрессия 2.23.0: значение по умолчанию, разрешённое в абсолютный домашний
+  // путь, делало справочник машинно-зависимым — guard выше падал только на CI.
+  it('reference carries no absolute home path (portable across machines)', () => {
+    const onDisk = readFileSync(join(process.cwd(), 'docs/reference/cli.md'), 'utf8');
+    const home = homedir();
+    expect(home.length).toBeGreaterThan(1);
+    expect(onDisk.includes(home), `absolute home path ${home} leaked into the reference`).toBe(false);
   });
 });
