@@ -16,7 +16,7 @@ export interface UsageTurn {
   seq: number | null;
   /** data.time.created */
   createdMs: number | null;
-  /** data.time.completed|streamed */
+  /** data.time.completed (streamed не считается завершением) */
   completedMs: number | null;
   /** data.agent */
   agent: string | null;
