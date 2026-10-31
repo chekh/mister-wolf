@@ -29,15 +29,17 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
   });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-  it("создаёт полный набор: 6 агентов, 20 скиллов, 3 команды, 2 плагина + 6 seeded playbook'ов (§11.1)", () => {
+  it("создаёт полный набор: 6 агентов, 21 скилл, 3 команды, 2 плагина + 6 seeded playbook'ов (§11.1)", () => {
     const res = runCli(['init', '--full', '--model', 'zai-coding-plan/glm-5.3'], dir);
     expect(res.status).toBe(0);
 
-    // 31 файл (6+20+3+2) + AGENTS.md в корне (onboarding v2 §4.2) созданы + 6 playbook'ов посеяны;
-    // F5 (§2.3): 20 скиллов печатаются как `[skill] …` — в счётчике `- base set:` их больше нет
+    // 32 файла (6+21+3+2) + AGENTS.md в корне (onboarding v2 §4.2) созданы + 6 playbook'ов посеяны;
+    // F5 (§2.3): скиллы печатаются как `[skill] <имя> → <файл>` — в счётчике `- base set:` их больше нет.
+    // B0: у wolf-git кроме SKILL.md есть поставляемый регламент reference/…, поэтому
+    // строк `[skill]` на одну больше, чем скиллов (21 + 1)
     const created = (res.stdout.match(/- base set: \S+ created/g) ?? []).length;
     expect(created).toBe(18);
-    expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(20);
+    expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(22);
     expect(res.stdout).toMatch(/- base set: AGENTS\.md created/);
 
     const agents = readdirSync(join(dir, '.opencode/agents')).filter((f) => f.endsWith('.md'));
@@ -46,7 +48,7 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
     const skills = readdirSync(join(dir, '.opencode/skills')).filter((d) =>
       existsSync(join(dir, '.opencode/skills', d, 'SKILL.md'))
     );
-    expect(skills).toHaveLength(20);
+    expect(skills).toHaveLength(21);
 
     const commands = readdirSync(join(dir, '.opencode/command')).filter((f) => f.endsWith('.md'));
     expect(commands).toHaveLength(3);

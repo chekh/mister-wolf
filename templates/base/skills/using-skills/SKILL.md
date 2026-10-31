@@ -64,6 +64,7 @@ wolf-debug: один осмысленный обход в scope, затем FRIC
 | Утверждённый план, входы сверены | L1: wolf-sdd; разрешённая исполнительская роль без диспетчеризации: wolf-execute |
 | Баг, падение проверки, неожиданное поведение | wolf-debug до исправления; реализация нового поведения/фикса — test-driven-development |
 | Требуется изоляция записи | using-git-worktrees перед изменениями |
+| Git-граница задачи: вход/возобновление, ветка, checkpoint, передача, завершение | wolf-git |
 | Ревью документов / ревью кода | wolf-review / requesting-code-review; обработка замечаний — receiving-code-review |
 | «Готово», «исправлено», «проверено» | verification-before-completion до утверждения; затем согласованный finishing-a-development-branch |
 | Смена сессии, исполнителя или восстановление | wolf-handoff |

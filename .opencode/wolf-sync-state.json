@@ -1,7 +1,7 @@
 {
   "files": {
     ".opencode/skills/finishing-a-development-branch/SKILL.md": {
-      "hash": "f0e64508590a87b6a40cb2919da319d11097a089e9238249700926ea27c50b79",
+      "hash": "07c2953175ce29390817e1aff64d404b6d17f501721f72464ebcc563c69a13a6",
       "origin": "render",
       "base": "2.22.1"
     },
@@ -16,12 +16,12 @@
       "base": "2.22.1"
     },
     ".opencode/skills/using-git-worktrees/SKILL.md": {
-      "hash": "55df1346032ccc42370903c5f9bfe37133cfd62df218c1bb92e749e543ffb388",
+      "hash": "95d7e50e19ec65e8a0a7af0c808d811486619a29acfe84232d83f6b1ce641ff6",
       "origin": "render",
       "base": "2.22.1"
     },
     ".opencode/skills/using-skills/SKILL.md": {
-      "hash": "f2c722997fae94fe6b635ab820af5a04f3b5748308a90be552ba02d52b896035",
+      "hash": "bafeac44d86c75b3e4149307bc92de2c737f1eca51c17854272866eb5600ec39",
       "origin": "render",
       "base": "2.22.1"
     },
@@ -46,7 +46,7 @@
       "base": "2.22.1"
     },
     ".opencode/skills/wolf-handoff/SKILL.md": {
-      "hash": "37a9462d87dc930d94aba3d5af75f99056d6015be048858f3b2d3fe30dea2b88",
+      "hash": "4850d5f9c9498bc4f6d1c9263e6f506f4e490cb9aefa729d40c1b0d0851fd0e7",
       "origin": "render",
       "base": "2.22.1"
     },
@@ -147,6 +147,16 @@
     },
     ".opencode/skills/wolf-explain/SKILL.md": {
       "hash": "7223041a910ace7e78ffba15d09d3a5ba3dfe9309c6f89fde40bc2155890f2f3",
+      "origin": "render",
+      "base": "2.22.1"
+    },
+    ".opencode/skills/wolf-git/SKILL.md": {
+      "hash": "2abc8e801d8de4435ea6985bbb816b1d8d049600b4d49d6a4a7923faa3e434d1",
+      "origin": "render",
+      "base": "2.22.1"
+    },
+    ".opencode/skills/wolf-git/reference/git-collaboration-policy-v1.1.md": {
+      "hash": "e0ee7c93f41bb6f6d7c9da7099fb7e659324d0a015dc4cd4b81f0c878be72daf",
       "origin": "render",
       "base": "2.22.1"
     }

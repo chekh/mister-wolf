@@ -1,3 +1,5 @@
 docs/dev/INDEX.md
 docs/dev/**/_index.md
 docs/external/**
+# канон регламента: bytes/sha256 закреплены, форматирование изменило бы sha
+docs/reference/git-collaboration-policy-v1.1.md

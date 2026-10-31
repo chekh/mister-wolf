@@ -18,6 +18,7 @@
 | wave-2-22-0-expert-package | 2026-10-26 | Волна 2.22.0 — обновление скиллов и команд волка (полная переработка по экспертному пакету) | draft | fix |
 | patch-2-21-1-multi-project-schema-isolation | 2026-10-27 | '2.21.1 — Изоляция схем памяти между проектами (multi-project schema isolation)' | approved | fix |
 | p-2-22-0-task-l2-lifecycle | 2026-10-30 | 2.22.0 — срез P: компактный TASK и жизненный цикл L2 | draft | full |
+| b0-git-skill | 2026-10-31 | b0-git-skill | draft | full |
 
 ## Волны
 
