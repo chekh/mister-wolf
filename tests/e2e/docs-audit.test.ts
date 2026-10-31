@@ -49,6 +49,8 @@ const ALLOWED_FILES_WITH_HISTORICAL = new Set<string>([
 const EXCLUDED_DIRS = [
   'docs/dev/2026-10-14-phase-a-dobor',
   'docs/dev/2026-10-27-roadmap-v4-review',
+  // Внешние ревью цитируют удалённые команды как evidence — дословно, не правим.
+  'docs/external',
   'docs/site/changelog',
   'docs/site/ru/changelog',
 ];

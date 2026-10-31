@@ -8,7 +8,7 @@
 | База                    | Mr.Wolf **2.21.0**, HEAD `5926e41c06a70409de77c851a4085a850df00b5f` (origin/main = тот же SHA)                                                                                                                            |
 | Рабочее дерево на входе | чистое (только 4 untracked-файла lead'а в `docs/dev/2026-10-26-wave-2-22-0-expert-package/`)                                                                                                                              |
 | Дата                    | 2026-10-26                                                                                                                                                                                                                |
-| Источник требований     | `.external_experts_review/2026-10-25-chatgpt-skills-review/RELEASE-TASK.md`: строки 44–61 (REQ-01..REQ-13), 28–42 (I1–I7), 138–156 (AC-01..AC-09)                                                                         |
+| Источник требований     | `docs/external/reviews/2026-10-25-chatgpt-skills-review/RELEASE-TASK.md`: строки 44–61 (REQ-01..REQ-13), 28–42 (I1–I7), 138–156 (AC-01..AC-09)                                                                            |
 | Метод                   | CodeGraph MCP (`codegraph_explore`) для структурного чтения кода + `read`/`grep` для текстов, YAML/конфигов и doc-файлов. Память Wolf не читалась; `npm run check`/`e2e`/`docs:build` не запускались (по границе задачи). |
 | Ограничение чтения      | `WOLF-2.20.0-COMPLETE.md` целиком не открывался; использовался только `RELEASE-TASK.md` в заданных диапазонах                                                                                                             |
 

@@ -13,14 +13,14 @@
 | #3 Headless A/B + самомутация через Стюарда | H1: headless-исполнение методики из памяти — 6/6 и 5/6 (формальный фейл форматирования в A2); H2: оверхед носителя измерен (≈2.3–3.3× к статике); H4: жалоба → мутация playbook v3→v4 → персистентное изменение поведения следующей сессии | Доказана complaint-driven persistent mutation; положительный эффект и обобщаемость — гипотеза до E1d и holdout.                                                                                                                       |
 | #4 Модель из памяти + инжекция              | Смена модели на лету (glm-5.3-flash → glm-5.2) в одной сессии через routing-объект в памяти (`wolf supersede`); детерминированная доставка playbook плагином в system-промпт                                                               | Подтверждена возможность переключения двух конкретных моделей в одной OpenCode-сессии. Не доказаны: общий model routing; качество выбора модели; fallback; стабильность на других провайдерах; изменение модели без потери состояния. |
 
-Артефакты: отчёты PoC #3/#4 — `.external-research/POC-{3,4}-report.md` (коммит `f92dbc4`); артефакты PoC #1/#2 — коммит `5514069`.
+Артефакты: отчёты PoC #3/#4 — `docs/external/program/POC-{3,4}-report.md` (коммит `f92dbc4`); артефакты PoC #1/#2 — коммит `5514069`.
 
 ## Исследования
 
 - **Самообучение** (2026-08-26…29): внешний аудит, 14 фокус-областей, 43 правки спеки — `docs/specs/2026-08-26-self-learning-design.md`.
-- **Tools-as-skills** (2026-08-29): 6/6 сценариев — `.external-research/research-tools-as-skills.md` (коммит `deafcf5`).
-- **Внешняя критика концепта v3.2** (2026-08-31): `.external_experts_review/2026-08-31-concept-v3-2-critique/critique.md` — основа ревизии v3.3.
-- **Внешняя критика комплекта v3.3** (2026-08-31): `.external_experts_review/2026-08-31-concept-v3-3-critique/critique.md` — основа ревизии v3.3.1, включая переработку этого файла.
+- **Tools-as-skills** (2026-08-29): 6/6 сценариев — `docs/external/program/research-tools-as-skills.md` (коммит `deafcf5`).
+- **Внешняя критика концепта v3.2** (2026-08-31): `docs/external/reviews/2026-08-31-concept-v3-2-critique/critique.md` — основа ревизии v3.3.
+- **Внешняя критика комплекта v3.3** (2026-08-31): `docs/external/reviews/2026-08-31-concept-v3-3-critique/critique.md` — основа ревизии v3.3.1, включая переработку этого файла.
 
 ## wolf-experiment (2026-08, историческое)
 
@@ -34,18 +34,18 @@
 
 Стабильные идентификаторы доказательств. Ссылки из maturity.md/coverage.md — только на эти ID; ID не переиспользуются после supersede.
 
-| ID         | Что                                                                                             | Артефакт / коммит                                                             |
-| ---------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| EVD-POC-1  | Рамочная модель (PoC #1)                                                                        | коммит `5514069`                                                              |
-| EVD-POC-2  | Команда+скилл (PoC #2)                                                                          | коммит `5514069`                                                              |
-| EVD-POC-3  | Headless A/B + самомутация через Стюарда (PoC #3)                                               | `.external-research/POC-3-report.md`, коммит `f92dbc4`                        |
-| EVD-POC-4  | Модель из памяти + инжекция (PoC #4)                                                            | `.external-research/POC-4-report.md`, коммит `f92dbc4`                        |
-| EVD-RES-1  | Аудит спеки самообучения: 14 фокус-областей, 43 правки                                          | `docs/specs/2026-08-26-self-learning-design.md`                               |
-| EVD-RES-2  | Tools-as-skills: 6/6 сценариев                                                                  | `.external-research/research-tools-as-skills.md`, коммит `deafcf5`            |
-| EVD-RES-3  | wolf-experiment: 8 серий, ~70 прогонов                                                          | git-история до коммита `b31cbdd` (`b31cbdd^:wolf-experiment/REPORT.md`)       |
-| EVD-RES-4  | Внешние критики концепта v3.2/v3.3                                                              | `.external_experts_review/2026-08-31-concept-v{3-2,3-3}-critique/critique.md` |
-| EVD-ORCH-1 | Dogfood-оркестрация в собственном репо (сессии 2026-08-24…31: брифы, независимый ревью, отчёты) | память Wolf (work-threads, решения) + отчёты `.external-research/`            |
-| EVD-EFF-1  | Effectiveness-панель                                                                            | `docs/guide/effectiveness.md`                                                 |
+| ID         | Что                                                                                             | Артефакт / коммит                                                          |
+| ---------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| EVD-POC-1  | Рамочная модель (PoC #1)                                                                        | коммит `5514069`                                                           |
+| EVD-POC-2  | Команда+скилл (PoC #2)                                                                          | коммит `5514069`                                                           |
+| EVD-POC-3  | Headless A/B + самомутация через Стюарда (PoC #3)                                               | `docs/external/program/POC-3-report.md`, коммит `f92dbc4`                  |
+| EVD-POC-4  | Модель из памяти + инжекция (PoC #4)                                                            | `docs/external/program/POC-4-report.md`, коммит `f92dbc4`                  |
+| EVD-RES-1  | Аудит спеки самообучения: 14 фокус-областей, 43 правки                                          | `docs/specs/2026-08-26-self-learning-design.md`                            |
+| EVD-RES-2  | Tools-as-skills: 6/6 сценариев                                                                  | `docs/external/program/research-tools-as-skills.md`, коммит `deafcf5`      |
+| EVD-RES-3  | wolf-experiment: 8 серий, ~70 прогонов                                                          | git-история до коммита `b31cbdd` (`b31cbdd^:wolf-experiment/REPORT.md`)    |
+| EVD-RES-4  | Внешние критики концепта v3.2/v3.3                                                              | `docs/external/reviews/2026-08-31-concept-v{3-2,3-3}-critique/critique.md` |
+| EVD-ORCH-1 | Dogfood-оркестрация в собственном репо (сессии 2026-08-24…31: брифы, независимый ревью, отчёты) | память Wolf (work-threads, решения) + отчёты `docs/external/program/`      |
+| EVD-EFF-1  | Effectiveness-панель                                                                            | `docs/guide/effectiveness.md`                                              |
 
 ## E1 — программа экспериментов E1a–E1e (протокол зафиксирован ДО запуска)
 

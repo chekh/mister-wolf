@@ -16,7 +16,7 @@ created: 2026-10-27
 **База проверки.** Репозиторий `/Users/chekh/Development/mister-wolf/.worktrees/roadmap-v4-review`,
 ветка `feature/roadmap-v4-review`, HEAD `cdd348a`; `package.json` → `"version": "2.21.0"`, тег
 `v2.21.0` → `06c2ec0`. Внешний обзор:
-`/Users/chekh/Development/mister-wolf/.external_experts_review/2026-10-27-roadmap-review/mr-wolf-roadmap-2026-10-27.md`
+`/Users/chekh/Development/mister-wolf/docs/external/reviews/2026-10-27-roadmap-review/mr-wolf-roadmap-2026-10-27.md`
 (198 строк; §2 — строки 15–35; §3 — строки 37–53). Обзор сам объявляет: «Текущий код и
 последний опубликованный релиз не проверены» (строка 11) — настоящий документ этот пробел
 закрывает.

@@ -12,7 +12,6 @@ coverage/
 .worktrees/
 .codegraph/
 opencode.json
-.external_experts_review/
 # python artifacts (playground-lab scripts, tracked .py)
 __pycache__/
 *.pyc
