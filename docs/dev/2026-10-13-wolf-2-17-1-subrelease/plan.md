@@ -11,6 +11,8 @@ review: pending
 
 # 2.17.1 — план
 
+> Удалённые при гигиене 2026-10-31 файлы, цитируемые ниже, восстановимы: `git show 5830279:<путь>` — см. `docs/external/README.md`.
+
 - База: requirements.md (утверждены владельцем, b8c3c51 + 31ab280), design.md (р2 APPROVED, 30a08a6). HEAD на момент планирования — `8ca53af09176cd13933d5e020b950cafb798e8fd` (после 31ab280 — только документные коммиты, src-база совпадает с baseline дизайна 31ab280).
 - Профиль проекта: npm, vitest; точечная проверка `npx vitest run <путь>`, полный гейт `npm run check`; сборка доков `npm run docs:build`.
 - Git: trunk-based (main = истина), работа в worktree-ветках; worktree внутри проекта — `.worktrees/<имя-задачи>` (правило mem_20260827). Коммитит L1; L2 не коммитит.

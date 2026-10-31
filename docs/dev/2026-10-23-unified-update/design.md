@@ -7,6 +7,8 @@ created: 2026-10-23
 
 # unified-update — дизайн
 
+> Удалённые при гигиене 2026-10-31 файлы, цитируемые ниже, восстановимы: `git show 5830279:<путь>` — см. `docs/external/README.md`.
+
 Волна 2.19.0. Вход: requirements.md (approved; CR-06 faf32a3, REQ-15 —
 CR-07 3873a67), 15 REQ / 4 NFR. Исследования: research-artifacts-inventory.md
 (классы артефактов), docs/dev/2026-10-23-ts-update-investigation/note.md,

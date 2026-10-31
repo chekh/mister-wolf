@@ -1,5 +1,7 @@
 # Тест-план: патч 2.20.1 — Wolf ↔ конфиг opencode v2 (6.1–6.5)
 
+> Удалённые при гигиене 2026-10-31 файлы, цитируемые ниже, восстановимы: `git show 5830279:<путь>` — см. `docs/external/README.md`.
+
 Metadata
 
 - task_id: `patch-2-20-1-opencode-v2-config`
