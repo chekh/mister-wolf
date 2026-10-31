@@ -8,7 +8,7 @@ created: 2026-10-11
 # Волна 2.16.1 — экспертный пакет skills-superpowers: реализация
 
 **Режим: LITE** (фиксирует L1). Объём определён разбором
-`.external_experts_review/2026-10-11-skills-superpowers/REPORT-2.16.1-skills-analysis.md`,
+`docs/external/reviews/2026-10-11-skills-superpowers/REPORT-2.16.1-skills-analysis.md`,
 вердикты утверждены владельцем (`mem_20261011_vladelets_utverdil_verdikty_razbora_2_16_d935df`).
 Новых контрактов нет; при вскрытии второго компонента — остановка и переклассификация FULL.
 
@@ -122,7 +122,7 @@ created: 2026-10-11
 - `docs/README.md:60` — базовый набор 18→19 скиллов (T4).
 - Сайт: страница Changelog синхронна CHANGELOG.md через `npm run docs:build` (T6, только build).
 - Не трогать: исторические архивы (CHANGELOG ≤ 2.16.0, specs, планы/отчёты прошлых волн,
-  `.external_experts_review`).
+  `docs/external/reviews`).
 
 ## Релизный чек-лист 2.16.1 (выполняется после приёмки владельцем, вне этой волны)
 

@@ -3,7 +3,7 @@
 - Дата: 2026-09-04
 - Статус: спека (worker-implementer, по решениям координатора от 2026-09-04)
 - Источники: внешнее предложение
-  `.external-research/2026-09-04-wolfeval-proposal.md` (в main-чекауте,
+  `docs/external/program/2026-09-04-wolfeval-proposal.md` (в main-чекауте,
   untracked); `docs/concept/evidence.md`; `docs/concept/coverage.md`;
   `docs/concept/maturity.md`;
   `playground-lab/registry/findings.md` (F1–F25);

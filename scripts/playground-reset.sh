@@ -7,9 +7,9 @@
 #   1. rm -rf playground/       — ЕДИНСТВЕННОЕ опасное действие, только этот путь
 #   2. git init -b main + git archive main | tar -x (снапшот без истории/node_modules)
 #   3. исключить wolf-артефакты снапшота: .opencode/ AGENTS.md opencode.json
-#      + .opencode.json (MCP-конфиг mr-wolf) и .wolf/ (в main трекается SKILL.md)
+#      + .wolf/ (в main трекается SKILL.md)
 #      + шум: docs/site/public (ассеты витрины), playground-lab/ (полигон),
-#        .external-research/ (исследования концепта)
+#        docs/external/ (внешние исследования и ревью)
 #   4. начальный коммит своего репо площадки (README-PLAYGROUND.md переживает reset)
 #
 # Usage: scripts/playground-reset.sh [--force] [--ref <git-ref>]
@@ -66,17 +66,16 @@ git -C "$REPO_ROOT" archive "$REF" | tar -x -C "$PLAYGROUND"
 rm -rf "$PLAYGROUND/.opencode" \
        "$PLAYGROUND/AGENTS.md" \
        "$PLAYGROUND/opencode.json" \
-       "$PLAYGROUND/.opencode.json" \
        "$PLAYGROUND/.wolf" \
        "$PLAYGROUND/docs/site/public" \
        "$PLAYGROUND/playground-lab" \
-       "$PLAYGROUND/.external-research"
+       "$PLAYGROUND/docs/external"
 
 [[ -n "$README_BAK" ]] && cp "$README_BAK" "$PLAYGROUND/README-PLAYGROUND.md"
 
 # контроль pristine ДО коммита: волчьих следов быть не должно
-for p in .opencode .wolf AGENTS.md opencode.json .opencode.json .wolfrc \
-         docs/site/public playground-lab .external-research; do
+for p in .opencode .wolf AGENTS.md opencode.json .wolfrc \
+         docs/site/public playground-lab docs/external; do
   if [[ -e "$PLAYGROUND/$p" ]]; then
     echo "ERROR: pristine нарушен — остался $p" >&2
     exit 1

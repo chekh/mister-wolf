@@ -4,6 +4,7 @@
 
 | Слаг | Дата | Title | Статус | Профиль |
 | ---- | ---- | ----- | ------ | ------- |
+| wave-2.16.1 | 2026-10-11 | Волна 2.16.1 — интеграция экспертного пакета skills-superpowers + обязательные правки разбора + фикс детектора | active | fix |
 | wave-2-16-2-platform-lifecycle | 2026-10-12 | Волна 2.16.2 — версионная дисциплина и жизненный цикл платформы (doctor repair v1→v2, uninstall) | approved | full |
 | wave-2-17-faces | 2026-10-12 | Волна 2.17 — Лица: артефакт, версии, мутация | approved | full |
 | hotfix-2-16-3-agent-modes | 2026-10-13 | hotfix-2-16-3-agent-modes | done | fix |
@@ -13,6 +14,7 @@
 | wave-2-19-async-learning | 2026-10-15 | '2.19.0 — Async learning (автономный фоновый запуск Стюарда)' | draft | full |
 | unified-update | 2026-10-23 | unified-update | approved | full |
 | wave-2-20-0-upgrade-intentions | 2026-10-24 | wave-2-20-0-upgrade-intentions | approved | full |
+| patch-2-20-1-opencode-v2-config | 2026-10-25 | '2.20.1 — Wolf ↔ конфиг opencode v2 (пункты 6.1–6.5)' | done | fix |
 | wave-2-22-0-expert-package | 2026-10-26 | Волна 2.22.0 — обновление скиллов и команд волка (полная переработка по экспертному пакету) | draft | fix |
 | patch-2-21-1-multi-project-schema-isolation | 2026-10-27 | '2.21.1 — Изоляция схем памяти между проектами (multi-project schema isolation)' | approved | fix |
 | p-2-22-0-task-l2-lifecycle | 2026-10-30 | 2.22.0 — срез P: компактный TASK и жизненный цикл L2 | draft | full |
