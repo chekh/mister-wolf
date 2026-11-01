@@ -3,10 +3,10 @@ slug: roadmap-v4
 title: Roadmap v4 — быстрые полезные поставки и развитие этапов A–I
 status: active
 created: 2026-10-30
-updated: 2026-11-01
+updated: 2026-11-02
 revision: 9
 baseline_version: 2.23.1
-baseline_commit: ed35fe2ec0a8958fefa870042ffed7d7c1e5c81a
+baseline_commit: 08ab7c1b7fcae0411f322b4ab1932a5871356ef8
 ---
 
 # Roadmap v4 — активный роадмап
