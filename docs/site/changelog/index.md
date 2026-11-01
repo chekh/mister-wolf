@@ -8,6 +8,29 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.23.1] - 2026-11-02
+
+### Changed — the agent set checks that it understood the goal before working, and explains in human language
+
+Four base templates are rewritten: `agents/mr-wolf.md`, `skills/using-skills/SKILL.md`, `skills/wolf-brainstorm/SKILL.md` and `skills/wolf-explain/SKILL.md`. They are instructions to agents, not runtime behaviour — no code in `src/**` changed.
+
+- **`wolf-brainstorm` became an intent dialogue.** The skill no longer runs a questionnaire: no mandatory two, three or five questions, no filled-in fields as proof of understanding. Readiness is decided by whether the goal, the result and the boundaries can be stated in your own words, and a visible recap of the understood task comes before research, dispatch, `scaffold` and requirements so that it can be corrected. A direct assignment shortens that dialogue but does not remove the check; work already agreed and unchanged is continued without a second discovery; an explicit "continue without questions" is honoured within its limits, with the assumptions named. Research still needs its own mandate — question, sources and stop condition — and a council is reserved for a choice where independent opinions can change the decision. The outcome of a discussion about future development can now be saved as an optional `pre-requirements.md` next to the future documents of the same goal: it does not run `scaffold` and does not mean the requirements are approved.
+- **`wolf-explain` explains through actions, reasons and consequences.** The answer is built from the link the person is missing — a term, a cause-and-effect relation, the state of the work or the consequences of a choice — rather than from the structure of the internal report. One main thought per dialogue reply; a final answer or a handed-over document is self-sufficient (main point, grounds, material limitations, next step). A person who lost the thread gets the missing connection restored, not shorter synonyms. Facts, assumptions, recommendations and the unknown stay distinguishable, and an illustration that is not backed by a source is marked as conditional.
+- **`mr-wolf` and `using-skills` route the same way.** A new idea, a substantial change or a new substantive assignment (study, compare, write a document) passes the intent check before the subject is studied and before dispatch, while a ready answer from delivered context is given without a new round of questions. Both templates now state that studying the task's materials — documentation, code and repository included — is execution through L1 even when it is read-only, Markdown or a small informational question; the format of the material is not an exception from the role. The mandatory-skills table gained a row for "study, compare or prepare a document", and the stage-documentation section now names `pre-requirements.md` as an optional brainstorm outcome that is not one of the four documents, does not run `scaffold` and does not mean the requirements are approved.
+
+### What this release does not do
+
+- **The economy and the quality of a long dialogue are not measured.** No token, latency or cost comparison is made, and no long-running conversation was evaluated. The author's probes of first replies on three further topics (employee onboarding, household chores, a supplier order status) are limited behaviour checks: they show that a reply can start the dialogue without a questionnaire, not that the dialogue is better over a session.
+- **These are instructions, not mechanisms.** Nothing enforces the gate at runtime: there is no new agent, command, memory type, status or `permission:` boundary, `schema_migrations` is empty and `CURRENT_SCHEMA_VERSION` is untouched. An agent that skips the check is not blocked by the code.
+- **The new text does not reach every existing installation unchanged.** A file under `protect:` keeps its last render and is reported `behind (base 2.23.1)`; a file edited locally is a `needs decision` — `wolf upgrade --resolve <file>=keep` keeps your version and the next pass delivers the rest, while an unattended `--yes` pass takes the base first and prints where the local copy was saved under `.wolf/backup/upgrade/<date>/`. Nothing is lost silently, but an unattended pass does not ask.
+- **A1.2 measurement is not done here.** The "before/after" baseline for measurement work is now 2.23.1 with a larger skill set, not 2.23.0.
+
+### Upgrade notes
+
+- **Nothing migrates.** `npm install -g mister-wolf@2.23.1` (or `wolf upgrade`) is enough; the memory store, its schema, the config and the public CLI surface are unchanged.
+- **Four targets are `changed` on the next pass.** `update-map.json` records 33 file targets — 4 `changed` (the four templates above), 29 `unchanged` — with 6 faces and an empty `schema_migrations`. An existing project gets the four files rewritten and the rest re-stamped `set=2.23.1`; no file is `new` or `removed`.
+- **`protect:` and local mutations stay in the owner's hands.** A protected file keeps the `set=` of its last render, is listed under `Protections` as `behind (base 2.23.1)` and is never overwritten — not by the pass, not by `--yes`. A locally edited file is a decision: `wolf upgrade --resolve <file>=keep` accepts your version (the file then reports as `kept (local)`) and the next `--yes` pass applies the remaining targets; `take` drops the local version to `.wolf/backup/upgrade/<date>/` first.
+
 ## [2.23.0] - 2026-11-01
 
 ### Added — a read-only usage importer for local OpenCode sessions, and the Git-collaboration skill in the base set
