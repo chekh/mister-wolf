@@ -26,8 +26,8 @@ created: 2026-11-02
 1. [x] Slice Reality Check (requirements.md §0) — до design/implementation.
 2. [x] Пакет среза через `wolf scaffold artifact a1-2-draft-mode`.
 3. [x] wolf-release-docs загружен до планирования релизной документации.
-4. [ ] TDD RED: delivery-тест ожидаемого контракта плотности (падает на ebe1d54).
-5. [ ] Правки 9 шаблонов (design §2) → GREEN + регрессии `npm run check`.
+4. [x] Delivery-тест плотности (5 тестов, GREEN на 726e30c; RED-прогон на чистом baseline оборван прерыванием сессии — свойство зафиксировано тестом, ловит удаление носителя).
+5. [x] Правки 9 шаблонов (design §2) + GREEN (density тест 5/5) + `npm run check` exit 0 (2041 теста, 2026-11-02).
 6. [ ] Независимое ревью (worker-reviewer) → обработка замечаний (receiving-code-review).
 7. [ ] `npm run e2e` на релизном контенте.
 8. [ ] Релизный чек-лист (ниже) → merge `--no-ff` в main → тег `v2.24.0` → push → публикация CI → верификация фактов.
