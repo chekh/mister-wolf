@@ -10,6 +10,30 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.23.2] - 2026-11-02
+
+### Changed — agents choose a proportionate way of working and ask before expensive investigations
+
+The base set ships a new workflow skill, `wolf-work-strategy`, and aligns the agent frames, methodologies and commands around one principle: reach the assigned result by a proportionate route — use what is already delivered, read the nearest reliable source, apply a proven means, ask the context holder when one answer beats a long investigation, run a distinguishing check when a decision depends on it, hand the question to the responsible level when the unknown needs new scope or authority, and stop when the result is sufficiently grounded. Asking is a working action, not a failure: it needs no prior attempts and no quota, and a lead answers with the known answer, a means or an escalation instead of an unchanged "figure it out". The skill changes no roles, rights, approved goals or mandatory project gates.
+
+- **New `wolf-work-strategy` skill (22 skills instead of 21).** A route table for choosing the next useful move (delivered answer / nearest source / proven means / addressed question / distinguishing check / hand-off / sufficient stop), rules for asking as a working action, and depth-and-sufficiency limits: a mandatory check is always run, a conditional one only with its ground, and a neighbouring interesting finding does not create a new assignment. A dedicated renderer test verifies the skill is delivered whole, including to projects where it does not exist yet.
+- **Frames and methodologies agree with the principle.** `mr-wolf`, `executor-lead`, the three workers, `steward`, `using-skills`, `wolf-plan`, `wolf-design`, `wolf-execute`, `wolf-sdd`, `wolf-debug`, `wolf-review`, `wolf-testplan`, test-driven development, verification-before-completion and `writing-skills` are re-aligned: conditional techniques no longer read as mandatory audits, "read whole sections / cite every finding" prescriptions are removed (notably from the researcher playbook), and finishing at a sufficiently grounded result is spelled out. The seeds of the four numbered roles and the mentor carry v4.
+- **`analyze-doc` states its route.** L0 aligns the goal → L1 organizes a bounded analysis → worker-researcher executes one question — instead of the earlier "analyze a document by the methodology stored in memory" without routing.
+- **Catalogs and counts agree.** The EN/RU site guides (base set, artifact pipeline) describe the new skill and state 22 skills; README, docs/README and getting-started (EN and RU) numbers updated — they still said 20.
+
+### What this release does not do
+
+- **The economy is not measured.** On the paired pilot (clean executors, baseline templates vs candidate) both sides returned correct results, and two additional candidate probes passed; no runtime metrics, holdout or false-trigger measurements exist, and none are claimed.
+- **These are instructions, not mechanisms.** No runtime API, schema, permission, model, dependency or Git-policy change; `schema_migrations` is empty and `CURRENT_SCHEMA_VERSION` is untouched.
+- **Existing active faces are not migrated by the release.** The seed playbooks carry v4, but an upgrade pass does not rewrite live playbook faces; `protect:` files and local mutations stay owner-controlled. Reconciling old active faces with the new seeds is the existing authorized Steward workflow, and a staging copy with a diff/backup comes first.
+- **The known unstamped `wolf-release-docs` delivery in this repository is untouched.** It predates this release (2.23.1 finding) and keeps its needs-decision state on the next pass; this release neither resolves nor hides it.
+
+### Upgrade notes
+
+- **Nothing migrates.** `npm install -g mister-wolf@2.23.2` (or `wolf upgrade`) is enough; the memory store, its schema, the config and the public CLI surface are unchanged.
+- **update-map.json records 34 file targets — 1 `new` (`wolf-work-strategy`), 19 `changed`, 14 `unchanged` — with 6 faces and an empty `schema_migrations`.** An existing project receives the new skill file plus the re-aligned targets and gets the rest re-stamped `set=2.23.2`.
+- **`protect:` and local mutations stay in the owner's hands.** Same rules as 2.23.1: a protected file is reported `behind (base 2.23.2)` and is never overwritten; a locally edited file is a `needs decision` resolved by `wolf upgrade --resolve <file>=keep|take`.
+
 ## [2.23.1] - 2026-11-02
 
 ### Changed — the agent set checks that it understood the goal before working, and explains in human language
