@@ -125,7 +125,17 @@ describe('wolf tool (C2 librarian v1)', () => {
     // 2.25.1 defect 1: шаги эксперта — register v1 → expose → register --update v2.
     writeFileSync(join(cwd, 'extract-todos-v2.ts'), 'export function run(){/*v2*/}\n', 'utf-8');
     const upd = runCli(
-      ['tool', 'register', 'extract-todos-v2.ts', '--name', 'extract-todos', '--language', 'typescript', '--update', 'extract-todos'],
+      [
+        'tool',
+        'register',
+        'extract-todos-v2.ts',
+        '--name',
+        'extract-todos',
+        '--language',
+        'typescript',
+        '--update',
+        'extract-todos',
+      ],
       cwd
     );
     expect(upd.status).toBe(0);

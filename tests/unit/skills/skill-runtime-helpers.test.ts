@@ -158,7 +158,8 @@ describe('delivered skills and runtime helpers', () => {
   it('kills the whole process group on timeout and digests a settled log', async () => {
     const root = project(),
       log = join(temp(), 'run.log');
-    const child = 'const t=setInterval(()=>console.log("tick"),100);setTimeout(()=>{clearInterval(t);process.exit(0)},5000);';
+    const child =
+      'const t=setInterval(()=>console.log("tick"),100);setTimeout(()=>{clearInterval(t);process.exit(0)},5000);';
     const parent = `require('child_process').spawn(process.execPath,['-e',${JSON.stringify(child)}],{stdio:['ignore','inherit','inherit']});setInterval(()=>{},1000);`;
     const r = python(helper, [
       'check',
