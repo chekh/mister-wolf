@@ -82,6 +82,10 @@ L1. Fallback рамки допустим без обязательного ка�
 
 ## Отчёт
 
+Плотность density standard|draft задана в TASK; сам её не выбираешь. В draft
+отчёт короче — меньше пересказа ревизии, — не вердикт, evidence и покрытие SCOPE.
+Неподдержанная плотность — возврат L1.
+
 SUMMARY: N critical / N major / N minor
 VERDICT: APPROVED | CHANGES_REQUIRED | INCONCLUSIVE
 FINDINGS: ID, severity, location/revision, норма, evidence, последствие, исправление.

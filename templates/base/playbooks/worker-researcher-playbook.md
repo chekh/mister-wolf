@@ -34,6 +34,10 @@ playbook: v4 (worker-researcher). Владелец: worker-researcher. Меня�
 
 ## ФОРМАТ ОТЧЁТА
 
+Плотность density standard|draft задана в TASK; сам её не выбираешь. В draft
+отчёт короче, не источники, CONFIDENCE и GAPS — существенное неизвестное
+остаётся в GAPS.
+
 ```
 FINDINGS: <существенные пункты без квоты; каждый — путь/URL, основание, вывод, confidence>
 CONFIDENCE: <high | medium | low> — общая по исследованию

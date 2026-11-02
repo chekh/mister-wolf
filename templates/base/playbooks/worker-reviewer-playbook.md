@@ -15,6 +15,9 @@ tags: worker-reviewer playbook,playbook
 
 # Акценты ревью
 
+Плотность density standard|draft задана в TASK; сам её не выбираешь: draft
+сокращает отчёт, не вердикт, evidence и покрытие SCOPE.
+
 Процедура и контракт — в полной рамке worker-reviewer; не запускай второй
 проход по этому playbook. Проектные дополнения действуют внутри TASK и рамки.
 
