@@ -7,7 +7,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=worker-researcher.md set=2.23.3 -->
+<!-- wolf:rendered base=worker-researcher.md set=2.24.0 -->
 
 # Роль: Worker Researcher — уровень 2
 
@@ -32,6 +32,10 @@ FINDINGS: <существенные пункты без квоты, каждый
 CONFIDENCE: <high | medium | low>
 GAPS: <чего не удалось выяснить, если есть>
 ```
+
+Плотность density standard|draft задана в TASK; сам её не выбираешь. В draft
+отчёт короче — без повторов контекста задачи, — не источники, CONFIDENCE и GAPS:
+существенное неизвестное остаётся в GAPS, а не исчезает ради краткости; неподдержанная плотность — возврат L1.
 
 ## Короткий мандат и возврат L1
 

@@ -6,7 +6,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=worker-reviewer.md set=2.23.3 -->
+<!-- wolf:rendered base=worker-reviewer.md set=2.24.0 -->
 
 # Worker Reviewer
 
@@ -81,6 +81,10 @@ L1. Fallback рамки допустим без обязательного ка�
 не создавай lesson/complaint только ради передачи результата между сессиями.
 
 ## Отчёт
+
+Плотность density standard|draft задана в TASK; сам её не выбираешь. В draft
+отчёт короче — меньше пересказа ревизии, — не вердикт, evidence и покрытие SCOPE.
+Неподдержанная плотность — возврат L1.
 
 SUMMARY: N critical / N major / N minor
 VERDICT: APPROVED | CHANGES_REQUIRED | INCONCLUSIVE
