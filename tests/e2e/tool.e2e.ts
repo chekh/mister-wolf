@@ -16,7 +16,7 @@ describe('wolf tool (C2 librarian v1)', () => {
 
   afterAll(() => rmSync(cwd, { recursive: true, force: true }));
 
-  it('register: кандидат с контрактом и скопированным скриптом', () => {
+  it('register: кандидат с контрактом; карточка ссылается на исходник без копии', () => {
     const r = runCli(
       [
         'tool',
@@ -36,8 +36,10 @@ describe('wolf tool (C2 librarian v1)', () => {
     expect(r.status).toBe(0);
     expect(r.stderr).toBe('');
     expect(r.stdout).toContain('Registered tool extract-todos');
-    expect(r.stdout).toContain(`Script: ${join('.wolf', 'tools', 'extract-todos.ts')}`);
-    expect(readFileSync(join(cwd, '.wolf', 'tools', 'extract-todos.ts'), 'utf-8')).toBe('export function run(){}\n');
+    expect(r.stdout).toContain('Script: extract-todos.ts');
+    // Регистрация хранит ссылку на исходник в проекте: копии в .wolf/tools не появляется.
+    expect(existsSync(join(cwd, '.wolf', 'tools', 'extract-todos.ts'))).toBe(false);
+    expect(readFileSync(join(cwd, 'extract-todos.ts'), 'utf-8')).toBe('export function run(){}\n');
 
     toolId = r.stdout.match(/Registered tool \S+: (\S+)/)?.[1] ?? '';
     expect(toolId).toMatch(/^mem_/);
@@ -112,7 +114,7 @@ describe('wolf tool (C2 librarian v1)', () => {
     const before = readFileSync(skillPath, 'utf-8');
     expect(before).toContain(`generated from tool:${toolId}`);
     expect(before).toContain('список TODO строкой');
-    expect(before).toContain(join('.wolf', 'tools', 'extract-todos.ts'));
+    expect(before).toContain('extract-todos.ts');
 
     const again = runCli(['tool', 'expose', 'extract-todos'], cwd);
     expect(again.status).toBe(0);
