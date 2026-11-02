@@ -4,6 +4,30 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.24.0] - 2026-11-02
+
+### Changed — dispatched tasks carry a density axis: `density standard|draft` (A1.2 economical behavior)
+
+The base set ships the roadmap A1.2 carrier: the TASK execution contract gains an explicit density axis, `density standard|draft`. The owner level (L0/L1) writes the density when composing the TASK; a missing field means `standard`. In `draft` the executor shortens the visible service record — repeated retellings, narration of the obvious, ritual summaries — while mandatory checks, rights, evidence and independent acceptance stay untouched; substantial uncertainty widens the targeted verification instead of shrinking the answer; the RESULT records the actual density, and acceptance verifies observed actions, evidence and the result — not a draft label. This is the behavioral counterpart of A1.1 (2.23.0 `wolf usage import`), which supplies the measurement data.
+
+- **The axis lives in the existing execution block, not in runtime.** Nine instruction surfaces agree on one formulation: the `using-skills` TASK contract, the `executor-lead` frame and playbook (choice at dispatch, acceptance not by label, unsupported density is diagnosed), and the three worker frames and playbooks (execute the assigned density, never pick or raise it yourself; an unsupported density is returned to L1). The draft report keeps every mandatory field: implementer self-checks, researcher sources/CONFIDENCE/GAPS, reviewer verdict/evidence/SCOPE.
+- **A renderer test locks the carrier in the delivered set** (`density-mode-delivery`, 5 tests over a real base-set render: TASK contract, lead frame+playbook, implementer, researcher+reviewer, fixtures/baseline agreement). The RED run on the pre-slice base `ebe1d54` failed 5/5; the slice makes it green.
+- **Scenario fixtures ship with the slice** (`tests/fixtures/a1-2-density/scenarios.json`): small unambiguous task in draft, substantial unknown in draft, FULL/LITE independence — the observation protocol for permitted work, baseline 2.23.3, instrumented by `wolf usage import`.
+- **Site guides describe the contract.** The EN/RU base-set pages state the density axis and its honest limits.
+
+### What this release does not do
+
+- **The economy is not measured.** The carrier, the behavior contract, the scenarios and the comparison protocol are delivered; the effect is honestly "not estimated" (roadmap NFR-06/AC-08): a few routine tasks give pilot observation, not a causal claim, and no numeric savings threshold is stated. REQ-23A stays open.
+- **These are instructions, not mechanisms.** No runtime API, schema, permission, model or dependency change; `schema_migrations` is empty and `CURRENT_SCHEMA_VERSION` is untouched. An agent that ignores the density field is not blocked by code — acceptance and independent review compensate.
+- **Existing active faces are not migrated by the release.** An upgrade pass delivers the updated templates; reconciling live playbook faces with the new seeds stays the existing authorized Steward workflow.
+- **The known unstamped `wolf-release-docs` delivery in this repository is untouched.** It predates this release (2.23.1 finding) and keeps its needs-decision state on the next pass; this release neither resolves nor hides it.
+
+### Upgrade notes
+
+- **Nothing migrates.** `npm install -g mister-wolf@2.24.0` (or `wolf upgrade`) is enough; the memory store, its schema, the config and the public CLI surface are unchanged.
+- **`update-map.json` records 35 file targets — 5 `changed` (the density contract across the TASK/agent surfaces), 30 `unchanged` — with 6 faces and an empty `schema_migrations`.** An existing project receives the updated templates re-stamped `set=2.24.0`.
+- **`protect:` and local mutations stay in the owner's hands.** Same rules as 2.23.3: a protected file is never overwritten; a locally edited file is a `needs decision` resolved by `wolf upgrade --resolve <file>=keep|take`.
+
 ## [2.23.3] - 2026-11-02
 
 ### Changed — the base set gains `wolf-user-report`: user-facing reports and documents with adequate depth
