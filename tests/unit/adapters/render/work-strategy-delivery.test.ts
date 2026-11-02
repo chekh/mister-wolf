@@ -54,7 +54,8 @@ describe('work strategy delivery through the real base set', () => {
     expect(map.files).toContainEqual({
       path: 'base/skills/wolf-work-strategy/SKILL.md',
       kind: 'skill',
-      category: 'new',
+      // The lifecycle category changes after the introducing release.
+      category: expect.stringMatching(/^(new|changed|unchanged)$/),
     });
   });
 

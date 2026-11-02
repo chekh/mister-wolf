@@ -15,7 +15,7 @@ The composition below is the catalog of `templates/base/` in the package.
 | `worker-researcher`  | Investigates code, documents and the web against one question; returns findings with sources and confidence                                                                            |
 | `worker-reviewer`    | Reviews workers' code and documents against the brief requirements; verdict via the VERDICT/SUMMARY contract                                                                           |
 
-## Skills — 22 → `.opencode/skills/`
+## Skills — 23 → `.opencode/skills/`
 
 | Skill                            | Purpose                                                                                                                                                                         |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -35,6 +35,7 @@ The composition below is the catalog of `templates/base/` in the package.
 | `wolf-handoff`                   | continue an overloaded session in a fresh one, without losing progress                                                                                                          |
 | `wolf-plan`                      | zero-context plans where every task is a self-sufficient worker brief                                                                                                           |
 | `wolf-work-strategy`             | choose a proportionate route, ask the context holder early, and stop at sufficient evidence                                                                                     |
+| `wolf-user-report`               | reader-focused documents with sufficient depth, appropriate visuals, HTML/CSS and reusable project templates                                                                    |
 | `wolf-release-docs`              | release documentation pass: coverage map, EN/RU alignment, generated pages                                                                                                      |
 | `wolf-review`                    | multi-lens document review loop                                                                                                                                                 |
 | `wolf-sdd`                       | subagent-driven development for plans with independent tasks                                                                                                                    |
@@ -45,6 +46,8 @@ The composition below is the catalog of `templates/base/` in the package.
 For L0/L1, bootstrap delivers the complete installed `using-skills` body rather than a separate summary. The agent checks the route when the goal or stage changes and loads other skills before applying them. L2 receives the passive worker protocol and assigned methodologies. Missing bootstrap content is reported explicitly.
 
 Load wolf-work-strategy once per assignment, then again only if its version changes or its text is lost. It guides action selection while preserving roles and mandatory project gates. An early question can replace an expensive investigation, including fact finding; obvious facts in the supplied inputs need no question. Without an in-call dialogue channel, L2 returns the question to L1 through its existing result contract. Updating templates does not reconcile an old active playbook; use the existing Steward workflow.
+
+Load wolf-user-report for a requested or agreed standalone human document, including updates. It is available in the full base set, not automatically loaded for chat replies or machine RESULT/EVIDENCE. Preserve the chosen format and role boundaries; do not start new research just to format the result. Project themes and templates remain project resources, not mandatory bundled CSS profiles.
 
 ## Commands — 3 → `.opencode/command/`
 
