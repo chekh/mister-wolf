@@ -15,6 +15,8 @@ The composition below is the catalog of `templates/base/` in the package.
 | `worker-researcher`  | Investigates code, documents and the web against one question; returns findings with sources and confidence                                                                            |
 | `worker-reviewer`    | Reviews workers' code and documents against the brief requirements; verdict via the VERDICT/SUMMARY contract                                                                           |
 
+Every dispatched task carries an execution block: requested model/variant, the execute/solve mode, a tool-call budget and a stop condition. Since 2.24.0 it also carries a density axis — `density standard|draft`. The owner level (L0/L1) picks the density when writing the TASK; a missing field means `standard`. In `draft` the executor shortens the visible service record — repeated retellings, narration of the obvious, ritual summaries — while keeping mandatory checks, rights, evidence and independent acceptance; substantial uncertainty widens the targeted verification instead of shrinking the answer, and an unsupported density is returned to L1. Acceptance checks observed actions, evidence and the result — not a draft label in RESULT. No numeric savings are claimed; the measurable comparison is a separate observation effort (roadmap A1.2).
+
 ## Skills — 23 → `.opencode/skills/`
 
 | Skill                            | Purpose                                                                                                                                                                         |
