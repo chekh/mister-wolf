@@ -36,7 +36,7 @@ playbook: v4 (worker-researcher). Владелец: worker-researcher. Меня�
 
 Плотность density standard|draft задана в TASK; сам её не выбираешь. В draft
 отчёт короче, не источники, CONFIDENCE и GAPS — существенное неизвестное
-остаётся в GAPS.
+остаётся в GAPS; неподдержанная плотность — возврат L1.
 
 ```
 FINDINGS: <существенные пункты без квоты; каждый — путь/URL, основание, вывод, confidence>

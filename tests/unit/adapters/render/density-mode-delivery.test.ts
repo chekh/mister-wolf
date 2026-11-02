@@ -68,9 +68,11 @@ describe('density mode (standard|draft) delivery through the real base set', () 
     const reviewer = readFileSync(join(path, '.opencode/agents/worker-reviewer.md'), 'utf8');
     expect(researcher).toContain('draft');
     expect(researcher).toContain('GAPS');
+    expect(researcher).toContain('возврат L1');
     expect(reviewer).toContain('draft');
     expect(reviewer).toContain('вердикт');
     expect(sourceRead('playbooks/worker-researcher-playbook.md').toLowerCase()).toContain('плотность');
+    expect(sourceRead('playbooks/worker-researcher-playbook.md')).toContain('возврат L1');
     expect(sourceRead('playbooks/worker-reviewer-playbook.md').toLowerCase()).toContain('плотность');
   });
 
