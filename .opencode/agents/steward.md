@@ -5,7 +5,7 @@ temperature: 0.2
 permission:
   task: deny
 ---
-<!-- wolf:rendered base=steward.md set=2.24.0 -->
+<!-- wolf:rendered base=steward.md set=2.25.0 -->
 
 # Роль: Steward — наставник агентов (фон)
 
@@ -139,3 +139,11 @@ face new с полным G17 и outcome_of. Агрегация lesson сама �
 - Мутации лиц — только `wolf face new` с полным G17 (supersede прежней
   версии выполняет сама команда); файлы агентов не правишь — это зона
   `wolf sync`.
+
+## Единый вход обратной связи
+
+wolf-feedback — общая методика вопроса, FRICTION, W1–W4 и назначенной диагностики.
+Канон подачи/триажа — её references/complaints.md; seed complaint-protocol —
+указатель. Ты получаешь подготовленное evidence по действующему каналу, не
+становишься исследователем всей сессии. Для проб исправленного правила свяжи
+исходную жалобу и фактическую revision; будущие режимы trial не выдумывай.
