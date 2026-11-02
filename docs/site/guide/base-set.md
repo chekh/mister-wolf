@@ -116,8 +116,11 @@ apply a skill and its result. Assigned skills can be loaded directly; L2 does
 not browse the catalog. L1 composes an assistant from an L2 instance, its face
 and skills; programmatic tools support its mechanical work.
 
-A tool card references project source files. Repeat --resource for significant
-files; explicit --update preserves the card ID. Existing .wolf/tools paths remain
-valid, without copying or a bulk migration. source_digest covers only the listed
-files; environment and side effects still require their contract checks.
-tool use records usage; it does not execute the tool.
+A tool card references the project source files instead of copying them into
+`.wolf/tools/`: the entrypoint is registered by its project path, additional
+significant files are added by repeating `--resource`, and an explicit `--update`
+refreshes the same card ID when the source changes. Cards registered the old way
+keep working without a bulk migration. The `source_digest` check only confirms
+the listed files are unchanged; the environment and side effects still depend on
+the card's contract. `tool use` records usage — it does not execute anything.
+Full command syntax with all flags: [CLI reference](/guide/cli/command-reference).
