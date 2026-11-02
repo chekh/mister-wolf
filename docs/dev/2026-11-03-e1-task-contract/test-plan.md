@@ -46,7 +46,7 @@ created: 2026-11-03
 
 - Given ветка среза e1-task-contract (baseline 5ea1b62)
 - When git diff --stat main…e1-task-contract
-- Then изменены только: docs/dev/2026-11-03-e1-task-contract/**, шесть файлов
+- Then изменены только: `docs/dev/2026-11-03-e1-task-contract/**`, шесть файлов
   правок из design, без src/, update-map.json, CHANGELOG.md, .opencode/
 - Маппинг: git diff --stat (L1)
 
@@ -60,7 +60,7 @@ created: 2026-11-03
 ## Прогоны
 
 - Полный гейт: `npm run check` в корне worktree — exit 0 (включает prettier по
-  docs/**\/*.md, lint, build, unit/integration тесты).
+  `docs/**/*.md`, lint, build, unit/integration тесты).
 - E2E по правилу проекта: `npm run e2e` (сборка + distribution/init поверх
   изменённого payload).
 - Точечные: `git diff --stat`; grep-сверка терминов

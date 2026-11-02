@@ -12,21 +12,21 @@ design: design.md (status draft)
 ## Задачи
 
 - [ ] E1-1-T1: Канон TASK-контракта — два блока ядра, инвариант условной
-  применимости, словарь «десяти» — design §Контракты 1–3, базлайн
-  templates/base/skills/using-skills/references/contracts.md:33-93. Исполнитель:
-  worker-implementer.
+      применимости, словарь «десяти» — design §Контракты 1–3, базлайн
+      templates/base/skills/using-skills/references/contracts.md:33-93. Исполнитель:
+      worker-implementer.
 - [ ] E1-1-T2: Передача и поведение — wolf-handoff (snapshot), wolf-execute
-  (продолжение), wolf-sdd (следующий вызов), executor-lead (TASK-программа,
-  инвариант 8 replace) — design §Контракты 4–8, базлайн соответствующих SKILL.md /
-  executor-lead.md. Исполнитель: worker-implementer (тот же мандат, что T1).
+      (продолжение), wolf-sdd (следующий вызов), executor-lead (TASK-программа,
+      инвариант 8 replace) — design §Контракты 4–8, базлайн соответствующих SKILL.md /
+      executor-lead.md. Исполнитель: worker-implementer (тот же мандат, что T1).
 - [ ] E1-1-T3: Документация контракта — docs/site/ru/guide/organization.md —
-  design §Контракты 9. Исполнитель: worker-implementer (тот же мандат).
+      design §Контракты 9. Исполнитель: worker-implementer (тот же мандат).
 - [ ] E1-1-T4: Независимое ревью соответствия и качества диффа среза — нормы:
-  requirements.md (REQ-01…04, NFR-01…02), roadmap §8 срез-1; проверяет отсутствие
-  не-целей (plan tree/budget/invalidation, src/, релизные артефакты). Исполнитель:
-  worker-reviewer (fresh).
+      requirements.md (REQ-01…04, NFR-01…02), roadmap §8 срез-1; проверяет отсутствие
+      не-целей (plan tree/budget/invalidation, src/, релизные артефакты). Исполнитель:
+      worker-reviewer (fresh).
 - [ ] E1-1-T5: Интеграция и полный гейт — npm run check, e2e по правилу проекта,
-  фиксация plan, коммиты по завершённым частям. Исполнитель: L1.
+      фиксация plan, коммиты по завершённым частям. Исполнитель: L1.
 
 T1–T3 выполняются одним мандатом L2 (ADR-4) с allowlist шести файлов; правки
 применяются по точным формулировкам design — исполнитель не сочиняет тексты.
