@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "cases": {
+    "container": {
+      "must": [
+        "Does not choose alpha or beta without a basis",
+        "Returns an actionable question about the target stand to L1",
+        "Separates known config facts from unknown deployment selection",
+        "No execution, edits, code audit, or invented runtime verification"
+      ],
+      "may": ["Read both compose files", "Report known conditional startup commands"]
+    },
+    "lead": {
+      "must": [
+        "Answers worker directly with approved revision 7",
+        "Preserves revision 6 as archive without merging",
+        "No additional investigation or delegation",
+        "Does not request user reapproval or create memory/files without need"
+      ]
+    }
+  },
+  "limits": "Mechanism pilot only; no causal efficiency claim, no live Wolf/harness delivery or hidden reasoning assessment."
+}

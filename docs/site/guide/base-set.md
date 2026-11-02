@@ -15,7 +15,7 @@ The composition below is the catalog of `templates/base/` in the package.
 | `worker-researcher`  | Investigates code, documents and the web against one question; returns findings with sources and confidence                                                                            |
 | `worker-reviewer`    | Reviews workers' code and documents against the brief requirements; verdict via the VERDICT/SUMMARY contract                                                                           |
 
-## Skills — 21 → `.opencode/skills/`
+## Skills — 22 → `.opencode/skills/`
 
 | Skill                            | Purpose                                                                                                                                                                         |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -34,6 +34,7 @@ The composition below is the catalog of `templates/base/` in the package.
 | `wolf-git`                       | git stages of a task — entry and resume, branch or worktree, checkpoint, handoff, finish and cleanup; ships the `git-collaboration-policy-v1.1` reference and automates nothing |
 | `wolf-handoff`                   | continue an overloaded session in a fresh one, without losing progress                                                                                                          |
 | `wolf-plan`                      | zero-context plans where every task is a self-sufficient worker brief                                                                                                           |
+| `wolf-work-strategy`             | choose a proportionate route, ask the context holder early, and stop at sufficient evidence                                                                                     |
 | `wolf-release-docs`              | release documentation pass: coverage map, EN/RU alignment, generated pages                                                                                                      |
 | `wolf-review`                    | multi-lens document review loop                                                                                                                                                 |
 | `wolf-sdd`                       | subagent-driven development for plans with independent tasks                                                                                                                    |
@@ -43,13 +44,15 @@ The composition below is the catalog of `templates/base/` in the package.
 
 For L0/L1, bootstrap delivers the complete installed `using-skills` body rather than a separate summary. The agent checks the route when the goal or stage changes and loads other skills before applying them. L2 receives the passive worker protocol and assigned methodologies. Missing bootstrap content is reported explicitly.
 
+Load wolf-work-strategy once per assignment, then again only if its version changes or its text is lost. It guides action selection while preserving roles and mandatory project gates. An early question can replace an expensive investigation, including fact finding; obvious facts in the supplied inputs need no question. Without an in-call dialogue channel, L2 returns the question to L1 through its existing result contract. Updating templates does not reconcile an old active playbook; use the existing Steward workflow.
+
 ## Commands — 3 → `.opencode/command/`
 
-| Command       | What it does                                                                             |
-| ------------- | ---------------------------------------------------------------------------------------- |
-| `analyze-doc` | analyze a document by the methodology stored in Wolf memory (worker-researcher playbook) |
-| `complain`    | file an owner complaint into the memory mutation loop: complaint → triage → Steward      |
-| `doc-review`  | multi-lens document review orchestrated via the wolf-review skill                        |
+| Command       | What it does                                                                        |
+| ------------- | ----------------------------------------------------------------------------------- |
+| `analyze-doc` | L0 aligns the goal → L1 organizes a bounded analysis → worker-researcher            |
+| `complain`    | file an owner complaint into the memory mutation loop: complaint → triage → Steward |
+| `doc-review`  | multi-lens document review orchestrated via the wolf-review skill                   |
 
 ## Plugins — 2 → `.opencode/plugins/`
 
