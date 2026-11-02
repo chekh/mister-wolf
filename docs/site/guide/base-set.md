@@ -17,7 +17,7 @@ The composition below is the catalog of `templates/base/` in the package.
 
 Every dispatched task carries an execution block: requested model/variant, the execute/solve mode, a tool-call budget and a stop condition. Since 2.24.0 it also carries a density axis — `density standard|draft`. The owner level (L0/L1) picks the density when writing the TASK; a missing field means `standard`. In `draft` the executor shortens the visible service record — repeated retellings, narration of the obvious, ritual summaries — while keeping mandatory checks, rights, evidence and independent acceptance; substantial uncertainty widens the targeted verification instead of shrinking the answer, and an unsupported density is returned to L1. Acceptance checks observed actions, evidence and the result — not a draft label in RESULT. No numeric savings are claimed; the measurable comparison is a separate observation effort (roadmap A1.2).
 
-## Skills — 23 → `.opencode/skills/`
+## Skills — 25 → `.opencode/skills/`
 
 | Skill                            | Purpose                                                                                                                                                                         |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -38,6 +38,8 @@ Every dispatched task carries an execution block: requested model/variant, the e
 | `wolf-plan`                      | zero-context plans where every task is a self-sufficient worker brief                                                                                                           |
 | `wolf-work-strategy`             | choose a proportionate route, ask the context holder early, and stop at sufficient evidence                                                                                     |
 | `wolf-user-report`               | reader-focused documents with sufficient depth, appropriate visuals, HTML/CSS and reusable project templates                                                                    |
+| `wolf-feedback`                  | Role-scoped questions, friction, complaints and bounded session diagnosis                                                                                                       |
+| `wolf-visual-dialogue`           | Visual discussion, feedback and an agreed standalone document                                                                                                                   |
 | `wolf-release-docs`              | release documentation pass: coverage map, EN/RU alignment, generated pages                                                                                                      |
 | `wolf-review`                    | multi-lens document review loop                                                                                                                                                 |
 | `wolf-sdd`                       | subagent-driven development for plans with independent tasks                                                                                                                    |
@@ -106,3 +108,19 @@ An unstamped file is yours (the `wx` policy): `wolf init` skips it, the update p
 `wolf upgrade` never appends a block to an unstamped `AGENTS.md` without markers — only `init` creates one. A file wolf did not create stays foreign.
 
 Want to customize an agent or a skill? Do it in memory, not in the stamped file: file a complaint (`wolf complain`) and let the Steward mutate the playbook — or fork the file by removing its stamp, accepting that the update pass will no longer manage it. If you only need to keep the local version of a file wolf does manage, declare the intent in the file (`protect: true`, or `wolf upgrade --resolve <file>=protect`) instead of removing the stamp: the file stays visible in `wolf upgrade --check`, which is the point. Full workflow: [Upgrading a Project and a Park](/guide/upgrade).
+
+## Addressed routes and project tools
+
+using-skills has a small core and topical references describing when and how to
+apply a skill and its result. Assigned skills can be loaded directly; L2 does
+not browse the catalog. L1 composes an assistant from an L2 instance, its face
+and skills; programmatic tools support its mechanical work.
+
+A tool card references the project source files instead of copying them into
+`.wolf/tools/`: the entrypoint is registered by its project path, additional
+significant files are added by repeating `--resource`, and an explicit `--update`
+refreshes the same card ID when the source changes. Cards registered the old way
+keep working without a bulk migration. The `source_digest` check only confirms
+the listed files are unchanged; the environment and side effects still depend on
+the card's contract. `tool use` records usage — it does not execute anything.
+Full command syntax with all flags: [CLI reference](/guide/cli/command-reference).

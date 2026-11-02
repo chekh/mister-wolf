@@ -223,6 +223,18 @@ revision и возврат предыдущей версии инструкци�
 
 **Откат.** До интеграции — обратное применение правок шаблонов (git); после интеграции — штатный откат merge-коммита релиза; опубликованный пакет `2.24.0` не переписывается, исправление выходит следующим patch-релизом. Откат source templates не удаляет уже доставленный контрактовый текст автоматически: судьба доставленных файлов при отмене согласуется с картой и доставляется штатным upgrade адресно.
 
+### Поручение REL-2.25.0 — skills-expand: маршрутизация скиллов, feedback, карточки инструментов по ссылке (закрыто, 2026-11-02)
+
+Внешний пакет `docs/external/reviews/2026-11-02-skills-expand/` (патч + implementation + требования 34 REQ/32 AC, SHA-256 `81e52cc6…f1cf47`), рекомендация версии — minor по изменённой семантике `tool register/use/expose`. База — тег `v2.24.0`, `main` на `6cdd9f7`; применён `git apply --3way` чисто (70 файлов, +2387/−649, совпало с research-отчётом SKILLSEXP-RESEARCH-1). Ветка `skills-expand-2.25.0`, worktree `.worktrees/skills-expand-2.25.0`; решение L0: REQ-08/AC-24 инструкционно покрывает часть E1 среза-1, очередь E1 — на остаток; обновление живых лиц (complaint-protocol v3, playbooks v5 через Стюарда) — пост-релизный шаг вне этого поручения.
+
+**Что изменило.** Скиллы: ядро `using-skills` сжато 40 168→7 912 байт + 11 тематических references (routes-\*, contracts, project-rules/tools, context-and-memory); новые `wolf-feedback` (канон жалоб W1–W4 + диагностика сессии; `scripts/session-reader.py` — read-only SQLite, лимиты, пагинация) и `wolf-visual-dialogue` (композиция с explain/user-report, HTML только по согласованию); complaint-канон выделен из `complaint-protocol` в `wolf-feedback/references/complaints.md`; прикладные техники (root-cause/boundary tracing, polluter test, ожидание условия, test-quality) в references wolf-debug/TDD; `wolf-execute` получил `scripts/workflow-helper.py` (task-pack/check/review-package, subprocess без shell, атомарная публикация логов). Runtime: `tool-librarian.ts` — регистрация по ссылке без копии в `.wolf/tools/`, многофайловый `source_digest` (sha256), `--update/--resource/--clear-resources`, symlink-escape защита, `tool use/expose` проверяют источник и отказывают без начисления usage при stale; `stamp.ts` — штамп `#` для `.py` с сохранением shebang. Тесты: +2 файла (tool-librarian 15 тестов, skill-runtime-helpers 189 строк) + 4 изменённых. Документация: FULL-пакет `docs/dev/2026-11-02-skill-routing-feedback/`, README 23→25, base-set EN/RU, cli reference, update-map.
+
+**Чего выпуск не делает.** 32 поведенческих AC пакета не закрыты unit-тестами: implementation.md разделяет доступное evidence (структурные тесты, render/protect, карточки, reader на fixture) и остаток (живые сценарии доставки, реальная история OpenCode вместо fixture формата session_v2, сквозной визуальный путь). `session-reader.py` проверен на fixture, не на живой схеме; экспорт архива не входит. Экономия маршрутизации не измерена (сжатие ядра ≠ токены всего маршрута). Живые active faces проекта автоматически не обновляются: complaint-protocol v2 остаётся активным до авторизованной мутации Стюардом.
+
+**Опубликовано:** будет дополнено фактами после выхода (npm/GH/сайт/CI).
+
+**Откат.** До интеграции — обратный коммит в ветке; после — штатный откат merge-коммита релиза; опубликованный `2.25.0` не переписывается. Карточки инструментов по ссылке не мигрируют принудительно: старые `.wolf/tools`-карточки остаются рабочими (legacy-тест), откат source не удаляет их.
+
 ## Что снято с очереди (история)
 
 - Исторические слоты волн 2.16–2.20 не возвращаются. Unified update и Upgrade UX уже занимают свои версии; async learning и архивный бриф живут в F/backlog.

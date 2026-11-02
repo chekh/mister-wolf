@@ -8,6 +8,55 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.25.0] - 2026-11-02
+
+### Changed — the skill router became a small core with topical routes, feedback got its own skill, and tool cards reference project sources instead of copying them
+
+This release integrates the external skills-expand package (34 requirements, 32 acceptance scenarios; review package in `docs/external/reviews/2026-11-02-skills-expand/`). The base set grows from 23 to 25 skills; `src/**` runtime changes are limited to the tool library and the render stamp.
+
+- **`using-skills` is now a compact core plus topical references.** The core shrank from ~40 KB to ~8 KB and routes by topic: intent, execution, quality, state, capabilities, communication. Each `references/*.md` file carries the applicable forks, links and the conditions for loading a full skill; an explicitly assigned skill is loaded directly without walking the tree, and L2 never browses the catalog. Project rules, project tools, contracts and context/memory rules live in their own references. The whole delivered path — core, branch, skill, references and re-loads — is what counts, not the size of the root file.
+- **`wolf-feedback` (new) unifies the feedback canon extracted from the complaint protocol.** Its stable core: observation → sufficient grounds → the responsible participant → the right route. It distinguishes a missing-context question, tool friction (FRICTION), a one-off execution deviation, a proven W1–W4 rule defect (a real complaint through the existing triage) and an unknown cause (bounded session diagnosis). The former `complaint-protocol` playbook becomes a pointer to the canon; triggers W1–W4, powers and the triage statuses are unchanged. `scripts/session-reader.py` reads a local OpenCode SQLite database strictly read-only (`mode=ro`) by explicit `--db`/`--session`, with record/size limits, pagination and locators; it was verified on a `session_v2` fixture, not on a live history.
+- **`wolf-visual-dialogue` (new) structures visual discussion.** Question → a fitting representation → distinguishable feedback → update or a recorded choice. It composes with `wolf-explain` and `wolf-user-report` instead of adding mandatory stages; a standalone HTML document is still created only on an explicit request or agreement. Without an interactive environment a suitable static representation plus chat feedback is the honest path and is not presented as interactive.
+- **Tool cards reference project sources — registration no longer copies scripts into `.wolf/tools/`.** `wolf tool register` stores a project-relative reference, a multi-file `source_digest` (sha256 over the entrypoint and `--resource` files) and keeps the source in the project; there is no second executable copy. `--update <name>` updates the existing card without changing its identity, repeated `--resource` entries redefine the significant file set, `--clear-resources` drops it explicitly. Paths are resolved per working copy, checked against symlink escapes, and `tool use`/`tool expose` verify the source and its digest — a stale or missing source fails honestly without counting a successful use. `tool use` still records usage; it does not execute anything. Existing `.wolf/tools` cards remain valid without migration.
+- **Applied techniques and execution helpers landed as references and portable scripts.** Root-cause and boundary tracing, polluter-test isolation, waiting for a condition instead of a fixed delay, and test-quality guidance moved into `references/` of `wolf-debug`, `test-driven-development` and `wolf-execute`. `wolf-execute/scripts/workflow-helper.py` (Python 3.9+, stdlib only) provides three mechanical operations — TASK packing with explicit missing-input reporting, check execution with honest failure/timeout/unknown outcomes and an atomically published log, and a review package over a verified commit range — none of which dispatches, accepts or replaces an agent's judgement. Python skills are stamped with a `#` comment line while the shebang stays first.
+
+### What this release does not do
+
+- **The 32 behavioural acceptance scenarios of the package are not closed by unit tests.** Structural delivery, render/protect behaviour, tool cards and the reader on a fixture are covered by the test suite; live scenarios — real delivery of an external/project skill, a real OpenCode history instead of a `session_v2` fixture, the end-to-end visual path — remain open and are honestly listed in the implementation notes. A full gate on the final source was re-run for this release.
+- **No measured savings are claimed.** The core shrinking ~5× is bytes of one file, not tokens of the whole route and not a measured cost reduction; no measurement campaign was run, and future density comparisons use 2.25.0 as their base.
+- **Live faces of an existing installation are not migrated by this release.** Seeded templates carry the new canon; the active `complaint-protocol` and executor/worker playbooks of an already initialized project change only through the authorized Steward circuit, preserving history and local `protect:` decisions.
+- **`REQ-08/AC-24` of the package covers part of the roadmap E1 slice-1 instructively** (recovery-after-compaction/handoff rules in the delivered texts); the E1 queue keeps its remainder — live confirmation of recovery, plan/unknowns/budget.
+
+### Upgrade notes
+
+- **`npm install -g mister-wolf@2.25.0` (or `wolf upgrade`) is enough.** No schema migration is required: `source_digest` is an optional card field, existing tool cards keep working, and `schema_migrations` stays empty. The memory store and config are untouched.
+- **`update-map.json` is regenerated against 2.24.0.** New files (two skills, references, Python scripts) are `new` targets; rewritten templates are `changed`; `wolf upgrade --here` re-stamps the delivered set to `set=2.25.0`, honouring `protect:` and local mutations as usual.
+- **If you scripted `wolf tool register`, note the semantics change.** Registration stores a reference, not a copy: the source must stay inside the project (symlinks that escape it are rejected), and `tool use`/`tool expose` now fail on a moved or modified source until the card is updated explicitly.
+
+## [2.24.0] - 2026-11-02
+
+### Changed — dispatched tasks carry a density axis: `density standard|draft` (A1.2 economical behavior)
+
+The base set ships the roadmap A1.2 carrier: the TASK execution contract gains an explicit density axis, `density standard|draft`. The owner level (L0/L1) writes the density when composing the TASK; a missing field means `standard`. In `draft` the executor shortens the visible service record — repeated retellings, narration of the obvious, ritual summaries — while mandatory checks, rights, evidence and independent acceptance stay untouched; substantial uncertainty widens the targeted verification instead of shrinking the answer; the RESULT records the actual density, and acceptance verifies observed actions, evidence and the result — not a draft label. This is the behavioral counterpart of A1.1 (2.23.0 `wolf usage import`), which supplies the measurement data.
+
+- **The axis lives in the existing execution block, not in runtime.** Nine instruction surfaces agree on one formulation: the `using-skills` TASK contract, the `executor-lead` frame and playbook (choice at dispatch, acceptance not by label, unsupported density is diagnosed), and the three worker frames and playbooks (execute the assigned density, never pick or raise it yourself; an unsupported density is returned to L1). The draft report keeps every mandatory field: implementer self-checks, researcher sources/CONFIDENCE/GAPS, reviewer verdict/evidence/SCOPE.
+- **A renderer test locks the carrier in the delivered set** (`density-mode-delivery`, 5 tests over a real base-set render: TASK contract, lead frame+playbook, implementer, researcher+reviewer, fixtures/baseline agreement). The RED run on the pre-slice base `ebe1d54` failed 5/5; the slice makes it green.
+- **Scenario fixtures ship with the slice** (`tests/fixtures/a1-2-density/scenarios.json`): small unambiguous task in draft, substantial unknown in draft, FULL/LITE independence — the observation protocol for permitted work, baseline 2.23.3, instrumented by `wolf usage import`.
+- **Site guides describe the contract.** The EN/RU base-set pages state the density axis and its honest limits.
+
+### What this release does not do
+
+- **The economy is not measured.** The carrier, the behavior contract, the scenarios and the comparison protocol are delivered; the effect is honestly "not estimated" (roadmap NFR-06/AC-08): a few routine tasks give pilot observation, not a causal claim, and no numeric savings threshold is stated. REQ-23A stays open.
+- **These are instructions, not mechanisms.** No runtime API, schema, permission, model or dependency change; `schema_migrations` is empty and `CURRENT_SCHEMA_VERSION` is untouched. An agent that ignores the density field is not blocked by code — acceptance and independent review compensate.
+- **Existing active faces are not migrated by the release.** An upgrade pass delivers the updated templates; reconciling live playbook faces with the new seeds stays the existing authorized Steward workflow.
+- **The known unstamped `wolf-release-docs` delivery in this repository is untouched.** It predates this release (2.23.1 finding) and keeps its needs-decision state on the next pass; this release neither resolves nor hides it.
+
+### Upgrade notes
+
+- **Nothing migrates.** `npm install -g mister-wolf@2.24.0` (or `wolf upgrade`) is enough; the memory store, its schema, the config and the public CLI surface are unchanged.
+- **`update-map.json` records 35 file targets — 5 `changed` (the density contract across the TASK/agent surfaces), 30 `unchanged` — with 6 faces and an empty `schema_migrations`.** An existing project receives the updated templates re-stamped `set=2.24.0`.
+- **`protect:` and local mutations stay in the owner's hands.** Same rules as 2.23.3: a protected file is never overwritten; a locally edited file is a `needs decision` resolved by `wolf upgrade --resolve <file>=keep|take`.
+
 ## [2.23.3] - 2026-11-02
 
 ### Changed — the base set gains `wolf-user-report`: user-facing reports and documents with adequate depth

@@ -29,17 +29,17 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
   });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-  it("создаёт полный набор: 6 агентов, 23 скилла, 3 команды, 2 плагина + 6 seeded playbook'ов (§11.1)", () => {
+  it("создаёт полный набор: 6 агентов, 25 скиллов, 3 команды, 2 плагина + 6 seeded playbook'ов (§11.1)", () => {
     const res = runCli(['init', '--full', '--model', 'zai-coding-plan/glm-5.3'], dir);
     expect(res.status).toBe(0);
 
-    // 34 файла (6+23+3+2) + AGENTS.md в корне (onboarding v2 §4.2) созданы + 6 playbook'ов посеяны;
+    // 36 файлов (6+25+3+2) + AGENTS.md в корне (onboarding v2 §4.2) созданы + 6 playbook'ов посеяны;
     // F5 (§2.3): скиллы печатаются как `[skill] <имя> → <файл>` — в счётчике `- base set:` их больше нет.
     // B0: у wolf-git кроме SKILL.md есть поставляемый регламент reference/…, поэтому
-    // строк `[skill]` на одну больше, чем скиллов (23 + 1)
+    // `[skill]` counts both 25 SKILL.md files and their delivered references/scripts.
     const created = (res.stdout.match(/- base set: \S+ created/g) ?? []).length;
     expect(created).toBe(18);
-    expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(24);
+    expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(43);
     expect(res.stdout).toMatch(/- base set: AGENTS\.md created/);
 
     const agents = readdirSync(join(dir, '.opencode/agents')).filter((f) => f.endsWith('.md'));
@@ -48,7 +48,7 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
     const skills = readdirSync(join(dir, '.opencode/skills')).filter((d) =>
       existsSync(join(dir, '.opencode/skills', d, 'SKILL.md'))
     );
-    expect(skills).toHaveLength(23);
+    expect(skills).toHaveLength(25);
     expect(skills).toContain('wolf-work-strategy');
     expect(skills).toContain('wolf-user-report');
 
@@ -134,14 +134,21 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
     expect(reviewerBody).toContain('VERDICT: APPROVED | CHANGES_REQUIRED | INCONCLUSIVE');
 
     // using-skills в rendered-виде: инварианты редакции 2026-10-09
-    const using = readFileSync(join(dir, '.opencode/skills/using-skills/SKILL.md'), 'utf-8');
+    const core = readFileSync(join(dir, '.opencode/skills/using-skills/SKILL.md'), 'utf-8');
+    expect(core).toContain('references/routes-intent.md');
+    const using =
+      core +
+      '\n' +
+      ['contracts.md', 'project-rules.md']
+        .map((file) => readFileSync(join(dir, '.opencode/skills/using-skills/references', file), 'utf8'))
+        .join('\n');
     for (const marker of [
-      'Обязательные процессные скиллы',
-      'загрузи и проверь',
+      'Маршруты: когда, как и результат',
+      'загрузи полный текст',
       'протокол ошибки масштаба',
       'режим меняет только L1',
       'Режим фиксирует L1',
-      'Контракты передачи',
+      'references/contracts.md',
       'DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED',
     ])
       expect(using).toContain(marker);

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from 'fs';
+import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync, mkdirSync, renameSync, symlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import yaml from 'js-yaml';
@@ -44,7 +44,7 @@ describe('tool librarian (C2)', () => {
     };
   }
 
-  it('register: объект type tool, candidate, usage_count 0, скрипт скопирован', async () => {
+  it('register stores a project reference without copying its source', async () => {
     const result = await registerTool(makeDeps(), {
       scriptPath: 'extract-todos.ts',
       name: 'extract-todos',
@@ -55,7 +55,7 @@ describe('tool librarian (C2)', () => {
     });
 
     expect(result.toolId).toMatch(/^mem_/);
-    expect(result.scriptPath).toBe(join('.wolf', 'tools', 'extract-todos.ts'));
+    expect(result.scriptPath).toBe('extract-todos.ts');
     expect(result.similar).toHaveLength(0);
 
     const obj = await store.get(result.toolId);
@@ -64,12 +64,12 @@ describe('tool librarian (C2)', () => {
     expect(obj?.title).toBe('Tool: extract-todos');
     const tool = obj as { usage_count?: number; script_path?: string; language?: string };
     expect(tool.usage_count).toBe(0);
-    expect(tool.script_path).toBe(join('.wolf', 'tools', 'extract-todos.ts'));
+    expect(tool.script_path).toBe('extract-todos.ts');
     expect(tool.language).toBe('typescript');
     expect('last_used_at' in (tool as object)).toBe(false);
 
-    const copied = readFileSync(join(dir, '.wolf', 'tools', 'extract-todos.ts'), 'utf-8');
-    expect(copied).toBe('export function run(){}\n');
+    expect(existsSync(join(dir, '.wolf', 'tools', 'extract-todos.ts'))).toBe(false);
+    expect(readFileSync(join(dir, 'extract-todos.ts'), 'utf8')).toBe('export function run(){}\n');
   });
 
   it('register несуществующего скрипта → UserFacingError, объектов 0', async () => {
@@ -222,7 +222,7 @@ describe('tool librarian (C2)', () => {
     expect(content).toContain('Input: путь к файлу');
     expect(content).toContain('Output: список TODO');
     expect(content).toContain('Environment: node 22');
-    expect(content).toContain(join('.wolf', 'tools', 'extract-todos.ts'));
+    expect(content).toContain('extract-todos.ts');
 
     const second = await exposeTool(deps, { nameOrId: toolId });
     expect(second.content).toBe(first.content);
@@ -257,5 +257,153 @@ describe('tool librarian (C2)', () => {
     await expect(deprecateTool(makeDeps(), { nameOrId: 'ghost', reason: 'x', actor: 'user:test' })).rejects.toThrow(
       /Tool not found/
     );
+  });
+});
+
+describe('reference tools lifecycle', () => {
+  let root: string;
+  let store: MarkdownMemoryStore;
+  function deps() {
+    return {
+      store,
+      log: new JsonlEventLog(eventsPath(root)),
+      clock: new SystemClock(),
+      idGen: new HashIdGenerator(),
+      fs: new FsFileSystem(),
+      baseDir: root,
+    };
+  }
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'wolf-ref-tool-'));
+    store = new MarkdownMemoryStore(root);
+    mkdirSync(join(root, 'tools'), { recursive: true });
+    writeFileSync(join(root, 'tools/check.py'), 'print(1)');
+    writeFileSync(join(root, 'tools/data.json'), '{"value":1}');
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+  it('keeps a multi-file source in place and updates the same card', async () => {
+    const d = deps();
+    const a = await registerTool(d, {
+      name: 'check',
+      scriptPath: 'tools/check.py',
+      language: 'python',
+      resourcePaths: ['tools/data.json'],
+      createdBy: 'user:test',
+    });
+    expect(a.scriptPath).toBe('tools/check.py');
+    expect(existsSync(join(root, '.wolf/tools/check.py'))).toBe(false);
+    const first = await store.get(a.toolId);
+    expect(first?.related.files).toEqual(['tools/check.py', 'tools/data.json']);
+    writeFileSync(join(root, 'tools/data.json'), '{"value":2}');
+    await expect(useTool(d, { nameOrId: a.toolId, actor: 'user:test' })).rejects.toThrow(/changed/);
+    const b = await registerTool(d, {
+      name: 'check',
+      scriptPath: 'tools/check.py',
+      language: 'python',
+      update: a.toolId,
+      createdBy: 'user:test',
+    });
+    expect(b.toolId).toBe(a.toolId);
+    expect(await store.list({ type: 'tool' })).toHaveLength(1);
+    expect((await store.get(a.toolId))?.source_digest).not.toBe(first?.source_digest);
+    await useTool(d, { nameOrId: a.toolId, actor: 'user:test' });
+    expect((await store.get(a.toolId))?.usage_count).toBe(1);
+  });
+  it('rejects missing and external sources, including an escaping symlink', async () => {
+    const d = deps();
+    await expect(
+      registerTool(d, { name: 'bad', scriptPath: '../outside.py', language: 'python', createdBy: 'user:test' })
+    ).rejects.toThrow(/project/);
+    symlinkSync(tmpdir(), join(root, 'tools/outside'));
+    await expect(
+      registerTool(d, { name: 'bad', scriptPath: 'tools/outside', language: 'python', createdBy: 'user:test' })
+    ).rejects.toThrow(/project/);
+    expect(await store.list({ type: 'tool' })).toHaveLength(0);
+  });
+  it('reports a missing source without counting a successful use', async () => {
+    const d = deps();
+    const a = await registerTool(d, {
+      name: 'check',
+      scriptPath: 'tools/check.py',
+      language: 'python',
+      createdBy: 'user:test',
+    });
+    renameSync(join(root, 'tools/check.py'), join(root, 'tools/moved.py'));
+    await expect(useTool(d, { nameOrId: a.toolId, actor: 'user:test' })).rejects.toThrow(/not found/);
+    expect((await store.get(a.toolId))?.usage_count).toBe(0);
+    await registerTool(d, {
+      name: 'check',
+      scriptPath: 'tools/moved.py',
+      language: 'python',
+      update: a.toolId,
+      createdBy: 'user:test',
+    });
+    expect((await store.get(a.toolId))?.script_path).toBe('tools/moved.py');
+  });
+  it('preserves semantic version fields and supports explicitly replacing the resource set', async () => {
+    const d = deps();
+    const a = await registerTool(d, {
+      name: 'check',
+      scriptPath: 'tools/check.py',
+      language: 'python',
+      resourcePaths: ['tools/data.json'],
+      createdBy: 'user:test',
+    });
+    await store.update(a.toolId, { version: '1.2.0', source_url: 'https://example.invalid/source' } as never);
+    await registerTool(d, {
+      name: 'check',
+      scriptPath: 'tools/check.py',
+      language: 'python',
+      resourcePaths: [],
+      update: a.toolId,
+      createdBy: 'user:test',
+    });
+    const card = await store.get(a.toolId);
+    expect(card?.related.files).toEqual(['tools/check.py']);
+    expect(card?.version).toBe('1.2.0');
+    expect(card?.source_url).toBe('https://example.invalid/source');
+    expect(await store.list({ type: 'tool' })).toHaveLength(1);
+  });
+  it('resolves the same multi-file card in another worktree root', async () => {
+    const source =
+      'import json\nfrom pathlib import Path\nprint(json.loads((Path(__file__).parent / "data.json").read_text())["value"])\n';
+    writeFileSync(join(root, 'tools/check.py'), source);
+    const d = deps();
+    const a = await registerTool(d, {
+      name: 'check',
+      scriptPath: 'tools/check.py',
+      language: 'python',
+      resourcePaths: ['tools/data.json'],
+      createdBy: 'user:test',
+    });
+    const other = mkdtempSync(join(tmpdir(), 'wolf-other-root-'));
+    try {
+      mkdirSync(join(other, 'tools'));
+      writeFileSync(join(other, 'tools/check.py'), source);
+      writeFileSync(join(other, 'tools/data.json'), '{"value":1}');
+      await useTool({ ...d, baseDir: other }, { nameOrId: a.toolId, actor: 'user:test' });
+      expect((await store.get(a.toolId))?.usage_count).toBe(1);
+      expect(existsSync(join(other, '.wolf/tools/check.py'))).toBe(false);
+    } finally {
+      rmSync(other, { recursive: true, force: true });
+    }
+  });
+  it('keeps an existing legacy .wolf/tools entrypoint available without migration', async () => {
+    const d = deps();
+    mkdirSync(join(root, '.wolf/tools'), { recursive: true });
+    writeFileSync(join(root, '.wolf/tools/legacy.py'), 'print(1)');
+    const a = await registerTool(d, {
+      name: 'legacy',
+      scriptPath: '.wolf/tools/legacy.py',
+      language: 'python',
+      createdBy: 'user:test',
+    });
+    const card = await store.get(a.toolId);
+    const legacy = { ...card };
+    delete legacy.source_digest;
+    await store.save(legacy as never);
+    await useTool(d, { nameOrId: a.toolId, actor: 'user:test' });
+    expect(existsSync(join(root, '.wolf/tools/legacy.py'))).toBe(true);
+    expect((await store.get(a.toolId))?.script_path).toBe('.wolf/tools/legacy.py');
   });
 });

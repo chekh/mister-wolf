@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import type { DirectoryEntry, FileSystem } from '../../ports/file-system.port.js';
 
 const MAX_SMALL_FILE_SIZE = 1024 * 1024;
@@ -62,6 +63,28 @@ export class FsFileSystem implements FileSystem {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  async realPath(target: string): Promise<string> {
+    return fs.realpath(target);
+  }
+
+  async fileDigest(target: string): Promise<string> {
+    const handle = await fs.open(target, 'r');
+    try {
+      const stat = await handle.stat();
+      if (!stat.isFile()) throw new Error(`Not a regular file: ${target}`);
+      const hash = createHash('sha256');
+      const buffer = Buffer.alloc(64 * 1024);
+      while (true) {
+        const { bytesRead } = await handle.read(buffer, 0, buffer.length, null);
+        if (bytesRead === 0) break;
+        hash.update(buffer.subarray(0, bytesRead));
+      }
+      return hash.digest('hex');
+    } finally {
+      await handle.close();
     }
   }
 

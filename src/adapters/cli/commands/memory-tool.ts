@@ -29,7 +29,7 @@ function buildRegisterSubcommand(parent: Command, name: 'register' | 'add'): voi
     .command(`${name} <script-path>`)
     .description(
       name === 'register'
-        ? 'Register a script as tool memory object (copies script to .wolf/tools/)'
+        ? 'Register a project entrypoint by reference (does not copy source)'
         : 'Register a script as tool memory object (synonym for register)'
     )
     .requiredOption('--name <name>', 'Tool name (unique)')
@@ -40,6 +40,14 @@ function buildRegisterSubcommand(parent: Command, name: 'register' | 'add'): voi
     .option('--contract-out <text>', 'Output contract')
     .option('--contract-env <text>', 'Environment contract')
     .option('--notes <text>', 'Notes (stored as object body)')
+    .option('--clear-resources', 'Drop old additional files when explicitly updating a card', false)
+    .option('--update <name-or-id>', 'Update an existing card without changing its identity')
+    .option(
+      '--resource <path>',
+      'Additional significant project file (repeatable)',
+      (value: string, previous: string[]) => [...previous, value],
+      []
+    )
     .option('--force', 'Skip similar-tools check', false)
     .option('--created-by <actor>', 'Creator actor (default: env WOLF_ACTOR, else user:cli)')
     .action(
@@ -54,6 +62,9 @@ function buildRegisterSubcommand(parent: Command, name: 'register' | 'add'): voi
           notes?: string;
           force?: boolean;
           createdBy?: string;
+          update?: string;
+          resource?: string[];
+          clearResources?: boolean;
         }
       ) => {
         const { store, log, clock, idGen, index, lock, declarations, fs } = createCliContainer(process.cwd());
@@ -61,6 +72,12 @@ function buildRegisterSubcommand(parent: Command, name: 'register' | 'add'): voi
           { store, log, clock, idGen, index, lock, declarations, fs, baseDir: process.cwd() },
           {
             scriptPath,
+            update: options.update,
+            resourcePaths: options.clearResources
+              ? (options.resource ?? [])
+              : options.resource && options.resource.length > 0
+                ? options.resource
+                : undefined,
             name: options.name,
             language: options.language,
             contractIn: options.contractIn,
@@ -108,9 +125,9 @@ export function memoryToolCommand(): Command {
     .command('use <name-or-id>')
     .description('Mark tool as used (increments usage_count, prints contract reminder)')
     .action(async (nameOrId: string) => {
-      const { store, log, clock, idGen, index, lock, declarations } = createCliContainer(process.cwd());
+      const { store, log, clock, idGen, index, lock, declarations, fs } = createCliContainer(process.cwd());
       const tool = await useTool(
-        { store, log, clock, idGen, index, lock, declarations },
+        { store, log, clock, idGen, index, lock, declarations, fs, baseDir: process.cwd() },
         { nameOrId, actor: resolveCreatedBy(undefined) }
       );
       printContractReminder(tool);
