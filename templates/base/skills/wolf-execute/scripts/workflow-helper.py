@@ -4,9 +4,11 @@ import argparse
 import hashlib
 import json
 import os
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 
@@ -74,6 +76,18 @@ def task_pack(args):
             "This is a helper input format, not a new Wolf public TASK schema."]}, 0
 
 
+def wait_group_empty(pgid, cap=5.0):
+    deadline = time.monotonic() + cap
+    while True:
+        try:
+            os.killpg(pgid, 0)
+        except ProcessLookupError:
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.05)
+
+
 def check(args):
     root, revision, before = identity(args.repo)
     command = args.command[1:] if args.command and args.command[0] == "--" else args.command
@@ -88,16 +102,28 @@ def check(args):
         raise ValueError("log exists; preserve it and choose a path for the new run")
     log.parent.mkdir(parents=True, exist_ok=True)
     outcome, code = "unknown", None
+    group_limits = []
     with log.open("xb") as stream:
         try:
-            run = subprocess.run(command, cwd=root, stdout=stream, stderr=subprocess.STDOUT, timeout=args.timeout)
-            code = run.returncode
-            outcome = "passed" if code == 0 else "failed"
-        except subprocess.TimeoutExpired:
-            outcome = "timeout"
+            # start_new_session makes the child a process-group leader: every
+            # descendant inherits both the group and the log fd, so only a
+            # group-wide kill/reap freezes the log before the digest is fixed.
+            proc = subprocess.Popen(command, cwd=root, stdout=stream,
+                                    stderr=subprocess.STDOUT, start_new_session=True)
         except OSError as error:
             outcome = "not_started"
             stream.write(str(error).encode())
+        else:
+            try:
+                code = proc.wait(timeout=args.timeout)
+                outcome = "passed" if code == 0 else "failed"
+            except subprocess.TimeoutExpired:
+                outcome = "timeout"
+                os.killpg(proc.pid, signal.SIGKILL)
+                proc.wait()
+                group_limits.append("verification process group terminated after timeout")
+            if not wait_group_empty(proc.pid):
+                group_limits.append("process group not confirmed empty within 5s; log digest may be unstable")
     _, final_revision, after = identity(root)
     digest = hashlib.sha256()
     with log.open("rb") as stream:
@@ -107,7 +133,7 @@ def check(args):
               "final_revision": final_revision, "dirty_before": before, "dirty_after": after,
               "command": command, "outcome": outcome, "exit": code, "log": str(log),
               "log_sha256": digest.hexdigest(),
-              "limits": ["The record is not ACCEPTED and is not persisted to Wolf memory by this helper."]}
+              "limits": ["The record is not ACCEPTED and is not persisted to Wolf memory by this helper.", *group_limits]}
     if revision != final_revision or after:
         record["outcome"] = "state_changed"
         record["limits"].append("HEAD changed during verification; applicability requires a decision.")
