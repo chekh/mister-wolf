@@ -29,7 +29,7 @@ The base set ships a new workflow skill, `wolf-user-report`, and routes it from 
 ### Upgrade notes
 
 - **Nothing migrates.** `npm install -g mister-wolf@2.23.3` (or `wolf upgrade`) is enough; the memory store, its schema, the config and the public CLI surface are unchanged.
-- **`update-map.json` records 35 file targets — 1 `new` (`wolf-user-report`), 1 `changed` (`using-skills`), 33 `unchanged` — with 6 faces and an empty `schema_migrations`.** An existing project receives the new skill file plus the updated router and gets the rest re-stamped `set=2.23.3`.
+- **`update-map.json` records 35 file targets — 1 `new` (`wolf-user-report`), 1 `changed` (`using-skills`), 33 `unchanged` — with 6 faces and an empty `schema_migrations`.** An existing project receives the new skill file plus the updated `using-skills` routing and gets the rest re-stamped `set=2.23.3`.
 - **`protect:` and local mutations stay in the owner's hands.** Same rules as 2.23.2: a protected file is reported `behind (base 2.23.3)` and is never overwritten; a locally edited file is a `needs decision` resolved by `wolf upgrade --resolve <file>=keep|take`.
 
 ## [2.23.2] - 2026-11-02
