@@ -8,6 +8,28 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.23.3] - 2026-11-02
+
+### Changed — the base set gains `wolf-user-report`: user-facing reports and documents with adequate depth
+
+The base set ships a new workflow skill, `wolf-user-report`, and routes it from `using-skills` (23 skills instead of 22). A user-facing report is a substantive answer first: depth, structure and presentation are sized to the reader's question instead of mandatory sections, fixed length or decoration. The review, its patch and the verification notes live in `docs/external/reviews/2026-11-02-report-skill/`.
+
+- **New `wolf-user-report` skill (23 skills instead of 22).** Understand the reader's question and authority boundaries first, then choose depth and format (summary, work report, research, comparison, instruction); build the content route before styling; add visuals only when they help the reader (tables, charts from real data, schemas — color is never the only carrier of meaning); write clean self-contained HTML/CSS when HTML is requested (CSS variables, contrast, keyboard focus, print view, no CDN dependence, untrusted data escaped); save genuinely reusable project templates instead of building a mandatory library. Ships in the full set (`wolf init --full` and full-set delivery); minimal init keeps its onboarding-only semantics. No new agent, mandatory CSS profile set, dependency or runtime mechanism.
+- **`using-skills` routes it by task, not by reflex.** The mandatory-skills table gained one row: a requested or updated user-facing report or document → `wolf-user-report` (L2 — only the assigned document). The skill loads on applicability, not for every answer, RESULT or EVIDENCE; format follows the task and user preferences — Markdown stays Markdown, HTML is not imposed. A user document complements but never replaces TASK/RESULT/EVIDENCE/ACCEPTANCE.
+- **Catalogs and counts agree.** The EN/RU site guides (base set, artifact pipeline) describe the new skill and state 23 skills; README, docs/README and getting-started (EN and RU) numbers updated.
+
+### What this release does not do
+
+- **The improvement is not measured.** The patch author's comparison ran eight report scenarios on clean executors and confirmed applicability and no obvious regression; no quality, speed or token-cost measurements exist, and none are claimed.
+- **These are instructions, not mechanisms.** No runtime API, schema, permission or dependency change; `schema_migrations` is empty and `CURRENT_SCHEMA_VERSION` is untouched. Nothing enforces the routing at runtime: an agent that skips the check is not blocked by the code.
+- **Existing active faces are not migrated by the release.** An upgrade pass delivers the new skill file and the updated `using-skills`; `protect:` files and local mutations stay owner-controlled.
+
+### Upgrade notes
+
+- **Nothing migrates.** `npm install -g mister-wolf@2.23.3` (or `wolf upgrade`) is enough; the memory store, its schema, the config and the public CLI surface are unchanged.
+- **`update-map.json` records 35 file targets — 1 `new` (`wolf-user-report`), 1 `changed` (`using-skills`), 33 `unchanged` — with 6 faces and an empty `schema_migrations`.** An existing project receives the new skill file plus the updated `using-skills` routing and gets the rest re-stamped `set=2.23.3`.
+- **`protect:` and local mutations stay in the owner's hands.** Same rules as 2.23.2: a protected file is reported `behind (base 2.23.3)` and is never overwritten; a locally edited file is a `needs decision` resolved by `wolf upgrade --resolve <file>=keep|take`.
+
 ## [2.23.2] - 2026-11-02
 
 ### Changed — agents choose a proportionate way of working and ask before expensive investigations
