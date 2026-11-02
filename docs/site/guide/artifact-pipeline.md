@@ -73,7 +73,7 @@ Two axes grow the skill set around the pipeline:
 - **Artifact axis** — a new artifact type gets its own skill that teaches agents how to produce it.
 - **Disciplinary axis** — a repeatedly breached discipline gets an enforcement skill; the detector is the complaint loop ([Learning Loop](/guide/feedback)).
 
-The default set ships 20 skills (verified against `templates/base/skills` in the package; the set itself is described in [Base Set](/guide/base-set)):
+The default set ships 22 skills (verified against `templates/base/skills` in the package; the set itself is described in [Base Set](/guide/base-set)):
 
 | Skill                            | Axis         | Purpose                                                             |
 | -------------------------------- | ------------ | ------------------------------------------------------------------- |
@@ -88,6 +88,8 @@ The default set ships 20 skills (verified against `templates/base/skills` in the
 | `using-git-worktrees`            | disciplinary | isolated worktrees for feature work                                 |
 | `finishing-a-development-branch` | disciplinary | choose the integration: merge, PR or cleanup                        |
 | `using-skills`                   | workflow     | load the process skill before responding or acting                  |
+| `wolf-work-strategy`             | workflow     | choose the route, an early question, and sufficient depth           |
+| `wolf-git`                       | workflow     | Git task stages and the shipped collaboration policy                |
 | `requesting-code-review`         | workflow     | verify work against requirements before merging                     |
 | `wolf-debug`                     | workflow     | root-cause before fixes                                             |
 | `wolf-execute`                   | workflow     | flat linear execution fallback                                      |

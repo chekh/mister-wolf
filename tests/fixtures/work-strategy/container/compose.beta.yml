@@ -1,0 +1,5 @@
+services:
+  api:
+    image: example/atlas:stable
+    env_file: beta.env
+    command: ["/app/start.sh", "--profile", "beta"]
