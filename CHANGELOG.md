@@ -4,6 +4,26 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.26.0] - 2026-11-03
+
+### Added — the task contract now carries active constraints and accepted decisions across sessions
+
+Roadmap v4 (edition 9, §8) slice E1-1: the most expensive loss on a session or executor change was not the files but the "why it was decided exactly this way". A fresh worker reopened settled questions and re-asked standing constraints. The task contract (the core the `using-skills` canon defines) now names both explicitly — instruction-level only, no new runtime.
+
+- **`ACTIVE_CONSTRAINTS` — standing constraints as short lines.** Each line is "what is in effect → source/basis" (a memory rule with its id, a decision, a document with a revision). An absent block means "no constraints beyond the common norms"; a retelling of every project rule is explicitly not wanted. It is a core TASK element with conditional applicability: passed when it applies, and its absence is a statement, not an omission.
+- **`DECISIONS[]` — one line per decision that still influences the work.** `D-id`, what was decided (one line), why/what was rejected, the basis/source. This is not a discussion history and not a new decision store: the recovery package answers "why so and what was rejected" without replaying the reasoning.
+- **Continuation and replacement deliver both blocks.** The `wolf-handoff` snapshot lists `ACTIVE_CONSTRAINTS` and `DECISIONS[]` as explicit items; the `executor-lead` replace order passes them through the handoff together with the known result and open findings; `wolf-sdd` requires them in the next call on the same task. On the worker side, `wolf-execute` instructs: honor the constraints and do not reopen a closed decision without new grounds — a counterexample or a changed basis goes back to L1 instead of silently switching direction.
+- **Docs:** the task-brief description in the guide (`organization`, EN/RU) now counts the core as ten elements and names both blocks. The contract wording itself lives in `using-skills` references of the delivered set.
+
+### What this release does not do
+
+- **No new CLI surface, schema or migration.** `schema_migrations` stays empty; `src/**` is untouched — the slice is instruction-level payload plus documentation. `update-map.json` records 5 changed file targets against 2.25.1 (the canon `contracts.md`, `wolf-handoff`, `wolf-execute`, `wolf-sdd`, the `executor-lead` frame); the other 49 file targets, the 6 versioned agent playbooks ("faces") and `agents_md` are unchanged. The installed copies of the delivered files (e.g. `.opencode/` in a live project) are re-stamped to the new version by the upgrade pass.
+- **Plan tree, budget accounting, dependency invalidation and evidence applicability are not in this slice** — they are the next E1 slices by roadmap v4 §8, deliberately not promised here. The installed `.opencode/` copy of a live project picks the new texts up via the regular upgrade pass (re-stamped set).
+
+### Upgrade notes
+
+- **`npm install -g mister-wolf@2.26.0` (or `wolf upgrade`) is enough.** Projects receive the updated skill texts and frame through the regular upgrade pass; `protect:` files and local mutations keep their existing rules. Nothing to migrate, nothing to reconfigure.
+
 ## [2.25.1] - 2026-11-02
 
 ### Fixed — exposed tool skills cannot go stale after `--update`, and verification timeouts stop the whole process tree

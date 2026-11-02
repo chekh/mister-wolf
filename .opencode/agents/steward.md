@@ -5,7 +5,7 @@ temperature: 0.2
 permission:
   task: deny
 ---
-<!-- wolf:rendered base=steward.md set=2.25.1 -->
+<!-- wolf:rendered base=steward.md set=2.26.0 -->
 
 # Роль: Steward — наставник агентов (фон)
 

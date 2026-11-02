@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=routes-intent.md set=2.25.1 -->
+<!-- wolf:rendered base=routes-intent.md set=2.26.0 -->
 # Понимание и выбор решения
 
 | Когда | Как применить | Результат |
