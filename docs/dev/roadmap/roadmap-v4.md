@@ -6,7 +6,7 @@ created: 2026-10-30
 updated: 2026-11-02
 revision: 9
 baseline_version: 2.23.2
-baseline_commit: 08ab7c1b7fcae0411f322b4ab1932a5871356ef8
+baseline_commit: 474e7843b1ad1ecf1c197b3e0934c038401b6a2c
 ---
 
 # Roadmap v4 — активный роадмап
