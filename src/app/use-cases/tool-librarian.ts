@@ -1,4 +1,5 @@
-import { join, extname, isAbsolute } from 'path';
+import { join, isAbsolute, relative, resolve, sep } from 'path';
+import { createHash } from 'node:crypto';
 import { MemoryStore } from '../../ports/memory-store.port.js';
 import { EventLog } from '../../ports/event-log.port.js';
 import { Clock } from '../../ports/clock.port.js';
@@ -17,6 +18,7 @@ export interface ToolFields {
   name: string;
   script_path: string;
   language: string;
+  source_digest?: string;
   contract_input?: string;
   contract_output?: string;
   contract_environment?: string;
@@ -49,11 +51,13 @@ export interface RegisterToolInput {
   notes?: string;
   force?: boolean;
   createdBy: string;
+  resourcePaths?: string[];
+  update?: string;
 }
 
 export interface RegisterToolResult {
   toolId: string;
-  /** Относительный путь скрипта внутри проекта (.wolf/tools/<name><ext>). */
+  /** Project-relative entrypoint; source files stay in the project. */
   scriptPath: string;
   similar: { id: string; name: string; status: string }[];
 }
@@ -113,21 +117,75 @@ async function resolveToolRef(deps: Pick<ToolLibrarianDeps, 'store'>, nameOrId: 
   return asTool(matches[0]!);
 }
 
+/** Resolve a project reference, including symlinks, without copying it. */
+async function projectFile(deps: ToolLibrarianDeps, source: string): Promise<string> {
+  const root = resolve(deps.baseDir);
+  const absolute = resolve(root, source);
+  const inside = (base: string, target: string): boolean => {
+    const rel = relative(base, target);
+    return rel !== '' && rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
+  };
+  if (/[\u0000-\u001f]/.test(source) || !inside(root, absolute)) {
+    throw new UserFacingError(`Tool path must be inside the project: ${source}`);
+  }
+  if (!(await deps.fs.exists(absolute))) throw new UserFacingError(`Script not found: ${source}`);
+  if (deps.fs.realPath && !inside(await deps.fs.realPath(root), await deps.fs.realPath(absolute))) {
+    throw new UserFacingError(`Tool path escapes the project through a symlink: ${source}`);
+  }
+  return relative(root, absolute).split(sep).join('/');
+}
+
+async function sourceVersion(deps: ToolLibrarianDeps, files: string[]): Promise<string> {
+  const hash = createHash('sha256');
+  for (const file of [...new Set(files)].sort()) {
+    const rel = await projectFile(deps, file);
+    const absolute = resolve(deps.baseDir, rel);
+    let digest: string;
+    try {
+      if (deps.fs.fileDigest) digest = await deps.fs.fileDigest(absolute);
+      else {
+        const content = await deps.fs.readSmallTextFile(absolute);
+        if (content === null) throw new Error('file cannot be fingerprinted');
+        digest = createHash('sha256').update(content).digest('hex');
+      }
+    } catch (error) {
+      throw new UserFacingError(`Cannot fingerprint tool file ${rel}: ${(error as Error).message}`);
+    }
+    hash.update(rel).update('\0').update(digest).update('\0');
+  }
+  return `sha256:${hash.digest('hex')}`;
+}
+
+async function checkSource(deps: ToolLibrarianDeps, tool: ToolObject): Promise<void> {
+  await projectFile(deps, tool.script_path);
+  const version = tool.source_digest;
+  if (version?.startsWith('sha256:')) {
+    const files = [tool.script_path, ...(tool.related?.files ?? [])];
+    if ((await sourceVersion(deps, files)) !== version) {
+      throw new UserFacingError(`Tool source changed: ${tool.name}; verify it and update its card explicitly`);
+    }
+  }
+}
+
 export async function registerTool(deps: ToolLibrarianDeps, input: RegisterToolInput): Promise<RegisterToolResult> {
   const run = async (): Promise<RegisterToolResult> => {
-    // имя = имя файла в .wolf/tools/ и ключ `tool use <name>`: без слэшей/точек/путей.
+    // Имя — стабильный ключ карточки и `tool use <name>`; не путь к исходнику.
     if (!NAME_RE.test(input.name)) {
       throw new UserFacingError(`Invalid tool name "${input.name}": only [a-z0-9-_], starting with a digit/letter`);
     }
-    const absSrc = isAbsolute(input.scriptPath) ? input.scriptPath : join(deps.baseDir, input.scriptPath);
-    if (!(await deps.fs.exists(absSrc))) {
-      throw new UserFacingError(`Script not found: ${absSrc}`);
-    }
-
+    const relDest = await projectFile(deps, input.scriptPath);
+    const current = input.update ? await resolveToolRef(deps, input.update) : undefined;
+    if (current && current.name !== input.name) throw new UserFacingError('Updating a tool cannot rename its identity');
+    const resourceInputs =
+      input.resourcePaths ?? (current?.related.files ?? []).filter((p) => p !== current?.script_path);
+    const files = [relDest];
+    for (const resource of resourceInputs) files.push(await projectFile(deps, resource));
+    const uniqueFiles = [...new Set(files)].sort();
+    const version = await sourceVersion(deps, uniqueFiles);
     // Коллизия имени — всегда отказ (даже с --force): name — ключ lookup'а,
-    // второй объект затёр бы канонический скрипт первого.
+    // два активных объекта сделали бы адресное использование неоднозначным.
     const taken = (await deps.store.list({ type: 'tool' })).filter(
-      (o) => LIVE_STATUSES.includes(o.status) && asTool(o).name === input.name
+      (o) => LIVE_STATUSES.includes(o.status) && asTool(o).name === input.name && o.id !== current?.id
     );
     if (taken.length > 0) {
       const list = taken.map((o) => `${o.id} [${o.status}]`).join('; ');
@@ -136,19 +194,15 @@ export async function registerTool(deps: ToolLibrarianDeps, input: RegisterToolI
 
     // Dedup-подсказка (search-before-write): похожие по контракту — только предупреждение.
     const similar = await findSimilar(deps.store, input);
-    if (similar.length > 0 && !input.force) {
+    if (similar.length > 0 && !input.force && !current) {
       const list = similar.map((s) => `${s.name} (${s.id}) [${s.status}]`).join('; ');
       throw new UserFacingError(`Similar tools found: ${list}. Confirm the intent with --force`);
     }
 
-    const relDest = join('.wolf', 'tools', `${input.name}${extname(absSrc)}`);
-    const content = await deps.fs.readSmallTextFile(absSrc);
-    if (content === null) throw new UserFacingError(`Script not found: ${absSrc}`);
-    await deps.fs.writeFile(join(deps.baseDir, relDest), content);
-
     const extra: Record<string, unknown> = {
       name: input.name,
       script_path: relDest,
+      source_digest: version,
       language: input.language,
       // store.save не применяет zod-дефолты — usage_count задаём явно.
       usage_count: 0,
@@ -156,6 +210,30 @@ export async function registerTool(deps: ToolLibrarianDeps, input: RegisterToolI
     if (input.contractIn !== undefined) extra.contract_input = input.contractIn;
     if (input.contractOut !== undefined) extra.contract_output = input.contractOut;
     if (input.contractEnvironment !== undefined) extra.contract_environment = input.contractEnvironment;
+
+    if (current) {
+      const patch = {
+        script_path: relDest,
+        language: input.language,
+        source_digest: version,
+        related: { ...current.related, files: uniqueFiles },
+        ...(input.contractIn !== undefined ? { contract_input: input.contractIn } : {}),
+        ...(input.contractOut !== undefined ? { contract_output: input.contractOut } : {}),
+        ...(input.contractEnvironment !== undefined ? { contract_environment: input.contractEnvironment } : {}),
+        ...(input.notes !== undefined ? { body: input.notes } : {}),
+      };
+      const updated = await deps.store.update(current.id, patch as Partial<MemoryObject>);
+      if (deps.index) await deps.index.indexObject(updated);
+      const now = deps.clock.now();
+      await deps.log.append({
+        id: deps.idGen.generateEventId(now),
+        type: 'memory.updated',
+        timestamp: now.toISOString(),
+        actor: input.createdBy,
+        payload: { memory_id: current.id, kind: 'tool.reference.updated' },
+      });
+      return { toolId: current.id, scriptPath: relDest, similar: similar.filter((s) => s.id !== current.id) };
+    }
 
     const { object } = await addMemoryObject(
       {
@@ -171,6 +249,7 @@ export async function registerTool(deps: ToolLibrarianDeps, input: RegisterToolI
         type: 'tool',
         title: `Tool: ${input.name}`,
         body: input.notes ?? '',
+        related: { files: uniqueFiles, docs: [], decisions: [] },
         createdBy: input.createdBy,
         extra,
       }
@@ -191,9 +270,13 @@ export async function listTools(
 
 type StoreDeps = Omit<ToolLibrarianDeps, 'fs' | 'baseDir'>;
 
-export async function useTool(deps: StoreDeps, input: { nameOrId: string; actor: string }): Promise<ToolObject> {
+export async function useTool(
+  deps: ToolLibrarianDeps,
+  input: { nameOrId: string; actor: string }
+): Promise<ToolObject> {
   const run = async (): Promise<ToolObject> => {
     const tool = await resolveToolRef(deps, input.nameOrId);
+    await checkSource(deps, tool);
     const now = deps.clock.now();
     const usageCount = (tool.usage_count ?? 0) + 1;
     const patch = { usage_count: usageCount, last_used_at: now.toISOString() } as unknown as Partial<MemoryObject>;
@@ -223,7 +306,7 @@ export function toolSkillContent(tool: ToolObject): string {
   return [
     '---',
     `name: ${tool.name}`,
-    `description: Tool ${tool.name} — ${description}.`,
+    `description: ${JSON.stringify(`Tool ${tool.name} — ${description}.`)}`,
     '---',
     `<!-- generated from tool:${tool.id} -->`,
     '',
@@ -246,6 +329,8 @@ export async function exposeTool(
   input: { nameOrId: string; actor?: string }
 ): Promise<{ path: string; content: string }> {
   const tool = await resolveToolRef(deps, input.nameOrId);
+  if (!NAME_RE.test(tool.name)) throw new UserFacingError('Invalid tool name for exposure');
+  await checkSource(deps, tool);
   const relPath = join('.opencode', 'skills', tool.name, 'SKILL.md');
   const content = toolSkillContent(tool);
   await deps.fs.writeFile(join(deps.baseDir, relPath), content);

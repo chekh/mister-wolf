@@ -207,6 +207,7 @@ const CORE_TAXONOMY_DECLS = [
       owner_skill: { kind: 'string', optional: true },
       version: { kind: 'string', optional: true },
       source_url: { kind: 'string', optional: true },
+      source_digest: { kind: 'string', optional: true },
     },
   },
   {

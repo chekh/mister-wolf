@@ -39,7 +39,10 @@ describe('user report delivery through the real base set', () => {
     expect(unstamp(delivered)).toBe(source);
     expect(delivered).toMatch(/^---\nname: wolf-user-report\n/);
     expect(delivered).not.toContain('{{');
-    expect(readFileSync(join(path, routerPath), 'utf8')).toContain('wolf-user-report');
+    expect(readFileSync(join(path, routerPath), 'utf8')).toContain('references/routes-communication.md');
+    expect(
+      readFileSync(join(path, '.opencode/skills/using-skills/references/routes-communication.md'), 'utf8')
+    ).toContain('wolf-user-report');
     const map = JSON.parse(readFileSync(join(root, 'update-map.json'), 'utf8'));
     expect(map.files).toContainEqual({
       path: 'base/skills/wolf-user-report/SKILL.md',

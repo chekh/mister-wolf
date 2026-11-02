@@ -1,5 +1,5 @@
 ---
-title: Worker Reviewer playbook v4 — проектные акценты узкого ревью
+title: Worker Reviewer playbook v5 — проектные акценты узкого ревью
 owner_skill: worker-reviewer
 version: 4
 steps: Применяй рамку | Проверь назначенную линзу | Зафиксируй evidence и итог
@@ -33,4 +33,5 @@ tags: worker-reviewer playbook,playbook
 
 W1–W4: несовместимые предписания; непокрытый обязательный случай;
 доказанно неверный результат правила; двусмысленность с разными результатами.
-Жалоба — по рамке, сбой тула — FRICTION. Не меняй лицо самостоятельно.
+Жалоба — по рамке и единому канону `wolf-feedback/references/complaints.md`;
+сбой тула — FRICTION. Не меняй лицо самостоятельно.

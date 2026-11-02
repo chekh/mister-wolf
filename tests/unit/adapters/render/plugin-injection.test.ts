@@ -75,35 +75,27 @@ const MARKER = 'Mr.Wolf session bootstrap'; // контракт маркера (
 const withMarker = [msg(`<session_context>\n${MARKER}\n\n## Recap\n…\n</session_context>`), msg('дальше')];
 const fresh = [msg('новый вопрос после /clear')];
 
+// Bootstrap delivers the complete core, not every branch/leaf.
 const GOVERNANCE = [
-  'Полномочия',
-  'wolf-brainstorm',
-  'wolf-debug',
-  'verification-before-completion',
-  'wolf-sdd',
-  'wolf-execute',
-  'wolf-handoff',
-  'finishing-a-development-branch',
-  'FULL',
-  'LITE',
-  'FIX',
+  'L0',
+  'L1',
+  'L2',
+  'Приоритет',
+  'Маршруты',
+  'references/routes-intent.md',
+  'references/routes-execution.md',
+  'references/routes-quality.md',
+  'references/routes-communication.md',
+  'references/routes-state.md',
+  'references/routes-capabilities.md',
+  'references/contracts.md',
   'TASK',
   'RESULT',
   'EVIDENCE',
   'ACCEPTANCE',
 ];
-// Маркеры диспетчерского контура H2, которых в усечённом L2-теле быть не должно.
-const DISPATCH = [
-  'Полномочия',
-  'wolf-brainstorm',
-  'wolf-debug',
-  'wolf-sdd',
-  'FULL',
-  'LITE',
-  'FIX',
-  'TASK',
-  'ACCEPTANCE',
-];
+// The passive L2 bootstrap must not contain the coordinator's routing tree.
+const DISPATCH = ['references/routes-', 'Маршруты: когда', 'Таблицы веток', 'executor-L1'];
 
 const hooks = await WolfSessionStartPlugin.server();
 const transform = hooks['experimental.chat.messages.transform'];

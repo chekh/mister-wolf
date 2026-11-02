@@ -73,7 +73,8 @@ describe('conveyor skills guard (2.15)', () => {
     expect(read('using-git-worktrees')).not.toContain('task-local');
     const exec = read('wolf-execute');
     expect(exec).toContain('TASK/RESULT/EVIDENCE');
-    expect(exec).toContain('диспетчеризация недоступна');
+    expect(exec).toContain('диспетчеризация');
+    expect(exec).toContain('не имитирует вызов');
     expect(exec).toContain('Саморевью не независимо');
   });
 

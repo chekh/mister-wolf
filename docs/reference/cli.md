@@ -842,8 +842,8 @@ Options:
   -h, --help                        display help for command
 
 Commands:
-  register [options] <script-path>  Register a script as tool memory object
-                                    (copies script to .wolf/tools/)
+  register [options] <script-path>  Register a project entrypoint by reference
+                                    (does not copy source)
   add [options] <script-path>       Register a script as tool memory object
                                     (synonym for register)
   list [options]                    List registered tools
@@ -865,7 +865,7 @@ Commands:
 ```text
 Usage: wolf tool register [options] <script-path>
 
-Register a script as tool memory object (copies script to .wolf/tools/)
+Register a project entrypoint by reference (does not copy source)
 
 Options:
   --name <name>          Tool name (unique)
@@ -874,6 +874,11 @@ Options:
   --contract-out <text>  Output contract
   --contract-env <text>  Environment contract
   --notes <text>         Notes (stored as object body)
+  --clear-resources      Drop old additional files when explicitly updating a
+                         card (default: false)
+  --update <name-or-id>  Update an existing card without changing its identity
+  --resource <path>      Additional significant project file (repeatable)
+                         (default: [])
   --force                Skip similar-tools check (default: false)
   --created-by <actor>   Creator actor (default: env WOLF_ACTOR, else user:cli)
   -h, --help             display help for command
@@ -893,6 +898,11 @@ Options:
   --contract-out <text>  Output contract
   --contract-env <text>  Environment contract
   --notes <text>         Notes (stored as object body)
+  --clear-resources      Drop old additional files when explicitly updating a
+                         card (default: false)
+  --update <name-or-id>  Update an existing card without changing its identity
+  --resource <path>      Additional significant project file (repeatable)
+                         (default: [])
   --force                Skip similar-tools check (default: false)
   --created-by <actor>   Creator actor (default: env WOLF_ACTOR, else user:cli)
   -h, --help             display help for command
