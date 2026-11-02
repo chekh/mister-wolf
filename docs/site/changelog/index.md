@@ -8,6 +8,25 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.25.1] - 2026-11-02
+
+### Fixed — exposed tool skills cannot go stale after `--update`, and verification timeouts stop the whole process tree
+
+Two defects found by an external review of 2.25.0, each reproduced before its fix and covered by red→green regression tests; nothing beyond them and one template-seed cosmetic changes.
+
+- **`wolf tool register --update` now refreshes the published `SKILL.md`.** Previously the card could point to the new source while an exposed `.opencode/skills/<name>/SKILL.md` still referenced the old one, and `tool use` afterwards counted a run against a card whose exposed instruction pointed elsewhere. Now a marker-owned `SKILL.md` is regenerated from the updated card (a file without the generation marker is never touched; the CLI prints `Exposed skill refreshed: …`), and the generated instruction verifies the source **before** running: `wolf tool expose <name>` (idempotent; fails with "Tool source changed" on drift) → run the script → `wolf tool use <name>` afterwards. `usage_count` still increments only after the card's own source digest verifies.
+- **`workflow-helper check` terminates the whole process group on timeout.** The helper ran the command via `subprocess.run`, so a timeout killed only the direct child while descendants kept writing to the verification log after `log_sha256` had been fixed — an unreproducible record. Now the command starts in its own session, a timeout kills the entire group (`SIGKILL`), and the digest is computed only after the group is confirmed stopped — on the timeout path and the normal-exit path alike, so a late survivor of a passing command no longer corrupts the hash either. The record carries explicit limit lines ("verification process group terminated after timeout", "process group not confirmed empty within 5s; log digest may be unstable").
+- **Template cosmetic: the `complaint-protocol` seed no longer hardcodes a face version.** The phrase "Активную v2 обновляет Стюард" had drifted from the fact (live faces are on newer revisions); the seed now says "Активную редакцию лица обновляет Стюард". Live faces are untouched — they change only through the authorized Steward circuit.
+
+### What this release does not do
+
+- **No new CLI surface, schema or migration.** `schema_migrations` stays empty; existing tool cards and configs are unaffected. `update-map.json` records 2 changed targets against 2.25.0 (`wolf-execute/scripts/workflow-helper.py`, the `complaint-protocol` seed); the other 53 file targets, 5 faces and `agents_md` are unchanged.
+- **A descendant that starts its own session (`setsid`) is still unreachable by the group kill — and the helper cannot even see it** (such a descendant has left the group, so no limit line fires). This POSIX edge is documented here rather than handled.
+
+### Upgrade notes
+
+- **`npm install -g mister-wolf@2.25.1` (or `wolf upgrade`) is enough.** Projects pick up the fixed helper and the seed text via the regular upgrade pass; `protect:` files and local mutations keep their existing rules.
+
 ## [2.25.0] - 2026-11-02
 
 ### Changed — the skill router became a small core with topical routes, feedback got its own skill, and tool cards reference project sources instead of copying them

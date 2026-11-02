@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=routes-execution.md set=2.25.0 -->
+<!-- wolf:rendered base=routes-execution.md set=2.25.1 -->
 # Планирование и исполнение
 
 L1 до назначения читает [канон TASK](contracts.md). Не передавай L2 всю организацию.

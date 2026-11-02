@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=routes-communication.md set=2.25.0 -->
+<!-- wolf:rendered base=routes-communication.md set=2.25.1 -->
 # Объяснение, визуальный диалог и документ
 
 | Когда | Как применить | Результат |

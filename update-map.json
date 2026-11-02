@@ -1,36 +1,36 @@
 {
-  "version": "2.25.0",
-  "prev": "2.24.0",
+  "version": "2.25.1",
+  "prev": "2.25.0",
   "files": [
     {
       "path": "base/agents/executor-lead.md",
       "kind": "agent",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/agents/mr-wolf.md",
       "kind": "agent",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/agents/steward.md",
       "kind": "agent",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/agents/worker-implementer.md",
       "kind": "agent",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/agents/worker-researcher.md",
       "kind": "agent",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/agents/worker-reviewer.md",
       "kind": "agent",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/commands/analyze-doc.md",
@@ -40,7 +40,7 @@
     {
       "path": "base/commands/complain.md",
       "kind": "command",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/commands/doc-review.md",
@@ -65,12 +65,12 @@
     {
       "path": "base/skills/test-driven-development/references/test-quality.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/test-driven-development/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-git-worktrees/SKILL.md",
@@ -80,57 +80,57 @@
     {
       "path": "base/skills/using-skills/references/context-and-memory.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/references/contracts.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/references/project-rules.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/references/project-tools.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/references/routes-capabilities.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/references/routes-communication.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/references/routes-execution.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/references/routes-intent.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/references/routes-quality.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/references/routes-state.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/verification-before-completion/SKILL.md",
@@ -140,17 +140,17 @@
     {
       "path": "base/skills/wolf-brainstorm/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-debug/references/techniques.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-debug/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-design/SKILL.md",
@@ -160,17 +160,17 @@
     {
       "path": "base/skills/wolf-execute/references/technical-helpers.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-execute/scripts/workflow-helper.py",
       "kind": "skill",
-      "category": "new"
+      "category": "changed"
     },
     {
       "path": "base/skills/wolf-execute/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-explain/SKILL.md",
@@ -180,22 +180,22 @@
     {
       "path": "base/skills/wolf-feedback/references/complaints.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-feedback/references/session-diagnosis.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-feedback/scripts/session-reader.py",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-feedback/SKILL.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-git/reference/git-collaboration-policy-v1.1.md",
@@ -210,12 +210,12 @@
     {
       "path": "base/skills/wolf-handoff/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-plan/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-release-docs/SKILL.md",
@@ -230,7 +230,7 @@
     {
       "path": "base/skills/wolf-sdd/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-skill-intake/SKILL.md",
@@ -240,7 +240,7 @@
     {
       "path": "base/skills/wolf-testplan/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-user-report/SKILL.md",
@@ -250,7 +250,7 @@
     {
       "path": "base/skills/wolf-visual-dialogue/SKILL.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-work-strategy/SKILL.md",
@@ -260,7 +260,7 @@
     {
       "path": "base/skills/writing-skills/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "opencode/plugins/wolf-router.ts",
@@ -283,7 +283,7 @@
     {
       "template": "base/playbooks/executor-lead-playbook.md",
       "owner_skill": "executor-lead",
-      "category": "changed",
+      "category": "unchanged",
       "seed": true
     },
     {
@@ -295,24 +295,24 @@
     {
       "template": "base/playbooks/worker-implementer-playbook.md",
       "owner_skill": "worker-implementer",
-      "category": "changed",
+      "category": "unchanged",
       "seed": true
     },
     {
       "template": "base/playbooks/worker-researcher-playbook.md",
       "owner_skill": "worker-researcher",
-      "category": "changed",
+      "category": "unchanged",
       "seed": true
     },
     {
       "template": "base/playbooks/worker-reviewer-playbook.md",
       "owner_skill": "worker-reviewer",
-      "category": "changed",
+      "category": "unchanged",
       "seed": true
     }
   ],
   "agents_md": {
-    "category": "changed",
+    "category": "unchanged",
     "mode": "append-block"
   },
   "schema_migrations": [],
