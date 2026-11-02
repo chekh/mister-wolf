@@ -10,6 +10,8 @@ import {
   exposeTool,
   deprecateTool,
   reviveTool,
+  toolSkillContent,
+  type ToolObject,
 } from '../../../src/app/use-cases/tool-librarian.js';
 import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
 import { JsonlEventLog } from '../../../src/adapters/fs/jsonl-event-log.js';
@@ -405,5 +407,104 @@ describe('reference tools lifecycle', () => {
     await useTool(d, { nameOrId: a.toolId, actor: 'user:test' });
     expect(existsSync(join(root, '.wolf/tools/legacy.py'))).toBe(true);
     expect((await store.get(a.toolId))?.script_path).toBe('.wolf/tools/legacy.py');
+  });
+});
+
+describe('2.25.1 defect 1: register --update синхронизирует exposed SKILL.md', () => {
+  let root: string;
+  let store: MarkdownMemoryStore;
+  function deps() {
+    return {
+      store,
+      log: new JsonlEventLog(eventsPath(root)),
+      clock: new SystemClock(),
+      idGen: new HashIdGenerator(),
+      fs: new FsFileSystem(),
+      baseDir: root,
+    };
+  }
+  const skillPath = () => join(root, '.opencode', 'skills', 'check', 'SKILL.md');
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'wolf-2251-tool-'));
+    store = new MarkdownMemoryStore(root);
+    writeFileSync(join(root, 'v1.py'), 'print("v1")');
+    writeFileSync(join(root, 'v2.py'), 'print("v2")');
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  it('update перегенерирует сгенерированный SKILL.md из новой карточки; exposedSkillRefreshed=true', async () => {
+    const d = deps();
+    const a = await registerTool(d, {
+      name: 'check',
+      scriptPath: 'v1.py',
+      language: 'python',
+      contractOut: 'результат проверки',
+      createdBy: 'user:test',
+    });
+    await exposeTool(d, { nameOrId: 'check' });
+    expect(readFileSync(skillPath(), 'utf-8')).toContain('v1.py');
+
+    const b = await registerTool(d, {
+      name: 'check',
+      scriptPath: 'v2.py',
+      language: 'python',
+      update: a.toolId,
+      createdBy: 'user:test',
+    });
+
+    expect(b.exposedSkillRefreshed).toBe(true);
+    const card = (await store.get(a.toolId)) as ToolObject;
+    const onDisk = readFileSync(skillPath(), 'utf-8');
+    expect(onDisk).toBe(toolSkillContent(card));
+    expect(onDisk).toContain('v2.py');
+    expect(onDisk).toContain(`generated from tool:${a.toolId}`);
+    // Инструкция 2.25.1 defect 2: проверка источника (expose) ДО запуска, учёт (use) ПОСЛЕ.
+    expect(onDisk).toContain('wolf tool expose check');
+    expect(onDisk.indexOf('wolf tool expose check')).toBeLessThan(onDisk.indexOf('Run the script'));
+    expect(onDisk.indexOf('wolf tool use check')).toBeGreaterThan(onDisk.indexOf('Run the script'));
+  });
+
+  it('пользовательский SKILL.md без маркера не трогается; exposedSkillRefreshed не выставляется', async () => {
+    const d = deps();
+    const a = await registerTool(d, {
+      name: 'check',
+      scriptPath: 'v1.py',
+      language: 'python',
+      createdBy: 'user:test',
+    });
+    mkdirSync(join(root, '.opencode', 'skills', 'check'), { recursive: true });
+    const custom = '---\nname: check\ndescription: "my own skill"\n---\nHand-written instructions.\n';
+    writeFileSync(skillPath(), custom);
+
+    const b = await registerTool(d, {
+      name: 'check',
+      scriptPath: 'v2.py',
+      language: 'python',
+      update: a.toolId,
+      createdBy: 'user:test',
+    });
+
+    expect(b.exposedSkillRefreshed).toBeUndefined();
+    expect(readFileSync(skillPath(), 'utf-8')).toBe(custom);
+  });
+
+  it('update без ранее созданного expose не создаёт SKILL.md', async () => {
+    const d = deps();
+    const a = await registerTool(d, {
+      name: 'check',
+      scriptPath: 'v1.py',
+      language: 'python',
+      createdBy: 'user:test',
+    });
+    const b = await registerTool(d, {
+      name: 'check',
+      scriptPath: 'v2.py',
+      language: 'python',
+      update: a.toolId,
+      createdBy: 'user:test',
+    });
+    expect(b.exposedSkillRefreshed).toBeUndefined();
+    expect(existsSync(skillPath())).toBe(false);
   });
 });

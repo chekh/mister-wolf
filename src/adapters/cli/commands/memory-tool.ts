@@ -90,6 +90,9 @@ function buildRegisterSubcommand(parent: Command, name: 'register' | 'add'): voi
         );
         console.log(`Registered tool ${options.name}: ${result.toolId}`);
         console.log(`Script: ${result.scriptPath}`);
+        if (result.exposedSkillRefreshed) {
+          console.log(`Exposed skill refreshed: ${join('.opencode', 'skills', options.name, 'SKILL.md')}`);
+        }
       }
     );
 }

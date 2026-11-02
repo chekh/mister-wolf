@@ -155,6 +155,63 @@ describe('delivered skills and runtime helpers', () => {
       ]).code
     ).toBe(2);
   });
+  it('kills the whole process group on timeout and digests a settled log', async () => {
+    const root = project(),
+      log = join(temp(), 'run.log');
+    const child =
+      'const t=setInterval(()=>console.log("tick"),100);setTimeout(()=>{clearInterval(t);process.exit(0)},5000);';
+    const parent = `require('child_process').spawn(process.execPath,['-e',${JSON.stringify(child)}],{stdio:['ignore','inherit','inherit']});setInterval(()=>{},1000);`;
+    const r = python(helper, [
+      'check',
+      '--repo',
+      root,
+      '--task',
+      't',
+      '--claim',
+      'criterion',
+      '--log',
+      log,
+      '--timeout',
+      '1',
+      '--',
+      'node',
+      '-e',
+      parent,
+    ]);
+    expect(r.code, r.stderr).toBe(1);
+    expect(r.result.outcome).toBe('timeout');
+    await new Promise((done) => setTimeout(done, 1200));
+    expect(readFileSync(log, 'utf8')).toContain('tick');
+    expect(createHash('sha256').update(readFileSync(log)).digest('hex')).toBe(r.result.log_sha256);
+  }, 20000);
+  it('digests the log only after a late survivor of a passing command exits', async () => {
+    const root = project(),
+      log = join(temp(), 'run.log');
+    const child = 'setTimeout(()=>console.log("late"),800);';
+    const parent = `require('child_process').spawn(process.execPath,['-e',${JSON.stringify(child)}],{stdio:['ignore','inherit','inherit']});process.exit(0);`;
+    const r = python(helper, [
+      'check',
+      '--repo',
+      root,
+      '--task',
+      't',
+      '--claim',
+      'criterion',
+      '--log',
+      log,
+      '--timeout',
+      '10',
+      '--',
+      'node',
+      '-e',
+      parent,
+    ]);
+    expect(r.code, r.stderr).toBe(0);
+    expect(r.result.outcome).toBe('passed');
+    await new Promise((done) => setTimeout(done, 1500));
+    expect(readFileSync(log, 'utf8')).toContain('late');
+    expect(createHash('sha256').update(readFileSync(log)).digest('hex')).toBe(r.result.log_sha256);
+  }, 20000);
   it('creates repeatable review packages and rejects empty or uncovered state', () => {
     const root = project(),
       base = git(root, 'rev-parse', 'HEAD'),

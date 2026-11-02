@@ -60,6 +60,8 @@ export interface RegisterToolResult {
   /** Project-relative entrypoint; source files stay in the project. */
   scriptPath: string;
   similar: { id: string; name: string; status: string }[];
+  /** true, если register --update перегенерировал существующий exposed SKILL.md. */
+  exposedSkillRefreshed?: boolean;
 }
 
 const LIVE_STATUSES = ['candidate', 'active'];
@@ -223,6 +225,16 @@ export async function registerTool(deps: ToolLibrarianDeps, input: RegisterToolI
         ...(input.notes !== undefined ? { body: input.notes } : {}),
       };
       const updated = await deps.store.update(current.id, patch as Partial<MemoryObject>);
+      // 2.25.1 (defect 1): exposed SKILL.md не должен расходиться с карточкой после
+      // register --update. Перегенерируем только файл с нашим маркером; пользовательский
+      // файл без маркера не трогаем. Источник истины — обновлённая карточка.
+      const skillPath = join(deps.baseDir, '.opencode', 'skills', asTool(updated).name, 'SKILL.md');
+      const exposed = await deps.fs.readSmallTextFile(skillPath);
+      let exposedSkillRefreshed: true | undefined;
+      if (exposed !== null && exposed.includes(`generated from tool:${updated.id}`)) {
+        await deps.fs.writeFile(skillPath, toolSkillContent(asTool(updated)));
+        exposedSkillRefreshed = true;
+      }
       if (deps.index) await deps.index.indexObject(updated);
       const now = deps.clock.now();
       await deps.log.append({
@@ -232,7 +244,12 @@ export async function registerTool(deps: ToolLibrarianDeps, input: RegisterToolI
         actor: input.createdBy,
         payload: { memory_id: current.id, kind: 'tool.reference.updated' },
       });
-      return { toolId: current.id, scriptPath: relDest, similar: similar.filter((s) => s.id !== current.id) };
+      return {
+        toolId: current.id,
+        scriptPath: relDest,
+        similar: similar.filter((s) => s.id !== current.id),
+        exposedSkillRefreshed,
+      };
     }
 
     const { object } = await addMemoryObject(
@@ -319,7 +336,7 @@ export function toolSkillContent(tool: ToolObject): string {
     '',
     '## Instruction',
     '',
-    `Call the script and account for its output. After use, record the fact: \`wolf tool use ${tool.name}\`.`,
+    `Before running the script, verify the source is current: \`wolf tool expose ${tool.name}\` (idempotent; fails with "Tool source changed" if the script drifted from the card). Run the script and account for its output, then record the use: \`wolf tool use ${tool.name}\`.`,
     '',
   ].join('\n');
 }
