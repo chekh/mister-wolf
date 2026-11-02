@@ -121,6 +121,31 @@ describe('wolf tool (C2 librarian v1)', () => {
     expect(readFileSync(skillPath, 'utf-8')).toBe(before);
   });
 
+  it('register --update синхронизирует exposed SKILL.md; инструкция: expose ДО запуска, use ПОСЛЕ', () => {
+    // 2.25.1 defect 1: шаги эксперта — register v1 → expose → register --update v2.
+    writeFileSync(join(cwd, 'extract-todos-v2.ts'), 'export function run(){/*v2*/}\n', 'utf-8');
+    const upd = runCli(
+      ['tool', 'register', 'extract-todos-v2.ts', '--name', 'extract-todos', '--language', 'typescript', '--update', 'extract-todos'],
+      cwd
+    );
+    expect(upd.status).toBe(0);
+    expect(upd.stdout).toContain('Exposed skill refreshed:');
+
+    // (б) дефекта: use инкрементит карточку — она уже указывает на v2, exit 0 корректен.
+    const used = runCli(['tool', 'use', 'extract-todos'], cwd);
+    expect(used.status).toBe(0);
+
+    const skill = readFileSync(join(cwd, '.opencode', 'skills', 'extract-todos', 'SKILL.md'), 'utf-8');
+    // (а) дефекта: карточка и exposed SKILL.md не должны расходиться.
+    expect(skill).toContain('extract-todos-v2.ts');
+    expect(skill).toContain(`generated from tool:${toolId}`);
+    // Инструкция (defect 2): проверка источника ДО запуска, учёт использования ПОСЛЕ.
+    expect(skill).toContain('wolf tool expose extract-todos');
+    expect(skill).toContain('wolf tool use extract-todos');
+    expect(skill.indexOf('wolf tool expose')).toBeLessThan(skill.indexOf('Run the script'));
+    expect(skill.indexOf('wolf tool use')).toBeGreaterThan(skill.indexOf('Run the script'));
+  });
+
   it('deprecate --reason → статус deprecated, list --status deprecated содержит name', () => {
     const r = runCli(['tool', 'deprecate', 'extract-todos', '--reason', 'устарел'], cwd);
     expect(r.status).toBe(0);
