@@ -2,6 +2,8 @@
 
 # Mr. Wolf
 
+![Mr. Wolf logo](docs/Mr.%20Wolf.png)
+
 > **I solve problems.**
 >
 > Постоянная проектная организация из временных AI-помощников.
