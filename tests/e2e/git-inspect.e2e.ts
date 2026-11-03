@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { spawnSync } from 'child_process';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { ensureBuilt, runCli } from './helpers.js';
@@ -30,6 +30,12 @@ function commit(cwd: string, message: string, file?: { name: string; content: st
   return git(['rev-parse', 'HEAD'], cwd).stdout.trim();
 }
 
+/** repo-local identity: git ≥2.53 требует её и на merge, не только на commit (CI ubuntu 26) */
+function gitIdentity(cwd: string): void {
+  git(['config', 'user.email', 't@t'], cwd);
+  git(['config', 'user.name', 't'], cwd);
+}
+
 /** bare-remote + два клона (work/work2), origin/main = c1, оба на c1. */
 function makeSyncedFixture(): { base: string; bare: string; work: string; work2: string; c1: string } {
   const base = mkdtempSync(join(tmpdir(), 'wolf-gitinspect-'));
@@ -37,10 +43,12 @@ function makeSyncedFixture(): { base: string; bare: string; work: string; work2:
   git(['init', '--bare', '-b', 'main', bare], base);
   const work = join(base, 'work');
   git(['clone', bare, work], base);
+  gitIdentity(work);
   const c1 = commit(work, 'c1', { name: 'file.txt', content: 'one\n' });
   git(['push', '-u', 'origin', 'main'], work);
   const work2 = join(base, 'work2');
   git(['clone', bare, work2], base);
+  gitIdentity(work2);
   return { base, bare, work, work2, c1 };
 }
 
@@ -50,6 +58,7 @@ function makeNoRemoteFixture(): { base: string; work: string; side: string } {
   const work = join(base, 'solo');
   mkdirSync(work, { recursive: true });
   git(['init', '-b', 'main'], work);
+  gitIdentity(work);
   commit(work, 'c1', { name: 'a.txt', content: 'a\n' });
   git(['checkout', '-b', 'side'], work);
   const side = commit(work, 'side', { name: 'b.txt', content: 'b\n' });
@@ -174,6 +183,8 @@ describe('wolf git-inspect (B0.5 e2e)', () => {
     git(['checkout', 'main'], synced.work);
     const merge = git(['merge', 'feature'], synced.work);
     expect(merge.status).not.toBe(0); // конфликт оставляет незавершённый merge
+    // допущение фикстуры явно: merge действительно начат (git ≥2.53 требует identity до слияния)
+    expect(existsSync(join(synced.work, '.git', 'MERGE_HEAD'))).toBe(true);
     const { report, status } = inspect(synced.work);
     expect(status).toBe(1);
     expect(report.verdict).toBe('VIOLATION');
