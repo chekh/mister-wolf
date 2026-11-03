@@ -1663,6 +1663,22 @@ Options:
   -h, --help        display help for command
 ```
 
+### wolf git-inspect (hidden)
+
+```text
+Usage: wolf git-inspect [options]
+
+Inspect git state (read-only) and print a JSON report with a
+PASS|VIOLATION|UNKNOWN verdict
+
+Options:
+  --baseline <sha>  baseline commit SHA the task started from
+  --target <ref>    task target recorded as a fact; requires remote observation
+                    (comparison uses the branch upstream)
+  --owner <id>      branch owner identity passed through into the report
+  -h, --help        display help for command
+```
+
 ### Скрытые синонимы analytics (§6.5)
 
 - `wolf insights` — скрытый синоним: `analytics --view readiness`
