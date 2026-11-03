@@ -397,6 +397,14 @@ export const COMMANDS: CommandSpec[] = [
     usage: '',
     load: () => import('./commands/projects.js').then((m) => m.projectsCommand()),
   },
+  {
+    // B0.5 (roadmap v4 §11, ADR-5): единственный структурный сборщик
+    // Git-состояния — read-only JSON-вердикт для L1/B0 (wolf-git)
+    name: 'git-inspect',
+    description: 'Inspect git state (read-only) and print a JSON report with a PASS|VIOLATION|UNKNOWN verdict',
+    usage: '[options]',
+    load: () => import('./commands/git-inspect.js').then((m) => m.gitInspectCommand()),
+  },
 ];
 
 export function createCli(): Command {

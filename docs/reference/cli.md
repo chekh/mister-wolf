@@ -1221,6 +1221,21 @@ Options:
   -h, --help  display help for command
 ```
 
+### wolf git-inspect
+
+```text
+Usage: wolf git-inspect [options]
+
+Inspect git state (read-only) and print a JSON report with a
+PASS|VIOLATION|UNKNOWN verdict
+
+Options:
+  --baseline <sha>  baseline commit SHA the task started from
+  --target <ref>    expected comparison target (default: upstream branch)
+  --owner <id>      branch owner identity passed through into the report
+  -h, --help        display help for command
+```
+
 ## Скрытые команды (plumbing)
 
 Скрыты из `wolf --help` (бюджет ≤ 30 строк, спека 2.13 §6.6), но работают как обычные команды.
