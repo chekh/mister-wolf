@@ -1,0 +1,313 @@
+{
+  "created": "2026-11-03",
+  "wolf": {
+    "version": "2.26.0",
+    "commit": "f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c",
+    "repository": "https://github.com/chekh/mister-wolf",
+    "roadmap_url": "https://github.com/chekh/mister-wolf/blob/f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c/docs/dev/roadmap/roadmap-v4.md"
+  },
+  "prototype": {
+    "commit": "56032db2a6186e5549046d87b639b1c40c4891c7",
+    "published_url": "https://wolf-memory-observatory.tf-rest-6500.chatgpt.site",
+    "mode": "synthetic_browser_only",
+    "style_reference": "https://chekh.github.io/mister-wolf/",
+    "source_files_copied": "dist/ only; no hosting identity, git data, credentials or browser user state"
+  },
+  "code_sources": [
+    {
+      "path": "docs/dev/roadmap/roadmap-v4.md",
+      "sha256": "033c30090a6d205b60a86db0e801226179b4e8ce743a2e92038c12ce989c28d8",
+      "bytes": 178904,
+      "permalink": "https://github.com/chekh/mister-wolf/blob/f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c/docs/dev/roadmap/roadmap-v4.md"
+    },
+    {
+      "path": "docs/dev/roadmap/INDEX.md",
+      "sha256": "756e84bf20225b282e5f733442848c56fd56ac1b51a3bdf7e0c74807568c604b",
+      "bytes": 1478,
+      "permalink": "https://github.com/chekh/mister-wolf/blob/f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c/docs/dev/roadmap/INDEX.md"
+    },
+    {
+      "path": "docs/dev/roadmap/backlog.md",
+      "sha256": "729117456bd36f246d8440f91bf8a33d9d6702b7e5e92ba48e6b3b0eccd32d49",
+      "bytes": 5408,
+      "permalink": "https://github.com/chekh/mister-wolf/blob/f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c/docs/dev/roadmap/backlog.md"
+    },
+    {
+      "path": "docs/dev/roadmap/roadmap-v4-ledger.md",
+      "sha256": "0f1eefe69342ab98dfc116c987e779a083953060c6efd872084510253d369984",
+      "bytes": 79104,
+      "permalink": "https://github.com/chekh/mister-wolf/blob/f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c/docs/dev/roadmap/roadmap-v4-ledger.md"
+    },
+    {
+      "path": "package.json",
+      "sha256": "c18a4cf7e6a8dc908b4d8c44c89733cf479f8e720eb39f7ac5a11fed1191fefe",
+      "bytes": 2265,
+      "permalink": "https://github.com/chekh/mister-wolf/blob/f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c/package.json"
+    },
+    {
+      "path": "src/adapters/fs/projects-registry.ts",
+      "sha256": "0f3153c56c61ccb2c61c5ac8ef71c9da61a1751ca12e6ae2ed58136d40aedc96",
+      "bytes": 6752,
+      "permalink": "https://github.com/chekh/mister-wolf/blob/f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c/src/adapters/fs/projects-registry.ts"
+    },
+    {
+      "path": "src/app/use-cases/build-projects-list.ts",
+      "sha256": "d2aee46dbea57659da12375e8ac28d3479a61c055cd5f254e99d2c99a8267e27",
+      "bytes": 4793,
+      "permalink": "https://github.com/chekh/mister-wolf/blob/f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c/src/app/use-cases/build-projects-list.ts"
+    },
+    {
+      "path": "src/app/use-cases/build-analytics.ts",
+      "sha256": "03249518664cd620c4440c18cabdfb186bdedeef5136033d76281ab444628282",
+      "bytes": 108641,
+      "permalink": "https://github.com/chekh/mister-wolf/blob/f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c/src/app/use-cases/build-analytics.ts"
+    },
+    {
+      "path": "src/adapters/fs/session-metrics-log.ts",
+      "sha256": "ada0ba78450b008b135d3f6f3c269d11b98af567b2a66565a74a291cf634abca",
+      "bytes": 26778,
+      "permalink": "https://github.com/chekh/mister-wolf/blob/f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c/src/adapters/fs/session-metrics-log.ts"
+    },
+    {
+      "path": "src/adapters/cli/commands/face.ts",
+      "sha256": "9a817bacf5d62e34fc87a05a15eaeaf85819b365dded2a8622b9acc4c4be4db5",
+      "bytes": 14989,
+      "permalink": "https://github.com/chekh/mister-wolf/blob/f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c/src/adapters/cli/commands/face.ts"
+    },
+    {
+      "path": "src/app/use-cases/create-face-version.ts",
+      "sha256": "37c90674ee0668d076b15ae62722256958efbb1bc29d9d16928fd33bc5de19b9",
+      "bytes": 11471,
+      "permalink": "https://github.com/chekh/mister-wolf/blob/f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c/src/app/use-cases/create-face-version.ts"
+    },
+    {
+      "path": "src/app/use-cases/face-operation.ts",
+      "sha256": "dedd25a058d3e9a6e898405233ae32e6c28b8756b2d2c18898382b4b3a07041b",
+      "bytes": 31220,
+      "permalink": "https://github.com/chekh/mister-wolf/blob/f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c/src/app/use-cases/face-operation.ts"
+    },
+    {
+      "path": "src/app/use-cases/resolve-face.ts",
+      "sha256": "ae5afecbd3899b919dac0e608b76d31abccc6bfb0b24b9f1287506b8bf29894c",
+      "bytes": 2610,
+      "permalink": "https://github.com/chekh/mister-wolf/blob/f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c/src/app/use-cases/resolve-face.ts"
+    },
+    {
+      "path": "src/app/use-cases/apply-aggregate.ts",
+      "sha256": "0557f9303b164ea6185c77b0937cf6e869d7f98a51398ad4817f5ed8f8d037cd",
+      "bytes": 4290,
+      "permalink": "https://github.com/chekh/mister-wolf/blob/f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c/src/app/use-cases/apply-aggregate.ts"
+    },
+    {
+      "path": "src/adapters/cli/commands/memory-aggregate.ts",
+      "sha256": "5abec1b6488670edde8110bad28475acb7cbe190e18a197e2120a352de8bf19c",
+      "bytes": 1872,
+      "permalink": "https://github.com/chekh/mister-wolf/blob/f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c/src/adapters/cli/commands/memory-aggregate.ts"
+    },
+    {
+      "path": "src/adapters/fs/session-delivery-registry.ts",
+      "sha256": "e48d2b3b584eb0ca15937b4f00019dbd0f3fed3e5c8922760cca3b1b8c160ba0",
+      "bytes": 6073,
+      "permalink": "https://github.com/chekh/mister-wolf/blob/f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c/src/adapters/fs/session-delivery-registry.ts"
+    },
+    {
+      "path": "templates/opencode/plugins/wolf-router.ts",
+      "sha256": "832a407bae0a2174da5baf0de852e25a75ac9d774c2946e4d8204ba97e206508",
+      "bytes": 23741,
+      "permalink": "https://github.com/chekh/mister-wolf/blob/f1e3fc9a0b1ace2949dc7ee5af0a2d5f32fde34c/templates/opencode/plugins/wolf-router.ts"
+    }
+  ],
+  "package_files": [
+    {
+      "path": "00-agent-task.md",
+      "bytes": 16302,
+      "sha256": "b5cf5d24555ca2bee58db8c9b70a609007fbe9997728d3286e82e9f76a797860"
+    },
+    {
+      "path": "01-functional-requirements.md",
+      "bytes": 17057,
+      "sha256": "bfbd02788a79f22f564ad99c49e36d96646e1a48917b0a9e6d773d7fee251803"
+    },
+    {
+      "path": "02-control-and-measurement-rationale.md",
+      "bytes": 11839,
+      "sha256": "3e6cadc277ad57cc89fc045ad9a057f92afa7828b8d6d9930eb54ed4aa983a85"
+    },
+    {
+      "path": "03-metrics-catalog.md",
+      "bytes": 47138,
+      "sha256": "d46cf3bbbac72d59d3539d27ccc065c1e4683a3567b50050027a54556ccd7df1"
+    },
+    {
+      "path": "04-information-lifecycle.md",
+      "bytes": 11208,
+      "sha256": "e9aeb0a3440180bbc099c6061e0d7f34eb8188d3eb42cd7d1ca1681082b9bb4c"
+    },
+    {
+      "path": "05-roadmap-change-proposal.md",
+      "bytes": 12192,
+      "sha256": "1b3349d93c19ccec65c464c2064578ca7119ce5a896406b91ebf2998f9c95f01"
+    },
+    {
+      "path": "06-scenarios-and-acceptance.md",
+      "bytes": 13536,
+      "sha256": "33662762b1679404affa207abed54e6e9d572d4cd48b1672f1e6dbec3ccae953"
+    },
+    {
+      "path": "07-source-map-and-gaps.md",
+      "bytes": 10749,
+      "sha256": "c396fc0d864942a5ee7a0035c74888a8f2fc1d6343ef7ae4686c8fcdaff150ff"
+    },
+    {
+      "path": "README.md",
+      "bytes": 6731,
+      "sha256": "850898ab95bcfc22ef1809f6525f6a657428f2da13189a96d5a33dea42f9cba1"
+    },
+    {
+      "path": "metrics/catalog.json",
+      "bytes": 40679,
+      "sha256": "c43b818898a9b9d597fcdaac5e76b5a486633ddbbaa57704c5c5e28544b24eb5"
+    },
+    {
+      "path": "prototype/app.css",
+      "bytes": 18633,
+      "sha256": "f42067474f710cf6ef1890afdd4cc747c7e47f8aa50654a75cfcad005deedf2f"
+    },
+    {
+      "path": "prototype/app.js",
+      "bytes": 45501,
+      "sha256": "a5ad2e320cb9b73119d7c31a6f94933815fa743f29b846813c3d8f55964ce883"
+    },
+    {
+      "path": "prototype/assets/IBM-Plex-LICENSE.txt",
+      "bytes": 4456,
+      "sha256": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da"
+    },
+    {
+      "path": "prototype/assets/ibm-plex-mono-cyrillic-400-normal.BSMlKf0J.woff2",
+      "bytes": 8356,
+      "sha256": "7635422bd10ddbbcb0e0caa1154b928298f5c8319b8c00b30978d4395f4783ce"
+    },
+    {
+      "path": "prototype/assets/ibm-plex-mono-cyrillic-ext-400-normal.xuaO2J-f.woff2",
+      "bytes": 6912,
+      "sha256": "f8c22ec1804bd6966b70f43ac7c327025645b4c09597117fca2a5a6c750106fe"
+    },
+    {
+      "path": "prototype/assets/ibm-plex-mono-latin-400-normal.DMJ8VG8y.woff2",
+      "bytes": 14708,
+      "sha256": "08949f728dc52d528e69b1667d15c89a5686a4ee9a296ff90983985f99c380f7"
+    },
+    {
+      "path": "prototype/assets/ibm-plex-mono-latin-ext-400-normal.BmRBH3aV.woff2",
+      "bytes": 13348,
+      "sha256": "6bc0f226a5b7884a8170e3f62c63d7675609d4631bdc5931b5cdab81821f00eb"
+    },
+    {
+      "path": "prototype/assets/ibm-plex-sans-condensed-latin-600-normal.CRd5VyFf.woff2",
+      "bytes": 19816,
+      "sha256": "3d72a0923c5830358b0a8e25b258aecadbecbf542b6ee9a25f387803e37d56b9"
+    },
+    {
+      "path": "prototype/assets/ibm-plex-sans-condensed-latin-ext-600-normal.CBdNZ9Ci.woff2",
+      "bytes": 16044,
+      "sha256": "014b6bf624d39ae76c07de342b45fab064e66321c9e0d78854750948c815ecf0"
+    },
+    {
+      "path": "prototype/assets/ibm-plex-sans-cyrillic-400-normal.DZqxrq2p.woff2",
+      "bytes": 14800,
+      "sha256": "69afad88a0740b6e5647f1104c9176a261f1ad9d60202f605456a983799752e9"
+    },
+    {
+      "path": "prototype/assets/ibm-plex-sans-cyrillic-600-normal.71GNu3SW.woff2",
+      "bytes": 15040,
+      "sha256": "730becc6f005c18c31440f14d34677f2704a85e6afffd4bee6a64d5c95f45a55"
+    },
+    {
+      "path": "prototype/assets/ibm-plex-sans-cyrillic-ext-400-normal.g30qAdWV.woff2",
+      "bytes": 12148,
+      "sha256": "e2580ad78906551e1f9ad621f608cd16ce4d5a992e53c651dd6b3504547576f2"
+    },
+    {
+      "path": "prototype/assets/ibm-plex-sans-cyrillic-ext-600-normal.DUMzJB7m.woff2",
+      "bytes": 12304,
+      "sha256": "d60d3d0b182753d5640e372c57669f508b79172ac4ff6b460d987ddd34cac199"
+    },
+    {
+      "path": "prototype/assets/ibm-plex-sans-latin-400-normal.CDDApCn2.woff2",
+      "bytes": 22588,
+      "sha256": "3b646991d30055a93a4ecc499713d4347953a74a947ecab435ab72070cbdab0e"
+    },
+    {
+      "path": "prototype/assets/ibm-plex-sans-latin-600-normal.CuJfVYMP.woff2",
+      "bytes": 24252,
+      "sha256": "8960851d691c054ed38e259bdcf1a6190d157b4203ed5bb32c632a863fb8ec2f"
+    },
+    {
+      "path": "prototype/assets/ibm-plex-sans-latin-ext-400-normal.C5H60-Va.woff2",
+      "bytes": 15980,
+      "sha256": "c93d2a12aaa280f68b9ab7b726ff8dfedda67c99ef9abed047c1847a1cc6d583"
+    },
+    {
+      "path": "prototype/assets/ibm-plex-sans-latin-ext-600-normal.DOrvGEcy.woff2",
+      "bytes": 16448,
+      "sha256": "b25dfd4f979e442ae1e25cd0894463434cf01ba21ac1a35d39f4a82bd4cc060e"
+    },
+    {
+      "path": "prototype/console-data.js",
+      "bytes": 12202,
+      "sha256": "7c4701a9939476df538349561718c2e877472715d00f336e0cc2a96b16e644f9"
+    },
+    {
+      "path": "prototype/console.css",
+      "bytes": 22550,
+      "sha256": "fbd119fdcbc259a72635f6f87257a4dbdcdcbebd93b579de706e82285341e93b"
+    },
+    {
+      "path": "prototype/console.js",
+      "bytes": 60399,
+      "sha256": "cb5c48eb9d990978792406bb4729832b2481f195d2f984f7f2ee82303cb4c92e"
+    },
+    {
+      "path": "prototype/demo-data.js",
+      "bytes": 25293,
+      "sha256": "a5258f5300e6a7573bbabb0af05a13962949d6006e2b4db0f584596fb2761e2f"
+    },
+    {
+      "path": "prototype/fonts.css",
+      "bytes": 8829,
+      "sha256": "b9a2414b7851f1a17b73da3fa662fa1d2c6e62a1b84e728b5e2fe14511748f91"
+    },
+    {
+      "path": "prototype/index.html",
+      "bytes": 4134,
+      "sha256": "99a3c653e67702a98067ddf6e5a09ffc586e28e90334912668461c287502b4a7"
+    },
+    {
+      "path": "prototype/observatory.html",
+      "bytes": 4064,
+      "sha256": "0016352eec2706ad2539927ae7a2c47c475c005816659c8b37709baed2370b9e"
+    },
+    {
+      "path": "reference/INDEX.baseline.md",
+      "bytes": 1478,
+      "sha256": "756e84bf20225b282e5f733442848c56fd56ac1b51a3bdf7e0c74807568c604b"
+    },
+    {
+      "path": "reference/backlog.baseline.md",
+      "bytes": 5408,
+      "sha256": "729117456bd36f246d8440f91bf8a33d9d6702b7e5e92ba48e6b3b0eccd32d49"
+    },
+    {
+      "path": "reference/roadmap-v4-ledger.baseline.md",
+      "bytes": 79104,
+      "sha256": "0f1eefe69342ab98dfc116c987e779a083953060c6efd872084510253d369984"
+    },
+    {
+      "path": "reference/roadmap-v4.baseline.md",
+      "bytes": 178904,
+      "sha256": "033c30090a6d205b60a86db0e801226179b4e8ce743a2e92038c12ce989c28d8"
+    }
+  ],
+  "checksum_policy": "package_files excludes reference/source-manifest.json itself; SHA256SUMS is outside the package."
+}
