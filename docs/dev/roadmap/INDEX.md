@@ -5,7 +5,7 @@
 
 ## Активный роадмап
 
-- [roadmap-v4.md](roadmap-v4.md) — Roadmap v4 (этапы A–I + консоль O1/U1/U2), редакция 10, активная очередь: NOW = активных срезов нет (B0.5 выпущен 2.27.0); NEXT = O1 + U1 (консоль wolf-console) → D1 с U2 → D2 → A-autonomy.
+- [roadmap-v4.md](roadmap-v4.md) — Roadmap v4 (этапы A–I + консоль O1/U1/U2), редакция 11, активная очередь: NOW = активных срезов нет (B0.5 выпущен 2.27.0); NEXT = O1 + U1 (консоль wolf-console) → D1 с U2 → D2 → A-autonomy.
 
 ## Ledger и история
 
