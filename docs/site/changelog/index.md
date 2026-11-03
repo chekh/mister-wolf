@@ -8,6 +8,25 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.27.0] - 2026-11-03
+
+### Added — `wolf git-inspect`: a structured read-only git state with an honest verdict
+
+Roadmap v4 (edition 9, §11) slice B0.5: agents interpreted git state from the prose output of `git status`/`git log` and could report "all clean" while the remote was unreachable or an operation was unfinished. One deterministic read-only command now returns the fact instead of the interpretation.
+
+- **`wolf git-inspect [--baseline <sha>] [--target <ref>] [--owner <id>]`** prints a single JSON report (`schema_version: 1`): repository, worktree, branch, head, baseline, target, dirty, unfinished_git_operation, local_vs_remote, branch_owner, freshness_of_remote_observation — plus a `verdict` of `PASS | VIOLATION | UNKNOWN`, per-check `reasons` and derived `allowed_next_actions`. Exit codes: 0 PASS, 1 VIOLATION, 2 UNKNOWN — "could not check" is never returned as success.
+- **Honest remote observation.** With an upstream/remote configured, the comparison uses a live `git ls-remote` with a 10 s timeout; an unreachable remote yields `UNKNOWN` (no false `PASS`), a repo without remote is reported as not applicable, and a remote ahead without local objects is reported as `remote-ahead-unfetched` with null counts instead of invented numbers. Refs are never changed: only read-only git commands run, no fetch/push/commit.
+- **Agent-facing plumbing, single collector.** The command is hidden from `wolf --help` (the P224 help budget is kept) and documented in the CLI reference; the `wolf-git` skill (B0) now points to it at G0 as the source of the structured git fact. No second git-state collector is introduced: `branch_owner` comes only from `--owner`, and the command never reads Wolf memory, so it stays portable.
+
+### What this release does not do
+
+- **No write operations.** commit/push/cleanup/MR remain out of scope (B1); the command does not decide whether writing is allowed — that authority belongs to the task and B1.
+- **No arbitrary comparison target.** The remote comparison uses the branch upstream; `--target` records the task target and requires remote observation (comparing against an arbitrary ref is B1).
+
+### Upgrade notes
+
+- **`npm install -g mister-wolf@2.27.0`** (or `wolf upgrade`) is enough. No schema migrations; `update-map.json` records 1 changed file target against 2.26.0 (the `wolf-git` skill), the other 53 file targets and the 6 versioned playbooks are unchanged.
+
 ## [2.26.0] - 2026-11-03
 
 ### Added — the task contract now carries active constraints and accepted decisions across sessions
