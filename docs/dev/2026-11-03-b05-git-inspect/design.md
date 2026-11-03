@@ -56,6 +56,7 @@ created: 2026-11-03
 | `dirty.value = true`                                                            | VIOLATION                                             |
 | `unfinished_git_operation ≠ null`                                               | VIOLATION                                             |
 | `baseline.diverged` (baseline не предок HEAD и не сам HEAD)                     | VIOLATION                                             |
+| `baseline.relationship = unresolved` (SHA не разрешается локально)              | UNKNOWN — baseline-проверка невыполнима (REQ-02)      |
 | `relation = diverged \| behind \| remote-ahead-unfetched`                       | VIOLATION                                             |
 | `relation = ahead`                                                              | PASS + reason «unpublished commits present»           |
 | `relation = no-remote`/`no-upstream` и входы не требуют remote                  | PASS + reason «not applicable»                        |
@@ -63,6 +64,10 @@ created: 2026-11-03
 | иначе (in-sync, всё проверено)                                                  | PASS                                                  |
 
 `allowed_next_actions` выводятся из фактов той же таблицей (например: dirty → `commit or discard changes before handoff (if authorized)`; unreachable → `verify network/remote access; do not assume clean`; ahead → `publish if authorized`; PASS → `read-only observation complete; no git action required`).
+
+Семантика target: сравнение с remote выполняется по upstream рабочей ветки;
+`--target` фиксирует цель задачи и требует remote-наблюдения (строка 9);
+произвольная цель сравнения — вне среза (B1).
 
 ## ADR-карточки
 
