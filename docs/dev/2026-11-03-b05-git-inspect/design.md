@@ -49,18 +49,18 @@ created: 2026-11-03
 
 Таблица решений вердикта (детерминированная, порядок — сверху вниз, первое сработавшее определяет компонент):
 
-| Условие | Компонент |
-|---|---|
-| не репозиторий / git-команда упала | UNKNOWN |
-| remote/upstream существует, но ls-remote недоступен | UNKNOWN (reason «remote unreachable») |
-| `dirty.value = true` | VIOLATION |
-| `unfinished_git_operation ≠ null` | VIOLATION |
-| `baseline.diverged` (baseline не предок HEAD и не сам HEAD) | VIOLATION |
-| `relation = diverged \| behind \| remote-ahead-unfetched` | VIOLATION |
-| `relation = ahead` | PASS + reason «unpublished commits present» |
-| `relation = no-remote`/`no-upstream` и входы не требуют remote | PASS + reason «not applicable» |
+| Условие                                                                         | Компонент                                             |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| не репозиторий / git-команда упала                                              | UNKNOWN                                               |
+| remote/upstream существует, но ls-remote недоступен                             | UNKNOWN (reason «remote unreachable»)                 |
+| `dirty.value = true`                                                            | VIOLATION                                             |
+| `unfinished_git_operation ≠ null`                                               | VIOLATION                                             |
+| `baseline.diverged` (baseline не предок HEAD и не сам HEAD)                     | VIOLATION                                             |
+| `relation = diverged \| behind \| remote-ahead-unfetched`                       | VIOLATION                                             |
+| `relation = ahead`                                                              | PASS + reason «unpublished commits present»           |
+| `relation = no-remote`/`no-upstream` и входы не требуют remote                  | PASS + reason «not applicable»                        |
 | `relation = no-remote`/`no-upstream`, но вход требует remote (`--target` задан) | UNKNOWN — наблюдение требуется, а невыполнимо (ADR-4) |
-| иначе (in-sync, всё проверено) | PASS |
+| иначе (in-sync, всё проверено)                                                  | PASS                                                  |
 
 `allowed_next_actions` выводятся из фактов той же таблицей (например: dirty → `commit or discard changes before handoff (if authorized)`; unreachable → `verify network/remote access; do not assume clean`; ahead → `publish if authorized`; PASS → `read-only observation complete; no git action required`).
 
