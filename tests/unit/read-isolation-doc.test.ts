@@ -49,13 +49,9 @@ describe('NFR-03 (R02): doc — страница «изоляция чтения
     expect(doc).toContain('`mr-wolf_brief`');
   });
 
-  it('README (EN/RU) содержит раздел «изоляция чтения» с тем же списком', () => {
-    const en = read('README.md');
-    const ru = read('README.ru.md');
-    expect(en).toContain('## Read isolation');
-    expect(en).toContain('`wolf call`');
-    expect(ru).toContain('## Изоляция чтения');
-    expect(ru).toContain('`wolf call`');
+  it('README EN/RU links to the canonical read-isolation contract', () => {
+    expect(read('README.md')).toContain('https://chekh.github.io/mister-wolf/guide/read-isolation');
+    expect(read('README.ru.md')).toContain('https://chekh.github.io/mister-wolf/ru/guide/read-isolation');
   });
 });
 
@@ -73,6 +69,6 @@ describe('NFR-03 (R02): code — состав изолированных read-п
     // MCP-зеркало (mcp-tools.ts) сегодня не входит: каталог MCP (search/get/list/
     // add/transition/brief/recap + ping) не содержит call-тула. Появление
     // изолированного MCP-call — легитимная эволюция контракта: добавить файл сюда
-    // И в замороженный список на странице/README в одном изменении требований.
+    // И в замороженный список на канонической странице в одном изменении требований.
   });
 });

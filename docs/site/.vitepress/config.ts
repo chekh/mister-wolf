@@ -40,7 +40,7 @@ const ruCliItems = [
 export default defineConfig({
   title: 'Mr. Wolf',
   description:
-    'Mr. Wolf turns temporary AI coding agents into a permanent project organization: typed memory, work processes, governed learning — local-first, CLI + MCP.',
+    'Mr. Wolf organizes AI assistants around your goal: connected processes, project memory, governed learning through the Steward and clear human communication. Local-first, OpenCode-first.',
   base: '/mister-wolf/',
   // VitePress does not apply `base` to head links — hardcode it for GitHub Pages
   head: [
@@ -79,7 +79,7 @@ export default defineConfig({
       lang: 'en',
       themeConfig: {
         nav: [
-          { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
+          { text: 'Guide', link: '/guide/overview', activeMatch: '/guide/' },
           { text: 'CLI', link: '/guide/cli/' },
           { text: 'MCP', link: '/guide/mcp' },
           { text: 'Config', link: '/guide/configuration' },
@@ -87,18 +87,28 @@ export default defineConfig({
         ],
         sidebar: [
           {
-            text: 'START',
-            items: [{ text: 'Getting Started', link: '/guide/getting-started' }],
+            text: 'START HERE',
+            items: [
+              { text: 'What is Wolf?', link: '/guide/overview' },
+              { text: 'Capabilities & Comparison', link: '/guide/capabilities' },
+              { text: 'Your First Task', link: '/guide/getting-started' },
+              { text: 'Working with Wolf', link: '/guide/working-with-wolf' },
+              { text: 'Introduce Your Project', link: '/guide/bootstrap' },
+            ],
           },
           {
             text: 'WHY WOLF',
-            items: [{ text: 'Organization & Council', link: '/guide/organization' }],
+            items: [
+              { text: 'Goal & Responsibility', link: '/guide/organization' },
+              { text: 'Architecture', link: '/guide/architecture' },
+            ],
           },
           {
             text: 'CONCEPTS',
             items: [
               { text: 'Memory Model', link: '/guide/memory' },
-              { text: 'Learning Loop', link: '/guide/feedback' },
+              { text: 'Steward & Learning', link: '/guide/feedback' },
+              { text: 'Reusable Tools', link: '/guide/tool-economy' },
               { text: 'Delivery & Trust', link: '/guide/delivery' },
               { text: 'Read Isolation', link: '/guide/read-isolation' },
             ],
@@ -129,6 +139,9 @@ export default defineConfig({
               { text: 'Configuration', link: '/guide/configuration' },
               { text: 'Transfer & Multi-Project', link: '/guide/transfer' },
               { text: 'Migration to 2.13 (historical)', link: '/guide/migration-2.13' },
+              { text: 'Analytics', link: '/guide/analytics' },
+              { text: 'Harness Integration', link: '/guide/harness-integration' },
+              { text: 'Maintaining Docs', link: '/guide/documentation' },
               { text: 'Telemetry', link: '/guide/telemetry' },
               { text: 'Troubleshooting', link: '/guide/troubleshooting' },
             ],
@@ -145,10 +158,10 @@ export default defineConfig({
       label: 'Русский',
       lang: 'ru',
       description:
-        'Mr. Wolf превращает временных AI-агентов в постоянную проектную организацию: типизированная память, рабочие процессы, управляемое обучение — local-first, CLI + MCP.',
+        'Mr. Wolf организует AI-помощников вокруг вашей цели: связанные процессы, память проекта, управляемое обучение через Стюарда и понятное общение с человеком. Local-first, OpenCode-first.',
       themeConfig: {
         nav: [
-          { text: 'Руководство', link: '/ru/guide/getting-started', activeMatch: '/ru/guide/' },
+          { text: 'Руководство', link: '/ru/guide/overview', activeMatch: '/ru/guide/' },
           { text: 'CLI', link: '/ru/guide/cli/' },
           { text: 'MCP', link: '/ru/guide/mcp' },
           { text: 'Конфигурация', link: '/ru/guide/configuration' },
@@ -156,18 +169,28 @@ export default defineConfig({
         ],
         sidebar: [
           {
-            text: 'НАЧАЛО',
-            items: [{ text: 'Начало работы', link: '/ru/guide/getting-started' }],
+            text: 'НАЧНИТЕ ЗДЕСЬ',
+            items: [
+              { text: 'Что такое Wolf', link: '/ru/guide/overview' },
+              { text: 'Возможности и сравнение', link: '/ru/guide/capabilities' },
+              { text: 'Первая задача', link: '/ru/guide/getting-started' },
+              { text: 'Работа с Wolf', link: '/ru/guide/working-with-wolf' },
+              { text: 'Знакомство с проектом', link: '/ru/guide/bootstrap' },
+            ],
           },
           {
             text: 'ПОЧЕМУ WOLF',
-            items: [{ text: 'Организация и консилиум', link: '/ru/guide/organization' }],
+            items: [
+              { text: 'Цель и ответственность', link: '/ru/guide/organization' },
+              { text: 'Архитектура', link: '/ru/guide/architecture' },
+            ],
           },
           {
             text: 'КОНЦЕПЦИИ',
             items: [
               { text: 'Модель памяти', link: '/ru/guide/memory' },
-              { text: 'Контур обучения', link: '/ru/guide/feedback' },
+              { text: 'Стюард и обучение', link: '/ru/guide/feedback' },
+              { text: 'Инструменты проекта', link: '/ru/guide/tool-economy' },
               { text: 'Доставка и доверие', link: '/ru/guide/delivery' },
               { text: 'Изоляция чтения', link: '/ru/guide/read-isolation' },
             ],
@@ -198,6 +221,9 @@ export default defineConfig({
               { text: 'Конфигурация', link: '/ru/guide/configuration' },
               { text: 'Перенос и мультипроектность', link: '/ru/guide/transfer' },
               { text: 'Миграция на 2.13 (historical)', link: '/ru/guide/migration-2.13' },
+              { text: 'Аналитика', link: '/ru/guide/analytics' },
+              { text: 'Интеграция харнесов', link: '/ru/guide/harness-integration' },
+              { text: 'Поддержание документации', link: '/ru/guide/documentation' },
               { text: 'Телеметрия', link: '/ru/guide/telemetry' },
               { text: 'Решение проблем', link: '/ru/guide/troubleshooting' },
             ],

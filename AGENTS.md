@@ -1,6 +1,6 @@
 # Agent Brief: mr-wolf
 
-Mr. Wolf — local-first project memory harness for AI coding agents («I solve problems»). Не оркестратор: слой памяти для агентов. Стек: TypeScript, Node, vitest; валидация — `npm run check`.
+Mr. Wolf — постоянная проектная организация из временных AI-помощников («I solve problems»): удержание цели L0/L1/L2, процессы, память и управляемое обучение Стюарда. Текущая полная организация — OpenCode-first. Стек: TypeScript, Node, vitest; валидация — `npm run check`.
 
 ## ПРОТОКОЛ холодного старта (L0/L1 без доставленного состояния)
 
@@ -19,7 +19,7 @@ Mr. Wolf — local-first project memory harness for AI coding agents («I solve 
 
 - Роадмап: `docs/dev/roadmap/roadmap-v4.md` (активный); история — `docs/dev/roadmap/roadmap-v2.md`, `roadmap-v3.md`
 - Живое планирование: `docs/dev/roadmap/` (роадмап, backlog, ideas); история: `docs/plans/` (планы волн), `docs/specs/` (дизайн-спеки)
-- Документация: `README.md`, `docs/README.md`
+- Пользовательская документация: https://chekh.github.io/mister-wolf/guide/overview (исходники `docs/site/`); `docs/README.md` — индекс инженерных источников
 - Версии: только `npm version X.Y.Z`; тег `v*` = релиз; запись в `CHANGELOG.md` при релизе обязательна
 
 ## CodeGraph

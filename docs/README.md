@@ -1,108 +1,24 @@
-# Mr. Wolf Documentation
+# Documentation
 
-Индекс живой документации. Устаревшее ранее переносилось в архив; с 2026-09-01 архивы удалены из дерева и доступны только в git-истории (коммиты до `b31cbdd`, восстановление: `git checkout b31cbdd^ -- <путь>`). Канонический концепт: **v3.3.1**.
+**The website is the canonical user documentation:**
 
-## Сайт
+- [English](https://chekh.github.io/mister-wolf/guide/overview)
+- [Русский](https://chekh.github.io/mister-wolf/ru/guide/overview)
+- [First task](https://chekh.github.io/mister-wolf/guide/getting-started)
+- [Working with Wolf](https://chekh.github.io/mister-wolf/guide/working-with-wolf)
+- [Steward and learning](https://chekh.github.io/mister-wolf/guide/feedback)
+- [CLI reference](https://chekh.github.io/mister-wolf/guide/cli/)
 
-Пользовательская документация — на сайте: <https://chekh.github.io/mister-wolf/>
+Its source is [`site/`](site/). The former `docs/guide/` has been consolidated into the website; previous text remains in Git history. Do not create a parallel user guide in this directory.
 
-- [Getting Started](https://chekh.github.io/mister-wolf/guide/getting-started) — установка и первая сессия
-- [Organization & Council](https://chekh.github.io/mister-wolf/guide/organization) — роли L0/L1/L2, цикл работы, консилиум
-- [Memory Model](https://chekh.github.io/mister-wolf/guide/memory) — 8 core-типов + расширения, фасеты, статусы
-- [Learning Loop](https://chekh.github.io/mister-wolf/guide/feedback) — жалобный контур и самообучение
-- [Delivery & Trust](https://chekh.github.io/mister-wolf/guide/delivery) — доставка playbook'ов
-- [Artifact Pipeline](https://chekh.github.io/mister-wolf/guide/artifact-pipeline) — конвейер docs/dev
-- [Skill Intake](https://chekh.github.io/mister-wolf/guide/skill-intake) — подключение внешних скиллов
-- [CLI Reference](https://chekh.github.io/mister-wolf/guide/cli/) — все команды по группам
-- [MCP Integration](https://chekh.github.io/mister-wolf/guide/mcp) — подключение агентов через MCP
-- [Changelog](https://chekh.github.io/mister-wolf/changelog/) — история версий
+## Engineering documents
 
-## Canonical concept
+These remain project-owned memory and development sources, rather than a second user manual:
 
-- [Concept v3.3.1](./concept/concept.md) — постоянная проектная организация из временных агентов: L0/L1/L2/консилиум, типизированная память, контур обучения, накопленные способности, опоры ценности (RU).
-- [Maturity](./concept/maturity.md) — зрелость компонентов по двум осям: Implementation (I0–I3) / Evidence (E0–E5).
-- [Evidence](./concept/evidence.md) — доказательная база: PoC, исследования, программа benchmark'ов E1a–E1e, claim/evidence-реестр.
-- [Coverage](./concept/coverage.md) — смысловое покрытие канона (контроль анти-регрессионного принципа).
-- [Roadmap v4](./dev/roadmap/roadmap-v4.md) — активный роадмап (этапы A–I, разбиение на релизы 2.22.0+).
-- [Roadmap v4 — ledger](./dev/roadmap/roadmap-v4-ledger.md) — история редакций, решения, поручения; активная очередь — в roadmap-v4.md.
-- История роадмапа: [Roadmap v3](./dev/roadmap/roadmap-v3.md) — фазы A–E; [Roadmap v2](./dev/roadmap/roadmap-v2.md) — контур Ф20–26 (детальный план Фазы D v3).
+- [Concept](concept/concept.md), [maturity](concept/maturity.md), [evidence](concept/evidence.md), [coverage](concept/coverage.md): design rationale, implementation boundaries and research history.
+- [Active roadmap](dev/roadmap/roadmap-v4.md) and [ledger](dev/roadmap/roadmap-v4-ledger.md).
+- [Development documents](dev/INDEX.md): requirements, design, plans and test plans by task.
+- [Historical specifications](specs/README.md) and [plans](plans/README.md).
+- [Generated CLI source reference](reference/cli.md): generated from the CLI; the website presents the user reference.
 
-## Design specs
-
-- [Self-Learning Design](./specs/2026-08-26-self-learning-design.md) — историческое основание (`historical: true`): дизайн контура самообучения Ф20–26, не реализованного в 2.18.0.
-- [Superpowers adoption](./research/superpowers-adoption.md) — перенос механизмов superpowers в Wolf (D1–D5).
-- [Индекс спек](./specs/README.md) — все исторические дизайн-спеки по датам.
-
-## Guides & process
-
-- [User guide](./guide/user-guide.md) — базовые команды и workflow (RU; полный список — `wolf --help`).
-- [CLI reference](./reference/cli.md) — полный справочник команд и флагов.
-- [Architecture](./guide/architecture.md) — устройство системы: четыре слоя, поток данных, каталог исходников.
-- [Протокол обработки жалоб](./guide/complaint-protocol.md) — `wolf complain` → Стюард → новая версия playbook → вердикт.
-- [Протокол Стюарда: bootstrap](./guide/steward-bootstrap.md) — свёртка черновиков стартовой памяти после `wolf bootstrap`.
-- [Протокол обучения Стюарда](./guide/steward-learn.md) — историческое основание (`historical: true`): цикл самообучения Ф20–26; learn-команды удалены в 2.13.
-- [Сигнальный лог (Ф20/Ф21)](./guide/signal-log.md) — события сигнального лога, пороги, читатели.
-- [Интеграция харнессов](./guide/harness-integration.md) — жизненный цикл памяти (cited/applied, `wolf memory-stage`), `WOLF_SESSION`, `wolf coord`, кампании «с памятью и без».
-- [Экономика инструментов](./guide/tool-economy.md) — переиспользование tool-объектов, счётчики, weighted-экономика.
-- [Панель эффективности и A/B-бенчмарки](./guide/effectiveness.md) — `wolf effectiveness`: пороги OK/WARN/BAD, действия при BAD; методика `scripts/bench/`.
-- [Аналитика эффективности](./guide/analytics.md) — `wolf analytics`/`dashboard`/`task-eval`: честные метрики, lifecycle памяти и атрибуция, кампании и per-memory ROI, data-quality.
-- [UX scenarios](./ux-scenarios/README.md) — 12 сценариев использования как requirements-материал.
-
-### Самообучение (действующий контур)
-
-Автономный learn-конвейер (digest/propose/validate/activate, эволюция шаблонов) удалён в 2.13 по решению владельца — протокол сохранён как историческое основание: [steward-learn.md](./guide/steward-learn.md), спека — [self-learning-design.md](./specs/2026-08-26-self-learning-design.md). Сейчас:
-
-1. Уроки пишутся вручную: `wolf add --type lesson "текст урока"`.
-2. Жалобы — `wolf complain`: hot-signal для мутаций playbook (контур Наставника).
-3. Сигнальный лог `.wolf/metrics/session-metrics.jsonl` остаётся источником метрик: его агрегируют `wolf tool stats` и `wolf analytics`.
-4. Зрелые уроки Стюард агрегирует в одну замену (`aggregated-lesson`, с 2.14); подтверждение — владелец.
-
-### Базовый набор
-
-`wolf init` в проекте разворачивает базовый набор агентов: **6 агентов** (`.opencode/agents/`), **25 скиллов** (`.opencode/skills/`), **3 команды** (`.opencode/command/`), **2 плагина** (`.opencode/plugins/`) + посев **6 стартовых playbook'ов** в память Wolf (протокол Наставника, жалобный протокол, методики воркеров, линзы wolf-review). Все файлы набора штампуются `wolf:rendered`; существующие файлы init не перезаписывает (wx-политика).
-
-`wolf sync` — регенерация набора из шаблонов установленного пакета: обновляет только штампованные файлы; файлы без штампа не трогает (конфликт «unstamped на месте шаблонного» — в отчёт, решает владелец); orphaned-файлы (шаблон исчез из пакета) — только в отчёт, авто-удаления нет. Локально правленные штампованные файлы не перезаписываются: skip + предупреждение `skipped — mutated` в отчёте (вернуть канон — удалить файл или снять правку, sync пересоздаст/обновит).
-
-Мутации playbook'ов — зона Стюарда: `init`/`sync` память не трогают (посев идёт один раз; скип по `owner_skill`). Документированный сценарий Стюарда D4: после смены версии набора Стюард инициирует `wolf sync`. Детали: [спека базового набора](./specs/2026-08-31-base-sets-design.md).
-
-## Аудит и планирование
-
-- [Аудит использования памяти (2026-08-29)](./research/memory-audit-2026-08-29.md) — распределение объектов по типам/статусам, пустующие типы (A8a).
-- [Ideas backlog](./dev/roadmap/ideas-backlog.md) — реестр зафиксированных, но не реализованных идей.
-
-## Phase specs — история решений
-
-Спецификации реализованных фаз (история решений, ADR-ценность). Планы реализации удалены 2026-09-01 — git-история до `b31cbdd` (каталог plans той эпохи); живы спеки:
-
-- MVP-A — [spec](./specs/2026-06-29-project-semantic-memory-core-design.md)
-- MVP-B (scan + brief) — [spec](./specs/2026-06-29-mvp-b-project-scan-agent-brief-design.md)
-- Phase 1 (threads / info requests / articles) — план в git-истории до `b31cbdd`
-- Phase 2 (decisions / blockers) — [spec](./specs/2026-06-30-phase-2-decisions-and-blockers-design.md)
-- MCP integration — [spec](./specs/2026-07-01-mcp-server-integration-design.md)
-- Incremental indexing — [spec](./specs/2026-07-02-incremental-indexing-blocker-resolution-design.md)
-- Phase 6 (governance + flat namespace) — [spec](./specs/2026-07-02-phase-6-governance-design.md)
-- Session wrap-up habit — [spec](./specs/2026-07-02-session-wrap-up-habit-design.md)
-- Deterministic refinement pipeline — [spec](./specs/2026-07-29-deterministic-refinement-pipeline-design.md) (реализация удалена)
-- Phase 8 (schema-driven taxonomy) — [spec](./specs/2026-08-23-phase-8-schema-taxonomy.md)
-- Phase 9 (solve/call) — [spec](./specs/2026-08-23-phase-9-solve-call.md)
-- Phase 10 (insights) — [spec](./specs/2026-08-26-phase-10-insights.md)
-- Phase 11 (structured thinking) — [spec](./specs/2026-08-26-phase-11-thinking.md)
-
-## Research
-
-- [Recallium ↔ Mr. Wolf synthesis](./research/2026-07-02-recallium-mr-wolf-synthesis.md) — что взять из Recallium
-- [wolf solve concept](./research/2026-07-03-wolf-solve.md) — исходный концепт solve/call (реализован в Phase 9)
-- [Agentic tools comparative research](./research/agentic-tools-comparative-research.md) + [project cards](./research/agentic-tools-project-cards.md) + [cross-findings](./research/agentic-tools-cross-findings.md)
-- [Wolf concept implications](./research/wolf-concept-implications.md) / [FUP implications](./research/wolf-fup-implications.md)
-
-## External evidence
-
-- [Внешние материалы](./external/README.md) — доказательная база решений (программа исследования концепта, обзоры и пакеты ревью внешних моделей). Это evidence, а не документация продукта: тексты хранятся дословно и не правятся.
-
-## Historical / Archive
-
-Архив устаревших документов — эволюция концепта v1–v3, roadmap v1, FUP-требования эпохи standalone-CLI, orchestrator-era guides, архитектурные дискуссии, MVP1A–MVP7 specs — удалён из дерева 2026-09-01: git-история до коммита `b31cbdd`.
-
----
-
-_Documentation index. Canonical concept: [Concept v3.3.1](./concept/concept.md). Роадмап: [roadmap-v4](./dev/roadmap/roadmap-v4.md). Регистр идей: [ideas-backlog](./dev/roadmap/ideas-backlog.md)._
+See [maintaining documentation](https://chekh.github.io/mister-wolf/guide/documentation) and [Contributing](../CONTRIBUTING.md) for ownership and validation.

@@ -8,10 +8,7 @@ const { lang } = useData();
 const ru = computed(() => lang.value.startsWith('ru'));
 const t = (s: L): string => (ru.value ? s.ru : s.en);
 
-// Commands verbatim from guide/getting-started.md (Installation): one binary,
-// then one of two explicit paths — memory (wolf init) or OpenCode
-// organization (wolf init --full --platform opencode). REQ-07 (R07): the
-// notes state only what a clean run actually does.
+// Full OpenCode path first; memory-only use remains an explicit alternative.
 const steps = computed(() => [
   {
     num: '01',
@@ -22,22 +19,22 @@ const steps = computed(() => [
   },
   {
     num: '02',
-    name: t({ en: 'PATH A · MEMORY', ru: 'ПУТЬ А · ПАМЯТЬ' }),
-    cmd: 'wolf init',
-    state: 'MEMORY READY',
+    name: 'OPENCODE',
+    cmd: 'wolf init --full --platform opencode',
+    state: 'AGENTS + MEMORY',
     note: t({
-      en: '.wolf/ skeleton + AGENTS.md — no platform configs, no base set',
-      ru: 'скелет .wolf/ + AGENTS.md — без платформенных конфигов и базового сета',
+      en: 'Run in your project; installs the organization and its MCP configuration',
+      ru: 'Выполните в проекте: организация и её MCP-конфигурация',
     }),
   },
   {
     num: '03',
-    name: t({ en: 'PATH B · OPENCODE', ru: 'ПУТЬ Б · OPENCODE' }),
-    cmd: 'wolf init --full --platform opencode',
-    state: 'ORG READY',
+    name: t({ en: 'INTRODUCE PROJECT', ru: 'ЗНАКОМСТВО С ПРОЕКТОМ' }),
+    cmd: 'wolf bootstrap',
+    state: 'DRAFTS FOR REVIEW',
     note: t({
-      en: 'full base set (agents, skills, commands, plugins) + opencode.json MCP config',
-      ru: 'полный базовый набор (агенты, скиллы, команды, плагины) + MCP-конфиг opencode.json',
+      en: 'Document references and proposed conventions; review with Wolf after restarting OpenCode',
+      ru: 'Ссылки на документы и черновики конвенций; обсудите с Wolf после перезапуска OpenCode',
     }),
   },
 ]);
@@ -46,7 +43,9 @@ const steps = computed(() => [
 <template>
   <section class="wolf-home-section wolf-install">
     <p class="wolf-home-label">{{ t({ en: '05 · INSTALL', ru: '05 · УСТАНОВКА' }) }}</p>
-    <h2 class="wolf-home-title">{{ t({ en: 'One binary, two paths', ru: 'Один бинарь, два пути' }) }}</h2>
+    <h2 class="wolf-home-title">
+      {{ t({ en: 'Connect your project, then give Wolf a goal', ru: 'Подключите проект и поручите Wolf цель' }) }}
+    </h2>
     <div class="wolf-install-grid">
       <article v-for="step in steps" :key="step.num" class="wolf-install-step">
         <div class="wolf-card">
@@ -66,8 +65,8 @@ const steps = computed(() => [
     <p class="wolf-install-note wolf-install-note-foot">
       {{
         t({
-          en: 'Both paths continue with wolf bootstrap — starting memory from project documents. Try-out without installing: npx mister-wolf init — memory skeleton only, never writes MCP configs or the base set.',
-          ru: 'Оба пути продолжаются wolf bootstrap — стартовая память из документов проекта. Попробовать без установки: npx mister-wolf init — только скелет памяти, никогда не пишет ни MCP-конфиги, ни базовый сет.',
+          en: 'Node.js 22/24 · macOS or Linux (glibc) · OpenCode with a configured model. Use exactly mister-wolf. Optional memory-only path: wolf init; try-out: npx mister-wolf init. Neither installs the full organization. See Getting Started for details.',
+          ru: 'Node.js 22/24 · macOS или Linux (glibc) · OpenCode с настроенной моделью. Имя пакета — mister-wolf. Режим только памяти: wolf init; пробный запуск: npx mister-wolf init. Полную организацию они не устанавливают. Подробности — в начале работы.',
         })
       }}
     </p>

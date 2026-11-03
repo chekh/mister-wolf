@@ -3,7 +3,7 @@
  * Append-only, derived/rebuildable (инвариант §9), запись детерминированная, без LLM.
  * Формат: OTEL GenAI-совместимые поля по спеке §2.1 (session_id, gen_ai.*, orchestration.*,
  * outcome); gen_ai.modelID — обязательное поле (PoC#4, §21 п.23; null — модель неизвестна).
- * Документация формата: docs/guide/signal-log.md. Спека:
+ * Документация формата: docs/site/guide/telemetry.md. Спека:
  * docs/specs/2026-08-26-self-learning-design.md §2.1, §2.2.
  *
  * Writer-матрица D1 (M20-07, решение Q3): writer'ы — сами CLI-команды (complain,

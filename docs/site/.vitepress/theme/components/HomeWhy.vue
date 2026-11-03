@@ -1,98 +1,109 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useData, withBase } from 'vitepress'
+import { computed } from 'vue';
+import { useData, withBase } from 'vitepress';
 
-type L = { en: string; ru: string }
+type L = { en: string; ru: string };
 
-const { lang } = useData()
+const { lang } = useData();
 // Reactive: `lang` changes on client-side locale navigation (no reload);
 // a plain boolean would freeze the first-loaded locale.
-const ru = computed(() => lang.value.startsWith('ru'))
-const t = (s: L): string => (ru.value ? s.ru : s.en)
+const ru = computed(() => lang.value.startsWith('ru'));
+const t = (s: L): string => (ru.value ? s.ru : s.en);
 
 // Named bilingual fields: index-proof for both locales; `response` is the
 // Wolf answer column. RU table has no # column (numbering is EN-only).
-type Row = { id: string; problem: L; symptom: L; response: L }
+type Row = { id: string; problem: L; symptom: L; response: L };
 const rows: Row[] = [
   {
-    id: 'P1',
-    problem: { en: 'Context is lost between sessions', ru: 'Контекст теряется между сессиями' },
-    symptom: { en: 'the agent starts from scratch', ru: 'агент начинает с нуля' },
-    response: {
-      en: 'wolf call — cold start with active rules and lessons',
-      ru: 'wolf call — холодный старт с актуальными правилами и уроками',
+    id: 'G',
+    problem: {
+      en: 'Keep the goal',
+      ru: 'Удерживать цель',
     },
-  },
-  {
-    id: 'P2',
-    problem: { en: 'Experience is not reused', ru: 'Опыт не переиспользуется' },
     symptom: {
-      en: 'recurring tasks are solved from scratch: prose reasoning + new one-off scripts',
-      ru: 'повторные задачи решаются заново',
+      en: 'Local difficulties can pull a long task off course',
+      ru: 'Частные трудности уводят длинную работу в сторону',
     },
     response: {
-      en: 'solve packs and memory search — a recurring task starts from ready context',
-      ru: 'solve pack и поиск по памяти — повторная задача начинается с готового контекста',
+      en: 'L0 holds intent; L1 organizes delivery; L2 completes bounded work',
+      ru: 'L0 держит намерение; L1 организует поставку; L2 выполняют конечные задачи',
     },
   },
   {
-    id: 'P3',
-    problem: { en: 'Project documents live apart from agents', ru: 'Документы живут отдельно от агентов' },
-    symptom: { en: 'no single source of truth', ru: 'единой точки правды нет' },
+    id: 'P',
+    problem: {
+      en: 'Connect the methods',
+      ru: 'Связать методы',
+    },
+    symptom: {
+      en: 'Skills, tools and rules can remain disconnected',
+      ru: 'Скиллы, инструменты и правила остаются разрозненными',
+    },
     response: {
-      en: 'bootstrap registers project documents in memory',
-      ru: 'bootstrap регистрирует документы проекта в памяти',
+      en: 'A process connects context, responsibility, action and acceptance',
+      ru: 'Процесс связывает контекст, ответственность, действия и приёмку',
     },
   },
   {
-    id: 'P4',
-    problem: { en: 'Accumulated knowledge becomes noise', ru: 'Накопленное становится шумом' },
-    symptom: { en: 'memory grows, value drops', ru: 'память растёт, ценность падает' },
+    id: 'M',
+    problem: {
+      en: 'Continue the project',
+      ru: 'Продолжать работу',
+    },
+    symptom: {
+      en: 'Documents and decisions must survive a session',
+      ru: 'Документы и решения должны пережить сессию',
+    },
     response: {
-      en: 'typed lifecycle statuses and supersede chains — knowledge goes stale explicitly',
-      ru: 'типизация, статусы жизненного цикла и supersede-цепочки — знание устаревает явным образом',
+      en: 'Project documents are memory; recorded state supports continuation',
+      ru: 'Документы проекта — память; записанное состояние помогает продолжить',
     },
   },
   {
-    id: 'P7',
-    problem: { en: 'One agent thinks and checks itself', ru: 'Один агент думает и проверяет сам себя' },
-    symptom: { en: 'confident mistakes survive the session', ru: 'уверенные ошибки доживают до конца сессии' },
+    id: 'S',
+    problem: {
+      en: 'Change future behavior',
+      ru: 'Менять будущее поведение',
+    },
+    symptom: {
+      en: 'A correction in chat may disappear with the conversation',
+      ru: 'Замечание в чате теряется вместе с разговором',
+    },
     response: {
-      en: 'L0/L1/L2 hierarchy, independent acceptance, Council for ambiguous calls',
-      ru: 'иерархия L0/L1/L2, независимая приёмка, консилиум для неоднозначных решений',
+      en: 'The Steward aggregates lessons and versions methods through the authorized loop',
+      ru: 'Стюард обобщает уроки и меняет версии методик в авторизованном контуре',
     },
   },
   {
-    id: 'P8',
-    problem: { en: 'The same mistakes repeat', ru: 'Одни и те же ошибки повторяются' },
-    symptom: { en: 'corrections live in chat logs, not in the project', ru: 'правки живут в логах чата, а не в проекте' },
+    id: 'H',
+    problem: {
+      en: 'Make work understandable',
+      ru: 'Сделать работу понятной',
+    },
+    symptom: {
+      en: 'People should not have to dispatch and decode worker reports',
+      ru: 'Человек не должен диспетчировать и расшифровывать отчёты воркеров',
+    },
     response: {
-      en: 'complaint → playbook mutation → next session behaves differently',
-      ru: 'жалоба → мутация playbook → следующая сессия ведёт себя иначе',
+      en: 'Wolf clarifies intent, explains choices and integrates the result for you',
+      ru: 'Wolf уточняет намерение, объясняет выбор и собирает понятный результат',
     },
   },
-  {
-    id: 'P9',
-    problem: { en: 'Quality degrades over a long process', ru: 'Качество деградирует на длинном процессе' },
-    symptom: { en: 'context bloat, drifting goals, lost decisions', ru: 'раздутый контекст, дрейф цели, потерянные решения' },
-    response: {
-      en: 'briefs, checkpoints, typed state continuity',
-      ru: 'брифы, чекпоинты, непрерывность типизированного состояния',
-    },
-  },
-]
+];
 </script>
 
 <template>
   <section class="wolf-home-section wolf-why">
-    <p class="wolf-home-label">{{ t({ en: '01 · PROBLEM', ru: '01 · ПРОБЛЕМА' }) }}</p>
+    <p class="wolf-home-label">{{ t({ en: '01 · WHY WOLF', ru: '01 · ЗАЧЕМ WOLF' }) }}</p>
     <h2 class="wolf-home-title">{{ t({ en: 'Why Mr. Wolf?', ru: 'Почему Mr. Wolf?' }) }}</h2>
-    <p class="wolf-why-text">{{
-      t({
-        en: 'A persistent organization — not another memory add-on. AI coding agents are powerful but temporary: every session starts from zero, lessons evaporate, and one agent grades its own homework. Mr. Wolf turns that stream of temporary agents into a permanent project organization with roles, processes and memory that outlives any session.',
-        ru: 'Постоянная организация — не очередное memory-дополнение. AI-агенты сильны, но временны: каждая сессия начинается с нуля, уроки испаряются, а один агент сам проверяет свою работу. Mr. Wolf превращает поток временных агентов в постоянную проектную организацию с ролями, процессами и памятью, которые переживают любую сессию.'
-      })
-    }}</p>
+    <p class="wolf-why-text">
+      {{
+        t({
+          en: 'Long-running work needs continuity of purpose, responsibility and experience. Wolf connects these through a project-owned organization, with a process for delivery and a separate Steward learning loop.',
+          ru: 'Длительной работе нужна преемственность цели, ответственности и опыта. Wolf связывает их в принадлежащую проекту организацию: процесс выполнения задач и отдельный контур обучения через Стюарда.',
+        })
+      }}
+    </p>
     <!-- data-label: mobile cards caption each field via td::before (pure CSS) -->
     <table class="wolf-why-table">
       <thead v-if="!ru">
@@ -119,12 +130,14 @@ const rows: Row[] = [
         </tr>
       </tbody>
     </table>
-    <p class="wolf-why-footnote">{{
-      t({
-        en: 'P5–P6 (capture/reuse failure) are answered by the learning loop and the tool pipeline — see the Learning Loop.',
-        ru: 'П5–П6 (capture/reuse failure) закрывают контур обучения и конвейер инструментов — см. Контур обучения.'
-      })
-    }}</p>
+    <p class="wolf-why-footnote">
+      {{
+        t({
+          en: 'Current full organization: OpenCode-first. The product guide explains the methods, supported capabilities and limits.',
+          ru: 'Текущая полная организация — OpenCode-first. Руководство объясняет методы, доступные возможности и границы.',
+        })
+      }}
+    </p>
     <p v-if="!ru" class="wolf-why-outro">
       Ready to give your project an organization? Start with the
       <a :href="withBase('/guide/getting-started')">Getting Started guide</a>.

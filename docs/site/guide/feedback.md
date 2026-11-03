@@ -1,6 +1,12 @@
-# Learning Loop
+# The Steward: learning and controlled self-mutation
 
-Agents drift: a rule stops fitting reality, a playbook step misfires, an agent keeps repeating a mistake. The learning loop is how a fix becomes permanent — **fix → secure → deliver → pay off**. Every stage lives in memory, so the loop is auditable end to end. Complaints are how the organization repairs its own rules: each recorded outcome changes what the next session reads and how it behaves.
+Wolf does more than preserve experience: through the Steward it can change future working methods. The Steward is a cross-cutting role alongside the delivery hierarchy. L0/L1/L2 advance the task; the Steward maintains methods under the authorized feedback process.
+
+A saved lesson, an aggregate lesson and a new face version are different outcomes. Aggregation condenses compatible experience; face mutation changes the playbook delivered to an agent. Neither operation trains model weights.
+
+You can describe the problem to Wolf in ordinary language. A missing decision calls for a question, a local error for a correction, and a supported rule defect for a complaint. You do not need to classify it first. Ask what changed, why, how it was checked and when the new version applies. [Working with Wolf](/guide/working-with-wolf) describes that dialogue.
+
+For direct administration, the complaint command is:
 
 ```bash
 wolf complain --about executor-lead --rule "…" --evidence "…" --proposal "…"
@@ -12,7 +18,7 @@ wolf complain --about executor-lead --rule "…" --evidence "…" --proposal "�
 
 Complaints have a **kind**, recorded in the object:
 
-- `behavioral` — the target is an agent or a skill: the fix is a playbook/frame mutation, which belongs to [Steward aggregation](#steward-aggregation);
+- `behavioral` — the target is an agent or a skill: the fix follows the authorized Steward mutation route, separate from lesson aggregation;
 - `technical` — the target is a memory object: the fix is a normal edit, supersede or transition.
 
 The kind defaults to a heuristic by `--about` (agent id or `skill:*` → behavioral, mem-id → technical); `--kind technical|behavioral` overrides it — the owner is always right. Complaints recorded before 2.14 have no kind and display `—`.
@@ -40,13 +46,15 @@ The discipline is protocol, not code: nothing forces the executor to write the e
 жалоб без исхода: K
 ```
 
-Resolved complaints without an outgoing `outcome` edge are counted there. The counter is the loop's dashboard: it should trend to zero.
+Resolved complaints without either an outgoing `outcome` edge or an incoming `outcome_of` edge are counted there. The counter is the loop's dashboard: it should trend to zero.
 
 ## Escalation: behavioral → Steward
 
-The triage tree (duplicate / need-info / fix-instruction / steward-mutation / reject / obsolete) gains one rule: a **behavioral** complaint that was resolved with a "secured" outcome goes down the steward-mutation branch — the dispatcher makes a nested Steward call with the complaint id and the artifact id. The Steward then mutates the playbook through memory — since 2.17 as a new face version (`wolf face new`), every version carrying its mutation record (reason, minimal change, boundaries, examples, verification, rollback) — never the stamped file.
+A supported **open** behavioral complaint follows triage by the authorized dispatcher. The dispatcher handles targets below its level; complaints about its own or a higher level are escalated without changing their status. The Steward is invoked through the authorized route while the complaint remains open. After a verified face version and the Steward's report, the authorized participant resolves the complaint and records the outcome relation. Closing it first would hide unfinished work.
 
-Technical complaints follow the existing path: the dispatch queue with `dispatch_ages` and the SLA.
+Since 2.17, playbook mutation creates a new face version (`wolf face new`) with a structured mutation record: reason, minimal change, boundaries, examples, verification and rollback. It does not edit a stamped frame. A frame or skill defect must be routed to its authorized source-change process rather than presented as a face-only fix. The current author/triage contract is shipped in the [`wolf-feedback` reference](https://github.com/chekh/mister-wolf/blob/main/templates/base/skills/wolf-feedback/references/complaints.md).
+
+Technical corrections follow their applicable memory-editing route. Tool failures remain friction signals unless there is evidence of a rule defect.
 
 ## Steward aggregation {#steward-aggregation}
 

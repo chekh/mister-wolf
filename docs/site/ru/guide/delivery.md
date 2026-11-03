@@ -60,7 +60,7 @@ wolf analytics --view delivery --json
 
 Miss-rate по каждому agent-id остаётся частью acceptance-метрик (`wolf analytics --view acceptance --json`).
 
-Место лога в телеметрии разобрано в [Телеметрии](/ru/guide/telemetry), метрики — в [Аналитике — машинная приёмка](/ru/guide/cli/analytics#машинная-приёмка).
+Место лога в телеметрии разобрано в [Телеметрии](/ru/guide/telemetry), метрики — в [Аналитике — машинная приёмка](/ru/guide/cli/analytics#машинная-приемка).
 
 ### Как добавить agent-id своему агенту
 

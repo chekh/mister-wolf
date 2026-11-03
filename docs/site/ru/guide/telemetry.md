@@ -81,4 +81,4 @@ Mr. Wolf измеряет собственное использование — 
 wolf analytics --view acceptance --json
 ```
 
-Та же выборка доступна через MCP (`mr-wolf_analytics` с `view: "acceptance"`). Что метрики означают: [Аналитика — машинная приёмка](/ru/guide/cli/analytics#машинная-приёмка).
+Та же выборка доступна через MCP (`mr-wolf_analytics` с `view: "acceptance"`). Что метрики означают: [Аналитика — машинная приёмка](/ru/guide/cli/analytics#машинная-приемка).

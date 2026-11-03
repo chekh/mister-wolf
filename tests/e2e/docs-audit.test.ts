@@ -24,14 +24,13 @@ const FORBIDDEN_TOKENS = [
 ] as const;
 
 // Архив: документы, описывающие удалённый learn-контур. Допущены при
-// frontmark `historical: true` (S-12/S-13). steward-learn.md — протокол
-// целиком удалённого контура (T-A10 бриф).
+// frontmark `historical: true` (S-12/S-13). Historical designs remain
+// available as design records; user guides live only under docs/site/.
 const ALLOWED_FILES_WITH_HISTORICAL = new Set<string>([
   'docs/specs/2026-08-26-self-learning-design.md',
   'docs/dev/roadmap/roadmap-v2.md',
   'docs/plans/2026-10-02-product-roadmap-2.15-plus.md',
   'docs/plans/2026-10-10-wave-2.16-init2-unpin-hygiene-plan.md',
-  'docs/guide/steward-learn.md',
   // F-01 (2.18.0): спеки аналитики 2026-09-03/04 описывают writer'ы удалённой
   // в 2.13 run-обёртки — архив с historical: true.
   'docs/specs/2026-09-03-analytics-metrics-dashboard-design.md',
@@ -112,17 +111,15 @@ describe('A10 docs audit (REQ-02)', () => {
     expect(scanText(readFileSync(join(ROOT, 'docs/concept/concept.md'), 'utf-8'))).toEqual([]);
   });
 
-  it('S-14: счётчик «8 core» присутствует, устаревший «25 типов» отсутствует', () => {
-    for (const rel of [
-      'README.md',
-      'docs/concept/concept.md',
-      'docs/README.md',
-      'docs/guide/architecture.md',
-      'docs/guide/user-guide.md',
-    ]) {
+  it('S-14: both canonical memory references describe the eight current core types', () => {
+    const expectedTypes = ['rule', 'lesson', 'decision', 'thread', 'complaint', 'tool', 'face', 'note'];
+    for (const rel of ['docs/site/guide/memory.md', 'docs/site/ru/guide/memory.md']) {
       const text = readFileSync(join(ROOT, rel), 'utf-8');
-      expect(text, `${rel}: нет счётчика 8 core`).toMatch(/8\s*core/i);
-      expect(text.match(/\b25\s*\+?\s*(активных\s+)?(типов|типы|types)\b/i), `${rel}: жив счётчик 25 типов`).toBeNull();
+      const tableTypes = [...text.matchAll(/^\|\s*`([a-z-]+)`\s*\|/gm)]
+        .map((match) => match[1])
+        .filter((type) => expectedTypes.includes(type));
+      expect(tableTypes, `${rel}: core taxonomy table drift`).toEqual(expectedTypes);
+      expect(text.match(/\b25\s*\+?\s*(активных\s+)?(типов|типы|types)\b/i), `${rel}: stale 25-type claim`).toBeNull();
     }
   });
 
