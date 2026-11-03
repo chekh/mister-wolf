@@ -207,3 +207,9 @@ created: 2026-11-03
   цель — B1); Q-1/Q-2 — защитные ветки разбора (rev-list, имя remote с `/`) —
   утвердил L1; downstream: design.md (таблица, семантика target), код/тесты
   fix-раунда.
+- CR-2026-11-03-03: по верификации ревью (N-1..N-3): строка таблицы
+  `baseline unresolved` перенесена ниже relation-violations (подтверждённый
+  факт-нарушение не маскируется под UNKNOWN — принцип C-2); в список команд
+  сбора добавлен `for-each-ref --format=%(upstream:remotename)`; help-строка
+  `--target` приведена к семантике CR-02 — утвердил L1; downstream: design.md,
+  `src/adapters/cli/commands/git-inspect.ts`, справочники cli/site.

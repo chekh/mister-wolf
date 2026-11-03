@@ -133,6 +133,9 @@ export function computeVerdict(facts: GitFacts): {
     if (facts.baseline.relationship === 'diverged') {
       actions.push('reconcile baseline with head via rebase or merge (if authorized)');
     }
+    if (facts.baseline.relationship === 'unresolved') {
+      actions.push('verify the baseline commit exists in this repository');
+    }
   }
 
   if (lvr.upstream !== null && freshness.reachable === false) {
@@ -172,15 +175,19 @@ export function computeVerdict(facts: GitFacts): {
     }
   }
 
+  // вердикт — строго по таблице design сверху вниз: unreachable-строка 2,
+  // затем violations (3–6), затем unknown-строки (baseline unresolved,
+  // target при отсутствующем remote), иначе PASS
   let verdict: GitVerdict;
   if (lvr.upstream !== null && freshness.reachable === false) verdict = 'UNKNOWN';
-  else if (upstreamMissing && facts.target !== null) verdict = 'UNKNOWN';
   else if (facts.dirty.value) verdict = 'VIOLATION';
   else if (facts.unfinished_git_operation !== null) verdict = 'VIOLATION';
   else if (facts.baseline?.relationship === 'diverged') verdict = 'VIOLATION';
   else if (lvr.relation === 'diverged' || lvr.relation === 'behind' || lvr.relation === 'remote-ahead-unfetched') {
     verdict = 'VIOLATION';
-  } else verdict = 'PASS';
+  } else if (facts.baseline?.relationship === 'unresolved') verdict = 'UNKNOWN';
+  else if (upstreamMissing && facts.target !== null) verdict = 'UNKNOWN';
+  else verdict = 'PASS';
 
   if (verdict === 'PASS') {
     return {
@@ -314,6 +321,16 @@ export async function collectGitFacts(deps: GitInspectDeps, opts: GitInspectOpti
   const upstreamRes = await run(['rev-parse', '--symbolic-full-name', '@{u}']);
   const upstream =
     upstreamRes.code === 0 && upstreamRes.stdout.trim().startsWith('refs/remotes/') ? upstreamRes.stdout.trim() : null;
+  const branch = branchRaw !== '' ? branchRaw : null;
+
+  // Q-2: имя remote может содержать '/' — надёжный источник %(upstream:remotename);
+  // разбор upstream по первому '/' остаётся только запасной эвристикой
+  let remote: string | null = null;
+  if (upstream !== null && branch !== null) {
+    const nameRes = await run(['for-each-ref', '--format=%(upstream:remotename)', `refs/heads/${branch}`]);
+    const remoteName = nameRes.code === 0 ? nameRes.stdout.trim() : '';
+    remote = remoteName !== '' ? remoteName : (upstream.split('/')[2] ?? null);
+  }
 
   let localVsRemote: LocalVsRemote;
   let freshness: FreshnessOfRemoteObservation;
@@ -321,8 +338,11 @@ export async function collectGitFacts(deps: GitInspectDeps, opts: GitInspectOpti
     localVsRemote = { ...emptyRemote, relation: hasRemote ? 'no-upstream' : 'no-remote' };
     freshness = { ...noFreshness };
   } else {
-    const remote = upstream.split('/')[2] ?? null;
-    const remoteRef = `refs/heads/${upstream.split('/').slice(3).join('/')}`;
+    const remotePrefix = remote !== null ? `refs/remotes/${remote}/` : null;
+    const remoteRef =
+      remotePrefix !== null && upstream.startsWith(remotePrefix)
+        ? `refs/heads/${upstream.slice(remotePrefix.length)}`
+        : `refs/heads/${upstream.split('/').slice(3).join('/')}`;
     const tracking = await run(['rev-parse', '--verify', '--quiet', upstream]);
     const trackingSha = tracking.code === 0 ? tracking.stdout.trim() : null;
 
@@ -364,7 +384,7 @@ export async function collectGitFacts(deps: GitInspectDeps, opts: GitInspectOpti
   return {
     repository: { root, is_bare: isBare, origin_url_sanitized: originUrl },
     worktree: { path: opts.cwd, kind },
-    branch: branchRaw !== '' ? branchRaw : null,
+    branch,
     head,
     baseline,
     target: opts.target ?? null,
@@ -391,6 +411,10 @@ async function compareWithRemote(
   const present = await run(['rev-parse', '--verify', '--quiet', `${remoteSha}^{commit}`]);
   if (present.code !== 0) return { relation: 'remote-ahead-unfetched', ahead: null, behind: null };
   const counts = await run(['rev-list', '--left-right', '--count', `${head}...${remoteSha}`]);
+  if (counts.code !== 0) {
+    // Q-1: счёт не получен — честный носитель «неизвестно» по ADR-2 (null), не выдуманный 0/0/in-sync
+    return { relation: 'remote-ahead-unfetched', ahead: null, behind: null };
+  }
   const [aheadRaw, behindRaw] = counts.stdout.trim().split(/\s+/);
   const ahead = Number(aheadRaw);
   const behind = Number(behindRaw);

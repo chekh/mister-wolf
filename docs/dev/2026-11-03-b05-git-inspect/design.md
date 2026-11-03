@@ -45,7 +45,7 @@ created: 2026-11-03
   allowed_next_actions: string[] }
 ```
 
-Сбор фактов (все вызовы только читающие): `rev-parse --show-toplevel/--git-dir/HEAD`, `branch --show-current`, `status --porcelain`, `worktree list --porcelain`, `remote -v` (санитизация NFR-01), `merge-base --is-ancestor`, `rev-list --left-right --count`, `ls-remote` (таймаут NFR-02). Незавершённые операции — наличие `MERGE_HEAD|rebase-merge|rebase-apply|CHERRY_PICK_HEAD|REVERT_HEAD` в `--git-dir`.
+Сбор фактов (все вызовы только читающие): `rev-parse --show-toplevel/--git-dir/HEAD`, `branch --show-current`, `status --porcelain`, `worktree list --porcelain`, `remote -v` (санитизация NFR-01), `for-each-ref --format=%(upstream:remotename)`, `merge-base --is-ancestor`, `rev-list --left-right --count`, `ls-remote` (таймаут NFR-02). Незавершённые операции — наличие `MERGE_HEAD|rebase-merge|rebase-apply|CHERRY_PICK_HEAD|REVERT_HEAD` в `--git-dir`.
 
 Таблица решений вердикта (детерминированная, порядок — сверху вниз, первое сработавшее определяет компонент):
 
@@ -56,8 +56,8 @@ created: 2026-11-03
 | `dirty.value = true`                                                            | VIOLATION                                             |
 | `unfinished_git_operation ≠ null`                                               | VIOLATION                                             |
 | `baseline.diverged` (baseline не предок HEAD и не сам HEAD)                     | VIOLATION                                             |
-| `baseline.relationship = unresolved` (SHA не разрешается локально)              | UNKNOWN — baseline-проверка невыполнима (REQ-02)      |
 | `relation = diverged \| behind \| remote-ahead-unfetched`                       | VIOLATION                                             |
+| `baseline.relationship = unresolved` (SHA не разрешается локально)              | UNKNOWN — baseline-проверка невыполнима (REQ-02)      |
 | `relation = ahead`                                                              | PASS + reason «unpublished commits present»           |
 | `relation = no-remote`/`no-upstream` и входы не требуют remote                  | PASS + reason «not applicable»                        |
 | `relation = no-remote`/`no-upstream`, но вход требует remote (`--target` задан) | UNKNOWN — наблюдение требуется, а невыполнимо (ADR-4) |

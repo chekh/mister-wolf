@@ -10,7 +10,10 @@ export function gitInspectCommand(): Command {
   return new Command('git-inspect')
     .description('Inspect git state (read-only) and print a JSON report with a PASS|VIOLATION|UNKNOWN verdict')
     .option('--baseline <sha>', 'baseline commit SHA the task started from')
-    .option('--target <ref>', 'expected comparison target (default: upstream branch)')
+    .option(
+      '--target <ref>',
+      'task target recorded as a fact; requires remote observation (comparison uses the branch upstream)'
+    )
     .option('--owner <id>', 'branch owner identity passed through into the report')
     .action(async (options: { baseline?: string; target?: string; owner?: string }) => {
       const report = await runGitInspect(

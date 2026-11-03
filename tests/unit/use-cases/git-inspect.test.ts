@@ -416,6 +416,83 @@ describe('sanitizeGitUrl (NFR-01)', () => {
   });
 });
 
+describe('T4fix: review findings', () => {
+  it('C-1: baseline unresolved -> UNKNOWN, not PASS (REQ-02)', () => {
+    const out = computeVerdict(facts({ baseline: { sha: 'zzz999', relationship: 'unresolved' } }));
+    expect(out.verdict).toBe('UNKNOWN');
+    expect(out.reasons).toContain('baseline zzz999: unresolved');
+    expect(out.allowed_next_actions).toContain('verify the baseline commit exists in this repository');
+  });
+
+  it('C-1 collect-level: unresolvable --baseline yields UNKNOWN report', async () => {
+    const { report } = await inspect(
+      { ...BASE, 'rev-parse --verify --quiet zzz999^{commit}': { code: 1 } },
+      { baseline: 'zzz999' }
+    );
+    expect(report.verdict).toBe('UNKNOWN');
+  });
+
+  it('C-2: violation rows outrank the target-unknown row (design order, сверху вниз)', () => {
+    const targeted = (o: Partial<GitFacts> = {}) =>
+      facts({
+        target: 'origin/main',
+        local_vs_remote: {
+          upstream: null,
+          remote: 'origin',
+          relation: 'no-upstream',
+          ahead: null,
+          behind: null,
+          remote_head: null,
+        },
+        freshness_of_remote_observation: { observed_at: null, method: 'none', reachable: null },
+        ...o,
+      });
+    expect(computeVerdict(targeted({ dirty: { value: true, entries: 1 } })).verdict).toBe('VIOLATION');
+    expect(computeVerdict(targeted({ unfinished_git_operation: 'merge' })).verdict).toBe('VIOLATION');
+    expect(computeVerdict(targeted({ baseline: { sha: 'bbb000', relationship: 'diverged' } })).verdict).toBe(
+      'VIOLATION'
+    );
+    expect(computeVerdict(targeted()).verdict).toBe('UNKNOWN');
+  });
+
+  it('C-2: violation outranks baseline-unresolved unknown row', () => {
+    const out = computeVerdict(
+      facts({ baseline: { sha: 'zzz999', relationship: 'unresolved' }, dirty: { value: true, entries: 1 } })
+    );
+    expect(out.verdict).toBe('VIOLATION');
+    expect(out.reasons).toContain('dirty: 1 uncommitted change(s)');
+  });
+
+  it('Q-1: failing rev-list count is never in-sync (ADR-2: unknown count -> null)', async () => {
+    const { report } = await inspect({
+      ...BASE,
+      'ls-remote origin refs/heads/main': 'fff000\trefs/heads/main\n',
+      'rev-list --left-right --count aaa111...fff000': { code: 128 },
+    });
+    expect(report.local_vs_remote).toMatchObject({
+      relation: 'remote-ahead-unfetched',
+      ahead: null,
+      behind: null,
+      remote_head: 'fff000',
+    });
+    expect(report.verdict).toBe('VIOLATION');
+  });
+
+  it('Q-2: remote name containing slash (refs/remotes/my/remote/main)', async () => {
+    const { git, report } = await inspect({
+      ...BASE,
+      'rev-parse --symbolic-full-name @{u}': 'refs/remotes/my/remote/main\n',
+      'for-each-ref --format=%(upstream:remotename) refs/heads/main': 'my/remote\n',
+      'ls-remote my/remote refs/heads/main': 'aaa111\trefs/heads/main\n',
+    });
+    expect(report.local_vs_remote.remote).toBe('my/remote');
+    expect(report.local_vs_remote.upstream).toBe('refs/remotes/my/remote/main');
+    expect(
+      git.calls.some((c) => c.args[0] === 'ls-remote' && c.args[1] === 'my/remote' && c.args[2] === 'refs/heads/main')
+    ).toBe(true);
+  });
+});
+
 describe('exit codes (ADR-3)', () => {
   it('PASS=0, VIOLATION=1, UNKNOWN=2', () => {
     expect(gitInspectExitCode('PASS')).toBe(0);
