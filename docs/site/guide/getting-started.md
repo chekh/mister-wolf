@@ -1,122 +1,75 @@
-# Getting Started
+# Start with your first useful task
 
-Mr. Wolf is a permanent project organization for temporary AI agents: a coordinator owns the goal, executors deliver, workers run in clean sessions — and typed memory, a complaint-driven learning loop and a grown tool library carry the organization from session to session. Locally, in your repo, CLI + MCP.
+The full organization is currently OpenCode-first. This path connects Wolf to an existing project, introduces it to the documents, and starts a task in ordinary language. Memory-only use is an additional option below.
 
 ## Requirements
 
-- **Node.js >= 22** (Node 22 or 24).
-- **OS:** macOS or Linux (glibc). Alpine/musl is not supported in v1; Windows is best-effort, not claimed.
-- The native dependency `better-sqlite3` installs from prebuilds; mister-wolf ships no install scripts of its own.
+- Node.js 22 or 24, macOS or Linux with glibc.
+- OpenCode installed and a working model/provider configured for the full organization.
+- Alpine/musl is unsupported in this delivery; Windows is best-effort.
 
-## Installation
+## Install and connect
 
-::: warning Package name
-The package is named exactly **`mister-wolf`** ([on npm](https://www.npmjs.com/package/mister-wolf)). The `mr-wolf` package on npm belongs to someone else (a work-queue library). Check the name letter by letter before installing — see [Troubleshooting](/guide/troubleshooting).
-:::
-
-Installation is the binary plus one of two explicit paths:
+Run in the project you want Wolf to work on:
 
 ```bash
-npm install -g mister-wolf   # 1) machine: the wolf binary
-```
-
-```bash
-# Path A — memory: the minimal set
-cd my-project && wolf init   # .wolf/ skeleton + AGENTS.md; no platform configs, no base set
-wolf bootstrap               # memory: starting content drafted from project documents
-
-# Path B — OpenCode organization: the full base set + MCP
-cd my-project && wolf init --full --platform opencode
+npm install -g mister-wolf
+cd my-project
+wolf init --full --platform opencode
 wolf bootstrap
 ```
 
-What each path does:
+Use exactly **`mister-wolf`**. `mr-wolf` is a different npm package.
 
-1. `npm install -g mister-wolf` installs the global `wolf` binary.
-2. **Path A — memory:** `wolf init` connects the project minimally — the `.wolf/` skeleton and `AGENTS.md`. A clean run prints `memory skeleton: ensured`, `base set: AGENTS.md created` and the init-report id; it writes no platform configs and no base set. The first run decides nothing else for you: one interview question in a TTY (project purpose — Enter to skip), no model pinning (`--model` is opt-in; model lines are omitted and the platform default applies). Re-init on a live project shows the plan and asks for confirmation (`--yes` skips it).
-3. **Path B — OpenCode organization:** `wolf init --full --platform opencode` renders the full base set — 6 agent frames, 25 skills, 3 commands, 2 plugins, seeded playbook faces — and writes `opencode.json` (`mcp.servers.wolf`, `default_agent=mr-wolf`, `experimental.subagent_depth=2`). Platform configs are opt-in: `wolf init --platform opencode,claude` (the list replaces the current set). **Restart opencode** after an init that wrote MCP configs — the server and the default agent connect at startup. Claude Code will ask you to approve the project-scope MCP server on first start; that is expected.
-4. `wolf bootstrap` scans the project and drafts starting memory: proposed rules and a work thread.
+`init --full` writes the supplied agents, skills, commands and plugins, seeds missing faces, and configures the Wolf MCP server in `opencode.json`. It selects `mr-wolf` as the default agent. Existing files and local changes follow the [initialization/update policy](/guide/upgrade); an existing project may require decisions.
 
-An init counts as completed when `wolf doctor` reports 0 issues on the project; the activation metric and the acceptance window are defined in the wave spec (`docs/specs/2026-10-10-wave-2.16-init2-unpin-hygiene-design.md`, §11).
+**Restart OpenCode** so the project configuration is loaded. Without an explicit model override, platform defaults apply; initialization does not choose a new provider for you.
 
-## Quick try-out (no installation)
+## Introduce the project
+
+`bootstrap` scans files and registers document references, proposes initial conventions and opens an onboarding thread. It prepares information; it does not start an LLM or independently complete onboarding.
+
+In OpenCode, ask Wolf:
+
+> Review the bootstrap findings with me. Confirm the project purpose, authoritative documents and required checks; ask about material gaps and help finish onboarding.
+
+You should receive an understandable summary of the conventions, their corrections and remaining questions. You do not need to learn memory types. [Bootstrap](/guide/bootstrap) explains the review and repeated runs.
+
+## Give the first assignment
+
+For example:
+
+> Prepare a concise onboarding guide for a newcomer. Use the existing project documents, include setup and a first useful task, and verify commands where safe. Ask me if a missing decision changes the result.
+
+This is an illustrative request, not a recorded run. The supplied methods direct Wolf to clarify intent and acceptance criteria, have L1 organize bounded L2 work, integrate findings and present the result. You should see the guide or its file location, the verification performed, limitations and any decision still needed from you. Actual behavior depends on the model, harness and project permissions.
+
+If the assignment continues later, ask Wolf to preserve significant state and then name the task in the next session. See [Working with Wolf](/guide/working-with-wolf).
+
+## If something is missing
+
+- No `mr-wolf` agent or MCP tools: check you used `--full --platform opencode`, then restart OpenCode. A bare `wolf init` is intentionally smaller.
+- Provider/model errors: verify your OpenCode provider setup; Wolf does not supply model credentials.
+- Integrity errors: run `wolf doctor`, read the specific issue and use [Troubleshooting](/guide/troubleshooting). A clean doctor result checks integrity, not completion of a task.
+- An unresolved project convention: discuss it with Wolf before treating a proposed rule as active.
+
+## Optional: memory without the full organization
 
 ```bash
-npx mister-wolf init
+npm install -g mister-wolf
+cd my-project
+wolf init
+wolf bootstrap
 ```
 
-Try-out mode creates the `.wolf/` memory skeleton but **never writes MCP configs or the base set** — npx mode does not touch platform configuration. Like it? `npm install -g mister-wolf` and run `wolf init` again.
+Bare `init` creates the memory skeleton and the `AGENTS.md` onboarding entry; it does not render the full agent set or write platform MCP configuration. Connect a compatible assistant using [MCP](/guide/mcp), or inspect the state with CLI commands such as `wolf brief` and `wolf search`.
 
-## Your first session
+`npx mister-wolf init` is a try-out that writes the memory skeleton without the full set or MCP configs. Optional platform configs (`--platform opencode,claude`) do not establish that the complete organization works identically on both hosts. See [Capabilities](/guide/capabilities).
 
-The cold-start ritual: pull injections, check the project state, do the work, write back what you learned. `call` injects the project's active organization state: rules, lessons, blockers.
+## Update when needed
 
 ```bash
-wolf call                # cold-start: active injections for this session
-wolf brief               # project state summary from the latest scan + memory
+wolf upgrade --check
+wolf upgrade
 ```
 
-After doing some work, capture the outcome so the next session starts from it:
-
-```bash
-wolf add --type lesson --title "Run wolf search before writing new scripts" \
-  --body "A similar script often already exists in tool memory." \
-  --tags "search,before-write" --confidence medium
-
-wolf recap               # summary of active project memory
-```
-
-Choosing a type is now a choice of **seven** (it used to be 26). The old question "which of the 26 types is this?" became "is this one of the six special ones? If not — `note` plus a facet." See [Memory Model](/guide/memory).
-
-The memory surface is five verbs:
-
-- `add` — write an object;
-- `get` — read one object by id;
-- `edit` — change title/body;
-- `search` / `list` — find objects;
-- `archive` — retire an object.
-
-The full CLI goes beyond memory — its commands are organized in groups; see the [CLI Reference](/guide/cli/).
-
-Key flags of `wolf add` (see the [CLI reference](/guide/cli/memory#wolf-add) for the full list):
-
-- `--type <type>` — one of the 7 memory types (`rule`, `lesson`, `decision`, `thread`, `complaint`, `tool`, `note`).
-- `--title`, `--body` — the object's content.
-- `--tags <tags>` — comma-separated tags.
-- `--facet <facet>` — the note's character (`howto|pitfall|context|metric|history|legacy|constraint|proposal`); required for `note` — on other core types only `proposal` is allowed, the signal facet for `wolf propose`.
-- `--confidence <level>` — `low|medium|high`.
-- `--importance <n>` — importance from 0 to 1.
-- `--set <k=v>` — extra field, repeatable (`"[a,b]"` value is a string array).
-
-## Where the data lives
-
-Everything is local, inside your project's `.wolf/` directory:
-
-```text
-.wolf/
-├── config.yaml            # project configuration
-├── memory/
-│   ├── threads/<tid>/     # per-thread objects; work thread = WORK-THREAD.md
-│   ├── shared/<subdir>/   # shared objects
-│   ├── briefs/            # generated briefs
-│   ├── events.jsonl       # event log (lazy)
-│   ├── relations.jsonl    # relations between objects (lazy)
-│   └── quarantine/        # broken objects moved by wolf validate --fix (lazy)
-├── cache/
-│   └── index.sqlite       # SQLite FTS search index (lazy)
-├── metrics/               # session-metrics.jsonl, patterns.jsonl (lazy)
-├── thinking/              # structured thinking sequences (lazy)
-├── tools/                 # registered tool scripts (lazy)
-└── backup/<ts>/           # config backups made by wolf init --recreate (lazy)
-```
-
-`wolf init` creates `memory/`, `memory/threads/`, `memory/shared/`, `memory/briefs/`, `cache/` and `config.yaml`; the remaining paths appear lazily as features use them. Memory objects are plain markdown files with ids like `mem_20260831_…`.
-
-## Next steps
-
-- [Organization & Council](/guide/organization) — the L0/L1/L2 roles, the working cycle, the council for ambiguous calls.
-- [Memory Model](/guide/memory) — the seven types, facets, thread statuses, reading pre-2.13 data.
-- [CLI Reference](/guide/cli/) — every command and subcommand.
-- [MCP Integration](/guide/mcp) — connecting agents via MCP.
-- [Configuration](/guide/configuration) — `.wolf/config.yaml`, facet vocabulary, storage layout.
-- [Troubleshooting](/guide/troubleshooting) — common problems and fixes.
+Review local differences and protection before resolving an update. [Upgrade guide](/guide/upgrade) covers the full workflow. Memory internals are available in [Memory Model](/guide/memory) when you need to inspect or customize them.

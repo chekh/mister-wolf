@@ -28,7 +28,7 @@
 
 ## Effectiveness-данные
 
-`docs/guide/effectiveness.md` — текущие метрики доставки/переиспользования.
+[Аналитика](https://chekh.github.io/mister-wolf/ru/guide/analytics) — текущие метрики доставки/переиспользования.
 
 ## Реестр evidence
 
@@ -45,7 +45,7 @@
 | EVD-RES-3  | wolf-experiment: 8 серий, ~70 прогонов                                                          | git-история до коммита `b31cbdd` (`b31cbdd^:wolf-experiment/REPORT.md`)    |
 | EVD-RES-4  | Внешние критики концепта v3.2/v3.3                                                              | `docs/external/reviews/2026-08-31-concept-v{3-2,3-3}-critique/critique.md` |
 | EVD-ORCH-1 | Dogfood-оркестрация в собственном репо (сессии 2026-08-24…31: брифы, независимый ревью, отчёты) | память Wolf (work-threads, решения) + отчёты `docs/external/program/`      |
-| EVD-EFF-1  | Effectiveness-панель                                                                            | `docs/guide/effectiveness.md`                                              |
+| EVD-EFF-1  | Effectiveness-панель                                                                            | [Аналитика](https://chekh.github.io/mister-wolf/ru/guide/analytics)        |
 
 ## E1 — программа экспериментов E1a–E1e (протокол зафиксирован ДО запуска)
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const stamps = ['PROJECT-OWNED DATA', 'PLAIN MARKDOWN', 'CLI + MCP', 'NO CLOUD STORAGE', 'COMPLAINT-DRIVEN LEARNING']
+const stamps = ['PROJECT-OWNED DATA', 'PLAIN MARKDOWN', 'CLI + MCP', 'LOCAL STATE', 'GOVERNED LEARNING'];
 </script>
 
 <template>

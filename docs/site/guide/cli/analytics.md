@@ -293,7 +293,7 @@ memory ROI (correlational, not causal):
 - **miss-rate by agent** — share of `variant=fallback` router lines per agent-id (a "miss" = the canonical playbook wasn't found, the universal fallback was delivered; misses are a subset of deliveries).
 - **avg injection bytes** — mean injection size, two channels kept separate: `delivery_signals` (mean `detail.injection_bytes`) and `router_log` (mean `bytes=` of playbook injections).
 - **router resolve ms** — p50/p90 over the router log's `ms=` field; the wave acceptance threshold (p90 < 500 ms) is checked against exactly this number.
-- **skills** — invocation counters per skill name from the plugin-written skill-invocations log (see [Base Set — plugins](/guide/base-set#plugins--2--opencodeplugins)): until now, skill value was invisible.
+- **skills** — invocation counters per skill name from the plugin-written skill-invocations log (see [Base Set — plugins](/guide/base-set#plugins-—-2-→-opencode-plugins)): until now, skill value was invisible.
 
 The same numbers reach the session entry point: `wolf recap` prints a `Delivery (7d)` line — N deliveries (canonical+fallback over the last 7 days), M misses among them (the fallback share) and the top-3 miss agents. The section is omitted when there is no router log.
 
@@ -526,7 +526,7 @@ Wrapper and plugin authors can write v2 events into the signal log (`.wolf/metri
 
 **role_level follows the actor convention**: L0 — coordinator (dispatch and acceptance; the human owner sits here at acceptance), L1 — lead/reviewer, L2 — worker/executor. Default: omit the field.
 
-**`WOLF_SESSION` ties the auto-writers to the session**: the automatic `memory_stage` writers (`wolf search`/`get` → `retrieved`, `wolf brief`/`call` → `injected`) take the session id from the `WOLF_SESSION` env var — the symmetric twin of `WOLF_ACTOR`. A harness that exports `WOLF_SESSION` when an agent session starts gets its `injected` events joined with `task_evaluated` by `session_id`, so attribution sees auto-path injections; without the env the events are written with `session_id: null` and do not participate in attribution.
+**`WOLF_SESSION` ties the auto-writers to the session**: the automatic `memory_stage` writers (`wolf search`/`get` → `retrieved`, `wolf brief`/`call` → `injected`) take the session id from the `WOLF_SESSION` env var — the symmetric twin of `WOLF_ACTOR`. A harness that exports `WOLF_SESSION` when an agent session starts gets its `injected` events joined with `task_evaluated` by `session_id`, so attribution sees auto-path injections; without the env a CLI invocation creates a `cli-<uuid>` identity. Separate unlinked calls do not become one logical session automatically. MCP analytics remains available, while its events use null session identity; see [Harness integration](/guide/harness-integration).
 
 Mechanics: append via `appendSignal(baseDir, event)` (or append a JSON line + `\n`); unknown fields are stripped by the Zod schema on read, records without `schema_version` are read as v1. Duplicate `event_id`s are deduplicated by analytics (first copy wins, repeats surface as `duplicateEventRatePct`). A telemetry failure must never break the wrapped call — keep it in try/catch.
 
@@ -552,7 +552,7 @@ analytics:
 
 ## MCP
 
-Analytics is CLI-only since 2.13: the former `analytics` MCP tool was removed (the remaining MCP tools are the core set — `search`, `get`, `list`, `add`, `transition`, `brief`, `recap`). For machine-readable output use `wolf analytics --json`.
+The current MCP catalog includes `analytics`; see [MCP Integration](/guide/mcp) for the exact arguments. CLI also supports `wolf analytics --json`. Transport availability does not imply identical session attribution: MCP events use a null session identity.
 
 ## Limitations
 

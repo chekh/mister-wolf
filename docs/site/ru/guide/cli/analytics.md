@@ -65,7 +65,7 @@ Options:
 | `outliers`       | Самые дорогие прогоны (weighted; `$` при pricing)                                                                                                                                                                                       |
 | `readiness`      | Готовность к экспериментам: доля прогонов с arm, размер выборки по группам                                                                                                                                                              |
 | `delivery`       | Панель доставки: топ доставляемых объектов с индикатором applied%, miss-rate по agent-id, средний размер инъекции (два канала), латентность resolve роутера p50/p90, счётчики вызовов скиллов (см. [Панель доставки](#панель-доставки)) |
-| `acceptance`     | Машинная приёмка (метрики волн): miss-rate роутера по агентам, error-rate + p50/p90 по тулам, классы ошибок, burst'ы доставок, search→get follow, vitality за 72 ч, битые строки (см. [Машинная приёмка](#машинная-приёмка))            |
+| `acceptance`     | Машинная приёмка (метрики волн): miss-rate роутера по агентам, error-rate + p50/p90 по тулам, классы ошибок, burst'ы доставок, search→get follow, vitality за 72 ч, битые строки (см. [Машинная приёмка](#машинная-приемка))            |
 | `effectiveness`  | Панель эффективности памяти: rules holdout, tool economy, доставка, шум, роутинг; `--snapshot` дописывает отчёт в `.wolf/metrics/effectiveness-snapshots.jsonl` (см. [Эффективность](#эффективность-view-effectiveness))                |
 | `dashboard`      | Консольный дашборд: health, ledgers, trends — Unicode-таблицы и спарклайны, ничего на диск (см. [Дашборд](#дашборд-view-dashboard))                                                                                                     |
 | `all`            | Все секции подряд (дефолт)                                                                                                                                                                                                              |
@@ -173,7 +173,7 @@ open questions:
 С 2.13 у событий стадий ровно один род writer'ов — **автоматические** (ручная команда `wolf memory-stage` удалена; стадии пишутся автоматически командами памяти):
 
 - `wolf search`/`get` пишут `retrieved` при непустой выдаче; `wolf brief`/`call` пишут `injected`, когда инъекции реально доставлены. Нечего фиксировать — события нет: пустая выдача поиска не пишет `retrieved`, бриф без инъекций — `injected`.
-- у `cited` и `applied` встроенного писателя больше нет; харнес, которому они нужны, аппендит события `memory_stage` в сигнальный лог напрямую (см. [Интеграция обёрток](#интеграция-обёрток-harness-integration)).
+- у `cited` и `applied` встроенного писателя больше нет; харнес, которому они нужны, аппендит события `memory_stage` в сигнальный лог напрямую (см. [Интеграция обёрток](#интеграция-оберток-harness-integration)).
 
 Строка `attribution: accepted X/Y (Z%)` — доля accepted-вердиктов `task_evaluated`, перед которыми в той же `session_id` была инъекция. Честные null: без данных — `attribution: n/a (<причина>)` (`no task_evaluated` / `no injected` / `no accepted verdicts`); injected без `session_id` в атрибуции не участвуют.
 
@@ -244,7 +244,7 @@ blockers:
 
 ### Кампании
 
-`--view campaign` — A/B-витрина «та же задача, с памятью и без»: прогоны группируются по `campaign_id` (топ-левел поле run-сигнала, которое пишет харнес — см. [Интеграция обёрток](#интеграция-обёрток-harness-integration)) и разбиваются на две когорты по наличию injected-памяти в сессии прогона — join по `session_id` через `memory_stage injected`, тот же паттерн, что у attribution (P2); ран с `session_id: null` попадает в `no_memory`:
+`--view campaign` — A/B-витрина «та же задача, с памятью и без»: прогоны группируются по `campaign_id` (топ-левел поле run-сигнала, которое пишет харнес — см. [Интеграция обёрток](#интеграция-оберток-harness-integration)) и разбиваются на две когорты по наличию injected-памяти в сессии прогона — join по `session_id` через `memory_stage injected`, тот же паттерн, что у attribution (P2); ран с `session_id: null` попадает в `no_memory`:
 
 - **n** — раны когорты в кампании;
 - **median_weighted** — медиана weighted ранов когорты; при n < 3 вся строка метрик когорты → `n/a` с note `n<3: min 3 runs` (доли на малых выборках не показываем); пустая когорта → note `no runs`;
@@ -298,7 +298,7 @@ memory ROI (correlational, not causal):
 - **miss-rate по агентам** — доля строк `variant=fallback` в router.log по agent-id («промах» = канон не найден, доставлен универсальный fallback; промахи — подмножество доставок).
 - **средний размер инъекции** — mean по двум каналам раздельно: `delivery_signals` (mean `detail.injection_bytes`) и `router_log` (mean `bytes=` playbook-инъекций).
 - **латентность resolve роутера** — p50/p90 по полю `ms=` router.log; волновый порог приёмки (p90 < 500 мс) проверяется ровно по этому числу.
-- **скиллы** — счётчики вызовов по имени скилла из пишемого плагином лога skill-invocations (см. [Базовый набор — плагины](/ru/guide/base-set#плагины--2--opencodeplugins)): до сих пор ценность скиллов была невидима.
+- **скиллы** — счётчики вызовов по имени скилла из пишемого плагином лога skill-invocations (см. [Базовый набор — плагины](/ru/guide/base-set#плагины-—-2-→-opencode-plugins)): до сих пор ценность скиллов была невидима.
 
 Те же числа доступны на входе в сессию: `wolf recap` печатает строку `Delivery (7d)` — `доставок N, промахов M, топ промахов: <agent> (×k)…` (N = доставки canonical+fallback за 7 дней, M — из них fallback, топ-3 агентов по промахам). Нет router.log — секции нет.
 
@@ -532,7 +532,7 @@ completeTraceRatePct: n/a (span model planned P2)
 
 **role_level по actor-конвенции**: L0 — координатор (диспетчеризация и приёмка; человек-владелец — здесь, на приёмке), L1 — lead/ревьюер, L2 — воркер/исполнитель. Дефолт — поле не писать.
 
-**`WOLF_SESSION` связывает авто-писателей с сессией**: авто-писатели `memory_stage` (`wolf search`/`get` → `retrieved`, `wolf brief`/`call` → `injected`) берут id сессии из env `WOLF_SESSION` — симметрия с `WOLF_ACTOR`. Харнес, выставляющий `WOLF_SESSION` на старте агентской сессии, получает связку `injected` ↔ `task_evaluated` по `session_id` — атрибуция видит инъекции авто-путей. Без env события пишутся с `session_id: null` и в атрибуции не участвуют.
+**`WOLF_SESSION` связывает авто-писателей с сессией**: авто-писатели `memory_stage` (`wolf search`/`get` → `retrieved`, `wolf brief`/`call` → `injected`) берут id сессии из env `WOLF_SESSION` — симметрия с `WOLF_ACTOR`. Харнес, выставляющий `WOLF_SESSION` на старте агентской сессии, получает связку `injected` ↔ `task_evaluated` по `session_id` — атрибуция видит инъекции авто-путей. Без env CLI создаёт идентификатор `cli-<uuid>`; отдельные вызовы автоматически не образуют одну логическую сессию. См. [Интеграцию харнесов](/ru/guide/harness-integration).
 
 Механика: аппендь через `appendSignal(baseDir, event)` (или JSON-строка + `\n`); неизвестные поля отбрасываются Zod-схемой при чтении, записи без `schema_version` читаются как v1. Дубликаты `event_id` дедупятся аналитикой (первая копия остаётся, повторы видны как `duplicateEventRatePct`). Сбой телеметрии не должен ломать сам вызов — оборачивай в try/catch.
 
@@ -558,7 +558,7 @@ analytics:
 
 ## MCP
 
-С 2.13 аналитика — только CLI: прежний MCP-инструмент `analytics` удалён (оставшиеся MCP-тулы — core-набор: `search`, `get`, `list`, `add`, `transition`, `brief`, `recap`). Машинный вывод — `wolf analytics --json`.
+Текущий каталог MCP включает `analytics`; точные аргументы — в [Интеграции MCP](/ru/guide/mcp). CLI также поддерживает `wolf analytics --json`. Доступность транспорта не означает одинаковую атрибуцию сессий: события MCP имеют null session identity.
 
 ## Ограничения
 

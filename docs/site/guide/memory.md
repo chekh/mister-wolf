@@ -1,14 +1,10 @@
-# Memory Model
+# Memory: documents, state and experience
 
-This page is the single source of truth for Wolf's memory taxonomy.
+Project documents are memory: requirements, architecture, research, plans and instructions remain canonical in their original files. Wolf adds references and native records for decisions, working threads, lessons, rules, tools and agent faces. The search index is derived; it is not the authoritative copy of a document.
 
-Since 2.13 Wolf's taxonomy is **eight types** — down from 26, plus `face` in 2.17. The point is not renaming but redistributing responsibility:
+You do not need to select memory types to give Wolf a task. The responsible agents preserve significant state and choose the appropriate record. The reference below is for inspection, administration and customization.
 
-- **8 types instead of 26.** Deciding where to write something is now a one-second choice, not a taxonomy exam.
-- A **facet** is the character of a record, chosen from a closed list at add time. Free input is rejected; facets exist on notes (the `proposal` signal facet is the one exception — it marks a structured proposal on any core type).
-- **Colors are highlighting only.** They mark facets in terminal output and never carry meaning by themselves.
-- **`note` is the universal type.** Anything that is not a rule, lesson, decision, thread, complaint, tool or face is a note with a facet.
-- `blocker`, `info-request` and `open-question` are **no longer types** — they are statuses of a thread.
+Registration is not full ingestion of every file, and storage is not delivery. Context must be selected for the task. Working notes are provisional state, not accepted rules; face mutation, lesson aggregation and document maintenance have different responsibilities.
 
 ## The eight types
 
@@ -138,7 +134,7 @@ Full flag lists: [CLI reference](/guide/cli/memory).
 
 ## Appendix: Object lifecycle
 
-Every object carries a status from a union of **18 statuses** — the 16 general ones plus `blocked` and `waiting_answer`, which are thread-specific (see [Thread statuses](#thread-statuses-blocked-waiting_answer-open)):
+Every object carries a status from a union of **18 statuses** — the 16 general ones plus `blocked` and `waiting_answer`, which are thread-specific (see [Thread statuses](#thread-statuses-blocked-waiting-answer-open)):
 
 `active`, `open`, `resolved`, `stale`, `conflicting`, `superseded`, `archived`, `paused`, `completed`, `answered`, `rejected`, `obsolete`, `proposed`, `accepted`, `candidate`, `deprecated`, `blocked`, `waiting_answer`.
 
