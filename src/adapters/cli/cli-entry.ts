@@ -399,10 +399,13 @@ export const COMMANDS: CommandSpec[] = [
   },
   {
     // B0.5 (roadmap v4 §11, ADR-5): единственный структурный сборщик
-    // Git-состояния — read-only JSON-вердикт для L1/B0 (wolf-git)
+    // Git-состояния — read-only JSON-вердикт для L1/B0 (wolf-git).
+    // Agent-facing plumbing (как scan/think): hidden — не тратит бюджет
+    // help-листинга P224, остаётся в CLI-справочнике.
     name: 'git-inspect',
     description: 'Inspect git state (read-only) and print a JSON report with a PASS|VIOLATION|UNKNOWN verdict',
     usage: '[options]',
+    hidden: true,
     load: () => import('./commands/git-inspect.js').then((m) => m.gitInspectCommand()),
   },
 ];
