@@ -13,7 +13,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ### Upgrade notes
 
-- **`npm install -g mister-wolf@2.27.1`** (or `wolf upgrade`). Documentation-only: nothing to reconfigure, no migrations; `update-map.json` is unchanged.
+- **`npm install -g mister-wolf@2.27.1`** (or `wolf upgrade`). Documentation-only: nothing to reconfigure, no migrations; `update-map.json` is re-stamped to 2.27.1 with zero changed file targets against 2.27.0.
 
 ## [2.27.0] - 2026-11-03
 

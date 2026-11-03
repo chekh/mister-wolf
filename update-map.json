@@ -1,6 +1,6 @@
 {
-  "version": "2.27.0",
-  "prev": "2.26.0",
+  "version": "2.27.1",
+  "prev": "2.27.0",
   "files": [
     {
       "path": "base/agents/executor-lead.md",
@@ -205,7 +205,7 @@
     {
       "path": "base/skills/wolf-git/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-handoff/SKILL.md",
