@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.27.1] - 2026-11-03
+
+### Changed — README on npm refreshed (docs-only patch, no runtime changes)
+
+- **The npm package page now shows the rewritten README (PR #16).** Mr. Wolf is presented as a permanent project organization built from temporary AI assistants ("I solve problems"), with the documentation site as the canonical user guide (https://chekh.github.io/mister-wolf/guide/overview). npm displays the README of the last published version, so the new text only becomes visible through this release. Both README.md and README.ru.md ship in sync (npm displays the Russian copy for this package); code, tests and delivered templates are unchanged.
+- **The header logo now renders on npm.** The logo link in both README files changed from the relative `docs/Mr.%20Wolf.png` — broken on npmjs.com, which does not rewrite relative image paths (and the file is not part of the npm tarball) — to the absolute `https://raw.githubusercontent.com/chekh/mister-wolf/main/docs/Mr.%20Wolf.png`, which renders on both GitHub and npm.
+
+### Upgrade notes
+
+- **`npm install -g mister-wolf@2.27.1`** (or `wolf upgrade`). Documentation-only: nothing to reconfigure, no migrations; `update-map.json` is unchanged.
+
 ## [2.27.0] - 2026-11-03
 
 ### Added — `wolf git-inspect`: a structured read-only git state with an honest verdict
