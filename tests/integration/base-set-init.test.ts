@@ -39,7 +39,9 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
     // `[skill]` counts both 28 SKILL.md files and their delivered references/scripts.
     const created = (res.stdout.match(/- base set: \S+ created/g) ?? []).length;
     expect(created).toBe(18);
-    expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(46);
+    // LANG-SPEC-W2: +1 — в наборе новый using-skills/references/agent-language.md
+    // (спецификация внутреннего языка, правка 2026-11-05).
+    expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(47);
     expect(res.stdout).toMatch(/- base set: AGENTS\.md created/);
 
     const agents = readdirSync(join(dir, '.opencode/agents')).filter((f) => f.endsWith('.md'));
