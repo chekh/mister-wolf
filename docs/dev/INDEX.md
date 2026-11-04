@@ -20,6 +20,11 @@
 | p-2-22-0-task-l2-lifecycle | 2026-10-30 | 2.22.0 — срез P: компактный TASK и жизненный цикл L2 | draft | full |
 | a1-1-measurements | 2026-10-31 | A1.1 — минимальные измерения (доступные сигналы) | draft | full |
 | b0-git-skill | 2026-10-31 | b0-git-skill | draft | full |
+| a1-2-draft-mode | 2026-11-02 | A1.2 — носитель режима standard/draft (экономное поведение) | active | full |
+| work-strategy | 2026-11-02 | Организация работы и ранние вопросы | review | full |
+| b05-git-inspect | 2026-11-03 | B0.5 — read-only git inspect | draft | full |
+| e1-task-contract | 2026-11-03 | E1 срез-1 — TASK-контракт ACTIVE_CONSTRAINTS и DECISIONS[] | draft | full |
+| product-documentation | 2026-11-03 | Product documentation | active | full |
 
 ## Волны
 

@@ -73,32 +73,39 @@ Two axes grow the skill set around the pipeline:
 - **Artifact axis** — a new artifact type gets its own skill that teaches agents how to produce it.
 - **Disciplinary axis** — a repeatedly breached discipline gets an enforcement skill; the detector is the complaint loop ([Learning Loop](/guide/feedback)).
 
-The default set ships 25 skills (verified against `templates/base/skills` in the package; the set itself is described in [Base Set](/guide/base-set)):
+The default set ships 28 skills (verified against `templates/base/skills` in the package; the set itself is described in [Base Set](/guide/base-set)):
 
-| Skill                            | Axis         | Purpose                                                             |
-| -------------------------------- | ------------ | ------------------------------------------------------------------- |
-| `wolf-brainstorm`                | artifact     | structured dialogue before creative work → requirements.md          |
-| `wolf-design`                    | artifact     | design phase with ADR cards → design.md                             |
-| `wolf-plan`                      | artifact     | zero-context plans where every task is a worker brief → plan.md     |
-| `wolf-testplan`                  | artifact     | test plan derived from requirements AC → test-plan.md               |
-| `receiving-code-review`          | disciplinary | apply review feedback with technical rigor, not blind compliance    |
-| `writing-skills`                 | disciplinary | create, edit and verify skills before deployment                    |
-| `test-driven-development`        | disciplinary | red-green-refactor before implementation code                       |
-| `verification-before-completion` | disciplinary | run the checks before any "done" claim                              |
-| `using-git-worktrees`            | disciplinary | isolated worktrees for feature work                                 |
-| `finishing-a-development-branch` | disciplinary | choose the integration: merge, PR or cleanup                        |
-| `using-skills`                   | workflow     | load the process skill before responding or acting                  |
-| `wolf-work-strategy`             | workflow     | choose the route, an early question, and sufficient depth           |
-| `wolf-git`                       | workflow     | Git task stages and the shipped collaboration policy                |
-| `requesting-code-review`         | workflow     | verify work against requirements before merging                     |
-| `wolf-debug`                     | workflow     | root-cause before fixes                                             |
-| `wolf-execute`                   | workflow     | flat linear execution fallback                                      |
-| `wolf-explain`                   | disciplinary | clear explanations of results and limitations to the user           |
-| `wolf-user-report`               | artifact     | human reports: content, HTML/CSS and reusable project templates     |
-| `wolf-handoff`                   | workflow     | continue in a fresh session without losing progress                 |
-| `wolf-review`                    | workflow     | multi-lens document review                                          |
-| `wolf-sdd`                       | workflow     | subagent-driven development                                         |
-| `wolf-release-docs`              | workflow     | release documentation pass: coverage map, EN/RU, generated pages    |
-| `wolf-skill-intake`              | workflow     | connect external skills through the intake loop with the owner gate |
+| Skill                            | Axis         | Purpose                                                                                        |
+| -------------------------------- | ------------ | ---------------------------------------------------------------------------------------------- |
+| `wolf-brainstorm`                | artifact     | structured dialogue before creative work → requirements.md                                     |
+| `wolf-design`                    | artifact     | design phase with ADR cards → design.md                                                        |
+| `wolf-plan`                      | artifact     | zero-context plans where every task is a worker brief → plan.md                                |
+| `wolf-testplan`                  | artifact     | test plan derived from requirements AC → test-plan.md                                          |
+| `receiving-code-review`          | disciplinary | apply review feedback with technical rigor, not blind compliance                               |
+| `writing-skills`                 | disciplinary | create, edit and verify skills before deployment                                               |
+| `test-driven-development`        | disciplinary | red-green-refactor before implementation code                                                  |
+| `verification-before-completion` | disciplinary | run the checks before any "done" claim                                                         |
+| `using-git-worktrees`            | disciplinary | isolated worktrees for feature work                                                            |
+| `finishing-a-development-branch` | disciplinary | choose the integration: merge, PR or cleanup                                                   |
+| `using-skills`                   | workflow     | load the process skill before responding or acting                                             |
+| `wolf-work-strategy`             | workflow     | choose the route, an early question, and sufficient depth                                      |
+| `wolf-git`                       | workflow     | Git task stages and the shipped collaboration policy                                           |
+| `requesting-code-review`         | workflow     | verify work against requirements before merging                                                |
+| `wolf-debug`                     | workflow     | root-cause before fixes                                                                        |
+| `wolf-execute`                   | workflow     | flat linear execution fallback                                                                 |
+| `wolf-explain`                   | disciplinary | clear explanations of results and limitations to the user                                      |
+| `wolf-user-report`               | artifact     | human reports: content, HTML/CSS and reusable project templates                                |
+| `wolf-handoff`                   | workflow     | continue in a fresh session without losing progress                                            |
+| `wolf-review`                    | workflow     | multi-lens document review                                                                     |
+| `wolf-sdd`                       | workflow     | subagent-driven development                                                                    |
+| `wolf-release-docs`              | workflow     | release documentation pass: coverage map, EN/RU, generated pages                               |
+| `wolf-skill-intake`              | workflow     | connect external skills through the intake loop with the owner gate                            |
+| `wolf-software-design`           | workflow     | engineering method inside wolf-design: boundaries, contracts, dependencies and state ownership |
+| `wolf-code-craft`                | disciplinary | full implementation of the assigned behavior with readable means and no unnecessary complexity |
+| `wolf-code-simplify`             | disciplinary | targeted simplification of a named complexity with the contract preserved, assigned separately |
+| `wolf-feedback`                  | workflow     | role-scoped question, friction, complaint and bounded session diagnosis                        |
+| `wolf-visual-dialogue`           | workflow     | visual discussion, feedback and an agreed standalone document                                  |
+
+The engineering route rides the existing conveyor: `wolf-software-design` appears inside the design stage, `wolf-code-craft` at the implementer's task, and `wolf-code-simplify` only as a separately assigned simplification. None of them adds an artifact to the pipeline or a stage to the conveyor, and simplification is not an automatic extra round after every edit — the implementer removes the surplus complexity inside the current mandate. Documents and operations without a software implementation get no engineering set.
 
 Two things are deliberately not in the default set. Security is an optional lens, switched on per feature. Capability skills from the outside world — external knowledge and tools — arrive through [Skill Intake](/guide/skill-intake), never pre-installed.

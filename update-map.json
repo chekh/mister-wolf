@@ -1,6 +1,6 @@
 {
-  "version": "2.27.1",
-  "prev": "2.27.0",
+  "version": "2.28.0",
+  "prev": "2.27.1",
   "files": [
     {
       "path": "base/agents/executor-lead.md",
@@ -25,7 +25,7 @@
     {
       "path": "base/agents/worker-researcher.md",
       "kind": "agent",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/agents/worker-reviewer.md",
@@ -60,7 +60,7 @@
     {
       "path": "base/skills/requesting-code-review/SKILL.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/test-driven-development/references/test-quality.md",
@@ -110,17 +110,17 @@
     {
       "path": "base/skills/using-skills/references/routes-execution.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/using-skills/references/routes-intent.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/using-skills/references/routes-quality.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/using-skills/references/routes-state.md",
@@ -143,6 +143,16 @@
       "category": "unchanged"
     },
     {
+      "path": "base/skills/wolf-code-craft/SKILL.md",
+      "kind": "skill",
+      "category": "new"
+    },
+    {
+      "path": "base/skills/wolf-code-simplify/SKILL.md",
+      "kind": "skill",
+      "category": "new"
+    },
+    {
       "path": "base/skills/wolf-debug/references/techniques.md",
       "kind": "skill",
       "category": "unchanged"
@@ -155,7 +165,7 @@
     {
       "path": "base/skills/wolf-design/SKILL.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/wolf-execute/references/technical-helpers.md",
@@ -170,7 +180,7 @@
     {
       "path": "base/skills/wolf-execute/SKILL.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/wolf-explain/SKILL.md",
@@ -230,12 +240,17 @@
     {
       "path": "base/skills/wolf-sdd/SKILL.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/wolf-skill-intake/SKILL.md",
       "kind": "skill",
       "category": "unchanged"
+    },
+    {
+      "path": "base/skills/wolf-software-design/SKILL.md",
+      "kind": "skill",
+      "category": "new"
     },
     {
       "path": "base/skills/wolf-testplan/SKILL.md",

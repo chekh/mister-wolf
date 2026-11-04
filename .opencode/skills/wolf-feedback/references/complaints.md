@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=complaints.md set=2.26.0 -->
+<!-- wolf:rendered base=complaints.md set=2.28.0 -->
 # Жалобный протокол (v2) — подача и триаж
 
 Жалоба — действующий контур исправления правил. Подача —

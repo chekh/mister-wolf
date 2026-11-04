@@ -6,18 +6,18 @@ The composition below is the catalog of `templates/base/` in the package.
 
 ## Agents — 6 → `.opencode/agents/`
 
-| Agent                | Role                                                                                                                                                                                   |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mr-wolf`            | The coordinator (L0): briefs, dispatches executors, accepts their reports; never touches code itself                                                                                   |
-| `steward`            | Background mentor: mutates agent playbooks on complaints, aggregates mature lessons ([loop](/guide/feedback), [aggregation](/guide/feedback#steward-aggregation)); invoked only nested |
-| `executor-lead`      | Level 1: takes a task brief from mr-wolf, decomposes it, executes directly or via workers, returns a report                                                                            |
-| `worker-implementer` | Single-task code executor (L2): exactly one subtask, allowlist-scoped edits, self-check, short report                                                                                  |
-| `worker-researcher`  | Investigates code, documents and the web against one question; returns findings with sources and confidence                                                                            |
-| `worker-reviewer`    | Reviews workers' code and documents against the brief requirements; verdict via the VERDICT/SUMMARY contract                                                                           |
+| Agent                | Role                                                                                                                                                                                                                                                              |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mr-wolf`            | The coordinator (L0): briefs, dispatches executors, accepts their reports; never touches code itself                                                                                                                                                              |
+| `steward`            | Background mentor: mutates agent playbooks on complaints, aggregates mature lessons ([loop](/guide/feedback), [aggregation](/guide/feedback#steward-aggregation)); invoked only nested                                                                            |
+| `executor-lead`      | Level 1: takes a task brief from mr-wolf, decomposes it, executes directly or via workers, returns a report                                                                                                                                                       |
+| `worker-implementer` | Single-task code executor (L2): exactly one subtask, allowlist-scoped edits, self-check, short report                                                                                                                                                             |
+| `worker-researcher`  | Investigates code, documents and the web against one question; returns findings with sources and confidence; on an explicitly assigned architectural question it compares variants and returns a recommendation — it writes no files and approves no architecture |
+| `worker-reviewer`    | Reviews workers' code and documents against the brief requirements; verdict via the VERDICT/SUMMARY contract                                                                                                                                                      |
 
 Every dispatched task carries an execution block: requested model/variant, the execute/solve mode, a tool-call budget and a stop condition. Since 2.24.0 it also carries a density axis — `density standard|draft`. The owner level (L0/L1) picks the density when writing the TASK; a missing field means `standard`. In `draft` the executor shortens the visible service record — repeated retellings, narration of the obvious, ritual summaries — while keeping mandatory checks, rights, evidence and independent acceptance; substantial uncertainty widens the targeted verification instead of shrinking the answer, and an unsupported density is returned to L1. Acceptance checks observed actions, evidence and the result — not a draft label in RESULT. No numeric savings are claimed; the measurable comparison is a separate observation effort (roadmap A1.2).
 
-## Skills — 25 → `.opencode/skills/`
+## Skills — 28 → `.opencode/skills/`
 
 | Skill                            | Purpose                                                                                                                                                                         |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -29,6 +29,8 @@ Every dispatched task carries an execution block: requested model/variant, the e
 | `using-skills`                   | load the required methodology before responding or acting                                                                                                                       |
 | `verification-before-completion` | run the checks before any "done" claim — evidence first                                                                                                                         |
 | `wolf-brainstorm`                | intent dialogue — substantive questions and proposals until the goal is understood, a visible recap before new work starts                                                      |
+| `wolf-code-craft`                | full implementation of the assigned behavior with readable means and no unnecessary complexity; also the criteria for evaluating an implementation within a mandate             |
+| `wolf-code-simplify`             | targeted simplification of a named complexity with behavior and contract preserved — assigned separately, not an obligatory stage after every edit                              |
 | `wolf-debug`                     | root-cause phases before proposing fixes                                                                                                                                        |
 | `wolf-design`                    | design.md produced from requirements.md before implementation                                                                                                                   |
 | `wolf-execute`                   | flat linear plan execution without subagents (fallback mode)                                                                                                                    |
@@ -44,6 +46,7 @@ Every dispatched task carries an execution block: requested model/variant, the e
 | `wolf-review`                    | multi-lens document review loop                                                                                                                                                 |
 | `wolf-sdd`                       | subagent-driven development for plans with independent tasks                                                                                                                    |
 | `wolf-skill-intake`              | connect external skills through the Wolf quality loop, owner-gated                                                                                                              |
+| `wolf-software-design`           | engineering method inside wolf-design: boundaries, contracts, dependencies and state ownership of a software solution                                                           |
 | `wolf-testplan`                  | test-plan.md with Given/When/Then per requirement                                                                                                                               |
 | `writing-skills`                 | Wolf skill lifecycle: create, edit, verify                                                                                                                                      |
 
@@ -115,6 +118,12 @@ using-skills has a small core and topical references describing when and how to
 apply a skill and its result. Assigned skills can be loaded directly; L2 does
 not browse the catalog. L1 composes an assistant from an L2 instance, its face
 and skills; programmatic tools support its mechanical work.
+
+Three engineering skills ride the existing route instead of adding a stage to it: the goal reaches L1, `wolf-design` applies the software-design method where boundaries and contracts are the open question, the existing plan and test-plan follow, the implementer receives `wolf-code-craft`, and the existing independent review and project checks stay where they are.
+
+A researcher answers an explicitly assigned architectural question with a comparison of variants and a recommendation — the architecture itself is approved by the responsible level. Simplification (`wolf-code-simplify`) is assigned separately when a named complexity needs its own analysis; it is not an automatic extra round, and the implementer removes the surplus complexity inside the current mandate. Documents and operations without a software implementation do not get the engineering set assigned automatically.
+
+The skills add reusable methods to what the organization accumulates — see [Capabilities and boundaries](/guide/capabilities) — and add no agent, no face and no runtime surface.
 
 A tool card references the project source files instead of copying them into
 `.wolf/tools/`: the entrypoint is registered by its project path, additional
