@@ -8,6 +8,40 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.28.0] - 2026-11-04
+
+### Added — three engineering skills for the delivery route
+
+The set gains three methods for the engineering part of a task. They are delivered as part of the regular base set and plugged into the existing route; the runtime does not change.
+
+- **`wolf-software-design` — the engineering method inside `wolf-design`.** It chooses the boundaries, contracts, dependencies and state ownership of a software solution with the least total complexity for implementation, consumers, checking and operation. It is connected to `wolf-design` and to the intent branch of `using-skills`, where the open question is which module boundaries or contracts to take. It does not approve an architecture, does not replace `wolf-design` and does not start a redesign during an ordinary implementation: an assigned researcher compares variants and returns a recommendation, the decision stays with the responsible level.
+- **`wolf-code-craft` — implement the assigned behavior completely and readably.** It is delivered to the implementer when code is written or changed, and is used by the reviewer as evaluation criteria within the mandate — a preference for another form of code is not a defect by itself. It is connected to `wolf-sdd`/`wolf-execute` and to the execution branch of `using-skills`. It adds no rights to the role, no new stage and no new rule: the existing test method and the project gates stay in force.
+- **`wolf-code-simplify` — remove a named piece of complexity without changing the contract.** It applies to an assigned simplification task or to a concrete piece of needless complexity that needs its own analysis; behavior, guarantees and consumers stay intact. It is connected to the quality branch of `using-skills` and to `requesting-code-review`, where the reviewer only assesses. It is not an obligatory stage after every edit — the implementer removes the surplus complexity found in the current mandate.
+- **Base set composition: 25 → 28 skills, 43 → 46 delivered skill files** — the files of the delivered skills (`SKILL.md` plus attached `references/` and `scripts/`), not separate skills. The three new skills arrive in a project through the regular projects pass of the update.
+- **`worker-researcher` clarified.** Comparing architectural variants and returning a recommendation is now possible only for an explicitly assigned architectural question. The `worker-researcher` role still writes no files, does not approve an architecture and does not implement; a `design.md` is written by the already authorized author.
+- **Routing branches of `using-skills` touched.** The intent branch gained the software-design route, the execution branch the code-craft route, the quality branch the code-simplify route and the engineering criteria for review. The core of `using-skills` is unchanged.
+
+### What this release does not do
+
+- **No behavioral pilot, no measured effect.** The three skills were not compared in a run with models, so nothing here claims fewer rework rounds, lower cost or shorter time. The intention behind the release is to choose a sufficient architecture, to write understandable necessary code and to remove a named piece of complexity; the effect of that intention was not measured.
+- **No runtime change.** `src/**` is untouched: no new commands, no CLI flags, no memory schema and no data migrations. Five of the six agent templates are unchanged; `worker-researcher` changes only in its role text — its frontmatter, permissions and model stay as they are — and the rights of the roles are not extended. The six versioned agent playbooks ("faces") are unchanged. The three skills are methods: they create no agent, no new face, no runtime API, no TASK schema and no stage of the artifact pipeline.
+
+### Upgrade notes
+
+- **`npm install -g mister-wolf@2.28.0`** (or `wolf upgrade`) is enough. The new skills arrive in the project through the regular projects pass of the update; nothing to migrate, nothing to reconfigure.
+- **`update-map.json` is re-stamped to 2.28.0 against 2.27.1**: 3 new file targets, 8 changed, 46 unchanged. Five of the six agent templates are unchanged and `worker-researcher` changes only in its role text; the six versioned agent playbooks ("faces") are unchanged.
+
+## [2.27.1] - 2026-11-03
+
+### Changed — README on npm refreshed (docs-only patch, no runtime changes)
+
+- **The npm package page now shows the rewritten README (PR #16).** Mr. Wolf is presented as a permanent project organization built from temporary AI assistants ("I solve problems"), with the documentation site as the canonical user guide (https://chekh.github.io/mister-wolf/guide/overview). npm displays the README of the last published version, so the new text only becomes visible through this release. Both README.md and README.ru.md ship in sync (npm displays the Russian copy for this package); code, tests and delivered templates are unchanged.
+- **The header logo now renders on npm.** The logo link in both README files changed from the relative `docs/Mr.%20Wolf.png` — broken on npmjs.com, which does not rewrite relative image paths (and the file is not part of the npm tarball) — to the absolute `https://raw.githubusercontent.com/chekh/mister-wolf/main/docs/Mr.%20Wolf.png`, which renders on both GitHub and npm.
+
+### Upgrade notes
+
+- **`npm install -g mister-wolf@2.27.1`** (or `wolf upgrade`). Documentation-only: nothing to reconfigure, no migrations; `update-map.json` is re-stamped to 2.27.1 with zero changed file targets against 2.27.0.
+
 ## [2.27.0] - 2026-11-03
 
 ### Added — `wolf git-inspect`: a structured read-only git state with an honest verdict

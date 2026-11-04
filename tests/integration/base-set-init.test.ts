@@ -29,17 +29,17 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
   });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-  it("создаёт полный набор: 6 агентов, 25 скиллов, 3 команды, 2 плагина + 6 seeded playbook'ов (§11.1)", () => {
+  it("создаёт полный набор: 6 агентов, 28 скиллов, 3 команды, 2 плагина + 6 seeded playbook'ов (§11.1)", () => {
     const res = runCli(['init', '--full', '--model', 'zai-coding-plan/glm-5.3'], dir);
     expect(res.status).toBe(0);
 
-    // 36 файлов (6+25+3+2) + AGENTS.md в корне (onboarding v2 §4.2) созданы + 6 playbook'ов посеяны;
+    // 39 файлов (6+28+3+2) + AGENTS.md в корне (onboarding v2 §4.2) созданы + 6 playbook'ов посеяны;
     // F5 (§2.3): скиллы печатаются как `[skill] <имя> → <файл>` — в счётчике `- base set:` их больше нет.
     // B0: у wolf-git кроме SKILL.md есть поставляемый регламент reference/…, поэтому
-    // `[skill]` counts both 25 SKILL.md files and their delivered references/scripts.
+    // `[skill]` counts both 28 SKILL.md files and their delivered references/scripts.
     const created = (res.stdout.match(/- base set: \S+ created/g) ?? []).length;
     expect(created).toBe(18);
-    expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(43);
+    expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(46);
     expect(res.stdout).toMatch(/- base set: AGENTS\.md created/);
 
     const agents = readdirSync(join(dir, '.opencode/agents')).filter((f) => f.endsWith('.md'));
@@ -48,7 +48,7 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
     const skills = readdirSync(join(dir, '.opencode/skills')).filter((d) =>
       existsSync(join(dir, '.opencode/skills', d, 'SKILL.md'))
     );
-    expect(skills).toHaveLength(25);
+    expect(skills).toHaveLength(28);
     expect(skills).toContain('wolf-work-strategy');
     expect(skills).toContain('wolf-user-report');
 

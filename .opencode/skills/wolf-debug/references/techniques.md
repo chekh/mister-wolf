@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=techniques.md set=2.26.0 -->
+<!-- wolf:rendered base=techniques.md set=2.28.0 -->
 # Приёмы адресной диагностики
 
 Выбери технику под назначенный вопрос. Она не расширяет полномочия или scope.

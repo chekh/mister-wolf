@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=project-rules.md set=2.26.0 -->
+<!-- wolf:rendered base=project-rules.md set=2.28.0 -->
 # Документы и устройство работы проекта
 
 Загружает L0/L1 при выборе места, режима и документного профиля.
