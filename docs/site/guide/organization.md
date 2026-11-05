@@ -31,7 +31,11 @@ L1 composes an assistant from an L2 instance, an appropriate face, assigned skil
 
 Responsibility level does not determine the model or its reasoning depth. Model/variant selection uses actual host capabilities; a wish in a brief does not prove the setting was applied. The `standard|draft` density shortens service text while preserving substantial evidence and checks.
 
-After deciding to delegate, L1 chooses `fresh` for a new independently acceptable result, `continue` for the same unaccepted result, or `replace` for a replacement on that task. Before replacement, stop writing, preserve the result and transfer ownership. A timeout does not prove writing stopped. Clean context depends on actual history inheritance by the host; limitations must be explicit. Small related operations are grouped into a finite L2 assignment, not transferred to L1.
+After deciding to delegate, the hiring L0 or L1 chooses `fresh` for a new independently acceptable result, `continue` for the same unaccepted result, or `replace` for a replacement on that task. Before replacement, stop writing, preserve the result and transfer ownership. A timeout does not prove writing stopped. Clean context depends on actual history inheritance by the host; limitations must be explicit. Small related operations are grouped into a finite L2 assignment, not transferred to L1.
+
+An L1 instance owns a bounded delivery, not the entire goal, thread or user session. After that delivery is accepted, the next independently acceptable result gets a new L1 even when work is sequential and the topic stays the same. Corrections to the same unaccepted result may continue with the existing L1. The new executor receives relevant artifacts, evidence, constraints and decisions rather than the previous chat history.
+
+When distributing a goal across several L1 deliveries needs substantive planning, L0 commissions an L1 to prepare bounded briefs, dependencies, parallel launch conditions and an integration owner. L0 accepts that plan and assigns the L1 executors; the planner does not spawn peers. Ready independent deliveries may run in parallel within the overall budget and host capabilities. A small coherent delivery needs no separate planner. Shared plans and memory have one assigned writer; existing verification and acceptance gates remain in force.
 
 ## Acceptance
 

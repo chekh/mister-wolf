@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=routes-capabilities.md set=2.29.0 -->
+<!-- wolf:rendered base=routes-capabilities.md set=2.30.0 -->
 # Развитие возможностей
 
 | Когда | Как применить | Результат |

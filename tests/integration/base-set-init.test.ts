@@ -39,9 +39,16 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
     // `[skill]` counts both 28 SKILL.md files and their delivered references/scripts.
     const created = (res.stdout.match(/- base set: \S+ created/g) ?? []).length;
     expect(created).toBe(18);
-    // LANG-SPEC-W2: +1 — в наборе новый using-skills/references/agent-language.md
-    // (спецификация внутреннего языка, правка 2026-11-05).
-    expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(47);
+    // +1: канон разделения труда доставляется внутри существующего using-skills.
+    expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(48);
+    const laborPath = 'using-skills/references/division-of-labor.md';
+    const labor = readFileSync(join(dir, '.opencode/skills', laborPath), 'utf-8');
+    expect(labor).toContain(
+      readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../templates/base/skills', laborPath), 'utf-8')
+    );
+    expect(readFileSync(join(dir, '.opencode/skills/using-skills/SKILL.md'), 'utf-8')).toContain(
+      'references/division-of-labor.md'
+    );
     expect(res.stdout).toMatch(/- base set: AGENTS\.md created/);
 
     const agents = readdirSync(join(dir, '.opencode/agents')).filter((f) => f.endsWith('.md'));

@@ -10,6 +10,33 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.30.0] - 2026-11-05
+
+### Added — bounded assignments: one division-of-labor canon and bounded L1 lifetimes
+
+One L1 could keep receiving new self-contained commissions for the whole user session: the goal and the thread continued, so the executor's context kept growing after each accepted delivery. This release draws the boundary: the unit of an executor's lifetime is a bounded, independently acceptable delivery. Fresh executors for new results, `continue` for the same unaccepted result, `replace` through handoff — on both hiring boundaries, L0→L1 and L1→L2. Planning, evidence, independent review, joint-state checks and DONE ≠ ACCEPTED all stay in force; the internal language stays unchanged.
+
+- **`using-skills/references/division-of-labor.md` — the single shared canon of hiring and lifetimes** (delivered inside the existing `using-skills` skill). It defines the bounded assignment as the unit of work; the `fresh`/`continue`/`replace` decision table for both boundaries; multi-L1 planning (L0 commissions an L1 to prepare the assignment plan — the planner returns ready briefs, dependencies and an integration owner, and hires no peers); sequential and parallel launches with one writer per shared resource; addressed context transfer with revision and applicable evidence instead of a parent's chat history; budget that belongs to the assignment, not to the session (a `replace` does not reset it); and honest limits when the host cannot isolate history or close an instance.
+- **Hiring rules updated in the frames (`mr-wolf.md`, `executor-lead.md`).** L0 commissions the distribution plan to an L1 instead of decomposing multi-L1 work itself; the executor lead stops being a long-lived session owner: after a delivery is accepted, the next independently acceptable result goes to a new L1 even in the same thread and topic; small related work stays in one finite mandate and is not split per stage; the L2-tool-call budget belongs to the assignment. Frontmatter, permissions, mode and model are unchanged; L1 still cannot spawn L1 and L2 still cannot spawn.
+- **`wolf-plan` scale clarified** — a plan of L1 assignments (briefs, dependencies, integration owner) differs from the internal L2 task breakdown inside one assignment; the planner does not detail every executor's inner steps.
+- **`wolf-handoff` explicitly covers L1 replacement through L0**: task identity, open findings, permissions and spent budget survive the handoff.
+- **`context-and-memory.md`** now separates goal/thread, assignment and session, and requires addressed transfer of selected sources, constraints and decisions to a fresh executor.
+- **`using-skills` root and the execution route** require hiring participants to load the canon before assigning or continuing work; the reference is delivered with the regular base set, not as a side file.
+- **The documentation site (EN/RU organization guide)** explains the temporary L1, sequential executor change and the assignment plan in the user-facing guide.
+- **Base set composition: 47 → 48 delivered skill files** — one reference file inside the existing `using-skills` skill; the skill count stays 28; no new agents, commands or plugins.
+
+### What this release does not do
+
+- **No runtime change.** `src/**` is untouched: no commands, flags, memory schema or migrations. The value — less context accumulation, fewer wasted checks — is at the observation stage and was not measured; nothing here claims a token saving or speedup.
+- **No behavioral pilot.** The scenario probes from the test plan (sequential L1s, no over-splitting, no false success) were checked by document review and structural delivery tests; live harness probes were not run and are honestly left open at the observation stage, as in 2.29.0.
+- **The language stays at 2.29.0.** `agent-language.md` is byte-identical; no new terms, slots, enums or profiles. The canon uses plain explanatory prose ("hiring participant", "bounded delivery"), not new language constructs.
+- **Installed faces are not overwritten silently.** The frames change in the templates; a protected or locally mutated installed face keeps its version until the regular upgrade resolution — a conflict means the rollout is not finished, not a success.
+
+### Upgrade notes
+
+- **`npm install -g mister-wolf@2.30.0`** (or `wolf upgrade`) is enough. The reference and the frame updates arrive through the regular projects pass of the update; nothing to migrate, nothing to reconfigure.
+- **`update-map.json` is re-stamped to 2.30.0 against 2.29.0**: 1 new file target (`division-of-labor.md`), 7 changed (`executor-lead.md`, `mr-wolf.md`, `using-skills/SKILL.md`, `context-and-memory.md`, `routes-execution.md`, `wolf-handoff/SKILL.md`, `wolf-plan/SKILL.md`), 51 unchanged. The six versioned agent playbooks ("faces") are unchanged.
+
 ## [2.29.0] - 2026-11-05
 
 ### Added — a written specification of the internal agent language, and a LANGUAGE subject for complaints

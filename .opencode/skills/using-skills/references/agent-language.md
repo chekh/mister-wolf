@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=agent-language.md set=2.29.0 -->
+<!-- wolf:rendered base=agent-language.md set=2.30.0 -->
 # Спецификация внутреннего языка агентов Wolf
 
 **Статус:** действующая спецификация; этап наблюдения (утверждено владельцем
