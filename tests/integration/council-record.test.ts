@@ -92,11 +92,7 @@ function opinionEnvelope(
   };
 }
 
-function synthesisEnvelope(
-  questionId: string,
-  revision: string,
-  opinionIds: string[]
-): CouncilRecordEnvelope {
+function synthesisEnvelope(questionId: string, revision: string, opinionIds: string[]): CouncilRecordEnvelope {
   return {
     schema_version: 1,
     record_kind: 'synthesis',
@@ -162,9 +158,9 @@ async function seedQuestion(): Promise<{ id: string; revision: string }> {
 }
 
 function addedEvents(memoryId: string) {
-  return ctx.log.readAll().then((all) =>
-    all.filter((e) => e.type === 'memory.added' && JSON.stringify(e.payload).includes(memoryId))
-  );
+  return ctx.log
+    .readAll()
+    .then((all) => all.filter((e) => e.type === 'memory.added' && JSON.stringify(e.payload).includes(memoryId)));
 }
 
 describe('recordCouncil: integration на реальном временном store', () => {

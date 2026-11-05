@@ -40,8 +40,7 @@ function canonJson(value: unknown): string {
   return JSON.stringify(walk(value));
 }
 
-const sha256Hex = (value: unknown): string =>
-  createHash('sha256').update(canonJson(value), 'utf8').digest('hex');
+const sha256Hex = (value: unknown): string => createHash('sha256').update(canonJson(value), 'utf8').digest('hex');
 
 /** Семантика 2: question_revision = sha256 от canonical JSON
  * {schema_version, record_kind:'question', task_id, payload} вопроса. */
@@ -441,10 +440,7 @@ describe('recordCouncil: обязательные ключи и границы �
     const ctx = makeCtx();
     const q = await seedQuestion(ctx);
     const op = await seedOpinion(ctx, q);
-    await expectRejectedNoWrite(
-      ctx,
-      synthesisEnvelope(q.id, q.revision, [op], { accepted_claims: [] })
-    );
+    await expectRejectedNoWrite(ctx, synthesisEnvelope(q.id, q.revision, [op], { accepted_claims: [] }));
   });
 
   it('insufficient_evidence без объяснения (unresolved_dissent=[]) отклоняется', async () => {
@@ -477,10 +473,7 @@ describe('recordCouncil: обязательные ключи и границы �
     const ctx = makeCtx();
     const q = await seedQuestion(ctx);
     const op = await seedOpinion(ctx, q);
-    await expectRejectedNoWrite(
-      ctx,
-      synthesisEnvelope(q.id, q.revision, [op], { actual_participants: [] })
-    );
+    await expectRejectedNoWrite(ctx, synthesisEnvelope(q.id, q.revision, [op], { actual_participants: [] }));
   });
 
   it('превышение 256 KiB отклоняется без записи', async () => {

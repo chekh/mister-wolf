@@ -30,7 +30,16 @@ import { resolveSessionId } from '../../domain/actor.js';
  * (AC-A3) council_record = 8 survivors, порог ≤ 12.
  * `ping` — отдельный health-check в mcp-server.ts, в каталог не входит.
  */
-export const MCP_TOOL_NAMES = ['search', 'get', 'list', 'add', 'transition', 'brief', 'recap', 'council_record'] as const;
+export const MCP_TOOL_NAMES = [
+  'search',
+  'get',
+  'list',
+  'add',
+  'transition',
+  'brief',
+  'recap',
+  'council_record',
+] as const;
 
 /** REL-231-A W4 (D-W4-2): envelope приходит объектом в поле `input` (без чтения
  * путей ФС из MCP — путь файлу остаётся CLI-механикой); строгая валидация

@@ -83,9 +83,31 @@ export interface CouncilSynthesisPayload {
 }
 
 export type CouncilRecordEnvelope =
-  | { schema_version: 1; record_kind: 'question'; request_key: string; task_id: string; payload: CouncilQuestionPayload }
-  | { schema_version: 1; record_kind: 'opinion'; request_key: string; task_id: string; question_id: string; question_revision: string; payload: CouncilOpinionPayload }
-  | { schema_version: 1; record_kind: 'synthesis'; request_key: string; task_id: string; question_id: string; question_revision: string; payload: CouncilSynthesisPayload };
+  | {
+      schema_version: 1;
+      record_kind: 'question';
+      request_key: string;
+      task_id: string;
+      payload: CouncilQuestionPayload;
+    }
+  | {
+      schema_version: 1;
+      record_kind: 'opinion';
+      request_key: string;
+      task_id: string;
+      question_id: string;
+      question_revision: string;
+      payload: CouncilOpinionPayload;
+    }
+  | {
+      schema_version: 1;
+      record_kind: 'synthesis';
+      request_key: string;
+      task_id: string;
+      question_id: string;
+      question_revision: string;
+      payload: CouncilSynthesisPayload;
+    };
 
 export interface RecordCouncilResult {
   memoryId: string;
@@ -115,7 +137,8 @@ const EvidenceRefSchema = z
     note: z.string().max(500).optional(),
   })
   .refine(
-    (data) => Boolean((data.memory_id && data.memory_id.trim().length > 0) || (data.path && data.path.trim().length > 0)),
+    (data) =>
+      Boolean((data.memory_id && data.memory_id.trim().length > 0) || (data.path && data.path.trim().length > 0)),
     { message: 'EvidenceRef must contain at least one non-empty field: memory_id or path' }
   );
 
@@ -361,7 +384,10 @@ async function loadQuestion(
 }
 
 /** Семантика 6: opinion_ids существуют и принадлежат этому же question. */
-async function assertOpinionsBelong(deps: RecordCouncilDeps, envelope: Extract<CouncilRecordEnvelope, { record_kind: 'synthesis' }>): Promise<void> {
+async function assertOpinionsBelong(
+  deps: RecordCouncilDeps,
+  envelope: Extract<CouncilRecordEnvelope, { record_kind: 'synthesis' }>
+): Promise<void> {
   for (const opinionId of envelope.payload.opinion_ids) {
     const note = await deps.store.get(opinionId);
     if (!note || !note.tags.includes(COUNCIL_TAG)) {
@@ -378,7 +404,9 @@ async function assertOpinionsBelong(deps: RecordCouncilDeps, envelope: Extract<C
       throw new UserFacingError(`memory "${opinionId}" is not a council opinion record`);
     }
     if (env.question_id !== envelope.question_id) {
-      throw new UserFacingError(`council opinion "${opinionId}" belongs to question "${env.question_id}", not "${envelope.question_id}"`);
+      throw new UserFacingError(
+        `council opinion "${opinionId}" belongs to question "${env.question_id}", not "${envelope.question_id}"`
+      );
     }
   }
 }

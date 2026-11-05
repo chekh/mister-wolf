@@ -17,9 +17,9 @@ baseline: 174e5102f85a515a75c47a670b99b507811bb688
 - [x] P01: независимо проверить quartet и candidate; уточнить технические ADR,
       занятость версии и актуальность main — design §ADR/источники, AGENTS.md:1.
       Сделано → 65a0d438 (кандидат применён чисто: 17 файлов, 284+/85-, sha256
-      7e87e6ce…f10f6; тега v2.31* нет, npm view 404; main=origin/main=174e5102;
+      7e87e6ce…f10f6; тега v2.31\* нет, npm view 404; main=origin/main=174e5102;
       ADR-сверка по коду: note+facet/extra-deny/relations/MCP-каталог≤12 — см.
-      wolf-заметку mem_20261105_rel_231_a_p01_…2d0430).
+      wolf-заметку mem*20261105_rel_231_a_p01*…2d0430).
 - [x] P02: реализовать экспертную роль и реально ограниченные права/изоляцию
       OpenCode, прототип S04/S06 до широкой интеграции — design §1–2;
       templates/base/agents/worker-reviewer.md:1 как сравнение, не наследовать его обязанности.
@@ -28,7 +28,7 @@ baseline: 174e5102f85a515a75c47a670b99b507811bb688
       чтение проходит, read вне scope/write/shell/subagent/webfetch/MCP реально
       отклоняются/скрыты; S06: конфиг-изоляция доказана, symlink-обход закрыт
       процедурой; поведенческий S06-прогон A/B заблокирован деградацией провайдера
-      роутера — остаток срезу B; см. mem_20261105_rel_231_a_w2b_…_cc4d2a).
+      роутера — остаток срезу B; см. mem*20261105_rel_231_a_w2b*…\_cc4d2a).
 - [x] P03: интегрировать wolf-council, нанимателей и маршруты, expert/synthesis
       профили языка — design §1/3; templates/base/skills/using-skills/references/contracts.md:32.
       Сделано → 65a0d438 (кандидат: профили/маршруты/ссылки) + 364f0b7d (синхронизация

@@ -170,17 +170,7 @@ describe('buildMcpServer', () => {
     const server = buildMcpServer(dir);
     const tools = (server as unknown as { _registeredTools: Record<string, unknown> })._registeredTools;
     const names = Object.keys(tools).sort();
-    expect(names).toEqual([
-      'add',
-      'brief',
-      'council_record',
-      'get',
-      'list',
-      'ping',
-      'recap',
-      'search',
-      'transition',
-    ]);
+    expect(names).toEqual(['add', 'brief', 'council_record', 'get', 'list', 'ping', 'recap', 'search', 'transition']);
     const removed = [
       'create_thread',
       'create_info_request',
