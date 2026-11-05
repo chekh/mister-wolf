@@ -1,4 +1,4 @@
-// wolf:rendered base=wolf-router.ts set=2.29.0
+// wolf:rendered base=wolf-router.ts set=2.30.0
 /**
  * Mr.Wolf router plugin (шаблон базового набора, спека §5.4).
  *
