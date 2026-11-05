@@ -89,7 +89,8 @@ export function classifyCouncilRecord(o: MemoryObject): CouncilRecord {
   if (o.type === 'council-opinion') return { kind: 'opinion', source: 'legacy' };
   if (o.type === 'synthesis') return { kind: 'synthesis', source: 'legacy' };
   if (o.type === 'note') {
-    const aliasKind = ALIAS_ORIGIN_KINDS[(o as { alias_origin?: unknown }).alias_origin ?? ''];
+    const aliasOrigin = (o as { alias_origin?: unknown }).alias_origin;
+    const aliasKind = typeof aliasOrigin === 'string' ? ALIAS_ORIGIN_KINDS[aliasOrigin] : undefined;
     if (aliasKind !== undefined) return { kind: aliasKind, source: 'alias' };
     if (o.tags.includes(COUNCIL_ENVELOPE_TAG)) {
       const envelope = parseEnvelope(o.body);

@@ -11,15 +11,15 @@ import {
   recordCouncil,
   type CouncilRecordEnvelope,
   type RecordCouncilDeps,
-} from '../src/app/use-cases/record-council.js';
-import type { MemoryStore, ListFilters } from '../src/ports/memory-store.port.js';
-import type { EventLog } from '../src/ports/event-log.port.js';
-import type { RelationLog } from '../src/ports/relation-log.port.js';
-import type { Clock } from '../src/ports/clock.port.js';
-import type { IdGenerator } from '../src/ports/id-generator.port.js';
-import type { MemoryObject } from '../src/domain/schemas/memory-object-schema.js';
-import type { MemoryEvent } from '../src/domain/schemas/memory-event-schema.js';
-import type { Relation } from '../src/domain/schemas/relation-schema.js';
+} from '../../src/app/use-cases/record-council.js';
+import type { MemoryStore, ListFilters } from '../../src/ports/memory-store.port.js';
+import type { EventLog } from '../../src/ports/event-log.port.js';
+import type { RelationLog } from '../../src/ports/relation-log.port.js';
+import type { Clock } from '../../src/ports/clock.port.js';
+import type { IdGenerator } from '../../src/ports/id-generator.port.js';
+import type { MemoryObject } from '../../src/domain/schemas/memory-object-schema.js';
+import type { MemoryEvent } from '../../src/domain/schemas/memory-event-schema.js';
+import type { Relation } from '../../src/domain/schemas/relation-schema.js';
 
 const ACTOR = 'agent:steward';
 const TAG = 'wolf:council-record:v1';
