@@ -58,8 +58,11 @@ baseline: 174e5102f85a515a75c47a670b99b507811bb688
       src/app/use-cases/init-project.ts:44, scripts/generate-update-map.mjs:1.
       Сделано → 945050a0 (registry/seed/injection/update-map/doctor-fix/EN-RU
       доставка; smoke init/face/doctor).
-- [ ] P08: выполнить unit/integration/CLI-MCP/e2e проверки и живые сценарии,
+- [x] P08: выполнить unit/integration/CLI-MCP/e2e проверки и живые сценарии,
       независимое итоговое ревью — test-plan; unknown не превращать в pass.
+      Сделано → 269348a8 (гейты по отдельности на финальном HEAD — см.
+      «Результаты среза B»; независимое ревью W6: APPROVED, 0 critical/
+      0 major/2 minor; F1 закрыт в этом же коммите, F2 — рекомендация L0).
 - [x] P09: release metadata, update-map по фактическому предыдущему тегу,
       staging rollout/rollback, штатные gates, затем выпуск в действующих полномочиях.
       Сделано → 808c0c03 (npm version 2.31.0 без тега; update-map --prev 2.30.0
@@ -188,17 +191,46 @@ SHA фиксируется в отчёте поставки.
 
 Проверки:
 
-- Структурные: 94/94 целевых тестов W1.
-- Live: S04/S06/S16 passed (W2); staging S15/S18 passed (W3).
+- Структурные: 94/94 целевых тестов W1; полный test:run на финальном HEAD —
+  exit 0 (230 файлов / 2150 тестов).
+- Live: S04/S06/S16 passed (W2); staging S15/S18 passed (W3); доставленная
+  роль worker-expert вызвана живьём в staging-проекте (`opencode run
+--agent worker-expert` → ответ, exit 0).
 - Кейс 1 — partial: позиции и синтез получены, независимость RUN A нарушена
-  (эксперт читал оба пакета); причина — конфиг-фикстуры воркера, не продукт.
-- Кейс 2 — независимое ревью Wave W6 (фиксируется финальным коммитом).
+  (эксперт читал оба пакета); причина — конфиг-фикстуры воркера, не продукт;
+  решение L1 по вопросу консилиума: предупреждение doctor 6.4 о
+  permission-map vs permissions-array СОХРАНЯЕТСЯ (консервативно, обе позиции
+  отвергли полный отказ), проверка поведения старых v2.x — отдельное
+  поручение (backlog), не блокер релиза.
+- Кейс 2 — выполнен на материале поставки: противоречие «провайдер рабочий
+  (L0) vs провайдер-блокер (W2 раунд 2)» → адресная диагностика (root cause:
+  sandbox-конфиг без provider-плагина 9router, static provider-блок резолвит
+  другой endpoint) → исправление конфигурации → чистовые прогоны W2 раунд 3
+  (S04/S06/S16 passed); плюс цикл W6 F1 → правка plan.md → адресная
+  перепроверка W6 (scoped re-review этого же коммита).
 - Кейс 3 — passed: `insufficient_evidence` получен честно.
-- Гейты: см. финальный отчёт.
+- Гейты на финальном HEAD: lint exit 0; build exit 0; test:run exit 0
+  (230/230 файлов, 2150/2150); e2e exit 0 (62/62 файлов, 245/245);
+  docs:check exit 0 (5727 ссылок, 35 EN/RU пар); npm pack --dry-run exit 0
+  (mister-wolf-2.31.0.tgz); prettier scope exit 0; update-map --verify
+  exit 0. `npm run check` exit 1 — ровно один warning:
+  docs/dev/2026-11-03-wolf-console/design.md (pre-existing на baseline
+  174e5102, вне среза; решает L0 до среза C — см. F2 ревью W6).
+- Независимое итоговое ревью W6: APPROVED, 0 critical / 0 major / 2 minor.
+  F1 (minor): маппинг AC-B → AC/P — добавлен ниже (этот коммит). F2 (minor):
+  pre-existing check-файл — рекомендация L0, вне среза.
 
 Ограничения среза: pin/variant не проверялись на живых объектах; граф-рёбра council
 не верифицированы напрямую; debug-vs-run расхождение было конфиг-артефактом воркера
-(не продукт); провайдер-зависимость живых проб снята конфигом 9router.
+(не продукт); провайдер-зависимость живых проб снята конфигом 9router; behavioral-
+изоляция кейса 1 ослаблена чтением обоих пакетов RUN A (контент-поток доказан).
+
+Маппинг критериев среза B (F1, W6): AC-B1 → AC-13/P07 (доставка 945050a0);
+AC-B2 → AC-13/S15+S18 (staging/upgrade/rollback); AC-B3 → документация EN/RU
+и правила памяти (wolf-release-docs, W4); AC-B4 → roadmap C + план (D-5,
+процессный критерий); AC-B5 → AC-01…AC-12 (S01–S18) + три кейса; AC-B6 →
+релизные гейты по отдельности + классификация (P08); AC-B7 → P09 release
+metadata (808c0c03); AC-B8 → AC-12/S14 (независимое ревью W6).
 
 ## Документация и сайт
 
