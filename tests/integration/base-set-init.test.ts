@@ -17,7 +17,15 @@ function runCli(args: string[], cwd: string): { stdout: string; stderr: string; 
   return { stdout: r.stdout ?? '', stderr: r.stderr ?? '', status: r.status };
 }
 
-const AGENTS = ['executor-lead', 'mr-wolf', 'steward', 'worker-implementer', 'worker-researcher', 'worker-reviewer', 'worker-expert'];
+const AGENTS = [
+  'executor-lead',
+  'mr-wolf',
+  'steward',
+  'worker-implementer',
+  'worker-researcher',
+  'worker-reviewer',
+  'worker-expert',
+];
 const WORKERS_PLUS_STEWARD = ['steward', 'worker-implementer', 'worker-researcher', 'worker-reviewer', 'worker-expert'];
 const WORKERS = ['worker-implementer', 'worker-researcher', 'worker-reviewer'];
 

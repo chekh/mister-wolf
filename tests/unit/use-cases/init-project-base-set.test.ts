@@ -127,6 +127,7 @@ describe('initProject + baseSet (Task 6 + §4.5: модели — в ренде�
       'worker-implementer',
       'worker-researcher',
       'worker-reviewer',
+      'worker-expert',
     ]) {
       (deps.store as unknown as FakeMemoryStore).objects.push({
         id: `mem_face_${owner}`,
