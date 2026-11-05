@@ -128,3 +128,49 @@ P02–P09, полный npm run check/e2e/docs:check для реализации
 CLI/MCP write-path, mixed analytics, staging init/upgrade/rollback и публикация
 релиза. Эти пункты остаются обязательными агенту финализации. Подготовительный
 пакет публикуется отдельной веткой без применения patch и без изменения main.
+
+### Результаты среза A (REL-231-A, 2026-11-05, HEAD 5ea41863)
+
+Коммиты среза: 65a0d438 (кандидат) → af799f7d (RED) → cf2d8644 (mixed analytics)
+→ 60ba0fb7 (record-council) → a97006ef (CLI+MCP) → 364f0b7d (методики↔реализация)
+→ d5b52e17 (этот план) → 553c2773 (style) → 72a9678f (findings W7 F1–F5)
+→ 5ea41863 (e2e mcp каталог).
+
+Проверки (все логи: tmp/opencode/rel231a/, Wolf-заметки mem*…2d0430/mem*…cc4d2a):
+
+- Целевые наборы: 85/85 GREEN на 5ea41863 (council-record unit 31+integration 9,
+  build-councils-v2 10, адаптеры CLI/MCP 6+2, guards каталога/справочников);
+  RED зафиксирован до реализации (w1/red.log: отсутствие модуля).
+- tsc --noEmit: 0 ошибок; lint: OK; git diff --check: чист.
+- npm run check: падает только на pre-existing `docs/dev/2026-11-03-wolf-console/design.md`
+  (prettier; пришёл из main 30cdfca, не изменён срезом) и — после format-гейта —
+  известные межсрезовые падения test:run (см. ниже). Проверка prettier по всем
+  путям check-скрипта, кроме этого файла: все файлы среза чисты.
+- npm run e2e: 241/245; 4 падения — межсрезовые B (base-set счётчик 6→7 агентов;
+  upgrade-park ×2: worker-expert/wolf-council вне update-map — exit 2 needs-decision)
+  до правки e2e mcp-каталога (закрыто в 5ea41863, 3/3).
+- npm run docs:check: OK (5499 ссылок).
+- Независимое ревью W7: CHANGES_REQUIRED (0 critical/1 major/4 minor) → закрыты
+  W8 (72a9678f) → адресная перепроверка: APPROVED (все F1–F5 ADDRESSED).
+
+Ограничения и непроверенное (остаток):
+
+- Межсрезовые падения test:run/e2e, закрываемые поставкой B (registry/seed/update-map):
+  tests/unit/agents-mode-guard (PACKAGE_AGENTS 6→7), b0-init S-30/S-32,
+  base-set-init ×2, tests/unit/adapters/update-map (карта не покрывает новые
+  templates), e2e base-set + upgrade-park T14 ×2.
+- Pre-existing baseline (174e5102), не срезом: prettier wolf-console/design.md;
+  tests/unit/skills/skill-runtime-helpers (macOS process-group);
+  tests/unit/adapters/cli/memory-sync (isNpxRun-окружение, подтверждено
+  stash-прогоном на чистом HEAD).
+- Live S04/S06: механизм tool-enabled прав доказан W2a на v2.2.5 (чтение
+  allowlist/отказы/скрытие тулов/MCP catch-all deny); поведенческий S06-прогон
+  A/B (маркеры peer-мнений) и staging реального mr-wolf-тула НЕ выполнены —
+  провайдер роутера деградировал (fb-zai 410 retired / flash 402 / funnel-404);
+  повторить 2 командами из w2b/report/journal.md после восстановления endpoint.
+  Symlink-обход закрыт канонизированным pre-run аудитом (W7-F1).
+- Поставка B: P07 (BASE_SET_AGENT_IDS/seed/injection/renderer/update-map/EN-RU),
+  P09 (npm version/CHANGELOG/update-map), массовая миграция v1-паттерна
+  `permission:` прочих worker-агентов на v2 (worker-reviewer и др.).
+- Поставка C: публикация (merge --no-ff, тег v2.31.0 на merge-коммите, push,
+  npm publish, GH Release, сайт).
