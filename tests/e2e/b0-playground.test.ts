@@ -24,6 +24,7 @@ const BASE_AGENTS = [
   'worker-implementer',
   'worker-researcher',
   'worker-reviewer',
+  'worker-expert',
 ];
 // doctor чистит записи под os.tmpdir() как sandbox (2.14 §8.2) — «: ok»
 // наблюдаемо только вне tmpdir; фикстура живёт в untracked-каталоге tests/

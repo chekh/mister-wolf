@@ -666,12 +666,16 @@ function depthIssues(surface: ConfigSurface): string[] {
 
 /** v2-поля агента: их появление включает чтение файла по схеме V2. */
 const V2_AGENT_FIELDS = ['permissions', 'request', 'system', 'disabled'] as const;
-/** v1-поля агента: в V2-режиме молча игнорируются (6.4). */
-const V1_AGENT_FIELDS = ['permission', 'temperature', 'mode'] as const;
+/** v1-поля агента: в V2-режиме молча игнорируются (6.4). `mode` в списке НЕТ:
+ * это валидное v2-поле схемы агента (packages/schema/src/config/agent.ts; live-проба
+ * `opencode debug agents` — mode распознаётся рядом с permissions). */
+const V1_AGENT_FIELDS = ['permission', 'temperature'] as const;
 
 /**
  * 6.4: managed-агент (есть штамп Wolf) со смешанным frontmatter читается как V2,
  * и v1-правила (`permission.task: deny`) исчезают — предупреждаем, не правим файл.
+ * Смысл проверки — конфликт permission(map) vs permissions(array); `mode` — валидное
+ * v2-поле, в v1-список не входит.
  */
 async function mixedFrontmatterIssues(projectRoot: string, platformId: string): Promise<string[]> {
   const dir = join(projectRoot, '.opencode', 'agents');

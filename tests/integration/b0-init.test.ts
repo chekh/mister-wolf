@@ -41,6 +41,7 @@ const BASE_AGENTS = [
   'worker-implementer',
   'worker-researcher',
   'worker-reviewer',
+  'worker-expert',
 ];
 
 describe('wolf init: B0 базовые наборы (REQ-04, S-30..S-32)', () => {
@@ -92,7 +93,7 @@ describe('wolf init: B0 базовые наборы (REQ-04, S-30..S-32)', () =>
 });
 
 describe('baseSetFaceViolations: guard face_owner_skill === agent_id (design §3.4)', () => {
-  it('все 6 агентов с активными лицами → нарушений нет', () => {
+  it('все 7 агентов с активными лицами → нарушений нет', () => {
     expect(baseSetFaceViolations(BASE_AGENTS)).toEqual([]);
   });
 

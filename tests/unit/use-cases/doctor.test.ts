@@ -283,6 +283,30 @@ describe('6.3-4/6.3-5/6.1: doctor и ключи opencode (реальный Openc
     }
   });
 
+  it('6.4-4: stamped-агент с mode + permissions (без v1-полей) → issues пуст', async () => {
+    const proj = projectWithAgent(
+      'stamped-mode.md',
+      [
+        '---',
+        'description: stamped v2',
+        'mode: all',
+        'permissions:',
+        '  - action: read',
+        '---',
+        '<!-- wolf:rendered base=x set=2.20.0 -->',
+        'body',
+        '',
+      ].join('\n')
+    );
+    try {
+      const deps = makeDeps([{ path: proj, schema_version: CURRENT_SCHEMA_VERSION }], [proj], [new OpencodeAdapter()]);
+      const report = await runDoctor(deps);
+      expect(report.entries[0]!.issues).toEqual([]);
+    } finally {
+      rmSync(proj, { recursive: true, force: true });
+    }
+  });
+
   it('6.4-1/6.4-3: чисто v1-файл и чужой (без штампа) файл → молчание', async () => {
     const proj = projectWithAgent(
       'v1.md',
