@@ -167,6 +167,16 @@ export const COMMANDS: CommandSpec[] = [
     load: () => import('./commands/memory-relation.js').then((m) => m.memoryRelationCommand()),
   },
   {
+    // REL-231-A P04/W4 (AC-A3): council records — agent-facing группа (как
+    // think/scaffold: hidden, не тратит бюджет help-листинга P224); record —
+    // тонкая CLI-обёртка над доменной recordCouncil (question/opinion/synthesis).
+    name: 'council',
+    description: 'Manage council records (record reads a question/opinion/synthesis envelope)',
+    usage: 'record [options]',
+    hidden: true,
+    load: () => import('./commands/council.js').then((m) => m.councilCommand()),
+  },
+  {
     name: 'aggregate',
     description: 'Apply a proposed lesson aggregate (steward plumbing)',
     usage: 'apply <aggregate-id>',

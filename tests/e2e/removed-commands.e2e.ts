@@ -20,7 +20,6 @@ const REMOVED: ReadonlyArray<RemovedCase & { name: string }> = [
   { argv: ['memory-stage', '--stage', 'injected', '--memory-ids', 'mem_x'], name: 'memory-stage' },
   { argv: ['learn', 'status'], name: 'learn' },
   { argv: ['learn', 'digest'], name: 'learn' },
-  { argv: ['council', 'tally'], name: 'council' },
   { argv: ['session', 'checkpoint', '--thread', 'thr_x'], name: 'checkpoint' },
   { argv: ['help', 'learn'], name: 'learn' },
   // §6.2 P222: `<type> create` у type-неймспейсов
@@ -80,5 +79,26 @@ describe('removed commands answer with a migration hint (wave 2.13 diet)', () =>
       expect(res.stderr).toContain(line);
     }
     expect(res.stderr).toContain('See CHANGELOG (Migration section)');
+  });
+
+  // REL-231-A W4 (AC-W4-2): `council` снова живая команда (`council record`) —
+  // removed-хинты нет. init нужен: после выбора команды платится схемо-гуард.
+  it('wolf council tally -> unknown subcommand, no removed hint', () => {
+    const dir = tmpProject();
+    dirs.push(dir);
+    expect(runCli(['init'], dir).status).toBe(0);
+    const res = runCli(['council', 'tally'], dir);
+    expect(res.status).not.toBe(0);
+    expect(res.stderr).toContain("unknown command 'tally'");
+    expect(res.stderr).not.toContain('was removed in wolf 2.13');
+  });
+
+  it('wolf council record --help is live', () => {
+    const dir = tmpProject();
+    dirs.push(dir);
+    expect(runCli(['init'], dir).status).toBe(0);
+    const res = runCli(['council', 'record', '--help'], dir);
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain('--input');
   });
 });

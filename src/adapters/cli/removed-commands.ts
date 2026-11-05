@@ -13,7 +13,6 @@ export const REMOVED_COMMAND_HINTS: Readonly<Record<string, string>> = {
   'memory-stage':
     'stage events are written automatically by memory commands (call/brief/get/search); no manual staging.',
   learn: 'the self-learning pipeline was removed by owner decision; write lessons with `add --type lesson`.',
-  council: 'council records are read-only history; new notes go via `add --type note`.',
   checkpoint: 'use `session wrap-up` for session history instead.',
   'info-request': 'type "info-request" was absorbed by note — use `add --type note --facet context`.',
   blocker:

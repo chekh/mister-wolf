@@ -1,4 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/server';
+import { z } from 'zod';
 import {
   EmptyInputSchema,
   MemorySearchInputSchema,
@@ -12,6 +13,7 @@ import { addMemoryObject } from '../../app/use-cases/add-memory-object.js';
 import { getMemoryObject } from '../../app/use-cases/get-memory-object.js';
 import { listMemoryObjects } from '../../app/use-cases/list-memory-objects.js';
 import { transitionMemoryObject } from '../../app/use-cases/transition-memory-object.js';
+import { recordCouncil, type CouncilRecordEnvelope } from '../../app/use-cases/record-council.js';
 import { scanProjectCached } from '../../app/use-cases/scan-project.js';
 import { openScanSnapshotCache } from '../fs/scan-snapshot-cache.js';
 import { projectTreeSignature } from '../fs/heuristic-project-scanner.js';
@@ -24,10 +26,17 @@ import { getWolfVersion } from '../version.js';
 import { resolveSessionId } from '../../domain/actor.js';
 
 /**
- * Каталог MCP-тулов после диеты 2.13 (спека §6.2, §7 C11): ровно 7, порог ≤ 12.
+ * Каталог MCP-тулов: диета 2.13 (спека §6.2, §7 C11) + REL-231-A P04/W4
+ * (AC-A3) council_record = 8 survivors, порог ≤ 12.
  * `ping` — отдельный health-check в mcp-server.ts, в каталог не входит.
  */
-export const MCP_TOOL_NAMES = ['search', 'get', 'list', 'add', 'transition', 'brief', 'recap'] as const;
+export const MCP_TOOL_NAMES = ['search', 'get', 'list', 'add', 'transition', 'brief', 'recap', 'council_record'] as const;
+
+/** REL-231-A W4 (D-W4-2): envelope приходит объектом в поле `input` (без чтения
+ * путей ФС из MCP — путь файлу остаётся CLI-механикой); строгая валидация
+ * envelope — в домене (record-council.ts parseEnvelope), схема тут только
+ * требует presence — детальную форму не дублируем (AC-W4-6). */
+const CouncilRecordInputSchema = z.object({ input: z.object({}) });
 
 /** Подсказки для тулов, удалённых в 2.13 (механика — зеркало CLI removed-commands.ts). */
 const REMOVED_TOOL_HINTS: Readonly<Record<string, string>> = {
@@ -354,6 +363,41 @@ export function registerMemoryTools(
       const args = input as { id: string; status: string };
       await transitionMemoryObject(deps, args.id, args.status as never, 'agent:mcp');
       return { content: [{ type: 'text' as const, text: `Transitioned ${args.id} to ${args.status}.` }] };
+    }
+  );
+
+  // REL-231-A P04/W4 (AC-A3, D-W4-2): council envelope — объект в поле `input`;
+  // валидацию и запись делает домен recordCouncil (та же операция, что CLI
+  // `wolf council record`); атрибуция — штатный MCP-паттерн agent:mcp (transition).
+  register(
+    'council_record',
+    {
+      description: 'Record a council envelope (question|opinion|synthesis) as a memory note with relations',
+      inputSchema: CouncilRecordInputSchema,
+    },
+    async (input: unknown) => {
+      const args = input as { input: unknown };
+      const result = await recordCouncil(
+        {
+          store: deps.store,
+          log: deps.log,
+          clock: deps.clock,
+          idGen: deps.idGen,
+          index: deps.index,
+          lock: deps.lock,
+          relations: deps.relations,
+        },
+        { envelope: args.input as CouncilRecordEnvelope, createdBy: 'agent:mcp' }
+      );
+      const state = result.recovered ? 'Recovered' : result.created ? 'Recorded' : 'Already present';
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `${state} council record ${result.memoryId} (created=${result.created}, recovered=${result.recovered})`,
+          },
+        ],
+      };
     }
   );
 

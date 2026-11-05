@@ -164,11 +164,23 @@ describe('buildMcpServer', () => {
 
   // P223 (спека 2.13 §6.2/§7 C11): диета — create-семейство, thinking×4,
   // scan, insights, analytics не регистрируются; write-back идёт через add/transition.
-  it('registers exactly the 2.13 catalog and none of the removed tools', () => {
+  // 2.31.0 (REL-231-A P04): каталог расширен council_record (8 ≤ 12) — одна
+  // доменная операция recordCouncil поверх note envelope (CLI: council record).
+  it('registers exactly the catalog (2.13 diet + council_record) and none of the removed tools', () => {
     const server = buildMcpServer(dir);
     const tools = (server as unknown as { _registeredTools: Record<string, unknown> })._registeredTools;
     const names = Object.keys(tools).sort();
-    expect(names).toEqual(['add', 'brief', 'get', 'list', 'ping', 'recap', 'search', 'transition']);
+    expect(names).toEqual([
+      'add',
+      'brief',
+      'council_record',
+      'get',
+      'list',
+      'ping',
+      'recap',
+      'search',
+      'transition',
+    ]);
     const removed = [
       'create_thread',
       'create_info_request',

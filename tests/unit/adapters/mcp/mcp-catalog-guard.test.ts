@@ -15,11 +15,21 @@ function docToolNames(): string[] {
   return [...new Set(names)].sort();
 }
 
-// P223 (спека 2.13 §6.2/§7 C11): каталог MCP после диеты = 7 тулов ≤ 12;
-// ping — health-check поверх каталога, регистрируется в mcp-server.ts.
+// P223 (спека 2.13 §6.2/§7 C11) + REL-231-A W4: каталог MCP = 8 тулов ≤ 12
+// (диета 2.13 + council_record); ping — health-check поверх каталога,
+// регистрируется в mcp-server.ts.
 describe('MCP catalog guard: registry == docs/site/guide/mcp.md', () => {
-  it('catalog is exactly the 7 diet survivors, <= 12', () => {
-    expect([...MCP_TOOL_NAMES].sort()).toEqual(['add', 'brief', 'get', 'list', 'recap', 'search', 'transition']);
+  it('catalog is exactly the 8 survivors (diet 7 + council_record), <= 12', () => {
+    expect([...MCP_TOOL_NAMES].sort()).toEqual([
+      'add',
+      'brief',
+      'council_record',
+      'get',
+      'list',
+      'recap',
+      'search',
+      'transition',
+    ]);
     expect(MCP_TOOL_NAMES.length).toBeLessThanOrEqual(12);
   });
 

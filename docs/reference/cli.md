@@ -1331,6 +1331,35 @@ Options:
   -h, --help  display help for command
 ```
 
+### wolf council (hidden)
+
+```text
+Usage: wolf council [options] [command]
+
+Manage council records (question/opinion/synthesis envelopes)
+
+Options:
+  -h, --help        display help for command
+
+Commands:
+  record [options]  Record a council envelope (question|opinion|synthesis) from
+                    a JSON file
+  help [command]    display help for command
+```
+
+#### wolf council record
+
+```text
+Usage: wolf council record [options]
+
+Record a council envelope (question|opinion|synthesis) from a JSON file
+
+Options:
+  --input <json-file>   Path to a JSON file with the council envelope
+  --created-by <actor>  Creator actor (default: env WOLF_ACTOR, else user:cli)
+  -h, --help            display help for command
+```
+
 ### wolf aggregate (hidden)
 
 ```text
