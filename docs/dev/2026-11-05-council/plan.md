@@ -14,19 +14,45 @@ baseline: 174e5102f85a515a75c47a670b99b507811bb688
 Автор этого пакета не заявляет принятую реализацию. База package 2.30.0,
 174e5102f85a515a75c47a670b99b507811bb688; целевой кандидат 2.31.0.
 
-- [ ] P01: независимо проверить quartet и candidate; уточнить технические ADR,
+- [x] P01: независимо проверить quartet и candidate; уточнить технические ADR,
       занятость версии и актуальность main — design §ADR/источники, AGENTS.md:1.
-- [ ] P02: реализовать экспертную роль и реально ограниченные права/изоляцию
+      Сделано → 65a0d438 (кандидат применён чисто: 17 файлов, 284+/85-, sha256
+      7e87e6ce…f10f6; тега v2.31* нет, npm view 404; main=origin/main=174e5102;
+      ADR-сверка по коду: note+facet/extra-deny/relations/MCP-каталог≤12 — см.
+      wolf-заметку mem_20261105_rel_231_a_p01_…2d0430).
+- [x] P02: реализовать экспертную роль и реально ограниченные права/изоляцию
       OpenCode, прототип S04/S06 до широкой интеграции — design §1–2;
       templates/base/agents/worker-reviewer.md:1 как сравнение, не наследовать его обязанности.
-- [ ] P03: интегрировать wolf-council, нанимателей и маршруты, expert/synthesis
+      Сделано → 364f0b7d (профиль прав worker-expert мигрирован на канонический
+      v2-массив permissions, live-доказанный W2a на v2.2.5; S04 доказан: разрешённое
+      чтение проходит, read вне scope/write/shell/subagent/webfetch/MCP реально
+      отклоняются/скрыты; S06: конфиг-изоляция доказана, symlink-обход закрыт
+      процедурой; поведенческий S06-прогон A/B заблокирован деградацией провайдера
+      роутера — остаток срезу B; см. mem_20261105_rel_231_a_w2b_…_cc4d2a).
+- [x] P03: интегрировать wolf-council, нанимателей и маршруты, expert/synthesis
       профили языка — design §1/3; templates/base/skills/using-skills/references/contracts.md:32.
-- [ ] P04: реализовать валидируемый note write-path и CLI/MCP, idempotency/recovery
+      Сделано → 65a0d438 (кандидат: профили/маршруты/ссылки) + 364f0b7d (синхронизация
+      SKILL.md с фактическими CLI/MCP-формами; таблица соответствия методика↔реализация
+      в отчёте среза A; расхождений канона с реализацией нет).
+- [x] P04: реализовать валидируемый note write-path и CLI/MCP, idempotency/recovery
       — design §4; src/app/use-cases/add-memory-object.ts:91, src/domain/memory-types.ts:256.
-- [ ] P05: общий reader/normalizer и mixed council analytics — design §5;
+      Сделано → af799f7d (RED: unit 31 + integration 6) → 60ba0fb7 (record-council.ts:
+      строгая схема, canonical JSON, sha256 question_revision, идемпотентность
+      request_key, recovery без дублей, MemoryLock; 47/47 GREEN, tsc clean) →
+      a97006ef (CLI council record --input + MCP council_record одной операцией;
+      каталог MCP 8≤12; guard'ы/справочники синхронизированы; адаптер-тесты 6/6).
+- [x] P05: общий reader/normalizer и mixed council analytics — design §5;
       src/app/use-cases/build-analytics.ts:1845; существующие tests/integration/build-councils-v2.test.ts:1.
-- [ ] P06: пакет ревью/проверка findings/scoped re-review — design §6;
+      Сделано → cf2d8644 (council-normalizer.ts: legacy/alias/envelope, дедуп по id,
+      повреждённое тело не крашит; голоса только при реальном значении, legacy
+      TIMEOUT-fallback сохранён; envelope_participation; тест S12 4→10 GREEN;
+      memory-types/v2-схемы не тронуты).
+- [x] P06: пакет ревью/проверка findings/scoped re-review — design §6;
       templates/base/skills/wolf-review/SKILL.md:58. Сохранить гейты и журнал.
+      Сделано → 65a0d438 (кандидат: ADDRESSED/NOT_ADDRESSED/LIMIT по каждому finding,
+      новые дефекты исправления, scoped re-review, соседняя находка → L1; 3 раунда
+      ревью документов сохранены, не смешаны с лимитом уточнения консилиума;
+      подтверждено сверкой W6 при синхронизации 364f0b7d).
 - [ ] P07: полный distribution: agent registry, seed, injection, fresh/upgrade,
       model/protect/keep, EN/RU и синхронизация roadmap C без изменения O1/U1 — design §6;
       src/app/use-cases/init-project.ts:44, scripts/generate-update-map.mjs:1.
