@@ -32,7 +32,7 @@ function sendAndReceive(proc: ChildProcess, message: unknown): Promise<unknown> 
   });
 }
 
-describe('MCP stdio: 2.13 catalog diet (7 tools + ping)', () => {
+describe('MCP stdio: catalog diet (2.13 survivors + council_record, 8 tools + ping)', () => {
   let cwd: string;
   let child: ChildProcess;
   beforeAll(() => {
@@ -64,7 +64,7 @@ describe('MCP stdio: 2.13 catalog diet (7 tools + ping)', () => {
     })) as { result?: { tools?: { name: string }[] } };
 
     const names = (tools.result?.tools ?? []).map((t) => t.name).sort();
-    expect(names).toEqual(['add', 'brief', 'get', 'list', 'ping', 'recap', 'search', 'transition']);
+    expect(names).toEqual(['add', 'brief', 'council_record', 'get', 'list', 'ping', 'recap', 'search', 'transition']);
   });
 
   it('tools/call of a removed tool (create_thread) returns an error hinting add/transition (P223)', async () => {
