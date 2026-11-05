@@ -73,11 +73,38 @@ worker-expert с предметными лицами и интегрирует �
 
 ## Сохранение и завершение
 
-L1 сохраняет вопрос, существенные позиции и синтез поддержанной операцией записи
-текущей версии. Проверяй доступность API по реальному help/schema, не выдумывай
-команды или старые council-типы. Если поддержанного write-path нет, сообщи
-неполноту поставки; не обходи её прямой правкой памяти. Временный итог сообщением
+L1 сохраняет вопрос, существенные позиции и синтез поддержанной операцией
+записи. Точная форма текущего write-path: CLI `wolf council record --input
+<json-file>` (необязательный `--created-by <actor>`; stdout — JSON
+`{memory_id, created, recovered}`) или MCP `council_record({input:
+<envelope-объект>})`; обе обёртки дают одну операцию с общей валидацией.
+Проверяй доступность по реальному `--help`/schema; не выдумывай команды или
+старые council-типы. Если поддержанного write-path нет, сообщи неполноту
+поставки; не обходи её прямой правкой памяти. Временный итог сообщением
 не выдавай за сохранённый и восстанавливаемый совет.
+
+Envelope (`schema_version: 1`) несёт `record_kind` (question|opinion|synthesis),
+`request_key`, `task_id`; opinion и synthesis дополнительно `question_id` и
+`question_revision`. Payload-поля по kind:
+
+- question: `question`, `decision_owner`, `sources?` (пары `ref`+`revision`),
+  `lenses?`, `budget?`, `constraints?`;
+- opinion: `expert_id`, `round`, `claims` (непустой), `evidence?` (`memory_id`
+  или `path` с контекстом `quote`/`note`), `assumptions?`, `confidence`
+  (low|medium|high), `risks?`, `failure_conditions?`, `counterexamples?`,
+  `recommendation?`;
+- synthesis: `outcome` (ready|insufficient_evidence), `opinion_ids`,
+  `accepted_claims`, `rejected_alternatives?` (пары `claim`+`reason`),
+  `unresolved_dissent`, `required_validation`, `confidence`,
+  `actual_participants`, `missing_participants?`, `cost_note?`,
+  `isolation_limits?`.
+
+Запись хранится как note (facet `context`) с тегом `wolf:council-record:v1` и
+canonical JSON envelope в body. Запись идемпотентна по `request_key`;
+`question_revision` — sha256 canonical JSON вопроса, поэтому изменение вопроса
+инвалидирует ссылки мнений/синтеза; opinion получает ребро `answers` к
+question, synthesis — рёбра `based_on` к question и каждому opinion из
+`opinion_ids`.
 
 Свяжи записи с question/revision и TASK; рекомендацию — с принятым решением.
 Не превращай промежуточные позиции в lesson/complaint или активное правило.

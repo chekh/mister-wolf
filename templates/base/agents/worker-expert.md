@@ -2,8 +2,16 @@
 description: 'Worker-expert (L2): ограниченная профессиональная позиция по вопросу; без изменений, исследований и вердикта приёмки.'
 mode: all
 model: { { model.primary } }
-permission:
-  '*': deny
+permissions:
+  - action: '*'
+    resource: '*'
+    effect: 'deny'
+  - action: 'read'
+    resource: 'packet/*'
+    effect: 'allow'
+  - action: 'external_directory'
+    resource: '*'
+    effect: 'deny'
 ---
 
 # Worker Expert
