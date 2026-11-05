@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# wolf:rendered base=workflow-helper.py set=2.28.0
+# wolf:rendered base=workflow-helper.py set=2.29.0
 """Local technical operations for an assigned task; never dispatches or accepts a task."""
 import argparse
 import hashlib

@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=git-collaboration-policy-v1.1.md set=2.28.0 -->
+<!-- wolf:rendered base=git-collaboration-policy-v1.1.md set=2.29.0 -->
 # Регламент совместной работы с Git
 
 **Версия документа:** 1.1  

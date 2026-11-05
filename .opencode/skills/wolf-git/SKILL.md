@@ -2,7 +2,7 @@
 name: wolf-git
 description: "Применять на Git-этапах задачи: вход/возобновление, ветка или worktree, checkpoint, передача, завершение и уборка; также при отказе git, требующем force, и при неподтверждённой актуальности."
 ---
-<!-- wolf:rendered base=SKILL.md set=2.28.0 -->
+<!-- wolf:rendered base=SKILL.md set=2.29.0 -->
 
 # Git-этапы задачи
 

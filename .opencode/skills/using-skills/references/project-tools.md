@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=project-tools.md set=2.28.0 -->
+<!-- wolf:rendered base=project-tools.md set=2.29.0 -->
 # Средства проекта и карточки Wolf
 
 Загружает L1 при создании/сохранении/обновлении инструмента; L2 получает

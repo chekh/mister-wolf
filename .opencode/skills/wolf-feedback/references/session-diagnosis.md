@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=session-diagnosis.md set=2.28.0 -->
+<!-- wolf:rendered base=session-diagnosis.md set=2.29.0 -->
 # Назначенный разбор эпизода или сессии
 
 L1 задаёт вопрос, границы, источники, критерий ответа и конечный бюджет L2.
