@@ -23,6 +23,8 @@ wolf complain --about executor-lead --rule "…" --evidence "…" --proposal "�
 
 По умолчанию kind определяет эвристика по `--about` (agent-id или `skill:*` → behavioral, mem-id → technical); `--kind technical|behavioral` переопределяет — владелец всегда прав. Жалобы, записанные до 2.14, kind не имеют, в выводе — «—».
 
+С 2.29.0 у жалобы есть и **предмет**: что именно не так. Предмет LANGUAGE покрывает дефекты самого внутреннего языка агентов (его термины и формы определены в [`using-skills` reference `agent-language.md`](https://github.com/chekh/mister-wolf/blob/main/templates/base/skills/using-skills/references/agent-language.md)): неоднозначное определение термина, нужное сообщение, которое нельзя выразить существующими слотами, или форма, требующая лишнего в простой ситуации. Маркер пишется в поле `rule` — `LANGUAGE/ambiguous-definition`, `LANGUAGE/insufficient-form`, `LANGUAGE/excessive-requirement`. LANGUAGE — предмет, не новый kind и не отдельный маршрут: kind, триаж и мутация Стюардом работают как для обычных жалоб, а подача требует конкретной помехи работе (переспрос, неверное действие, лишний шаг), а не каждого формального отклонения от формы.
+
 ## Зафиксировать исход
 
 Resolved-жалоба обязана оставить след — **что из неё вышло**. Исполнитель, закрывающий жалобу, записывает relation-исход сразу после `resolved`/`completed`:

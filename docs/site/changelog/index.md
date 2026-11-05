@@ -8,6 +8,28 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.29.0] - 2026-11-05
+
+### Added — a written specification of the internal agent language, and a LANGUAGE subject for complaints
+
+The internal agent language — TASK, RESULT, EVIDENCE, verdicts and the rules for using these terms — runs every handoff between agents, but its terms lived scattered across contract texts, so retellings could drift and force re-asks. This release gives that language one static reference and a way to complain when a term or a form itself is the problem. No runtime change: the reference only writes down the constructs already in force.
+
+- **`using-skills/references/agent-language.md` — one specification of the internal language.** It defines the shared terms (TASK, RESULT, DONE ≠ ACCEPTED, EVIDENCE, VERDICT, COMPLAINT and the rest) and the usage rules R1–R6: one concept — one name; no anaphora — links by identifier with version; full delivery with the skills; plain language for humans with terms spelled out at first use; and an escape statement for situations a form does not cover. Message slots stay normative in `contracts.md` — the reference links to it and duplicates nothing, and it introduces no new mandatory fields.
+- **Humans keep ordinary language.** The specification governs only statements that change work state — assignments, reports, verdicts, handoffs, complaints, proposals, status transitions. Discussions and explanations remain plain text.
+- **Complaints gain a LANGUAGE subject (`wolf-feedback/complaints.md`).** When the defect is in a term or a form itself — an ambiguous definition, a needed message the existing slots cannot express, or a form demanding surplus for a simple situation — the complaint's `rule` field carries the marker `LANGUAGE/ambiguous-definition`, `LANGUAGE/insufficient-form` or `LANGUAGE/excessive-requirement`. LANGUAGE is a subject, not a new kind and not a new route: kind, submission, triage and the Steward mutation work exactly as for the existing rule complaints, and a filing needs a concrete work impediment (a re-ask, a wrong action, a wasted step), not every formal deviation from a form.
+- **`contracts.md` gains a cross-link** to the new reference, so the normative slots and the language specification point at each other.
+- **Base set composition: 46 → 47 delivered skill files** — one reference file inside the existing `using-skills` skill; no new skills, agents, commands or plugins.
+
+### What this release does not do
+
+- **No runtime change, no measured effect.** `src/**` is untouched: no commands, flags, schema or migrations. The value of the written specification — fewer re-asks, less meaning drift between agents — is at the observation stage and was not measured, so nothing here claims that benefit.
+- **The language is fixed during observation; mandatory slots do not grow.** Until the observation stage concludes, the terms and rules are not extended, and a LANGUAGE complaint is evidence for the owner's decision, not a self-service language change.
+
+### Upgrade notes
+
+- **`npm install -g mister-wolf@2.29.0`** (or `wolf upgrade`) is enough. The reference arrives in the project through the regular projects pass of the update; nothing to migrate, nothing to reconfigure.
+- **`update-map.json` is re-stamped to 2.29.0 against 2.28.0**: 1 new file target, 2 changed, 55 unchanged. Delivered skill files: 46 → 47 (the new `agent-language.md` reference inside `using-skills`); the changed targets are the cross-linked `contracts.md` and the LANGUAGE section of `complaints.md`. The six versioned agent playbooks ("faces") are unchanged.
+
 ## [2.28.0] - 2026-11-04
 
 ### Added — three engineering skills for the delivery route

@@ -23,6 +23,8 @@ Complaints have a **kind**, recorded in the object:
 
 The kind defaults to a heuristic by `--about` (agent id or `skill:*` → behavioral, mem-id → technical); `--kind technical|behavioral` overrides it — the owner is always right. Complaints recorded before 2.14 have no kind and display `—`.
 
+Since 2.29.0 a complaint can also carry a **subject**: what exactly is wrong. The LANGUAGE subject covers defects of the internal agent language itself (its terms and forms are specified in the [`using-skills` reference `agent-language.md`](https://github.com/chekh/mister-wolf/blob/main/templates/base/skills/using-skills/references/agent-language.md)): an ambiguous definition, a needed message the existing slots cannot express, or a form demanding surplus for a simple situation. The marker goes into the `rule` field — `LANGUAGE/ambiguous-definition`, `LANGUAGE/insufficient-form`, `LANGUAGE/excessive-requirement`. LANGUAGE is a subject, not a new kind and not a separate route: kind, triage and the Steward mutation work exactly as for rule complaints, and a filing needs a concrete work impediment (a re-ask, a wrong action, a wasted step) rather than every formal deviation from a form.
+
 ## Record the outcome
 
 A resolved complaint must leave a trace of **what came of it**. The closing executor records an outcome relation right after `resolved`/`completed`:

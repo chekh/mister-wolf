@@ -119,6 +119,12 @@ apply a skill and its result. Assigned skills can be loaded directly; L2 does
 not browse the catalog. L1 composes an assistant from an L2 instance, its face
 and skills; programmatic tools support its mechanical work.
 
+### The internal agent language reference
+
+Since 2.29.0 using-skills ships `references/agent-language.md` — a static specification of the internal agent language: the shared terms (TASK, RESULT, DONE ≠ ACCEPTED, EVIDENCE, VERDICT, COMPLAINT and the rest), the usage rules R1–R6, and an escape statement for situations a form does not cover. The problem it addresses: this language runs every handoff between agents, and retellings of terms scattered across contract texts drift and force re-asks — one written reference gives every agent the same words. Message slots stay normative in `contracts.md`; the specification links there and adds no new mandatory fields.
+
+Status: observation stage. The specification writes down existing constructs and changes no runtime; whether it actually reduces re-asks and meaning drift has not been measured, and the language stays fixed until the stage concludes. If a term or a form itself is the problem, complaints now carry a LANGUAGE subject — `LANGUAGE/ambiguous-definition`, `LANGUAGE/insufficient-form`, `LANGUAGE/excessive-requirement` (see [The Steward](/guide/feedback)). Humans keep ordinary language in all cases.
+
 Three engineering skills ride the existing route instead of adding a stage to it: the goal reaches L1, `wolf-design` applies the software-design method where boundaries and contracts are the open question, the existing plan and test-plan follow, the implementer receives `wolf-code-craft`, and the existing independent review and project checks stay where they are.
 
 A researcher answers an explicitly assigned architectural question with a comparison of variants and a recommendation — the architecture itself is approved by the responsible level. Simplification (`wolf-code-simplify`) is assigned separately when a named complexity needs its own analysis; it is not an automatic extra round, and the implementer removes the surplus complexity inside the current mandate. Documents and operations without a software implementation do not get the engineering set assigned automatically.
