@@ -53,13 +53,17 @@ baseline: 174e5102f85a515a75c47a670b99b507811bb688
       новые дефекты исправления, scoped re-review, соседняя находка → L1; 3 раунда
       ревью документов сохранены, не смешаны с лимитом уточнения консилиума;
       подтверждено сверкой W6 при синхронизации 364f0b7d).
-- [ ] P07: полный distribution: agent registry, seed, injection, fresh/upgrade,
+- [x] P07: полный distribution: agent registry, seed, injection, fresh/upgrade,
       model/protect/keep, EN/RU и синхронизация roadmap C без изменения O1/U1 — design §6;
       src/app/use-cases/init-project.ts:44, scripts/generate-update-map.mjs:1.
+      Сделано → 945050a0 (registry/seed/injection/update-map/doctor-fix/EN-RU
+      доставка; smoke init/face/doctor).
 - [ ] P08: выполнить unit/integration/CLI-MCP/e2e проверки и живые сценарии,
       независимое итоговое ревью — test-plan; unknown не превращать в pass.
-- [ ] P09: release metadata, update-map по фактическому предыдущему тегу,
+- [x] P09: release metadata, update-map по фактическому предыдущему тегу,
       staging rollout/rollback, штатные gates, затем выпуск в действующих полномочиях.
+      Сделано → 808c0c03 (npm version 2.31.0 без тега; update-map --prev 2.30.0
+      --verify; CHANGELOG/зеркала — этой волной W4; финальный SHA в отчёте поставки).
 
 Зависимости: P02 проверяет реализуемость обещаний до P07; P03 и P04 независимы
 после P01; P05 после контракта P04; P06 независим в согласованном scope; P07 после
@@ -174,3 +178,49 @@ CLI/MCP write-path, mixed analytics, staging init/upgrade/rollback и публи
   `permission:` прочих worker-агентов на v2 (worker-reviewer и др.).
 - Поставка C: публикация (merge --no-ff, тег v2.31.0 на merge-коммите, push,
   npm publish, GH Release, сайт).
+
+### Результаты среза B (REL-231-B, 2026-11-05/06)
+
+Коммиты среза: 945050a0 (P07: registry/seed/injection/update-map/doctor-fix/EN-RU
+доставка) → 808c0c03 (P09: npm version 2.31.0 без тега, update-map --prev 2.30.0
+--verify). CHANGELOG/зеркала/сайт/roadmap/ledger — волна W4 этого же среза; финальный
+SHA фиксируется в отчёте поставки.
+
+Проверки:
+
+- Структурные: 94/94 целевых тестов W1.
+- Live: S04/S06/S16 passed (W2); staging S15/S18 passed (W3).
+- Кейс 1 — partial: позиции и синтез получены, независимость RUN A нарушена
+  (эксперт читал оба пакета); причина — конфиг-фикстуры воркера, не продукт.
+- Кейс 2 — независимое ревью Wave W6 (фиксируется финальным коммитом).
+- Кейс 3 — passed: `insufficient_evidence` получен честно.
+- Гейты: см. финальный отчёт.
+
+Ограничения среза: pin/variant не проверялись на живых объектах; граф-рёбра council
+не верифицированы напрямую; debug-vs-run расхождение было конфиг-артефактом воркера
+(не продукт); провайдер-зависимость живых проб снята конфигом 9router.
+
+## Документация и сайт
+
+Страницы сайта (EN + RU-зеркала):
+
+| Страница                                                      | Назначение                                                                                                                           |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `docs/site/guide/council.md`, `docs/site/ru/guide/council.md` | новая страница «Экспертный консилиум»: когда применять, как устроен, роль `worker-expert` и права, честный fallback, запись, границы |
+| `docs/site/guide/cli/thinking-council.md`, RU-зеркало         | раздел `wolf council record` (фактические опции `--input`/`--created-by`)                                                            |
+| `docs/site/guide/mcp.md`                                      | `council_record` в каталоге из 8 тулов (срез A)                                                                                      |
+| `docs/site/guide/base-set.md`, RU-зеркало                     | агенты 6 → 7: строка `worker-expert`, seed-лицо `worker-expert-playbook`                                                             |
+| `docs/site/guide/capabilities.md`, RU-зеркало                 | снято устаревшее «исполняемый консилиум — future work», ссылка на гид                                                                |
+| `docs/site/.vitepress/config.ts`                              | sidebar EN+RU: «Expert Council» / «Экспертный консилиум» в CONCEPTS/КОНЦЕПЦИИ                                                        |
+| `docs/reference/cli.md`                                       | перегенерирован `scripts/generate-cli-reference.mjs` (не вручную)                                                                    |
+| `README.md` + `README.ru.md`                                  | согласованное упоминание консилиума, снято устаревшее «council runtime не гарантируется»                                             |
+| `CHANGELOG.md`                                                | запись [2.31.0]; зеркала сайта обновляет `sync-changelog.mjs` в docs:build                                                           |
+| `docs/dev/roadmap/roadmap-v4.md` + ledger                     | раздел C — статус «реализовано в ветке»; запись волны (O1/U1 не тронуты)                                                             |
+
+Релизный чек-лист документации (mem_20260929):
+
+- Сделано в ветке: страницы EN/RU и зеркала, sidebar config, base-set EN/RU,
+  CLI-раздел EN/RU, README-пара, CHANGELOG, roadmap C + ledger, capabilities EN/RU,
+  CLI-справочник генератором; prettier / docs:check / docs:build — см. отчёт W4.
+- Остаётся срезу C: merge --no-ff, тег v2.31.0 на merge-коммите, push, npm publish,
+  GitHub Release, деплой сайта, проверка changelog-страницы ПОСЛЕ публикации, уборка.

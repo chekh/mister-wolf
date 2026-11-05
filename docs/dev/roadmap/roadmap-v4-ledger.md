@@ -274,6 +274,10 @@ revision и возврат предыдущей версии инструкци�
 
 **Откат.** Опубликованный `2.28.0` не переписывается; дефект релиза — штатный откат коммитов с новым patch-номером.
 
+### Поручение REL-2.31.0 — консилиум: роль, методика, запись (в ветке, публикация — срез C)
+
+Срезы REL-231-A/B по roadmap v4 §C (C-01). Ветка `feat/council-2.31.0-release`, worktree `.worktrees/council-2.31.0`; пакет `docs/dev/2026-11-05-council/` (FULL). Срез A (2026-11-05, HEAD 5ea41863): роль `worker-expert` (канонический v2-массив permissions, live-доказанный W2a на v2.2.5: чтение в packet работает, read вне scope/write/shell/subagent/webfetch реально отклоняются, external_directory даёт точный отказ), методика `wolf-council`, write-path записи (`wolf council record` / MCP `council_record`, каталог 8≤12, идемпотентность `request_key`), mixed-аналитика (legacy/alias/envelope, отсутствие vote ≠ TIMEOUT, `envelope_participation`), doctor-fix (mode — валидное v2-поле). Срез B (2026-11-05/06, registry/seed/injection — 945050a0, npm version 2.31.0 без тега — 808c0c03): полный distribution, update-map `--prev 2.30.0 --verify`, документация и сайт (гид «Экспертный консилиум» EN/RU, sidebar, base-set 6 → 7 агентов, CLI-раздел `wolf council`, README-пара, CHANGELOG, roadmap C + ledger), live S04/S06/S16 passed (W2), staging S15/S18 passed (W3), кейс 1 partial (позиции и синтез получены, независимость RUN A нарушена — эксперт читал оба пакета; причина — конфиг-фикстуры воркера, не продукт), кейс 2 — независимое ревью Wave W6, кейс 3 passed (`insufficient_evidence` честно). Базовый набор: 6 → 7 агентов, seed-лицо `worker-expert-playbook`. До среза C остаются: полный прогон гейтов (check/test:run/e2e), merge `--no-ff`, тег `v2.31.0` на merge-коммите, push, npm publish, GitHub Release, деплой сайта, проверка changelog-страницы после публикации, уборка. Опубликованного 2.31.0 нет; откат до публикации — ветка, после — штатный откат merge-коммита.
+
 ## Что снято с очереди (история)
 
 - Исторические слоты волн 2.16–2.20 не возвращаются. Unified update и Upgrade UX уже занимают свои версии; async learning и архивный бриф живут в F/backlog.

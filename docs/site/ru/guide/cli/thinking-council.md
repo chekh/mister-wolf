@@ -25,3 +25,17 @@ wolf think start --goal "Выбрать стратегию кэша"
 wolf think add --sequence seq_001 --type hypothesis --text "SQLite-кэш снимет боль"
 wolf think conclude --sequence seq_001 --title "SQLite-кэш" --body "FTS и один файл"
 ```
+
+## `wolf council`
+
+Конверты консилиума для методики [«Экспертный консилиум»](/ru/guide/council): вопрос, мнения экспертов, синтез — сохраняются как memory-notes со связями.
+
+### `wolf council record`
+
+Записать конверт консилиума из JSON-файла. Опции: `--input <json-file>` (путь к файлу конверта), `--created-by <actor>` (по умолчанию env `WOLF_ACTOR`, иначе `user:cli`).
+
+Запись валидирует строгую v2-схему конверта, хранит canonical JSON и идемпотентна по `request_key`: повтор не создаёт дублей.
+
+```bash
+wolf council record --input council.json
+```

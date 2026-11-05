@@ -31,7 +31,7 @@ The hierarchy includes instructions and harness permissions. Do not treat every 
 
 ## Direction and limits
 
-The methods support research, documents, reports and software work. The current repository-oriented package is not a ready integration for every profession. A dedicated user console, executable Council and external durable execution integration remain future work. Memory aging and revalidation designs are not guarantees of automatic knowledge freshness.
+The methods support research, documents, reports and software work. The current repository-oriented package is not a ready integration for every profession. The expert council is available today as a method with a durable record path (see [Expert Council](/guide/council)); a dedicated user console and external durable execution integration remain future work. Memory aging and revalidation designs are not guarantees of automatic knowledge freshness.
 
 Local-first means project state is kept in local files; selected context can still leave the machine through your model provider and configured tools. [Read isolation](/guide/read-isolation) is a delivery-scoping contract, not general access control.
 

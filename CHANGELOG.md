@@ -4,6 +4,34 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.31.0] - 2026-11-06
+
+### Added — the expert council: a restricted expert role, the wolf-council method and a durable record path
+
+Some calls do not yield to the normal process: justified variants conflict, a cause stays unclear after reasonable diagnosis, an architectural choice is expensive to reverse, or a worker and a reviewer hold a substantive dispute. This release ships the expert council as a method with real boundaries: a new worker role whose access is actually restricted, the council procedure for L1, a durable write path for the record, and analytics that reads the whole history. Convocation remains a decision of the responsible level — the method advises, it does not decide.
+
+- **`worker-expert` — a new L2 role with a bounded professional position (base set: 6 → 7 agents).** The expert holds a narrow professional position on one question and returns it as claims, evidence, assumptions, confidence and risks, with `LIMITS` where nothing reliable can be said. It does not accept results, does not write memory and does not delegate. By default the expert is packet-only: it answers from the delivered packet without tools. An optional tool-enabled profile grants exactly one read allowlist (`packet/*`) and denies everything else — writes, shell, subagents, web fetch, reads outside the packet; an out-of-scope `external_directory` is rejected outright. Before a tool-enabled run the packet passes a symlink audit, so the allowlist cannot be escaped through a link. The role arrives with `wolf init`/`wolf upgrade`, together with the seed face `worker-expert-playbook`.
+- **`wolf-council` — the council method for L1.** Two or more experts answer the same question independently (the first round runs without other experts' opinions); the lead synthesizes accepted claims, rejected alternatives, unresolved dissent and the validation still required; the decision stays with the responsible level — a recommendation is not a decision. One first round, at most one clarifying round; `insufficient_evidence` is an allowed outcome, not a failure.
+- **A durable record path: `wolf council record --input <file>` (CLI) and `council_record` (MCP) — one operation.** The write path validates the strict v2 envelope schema (question / opinions / synthesis), stores canonical JSON, is idempotent by `request_key` (a retry does not duplicate the record) and restores the relations between the question, the opinions and the synthesis. The MCP tool catalog is now 8 tools (plus the `ping` health check).
+- **Mixed council analytics.** The analytics reader accepts legacy councils, alias and v2 envelope formats as one stream; a missing vote is no longer reported as a timeout, and `envelope_participation` shows how much of a recorded council actually participated.
+- **Honest degradation.** When the platform cannot guarantee the tool-enabled restrictions, the expert works packet-only and the degradation is stated explicitly; a tool-enabled acceptance is never claimed without evidence.
+- **EN/RU documentation.** The site gains an Expert Council guide page (EN and RU), a `wolf council` section in the CLI guide, the updated base-set page (7 agents) and a synchronized README pair.
+
+### Fixed
+
+- **Doctor no longer reports a false `mixes v2 and v1` for an agent with `mode` plus a v2 `permissions` array** — `mode` is a valid v2 agent field.
+
+### What this release does not do
+
+- **Convocation is manual.** Nothing convenes a council automatically: the responsible level decides, and the method does not replace tests, git gates, independent acceptance or the acting authority chain.
+- **No measured effect.** Whether councils improve decision quality is at the observation stage and was not measured; nothing here claims such a benefit.
+- **Tool-enabled isolation is platform-provided.** The restricted profile relies on the harness permission mechanism (proven on OpenCode); on platforms that cannot guarantee it the expert stays packet-only by design.
+
+### Upgrade notes
+
+- **`npm install -g mister-wolf@2.31.0`** (or `wolf upgrade`) is enough. The role, the method and the seed playbook arrive through the regular projects pass of the update; nothing to migrate, nothing to reconfigure.
+- **`update-map.json` is re-stamped to 2.31.0 against 2.30.0**: new file targets for the `worker-expert` agent, the `wolf-council` skill and its seed playbook, and worker agent frames moved to the canonical v2 permissions array.
+
 ## [2.30.0] - 2026-11-05
 
 ### Added — bounded assignments: one division-of-labor canon and bounded L1 lifetimes
