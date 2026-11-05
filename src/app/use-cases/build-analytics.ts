@@ -1910,13 +1910,10 @@ async function buildCouncils(
     const agent = typeof expert === 'string' && expert.trim() !== '' ? expert : o.created_by;
     partAcc.set(agent, (partAcc.get(agent) ?? 0) + 1);
   }
-  // REL-231-A AC-W5-4: actual-участники envelope-синтеза не теряются в participation
-  // (минимум 1 на участника); missing_participants фиктивных мнений не создают
-  for (const { rec } of syntheses) {
-    for (const p of stringList(rec.envelope?.payload.actual_participants)) {
-      partAcc.set(p, Math.max(partAcc.get(p) ?? 0, 1));
-    }
-  }
+  // W8/F5: participation считает только МНЕНИЯ (expert_id envelope-мнений,
+  // fallback created_by); actual_participants синтеза не создают opinions:1 —
+  // участие-без-мнения видно в envelope_participation (declared vs opinions),
+  // это и есть разделение «участие ≠ валидное мнение» (design §3)
   const participation = [...partAcc.entries()]
     .map(([agent, n]) => ({ agent, opinions: n }))
     .sort((a, b) => b.opinions - a.opinions || a.agent.localeCompare(b.agent));

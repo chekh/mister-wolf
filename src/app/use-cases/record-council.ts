@@ -116,7 +116,7 @@ export interface RecordCouncilResult {
 }
 
 const COUNCIL_TAG = 'wolf:council-record:v1';
-const MAX_BODY_BYTES = 256 * 1024;
+export const MAX_BODY_BYTES = 256 * 1024;
 
 // --- Строгая схема envelope (D-W3-1: ручная zod-схема здесь, не FieldSpec в memory-types) ---
 
@@ -529,6 +529,10 @@ export async function recordCouncil(
       body,
       createdBy: input.createdBy,
       tags: [COUNCIL_TAG],
+      // W8/F3: вопрос открыт до закрытия синтезом — симметрия с legacy
+      // council-question defaultStatus 'open'; статус — поле note, не входит
+      // в canonical body/question_revision (идемпотентность не меняется)
+      ...(envelope.record_kind === 'question' ? { status: 'open' as const } : {}),
     });
 
     for (const edge of requiredEdges(envelope, object.id)) {

@@ -15,13 +15,16 @@ import {
   recordCouncil,
   type CouncilRecordEnvelope,
   type RecordCouncilDeps,
+  type RecordCouncilResult,
 } from '../../src/app/use-cases/record-council.js';
 import { MarkdownMemoryStore } from '../../src/adapters/fs/markdown-memory-store.js';
 import { JsonlEventLog } from '../../src/adapters/fs/jsonl-event-log.js';
 import { JsonlRelationLog } from '../../src/adapters/fs/jsonl-relation-log.js';
 import { SystemClock } from '../../src/adapters/fs/system-clock.js';
 import { HashIdGenerator } from '../../src/adapters/fs/hash-id-generator.js';
-import { eventsPath, relationsPath } from '../../src/adapters/fs/project-paths.js';
+import { FsMemoryLock } from '../../src/adapters/fs/memory-lock.js';
+import { eventsPath, relationsPath, memoryDir } from '../../src/adapters/fs/project-paths.js';
+import { buildAnalyticsReport } from '../../src/app/use-cases/build-analytics.js';
 
 const ACTOR = 'agent:steward';
 const TAG = 'wolf:council-record:v1';
@@ -279,5 +282,82 @@ describe('recordCouncil: integration на реальном временном st
     // Нет повторного memory-added события и дублей рёбер.
     expect(await addedEvents(noteId)).toHaveLength(1);
     expect(await ctx.relations.list({ predicate: 'answers' })).toHaveLength(1);
+  });
+
+  it('W8/F3: записанный question имеет status "open" и попадает в analytics openQuestions', async () => {
+    const envelope = questionEnvelope();
+    const res = await rec(envelope);
+    const note = await ctx.store.get(res.memoryId);
+    expect(note!.status).toBe('open');
+    // статус — поле note, canonical body (и дайджест) не меняются
+    expect(note!.body).toBe(canonJson(envelope));
+
+    const report = await buildAnalyticsReport(
+      { store: ctx.store, log: ctx.log, relations: ctx.relations, clock: { now: () => new Date() } },
+      { signals: [], runLogText: null }
+    );
+    expect(report.councils.openQuestions.map((q) => q.id)).toEqual([res.memoryId]);
+    expect(report.councils.questions.open).toBe(1);
+  });
+
+  it('W8/F4: конкурентные одинаковые recordCouncil (реальный FsMemoryLock) — один note, один memory.added, created ровно у одного', async () => {
+    const lock = new FsMemoryLock(memoryDir(ctx.dir)); // тот же каталог, что у контейнера проды
+    const envelope = questionEnvelope();
+    const both = await Promise.allSettled([
+      recordCouncil({ ...ctx.deps, lock }, { envelope, createdBy: ACTOR }),
+      recordCouncil({ ...ctx.deps, lock }, { envelope, createdBy: ACTOR }),
+    ]);
+    expect(both.map((r) => r.status)).toEqual(['fulfilled', 'fulfilled']);
+    const results = both.map((r) => (r as PromiseFulfilledResult<RecordCouncilResult>).value);
+    expect(results[1]!.memoryId).toBe(results[0]!.memoryId);
+    expect(results.filter((r) => r.created)).toHaveLength(1);
+    const notes = (await ctx.store.list({ type: 'note' })).filter((n) => n.tags.includes(TAG));
+    expect(notes).toHaveLength(1);
+    expect(await addedEvents(results[0]!.memoryId)).toHaveLength(1);
+  });
+
+  it('W8/F4: fault на append второго ребра синтеза → повтор request_key → recovered, полный набор рёбер без дублей', async () => {
+    const q = await seedQuestion();
+    const op1 = await rec(opinionEnvelope(q.id, q.revision, { key: 'T-42-r1-security' }));
+    const op2 = await rec(opinionEnvelope(q.id, q.revision, { key: 'T-42-r1-perf', expert: 'performance' }));
+    const envelope = synthesisEnvelope(q.id, q.revision, [op1.memoryId, op2.memoryId]);
+
+    // первое ребро (based_on + обратное = 2 append) проходит; первый append
+    // ВТОРОГО ребра падает — сбой посреди multi-edge набора
+    let appended = 0;
+    const failingDeps: RecordCouncilDeps = {
+      ...ctx.deps,
+      relations: {
+        async append(rel) {
+          appended += 1;
+          if (appended > 2) throw new Error('injected fault: append of the second edge');
+          return ctx.relations.append(rel);
+        },
+        async list(filters) {
+          return ctx.relations.list(filters);
+        },
+      },
+    };
+    await expect(recordCouncil(failingDeps, { envelope, createdBy: ACTOR })).rejects.toThrow();
+
+    // после сбоя: note по ключу есть, дописано ровно первое ребро (к question)
+    const notes = (await ctx.store.list({ type: 'note' })).filter(
+      (n) => JSON.parse(n.body).request_key === envelope.request_key
+    );
+    expect(notes).toHaveLength(1);
+    const synId = notes[0]!.id;
+    expect((await ctx.relations.list({ subject: synId, predicate: 'based_on' })).map((r) => r.object)).toEqual([q.id]);
+
+    // повтор того же request_key штатными deps → recovered, полный набор, без дублей
+    const retry = await rec(envelope);
+    expect(retry.memoryId).toBe(synId);
+    expect(retry.created).toBe(false);
+    expect(retry.recovered).toBe(true);
+
+    const basedOn = (await ctx.relations.list({ subject: synId, predicate: 'based_on' })).map((r) => r.object);
+    expect([...basedOn].sort()).toEqual([q.id, op1.memoryId, op2.memoryId].sort());
+    expect(await ctx.relations.list({ predicate: 'based_on' })).toHaveLength(3);
+    expect(await ctx.relations.list({ predicate: 'basis_for' })).toHaveLength(3);
+    expect(await addedEvents(synId)).toHaveLength(1);
   });
 });

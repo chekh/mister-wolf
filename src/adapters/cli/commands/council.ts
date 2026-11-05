@@ -5,9 +5,9 @@
 // Валидацию и запись делает домен — адаптер не дублирует (AC-W4-6).
 // baseDir инъектится для тестов (прецедент: memory-add.ts).
 import { Command } from 'commander';
-import { readFile } from 'fs/promises';
+import { readFile, stat } from 'fs/promises';
 import { safeCwd } from '../cli-entry.js';
-import { recordCouncil, type CouncilRecordEnvelope } from '../../../app/use-cases/record-council.js';
+import { recordCouncil, MAX_BODY_BYTES, type CouncilRecordEnvelope } from '../../../app/use-cases/record-council.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
 import { resolveCreatedBy } from '../../../domain/actor.js';
 import { UserFacingError } from '../../../domain/errors.js';
@@ -20,6 +20,17 @@ export interface CouncilRecordOptions {
 
 /** Читает envelope из --input-файла и делегирует домену (одна операция с MCP). */
 export async function runCouncilRecordAction(baseDir: string, options: CouncilRecordOptions): Promise<void> {
+  // W8/F2: транспортный гард ДО чтения — oversized-файл не читаем целиком
+  // (доменная проверка 256 KiB тела в recordCouncil остаётся авторитетной).
+  let size: number;
+  try {
+    size = (await stat(options.input)).size;
+  } catch {
+    throw new UserFacingError(`cannot read council envelope file: ${options.input}`);
+  }
+  if (size > MAX_BODY_BYTES) {
+    throw new UserFacingError(`council envelope file exceeds 256 KiB limit (${size} bytes): ${options.input}`);
+  }
   let raw: string;
   try {
     raw = await readFile(options.input, 'utf8');

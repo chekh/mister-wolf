@@ -7,12 +7,19 @@
 // напрямую (createCliContainer на tmp-каталоге).
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { readFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { councilCommand } from '../../../src/adapters/cli/commands/council.js';
 import { registerMemoryTools } from '../../../src/adapters/mcp/mcp-tools.js';
 import { createCliContainer } from '../../../src/bootstrap/container.js';
 import { UserFacingError } from '../../../src/domain/errors.js';
+
+// W8/F2: прозрачная обёртка — фиксирует вызовы readFile, не меняя поведение
+vi.mock('fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs/promises')>();
+  return { ...actual, readFile: vi.fn(actual.readFile) };
+});
 
 const TAG = 'wolf:council-record:v1';
 
@@ -79,6 +86,17 @@ describe('wolf council record (CLI adapter, AC-W4-1/AC-W4-5)', () => {
 
   it('missing --input file -> UserFacingError, nothing recorded', async () => {
     await expect(runCouncil(['record', '--input', join(dir, 'nope.json')])).rejects.toThrow(UserFacingError);
+    expect(await createCliContainer(dir).store.list({ type: 'note' })).toHaveLength(0);
+  });
+
+  it('W8/F2: file >256 KiB rejected by stat BEFORE reading contents', async () => {
+    const readFileMock = vi.mocked(readFile);
+    readFileMock.mockClear();
+    const file = join(dir, 'big.json');
+    writeFileSync(file, 'x'.repeat(256 * 1024 + 1));
+    await expect(runCouncil(['record', '--input', file])).rejects.toThrow(/exceeds 256 KiB limit/);
+    // содержимое не читалось: единственный readFile-вызов мока — не происходил
+    expect(readFileMock).not.toHaveBeenCalled();
     expect(await createCliContainer(dir).store.list({ type: 'note' })).toHaveLength(0);
   });
 

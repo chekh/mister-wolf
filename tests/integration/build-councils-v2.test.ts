@@ -254,7 +254,7 @@ const mixedObjects: Extra[] = [
         unresolved_dissent: [],
         required_validation: [],
         confidence: 'medium',
-        actual_participants: ['agent:gamma'],
+        actual_participants: ['agent:gamma', 'agent:epsilon'], // epsilon — участие без мнения (W8/F5)
         missing_participants: ['agent:delta'],
       },
     }),
@@ -326,17 +326,19 @@ describe('S12: mixed legacy+alias+envelope', () => {
     ]);
   });
 
-  it('AC-W5-4: participation из expert_id + actual_participants; missing не создаёт мнений; расхождение видно', async () => {
+  it('AC-W5-4 (W8/F5): participation только из мнений; участник без мнения не даёт opinions:1; расхождение видно', async () => {
     const m = (await mixedReport()).councils;
     // m-op-env считает эксперта agent:gamma, а не created_by agent:orchestrator;
-    // actual_participants не теряются, missing agent:delta фиктивного мнения не даёт
+    // actual_participants синтеза не создают opinions:1: gamma посчитана своим
+    // мнением, epsilon (участие-без-мнения) и delta (missing) в participation
+    // отсутствуют — участие-без-мнения видно только в envelope_participation
     expect(m.participation).toEqual([
       { agent: 'agent:alpha', opinions: 1 },
       { agent: 'agent:beta', opinions: 1 },
       { agent: 'agent:gamma', opinions: 1 },
     ]);
-    // «заявлено N участников — мнений M»: gamma+delta = 2, мнение одно
-    expect(m.envelope_participation).toEqual([{ synthesis_id: 'm-syn-env', declared_participants: 2, opinions: 1 }]);
+    // «заявлено N участников — мнений M»: gamma+epsilon+delta = 3, мнение одно
+    expect(m.envelope_participation).toEqual([{ synthesis_id: 'm-syn-env', declared_participants: 3, opinions: 1 }]);
   });
 
   it('AC-W5-5: новые метрики конечны; envelope-claims читаются из payload', async () => {
