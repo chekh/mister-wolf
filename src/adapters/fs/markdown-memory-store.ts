@@ -3,6 +3,7 @@ import { dirname, join, relative } from 'path';
 import yaml from 'js-yaml';
 import { z } from 'zod';
 import { MemoryStore, ListFilters } from '../../ports/memory-store.port.js';
+import { splitFrontmatterDocument } from '../../domain/face-body.js';
 import type { EventLog } from '../../ports/event-log.port.js';
 import { MemoryObject, MemoryObjectSchema } from '../../domain/schemas/memory-object-schema.js';
 import {
@@ -18,7 +19,6 @@ import { loadWolfConfigSync } from './config-file.js';
 import { mergeTaxonomy, type WolfConfig } from '../../domain/taxonomy.js';
 
 const STALE_DAYS = 30;
-const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n\n?([\s\S]*)$/;
 
 /**
  * P211 §5.4: alias-резолвер — старый frontmatter читается как целевой тип.
@@ -278,10 +278,10 @@ export class MarkdownMemoryStore implements MemoryStore {
         }
         if (content === undefined) continue;
         try {
-          const match = content.match(FRONTMATTER_RE);
-          if (!match) throw new Error('Missing or invalid frontmatter delimiter');
-          const frontmatter = yaml.load(match[1]) as Record<string, unknown>;
-          const body = match[2] || '';
+          const doc = splitFrontmatterDocument(content);
+          if (!doc) throw new Error('Missing or invalid frontmatter delimiter');
+          const frontmatter = yaml.load(doc.frontmatter) as Record<string, unknown>;
+          const body = doc.body || '';
           const base = MemoryObjectSchema.parse({ ...frontmatter, body });
           const effective = resolveTypeAlias(base) ?? base;
           const schemas = getTypeSchemas(this.baseDir);
@@ -343,12 +343,12 @@ export class MarkdownMemoryStore implements MemoryStore {
       return null;
     }
     try {
-      const match = content.match(FRONTMATTER_RE);
-      if (!match) {
+      const doc = splitFrontmatterDocument(content);
+      if (!doc) {
         throw new Error('Missing or invalid frontmatter delimiter');
       }
-      const frontmatter = yaml.load(match[1]) as Record<string, unknown>;
-      const body = match[2] || '';
+      const frontmatter = yaml.load(doc.frontmatter) as Record<string, unknown>;
+      const body = doc.body || '';
       const base = MemoryObjectSchema.parse({ ...frontmatter, body });
       const effective = resolveTypeAlias(base) ?? base;
       const schemas = getTypeSchemas(this.baseDir, this.onProblem);

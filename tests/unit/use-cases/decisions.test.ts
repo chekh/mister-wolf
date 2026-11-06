@@ -14,6 +14,7 @@ import {
   parseResolveValues,
   planResolutions,
   resolveShowTarget,
+  jsonDiverged,
   type DecisionDeps,
   type DecisionRegistry,
 } from '../../../src/app/use-cases/decisions.js';
@@ -260,7 +261,7 @@ describe('collectDecisions (design §4.7): нумерация, порядок, �
       ...base,
       faceTemplates: templates,
       liveFaces: async () => [
-        { ownerSkill: 'executor-lead', version: '2', body: 'Template body.\n', initiator: 'steward' },
+        { ownerSkill: 'executor-lead', version: '2', body: 'Template body.\n', initiator: 'steward', status: 'active' },
       ],
     });
     expect(equal.diverged).toEqual([]);
@@ -269,7 +270,7 @@ describe('collectDecisions (design §4.7): нумерация, порядок, �
       ...base,
       faceTemplates: templates,
       liveFaces: async () => [
-        { ownerSkill: 'executor-lead', version: '2', body: 'Local body.\n', initiator: 'steward' },
+        { ownerSkill: 'executor-lead', version: '2', body: 'Local body.\n', initiator: 'steward', status: 'active' },
       ],
     });
     expect(diverged.diverged).toEqual([
@@ -280,9 +281,84 @@ describe('collectDecisions (design §4.7): нумерация, порядок, �
     const seeded = await collectDecisions({
       ...base,
       faceTemplates: templates,
-      liveFaces: async () => [{ ownerSkill: 'executor-lead', version: '1', body: 'Local body.\n', initiator: 'seed' }],
+      liveFaces: async () => [
+        { ownerSkill: 'executor-lead', version: '1', body: 'Local body.\n', initiator: 'seed', status: 'active' },
+      ],
     });
     expect(seeded.diverged).toEqual([]); // штатное отставание seed-лица — зона прохода
+  });
+
+  it('2.32.1: whitespace-only различие (ведущие пустые строки) не даёт diverged в обе стороны', async () => {
+    const proj = await boot('p-faces-ws');
+    const clean = '---\nowner_skill: executor-lead\n---\nTemplate body.\n';
+    const extraBlank = '---\nowner_skill: executor-lead\n---\n\n\nTemplate body.\n';
+    const base = { here: proj, loadMap: () => MAP, inspect: async () => [] };
+    const withBody = (body: string, template: string) =>
+      collectDecisions({
+        ...base,
+        faceTemplates: new Map([['executor-lead-playbook.md', template]]),
+        liveFaces: async () => [
+          { ownerSkill: 'executor-lead', version: '3', body, initiator: 'steward', status: 'active' },
+        ],
+      });
+
+    // живое тело с ведущим переводом строки, шаблон без него
+    expect((await withBody('\nTemplate body.\n', clean)).diverged).toEqual([]);
+    // наоборот: лишняя пустая строка осталась в теле шаблона
+    expect((await withBody('Template body.\n', extraBlank)).diverged).toEqual([]);
+  });
+
+  it('2.32.1: содержательное расхождение (фраза) → diverged', async () => {
+    const proj = await boot('p-faces-content');
+    const templates = new Map([
+      ['executor-lead-playbook.md', '---\nowner_skill: executor-lead\n---\n\nTemplate body.\n'],
+    ]);
+    const reg = await collectDecisions({
+      here: proj,
+      loadMap: () => MAP,
+      inspect: async () => [],
+      faceTemplates: templates,
+      liveFaces: async () => [
+        {
+          ownerSkill: 'executor-lead',
+          version: '3',
+          body: '\n\nTemplate body with an extra phrase.\n',
+          initiator: 'steward',
+          status: 'active',
+        },
+      ],
+    });
+    expect(reg.diverged).toEqual([
+      { project: 'p-faces-content', file: 'faces/executor-lead.md', ownerSkill: 'executor-lead', version: '3' },
+    ]);
+  });
+
+  it('2.32.1: активная версия — не первая запись: superseded v1 перед active v3 → v3 (и в JSON)', async () => {
+    const proj = await boot('p-faces-active');
+    const templates = new Map([
+      ['executor-lead-playbook.md', '---\nowner_skill: executor-lead\n---\n\nTemplate body.\n'],
+    ]);
+    const reg = await collectDecisions({
+      here: proj,
+      loadMap: () => MAP,
+      inspect: async () => [],
+      faceTemplates: templates,
+      liveFaces: async () => [
+        {
+          ownerSkill: 'executor-lead',
+          version: '1',
+          body: 'Local body.\n',
+          initiator: 'steward',
+          status: 'superseded',
+        },
+        { ownerSkill: 'executor-lead', version: '3', body: 'Local body.\n', initiator: 'steward', status: 'active' },
+      ],
+    });
+    expect(reg.diverged).toHaveLength(1);
+    expect(reg.diverged[0]!.version).toBe('3'); // не первая запись (v1 superseded)
+    expect(jsonDiverged(reg)).toEqual([
+      { project: 'p-faces-active', face: 'faces/executor-lead.md', version: '3', ownerSkill: 'executor-lead' },
+    ]);
   });
 });
 
