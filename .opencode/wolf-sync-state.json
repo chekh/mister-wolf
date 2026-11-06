@@ -296,12 +296,12 @@
       "base": "2.32.1"
     },
     ".opencode/agents/worker-expert.md": {
-      "hash": "593e7c55a3c471a74a11761804f4ecba6ddad442f6e64492c364e6b606e82f09",
+      "hash": "423050599c34b5f685d09bde1dc5dbb94e1e13194da3c60293883cd40342b197",
       "origin": "render",
       "base": "2.32.1"
     },
     ".opencode/skills/wolf-council/SKILL.md": {
-      "hash": "1fee80985cb0b3cc965cb6a251f6f606866f8de9006f1493cfec42657ffa9260",
+      "hash": "1b2abe716e4bc3c6786c84f67e87be893ddfa2f28f59d0a501fa2dbf102216c2",
       "origin": "render",
       "base": "2.32.1"
     }

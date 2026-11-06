@@ -111,7 +111,7 @@ describe('worker-expert profile: read-канал в границах проек�
 
 describe('wolf-council: обязательная функциональная проба канала (2.32.2 REQ-02)', () => {
   it('проба канала отдельная от аудита ссылок и обе обязательны', () => {
-    expect(councilSkill).toContain('Аудит ссылок');
+    expect(councilSkill).toContain('Аудит разрешения ссылок');
     expect(councilSkill).toContain('Функциональная проба канала');
     expect(councilSkill).toContain('одна другую не заменяет');
   });
@@ -120,7 +120,7 @@ describe('wolf-council: обязательная функциональная п
     // «есть хоть одна ссылка» отключило бы канал в любом Node-проекте
     expect(councilSkill).toContain('разрешается за его пределы');
     expect(councilSkill).toContain('node_modules');
-    expect(councilSkill).toContain('слишком груба');
+    expect(councilSkill).toMatch(/слишком\s+груба/);
   });
 
   it('успех пробы определён фактом содержимого, а не фактом tool-вызова', () => {
@@ -143,7 +143,7 @@ describe('worker-expert profile: граница чтения честная (2.3
   it('рамка называет обе половины границы: путь и разрешение ссылок', () => {
     expect(agentRaw).toContain('external_directory');
     expect(agentRaw).toContain('symlink');
-    expect(agentRaw).toContain('не должна разрешаться за его пределы');
+    expect(agentRaw).toMatch(/не должна разрешаться\s+за его пределы/);
   });
 
   it('не требует невозможного «ни одной ссылки» правила', () => {

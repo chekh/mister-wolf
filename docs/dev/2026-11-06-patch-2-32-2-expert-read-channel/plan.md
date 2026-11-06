@@ -48,6 +48,27 @@ FIX-профиль: требования и журнал CR — `requirements.md
       ведущая наружу, читалась как внутренний путь. Правило «ни одной ссылки»
       (прежняя формулировка) неприменимо — в любом Node-проекте есть ссылки
       `node_modules/.bin`; заменено на проверку разрешения наружу.
+- [x] Z10: правка по переревью — целостность рендера и уточнение границы.
+      Переревью нашло блокер, внесённый прогоном prettier по `templates/`:
+      `model: {{model.primary}}` превратился в `model: { { model.primary } }`,
+      YAML читал это как объект, OpenCode выбрасывал агента из каталога
+      («Agent not found: worker-expert»), и ни один гейт этого не ловил —
+      существующие тесты рендера используют синтетические строки.
+      Сделано: шаблоны восстановлены из `73438250` и правки применены заново
+      БЕЗ prettier (он не покрывает `templates/` в `format:check` и портит
+      Go-подобные плейсхолдеры); добавлен
+      `tests/unit/render-integrity-real-templates.test.ts` — рендерит РЕАЛЬНЫЕ
+      шаблоны тем же `substitute()`, что и поставка, в omit/model/no-context
+      режимах и требует `model` строкой без плейсхолдеров; проверено, что тест
+      краснеет именно на испорченном плейсхолдере (3 падения).
+      Также: снята неоднозначность «`external_directory` запрещает вне проекта
+      (Location и main-чекоут)» — прямой доступ в main-чекоут отклоняется, он
+      входит только в сравнение при аудите ссылок; добавлено, что аудит точечный
+      (host не перепроверяет ссылки на каждом чтении); индентация списков в
+      `SKILL.md`/`contracts.md` восстановлена; seed-заголовок сделан
+      версионно-нейтральным, чтобы не отставать от живого лица;
+      живое лицо поднято до v4 `mem_20261106_worker-expert-v4_80d791`
+      (операция `faceop-1794001444773-e36c`).
 - [x] Z06: перерендер проектного base-set и карта обновления — REQ-06.
       Сделано → `.opencode/agents/worker-expert.md` содержит новые права;
       `update-map.json` помечает 4 файла как `changed`; `--verify` проходит.
@@ -69,25 +90,26 @@ FIX-профиль: требования и журнал CR — `requirements.md
 
 ## Сводка REQ/AC
 
-| AC                                                            | Статус      | Evidence                                                                                                                                                                                                  |
-| ------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| AC-01.1 эффективные allow read/glob/grep                      | подтверждён | `opencode debug agents` в worktree: `read src/…`→allow, `glob *`→allow, `grep *`→allow (23 правила, last-match-wins)                                                                                      |
-| AC-01.2 живая проба с фактом содержимого                      | подтверждён | `worker-expert` прочитал `src/domain/face-body.ts` и вернул дословно `export function parseFaceDocument(raw: string): { meta: Record<string, string>; body: string } {`; в ответе `channel: tool-enabled` |
-| AC-01.3 выдача в базовом наборе, не в project-local           | подтверждён | `wolf init --full` в чистый каталог: доставленный `.opencode/agents/worker-expert.md` несёт read-правило; проба в этом проекте вернула маркер содержимого `PROBE_MARKER_LINE_42`                          |
-| AC-02.1 deny на запись/shell/субагентов/сеть/внешние каталоги | подтверждён | `opencode debug agents`: `edit`/`shell`/`subagent`/`webfetch`/`websearch`/`browser`/`skill`/`external_directory` → deny                                                                                   |
-| AC-02.2 живая проба запретов                                  | подтверждён | инструменты записи/shell/субагентов отсутствуют в наборе сессии; чтение `/Users/chekh/.zshrc` → `Permission denied: external_directory`                                                                   |
-| AC-02.3 env-guard после широкого allow                        | подтверждён | `.env.probe-guard` и `sub.env`: `permission.rejected` от ask-защиты, маркер в ответе отсутствует (0 вхождений); `.env.example` → allow                                                                    |
-| AC-03.1 проба = факт содержимого                              | подтверждён | текст `wolf-council/SKILL.md`, шаг 2 «Функциональная проба канала»                                                                                                                                        |
-| AC-03.2 аудит и проба — разные проверки                       | подтверждён | `SKILL.md`: «Аудит ссылок доказывает изоляцию, но не работоспособность чтения, и наоборот»                                                                                                                |
-| AC-03.3 «перечень путей в TASK не выдача»                     | подтверждён | `SKILL.md:43`                                                                                                                                                                                             |
-| AC-04.1 channel в контрактах, статусы RESULT не меняются      | подтверждён | `contracts.md`, профиль expert                                                                                                                                                                            |
-| AC-04.2 channel аддитивен, исторические envelope валидны      | подтверждён | `tests/unit/council-record.test.ts`: исторический envelope без `channel` принимается; `question_revision` не зависит от payload мнения                                                                    |
-| AC-05.1 живое лицо поднято, другие не тронуты                 | подтверждён | `wolf face history worker-expert`: v1/v2 superseded, v3 active; `wolf face list`: остальные лица — прежние версии                                                                                         |
-| AC-05.2 seed согласован                                       | подтверждён | `templates/base/playbooks/worker-expert-playbook.md` = тело v3 по смыслу (включая честную границу)                                                                                                        |
-| AC-06.1 проектный рендер содержит новые права                 | подтверждён | `.opencode/agents/worker-expert.md:6-…`; тело совпадает с шаблоном (различие — только штамп и опущенная `model:`)                                                                                         |
-| AC-06.2 update-map помечает changed, `--verify`               | подтверждён | `node scripts/generate-update-map.mjs --verify` → «in sync (61 file targets, 7 faces, prev 2.32.0)»; 4 файла `changed`                                                                                    |
-| AC-07.1…07.4 документация EN/RU                               | подтверждён | `docs/site/{,ru/}guide/{council,base-set,troubleshooting}.md`, README-пара; `docs:check` — 5765 ссылок, 35 EN/RU-пар, OK                                                                                  |
-| Гейты                                                         | подтверждён | `npm run check` 232 файла / 2210 тестов; `npm run e2e` 63 файла / 248; `docs:check`; `wolf doctor`; `--verify`                                                                                            |
+| AC                                                            | Статус      | Evidence                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AC-01.1 эффективные allow read/glob/grep                      | подтверждён | `opencode debug agents` в worktree: `read src/…`→allow, `glob *`→allow, `grep *`→allow (23 правила, last-match-wins)                                                                                                                                           |
+| AC-01.2 живая проба с фактом содержимого                      | подтверждён | `worker-expert` прочитал `src/domain/face-body.ts` и вернул дословно `export function parseFaceDocument(raw: string): { meta: Record<string, string>; body: string } {`; в ответе `channel: tool-enabled`                                                      |
+| AC-01.3 выдача в базовом наборе, не в project-local           | подтверждён | `wolf init --full` в чистый каталог: доставленный `.opencode/agents/worker-expert.md` несёт read-правило; проба в этом проекте вернула маркер содержимого `PROBE_MARKER_LINE_42`                                                                               |
+| AC-02.1 deny на запись/shell/субагентов/сеть/внешние каталоги | подтверждён | `opencode debug agents`: `edit`/`shell`/`subagent`/`webfetch`/`websearch`/`browser`/`skill`/`external_directory` → deny                                                                                                                                        |
+| AC-02.2 живая проба запретов                                  | подтверждён | инструменты записи/shell/субагентов отсутствуют в наборе сессии; чтение `/Users/chekh/.zshrc` → `Permission denied: external_directory`                                                                                                                        |
+| AC-02.3 env-guard после широкого allow                        | подтверждён | `.env.probe-guard` и `sub.env`: `permission.rejected` от ask-защиты, маркер в ответе отсутствует (0 вхождений); `.env.example` → allow                                                                                                                         |
+| AC-03.1 проба = факт содержимого                              | подтверждён | текст `wolf-council/SKILL.md`, шаг 2 «Функциональная проба канала»                                                                                                                                                                                             |
+| AC-03.2 аудит и проба — разные проверки                       | подтверждён | `SKILL.md`: «Аудит ссылок доказывает изоляцию, но не работоспособность чтения, и наоборот»                                                                                                                                                                     |
+| AC-03.3 «перечень путей в TASK не выдача»                     | подтверждён | `SKILL.md:43`                                                                                                                                                                                                                                                  |
+| AC-04.1 channel в контрактах, статусы RESULT не меняются      | подтверждён | `contracts.md`, профиль expert                                                                                                                                                                                                                                 |
+| AC-04.2 channel аддитивен, исторические envelope валидны      | подтверждён | `tests/unit/council-record.test.ts`: исторический envelope без `channel` принимается; `question_revision` не зависит от payload мнения                                                                                                                         |
+| AC-05.1 живое лицо поднято, другие не тронуты                 | подтверждён | `wolf face history worker-expert`: v1/v2/v3 superseded, v4 active; `wolf face list`: остальные лица — прежние версии                                                                                                                                           |
+| AC-05.2 seed согласован                                       | подтверждён | `templates/base/playbooks/worker-expert-playbook.md` = тело v4 по смыслу; заголовок версионно-нейтрален, чтобы не отставать при следующем подъёме                                                                                                              |
+| Целостность рендера реальных шаблонов                         | подтверждён | `tests/unit/render-integrity-real-templates.test.ts`: omit/model/no-context режимы; краснеет на испорченном плейсхолдере (3 падения), зелёный на исправленном; fresh `wolf init --full` → `model: company/fast` строкой, агент виден в `opencode debug agents` |
+| AC-06.1 проектный рендер содержит новые права                 | подтверждён | `.opencode/agents/worker-expert.md:6-…`; тело совпадает с шаблоном (различие — только штамп и опущенная `model:`)                                                                                                                                              |
+| AC-06.2 update-map помечает changed, `--verify`               | подтверждён | `node scripts/generate-update-map.mjs --verify` → «in sync (61 file targets, 7 faces, prev 2.32.0)»; 4 файла `changed`                                                                                                                                         |
+| AC-07.1…07.4 документация EN/RU                               | подтверждён | `docs/site/{,ru/}guide/{council,base-set,troubleshooting}.md`, README-пара; `docs:check` — 5765 ссылок, 35 EN/RU-пар, OK                                                                                                                                       |
+| Гейты                                                         | подтверждён | `npm run check` 232 файла / 2210 тестов; `npm run e2e` 63 файла / 248; `docs:check`; `wolf doctor`; `--verify`                                                                                                                                                 |
 
 ## Непроверенное (честный перечень)
 
@@ -95,8 +117,10 @@ FIX-профиль: требования и журнал CR — `requirements.md
   разрешает ссылки при проверке `external_directory` — это подтверждено
   (ссылка внутри проекта, ведущая наружу, читается как внутренний путь). Поэтому
   изоляция держится на аудите ссылок перед запуском, а не на permission-слое.
-  Ссылка, появившаяся ПОСЛЕ аудита, технически не блокируется. Это записано в
-  методике, документации и рамке профиля.
+  Аудит точечный: ссылка, появившаяся ПОСЛЕ аудита, технически не блокируется.
+  Это прямо сказано в рамке профиля (`worker-expert.md`: «host не перепроверяет
+  ссылки на каждом чтении»), в методике (`wolf-council/SKILL.md`, шаг 1) и в
+  документации (`council.md` EN/RU).
 - **Интерактивный режим ask-защиты** не проверялся: пробы шли non-interactive,
   где `ask` автоматически отклоняется. В интерактивной сессии платформа
   спросит пользователя — это её документированное поведение.
@@ -142,6 +166,13 @@ FIX-профиль: требования и журнал CR — `requirements.md
 - [ ] `node scripts/generate-update-map.mjs` после подъёма версии, затем `--verify`
 - [ ] `env -u WOLF_SESSION npm run check` (иначе 15 pre-existing face-тестов
       падают из-за признака агент-сессии `WOLF_SESSION=opc-*` — не связано с фиксом)
+- [ ] **не прогонять prettier по `templates/`**: `format:check` его не покрывает,
+      а prettier превращает `{{model.primary}}` в `{ { model.primary } }`, после
+      чего OpenCode выбрасывает агента («Agent not found»). Гард —
+      `tests/unit/render-integrity-real-templates.test.ts`
+- [ ] после `npm version` и перед публикацией: fresh `wolf init --full` в чистый
+      каталог + `opencode debug agents` — все 7 агентов видны, `worker-expert`
+      присутствует, `model` строкой
 - [ ] `npm run e2e`, `npm run docs:check`, `npm run docs:build`, `wolf doctor`
 - [ ] merge `--no-ff` в `main`, тег `v2.32.2` на merge-коммите, push
 - [ ] `npm publish`, GitHub Release, деплой сайта
