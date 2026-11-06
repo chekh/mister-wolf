@@ -46,7 +46,7 @@ Each project gets one class:
 - `needs decision` — a stamped file was edited locally (`mutated`), or an unstamped file occupies a wolf target (`conflict`). The pass will not resolve these by itself.
 - `unknown` — the project is not covered by the update map of that release (`foreign` files, unreadable projects, broken onboarding markers). Out of coverage does **not** mean up to date.
 
-Every entry names its files: `mutated:`, `differ:` (all paths, not a counter), `foreign:`; `missing` is a counter — its paths are in `--json` (`missing[]`). The `Protections` section is always printed — `Protections: none` when there is nothing to hold — and it is the audit view of the second layer in the table above.
+Every entry names its files: `mutated:`, `differ:` (all paths, not a counter), `foreign:`; `missing` is a counter — its paths are in `--json` (`missing[]`). Unresolved decisions of a project are grouped by code, one line each — `needs decision (conflict): <path>`, `needs decision (skipped-mutated): <path>`, `needs decision (diverged): <path>` — so a drift is never hidden behind a single comma-separated sentence. The `Protections` section is always printed — `Protections: none` when there is nothing to hold — and it is the audit view of the second layer in the table above.
 
 A stamped file that differs from the base **only** by its `wolf:rendered …` line needs no decision: the pass re-renders it silently and refreshes the stamp. In `--check` it shows as `current` — `identical` here means "nothing to decide", not "byte-identical".
 
@@ -232,19 +232,21 @@ What `--yes` resolves: `mutated` files — backup first, then base, then witness
 ```text
 wolf upgrade — here
 Plan
-- plan: proj · /Users/…/proj
-- composition 2.20.0 → 2.20.0
-- map: 0 new · 0 changed · 0 deprecated · 0 removed · seed×6
-- outside the registry — manual mode
+  plan: proj · /Users/…/proj
+  composition 2.31.0 → 2.32.0
+  map: 2 new · 13 changed · 0 deprecated · 0 removed · seed×6
+  outside the registry — manual mode
 ok: proj — updated
-- base-set: 1 updated, 30 identical
-- faces: … skipped-live …
-- verify: 37/37 ok
-- 1 protected (intentional)
-- took base for .opencode/skills/wolf-review/SKILL.md (local saved: .wolf/backup/upgrade/2026-10-25/.opencode/skills/wolf-review/SKILL.md)
+  base-set: 1 updated, 30 identical
+  faces: … skipped-live …
+  verify: 37/37 ok
+  1 protected (intentional)
+  took base for .opencode/skills/wolf-review/SKILL.md (local saved: .wolf/backup/upgrade/2026-11-06/.opencode/skills/wolf-review/SKILL.md)
 updated 1 · new 0 · changed 0 · deprecated 0 · removed 0 · faces seeded 0
 ok: Done
 ```
+
+Details of a project — `base-set`, `faces`, `verify`, named decisions, backups — are printed without a status marker: the marker belongs to lines that themselves report a state. Since 2.32.0 the markers are also distinct without colour — `●` info, `✓` ok, `▲` attention, `✖` error, `·` skipped — so the report stays readable in a mono terminal and in a pipe.
 
 Every overwrite is preceded by a copy at `.wolf/backup/upgrade/<YYYY-MM-DD>/<rel-path>` (one directory per run date). A second overwrite of the same file on the same day becomes `<name>-2.<ext>` (then `-3`, …; the extension is kept), so `.opencode/skills/wolf-debug/SKILL.md` gets `.opencode/skills/wolf-debug/SKILL-2.md` — an existing backup is never overwritten. A `removed` target is copied there too before it is deleted.
 

@@ -68,6 +68,8 @@ Options:
                              "face")
   --title <title>            Title
   --body <body>              Body text
+  --slug <slug>              English slug for the record id (a-z0-9, dashes);
+                             omitted or invalid builds an id without words
   --tags <tags>              Comma-separated tags
   --confidence <confidence>  Confidence level (low|medium|high)
   --importance <n>           Importance from 0 to 1
@@ -300,6 +302,7 @@ Add a rule (generated from taxonomy)
 Options:
   --title <title>                        Title
   --body <body>                          Body text
+  --slug <slug>                          English slug for the record id (a-z0-9, dashes); omitted or invalid builds an id without words
   --tags <tags>                          Comma-separated tags
   --confidence <confidence>              Confidence level (low|medium|high)
   --importance <n>                       Importance from 0 to 1
@@ -352,6 +355,7 @@ Add a lesson (generated from taxonomy)
 Options:
   --title <title>                        Title
   --body <body>                          Body text
+  --slug <slug>                          English slug for the record id (a-z0-9, dashes); omitted or invalid builds an id without words
   --tags <tags>                          Comma-separated tags
   --confidence <confidence>              Confidence level (low|medium|high)
   --importance <n>                       Importance from 0 to 1
@@ -401,6 +405,8 @@ Add a decision (generated from taxonomy)
 Options:
   --title <title>            Title
   --body <body>              Body text
+  --slug <slug>              English slug for the record id (a-z0-9, dashes);
+                             omitted or invalid builds an id without words
   --tags <tags>              Comma-separated tags
   --confidence <confidence>  Confidence level (low|medium|high)
   --importance <n>           Importance from 0 to 1
@@ -451,6 +457,9 @@ Add a thread (generated from taxonomy)
 Options:
   --title <title>                  Title
   --body <body>                    Body text
+  --slug <slug>                    English slug for the record id (a-z0-9,
+                                   dashes); omitted or invalid builds an id
+                                   without words
   --tags <tags>                    Comma-separated tags
   --confidence <confidence>        Confidence level (low|medium|high)
   --importance <n>                 Importance from 0 to 1
@@ -504,6 +513,8 @@ Add a complaint (generated from taxonomy)
 Options:
   --title <title>            Title
   --body <body>              Body text
+  --slug <slug>              English slug for the record id (a-z0-9, dashes);
+                             omitted or invalid builds an id without words
   --tags <tags>              Comma-separated tags
   --confidence <confidence>  Confidence level (low|medium|high)
   --importance <n>           Importance from 0 to 1
@@ -560,6 +571,8 @@ Add a note (generated from taxonomy)
 Options:
   --title <title>            Title
   --body <body>              Body text
+  --slug <slug>              English slug for the record id (a-z0-9, dashes);
+                             omitted or invalid builds an id without words
   --tags <tags>              Comma-separated tags
   --confidence <confidence>  Confidence level (low|medium|high)
   --importance <n>           Importance from 0 to 1

@@ -105,7 +105,7 @@
     {
       "path": "base/skills/using-skills/references/project-rules.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/using-skills/references/project-tools.md",
@@ -210,7 +210,7 @@
     {
       "path": "base/skills/wolf-feedback/references/complaints.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/wolf-feedback/references/session-diagnosis.md",
@@ -245,7 +245,7 @@
     {
       "path": "base/skills/wolf-plan/SKILL.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/wolf-release-docs/SKILL.md",
@@ -305,7 +305,7 @@
     {
       "path": "opencode/plugins/wolf-session-start.js",
       "kind": "plugin",
-      "category": "unchanged"
+      "category": "changed"
     }
   ],
   "faces": [

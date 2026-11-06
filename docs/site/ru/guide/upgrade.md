@@ -232,19 +232,21 @@ wolf upgrade --yes --json > run.json  # машинный канал
 ```text
 wolf upgrade — here
 Plan
-- plan: proj · /Users/…/proj
-- composition 2.20.0 → 2.20.0
-- map: 0 new · 0 changed · 0 deprecated · 0 removed · seed×6
-- outside the registry — manual mode
+  plan: proj · /Users/…/proj
+  composition 2.31.0 → 2.32.0
+  map: 2 new · 13 changed · 0 deprecated · 0 removed · seed×6
+  outside the registry — manual mode
 ok: proj — updated
-- base-set: 1 updated, 30 identical
-- faces: … skipped-live …
-- verify: 37/37 ok
-- 1 protected (intentional)
-- took base for .opencode/skills/wolf-review/SKILL.md (local saved: .wolf/backup/upgrade/2026-10-25/.opencode/skills/wolf-review/SKILL.md)
+  base-set: 1 updated, 30 identical
+  faces: … skipped-live …
+  verify: 37/37 ok
+  1 protected (intentional)
+  took base for .opencode/skills/wolf-review/SKILL.md (local saved: .wolf/backup/upgrade/2026-11-06/.opencode/skills/wolf-review/SKILL.md)
 updated 1 · new 0 · changed 0 · deprecated 0 · removed 0 · faces seeded 0
 ok: Done
 ```
+
+Детали проекта — `base-set`, `faces`, `verify`, именованные решения, бэкапы — печатаются без маркера статуса: маркер принадлежит строкам, которые сами сообщают состояние. С 2.32.0 маркеры к тому же различимы без цвета — `●` info, `✓` ok, `▲` внимание, `✖` ошибка, `·` пропуск — поэтому отчёт читается и в моно-терминале, и в пайпе.
 
 Каждой перезаписи предшествует копия в `.wolf/backup/upgrade/<YYYY-MM-DD>/<путь>` (один каталог на дату прогона). Вторая перезапись того же файла в тот же день становится `<имя>-2.<ext>` (затем `-3`, …; расширение сохраняется): у `.opencode/skills/wolf-debug/SKILL.md` копия будет `.opencode/skills/wolf-debug/SKILL-2.md` — существующий бэкап не перезаписывается никогда. Цель `removed` копируется туда же перед удалением.
 

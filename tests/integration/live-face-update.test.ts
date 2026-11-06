@@ -281,7 +281,7 @@ describe('T4 REQ-01: live-лица — установка и re-init (§3.6)', (
     writeLegacyPlaybook(dir, 'mem_20260115_legacy_ab12cd');
 
     const reinit = runCli(['init', '--yes'], dir);
-    expect(reinit.status).toBe(0);
+    expect(reinit.status, reinit.stderr).toBe(0);
     expect(reinit.stdout).toContain('steward-nastavnik.md created');
     expect(reinit.stdout).toContain('superseded legacy howto mem_20260115_legacy_ab12cd');
 
@@ -345,7 +345,7 @@ describe('T4 REQ-01: live-лица — установка и re-init (§3.6)', (
     });
 
     const reinit = runCli(['init', '--yes'], dir);
-    expect(reinit.status).toBe(0);
+    expect(reinit.status, reinit.stderr).toBe(0);
     expect(reinit.stdout).toContain('steward-nastavnik.md updated');
     expect(reinit.stdout).toContain('template update');
 
@@ -409,7 +409,7 @@ describe('T4 REQ-01: live-лица — установка и re-init (§3.6)', (
 
     // S-07: re-init → diverged, лицо не изменено (зона Стюарда, D4)
     const reinit = runCli(['init', '--yes'], dir);
-    expect(reinit.status).toBe(0);
+    expect(reinit.status, reinit.stderr).toBe(0);
     expect(reinit.stdout).toContain('diverged');
     expect(runCli(['face', 'show', 'steward'], dir).stdout).toBe(before);
     expect(faceIds(runCli(['face', 'history', 'steward'], dir).stdout).size).toBe(2); // v3 не создана

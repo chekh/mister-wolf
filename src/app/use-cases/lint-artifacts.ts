@@ -227,6 +227,46 @@ export async function runArtifactLint(deps: LintArtifactsDeps): Promise<Artifact
       }
     }
 
+    // 13-16 (2.32.0): change-request.md — запросы на изменение пакета. Это НЕ раздел
+    // «Журнал изменений (CR)» в requirements.md (тот журнал — изменения самих требований).
+    const crRel = `docs/dev/${folder}/change-request.md`;
+    const crRaw = await readOrNull(join(folderPath, 'change-request.md'));
+    if (crRaw !== null) {
+      const crMeta = parseArtifactFrontMatter(crRaw);
+      if (!crMeta.slug || !crMeta.title || !crMeta.status) {
+        findings.push({
+          file: crRel,
+          message: 'change-request.md без front-matter (нужны slug, title, status, created)',
+        });
+      }
+      const seenCr = new Set<string>();
+      for (const line of bodyOf(crRaw).split('\n')) {
+        if (!/^- CR-/.test(line)) continue;
+        const m = line.match(/^- (CR-\d{4}-\d{2}-\d{2}-\d{2})\b/);
+        if (!m) {
+          findings.push({
+            file: crRel,
+            message: `CR без номера CR-<YYYY-MM-DD>-NN: "${line.slice(0, 60)}"`,
+          });
+          continue;
+        }
+        const id = m[1]!;
+        if (seenCr.has(id)) findings.push({ file: crRel, message: `${id} дублируется в ${crRel}` });
+        seenCr.add(id);
+        if (!line.includes('downstream:')) {
+          findings.push({ file: crRel, message: `${id} без downstream-отметки` });
+        }
+        if (!/утвердил/i.test(line)) {
+          findings.push({ file: crRel, message: `${id} без отметки «утвердил»` });
+        }
+        for (const ref of [...new Set(line.match(/(?:REQ|NFR)-\d{2}/g) ?? [])]) {
+          if (!reqIds.has(ref)) {
+            findings.push({ file: crRel, message: `${ref} не найден в requirements.md (упомянут в ${crRel})` });
+          }
+        }
+      }
+    }
+
     // 11. Готовность по plan.md.
     const planRaw = await readOrNull(join(folderPath, 'plan.md'));
     if (planRaw !== null) {

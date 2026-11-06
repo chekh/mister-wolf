@@ -43,6 +43,56 @@ function mapKeyNames(files: Record<string, string>, prefix: string): string[] {
   ].filter(Boolean);
 }
 
+// 2.32.0 (Q5): change-request.md — first-class документ пакета
+it('S21: change-request.md без front-matter и с неполной CR-записью', async () => {
+  const { deps } = fixture(
+    {
+      'docs/dev/2026-10-08-x/requirements.md':
+        '---\nslug: x\nstatus: draft\n---\n\n### REQ-01 — a\n- AC: z\n- Источник: d\n',
+      'docs/dev/2026-10-08-x/change-request.md': '# CR\n\n- CR-2026-10-08-01: без полей\n- не CR строка\n',
+    },
+    ['2026-10-08-x']
+  );
+  const findings = await runArtifactLint(deps);
+  expect(findings.some((f) => f.message.includes('change-request.md без front-matter'))).toBe(true);
+  expect(findings.some((f) => f.message.includes('CR-2026-10-08-01 без downstream-отметки'))).toBe(true);
+  expect(findings.some((f) => f.message.includes('CR-2026-10-08-01 без отметки «утвердил»'))).toBe(true);
+});
+
+it('S21: CR с неверным номером, дублем и битой ссылкой на REQ', async () => {
+  const { deps } = fixture(
+    {
+      'docs/dev/2026-10-08-x/requirements.md':
+        '---\nslug: x\nstatus: draft\n---\n\n### REQ-01 — a\n- AC: z\n- Источник: d\n',
+      'docs/dev/2026-10-08-x/change-request.md':
+        '---\nslug: x\ntitle: X — запросы на изменение\nstatus: draft\ncreated: 2026-10-08\n---\n\n' +
+        '- CR-01: короткий номер — утвердил owner; downstream: нет\n' +
+        '- CR-2026-10-08-01: правка REQ-01 — утвердил owner; downstream: design\n' +
+        '- CR-2026-10-08-01: правка REQ-09 — утвердил owner; downstream: нет\n',
+    },
+    ['2026-10-08-x']
+  );
+  const findings = await runArtifactLint(deps);
+  expect(findings.some((f) => f.message.includes('CR без номера CR-<YYYY-MM-DD>-NN'))).toBe(true);
+  expect(findings.some((f) => f.message.includes('CR-2026-10-08-01 дублируется'))).toBe(true);
+  expect(findings.some((f) => f.message.includes('REQ-09 не найден в requirements.md'))).toBe(true);
+});
+
+it('S21: корректный change-request.md новых findings по себе не даёт', async () => {
+  const { deps } = fixture(
+    {
+      'docs/dev/2026-10-08-x/requirements.md':
+        '---\nslug: x\nstatus: draft\n---\n\n### REQ-01 — a\n- AC: z\n- Источник: d\n',
+      'docs/dev/2026-10-08-x/change-request.md':
+        '---\nslug: x\ntitle: X — запросы на изменение\nstatus: draft\ncreated: 2026-10-08\n---\n\n' +
+        '- CR-2026-10-08-01: уточнили REQ-01 — утвердил owner; downstream: design, test-plan\n',
+    },
+    ['2026-10-08-x']
+  );
+  const findings = await runArtifactLint(deps);
+  expect(findings.filter((f) => f.file.includes('change-request.md'))).toEqual([]);
+});
+
 describe('runArtifactLint (спека §4-A3)', () => {
   it('duplicate REQ id in one folder', async () => {
     const { deps } = fixture(
