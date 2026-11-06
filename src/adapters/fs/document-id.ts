@@ -1,6 +1,5 @@
 import { createHash } from 'crypto';
 import { basename } from 'path';
-import { HashIdGenerator } from './hash-id-generator.js';
 
 /**
  * Канон id document-ref (спека 2.1.0 §2.1): `mem_<YYYYMMDD>_doc_<slug>_<hash8>`.
@@ -25,10 +24,52 @@ export function canonicalPath(path: string): string {
   return path.replaceAll('\\', '/').replace(/^\.\//, '');
 }
 
+/**
+ * Транслит кириллицы для document-ref id (2.32.0: карта переехала сюда из
+ * hash-id-generator — ID записи памяти больше не транслитерируется).
+ * Канон id документа не меняется: смена slug'ов сломала бы уже проиндексированные
+ * документы, поэтому карта живёт здесь и покрывает тот же алфавит.
+ */
+const CYRILLIC: Record<string, string> = {
+  а: 'a',
+  б: 'b',
+  в: 'v',
+  г: 'g',
+  д: 'd',
+  е: 'e',
+  ё: 'e',
+  ж: 'zh',
+  з: 'z',
+  и: 'i',
+  й: 'y',
+  к: 'k',
+  л: 'l',
+  м: 'm',
+  н: 'n',
+  о: 'o',
+  п: 'p',
+  р: 'r',
+  с: 's',
+  т: 't',
+  у: 'u',
+  ф: 'f',
+  х: 'kh',
+  ц: 'ts',
+  ч: 'ch',
+  ш: 'sh',
+  щ: 'shch',
+  ъ: '',
+  ы: 'y',
+  ь: '',
+  э: 'e',
+  ю: 'yu',
+  я: 'ya',
+};
+
 /** Slug из basename без расширения: kebab-case, транслит кириллицы, cap 40, пусто → `doc`. */
 export function documentSlug(path: string): string {
   const name = basename(canonicalPath(path)).replace(/\.[^.]+$/, '');
-  const translit = name.toLowerCase().replace(/[а-яё]/g, (ch) => HashIdGenerator.CYRILLIC[ch] ?? '');
+  const translit = name.toLowerCase().replace(/[а-яё]/g, (ch) => CYRILLIC[ch] ?? '');
   const slug = translit
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')

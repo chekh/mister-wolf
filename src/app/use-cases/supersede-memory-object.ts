@@ -8,8 +8,10 @@ import { summarizeSession } from './summarize-session.js';
 import { UserFacingError } from '../../domain/errors.js';
 
 // ponytail: slug optional — legacy ids from cyrillic titles have empty slug
-// (mem_YYYYMMDD__<hash>); hash is still mandatory, so 'mem_20260824__' stays invalid
-const MEMORY_ID_RE = /^mem_\d{8}[a-z0-9_]*_[0-9a-f]{6}$/;
+// (mem_YYYYMMDD__<hash>); hash is still mandatory, so 'mem_20260824__' stays invalid.
+// 2.32.0 (Q1/Q2): slug — english, дефисы допустимы (mem_<date>_release-plan_<hash>),
+// tie-break даёт суффикс -2, -3.
+const MEMORY_ID_RE = /^mem_\d{8}[a-z0-9_-]*_[0-9a-f]{6}(?:-\d+)?$/;
 
 export async function supersedeMemoryObject(
   deps: { store: MemoryStore; log: EventLog; clock: Clock; idGen: IdGenerator; index?: SearchIndex; lock?: MemoryLock },

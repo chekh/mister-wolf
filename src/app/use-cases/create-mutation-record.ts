@@ -71,6 +71,8 @@ export interface CreateMutationRecordDeps {
 }
 
 export interface CreateMutationRecordInput extends MutationG17Input {
+  /** 2.32.0: english slug для ID записи мутации. */
+  slug?: string;
   ownerSkill: string;
   /** Номер создаваемой версии (title: 'mutation: <owner_skill> v<ver>'). */
   version: string;
@@ -93,7 +95,7 @@ export async function createMutationRecord(
   const defaults = governanceDefaults(input.createdBy);
   const title = `mutation: ${input.ownerSkill} v${input.version}`;
   const note: MutationRecord = {
-    id: deps.idGen.generateMemoryId(now, title),
+    id: deps.idGen.generateMemoryId(now, input.slug, title),
     type: 'note',
     facet: 'history',
     title,

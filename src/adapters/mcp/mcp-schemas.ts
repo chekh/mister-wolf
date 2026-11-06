@@ -40,6 +40,8 @@ export const MemoryAddInputSchema = z
   .object({
     type: z.string(),
     title: z.string(),
+    /** 2.32.0 (Q1): english slug для ID; не передан — id без слов. */
+    slug: z.string().optional(),
     body: z.string().optional(),
     tags: z.array(z.string()).optional(),
     confidence: z.enum(['low', 'medium', 'high']).optional(),
@@ -53,6 +55,7 @@ export const MemoryAddInputSchema = z
 const ADD_KNOWN_KEYS = new Set([
   'type',
   'title',
+  'slug',
   'body',
   'tags',
   'confidence',

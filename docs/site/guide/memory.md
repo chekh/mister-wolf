@@ -105,6 +105,12 @@ An existing installation keeps working without any migration — old data is rea
 
 The full map and the migration flow: [Migration to 2.13](/guide/migration-2.13).
 
+## Record identifiers
+
+A new record gets its id at creation: `mem_<YYYYMMDD>_<english-slug>_<hash6>`. The slug is supplied by the creating agent — `wolf add --slug release-plan`, or the `slug` field of the MCP `add` tool — because Wolf is local-first and does not call a translator from the CLI. The command validates the format (lowercase `a-z0-9` and dashes), normalizes case and separators, and never transliterates a title. Without a valid slug the id is built as `mem_<YYYYMMDD>_<hash6>` — without words — and the command says so, so the degradation is visible instead of hidden in a Russian-looking slug.
+
+The hash is deterministic: the same slug on the same day produces the same id, which makes ids predictable and repeatable. A genuine collision of two different records gets a deterministic `-2`, `-3` suffix; repeating the very same title is still refused with a hint (`wolf edit` / `wolf supersede` / another `--slug`), because that is a duplicate, not a new record. Existing ids are never renamed: older transliterated ids remain readable, searchable and linkable, so a mixed-looking memory is expected, not a migration debt.
+
 ## Examples
 
 ```bash

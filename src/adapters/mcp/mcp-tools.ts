@@ -337,9 +337,10 @@ export function registerMemoryTools(
     },
     async (input: unknown) => {
       // rest = per-type поля таксономии; валидацию и required-логику делает домен
-      const { type, title, body, tags, confidence, importance, createdBy, ...extra } = input as {
+      const { type, title, slug, body, tags, confidence, importance, createdBy, ...extra } = input as {
         type: string;
         title: string;
+        slug?: string;
         body?: string;
         tags?: string[];
         confidence?: 'low' | 'medium' | 'high';
@@ -349,6 +350,7 @@ export function registerMemoryTools(
       const result = await addMemoryObject(deps, {
         type: type as never,
         title,
+        slug,
         body,
         createdBy,
         tags,

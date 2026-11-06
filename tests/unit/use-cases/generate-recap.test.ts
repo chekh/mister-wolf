@@ -391,6 +391,9 @@ describe('generateRecap', () => {
       const { object } = await addMemoryObject(deps, {
         type: 'thread',
         title: BOOTSTRAP_THREAD_TITLE,
+        // 2.32.0: одинаковый заголовок в один день даёт тот же id — в цикле
+        // различаем записи явным slug (как это делает агент-создатель)
+        slug: `bootstrap-${finalStatus}`,
         extra: { goal: 'g' },
         createdBy: 'user:test',
       });

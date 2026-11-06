@@ -1,49 +1,23 @@
 import { createHash } from 'crypto';
 import { IdGenerator } from '../../ports/id-generator.port.js';
+import { normalizeMemorySlug } from '../../domain/memory-slug.js';
 
+/**
+ * 2.32.0 (Q1/Q2): ID записи = `mem_<YYYYMMDD>_<english-slug>_<hash6>`, а без
+ * валидного slug — `mem_<YYYYMMDD>_<hash6>` без слов. Транслитерация русского
+ * заголовка удалена: slug даёт агент-создатель. Хеш детерминирован
+ * (slug+дата; для fallback — отпечаток текста+дата), поэтому одинаковый вход
+ * даёт одинаковый ID, а не новый на каждый вызов.
+ */
 export class HashIdGenerator implements IdGenerator {
-  // ponytail: flat translit map, deterministic; switch to a lib only if other
-  // alphabets (CJK etc.) need real slugs. Публичная: переиспользуется document-id.ts.
-  static readonly CYRILLIC: Record<string, string> = {
-    а: 'a',
-    б: 'b',
-    в: 'v',
-    г: 'g',
-    д: 'd',
-    е: 'e',
-    ё: 'e',
-    ж: 'zh',
-    з: 'z',
-    и: 'i',
-    й: 'y',
-    к: 'k',
-    л: 'l',
-    м: 'm',
-    н: 'n',
-    о: 'o',
-    п: 'p',
-    р: 'r',
-    с: 's',
-    т: 't',
-    у: 'u',
-    ф: 'f',
-    х: 'kh',
-    ц: 'ts',
-    ч: 'ch',
-    ш: 'sh',
-    щ: 'shch',
-    ъ: '',
-    ы: 'y',
-    ь: '',
-    э: 'e',
-    ю: 'yu',
-    я: 'ya',
-  };
-
-  generateMemoryId(date: Date, slug: string): string {
-    const base = `${this.datePart(date)}_${this.slugify(slug)}`;
-    const hash = this.shortHash(base + date.toISOString());
-    return `mem_${base}_${hash}`;
+  generateMemoryId(date: Date, slug?: string, fingerprint?: string): string {
+    const day = this.datePart(date);
+    const normalized = normalizeMemorySlug(slug);
+    // slug есть → хеш только от slug+дата (коллизия разрешается tie-break в add);
+    // slug нет/невалиден → слов в id нет, но хеш различает разные записи дня.
+    const seed = normalized === null ? `${day}|${fingerprint ?? ''}` : `${normalized}|${day}`;
+    const hash = this.shortHash(seed);
+    return normalized === null ? `mem_${day}_${hash}` : `mem_${day}_${normalized}_${hash}`;
   }
 
   generateEventId(date: Date): string {
@@ -57,16 +31,6 @@ export class HashIdGenerator implements IdGenerator {
 
   private datetimePart(date: Date): string {
     return date.toISOString().slice(0, 19).replace(/[-:T]/g, '');
-  }
-
-  private slugify(input: string): string {
-    const translit = input.toLowerCase().replace(/[а-яё]/g, (ch) => HashIdGenerator.CYRILLIC[ch] ?? '');
-    const slug = translit
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/^_+|_+$/g, '')
-      .substring(0, 40)
-      .replace(/^_+|_+$/g, '');
-    return slug || this.shortHash(input);
   }
 
   private shortHash(input: string): string {

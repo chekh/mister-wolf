@@ -22,6 +22,7 @@ import {
 } from '../../domain/type-schema-builder.js';
 import { UserFacingError } from '../../domain/errors.js';
 import { isAbsolute, normalize, relative, sep } from 'path';
+import { normalizeMemorySlug } from '../../domain/memory-slug.js';
 
 /** WP3 §6.3: related.files/docs — project-relative posix-пути; абсолют вне root — отказ.
  * Прецедент: tool-librarian.ts:151 (script_path хранится относительным).
@@ -58,6 +59,9 @@ export interface AddMemoryObjectInput {
   lifetime?: MemoryObject['lifetime'];
   extra?: Record<string, unknown>;
   status?: MemoryObject['status'];
+  /** 2.32.0 (Q1): английский slug для ID записи; даёт агент-создатель.
+   *  Не передан/невалиден — ID строится без слов (fallback), запись создаётся. */
+  slug?: string;
   /** 2.13 §5.3: фасет «характер записи» — обязателен для note, запрещён прочим типам. */
   facet?: string;
   /** 2.17 (заявка T-09): маркер версионирующего пути — единственный легальный
@@ -70,6 +74,19 @@ export interface AddMemoryObjectInput {
 export interface AddMemoryObjectResult {
   object: MemoryObject;
   warnings: string[];
+}
+
+/** Дубль: тот же заголовок и тип (slug+дата дали тот же id) — это повторная
+ *  запись, а не коллизия разных записей. */
+function isDuplicateOf(existing: MemoryObject, object: MemoryObject): boolean {
+  return existing.title === object.title && existing.type === object.type;
+}
+
+function duplicateError(id: string): UserFacingError {
+  return new UserFacingError(
+    `Memory object "${id}" already exists (same title produced same id).\n` +
+      `Use: wolf edit ${id} (правка) | wolf supersede ${id} <new-id> (смена) | другой --title или --slug.`
+  );
 }
 
 export async function addMemoryObject(
@@ -135,7 +152,8 @@ export async function addMemoryObject(
     const now = deps.clock.now();
     const defaults = governanceDefaults(input.createdBy);
     const object: MemoryObject = {
-      id: deps.idGen.generateMemoryId(now, input.title),
+      // fallback-хеш различает разные записи дня по заголовку (слов в id нет)
+      id: deps.idGen.generateMemoryId(now, input.slug, input.title),
       type: input.type,
       title: input.title,
       body: input.body || '',
@@ -190,15 +208,23 @@ export async function addMemoryObject(
     }
 
     const validation = validateMemoryObject(object);
-    // P300/2.14 §5.1: коллизия детерминированного id — отказ с подсказкой,
-    // никогда тихая перезапись (P0-жалоба 817efd). get — один locate-обход,
-    // add не hot-path (Р5 спеки 2.14)
-    const existing = await deps.store.get(object.id);
-    if (existing) {
-      throw new UserFacingError(
-        `Memory object "${object.id}" already exists (same title produced same id).\n` +
-          `Use: wolf edit ${object.id} (правка) | wolf supersede ${object.id} <new-id> (смена) | другой --title.`
+    if (input.slug !== undefined && normalizeMemorySlug(input.slug) === null) {
+      validation.warnings.push(
+        `slug "${input.slug}" is not an English slug (a-z0-9, dashes) — id built without words; pass --slug to name it`
       );
+    }
+    // P300/2.14 §5.1: дубль (тот же title+type) — отказ с подсказкой, никогда тихая
+    // перезапись (P0-жалоба 817efd). 2.32.0 (Q2): реальная коллизия разных записей
+    // с одинаковым slug+дата разрешается детерминированным tie-break `-2`, `-3`, …
+    const baseId = object.id;
+    let existing = await deps.store.get(baseId);
+    if (existing) {
+      if (isDuplicateOf(existing, object)) throw duplicateError(baseId);
+      for (let n = 2; existing; n++) {
+        object.id = `${baseId}-${n}`;
+        existing = await deps.store.get(object.id);
+        if (existing && isDuplicateOf(existing, object)) throw duplicateError(object.id);
+      }
     }
     await deps.store.save(object);
     await deps.log.append({
