@@ -239,7 +239,7 @@ describe('createFaceVersion (T-02: REQ-03 guard, REQ-04 версии)', () => {
         from: v1.face.id,
         reason: 'emergency',
       })
-    ).rejects.toThrow(/agent session/i);
+    ).rejects.toThrow(/агент-сессии/i);
     const denied = await eventsOf('memory.face.denied');
     expect(denied).toHaveLength(1);
     expect(denied[0]!.payload).toMatchObject({
@@ -357,5 +357,98 @@ describe('createFaceVersion (T-02: REQ-03 guard, REQ-04 версии)', () => {
     const started = await eventsOf('memory.face.op_started');
     expect(started).toHaveLength(1);
     expect(started[0]!.payload['plan']).toEqual(['add_face', 'g17_record', 'activate', 'supersede_prev', 'announce']);
+  });
+
+  // 2.32.1 П3: закрытые обходы steward-only гейта из агент-сессии (opc-*).
+  it('restore из агент-сессии (opc-*): отказ + denied, версия не создаётся', async () => {
+    const v1 = await createFaceVersion(deps(STEWARD_CLI), {
+      command: 'new',
+      ownerSkill: 'skill:demo',
+      reason: 'initial face',
+      body: 'body-v1',
+      ...G17,
+    });
+    await expect(
+      createFaceVersion(deps(OWNER_IN_AGENT_SESSION), {
+        command: 'restore',
+        ownerSkill: 'skill:demo',
+        from: v1.face.id,
+        reason: 'agent rollback',
+      })
+    ).rejects.toThrow(/агент-сессии/i);
+    expect(await facesOf('skill:demo')).toHaveLength(1);
+    const denied = await eventsOf('memory.face.denied');
+    expect(denied).toHaveLength(1);
+    expect(denied[0]!.payload).toMatchObject({ owner_skill: 'skill:demo', actor: 'user:owner', command: 'restore' });
+  });
+
+  it('restore из терминала владельца (cli-*): успех', async () => {
+    const v1 = await createFaceVersion(deps(STEWARD_CLI), {
+      command: 'new',
+      ownerSkill: 'skill:demo',
+      reason: 'initial face',
+      body: 'body-v1',
+      ...G17,
+    });
+    const restored = await createFaceVersion(deps(OWNER_CLI), {
+      command: 'restore',
+      ownerSkill: 'skill:demo',
+      from: v1.face.id,
+      reason: 'owner rollback',
+    });
+    expect(restored.face.id).not.toBe(v1.face.id);
+    expect(restored.face.initiator).toBe('owner');
+  });
+
+  it('migrate из агент-сессии (opc-*): отказ + denied', async () => {
+    await expect(
+      createFaceVersion(deps(OWNER_IN_AGENT_SESSION), {
+        command: 'migrate',
+        ownerSkill: 'skill:demo',
+        reason: 'legacy migration',
+        body: 'legacy body',
+      })
+    ).rejects.toThrow(/агент-сессии/i);
+    expect(await store.list({ type: 'face' })).toHaveLength(0);
+    const denied = await eventsOf('memory.face.denied');
+    expect(denied).toHaveLength(1);
+    expect(denied[0]!.payload).toMatchObject({ owner_skill: 'skill:demo', actor: 'user:owner', command: 'migrate' });
+  });
+
+  it('migrate из терминала владельца (cli-*): прежнее поведение — успех', async () => {
+    const result = await createFaceVersion(deps(OWNER_CLI), {
+      command: 'migrate',
+      ownerSkill: 'skill:demo',
+      reason: 'legacy migration',
+      body: 'legacy body',
+    });
+    expect(result.face.initiator).toBe('migration');
+    expect(result.face.body).toBe('legacy body');
+  });
+
+  it('seed из агент-сессии остаётся внутренним путём (посев/scaffold-рамки не ломаются)', async () => {
+    const result = await createFaceVersion(
+      { ...deps(OWNER_IN_AGENT_SESSION) },
+      {
+        command: 'seed',
+        ownerSkill: 'skill:seeded',
+        reason: 'template seed',
+        body: '# Template body',
+      }
+    );
+    expect(result.face.initiator).toBe('seed');
+  });
+
+  it('штатная мутация Стюарда из агент-сессии (agent:steward + opc-*) продолжает работать', async () => {
+    const stewardInAgentSession = { WOLF_ACTOR: 'agent:steward', WOLF_SESSION: 'opc-1234' } as NodeJS.ProcessEnv;
+    const result = await createFaceVersion(deps(stewardInAgentSession), {
+      command: 'new',
+      ownerSkill: 'skill:demo',
+      reason: 'steward mutation',
+      body: 'body',
+      ...G17,
+    });
+    expect(result.face.initiator).toBe('steward');
+    expect(await eventsOf('memory.face.denied')).toHaveLength(0);
   });
 });

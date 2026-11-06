@@ -615,14 +615,16 @@ Commands:
   new [options] <owner_skill>         Create a new face version (steward-only;
                                       guard inside the use-case)
   restore [options] <owner_skill>     Restore an old version as a NEW one
-                                      (owner; linear history, REQ-05)
+                                      (owner, owner terminal only; agent
+                                      sessions are refused, REQ-05)
   breakglass [options] <owner_skill>  Emergency rollback by the owner (steward
                                       not involved; logged, REQ-07)
   recover [options] <op_id>           Resume an interrupted face operation by
                                       op id (--abort: archive the candidate,
                                       pre-activation only)
   migrate [options]                   Migrate legacy playbook notes to faces
-                                      (idempotent, REQ-02)
+                                      (idempotent, owner terminal only; agent
+                                      sessions are refused)
   list [options]                      List faces: owner_skill, current version,
                                       id, status
   history [options] <owner_skill>     Show version history of a face (newest
@@ -668,7 +670,8 @@ Options:
 ```text
 Usage: wolf face restore [options] <owner_skill>
 
-Restore an old version as a NEW one (owner; linear history, REQ-05)
+Restore an old version as a NEW one (owner, owner terminal only; agent sessions
+are refused, REQ-05)
 
 Arguments:
   owner_skill     Owner skill, e.g. skill:my-agent
@@ -716,7 +719,8 @@ Options:
 ```text
 Usage: wolf face migrate [options]
 
-Migrate legacy playbook notes to faces (idempotent, REQ-02)
+Migrate legacy playbook notes to faces (idempotent, owner terminal only; agent
+sessions are refused)
 
 Options:
   -h, --help  display help for command
@@ -1612,6 +1616,8 @@ Options:
 Usage: wolf scaffold [options] <kind> <name>
 
 Scaffold opencode frame (agent|skill|command) + playbook in Wolf memory
+(refuses an existing live face of the same owner; update it via the Steward
+path)
 
 Arguments:
   kind                  Frame kind (choices: "agent", "skill", "command",

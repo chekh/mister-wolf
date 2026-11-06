@@ -27,6 +27,8 @@ const FILE_B =
   '---\ntitle: Жалобный протокол\nowner_skill: mr-wolf\nversion: 1\nsteps: зафиксируй трение | вызови Стюарда\ntags: complaint,playbook\n---\nПравило жалобы.';
 const TEMPLATE_A_V2 =
   '---\ntitle: Наставник v2\nowner_skill: steward\nsteps: wolf face show | wolf face new + G17\ntags: steward:наставник,playbook\n---\nПротокол мутации v2: wolf face new с 7 полями G17.';
+const FILE_BLANK_LINE =
+  '---\ntitle: Жалобный протокол\nowner_skill: mr-wolf\nversion: 1\ntags: complaint,playbook\n---\n\nПравило жалобы.';
 
 const CREATED = '2026-09-20T10:00:00Z';
 
@@ -107,6 +109,32 @@ describe('seedBasePlaybooks (T-05: face-контракт, initiator=seed)', () =
     expect(steward.body).toContain('Протокол мутации.');
     expect(steward.reason).toMatch(/base-set seed: steward-nastavnik\.md/);
     expect(await facesOf('mr-wolf')).toHaveLength(1);
+  });
+
+  it('2.32.1: пустая строка после frontmatter не попадает в тело — повторный прогон не расходится', async () => {
+    const files = new Map([['blank-line.md', FILE_BLANK_LINE]]);
+    await seedBasePlaybooks(deps(files));
+    const seeded = (await facesOf('mr-wolf'))[0]!;
+    expect(seeded.body).toBe('Правило жалобы.'); // тело без ведущего перевода строки
+
+    // артефакт старого посева: живое тело с одним лишним ведущим переводом строки
+    await store.update(seeded.id, { body: `\n${seeded.body}` });
+    const again = await seedBasePlaybooks(deps(files));
+    expect(again).toEqual([{ file: 'blank-line.md', action: 'skipped', reason: 'active face v1 matches template' }]);
+  });
+
+  it('2.32.1 ревью: документ без перевода строки после закрывающего `---` разбирается, тело без ведущего \\n', async () => {
+    const files = new Map([
+      [
+        'no-terminator.md',
+        '---\ntitle: Без терминатора\nowner_skill: mr-wolf\ntags: тест\n---Правило без перевода строки.',
+      ],
+    ]);
+    const out = await seedBasePlaybooks(deps(files));
+    expect(out.map((o) => o.action)).toEqual(['created']);
+    const seeded = (await facesOf('mr-wolf'))[0]!;
+    expect(seeded.title).toBe('Без терминатора');
+    expect(seeded.body).toBe('Правило без перевода строки.');
   });
 
   it('re-init: body совпал → skip без записи (идемпотентность ADR-6)', async () => {

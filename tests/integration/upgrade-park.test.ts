@@ -513,7 +513,13 @@ function resolveDeps(configDir: string, liveFaces?: UpgradeResolveDeps['liveFace
         const faces = await new MarkdownMemoryStore(root).list({ type: 'face' });
         return faces.map((o) => {
           const face = o as FaceObject;
-          return { ownerSkill: face.owner_skill, version: face.version, body: face.body, initiator: face.initiator };
+          return {
+            ownerSkill: face.owner_skill,
+            version: face.version,
+            body: face.body,
+            initiator: face.initiator,
+            status: face.status,
+          };
         });
       }),
     faceTemplates: playbookFiles(join(fx.templatesRoot, 'playbooks')),
@@ -603,7 +609,13 @@ describe('runUpgradeResolve парк (T7): нумерация реестра, ke
     // diverged подставляем через liveFaces (read-only зеркало предиката посева)
     const diverged = await runUpgradeResolve(
       resolveDeps(configDir, async () => [
-        { ownerSkill: 'executor-lead', version: '1', body: 'Local steward-era body.\n', initiator: 'steward' },
+        {
+          ownerSkill: 'executor-lead',
+          version: '1',
+          body: 'Local steward-era body.\n',
+          initiator: 'steward',
+          status: 'active',
+        },
       ]),
       { here: false, cwd: park, values: ['1=keep'] }
     );

@@ -651,6 +651,7 @@ function decisionProdDeps(
         return {
           ownerSkill: face.owner_skill,
           version: face.version,
+          status: face.status,
           body: face.body,
           initiator: face.initiator,
         };

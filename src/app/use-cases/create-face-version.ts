@@ -109,13 +109,30 @@ export interface CreateFaceVersionResult {
   opId: string;
 }
 
+/** Контур вызова: WOLF_SESSION=opc-* — агент-сессия opencode; cli-* или
+ * отсутствие сессии — терминал владельца. */
+function isAgentSession(sessionId: string | null): boolean {
+  return sessionId !== null && sessionId.startsWith('opc-');
+}
+
 /** Guard (design §Guard): new — строго agent:steward; restore/breakglass — user:*;
- * breakglass дополнительно отказывает из агент-сессии (WOLF_SESSION=opc-*).
- * migrate/seed — служебные пути (T-05): без проверки полномочий — вход
- * внутренний (migrateFaces / посев base-set), содержание переносится дословно.
+ * restore/breakglass/migrate дополнительно отказывают из агент-сессии
+ * (WOLF_SESSION=opc-*): эти пути меняют канон лица/мигрируют его, а из
+ * агент-канала лицо меняется только штатной мутацией Стюарда.
+ * seed — служебный путь (T-05): без проверки полномочий — внутренний вход
+ * посева base-set и scaffold-рамки, содержание задаёт вызывающий.
+ * migrate остаётся доступен владельцу в терминале (вход migrateFaces).
  * null — доступ разрешён. */
 function guardFailure(command: FaceCommand, actor: string, sessionId: string | null): string | null {
-  if (command === 'migrate' || command === 'seed') return null;
+  if (command === 'seed') return null;
+  if (command === 'migrate') {
+    if (!isAgentSession(sessionId)) return null;
+    return (
+      'face migrate недоступен из агент-сессии: миграция переписывает канон лиц. ' +
+      'Выполните её в терминале владельца; из агент-канала лицо меняется только штатной мутацией Стюарда ' +
+      '(wolf face new, WOLF_ACTOR=agent:steward).'
+    );
+  }
   if (command === 'new') {
     if (actor !== 'agent:steward') {
       return `Face mutation is steward-only: actor "${actor}" is not agent:steward (attribution is env-only, WOLF_ACTOR)`;
@@ -125,8 +142,19 @@ function guardFailure(command: FaceCommand, actor: string, sessionId: string | n
   if (!actor.startsWith('user:')) {
     return `face ${command} is owner-only: actor "${actor}" is not user:* (attribution is env-only, WOLF_ACTOR)`;
   }
-  if (command === 'breakglass' && sessionId !== null && sessionId.startsWith('opc-')) {
-    return 'breakglass is not available from an agent session (WOLF_SESSION=opc-*)';
+  if (isAgentSession(sessionId)) {
+    if (command === 'restore') {
+      return (
+        'face restore недоступен из агент-сессии: восстановление версии теряет накопленные правки лица. ' +
+        'Выполните его в терминале владельца; из агент-канала лицо меняется только штатной мутацией Стюарда ' +
+        '(wolf face new, WOLF_ACTOR=agent:steward).'
+      );
+    }
+    return (
+      'face breakglass недоступен из агент-сессии: аварийный откат решает владелец. ' +
+      'Выполните его в терминале владельца; из агент-канала лицо меняется только штатной мутацией Стюарда ' +
+      '(wolf face new, WOLF_ACTOR=agent:steward).'
+    );
   }
   return null;
 }

@@ -8,6 +8,7 @@ import { MemoryLock } from '../../ports/memory-lock.port.js';
 import { MemoryTypeDeclaration } from '../../domain/memory-types.js';
 import { createFaceVersion } from './create-face-version.js';
 import { activeFace } from './face-operation.js';
+import { bodiesEqual, parseFaceDocument } from '../../domain/face-body.js';
 
 export interface SeedOutcome {
   file: string;
@@ -49,17 +50,6 @@ export interface SeedDeps {
   mode?: 'seed-missing-only';
 }
 
-function parseFrontmatter(raw: string): { meta: Record<string, string>; body: string } {
-  const m = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-  if (!m) return { meta: {}, body: raw };
-  const meta: Record<string, string> = {};
-  for (const line of m[1].split('\n')) {
-    const kv = line.match(/^([\w-]+):\s*(.+)$/);
-    if (kv) meta[kv[1]] = kv[2].trim();
-  }
-  return { meta, body: m[2] };
-}
-
 /** Активный legacy howto-head владельца (прецедент migrate-faces.ts: не
  * superseded, свежий по updated_at); null — активной записи нет. */
 async function activeLegacyHead(store: MemoryStore, ownerSkill: string): Promise<{ id: string } | null> {
@@ -80,7 +70,7 @@ export async function seedBasePlaybooks(deps: SeedDeps): Promise<SeedOutcome[]> 
   const processedOwners = new Set<string>();
   // ponytail: без .sort() — порядок вставки Map функционально не важен
   for (const [file, raw] of deps.files) {
-    const { meta, body } = parseFrontmatter(raw);
+    const { meta, body } = parseFaceDocument(raw);
     const ownerSkill = meta.owner_skill ?? '';
     if (processedOwners.has(ownerSkill)) {
       outcomes.push({
@@ -137,7 +127,7 @@ export async function seedBasePlaybooks(deps: SeedDeps): Promise<SeedOutcome[]> 
     }
 
     // лицо есть: идемпотентный skip либо решение о шаблонном обновлении
-    if (active.body === body) {
+    if (bodiesEqual(active.body, body)) {
       outcomes.push(
         missingOnly
           ? {

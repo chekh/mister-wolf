@@ -540,7 +540,7 @@ describe('runUpgradeReview (T9): TTY-цикл, non-TTY рецепт, diverged', 
         ],
       }),
       liveFaces: async () => [
-        { ownerSkill: 'executor-lead', version: '2', body: 'Local body.\n', initiator: 'steward' },
+        { ownerSkill: 'executor-lead', version: '2', body: 'Local body.\n', initiator: 'steward', status: 'active' },
       ],
       faceTemplates: new Map([['executor-lead-playbook.md', '---\nowner_skill: executor-lead\n---\nTemplate body.\n']]),
     });

@@ -253,7 +253,7 @@ describe('wolf face (T-04: REQ-10 наблюдаемость, REQ-07 breakglass,
     vi.stubEnv('WOLF_ACTOR', 'user:owner');
     vi.stubEnv('WOLF_SESSION', 'opc-1234');
     await expect(runFace(['breakglass', 'skill:alpha', '--from', 'v1', '--reason', 'nope'])).rejects.toThrow(
-      /agent session/
+      /агент-сессии/
     );
     const denied = await eventsOf('memory.face.denied');
     expect(denied).toHaveLength(2);

@@ -4,6 +4,34 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.32.1] - 2026-11-06
+
+### Fixed — `diverged` decisions caused by the frontmatter boundary alone, and the face version the report names
+
+Two places where a technically valid result misled the owner: a face that matched its template in content was still reported as diverged when the two sides disagreed only about the newline after the frontmatter, and the upgrade report could name a face version that no longer exists. Both are fixed at the source; substantive differences still produce `diverged`.
+
+- **False `diverged` decisions.** The template body and the live face body were extracted by two different frontmatter-boundary regexes: seeding and the read-only `diverged` predicate kept one leading newline after the closing `---`, while the memory store dropped it. A face that differed from its template only at that boundary landed in the Steward's decision zone. The boundary is now a single implementation (`src/domain/face-body.ts`), and body comparison ignores leading blank lines — separator noise, including the extra newline left in place by the older seeding. Internal and substantive differences still produce `diverged`.
+- **The face version in the report.** The decision registry took the first record per `owner_skill` — usually the oldest version, and often `superseded` — so the report could name a version that does not exist (`v1` while `v3` was active). The active version is now selected (highest number among `status === 'active'`), and the version status is a required part of the input instead of an optional detail.
+
+### Changed — the live faces of the complaint protocol and the Steward follow the current templates
+
+The two faces re-rendered in 2.32.0 were brought forward in this project by the Steward's regular mutation path with G17, not by a hand edit: `mr-wolf` v4 (the complaint-protocol v3 text) and `steward` v3 (the side-effects check section). Version history is preserved — the earlier versions stay readable and superseded.
+
+### Fixed — three ways around the steward-only face gate are closed
+
+The gate held for `face new` but not for every path that changes a face: an agent session could still restore an old version (dropping the accumulated edits of the live face), run the legacy migration without any check, and scaffold a stub over a face that already existed. The gate now covers these paths; its own rule is unchanged.
+
+- **`face restore` is refused from an agent session** (`WOLF_SESSION=opc-*`), by the same check that already covered `breakglass`; the owner in a terminal (`cli-*` or no session) keeps it, and the refusal is journaled as `memory.face.denied`.
+- **`face migrate` is refused from an agent session.** The legacy migration rewrites the face canon, so it now requires the owner's terminal; the internal seeding path (`seed`) and the Steward's regular mutation (`wolf face new` with `WOLF_ACTOR=agent:steward`) keep working.
+- **`wolf scaffold skill|command|agent` refuses to overwrite a live face.** When an active face with the same `owner_skill` already exists, scaffold reports its id and version and stops instead of replacing it with a "Scaffold stub" body; a new name is scaffolded as before, and the existing frame-file check is still the first idempotency guard. `--from-playbook` still reuses an existing face by design.
+- **CLI help states the limits** for `face restore`, `face migrate` and `scaffold`; the generated CLI reference is synchronized.
+
+### Upgrade notes
+
+- **`npm install -g mister-wolf@2.32.1`** (or `wolf upgrade`) is enough. Nothing to migrate.
+- **`update-map.json` is re-stamped to 2.32.1 against 2.32.0**; the pass delivers the changed decision logic and nothing else.
+- **Faces marked `diverged` only because of the boundary will stop appearing in the report** — `wolf upgrade` may exit `0` where it used to exit `2`. A face with a real content difference is still reported.
+
 ## [2.32.0] - 2026-11-06
 
 ### Changed — an upgrade report that reads without noise, English ids for new records, and a first-class package of target documents

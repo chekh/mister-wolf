@@ -19,6 +19,7 @@ import { insertProtect, normalizeManaged, parseProtect, removeProtect } from '..
 import { projectPath } from './verify-against-map.js';
 import { planOf } from './upgrade-projects.js';
 import { backupLocalFile } from './project-step.js';
+import { bodiesEqual, documentBody } from '../../domain/face-body.js';
 
 /** Вид цели: файлы base-set (из `map.files[].kind`) и AGENTS.md. */
 export type DecisionKind = 'agent' | 'skill' | 'command' | 'plugin' | 'agents-md';
@@ -67,6 +68,8 @@ export interface LiveFace {
   version: string;
   body: string;
   initiator: string;
+  /** Статус версии: 'active' | 'candidate' | 'superseded' | 'archived'. */
+  status: string;
 }
 
 export interface DecisionDeps {
@@ -93,14 +96,13 @@ const KIND_OF: Record<FileKind, DecisionKind> = {
 /** Каталоги base-set (LAYOUT рендерера): область wolf-управляемых файлов. */
 const BASE_DIRS = ['.opencode/agents', '.opencode/skills', '.opencode/command', '.opencode/plugins'];
 
-/**
- * Тело шаблона лица — то же извлечение, что в `seed-base-playbooks.ts`
- * (единственный источник предиката diverged: живое лицо сравнивается с телом
- * шаблона, дрейф при initiator вне seed/migration — зона Стюарда).
- */
-function templateBody(raw: string): string {
-  const m = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-  return m ? m[2] : raw;
+/** Активная версия владельца: только `status === 'active'`, старшая по номеру
+ *  (тот же детерминизм, что activeFace в face-operation.ts). Нет активной —
+ *  лица нет: никакого молчаливого отката к первой записи. */
+function activeLiveFace(live: LiveFace[], ownerSkill: string): LiveFace | undefined {
+  return live
+    .filter((f) => f.ownerSkill === ownerSkill && f.status === 'active')
+    .sort((a, b) => Number(b.version) - Number(a.version))[0];
 }
 
 async function divergedFaces(root: string, map: UpdateMap, deps: DecisionDeps): Promise<DivergedFace[]> {
@@ -113,9 +115,9 @@ async function divergedFaces(root: string, map: UpdateMap, deps: DecisionDeps): 
     seen.add(face.owner_skill);
     const tpl = deps.faceTemplates?.get(basename(face.template));
     if (tpl === undefined) continue;
-    const active = live.find((f) => f.ownerSkill === face.owner_skill);
+    const active = activeLiveFace(live, face.owner_skill);
     if (!active) continue; // лица нет — штатный посев прохода, не решение владельца
-    if (active.body === templateBody(tpl)) continue; // совпало с шаблоном
+    if (bodiesEqual(active.body, documentBody(tpl))) continue; // совпало с шаблоном (шум границы не в счёт)
     if (active.initiator === 'seed' || active.initiator === 'migration') continue; // штатное отставание
     out.push({
       project: basename(root),
