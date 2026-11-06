@@ -1,4 +1,4 @@
-// wolf:rendered base=wolf-session-start.js set=2.31.0
+// wolf:rendered base=wolf-session-start.js set=2.32.0
 /**
  * Mr.Wolf session-start plugin (шаблон базового набора, спека §5.4).
  *
@@ -55,7 +55,7 @@ function governanceBody() {
       const match = raw.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n([\s\S]*)$/);
       const body = match?.[1]?.trim();
       if (body) {
-        return `## using-skills: полный текст уже загружен\n\nНе вызывай using-skills повторно ради загрузки. Другие методики загружай отдельно до их выполнения.\n\n${body}`;
+        return `## using-skills — методика доставлена ниже (полный текст)\n\nЭто полный текст установленной методики; повторно загружать его не нужно. Другие методики загружай отдельно до их выполнения.\n\n${body}`;
       }
     } catch {
       // Missing/unreadable skill is a visible degraded mode, not a fake load.

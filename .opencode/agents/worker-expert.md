@@ -12,7 +12,7 @@ permissions:
     resource: '*'
     effect: 'deny'
 ---
-<!-- wolf:rendered base=worker-expert.md set=2.31.0 -->
+<!-- wolf:rendered base=worker-expert.md set=2.32.0 -->
 
 # Worker Expert
 

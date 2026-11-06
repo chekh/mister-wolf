@@ -2,7 +2,7 @@
 description: Независимое ревью документа по цели и применимым линзам wolf-review. Использование: /doc-review <путь-к-файлу> [цель]
 agent: mr-wolf
 ---
-<!-- wolf:rendered base=doc-review.md set=2.31.0 -->
+<!-- wolf:rendered base=doc-review.md set=2.32.0 -->
 Проведи doc-review документа: $ARGUMENTS
 
 Применяй using-skills, wolf-work-strategy и wolf-review. L0 сверяет цель и
