@@ -25,13 +25,16 @@ plan: Tender · ~/dev/Tender
 - composition 2.16.0, no faces → 2.19.0 · map: seed×6
 skip: plan: adminvps · [pinned] — skipped
 trading-signal
-ok: base-set: 30 files → updated
-- faces: executor-lead seeded, worker-* skip-live
-ok: map check: 33/33 ok
+ok: trading-signal — updated
+base-set: 30 files → updated
+faces: executor-lead seeded, worker-* skip-live
+verify: 33/33 ok
 Tender
-ok: base-set: 29 updated
-warn: 1 skipped-mutated
-warn: map check: 1 needs-decision
+warn: Tender — needs decision
+base-set: 29 updated
+needs decision (skipped-mutated): .opencode/agents/worker.md
+needs decision (diverged): .opencode/skills/wolf-plan/SKILL.md
+verify: 31/33 ok · 2 needs decision
 updated 2 · needs-decision 1 · errors 0 · faces seeded 8 — Done"
 `;
 

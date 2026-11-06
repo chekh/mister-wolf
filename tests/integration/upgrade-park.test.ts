@@ -357,8 +357,11 @@ describe('runUpgradeProjects: фикстурный парк (T7)', () => {
     expect(readFileSync(join(mutated, takeBackup), 'utf-8')).toBe(localEdit); // правка не потеряна
     expect(text).toContain('p-mutated — needs decision');
     expect(text).toContain('1 conflict');
-    // REQ-01 AC1: путь каждого needs-decision назван, счётчик verify сохранён (AC3)
-    expect(text).toContain('needs decision: .opencode/skills/using-skills/SKILL.md (conflict)');
+    // REQ-01 AC1: путь каждого needs-decision назван, счётчик verify сохранён (AC3);
+    // 2.32.0: отдельная строка на код, маркер статуса у детали отсутствует
+    expect(text).toContain('needs decision (conflict): .opencode/skills/using-skills/SKILL.md');
+    expect(text.split('\n')).toContain('needs decision (conflict): .opencode/skills/using-skills/SKILL.md');
+    expect(text).not.toContain('warn: needs decision');
     expect(text).toMatch(/verify: \d+\/\d+ ok · \d+ needs decision/);
 
     // R13.1: pinned показан со статусом, не изменён

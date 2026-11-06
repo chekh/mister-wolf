@@ -11,6 +11,7 @@ import { tmpdir } from 'os';
 import { basename, join } from 'path';
 import {
   runUpgradeProjects,
+  verifyNameLines,
   type UpgradeProjectsDeps,
   type UpgradeRunResult,
 } from '../../../src/app/use-cases/upgrade-projects.js';
@@ -22,6 +23,7 @@ import { normalizeManaged } from '../../../src/domain/protect-key.js';
 import type { UpdateMap } from '../../../src/adapters/fs/update-map.js';
 import type { RegisteredProject } from '../../../src/adapters/fs/projects-registry.js';
 import type { ScanResult } from '../../../src/app/use-cases/scan-unregistered.js';
+import type { VerifyResult } from '../../../src/app/use-cases/verify-against-map.js';
 
 /** Мини-карта юнит-контура (test-plan §«Фикстуры»): категории new/changed/
  * unchanged/deprecated/removed; removed 2 + deprecated 1 — счётчики R05.2. */
@@ -496,15 +498,55 @@ describe('детали проекта: имена needs-decision и коды §4
       });
       const res = await runUpgradeProjects(makeDeps({ runStep, registry: registryOf([entry(proj)]) }), { yes: true });
       const text = plain(res);
-      // счётчик сохранён дословно (AC3), имена — дополнительная строка
+      // счётчик сохранён дословно (AC3); имена — отдельными строками по кодам (2.32.0)
       expect(text).toMatch(/verify: \d+\/\d+ ok · 2 needs decision/);
-      expect(text).toContain('needs decision: .opencode/agents/foo.md (skipped-mutated), AGENTS.md (conflict)');
+      expect(text).toContain('needs decision (conflict): AGENTS.md');
+      expect(text).toContain('needs decision (skipped-mutated): .opencode/agents/foo.md');
+      // контракт 2.32.0: порядок кодов фиксирован — conflict идёт раньше skipped-mutated
+      expect(text.indexOf('needs decision (conflict)')).toBeLessThan(text.indexOf('needs decision (skipped-mutated)'));
+      // строки-подробности больше не несут маркер статуса
+      expect(text.split('\n')).toContain('needs decision (conflict): AGENTS.md');
       expect(text).toContain('1 protected (intentional)');
       expect(text).toContain('1 kept (local): .opencode/agents/k.md');
       expect(text).toContain('faces: executor-lead diverged');
     } finally {
       rmSync(proj, { recursive: true, force: true });
     }
+  });
+});
+
+/* ---------- 2.32.0 Q6: needs decision по кодам отдельными строками ---------- */
+
+describe('2.32.0 Q6: needs decision по кодам отдельными строками', () => {
+  it('порядок conflict → skipped-mutated → diverged; diverged больше не теряется', () => {
+    const map: UpdateMap = {
+      version: '2.32.0',
+      prev: '2.31.0',
+      files: [
+        { path: 'base/agents/a.md', kind: 'agent', category: 'changed' },
+        { path: 'base/skills/s/SKILL.md', kind: 'skill', category: 'changed' },
+      ],
+    };
+    const verify = {
+      items: [
+        { kind: 'face', target: 'executor-lead', code: 'diverged', needsDecision: true },
+        { kind: 'file', target: 'base/skills/s/SKILL.md', code: 'skipped-mutated', needsDecision: true },
+        { kind: 'file', target: 'base/agents/a.md', code: 'conflict', needsDecision: true },
+        { kind: 'file', target: 'base/agents/a.md', code: 'protected', needsDecision: false },
+      ],
+      summary: { byCode: {}, needsDecision: 3, errors: 0 },
+    } as unknown as VerifyResult;
+    const text = renderReport(
+      { kind: 'section', title: 'Projects', children: verifyNameLines(verify, map) },
+      { tty: false, colors: 'mono', width: 100 }
+    );
+    expect(text.split('\n')).toEqual([
+      'Projects',
+      'needs decision (conflict): .opencode/agents/a.md',
+      'needs decision (skipped-mutated): .opencode/skills/s/SKILL.md',
+      'needs decision (diverged): executor-lead',
+      '1 protected (intentional)',
+    ]);
   });
 });
 

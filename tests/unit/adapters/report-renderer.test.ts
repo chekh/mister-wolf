@@ -30,18 +30,21 @@ const parkTree: ReportNode = {
       kind: 'section',
       title: 'trading-signal',
       children: [
-        { kind: 'line', marker: 'ok', text: 'base-set: 30 files → updated' },
-        { kind: 'line', marker: 'info', text: 'faces: executor-lead seeded, worker-* skip-live' },
-        { kind: 'line', marker: 'ok', text: 'map check: 33/33 ok' },
+        { kind: 'line', marker: 'ok', text: 'trading-signal — updated' },
+        { kind: 'detail', text: 'base-set: 30 files → updated' },
+        { kind: 'detail', text: 'faces: executor-lead seeded, worker-* skip-live' },
+        { kind: 'detail', text: 'verify: 33/33 ok' },
       ],
     },
     {
       kind: 'section',
       title: 'Tender',
       children: [
-        { kind: 'line', marker: 'ok', text: 'base-set: 29 updated' },
-        { kind: 'line', marker: 'warn', text: '1 skipped-mutated' },
-        { kind: 'line', marker: 'warn', text: 'map check: 1 needs-decision' },
+        { kind: 'line', marker: 'warn', text: 'Tender — needs decision' },
+        { kind: 'detail', text: 'base-set: 29 updated' },
+        { kind: 'detail', text: 'needs decision (skipped-mutated): .opencode/agents/worker.md' },
+        { kind: 'detail', text: 'needs decision (diverged): .opencode/skills/wolf-plan/SKILL.md' },
+        { kind: 'detail', text: 'verify: 31/33 ok · 2 needs decision' },
       ],
     },
     {
@@ -109,7 +112,10 @@ describe('renderReport', () => {
     expect(out).toContain('┌ Mr Wolf — upgrade 2.19.0 ');
     const visibleOut = visibleLines(out);
     expect(visibleOut.some((l) => l.includes('│ ● wolf 2.18.5 → 2.19.0 … ok'))).toBe(true);
-    expect(visibleOut.some((l) => l.includes('▲ 1 skipped-mutated'))).toBe(true);
+    expect(visibleOut.some((l) => l.includes('│   ▲ Tender — needs decision'))).toBe(true);
+    // 2.32.0 Q6: детали стоят в колонке текста без глифа статуса
+    expect(visibleOut.some((l) => l.includes('│     base-set: 30 files → updated'))).toBe(true);
+    expect(visibleOut.some((l) => l.includes('│   ✓ trading-signal — updated'))).toBe(true);
     expect(out).toContain('\x1b[38;2;'); // truecolor присутствует
     const lines = visibleOut;
     for (const l of lines) expect(l.length).toBeLessThanOrEqual(truecolor.width);
@@ -127,8 +133,13 @@ describe('renderReport', () => {
     expect(out).not.toContain('\x1b');
     expect(out).not.toContain('┌');
     expect(out).toContain('- wolf 2.18.5 → 2.19.0 … ok');
-    expect(out).toContain('ok: base-set: 30 files → updated');
-    expect(out).toContain('warn: 1 skipped-mutated');
+    // деталь без маркера статуса: префикса ok:/info нет
+    expect(out).toContain('base-set: 30 files → updated');
+    const detailLine = out.split('\n').find((l) => l.includes('base-set: 30 files'));
+    expect(detailLine?.startsWith('ok:')).toBe(false);
+    expect(out).toContain('needs decision (skipped-mutated): .opencode/agents/worker.md');
+    expect(out).toContain('needs decision (diverged): .opencode/skills/wolf-plan/SKILL.md');
+    expect(out).toContain('warn: Tender — needs decision');
     expect(out).toContain('skip: plan: adminvps · [pinned] — skipped');
     expect(out).toContain('updated 2 · needs-decision 1 · errors 0 · faces seeded 8 — Done');
     expect(out).toMatchSnapshot();
@@ -151,10 +162,11 @@ describe('renderReport', () => {
     const out = renderReport(statusTree, env);
     expect(out).not.toContain('\x1b[38;2;');
     expect(out).toContain('\x1b[38;5;');
-    expectMarkerWord(out, '●', 'updated');
+    expectMarkerWord(out, '●', 'phase step info');
+    expectMarkerWord(out, '✓', 'updated');
     expectMarkerWord(out, '▲', 'needs-decision');
     expectMarkerWord(out, '✖', 'linked-refusal');
-    expectMarkerWord(out, '●', 'pinned');
+    expectMarkerWord(out, '·', 'pinned');
   });
 
   it('R15.3 16: только базовые коды, статусы различимы', () => {
@@ -162,10 +174,11 @@ describe('renderReport', () => {
     const out = renderReport(statusTree, env);
     expect(out).not.toContain('\x1b[38;2;');
     expect(out).not.toContain('\x1b[38;5;');
-    expectMarkerWord(out, '●', 'updated');
+    expectMarkerWord(out, '●', 'phase step info');
+    expectMarkerWord(out, '✓', 'updated');
     expectMarkerWord(out, '▲', 'refused');
     expectMarkerWord(out, '✖', 'linked-refusal');
-    expectMarkerWord(out, '●', 'skipped-live');
+    expectMarkerWord(out, '·', 'skipped-live');
   });
 
   it('R15.3 mono styled: без ANSI вовсе, маркер + слово сохраняют различимость', () => {
@@ -174,10 +187,23 @@ describe('renderReport', () => {
     expect(out).not.toContain('\x1b');
     expect(out).toContain('┌'); // рамки остаются, цвет — нет
     expectMarkerWord(out, '●', 'phase step info');
-    expectMarkerWord(out, '●', 'up-to-date');
+    expectMarkerWord(out, '✓', 'up-to-date');
     expectMarkerWord(out, '▲', 'deprecated');
     expectMarkerWord(out, '✖', 'linked-refusal');
-    expectMarkerWord(out, '●', 'skipped-live');
+    expectMarkerWord(out, '·', 'skipped-live');
+  });
+
+  it('2.32.0 Q6: info/ok/skip различаются глифами даже без цвета', () => {
+    const env: TermEnv = { tty: true, colors: 'mono', width: 80 };
+    const out = renderReport(statusTree, env);
+    const glyphs = ['●', '✓', '·', '▲', '✖'];
+    for (const g of glyphs) expect(out).toContain(g);
+    // ok и skip больше не делят один глиф (раньше все три были `●`)
+    const okLine = visibleLines(out).find((l) => l.includes('base-set updated'));
+    const skipLine = visibleLines(out).find((l) => l.includes('pinned / worktree'));
+    expect(okLine).toContain('✓');
+    expect(skipLine).toContain('·');
+    expect(okLine).not.toContain('●');
   });
 
   it.each([60, 80, 120])('width %i: styled с длинным путём — перенос, рамки не рвутся', (width) => {

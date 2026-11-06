@@ -9,12 +9,11 @@ import { runUpgrade, type UpgradeDeps, type UpgradeOutcome } from '../../../app/
 import { UserFacingError } from '../../../domain/errors.js';
 import { runProjectStep, type ProjectReport, type ProjectStepDeps } from '../../../app/use-cases/project-step.js';
 import {
-  backupDigestLines,
   jsonProjectFiles,
   mapCategories,
   STATUS_TEXT,
+  stepDetailLines,
   statusOf,
-  verifyNameLines,
   type OutcomeStatus,
   type UpgradeRunResult,
 } from '../../../app/use-cases/upgrade-projects.js';
@@ -247,43 +246,6 @@ function planSection(cwd: string, map: UpdateMap): ReportNode {
       line('info', 'outside the registry — manual mode', true),
     ],
   };
-}
-
-/** Детали шага одного проекта (REQ-05): base-set/лица/схема/сверка — формат
- * строк T7 projectsSection. */
-function stepDetailLines(report: ProjectReport, map: UpdateMap): ReportNode[] {
-  const out: ReportNode[] = [];
-  const counts: Record<string, number> = { updated: 0, created: 0, appended: 0, identical: 0, mutated: 0, conflict: 0 };
-  for (const o of report.sync.outcomes) {
-    if (o.action === 'skipped') {
-      if (o.mutated) counts.mutated!++;
-      else counts.identical!++;
-    } else {
-      counts[o.action]!++;
-    }
-  }
-  const bsParts = Object.entries(counts)
-    .filter(([, n]) => n > 0)
-    .map(([k, n]) => `${n} ${k}`);
-  if (bsParts.length > 0) out.push(line('info', `base-set: ${bsParts.join(', ')}`, true));
-  if (report.seed.length > 0) {
-    const faces = report.seed.map((s) => `${s.file.replace(/-playbook\.md$/, '')} ${s.kind ?? s.action}`).join(', ');
-    out.push(line('info', `faces: ${faces}`, true));
-  }
-  if (report.schema.status !== 'ok') {
-    out.push(
-      line('warn', `schema: ${report.schema.status}${report.schema.error ? ` — ${report.schema.error}` : ''}`, true)
-    );
-  }
-  const v = report.verify.summary;
-  const ok = report.verify.items.length - v.needsDecision - v.errors;
-  const parts = [`${ok}/${report.verify.items.length} ok`];
-  if (v.needsDecision > 0) parts.push(`${v.needsDecision} needs decision`);
-  if (v.errors > 0) parts.push(`${v.errors} errors`);
-  out.push(line(v.errors > 0 ? 'error' : v.needsDecision > 0 ? 'warn' : 'info', `verify: ${parts.join(' · ')}`, true));
-  out.push(...verifyNameLines(report.verify, map));
-  out.push(...backupDigestLines(report)); // §4.12: файл + путь бэкапа
-  return out;
 }
 
 /** Счётчик статуса одного проекта — лейблы паркового словаря T7. */
