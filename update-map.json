@@ -1,6 +1,6 @@
 {
-  "version": "2.32.0",
-  "prev": "2.31.0",
+  "version": "2.32.1",
+  "prev": "2.32.0",
   "files": [
     {
       "path": "base/agents/executor-lead.md",
@@ -105,7 +105,7 @@
     {
       "path": "base/skills/using-skills/references/project-rules.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/references/project-tools.md",
@@ -155,7 +155,7 @@
     {
       "path": "base/skills/wolf-brainstorm/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-code-craft/SKILL.md",
@@ -210,7 +210,7 @@
     {
       "path": "base/skills/wolf-feedback/references/complaints.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-feedback/references/session-diagnosis.md",
@@ -245,7 +245,7 @@
     {
       "path": "base/skills/wolf-plan/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-release-docs/SKILL.md",
@@ -305,7 +305,7 @@
     {
       "path": "opencode/plugins/wolf-session-start.js",
       "kind": "plugin",
-      "category": "changed"
+      "category": "unchanged"
     }
   ],
   "faces": [
@@ -353,7 +353,7 @@
     }
   ],
   "agents_md": {
-    "category": "changed",
+    "category": "unchanged",
     "mode": "append-block"
   },
   "schema_migrations": [],
