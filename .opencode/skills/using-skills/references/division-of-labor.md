@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=division-of-labor.md set=2.32.0 -->
+<!-- wolf:rendered base=division-of-labor.md set=2.32.1 -->
 # Разделение труда и границы поручений
 
 Загружает наниматель L0/L1 перед назначением, продолжением или заменой подчинённого.

@@ -20,7 +20,7 @@
     {
       "path": "base/agents/worker-expert.md",
       "kind": "agent",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/agents/worker-implementer.md",
@@ -95,7 +95,7 @@
     {
       "path": "base/skills/using-skills/references/contracts.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/using-skills/references/division-of-labor.md",
@@ -170,7 +170,7 @@
     {
       "path": "base/skills/wolf-council/SKILL.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/wolf-debug/references/techniques.md",
@@ -330,7 +330,7 @@
     {
       "template": "base/playbooks/worker-expert-playbook.md",
       "owner_skill": "worker-expert",
-      "category": "unchanged",
+      "category": "changed",
       "seed": true
     },
     {

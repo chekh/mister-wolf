@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=routes-state.md set=2.32.0 -->
+<!-- wolf:rendered base=routes-state.md set=2.32.1 -->
 # Сохранение, Git и передача
 
 | Когда | Как применить | Результат |
