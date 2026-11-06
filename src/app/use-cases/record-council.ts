@@ -526,6 +526,8 @@ export async function recordCouncil(
       type: 'note',
       facet: 'context',
       title: titleFor(envelope),
+      // 2.32.0: два разных совета с одинаковым заголовком-вопросом — разные записи
+      idFingerprint: `${titleFor(envelope)}\u0000${body}`,
       body,
       createdBy: input.createdBy,
       tags: [COUNCIL_TAG],

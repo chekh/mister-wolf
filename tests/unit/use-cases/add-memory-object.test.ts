@@ -525,6 +525,33 @@ describe('addMemoryObject — ID из english slug (2.32.0)', () => {
     expect((await store.list()).length).toBe(3);
   });
 
+  it('S12: idFingerprint различает законные повторы (жалобы/совет), дубль — отказ', async () => {
+    const base = {
+      type: 'complaint' as const,
+      title: 'Complaint about skill:x: r',
+      createdBy: 'user:test',
+      extra: { about: 'skill:x', rule: 'r', evidence: 'e', proposal: 'p' },
+    };
+    const first = await addMemoryObject(
+      { store, log, clock: fixedClock, idGen },
+      { ...base, idFingerprint: 'skill:x\u0000r\u0000evidence one', body: 'one' }
+    );
+    const second = await addMemoryObject(
+      { store, log, clock: fixedClock, idGen },
+      { ...base, idFingerprint: 'skill:x\u0000r\u0000evidence two', body: 'two' }
+    );
+    expect(first.object.id).not.toBe(second.object.id);
+    expect((await store.list()).length).toBe(2);
+
+    // тот же отпечаток = тот же объект → прежний отказ от дубля
+    await expect(
+      addMemoryObject(
+        { store, log, clock: fixedClock, idGen },
+        { ...base, idFingerprint: 'skill:x\u0000r\u0000evidence one', body: 'one' }
+      )
+    ).rejects.toThrow(/already exists/);
+  });
+
   it('S12: точный дубль (тот же title+type) — отказ, а не -2', async () => {
     const input = { type: 'decision' as const, title: 'Дубль', slug: 'dup', createdBy: 'user:test' };
     await addMemoryObject({ store, log, clock: fixedClock, idGen }, input);

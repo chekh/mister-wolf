@@ -70,6 +70,8 @@ export async function summarizeSession(
       type: 'note',
       facet: 'history',
       title,
+      // 2.32.0: два wrap-up в одну минуту — разные записи; id различается телом
+      idFingerprint: `${title}\u0000${body}`,
       body,
       createdBy: input.createdBy,
       tags,

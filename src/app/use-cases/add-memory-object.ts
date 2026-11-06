@@ -62,6 +62,11 @@ export interface AddMemoryObjectInput {
   /** 2.32.0 (Q1): английский slug для ID записи; даёт агент-создатель.
    *  Не передан/невалиден — ID строится без слов (fallback), запись создаётся. */
   slug?: string;
+  /** 2.32.0: отпечаток содержимого для fallback-хеша, когда slug не задан.
+   *  Нужен потокам, которые законно создают несколько записей с одним заголовком
+   *  (жалобы на то же правило, wrap-up, совет): разные отпечатки → разные id,
+   *  одинаковый отпечаток → прежний отказ от дубля. В id слова не попадают. */
+  idFingerprint?: string;
   /** 2.13 §5.3: фасет «характер записи» — обязателен для note, запрещён прочим типам. */
   facet?: string;
   /** 2.17 (заявка T-09): маркер версионирующего пути — единственный легальный
@@ -153,7 +158,7 @@ export async function addMemoryObject(
     const defaults = governanceDefaults(input.createdBy);
     const object: MemoryObject = {
       // fallback-хеш различает разные записи дня по заголовку (слов в id нет)
-      id: deps.idGen.generateMemoryId(now, input.slug, input.title),
+      id: deps.idGen.generateMemoryId(now, input.slug, input.idFingerprint ?? input.title),
       type: input.type,
       title: input.title,
       body: input.body || '',

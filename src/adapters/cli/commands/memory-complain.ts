@@ -75,6 +75,9 @@ export function memoryComplainCommand(baseDir: string = safeCwd()): Command {
         {
           type: 'complaint',
           title: `Complaint about ${options.about}: ${shortRule}`,
+          // 2.32.0: заголовок жалобы — производная метка; несколько жалоб на то же
+          // правило законны, поэтому id различается по содержанию, а не по title.
+          idFingerprint: [options.about, options.rule, evidence, options.proposal, kind ?? ''].join('\u0000'),
           body: evidence,
           createdBy: resolveCreatedBy(options.createdBy),
           tags: ['complaint'],
