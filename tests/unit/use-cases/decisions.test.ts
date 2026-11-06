@@ -308,6 +308,38 @@ describe('collectDecisions (design §4.7): нумерация, порядок, �
     expect((await withBody('Template body.\n', extraBlank)).diverged).toEqual([]);
   });
 
+  it('2.32.1 ревью: лицо без активной версии (candidate/superseded) не даёт diverged', async () => {
+    const proj = await boot('p-faces-noactive');
+    const templates = new Map([
+      ['executor-lead-playbook.md', '---\nowner_skill: executor-lead\n---\nTemplate body.\n'],
+    ]);
+    const reg = await collectDecisions({
+      here: proj,
+      loadMap: () => MAP,
+      inspect: async () => [],
+      faceTemplates: templates,
+      liveFaces: async () => [
+        // тело отличается от шаблона, но активной версии у владельца нет:
+        // candidate — незавершённая операция, superseded — история; решать нечего
+        {
+          ownerSkill: 'executor-lead',
+          version: '2',
+          body: 'Local candidate body.\n',
+          initiator: 'steward',
+          status: 'candidate',
+        },
+        {
+          ownerSkill: 'executor-lead',
+          version: '1',
+          body: 'Local old body.\n',
+          initiator: 'steward',
+          status: 'superseded',
+        },
+      ],
+    });
+    expect(reg.diverged).toEqual([]);
+  });
+
   it('2.32.1: содержательное расхождение (фраза) → diverged', async () => {
     const proj = await boot('p-faces-content');
     const templates = new Map([

@@ -123,6 +123,20 @@ describe('seedBasePlaybooks (T-05: face-контракт, initiator=seed)', () =
     expect(again).toEqual([{ file: 'blank-line.md', action: 'skipped', reason: 'active face v1 matches template' }]);
   });
 
+  it('2.32.1 ревью: документ без перевода строки после закрывающего `---` разбирается, тело без ведущего \\n', async () => {
+    const files = new Map([
+      [
+        'no-terminator.md',
+        '---\ntitle: Без терминатора\nowner_skill: mr-wolf\ntags: тест\n---Правило без перевода строки.',
+      ],
+    ]);
+    const out = await seedBasePlaybooks(deps(files));
+    expect(out.map((o) => o.action)).toEqual(['created']);
+    const seeded = (await facesOf('mr-wolf'))[0]!;
+    expect(seeded.title).toBe('Без терминатора');
+    expect(seeded.body).toBe('Правило без перевода строки.');
+  });
+
   it('re-init: body совпал → skip без записи (идемпотентность ADR-6)', async () => {
     await seedBasePlaybooks(deps());
 

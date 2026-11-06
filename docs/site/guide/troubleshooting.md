@@ -202,6 +202,6 @@ Since 2.32.1 the body boundary is parsed by a single implementation (`src/domain
 
 ## 20. `scaffold` refuses over an existing face
 
-- **Symptom:** `wolf scaffold skill <name>` or `wolf scaffold command <name>` refuses and names an existing face id and version instead of writing files.
+- **Symptom:** `wolf scaffold <agent|skill|command> <name>` refuses and names an existing face id and version instead of writing files.
 - **Cause:** the live face with the same `owner_skill` already exists, and the "Scaffold stub…" body would overwrite it — scaffold no longer does that, and the refusal names the existing face so the collision is visible.
 - **Fix:** pick a different name for a genuinely new face, or update the existing one through the Steward as a regular mutation (`wolf face new` with `WOLF_ACTOR=agent:steward`) — a face is memory, not a scaffold target. There is no scaffold flag that forces the overwrite.
