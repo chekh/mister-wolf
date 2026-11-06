@@ -180,3 +180,16 @@ wolf analytics --view acceptance
 - **Cause:** the top-level `subagent_depth` key is marked `deprecated` in the opencode config schema, and opencode v2 drops it — the effective depth stays at the platform default `1`.
 - **Fix:** `wolf init` or `wolf doctor --repair` moves wolf's own `subagent_depth: 2` into `experimental.subagent_depth` and removes the deprecated key; other `experimental` fields and the rest of the JSON are preserved. Restart opencode afterwards. A **foreign** top-level value is only reported (`deprecated and ignored by opencode v2`), never overwritten — set `experimental.subagent_depth` yourself (`>= 2`) in that case.
 - **How to confirm:** `wolf doctor` names the deprecated top-level key directly, and opencode logs a `configuration normalization diagnostic` warning with `path=$.subagent_depth` on startup.
+
+## 18. False `diverged` for a face that differs only in the frontmatter boundary
+
+- **Symptom:** `wolf upgrade --check --json` (or the pass) prints a face as `diverged` — a `<project> <file> diverged v<version>` line — although the live body matches the template in substance; no phrase or section of the face was edited.
+- **Cause:** before 2.32.1 the template body and the live face body were extracted by two different frontmatter-boundary regexes. Seeding and the read-only predicate left a leading newline in the body while the memory store swallowed it, so a face that differed from the base only by that boundary — including faces seeded before 2.32.1 with the old extra newline — landed in the `steward zone (not addressable by --resolve)` section and kept exit `2` without any real drift.
+- **Fix:** upgrade to 2.32.1 and re-check:
+
+```bash
+npm install -g mister-wolf@2.32.1
+wolf upgrade --check --json   # or: wolf upgrade
+```
+
+Since 2.32.1 the body boundary is parsed by a single implementation (`src/domain/face-body.ts`) and the comparison of bodies ignores leading blank lines — they are a separator, not content. The false lines simply disappear from the report: there is nothing to mutate and no reason to re-seed, and no extra face version is created. If `diverged` is still reported, the difference is real (a phrase, a section, any internal change) — that is fixed through the Steward circuit, not with `--resolve`.
