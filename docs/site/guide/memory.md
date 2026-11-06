@@ -107,9 +107,19 @@ The full map and the migration flow: [Migration to 2.13](/guide/migration-2.13).
 
 ## Record identifiers
 
-A new record gets its id at creation: `mem_<YYYYMMDD>_<english-slug>_<hash6>`. The slug is supplied by the creating agent — `wolf add --slug release-plan`, or the `slug` field of the MCP `add` tool — because Wolf is local-first and does not call a translator from the CLI. The command validates the format (lowercase `a-z0-9` and dashes), normalizes case and separators, and never transliterates a title. Without a valid slug the id is built as `mem_<YYYYMMDD>_<hash6>` — without words — and the command says so, so the degradation is visible instead of hidden in a Russian-looking slug.
+A new record gets its id at creation: `mem_<YYYYMMDD>_<english-slug>_<hash6>`. The slug is supplied by the creating agent — `wolf add --slug release-plan`, or the `slug` field of the MCP `add` tool — because Wolf is local-first and does not call a translator from the CLI. The command validates the format (lowercase `a-z0-9` and dashes), normalizes case and separators, and never transliterates a title. Without a valid slug the id is built as `mem_<YYYYMMDD>_<hash6>` — without words. A slug that is present but invalid (Cyrillic, punctuation) warns on stderr; an omitted slug is silent — the wordless id in `Created memory object:` is the signal, and passing `--slug` is how you name the record.
 
-The hash is deterministic: the same slug on the same day produces the same id, which makes ids predictable and repeatable. A genuine collision of two different records gets a deterministic `-2`, `-3` suffix; repeating the very same record — same title, type and content — is still refused with a hint (`wolf edit` / `wolf supersede` / another `--slug`), because that is a duplicate, not a new record. Flows that legitimately produce several records under one label (complaints about the same rule, session wrap-ups, council records) distinguish them by their content, so each one gets its own id. Existing ids are never renamed: older transliterated ids remain readable, searchable and linkable, so a mixed-looking memory is expected, not a migration debt.
+The hash is deterministic: the same slug on the same day produces the same id, which makes ids predictable and repeatable.
+
+Choosing a slug: short English words joined by dashes (`release-plan`, `cache-pitfall`, `upgrade-report-ux`). Upper case and underscores are normalized (`Release_Plan` → `release-plan`); Cyrillic and punctuation are not transliterated but rejected. Two lines show the whole difference:
+
+````text
+wolf add --type lesson --title "Cache breaks CI" --slug cache-pitfall
+Created memory object: mem_20261106_cache-pitfall_821d42      ← named
+
+wolf add --type lesson --title "Кэш ломает CI"
+Created memory object: mem_20261106_f60f73                     ← no slug: id without words
+``` A genuine collision of two different records gets a deterministic `-2`, `-3` suffix; repeating the same title and type with the same slug (or with none) produces the same id and is refused with a hint (`wolf edit` / `wolf supersede` / another `--slug` or `--title`), because that is a duplicate. Content is not compared: a new record with the same title needs another `--slug` or `--title`. Flows that legitimately produce several records under one label (complaints about the same rule, session wrap-ups, council records) distinguish them by their content, so each one gets its own id. Existing ids are never renamed: older transliterated ids remain readable, searchable and linkable, so a mixed-looking memory is expected, not a migration debt.
 
 ## Examples
 
@@ -134,7 +144,7 @@ wolf add --type lesson \
 
 # facet is a first-class filter
 wolf list --type note --facet pitfall
-```
+````
 
 Full flag lists: [CLI reference](/guide/cli/memory).
 

@@ -19,12 +19,12 @@
 ```bash
 wolf claim acquire dev:<date>-<slug>  # own the artifact — scaffold refuses without it
 wolf scaffold artifact <slug>         # create docs/dev/<YYYY-MM-DD>-<slug>/ with the full 6-file package
-wolf scaffold artifact <slug> --fix   # reduced 2-file set for fix-type work
+wolf scaffold artifact <slug> --fix   # fix profile: requirements.md + plan.md only
 wolf sync                             # regenerate indexes — idempotent
 wolf doctor                           # lint the documents
 ```
 
-Полный профиль пишет пакет в объявленном порядке — `pre-requirements.md`, `requirements.md`, `change-request.md`, `design.md`, `test-plan.md`, `plan.md`. `pre-requirements.md` фиксирует намерение и рамку до формальных требований (он их не утверждает); `change-request.md` — append-only список запросов на изменение пакета. Если папка уже существует (например, brainstorm уже записал `pre-requirements.md`), команда делает top-up: добавляет только недостающие документы и никогда не перезаписывает существующий. Когда все файлы на месте, она сообщает, что добавлять нечего.
+Полный профиль пишет пакет в объявленном порядке — `pre-requirements.md`, `requirements.md`, `change-request.md`, `design.md`, `test-plan.md`, `plan.md`. `pre-requirements.md` фиксирует намерение и рамку до формальных требований (он их не утверждает); `change-request.md` — append-only список запросов на изменение пакета. Если папка уже существует (например, brainstorm записал `pre-requirements.md` в тот же день), команда делает top-up: добавляет только недостающие документы и никогда не перезаписывает существующий. Папка строится из текущей даты и slug, поэтому пакет, начатый в другой день, не пополняется — его продолжают вручную либо осознанно начинают пакет новой даты. Когда все файлы на месте, команда сообщает, что добавлять нечего.
 
 Claim — замок записи конвейера: два агента, редактирующие одну папку фичи, молча затирали бы друг друга, поэтому `wolf scaffold artifact` без активного claim'а отвечает отказом `No claim held` — в сообщении отказа точная команда `claim acquire`. Закончив писать, сессия освобождает владение (`wolf claim release dev:<date>-<slug>`) или передаёт его (`--transfer-to <actor>`); `wolf claim list` показывает, кто чем владеет. Claim истекает через 24 часа, так что упавшая сессия не запирает папку навсегда.
 

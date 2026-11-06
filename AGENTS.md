@@ -61,8 +61,10 @@ L1 передаёт действующие относящиеся к подза�
 
 ## Документация этапа
 
-В FULL docs/dev/<date>-<feat>/ — основные requirements.md/design.md/plan.md/test-plan.md
-и единичные обоснованные L1 документы для следующих этапов. Частные отчёты,
+В FULL docs/dev/<date>-<feat>/ — пакет цели в объявленном порядке:
+pre-requirements.md, requirements.md, change-request.md, design.md, test-plan.md, plan.md
+(состав и поток — using-skills/references/project-rules.md) и единичные обоснованные
+L1 документы для следующих этапов. Частные отчёты,
 черновики, checkpoint, логи и скрипты туда не клади, в том числе в подпапки.
 L2 возвращает результат сообщением; L0/L1 сохраняет нужное между сессиями
 как адресные рабочие note/context/history Wolf, не lesson/complaint. Запись документа — лишь в точный файл/раздел

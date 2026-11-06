@@ -19,12 +19,12 @@ Four commands run the conveyor — and since 2.17.1 the writing session holds a 
 ```bash
 wolf claim acquire dev:<date>-<slug>  # own the artifact — scaffold refuses without it
 wolf scaffold artifact <slug>         # create docs/dev/<YYYY-MM-DD>-<slug>/ with the full 6-file package
-wolf scaffold artifact <slug> --fix   # reduced 2-file set for fix-type work
+wolf scaffold artifact <slug> --fix   # fix profile: requirements.md + plan.md only
 wolf sync                             # regenerate indexes — idempotent
 wolf doctor                           # lint the documents
 ```
 
-The full profile writes the package in the declared order — `pre-requirements.md`, `requirements.md`, `change-request.md`, `design.md`, `test-plan.md`, `plan.md`. `pre-requirements.md` records the intent and framing agreed before formal requirements (it does not approve them); `change-request.md` is an append-only list of change requests for the package. If the folder already exists (for example a brainstorm already wrote `pre-requirements.md`), the command tops it up: it adds only the missing documents and never overwrites an existing one. When every file is already present it reports that there is nothing to add.
+The full profile writes the package in the declared order — `pre-requirements.md`, `requirements.md`, `change-request.md`, `design.md`, `test-plan.md`, `plan.md`. `pre-requirements.md` records the intent and framing agreed before formal requirements (it does not approve them); `change-request.md` is an append-only list of change requests for the package. If the folder already exists (for example a brainstorm wrote `pre-requirements.md` the same day), the command tops it up: it adds only the missing documents and never overwrites an existing one. The folder is derived from the current date and the slug, so a package started on an earlier day is not topped up — continue it by hand or start the new date's package deliberately. When every file is already present the command reports that there is nothing to add.
 
 The claim is the conveyor's write lock: two agents editing the same feature folder would silently overwrite each other, so `wolf scaffold artifact` refuses with `No claim held` until your session owns the claim for the artifact id — the refusal names the exact `claim acquire` command. When the writing session is done, release the claim (`wolf claim release dev:<date>-<slug>`) or hand it over (`--transfer-to <actor>`); `wolf claim list` shows who holds what. A claim expires after 24h, so a crashed session does not lock the folder forever.
 

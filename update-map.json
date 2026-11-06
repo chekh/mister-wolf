@@ -353,7 +353,7 @@
     }
   ],
   "agents_md": {
-    "category": "unchanged",
+    "category": "changed",
     "mode": "append-block"
   },
   "schema_migrations": [],

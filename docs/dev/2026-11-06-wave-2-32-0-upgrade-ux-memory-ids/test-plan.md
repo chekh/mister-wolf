@@ -40,15 +40,15 @@ baseline: 98252ff8
 
 ## T05 — английские ID
 
-| ID  | Given/When/Then                                                                                                                 | Маппинг                                                                                                    |
-| --- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| S09 | `slug=release-plan`, дата 2026-11-06 → `mem_20261106_release-plan_<hash6>`                                                      | `tests/unit/adapters/hash-id-generator.test.ts`                                                            |
-| S10 | slug в верхнем регистре/с пробелами → нормализован; кириллица/пусто/невалидные символы → fallback `mem_<date>_<hash6>` без слов | там же                                                                                                     |
-| S11 | Тот же slug+дата дважды → одинаковый ID (детерминизм); прежнего поведения с мс нет                                              | там же                                                                                                     |
-| S12 | Коллизия: тот же id, другой title/type → `-2`, затем `-3`; тот же title/type → отказ с подсказкой                               | `tests/e2e/add-collision-guard.e2e.ts`, `tests/unit/use-cases/*`                                           |
-| S13 | Старые транслитерированные ID читаются, ищутся, supersede работает; document-ref ID не изменились                               | `tests/unit/adapters/scan-doc-id*`, `tests/e2e/migrate-doc-ids.e2e.ts`, `tests/unit/adapters/document-id*` |
-| S14 | CLI `--slug` и MCP `slug` проходят до генератора; без slug — fallback и предупреждение                                          | `tests/unit/adapters/commands/*add*`, `tests/e2e/add-*.e2e.ts`                                             |
-| S15 | English-surface: в `src/adapters/**` нет кириллицы в строковых литералах                                                        | `scripts/check-english-surface.mjs` (в `npm run check`)                                                    |
+| ID  | Given/When/Then                                                                                                                                                                 | Маппинг                                                                                                    |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| S09 | `slug=release-plan`, дата 2026-11-06 → `mem_20261106_release-plan_<hash6>`                                                                                                      | `tests/unit/adapters/hash-id-generator.test.ts`                                                            |
+| S10 | slug в верхнем регистре/с пробелами → нормализован; кириллица/пусто/невалидные символы → fallback `mem_<date>_<hash6>` без слов                                                 | там же                                                                                                     |
+| S11 | Тот же slug+дата дважды → одинаковый ID (детерминизм); прежнего поведения с мс нет                                                                                              | там же                                                                                                     |
+| S12 | Коллизия: тот же id, другой title/type → `-2`, затем `-3`; тот же title/type → отказ с подсказкой                                                                               | `tests/e2e/add-collision-guard.e2e.ts`, `tests/unit/use-cases/*`                                           |
+| S13 | Старые транслитерированные ID читаются, ищутся, supersede работает; document-ref ID не изменились                                                                               | `tests/unit/adapters/scan-doc-id*`, `tests/e2e/migrate-doc-ids.e2e.ts`, `tests/unit/adapters/document-id*` |
+| S14 | CLI `--slug` и MCP `slug` проходят до генератора; невалидный slug — fallback + предупреждение в stderr; отсутствующий slug — fallback без предупреждения (сигнал — id без слов) | `tests/e2e/add-slug.e2e.ts`, `tests/unit/use-cases/add-memory-object.test.ts`                              |
+| S15 | English-surface: в `src/adapters/**` нет кириллицы в строковых литералах                                                                                                        | `scripts/check-english-surface.mjs` (в `npm run check`)                                                    |
 
 ## T06 — пакет цели: scaffold
 
