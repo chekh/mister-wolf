@@ -9,8 +9,9 @@ baseline: 96b943ce75ae674c88c34bfe99a1265639283d52
 # patch-2-32-2-expert-read-channel — план
 
 FIX-профиль: требования и журнал CR — `requirements.md`. База — main
-`96b943ce75ae674c88c34bfe99a1265639283d52`; версия остаётся 2.32.1 (подъём
-версии, CHANGELOG, merge, тег, npm и сайт — отдельный срез релиза).
+`96b943ce75ae674c88c34bfe99a1265639283d52`. Срез релиза выполнен и опубликован
+2026-11-07 (версия 2.32.2, CHANGELOG, update-map, merge/тег, npm, GitHub Release,
+сайт — см. чек-лист ниже).
 
 ## Задачи
 
@@ -129,17 +130,20 @@ FIX-профиль: требования и журнал CR — `requirements.md
 - **MCP-путь `council_record`** с полем `channel` не прогонялся end-to-end;
   схема общая с CLI-путём (`recordCouncil`), поэтому поведение expected
   идентичным, но это вывод, а не проба.
+- **Срез релиза** выполнен 2026-11-07: версия 2.32.2 опубликована (merge, тег,
+  npm, GitHub Release, сайт) — подробности в чек-листе выше.
 - **Подъём парка проектов** (`wolf upgrade` по всем проектам) не выполнялся —
-  отдельное решение владельца после публикации.
-- **Версия не поднималась**, CHANGELOG не обновлялся, merge/тег/npm/сайт не
-  выполнялись: это отдельный срез релиза.
-- **Широкий read-allow расширяет доступ не только к `.env`.** Секрет-файлы,
-  которые не матчатся правилами `*.env`/`*.env.*` (`.envrc`, `.npmrc`,
-  `.git-credentials`, `*.pem`, приватные ключи), теперь читаемы внутри проекта.
-  Найдено независимым ревью (MINOR-1). Это следствие решения владельца «read в
-  границах проекта», а не дефект реализации: REQ-02 покрывает env-файлы, и
-  AC-02.3 выполнен. Расширение списка секрет-шаблонов — отдельное решение
-  владельца о продуктовой границе, в scope 2.32.2 не входит.
+  остаток: ожидает решения владельца; в срезе релиза не выполнялся.
+- **Широкий read-allow и секрет-файлы** (MINOR-1) — **закрыто в 2.32.2** по
+  решению владельца `mem_20261106_expert-read-channel-fix-release-2-32-2_0f7dde`:
+  добавлены `read → ask` для `.npmrc`, `.netrc`, `.git-credentials`, `*.pem`,
+  `*.key`, `*id_rsa*`, `*id_ed25519*` ПОСЛЕ широкого `read *` allow
+  (last-match-wins), новых allow нет. Проверено тестом
+  (`tests/unit/worker-expert-channel.test.ts`, 22 теста) и независимым ревью
+  (APPROVED; мутанты: удаление/перенос/лишний allow краснеют); живая проба в
+  чистом проекте: `.npmrc` → `permission.rejected`. Остаточная граница честно:
+  guard — денилист по узнаваемым именам (`.pypirc`, `*.p12`/`*.pfx`, секреты
+  без имени вне его).
 - **`docs/dev/INDEX.md` получил +3 строки** (MINOR-2): запись этого фикса и
   бэкфилл двух прошлых волн (`bounded-assignments`, `council`), которых в
   индексе не было. Генерируется штатным `wolf sync`; не входит в inventory
@@ -167,27 +171,46 @@ FIX-профиль: требования и журнал CR — `requirements.md
 - [x] `docs:check` зелёный: CLI reference и changelog синхронизированы
       генераторами, ссылки и EN/RU-пары целы.
 
-### Полный релизный чек-лист (для отдельного среза)
+### Полный релизный чек-лист (срез выполнен 2026-11-07)
 
-Версия сейчас 2.32.1 — по поручению не поднимается. Для выпуска 2.32.2
-исполнителю среза нужно:
+Срез релиза выполнен 2026-11-07; версия 2.32.2 опубликована. Фактические
+результаты пунктов:
 
-- [ ] `npm version 2.32.2` (единственный источник версии — `package.json`)
-- [ ] запись в `CHANGELOG.md` по правилам проекта (2.32.2, раздел Changed)
-- [ ] `node scripts/generate-update-map.mjs` после подъёма версии, затем `--verify`
-- [ ] `env -u WOLF_SESSION npm run check` (иначе 15 pre-existing face-тестов
-      падают из-за признака агент-сессии `WOLF_SESSION=opc-*` — не связано с фиксом)
-- [ ] **не прогонять prettier по `templates/`**: `format:check` его не покрывает,
+- [x] `npm version 2.32.2` (единственный источник версии — `package.json`) —
+      `package.json:3` = 2.32.2, `package-lock.json` обновлён
+- [x] запись в `CHANGELOG.md` по правилам проекта (2.32.2, раздел Changed) —
+      `CHANGELOG.md:7`, секции `### Changed` и `### Upgrade notes`
+- [x] `node scripts/generate-update-map.mjs` после подъёма версии, затем `--verify` —
+      61 цель, 7 лиц, `prev 2.32.1`, `--verify` → `in sync`
+- [x] `env -u WOLF_SESSION npm run check` (иначе 15 pre-existing face-тестов
+      падают из-за признака агент-сессии `WOLF_SESSION=opc-*` — не связано с фиксом) —
+      233 файла / 2231 тест, exit 0
+- [x] **не прогонять prettier по `templates/`**: `format:check` его не покрывает,
       а prettier превращает `{{model.primary}}` в `{ { model.primary } }`, после
       чего OpenCode выбрасывает агента («Agent not found»). Гард —
-      `tests/unit/render-integrity-real-templates.test.ts`
-- [ ] после `npm version` и перед публикацией: fresh `wolf init --full` в чистый
+      `tests/unit/render-integrity-real-templates.test.ts` — соблюдено;
+      `{{model.primary}}` цел, гард в гейте
+- [x] после `npm version` и перед публикацией: fresh `wolf init --full` в чистый
       каталог + `opencode debug agents` — все 7 агентов видны, `worker-expert`
-      присутствует, `model` строкой
-- [ ] `npm run e2e`, `npm run docs:check`, `npm run docs:build`, `wolf doctor`
-- [ ] merge `--no-ff` в `main`, тег `v2.32.2` на merge-коммите, push
-- [ ] `npm publish`, GitHub Release, деплой сайта
-- [ ] проверить changelog-страницу сайта после публикации
-- [ ] отдельным решением владельца — `wolf upgrade` по парку проектов
-- [ ] уборка: удалить worktree `.worktrees/patch-2-32-2-expert-read-channel`
-      после подтверждённой сохранности (`git merge-base --is-ancestor`)
+      присутствует; «Agent not found» — 0, искажённых
+      `{{model.*}}` нет (в проектном рендере строка `model` не выводится —
+      модель задаёт конфиг проекта); живая проба канала: файл проекта прочитан,
+      `.npmrc` отклонён ask-защитой
+- [x] `npm run e2e`, `npm run docs:check`, `npm run docs:build`, `wolf doctor` —
+      63 файла / 248 тестов; `docs-links OK (5771 ссылка/ассет, 35 EN/RU-пар)`;
+      `wolf doctor` exit 0
+- [x] merge `--no-ff` в `main`, тег `v2.32.2` на merge-коммите, push —
+      merge `84d0ed12` (`--no-ff`), тег `v2.32.2` на merge-коммите, main и тег
+      запушены ДО публикации
+- [x] `npm publish`, GitHub Release, деплой сайта — npm `2.32.2`
+      (`dist-tags.latest`), Release
+      `https://github.com/chekh/mister-wolf/releases/tag/v2.32.2`, Deploy Docs —
+      success
+- [x] проверить changelog-страницу сайта после публикации — changelog и council
+      страницы обеих локалей содержат `2.32.2`
+- [ ] отдельным решением владельца — `wolf upgrade` по парку проектов —
+      **остаток: не выполнен намеренно, ожидает решения владельца**
+- [x] уборка: удалить worktree `.worktrees/patch-2-32-2-expert-read-channel`
+      после подтверждённой сохранности (`git merge-base --is-ancestor`) — worktree
+      и ветка убраны (`git branch --contains` → только `main`), main чистый; claim
+      `dev:2026-11-06-patch-2-32-2-expert-read-channel` освобождён владельцем (L0)
