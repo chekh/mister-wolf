@@ -110,10 +110,17 @@ describe('worker-expert profile: read-канал в границах проек�
 });
 
 describe('wolf-council: обязательная функциональная проба канала (2.32.2 REQ-02)', () => {
-  it('проба канала отдельная от symlink-аудита и обе обязательны', () => {
-    expect(councilSkill).toContain('Аудит Location на symlink');
+  it('проба канала отдельная от аудита ссылок и обе обязательны', () => {
+    expect(councilSkill).toContain('Аудит ссылок');
     expect(councilSkill).toContain('Функциональная проба канала');
     expect(councilSkill).toContain('одна другую не заменяет');
+  });
+
+  it('аудит проверяет разрешение ссылки наружу, а не сам факт ссылки', () => {
+    // «есть хоть одна ссылка» отключило бы канал в любом Node-проекте
+    expect(councilSkill).toContain('разрешается за его пределы');
+    expect(councilSkill).toContain('node_modules');
+    expect(councilSkill).toContain('слишком груба');
   });
 
   it('успех пробы определён фактом содержимого, а не фактом tool-вызова', () => {
@@ -129,6 +136,36 @@ describe('wolf-council: обязательная функциональная п
   it('isolation_limits обязателен, если канал не tool-enabled', () => {
     expect(councilSkill).toContain('isolation_limits');
     expect(councilSkill).toMatch(/isolation_limits`?\s+обязателен/);
+  });
+});
+
+describe('worker-expert profile: граница чтения честная (2.32.2, ревью F-01/F-02)', () => {
+  it('рамка называет обе половины границы: путь и разрешение ссылок', () => {
+    expect(agentRaw).toContain('external_directory');
+    expect(agentRaw).toContain('symlink');
+    expect(agentRaw).toContain('не должна разрешаться за его пределы');
+  });
+
+  it('не требует невозможного «ни одной ссылки» правила', () => {
+    expect(agentRaw).not.toMatch(/ни одной ссылки, включая внутри/);
+    expect(agentRaw).toContain('слишком груба');
+  });
+
+  it('документация консилиума не обещает непробиваемую границу', () => {
+    const en = readFileSync(join(base, '..', '..', 'docs', 'site', 'guide', 'council.md'), 'utf-8');
+    const ru = readFileSync(join(base, '..', '..', 'docs', 'site', 'ru', 'guide', 'council.md'), 'utf-8');
+    expect(en).toContain('Symlinks are **not** resolved');
+    expect(ru).toContain('Ссылки для этой проверки **не разрешаются**');
+  });
+
+  it('устаревшего утверждения «packet-only по умолчанию» в паре нет', () => {
+    const en = readFileSync(join(base, '..', '..', 'docs', 'site', 'guide', 'council.md'), 'utf-8');
+    const ru = readFileSync(join(base, '..', '..', 'docs', 'site', 'ru', 'guide', 'council.md'), 'utf-8');
+    // `packet/*` может упоминаться только как объяснение, ПОЧЕМУ правило заменено
+    expect(en).not.toMatch(/expert is \*\*packet-only\*\*/);
+    expect(en).not.toMatch(/read allowlist — `packet/);
+    expect(ru).not.toMatch(/эксперт \*\*packet-only\*\*/);
+    expect(ru).not.toMatch(/read-allowlist — `packet/);
   });
 });
 

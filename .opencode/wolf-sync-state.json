@@ -181,7 +181,7 @@
       "base": "2.32.1"
     },
     ".opencode/skills/using-skills/references/contracts.md": {
-      "hash": "931f31c879e553528b1debb7e00fc03751423d8159208a6cc42e5c4fa9c861f6",
+      "hash": "139616c9b33c10a6d11b2357689b2a022345d11b3356c284bdc4ec4b8669ad71",
       "origin": "render",
       "base": "2.32.1"
     },
@@ -296,12 +296,12 @@
       "base": "2.32.1"
     },
     ".opencode/agents/worker-expert.md": {
-      "hash": "6e837225819402da2d9967a4d0069a88b4b5a50569857b4904c238527d26c3ff",
+      "hash": "593e7c55a3c471a74a11761804f4ecba6ddad442f6e64492c364e6b606e82f09",
       "origin": "render",
       "base": "2.32.1"
     },
     ".opencode/skills/wolf-council/SKILL.md": {
-      "hash": "7199197e058801b1ef87b6169bbd8bab2830e2d79557df7027ef5b22bef8da20",
+      "hash": "1fee80985cb0b3cc965cb6a251f6f606866f8de9006f1493cfec42657ffa9260",
       "origin": "render",
       "base": "2.32.1"
     }

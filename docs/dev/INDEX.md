@@ -25,6 +25,9 @@
 | b05-git-inspect | 2026-11-03 | B0.5 — read-only git inspect | draft | full |
 | e1-task-contract | 2026-11-03 | E1 срез-1 — TASK-контракт ACTIVE_CONSTRAINTS и DECISIONS[] | draft | full |
 | product-documentation | 2026-11-03 | Product documentation | active | full |
+| bounded-assignments | 2026-11-05 | '2.30.0 — ограниченные поручения и разделение труда' | draft | full |
+| council | 2026-11-05 | '2.31.0 — требования' | draft | full |
+| patch-2-32-2-expert-read-channel | 2026-11-06 | patch-2-32-2-expert-read-channel — требования и журнал изменений (fix-профиль) | draft | fix |
 
 ## Волны
 
