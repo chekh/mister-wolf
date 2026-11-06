@@ -2,7 +2,7 @@
 description: Анализ документа по порученному вопросу с проверяемыми выводами. Использование: /analyze-doc <путь-к-файлу> [вопрос]
 agent: mr-wolf
 ---
-<!-- wolf:rendered base=analyze-doc.md set=2.30.0 -->
+<!-- wolf:rendered base=analyze-doc.md set=2.31.0 -->
 Проанализируй документ: $ARGUMENTS
 
 L0 применяет using-skills, wolf-work-strategy и wolf-brainstorm: сверяет

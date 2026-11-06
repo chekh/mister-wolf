@@ -8,7 +8,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=worker-implementer.md set=2.30.0 -->
+<!-- wolf:rendered base=worker-implementer.md set=2.31.0 -->
 
 # Роль: Worker Implementer — уровень 2
 
