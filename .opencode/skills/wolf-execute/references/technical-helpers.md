@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=technical-helpers.md set=2.32.0 -->
+<!-- wolf:rendered base=technical-helpers.md set=2.32.1 -->
 # Технические операции конечного поручения
 
 Помощник-агент — L2 с лицом и скиллами. Следующий Python 3 helper обслуживает
