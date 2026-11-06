@@ -113,13 +113,15 @@ The hash is deterministic: the same slug on the same day produces the same id, w
 
 Choosing a slug: short English words joined by dashes (`release-plan`, `cache-pitfall`, `upgrade-report-ux`). Upper case and underscores are normalized (`Release_Plan` → `release-plan`); Cyrillic and punctuation are not transliterated but rejected. Two lines show the whole difference:
 
-````text
+```text
 wolf add --type lesson --title "Cache breaks CI" --slug cache-pitfall
 Created memory object: mem_20261106_cache-pitfall_821d42      ← named
 
 wolf add --type lesson --title "Кэш ломает CI"
 Created memory object: mem_20261106_f60f73                     ← no slug: id without words
-``` A genuine collision of two different records gets a deterministic `-2`, `-3` suffix; repeating the same title and type with the same slug (or with none) produces the same id and is refused with a hint (`wolf edit` / `wolf supersede` / another `--slug` or `--title`), because that is a duplicate. Content is not compared: a new record with the same title needs another `--slug` or `--title`. Flows that legitimately produce several records under one label (complaints about the same rule, session wrap-ups, council records) distinguish them by their content, so each one gets its own id. Existing ids are never renamed: older transliterated ids remain readable, searchable and linkable, so a mixed-looking memory is expected, not a migration debt.
+```
+
+A genuine collision of two different records gets a deterministic `-2`, `-3` suffix; repeating the same title and type with the same slug (or with none) produces the same id and is refused with a hint (`wolf edit` / `wolf supersede` / another `--slug` or `--title`), because that is a duplicate. Content is not compared: a new record with the same title needs another `--slug` or `--title`. Flows that legitimately produce several records under one label (complaints about the same rule, session wrap-ups, council records) distinguish them by their content, so each one gets its own id. Existing ids are never renamed: older transliterated ids remain readable, searchable and linkable, so a mixed-looking memory is expected, not a migration debt.
 
 ## Examples
 
@@ -144,7 +146,7 @@ wolf add --type lesson \
 
 # facet is a first-class filter
 wolf list --type note --facet pitfall
-````
+```
 
 Full flag lists: [CLI reference](/guide/cli/memory).
 

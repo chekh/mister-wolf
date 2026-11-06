@@ -31,7 +31,7 @@ Three things that were technically correct but hard to use: the upgrade report p
 
 - **No automatic translation.** Wolf is local-first: the CLI does not call a translator or a model provider to name a record. A record created without a slug gets an id without words — that is the documented degradation, not a hidden fallback to transliteration.
 - **No renaming of existing memory.** Historic transliterated ids are left as they are; a memory with mixed-looking ids is the expected state.
-- **Who re-renders a seed face.** The projects pass (`wolf upgrade`) never touches memory: it seeds only missing faces. `wolf init --yes` re-renders a face that is still `seed`/`migration`-initiated (a journaled template update to a new version); a face already versioned by the Steward or the owner is left alone. Where the platform does not provide Steward attribution (`WOLF_ACTOR=agent:steward`), the Steward mutation is refused — the limitation is documented in troubleshooting rather than worked around.
+- **Who re-renders a seed face.** The projects pass (`wolf upgrade`) never rewrites existing memory: it only seeds a missing face. `wolf init --yes` re-renders a face that is still `seed`/`migration`-initiated (a journaled template update to a new version); a face already versioned by the Steward or the owner is left alone. Where the platform does not provide Steward attribution (`WOLF_ACTOR=agent:steward`), the Steward mutation is refused — the limitation is documented in troubleshooting rather than worked around.
 - **No measured effect on reading speed or authoring quality.** The markup and id changes were verified by tests and by live runs on fixtures; no productivity claim is made.
 
 ### Upgrade notes

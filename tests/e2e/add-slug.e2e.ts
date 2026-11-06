@@ -28,6 +28,8 @@ describe('wolf add --slug (2.32.0)', () => {
     expect(res.status, res.stderr).toBe(0);
     expect(res.stdout).toMatch(/Created memory object: mem_\d{8}_[0-9a-f]{6}\b/);
     expect(res.stdout).not.toMatch(/kak_obnovlyat/);
+    // отсутствие slug молчит: предупреждение — только для переданного невалидного slug
+    expect(res.stderr).not.toMatch(/English slug/);
   });
 
   it('S14: кириллица в --slug → fallback + видимое предупреждение', () => {
