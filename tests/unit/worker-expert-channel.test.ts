@@ -178,3 +178,53 @@ describe('profiles expert/synthesis: признак channel (2.32.2 REQ-03)', ()
     expect(contracts).toMatch(/isolation_limits`?\s+обязательно/);
   });
 });
+
+describe('worker-expert profile: секрет-файлы под ask-защитой (2.32.2 P1, MINOR-1)', () => {
+  const secretPatterns = ['*.npmrc', '*.netrc', '*.git-credentials', '*.pem', '*.key', '*id_rsa*', '*id_ed25519*'];
+
+  it('каждое секрет-правило стоит ПОСЛЕ широкого read-allow (last-match-wins)', () => {
+    const broadReadAt = rules.findIndex((r) => r.action === 'read' && r.resource === '*');
+    expect(broadReadAt).toBeGreaterThanOrEqual(0);
+
+    for (const resource of secretPatterns) {
+      const at = rules.findIndex((r) => r.action === 'read' && r.resource === resource && r.effect === 'ask');
+      expect(at, `${resource}: ask-правило отсутствует`).toBeGreaterThan(broadReadAt);
+    }
+
+    // группа секрет-правил идёт после env-правил и до external_directory
+    const firstSecretAt = rules.findIndex((r) => r.action === 'read' && secretPatterns.includes(r.resource));
+    const lastEnvAt = rules.findIndex((r) => r.action === 'read' && r.resource === '*.env.example');
+    const externalAt = rules.findIndex((r) => r.action === 'external_directory');
+    expect(firstSecretAt).toBeGreaterThan(lastEnvAt);
+    expect(externalAt).toBeGreaterThan(firstSecretAt);
+  });
+
+  it('типовые секрет-файлы требуют подтверждения, а не читаются молча', () => {
+    for (const path of [
+      '.npmrc',
+      'config/.npmrc',
+      '.netrc',
+      '.git-credentials',
+      'certs/server.pem',
+      'tls/private.key',
+      '.ssh/id_rsa',
+      '.ssh/id_ed25519',
+    ]) {
+      expect(effective('read', path), path).toBe('ask');
+    }
+  });
+
+  it('env-поведение не изменилось', () => {
+    expect(effective('read', '.env')).toBe('ask');
+    expect(effective('read', '.env.local')).toBe('ask');
+    expect(effective('read', '.env.example')).toBe('allow');
+  });
+
+  it('allow-набор ровно прежний: секрет-правила не выдали ни одного allow', () => {
+    const actual = rules
+      .filter((r) => r.effect === 'allow')
+      .map((r) => `${r.action}:${r.resource}`)
+      .sort();
+    expect(actual).toEqual(['glob:*', 'grep:*', 'read:*', 'read:*.env.example'].sort());
+  });
+});

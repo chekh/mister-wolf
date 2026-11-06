@@ -1,5 +1,5 @@
 ---
-description: "Worker-expert (L2): ограниченная профессиональная позиция по вопросу; read-канал в границах проекта без записи, shell, субагентов и сети; без вердикта приёмки."
+description: "Worker-expert (L2): ограниченная профессиональная позиция по вопросу; read-канал в границах проекта без записи, shell, субагентов и сети, env-файлы и типовые секрет-файлы под ask-guard; без вердикта приёмки."
 mode: all
 permissions:
   - action: '*'
@@ -23,6 +23,27 @@ permissions:
   - action: 'read'
     resource: '*.env.example'
     effect: 'allow'
+  - action: 'read'
+    resource: '*.npmrc'
+    effect: 'ask'
+  - action: 'read'
+    resource: '*.netrc'
+    effect: 'ask'
+  - action: 'read'
+    resource: '*.git-credentials'
+    effect: 'ask'
+  - action: 'read'
+    resource: '*.pem'
+    effect: 'ask'
+  - action: 'read'
+    resource: '*.key'
+    effect: 'ask'
+  - action: 'read'
+    resource: '*id_rsa*'
+    effect: 'ask'
+  - action: 'read'
+    resource: '*id_ed25519*'
+    effect: 'ask'
   - action: 'external_directory'
     resource: '*'
     effect: 'deny'
@@ -45,7 +66,8 @@ agent-id: worker-expert
 Канал по умолчанию — tool-enabled чтение в границах проекта: файлы проекта,
 включая код, читаются штатно, discover-инструменты (glob/grep) доступны, чтобы
 найти нужный файл. Запись, shell/код, субагенты, webfetch, браузер, скиллы и
-чтение вне проекта (`external_directory`) запрещены. Env-файлы остаются под
+чтение вне проекта (`external_directory`) запрещены. Env-файлы и типовые секрет-файлы (`.npmrc`, `.netrc`,
+`.git-credentials`, `*.pem`, `*.key`, `id_rsa`/`id_ed25519`) остаются под
 ask-защитой: широкое чтение проекта не открывает их молча.
 
 Выдача прав — только конфигурация базового набора/проекта; перечень путей
