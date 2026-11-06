@@ -6,15 +6,15 @@ The composition below is the catalog of `templates/base/` in the package.
 
 ## Agents — 7 → `.opencode/agents/`
 
-| Agent                | Role                                                                                                                                                                                                                                                              |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mr-wolf`            | The coordinator (L0): briefs, dispatches executors, accepts their reports; never touches code itself                                                                                                                                                              |
-| `steward`            | Background mentor: mutates agent playbooks on complaints, aggregates mature lessons ([loop](/guide/feedback), [aggregation](/guide/feedback#steward-aggregation)); invoked only nested                                                                            |
-| `executor-lead`      | Level 1: takes a task brief from mr-wolf, decomposes it, executes directly or via workers, returns a report                                                                                                                                                       |
-| `worker-implementer` | Single-task code executor (L2): exactly one subtask, allowlist-scoped edits, self-check, short report                                                                                                                                                             |
-| `worker-researcher`  | Investigates code, documents and the web against one question; returns findings with sources and confidence; on an explicitly assigned architectural question it compares variants and returns a recommendation — it writes no files and approves no architecture |
-| `worker-reviewer`    | Reviews workers' code and documents against the brief requirements; verdict via the VERDICT/SUMMARY contract                                                                                                                                                      |
-| `worker-expert`      | Bounded professional position on one question (L2): answers from the delivered packet (packet-only, no tools) or with tool-enabled read-only access limited to `packet/*`; see [Expert Council](/guide/council)                                                   |
+| Agent                | Role                                                                                                                                                                                                                                                                                                                        |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mr-wolf`            | The coordinator (L0): briefs, dispatches executors, accepts their reports; never touches code itself                                                                                                                                                                                                                        |
+| `steward`            | Background mentor: mutates agent playbooks on complaints, aggregates mature lessons ([loop](/guide/feedback), [aggregation](/guide/feedback#steward-aggregation)); invoked only nested                                                                                                                                      |
+| `executor-lead`      | Level 1: takes a task brief from mr-wolf, decomposes it, executes directly or via workers, returns a report                                                                                                                                                                                                                 |
+| `worker-implementer` | Single-task code executor (L2): exactly one subtask, allowlist-scoped edits, self-check, short report                                                                                                                                                                                                                       |
+| `worker-researcher`  | Investigates code, documents and the web against one question; returns findings with sources and confidence; on an explicitly assigned architectural question it compares variants and returns a recommendation — it writes no files and approves no architecture                                                           |
+| `worker-reviewer`    | Reviews workers' code and documents against the brief requirements; verdict via the VERDICT/SUMMARY contract                                                                                                                                                                                                                |
+| `worker-expert`      | Bounded professional position on one question (L2): reads project files, code included, through a tool-enabled read channel inside the project boundary; writes, shell, subagents, web fetch and external directories stay denied; degrades to packet-only with an explicit `channel`; see [Expert Council](/guide/council) |
 
 Every dispatched task carries an execution block: requested model/variant, the execute/solve mode, a tool-call budget and a stop condition. Since 2.24.0 it also carries a density axis — `density standard|draft`. The owner level (L0/L1) picks the density when writing the TASK; a missing field means `standard`. In `draft` the executor shortens the visible service record — repeated retellings, narration of the obvious, ritual summaries — while keeping mandatory checks, rights, evidence and independent acceptance; substantial uncertainty widens the targeted verification instead of shrinking the answer, and an unsupported density is returned to L1. Acceptance checks observed actions, evidence and the result — not a draft label in RESULT. No numeric savings are claimed; the measurable comparison is a separate observation effort (roadmap A1.2).
 
@@ -78,15 +78,15 @@ Playbooks are the odd one out: they are **not** stamped files. Since 2.13 they a
 
 Owner-only face commands stay owner-only. `wolf face restore --from <id|vN>` and `wolf face migrate` are refused inside an agent session (`WOLF_SESSION=opc-*`) exactly like `wolf face breakglass` — there the actor is `user:cli`, not the owner, and `restore` takes the body wholesale from the base version, so edits accumulated on the live face would be lost; the refusal is logged (`memory.face.denied`). Both keep working from the owner's terminal. `wolf scaffold agent|skill|command <name>` refuses when a live face with the same `owner_skill` already exists and names its id and version, so the scaffold stub can no longer overwrite a live face; a new name scaffolds as before, and an existing face is updated by the Steward (`wolf face new` with `WOLF_ACTOR=agent:steward`), not by scaffold.
 
-| Playbook                      | Content                                                      | Owner                |
-| ----------------------------- | ------------------------------------------------------------ | -------------------- |
-| `complaint-protocol`          | complaint intake and the triage tree                         | `mr-wolf`            |
-| `executor-lead-playbook`      | the lead's decomposition and acceptance pipeline             | `executor-lead`      |
-| `steward-nastavnik`           | the playbook mutation protocol                               | `steward`            |
-| `worker-implementer-playbook` | method and report format for the implementer                 | `worker-implementer` |
-| `worker-researcher-playbook`  | analysis method and findings format                          | `worker-researcher`  |
-| `worker-reviewer-playbook`    | review zones and the VERDICT contract                        | `worker-reviewer`    |
-| `worker-expert-playbook`      | the expert's bounded-position and packet/tool-enabled method | `worker-expert`      |
+| Playbook                      | Content                                               | Owner                |
+| ----------------------------- | ----------------------------------------------------- | -------------------- |
+| `complaint-protocol`          | complaint intake and the triage tree                  | `mr-wolf`            |
+| `executor-lead-playbook`      | the lead's decomposition and acceptance pipeline      | `executor-lead`      |
+| `steward-nastavnik`           | the playbook mutation protocol                        | `steward`            |
+| `worker-implementer-playbook` | method and report format for the implementer          | `worker-implementer` |
+| `worker-researcher-playbook`  | analysis method and findings format                   | `worker-researcher`  |
+| `worker-reviewer-playbook`    | review zones and the VERDICT contract                 | `worker-reviewer`    |
+| `worker-expert-playbook`      | the expert's bounded-position and read-channel method | `worker-expert`      |
 
 ## Stamped files and sync
 

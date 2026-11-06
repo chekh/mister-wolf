@@ -24,9 +24,13 @@ A council is convened by the responsible level (usually L1) — it never appears
 
 `worker-expert` is a base-set agent (7 agents since 2.31.0): an L2 worker holding a narrow professional position on one question. It does not accept results, does not write memory and does not delegate.
 
-By default the expert is **packet-only**: it answers from the delivered packet, without tools. An optional **tool-enabled** profile grants exactly one read allowlist — `packet/*` — and denies everything else: writes, shell, subagents, web fetch and reads outside the packet; an `external_directory` outside the scope is rejected outright. Read isolation for this profile is provided by the platform. Before a tool-enabled run the packet passes a symlink audit, so the allowlist cannot be escaped through a link.
+The expert's default channel is **tool-enabled reading inside the project boundary**: project files, code included, are read normally, and `glob`/`grep` are available so the expert can find the file it needs. Everything else is denied: writes, shell, subagents, web fetch, browser, skills and reads outside the project (`external_directory` is rejected outright). Env files stay under the `ask` guard: a broad project read does not silently open them.
 
-If the platform cannot guarantee the tool-enabled restrictions, the expert works packet-only **and the degradation is stated explicitly** — a tool-enabled acceptance is never claimed without evidence.
+Permissions come from the **base-set configuration** (the agent profile in `.opencode/agents/`), not from the prompt text: a list of paths in a TASK grants nothing and enables no tools. That is why the dead `read packet/*` rule was replaced with a working read rule — no project has a `packet/` directory.
+
+Before the first round the lead must run a **functional channel probe**, separate from the symlink audit: one short expert call that reads a specific project file and returns a specific line. The probe passes only when the answer contains a **content fact**; `permission.rejected`, a missing tool call, or an answer built purely from the delivered text means the channel is not tool-enabled. The symlink audit proves isolation, not that reading works — one check does not replace the other.
+
+When the channel is unusable the expert works **packet-only** (from the delivered materials) **and the degradation is stated explicitly**: the first line of RESULT carries the actual `channel` — `tool-enabled` | `packet-only` | `denied` — and `channel != tool-enabled` makes `isolation_limits` mandatory, listing the facts that reading did not confirm. A tool-enabled acceptance is never claimed without evidence.
 
 ## Recording a council
 
