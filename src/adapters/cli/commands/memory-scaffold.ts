@@ -9,7 +9,10 @@ import { appendDeliverySignal } from '../../../adapters/fs/session-metrics-log.j
 
 export function memoryScaffoldCommand(): Command {
   return new Command('scaffold')
-    .description('Scaffold opencode frame (agent|skill|command) + playbook in Wolf memory')
+    .description(
+      'Scaffold opencode frame (agent|skill|command) + playbook in Wolf memory ' +
+        '(refuses an existing live face of the same owner; update it via the Steward path)'
+    )
     .addArgument(new Argument('<kind>', 'Frame kind').choices([...SCAFFOLD_KINDS]))
     .argument('<name>', 'Frame name')
     .option('--persona <text>', 'Agent frame body text (agent only)')

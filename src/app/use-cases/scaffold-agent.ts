@@ -10,7 +10,7 @@ import { FileSystem } from '../../ports/file-system.port.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import { MemoryTypeDeclaration } from '../../domain/memory-types.js';
 import { UserFacingError } from '../../domain/errors.js';
-import { createFaceVersion } from './create-face-version.js';
+import { createFaceVersion, type FaceObject } from './create-face-version.js';
 import { recordRelation } from './record-relation.js';
 
 /** Playbook-источник рамки (T-05): лицо — type 'face'; legacy — note+facet howto
@@ -140,6 +140,19 @@ export async function scaffoldFrame(
           ? existing.owner_skill
           : input.name;
     } else {
+      // Живое лицо того же владельца не перезаписывается заглушкой: scaffold —
+      // создание новой рамки, а не мутация существующего лица (штатный контур —
+      // Стюард, wolf face new). Проверка ДО любых записей.
+      const existingFace = (await deps.store.list({ type: 'face' })).find(
+        (o) => (o as FaceObject).owner_skill === input.name && o.status === 'active'
+      ) as FaceObject | undefined;
+      if (existingFace) {
+        throw new UserFacingError(
+          `Живое лицо "${input.name}" уже существует (${existingFace.id}, v${existingFace.version}): ` +
+            'scaffold его не перезаписывает. Выбери другое имя либо обнови лицо штатным контуром Стюарда ' +
+            '(wolf face new).'
+        );
+      }
       // T-05 (design §scaffoldAgent): лицо нового агента — через face-контракт
       // createFaceVersion с initiator='seed' (внутренний путь, ADR-6). lock не
       // передаём: мы уже внутри deps.lock.withLock (FsMemoryLock не реентерабелен).

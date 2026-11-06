@@ -160,6 +160,48 @@ describe('scaffoldFrame', () => {
     expect(await store.list({ type: 'face' })).toHaveLength(0);
   });
 
+  // 2.32.1 П3: scaffold не перезаписывает живое лицо заглушкой.
+  it('существующее живое лицо того же owner_skill — отказ, лицо и версия не заменены', async () => {
+    const deps = makeDeps();
+    const live = await createFaceVersion(
+      { store, log: deps.log, clock: deps.clock, idGen: deps.idGen, env: { WOLF_ACTOR: 'agent:steward' } },
+      {
+        command: 'new',
+        ownerSkill: 'demo-agent',
+        reason: 'live face',
+        body: 'Live body.',
+        minimalChange: 'w',
+        boundaries: 'b',
+        exampleHelps: 'h',
+        exampleKeep: 'k',
+        verification: 'v',
+        rollback: 'r',
+      }
+    );
+
+    await expect(scaffoldFrame(deps, { kind: 'agent', name: 'demo-agent', createdBy: 'user:test' })).rejects.toThrow(
+      UserFacingError
+    );
+    await expect(scaffoldFrame(deps, { kind: 'agent', name: 'demo-agent', createdBy: 'user:test' })).rejects.toThrow(
+      /Живое лицо/
+    );
+
+    const faces = await store.list({ type: 'face' });
+    expect(faces).toHaveLength(1);
+    expect(faces[0]?.id).toBe(live.face.id);
+    expect(faces[0]?.body).toBe('Live body.');
+    expect(existsSync(join(dir, '.opencode', 'agents', 'demo-agent.md'))).toBe(false);
+  });
+
+  it('scaffold нового имени при существующем другом лице — работает как раньше', async () => {
+    const deps = makeDeps();
+    const first = await scaffoldFrame(deps, { kind: 'agent', name: 'first-agent', createdBy: 'user:test' });
+    const second = await scaffoldFrame(deps, { kind: 'agent', name: 'second-agent', createdBy: 'user:test' });
+    expect(second.playbookId).not.toBe(first.playbookId);
+    expect(second.ownerSkill).toBe('second-agent');
+    expect(await store.list({ type: 'face' })).toHaveLength(2);
+  });
+
   it('skill и command пишутся в правильные каталоги', async () => {
     const deps = makeDeps();
     const skill = await scaffoldFrame(deps, { kind: 'skill', name: 'demo-skill', createdBy: 'user:test' });

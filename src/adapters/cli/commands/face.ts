@@ -162,7 +162,10 @@ export function faceCommand(baseDir: string = safeCwd()): Command {
       );
     });
   };
-  restoreLike('restore', 'Restore an old version as a NEW one (owner; linear history, REQ-05)');
+  restoreLike(
+    'restore',
+    'Restore an old version as a NEW one (owner, owner terminal only; agent sessions are refused, REQ-05)'
+  );
   restoreLike('breakglass', 'Emergency rollback by the owner (steward not involved; logged, REQ-07)');
 
   // 2.17.1 REQ-03 (design §3.3): восстановление операции по opId. Без флага —
@@ -195,7 +198,11 @@ export function faceCommand(baseDir: string = safeCwd()): Command {
   // legacy-playbook → face; вся механика (поэтапность, skip, отчёт) — в
   // use-case migrateFaces, CLI только печатает отчёт.
   createdByTrap(
-    cmd.command('migrate').description('Migrate legacy playbook notes to faces (idempotent, REQ-02)')
+    cmd
+      .command('migrate')
+      .description(
+        'Migrate legacy playbook notes to faces (idempotent, owner terminal only; agent sessions are refused)'
+      )
   ).action(async (options: ObserveOptions) => {
     denyCreatedBy(options);
     const report = await migrateFaces(createCliContainer(baseDir));

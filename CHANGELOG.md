@@ -17,6 +17,15 @@ Two places where a technically valid result misled the owner: a face that matche
 
 The two faces re-rendered in 2.32.0 were brought forward in this project by the Steward's regular mutation path with G17, not by a hand edit: `mr-wolf` v4 (the complaint-protocol v3 text) and `steward` v3 (the side-effects check section). Version history is preserved — the earlier versions stay readable and superseded.
 
+### Fixed — three ways around the steward-only face gate are closed
+
+The gate held for `face new` but not for every path that changes a face: an agent session could still restore an old version (dropping the accumulated edits of the live face), run the legacy migration without any check, and scaffold a stub over a face that already existed. The gate now covers these paths; its own rule is unchanged.
+
+- **`face restore` is refused from an agent session** (`WOLF_SESSION=opc-*`), by the same check that already covered `breakglass`; the owner in a terminal (`cli-*` or no session) keeps it, and the refusal is journaled as `memory.face.denied`.
+- **`face migrate` is refused from an agent session.** The legacy migration rewrites the face canon, so it now requires the owner's terminal; the internal seeding path (`seed`) and the Steward's regular mutation (`wolf face new` with `WOLF_ACTOR=agent:steward`) keep working.
+- **`wolf scaffold skill|command|agent` refuses to overwrite a live face.** When an active face with the same `owner_skill` already exists, scaffold reports its id and version and stops instead of replacing it with a "Scaffold stub" body; a new name is scaffolded as before, and the existing frame-file check is still the first idempotency guard. `--from-playbook` still reuses an existing face by design.
+- **CLI help states the limits** for `face restore`, `face migrate` and `scaffold`; the generated CLI reference is synchronized.
+
 ### Upgrade notes
 
 - **`npm install -g mister-wolf@2.32.1`** (or `wolf upgrade`) is enough. Nothing to migrate.
