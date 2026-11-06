@@ -45,7 +45,7 @@ describe('wolf base set: init + sync (спека §7, §11.1, §11.6)', () => {
 
   it('init: структура .opencode/ (agents/skills/command/plugins) + .wolf/ (§11.1)', () => {
     const oc = (sub: string) => readdirSync(join(project, '.opencode', sub));
-    expect(oc('agents').filter((f) => f.endsWith('.md'))).toHaveLength(6);
+    expect(oc('agents').filter((f) => f.endsWith('.md'))).toHaveLength(7);
     expect(oc('command').filter((f) => f.endsWith('.md'))).toHaveLength(3);
     expect(oc('plugins').filter((f) => /\.(js|ts)$/.test(f))).toHaveLength(2);
     expect(existsSync(join(project, '.opencode/skills/using-skills/SKILL.md'))).toBe(true);

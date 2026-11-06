@@ -17,8 +17,16 @@ function runCli(args: string[], cwd: string): { stdout: string; stderr: string; 
   return { stdout: r.stdout ?? '', stderr: r.stderr ?? '', status: r.status };
 }
 
-const AGENTS = ['executor-lead', 'mr-wolf', 'steward', 'worker-implementer', 'worker-researcher', 'worker-reviewer'];
-const WORKERS_PLUS_STEWARD = ['steward', 'worker-implementer', 'worker-researcher', 'worker-reviewer'];
+const AGENTS = [
+  'executor-lead',
+  'mr-wolf',
+  'steward',
+  'worker-implementer',
+  'worker-researcher',
+  'worker-reviewer',
+  'worker-expert',
+];
+const WORKERS_PLUS_STEWARD = ['steward', 'worker-implementer', 'worker-researcher', 'worker-reviewer', 'worker-expert'];
 const WORKERS = ['worker-implementer', 'worker-researcher', 'worker-reviewer'];
 
 describe('wolf init: базовый набор (спека §7, §11.1–11.3)', () => {
@@ -29,18 +37,18 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
   });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-  it("создаёт полный набор: 6 агентов, 28 скиллов, 3 команды, 2 плагина + 6 seeded playbook'ов (§11.1)", () => {
+  it("создаёт полный набор: 7 агентов, 29 скиллов, 3 команды, 2 плагина + 7 seeded playbook'ов (§11.1)", () => {
     const res = runCli(['init', '--full', '--model', 'zai-coding-plan/glm-5.3'], dir);
     expect(res.status).toBe(0);
 
-    // 39 файлов (6+28+3+2) + AGENTS.md в корне (onboarding v2 §4.2) созданы + 6 playbook'ов посеяны;
+    // 41 файл (7+29+3+2) + AGENTS.md в корне (onboarding v2 §4.2) созданы + 7 playbook'ов посеяны;
     // F5 (§2.3): скиллы печатаются как `[skill] <имя> → <файл>` — в счётчике `- base set:` их больше нет.
     // B0: у wolf-git кроме SKILL.md есть поставляемый регламент reference/…, поэтому
-    // `[skill]` counts both 28 SKILL.md files and their delivered references/scripts.
+    // `[skill]` counts both 29 SKILL.md files and their delivered references/scripts.
     const created = (res.stdout.match(/- base set: \S+ created/g) ?? []).length;
-    expect(created).toBe(18);
+    expect(created).toBe(20);
     // +1: канон разделения труда доставляется внутри существующего using-skills.
-    expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(48);
+    expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(49);
     const laborPath = 'using-skills/references/division-of-labor.md';
     const labor = readFileSync(join(dir, '.opencode/skills', laborPath), 'utf-8');
     expect(labor).toContain(
@@ -52,12 +60,12 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
     expect(res.stdout).toMatch(/- base set: AGENTS\.md created/);
 
     const agents = readdirSync(join(dir, '.opencode/agents')).filter((f) => f.endsWith('.md'));
-    expect(agents).toHaveLength(6);
+    expect(agents).toHaveLength(7);
 
     const skills = readdirSync(join(dir, '.opencode/skills')).filter((d) =>
       existsSync(join(dir, '.opencode/skills', d, 'SKILL.md'))
     );
-    expect(skills).toHaveLength(28);
+    expect(skills).toHaveLength(29);
     expect(skills).toContain('wolf-work-strategy');
     expect(skills).toContain('wolf-user-report');
 
@@ -71,12 +79,12 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
     // (type face, shared/faces/, initiator: seed, owner_skill в каждом);
     // legacy-посев note+facet howto больше не существует
     const faces = readdirSync(join(dir, '.wolf/memory/shared/faces')).filter((f) => f.endsWith('.md'));
-    expect(faces).toHaveLength(6);
+    expect(faces).toHaveLength(7);
     for (const f of faces) {
       expect(readFileSync(join(dir, '.wolf/memory/shared/faces', f), 'utf-8')).toContain('owner_skill');
     }
     const list = runCli(['list', '--type', 'face'], dir).stdout;
-    expect((list.match(/\[face\]/g) ?? []).length).toBe(6);
+    expect((list.match(/\[face\]/g) ?? []).length).toBe(7);
 
     // триггер жалобы в воркерских лицах (лица живут в shared/faces/) —
     // процедурный, не декларативный (дефект догфудинга фазы C: декларативное
@@ -112,10 +120,10 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
     expect(readFileSync(agentPath, 'utf-8')).toBe(before); // существующее не тронуто
 
     const list = runCli(['list', '--type', 'face'], dir).stdout;
-    expect((list.match(/\[face\]/g) ?? []).length).toBe(6); // снова 6, не 12
+    expect((list.match(/\[face\]/g) ?? []).length).toBe(7); // снова 7, не 14
   });
 
-  it('контент отрендеренных агентов: agent-id ×6, ЛИЦО доставлено L1/plugin у воркеров, steward — тройка с plugin-inject (§11.3, §11.8)', () => {
+  it('контент отрендеренных агентов: agent-id ×7, ЛИЦО доставлено L1/plugin у воркеров, steward — тройка с plugin-inject (§11.3, §11.8)', () => {
     expect(runCli(['init', '--full', '--model', 'zai-coding-plan/glm-5.3'], dir).status).toBe(0);
 
     for (const a of AGENTS) {

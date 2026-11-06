@@ -111,6 +111,7 @@ export default defineConfig({
               { text: 'Reusable Tools', link: '/guide/tool-economy' },
               { text: 'Delivery & Trust', link: '/guide/delivery' },
               { text: 'Read Isolation', link: '/guide/read-isolation' },
+              { text: 'Expert Council', link: '/guide/council' },
             ],
           },
           {
@@ -193,6 +194,7 @@ export default defineConfig({
               { text: 'Инструменты проекта', link: '/ru/guide/tool-economy' },
               { text: 'Доставка и доверие', link: '/ru/guide/delivery' },
               { text: 'Изоляция чтения', link: '/ru/guide/read-isolation' },
+              { text: 'Экспертный консилиум', link: '/ru/guide/council' },
             ],
           },
           {

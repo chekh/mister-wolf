@@ -12,7 +12,7 @@ import { UserFacingError } from '../../../domain/errors.js';
 // триаж — диспетчер (executor-lead), Стюарда воркер не вызывает. Прежний
 // носитель observation сохранён для семантических наблюдений; продюсеров
 // observation кроме этой команды в src/ нет (проверено спекой §3.1).
-// Источник известных agent-id — 6 базовых агентов набора (base-sets §5.1).
+// Источник известных agent-id — 7 базовых агентов набора (base-sets §5.1).
 const BASE_AGENT_IDS = [
   'executor-lead',
   'mr-wolf',
@@ -20,6 +20,7 @@ const BASE_AGENT_IDS = [
   'worker-implementer',
   'worker-researcher',
   'worker-reviewer',
+  'worker-expert',
 ] as const;
 
 // Волна 2.14 §6.1: классификация жалоб technical/behavioral; дефолт —

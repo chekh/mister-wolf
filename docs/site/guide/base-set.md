@@ -4,7 +4,7 @@ The base set is the agent harness Mr. Wolf delivers into a project: agents, skil
 
 The composition below is the catalog of `templates/base/` in the package.
 
-## Agents — 6 → `.opencode/agents/`
+## Agents — 7 → `.opencode/agents/`
 
 | Agent                | Role                                                                                                                                                                                                                                                              |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -14,6 +14,7 @@ The composition below is the catalog of `templates/base/` in the package.
 | `worker-implementer` | Single-task code executor (L2): exactly one subtask, allowlist-scoped edits, self-check, short report                                                                                                                                                             |
 | `worker-researcher`  | Investigates code, documents and the web against one question; returns findings with sources and confidence; on an explicitly assigned architectural question it compares variants and returns a recommendation — it writes no files and approves no architecture |
 | `worker-reviewer`    | Reviews workers' code and documents against the brief requirements; verdict via the VERDICT/SUMMARY contract                                                                                                                                                      |
+| `worker-expert`      | Bounded professional position on one question (L2): answers from the delivered packet (packet-only, no tools) or with tool-enabled read-only access limited to `packet/*`; see [Expert Council](/guide/council)                                                   |
 
 Every dispatched task carries an execution block: requested model/variant, the execute/solve mode, a tool-call budget and a stop condition. Since 2.24.0 it also carries a density axis — `density standard|draft`. The owner level (L0/L1) picks the density when writing the TASK; a missing field means `standard`. In `draft` the executor shortens the visible service record — repeated retellings, narration of the obvious, ritual summaries — while keeping mandatory checks, rights, evidence and independent acceptance; substantial uncertainty widens the targeted verification instead of shrinking the answer, and an unsupported density is returned to L1. Acceptance checks observed actions, evidence and the result — not a draft label in RESULT. No numeric savings are claimed; the measurable comparison is a separate observation effort (roadmap A1.2).
 
@@ -75,14 +76,15 @@ Plugins ship with the opencode harness layer of the package (`templates/opencode
 
 Playbooks are the odd one out: they are **not** stamped files. Since 2.13 they are no longer a `playbook` type: `wolf init --full` seeds them into `.wolf/` memory — since 2.17 as `face` objects (a versioned core type with `owner_skill`; skipped when a live face or a legacy note with the same `owner_skill` is already seeded). From that moment they are memory — mutations go through the complaint loop and the Steward (`wolf face` versions with a mandatory mutation record), and the update pass never touches them. Legacy seeded notes migrate with `wolf face migrate`. See [Memory Model](/guide/memory).
 
-| Playbook                      | Content                                          | Owner                |
-| ----------------------------- | ------------------------------------------------ | -------------------- |
-| `complaint-protocol`          | complaint intake and the triage tree             | `mr-wolf`            |
-| `executor-lead-playbook`      | the lead's decomposition and acceptance pipeline | `executor-lead`      |
-| `steward-nastavnik`           | the playbook mutation protocol                   | `steward`            |
-| `worker-implementer-playbook` | method and report format for the implementer     | `worker-implementer` |
-| `worker-researcher-playbook`  | analysis method and findings format              | `worker-researcher`  |
-| `worker-reviewer-playbook`    | review zones and the VERDICT contract            | `worker-reviewer`    |
+| Playbook                      | Content                                                      | Owner                |
+| ----------------------------- | ------------------------------------------------------------ | -------------------- |
+| `complaint-protocol`          | complaint intake and the triage tree                         | `mr-wolf`            |
+| `executor-lead-playbook`      | the lead's decomposition and acceptance pipeline             | `executor-lead`      |
+| `steward-nastavnik`           | the playbook mutation protocol                               | `steward`            |
+| `worker-implementer-playbook` | method and report format for the implementer                 | `worker-implementer` |
+| `worker-researcher-playbook`  | analysis method and findings format                          | `worker-researcher`  |
+| `worker-reviewer-playbook`    | review zones and the VERDICT contract                        | `worker-reviewer`    |
+| `worker-expert-playbook`      | the expert's bounded-position and packet/tool-enabled method | `worker-expert`      |
 
 ## Stamped files and sync
 

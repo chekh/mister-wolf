@@ -22,6 +22,7 @@ import type { RouterLogRow } from '../../domain/router-log.js';
 import { runCostUsd, type PricingTable, type RawTokens } from '../../domain/pricing.js';
 import { mondayOf } from './generate-insights.js';
 import { toolStats } from './tool-stats.js';
+import { classifyCouncilRecord, type ClassifiedCouncilRecord } from './council-normalizer.js';
 
 // ---------------------------------------------------------------------------
 // Контракт отчёта (сквозной для задач 6–11: меняется ТОЛЬКО в задаче 6)
@@ -438,6 +439,10 @@ export interface CouncilsView {
   unresolved_dissent_total: number;
   weeks: CouncilWeekActivity[];
   openQuestions: CouncilOpenQuestion[];
+  /** REL-231-A (S12, AC-W5-4): укомплектованность envelope-советов — «заявлено N
+   *  участников (actual+missing) — мнений M». Поле присутствует только при наличии
+   *  envelope-синтезов: значения и ключи для legacy-наборов неизменны (NFR-02). */
+  envelope_participation?: { synthesis_id: string; declared_participants: number; opinions: number }[];
 }
 
 export interface AnalyticsReport {
@@ -1841,7 +1846,10 @@ export function extractSynthesisMeta(s: MemoryObject): SynthesisMeta {
 /** Консилиумы: вопросы/мнения/синтезы из councils-subdir + relations answers/based_on.
  * Чистая агрегация по уже выгруженным объектам; ровно два вызова relations.list
  * (predicate answers и based_on — без N+1 по вопросам). Голоса — extractVote
- * выше (единственный парсер). */
+ * выше (единственный парсер).
+ * REL-231-A (S12): записи читаются через единый normalizer — legacy-типы,
+ * alias-notes и envelope-notes; один memory id считается один раз (дедуп,
+ * приоритет представления legacy > alias > envelope). */
 async function buildCouncils(
   objects: MemoryObject[],
   relations: RelationLog,
@@ -1849,18 +1857,31 @@ async function buildCouncils(
   weeks: number
 ): Promise<CouncilsView> {
   const byId = new Map(objects.map((o) => [o.id, o]));
-  const questions = objects.filter((o) => o.type === 'council-question');
-  const opinions = objects.filter((o) => o.type === 'council-opinion');
-  const syntheses = objects.filter((o) => o.type === 'synthesis');
+  // классификация + дедуп по id: при нескольких представлениях одного id
+  // побеждает legacy, затем alias, затем envelope (на практике у id одно представление)
+  const sourcePriority: Record<'legacy' | 'alias' | 'envelope', number> = { legacy: 0, alias: 1, envelope: 2 };
+  const recordsById = new Map<string, { o: MemoryObject; rec: ClassifiedCouncilRecord }>();
+  for (const o of objects) {
+    const rec = classifyCouncilRecord(o);
+    if (rec.kind === null) continue;
+    const cur = recordsById.get(o.id);
+    if (cur === undefined || sourcePriority[rec.source] < sourcePriority[cur.rec.source]) {
+      recordsById.set(o.id, { o, rec });
+    }
+  }
+  const records = [...recordsById.values()];
+  const recById = new Map(records.map((r) => [r.o.id, r]));
+  const questions = records.filter((r) => r.rec.kind === 'question');
+  const opinions = records.filter((r) => r.rec.kind === 'opinion');
+  const syntheses = records.filter((r) => r.rec.kind === 'synthesis');
 
   // вопрос → id его мнений; субъект-реляция засчитывается только если это
   // существующее в store мнение (парсер council-голосов — локальный, ниже)
   const answersByQuestion = new Map<string, string[]>();
   for (const r of await relations.list({ predicate: 'answers' })) {
-    const op = byId.get(r.subject);
-    if (op === undefined || op.type !== 'council-opinion') continue;
+    if (recById.get(r.subject)?.rec.kind !== 'opinion') continue;
     const arr = answersByQuestion.get(r.object) ?? [];
-    arr.push(op.id);
+    arr.push(r.subject);
     answersByQuestion.set(r.object, arr);
   }
 
@@ -1872,32 +1893,57 @@ async function buildCouncils(
     const b = buckets.get(mondayOf(o.created_at));
     if (b !== undefined) b[key] += 1;
   };
-  for (const q of questions) bump(q, 'questions');
-  for (const op of opinions) bump(op, 'opinions');
-  for (const s of syntheses) bump(s, 'syntheses');
+  for (const { o } of questions) bump(o, 'questions');
+  for (const { o } of opinions) bump(o, 'opinions');
+  for (const { o } of syntheses) bump(o, 'syntheses');
   const weeksOut = [...buckets.values()];
   const inWindow = weeksOut.reduce((sum, w) => sum + w.questions, 0);
 
   // per-question статистика по ВСЕМ вопросам (вопрос без мнений — 0)
-  const counts = questions.map((q) => (answersByQuestion.get(q.id) ?? []).length);
+  const counts = questions.map(({ o }) => (answersByQuestion.get(o.id) ?? []).length);
 
-  // участие: мнения по created_by (voter = created_by, прецедент CouncilTally)
+  // участие: мнения по агенту (voter = created_by, прецедент CouncilTally);
+  // envelope-мнение идентифицирует эксперта payload.expert_id (fallback created_by)
   const partAcc = new Map<string, number>();
-  for (const op of opinions) partAcc.set(op.created_by, (partAcc.get(op.created_by) ?? 0) + 1);
+  for (const { o, rec } of opinions) {
+    const expert = rec.envelope?.payload.expert_id;
+    const agent = typeof expert === 'string' && expert.trim() !== '' ? expert : o.created_by;
+    partAcc.set(agent, (partAcc.get(agent) ?? 0) + 1);
+  }
+  // W8/F5: participation считает только МНЕНИЯ (expert_id envelope-мнений,
+  // fallback created_by); actual_participants синтеза не создают opinions:1 —
+  // участие-без-мнения видно в envelope_participation (declared vs opinions),
+  // это и есть разделение «участие ≠ валидное мнение» (design §3)
   const participation = [...partAcc.entries()]
     .map(([agent, n]) => ({ agent, opinions: n }))
     .sort((a, b) => b.opinions - a.opinions || a.agent.localeCompare(b.agent));
 
-  // голоса: единый парсер extractVote (поле vote → body VOTE: → TIMEOUT)
+  // голоса: legacy — единый парсер extractVote (поле vote → body VOTE: → TIMEOUT),
+  // семантика старых council-opinion неизменна (NFR-02). REL-231-A AC-W5-3:
+  // alias-мнение без голоса и envelope-мнение (payload.vote нет в контракте,
+  // D-W5-1) в votes не попадают — TIMEOUT остаётся только у legacy-типа.
+  const voteOf = (o: MemoryObject, rec: ClassifiedCouncilRecord): string | null => {
+    if (rec.source === 'legacy') return extractVote(o);
+    if (rec.source === 'alias') {
+      const raw = (o as Record<string, unknown>).vote;
+      if (typeof raw === 'string' && raw.trim()) return raw.trim();
+      const m = o.body.match(/^VOTE:\s*(\S+)/m);
+      return m?.[1] ?? null;
+    }
+    return null;
+  };
   const tally = (ops: string[]): Record<string, number> => {
     const v: Record<string, number> = {};
     for (const opId of ops) {
-      const vote = extractVote(byId.get(opId)!);
+      const r = recById.get(opId);
+      if (r === undefined) continue;
+      const vote = voteOf(r.o, r.rec);
+      if (vote === null) continue;
       v[vote] = (v[vote] ?? 0) + 1;
     }
     return v;
   };
-  const votes = tally(opinions.map((o) => o.id));
+  const votes = tally(opinions.map(({ o }) => o.id));
 
   // синтез: вопрос «с синтезом» = ∃ синтез с based_on → мнение этого вопроса;
   // берём самый ранний подходящий синтез (медиана времени до синтеза)
@@ -1907,12 +1953,12 @@ async function buildCouncils(
   }
   const earliestSynByQuestion = new Map<string, string>();
   for (const r of await relations.list({ predicate: 'based_on' })) {
-    const syn = byId.get(r.subject);
-    if (syn === undefined || syn.type !== 'synthesis') continue;
+    const syn = recById.get(r.subject);
+    if (syn?.rec.kind !== 'synthesis') continue;
     const qid = questionByOpinionId.get(r.object);
     if (qid === undefined) continue;
     const cur = earliestSynByQuestion.get(qid);
-    if (cur === undefined || syn.created_at < cur) earliestSynByQuestion.set(qid, syn.created_at);
+    if (cur === undefined || syn.o.created_at < cur) earliestSynByQuestion.set(qid, syn.o.created_at);
   }
   const questionsWithSynthesis = earliestSynByQuestion.size;
   const hours = [...earliestSynByQuestion].map(
@@ -1928,24 +1974,45 @@ async function buildCouncils(
 
   // открытые вопросы: возраст, число мнений, расклад голосов
   const openQuestions: CouncilOpenQuestion[] = questions
-    .filter((q) => q.status === 'open')
-    .map((q) => {
-      const opIds = answersByQuestion.get(q.id) ?? [];
+    .filter(({ o }) => o.status === 'open')
+    .map(({ o }) => {
+      const opIds = answersByQuestion.get(o.id) ?? [];
       return {
-        id: q.id,
-        title: q.title,
-        daysOpen: Math.floor((now.getTime() - Date.parse(q.created_at)) / 86_400_000),
+        id: o.id,
+        title: o.title,
+        daysOpen: Math.floor((now.getTime() - Date.parse(o.created_at)) / 86_400_000),
         opinions: opIds.length,
         votes: tally(opIds),
       };
     })
     .sort((a, b) => b.daysOpen - a.daysOpen || a.id.localeCompare(b.id));
 
+  // REL-231-A: claims/meta envelope-записей лежат в payload, у legacy/alias — top-level
+  const claimsOf = (r: { o: MemoryObject; rec: ClassifiedCouncilRecord }): string[] =>
+    r.rec.envelope === undefined
+      ? extractClaims(r.o)
+      : extractClaims(r.rec.envelope.payload as unknown as MemoryObject);
+  const synthesisMetaOf = (r: { o: MemoryObject; rec: ClassifiedCouncilRecord }): SynthesisMeta =>
+    r.rec.envelope === undefined
+      ? extractSynthesisMeta(r.o)
+      : extractSynthesisMeta(r.rec.envelope.payload as unknown as MemoryObject);
+  // AC-W5-4: «заявлено N участников — мнений M» по каждому envelope-синтезу
+  const envelopeParticipation = syntheses
+    .filter(({ rec }) => rec.source === 'envelope')
+    .map(({ o, rec }) => ({
+      synthesis_id: o.id,
+      declared_participants:
+        stringList(rec.envelope?.payload.actual_participants).length +
+        stringList(rec.envelope?.payload.missing_participants).length,
+      opinions: stringList(rec.envelope?.payload.opinion_ids).length,
+    }))
+    .sort((a, b) => a.synthesis_id.localeCompare(b.synthesis_id));
+
   return {
     questions: {
       total: questions.length,
       inWindow,
-      open: questions.filter((q) => q.status === 'open').length,
+      open: questions.filter(({ o }) => o.status === 'open').length,
     },
     opinions: {
       total: opinions.length,
@@ -1962,12 +2029,14 @@ async function buildCouncils(
     },
     // A9 (2.18.0 REQ-01; 2.18.2 F-02; 2.18.3): аудируемость советов — мнения с валидными claims (≠0 = v2) и
     // суммарный неразрешённый dissent; legacy без полей даёт 0 (NFR-01)
-    opinions_with_claims_count: opinions.reduce((sum, o) => sum + (extractClaims(o).length > 0 ? 1 : 0), 0),
-    audited_count: opinions.reduce((sum, o) => sum + (extractClaims(o).length > 0 ? 1 : 0), 0),
-    structured_claims_count: opinions.reduce((sum, o) => sum + extractClaims(o).length, 0),
-    unresolved_dissent_total: syntheses.reduce((sum, s) => sum + extractSynthesisMeta(s).unresolved_dissent.length, 0),
+    opinions_with_claims_count: opinions.reduce((sum, r) => sum + (claimsOf(r).length > 0 ? 1 : 0), 0),
+    audited_count: opinions.reduce((sum, r) => sum + (claimsOf(r).length > 0 ? 1 : 0), 0),
+    structured_claims_count: opinions.reduce((sum, r) => sum + claimsOf(r).length, 0),
+    unresolved_dissent_total: syntheses.reduce((sum, r) => sum + synthesisMetaOf(r).unresolved_dissent.length, 0),
     weeks: weeksOut,
     openQuestions,
+    // поле отсутствует без envelope-синтезов — legacy-наборы неизменны (NFR-02)
+    ...(envelopeParticipation.length > 0 ? { envelope_participation: envelopeParticipation } : {}),
   };
 }
 

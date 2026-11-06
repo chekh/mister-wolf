@@ -20,6 +20,7 @@ const PACKAGE_AGENTS = new Set([
   'worker-implementer.md',
   'worker-researcher.md',
   'worker-reviewer.md',
+  'worker-expert.md',
 ]);
 
 function frontmatter(name: string): string {

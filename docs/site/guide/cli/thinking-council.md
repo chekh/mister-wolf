@@ -68,3 +68,26 @@ Usage: wolf think abandon [options]
 Options:
 
 - `--sequence <id>` — thinking sequence id
+
+## wolf council
+
+Council envelopes for the [expert council](/guide/council) method: question, expert opinions, synthesis — recorded as memory notes with relations.
+
+### wolf council record
+
+Record a council envelope from a JSON file.
+
+```text
+Usage: wolf council record [options]
+```
+
+Options:
+
+- `--input <json-file>` — path to a JSON file with the council envelope
+- `--created-by <actor>` — creator actor (default: env `WOLF_ACTOR`, else `user:cli`)
+
+Recording validates the strict v2 envelope schema, stores canonical JSON and is idempotent by `request_key`: a retry does not create duplicates.
+
+```bash
+wolf council record --input council.json
+```

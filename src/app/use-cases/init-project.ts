@@ -45,6 +45,7 @@ export const BASE_SET_AGENT_IDS = [
   'worker-implementer',
   'worker-researcher',
   'worker-reviewer',
+  'worker-expert',
 ] as const;
 
 /** Активные владельцы лиц → агенты без лица (нарушение §3.4). */

@@ -1,6 +1,6 @@
 {
-  "version": "2.30.0",
-  "prev": "2.29.0",
+  "version": "2.31.0",
+  "prev": "2.30.0",
   "files": [
     {
       "path": "base/agents/executor-lead.md",
@@ -18,6 +18,11 @@
       "category": "unchanged"
     },
     {
+      "path": "base/agents/worker-expert.md",
+      "kind": "agent",
+      "category": "new"
+    },
+    {
       "path": "base/agents/worker-implementer.md",
       "kind": "agent",
       "category": "unchanged"
@@ -30,7 +35,7 @@
     {
       "path": "base/agents/worker-reviewer.md",
       "kind": "agent",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/commands/analyze-doc.md",
@@ -80,7 +85,7 @@
     {
       "path": "base/skills/using-skills/references/agent-language.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/using-skills/references/context-and-memory.md",
@@ -90,12 +95,12 @@
     {
       "path": "base/skills/using-skills/references/contracts.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/using-skills/references/division-of-labor.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/references/project-rules.md",
@@ -125,12 +130,12 @@
     {
       "path": "base/skills/using-skills/references/routes-intent.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/using-skills/references/routes-quality.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/using-skills/references/routes-state.md",
@@ -140,7 +145,7 @@
     {
       "path": "base/skills/using-skills/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/verification-before-completion/SKILL.md",
@@ -150,7 +155,7 @@
     {
       "path": "base/skills/wolf-brainstorm/SKILL.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/wolf-code-craft/SKILL.md",
@@ -163,6 +168,11 @@
       "category": "unchanged"
     },
     {
+      "path": "base/skills/wolf-council/SKILL.md",
+      "kind": "skill",
+      "category": "new"
+    },
+    {
       "path": "base/skills/wolf-debug/references/techniques.md",
       "kind": "skill",
       "category": "unchanged"
@@ -170,7 +180,7 @@
     {
       "path": "base/skills/wolf-debug/SKILL.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/wolf-design/SKILL.md",
@@ -230,12 +240,12 @@
     {
       "path": "base/skills/wolf-handoff/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-plan/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-release-docs/SKILL.md",
@@ -245,12 +255,12 @@
     {
       "path": "base/skills/wolf-review/SKILL.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/wolf-sdd/SKILL.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/wolf-skill-intake/SKILL.md",
@@ -315,6 +325,12 @@
       "template": "base/playbooks/steward-nastavnik.md",
       "owner_skill": "steward",
       "category": "unchanged",
+      "seed": true
+    },
+    {
+      "template": "base/playbooks/worker-expert-playbook.md",
+      "owner_skill": "worker-expert",
+      "category": "new",
       "seed": true
     },
     {
