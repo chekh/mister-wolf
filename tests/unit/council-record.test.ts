@@ -530,3 +530,49 @@ describe('recordCouncil: идемпотентность и конфликт по
     expect(ctx.store.saved).toHaveLength(1);
   });
 });
+
+// 2.32.2 REQ-03: `channel` — опциональное аддитивное поле opinion-payload.
+// Обратная совместимость: исторические envelope (без channel) валидны,
+// question_revision и v2-схема не меняются, миграций нет.
+describe('recordCouncil: channel в opinion (2.32.2, аддитивное поле)', () => {
+  it('исторический envelope без channel по-прежнему принимается', async () => {
+    const ctx = makeCtx();
+    const q = await seedQuestion(ctx);
+    const e = opinionEnvelope(q.id, q.revision);
+    expect('channel' in e.payload).toBe(false);
+    const res = await write(ctx.deps, e);
+    expect(res.created).toBe(true);
+  });
+
+  it('каждое допустимое значение channel принимается без изменения question_revision', async () => {
+    for (const channel of ['packet-only', 'tool-enabled', 'denied'] as const) {
+      const ctx = makeCtx();
+      const q = await seedQuestion(ctx);
+      const e = opinionEnvelope(q.id, q.revision, { key: `T-42-r1-${channel}` });
+      (e.payload as { channel?: string }).channel = channel;
+      const res = await write(ctx.deps, e);
+      expect(res.created, `channel=${channel}`).toBe(true);
+      // дайджест вопроса не зависит от payload мнения — revision осталась прежней
+      expect(q.revision).toBe(questionDigest(TASK, questionEnvelope().payload));
+    }
+  });
+
+  it('недопустимое значение channel отклоняется без записи', async () => {
+    const ctx = makeCtx();
+    const q = await seedQuestion(ctx);
+    const e = opinionEnvelope(q.id, q.revision);
+    (e.payload as unknown as Record<string, unknown>)['channel'] = 'connected';
+    await expectRejectedNoWrite(ctx, e);
+  });
+
+  it('channel не влияет на идемпотентность: тот же request_key с тем же channel → created=false', async () => {
+    const ctx = makeCtx();
+    const q = await seedQuestion(ctx);
+    const e = opinionEnvelope(q.id, q.revision);
+    (e.payload as { channel?: string }).channel = 'tool-enabled';
+    const first = await write(ctx.deps, e);
+    const second = await write(ctx.deps, e);
+    expect(second.memoryId).toBe(first.memoryId);
+    expect(second.created).toBe(false);
+  });
+});

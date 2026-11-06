@@ -82,6 +82,10 @@ wolf-debug: один осмысленный обход в scope, затем FRIC
   RESULT: позиция/рекомендация и `claims/evidence/assumptions/confidence/risks/
   failure_conditions/counterexamples`; существенное неизвестное/нужная проверка
   в `LIMITS`. Confidence — low|medium|high с основанием, не числовая вероятность.
+  Первой строкой RESULT эксперт называет фактический `channel`
+  (`tool-enabled` | `packet-only` | `denied`) — состояние канала, а не намерение;
+  при `channel != tool-enabled` поле `isolation_limits` обязательно и называет,
+  какие факты не подтверждены чтением. `channel` не меняет статусы RESULT.
   Нет обязательного входа — `NEEDS_CONTEXT`. Входы полны, но позиции нет —
   завершённая экспертиза с текстовым исходом «недостаточно оснований» и `LIMITS`,
   без выдуманных claims. Это не новый status enum и не валидное opinion с claims=[].

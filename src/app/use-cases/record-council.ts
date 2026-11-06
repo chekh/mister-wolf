@@ -58,6 +58,9 @@ export interface CouncilOpinionPayload {
   failure_conditions?: string[];
   counterexamples?: string[];
   recommendation?: string;
+  /** 2.32.2: фактический канал эксперта (аддитивное опциональное поле).
+   *  Исторические envelope без него читаются как есть — миграции нет. */
+  channel?: 'packet-only' | 'tool-enabled' | 'denied';
 }
 
 /** A9 (memory-types.ts EvidenceRef): memory_id | path + контекст quote/note. */
@@ -167,6 +170,9 @@ const OpinionPayloadSchema = z.strictObject({
   failure_conditions: nonEmptyStrings.optional(),
   counterexamples: nonEmptyStrings.optional(),
   recommendation: nonEmpty.optional(),
+  // 2.32.2: аддитивное опциональное поле — исторические envelope (v1 до 2.32.2)
+  // остаются валидными без миграции; v2-схема и question_revision не меняются.
+  channel: z.enum(['packet-only', 'tool-enabled', 'denied']).optional(),
 });
 
 const SynthesisPayloadSchema = z
