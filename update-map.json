@@ -1,6 +1,6 @@
 {
-  "version": "2.32.1",
-  "prev": "2.32.0",
+  "version": "2.32.2",
+  "prev": "2.32.1",
   "files": [
     {
       "path": "base/agents/executor-lead.md",

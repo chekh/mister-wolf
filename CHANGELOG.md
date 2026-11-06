@@ -4,6 +4,24 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.32.2] - 2026-11-07
+
+### Changed — the council expert's read channel is real, bounded, and no longer opens secret files
+
+The expert profile promised reading inside the project, but shipped a deny-all frontmatter with a single `read packet/*` allow — and no project has a `packet/` directory, so every read was rejected and the council lost the code-confirmed part of its positions. The default profile now grants reading inside the project, and the gap that broad reading opened for secret files is closed.
+
+- **Read channel inside the project boundary.** `worker-expert` allows `read`, `glob` and `grep` on any project path, so code and documents are read normally and the expert can find the file it needs. Writes, shell, subagents, web fetch, web search, the browser, skills and `external_directory` stay denied.
+- **Env and secret guard stays `ask`, after the broad allow.** The `ask` rules for `*.env`/`*.env.*` keep `.env` and `.env.local` behind confirmation while `*.env.example` stays readable; the same guard now covers typical secret files — `.npmrc`, `.netrc`, `.git-credentials`, `*.pem`, `*.key`, `id_rsa`/`id_ed25519`. The rules sit after `read *` because OpenCode resolves permissions last-match-wins, so the order is the protection. The secret rules add no `allow`: the allow set stays `read *`, `glob *`, `grep *` and `read *.env.example`, and the deny set is unchanged.
+- **The RESULT names the actual channel.** The expert's first RESULT line is `channel:` (`tool-enabled` | `packet-only` | `denied`), and `isolation_limits` is mandatory whenever the channel is not `tool-enabled`. A content fact proves the channel works, not the fact that a tool call was made.
+- **The channel is verified, not assumed.** The council procedure requires a functional probe of the channel — read a specific file and return a specific line — separately from the link audit; one does not replace the other.
+- **Honest boundary.** The host compares the path it is given and does not resolve symlinks, so a link inside the project that points outside is read as an internal path and `external_directory` does not fire. The link audit (`find` + `realpath`) is therefore procedural, performed by L1 before the run; a leaking link makes the channel unusable or the work packet-only. The docs state this limit instead of promising an airtight boundary.
+
+### Upgrade notes
+
+- **`npm install -g mister-wolf@2.32.2`** (or `wolf upgrade`) is enough. Nothing to migrate.
+- **`update-map.json` is re-stamped to 2.32.2 against 2.32.1**; the pass delivers the changed expert profile, its playbook and the documentation.
+- **The new `ask` rules only narrow access.** A project that already asks for env files keeps working, and a non-interactive run treats `ask` as a refusal, exactly as `*.env` did before.
+
 ## [2.32.1] - 2026-11-06
 
 ### Fixed — `diverged` decisions caused by the frontmatter boundary alone, and the face version the report names
