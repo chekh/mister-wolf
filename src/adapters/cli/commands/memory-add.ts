@@ -25,6 +25,8 @@ export interface AddActionOptions {
   set?: string[];
   scope?: string;
   facet?: string;
+  /** 2.32.0 (Q1): english slug для ID записи. */
+  slug?: string;
   createdBy?: string;
   /** Сгенерённые флаги полей типа (snake_case-ключи декларации); мержатся в extra поверх --set. */
   extraFields?: Record<string, unknown>;
@@ -72,6 +74,7 @@ export async function runAddAction(baseDir: string, options: AddActionOptions): 
     {
       type,
       title: options.title,
+      slug: options.slug,
       body: options.body,
       createdBy: resolveCreatedBy(options.createdBy),
       tags: options.tags ? options.tags.split(',').map((t: string) => t.trim()) : [],
@@ -97,6 +100,10 @@ export function memoryAddCommand(baseDir: string = safeCwd()): Command {
     .addOption(new Option('--type <type>', 'Memory type').choices([...MEMORY_TYPES]).makeOptionMandatory(true))
     .requiredOption('--title <title>', 'Title')
     .option('--body <body>', 'Body text')
+    .option(
+      '--slug <slug>',
+      'English slug for the record id (a-z0-9, dashes); omitted or invalid builds an id without words'
+    )
     .option('--tags <tags>', 'Comma-separated tags')
     .option('--confidence <confidence>', 'Confidence level (low|medium|high)')
     .option('--importance <n>', 'Importance from 0 to 1', parseFloat)

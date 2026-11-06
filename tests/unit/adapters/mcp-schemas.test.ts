@@ -41,6 +41,23 @@ describe('MemoryAddInputSchema (derived from taxonomy)', () => {
     }
   });
 
+  // 2.32.0 (Q1): slug — часть контракта add, не per-type поле и не extra
+  it('keeps slug through parse and normalization', () => {
+    const parsed = MemoryAddInputSchema.safeParse({
+      type: 'decision',
+      title: 't',
+      slug: 'release-plan',
+      createdBy: 'user:x',
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.slug).toBe('release-plan');
+    expect(normalizeAddInputKeys({ type: 'decision', title: 't', slug: 'release-plan' })).toEqual({
+      type: 'decision',
+      title: 't',
+      slug: 'release-plan',
+    });
+  });
+
   it('rejects keys outside base + taxonomy', () => {
     const parsed = MemoryAddInputSchema.safeParse({
       type: 'lesson',

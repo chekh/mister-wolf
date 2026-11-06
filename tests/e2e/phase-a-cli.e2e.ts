@@ -17,14 +17,19 @@ describe('search: superseded marking and --hide-superseded (W3)', () => {
   });
   afterAll(() => rmSync(cwd, { recursive: true, force: true }));
 
-  function idOf(line: string): string {
-    return line.split(' ')[0];
+  /** id по заголовку: порядок `list` — обход файлов, а не контракт (2.32.0). */
+  function idByTitle(title: string): string {
+    const line = runCli(['list', '--type', 'decision'], cwd)
+      .stdout.trim()
+      .split('\n')
+      .find((l) => l.includes(title));
+    expect(line, `list содержит "${title}"`).toBeDefined();
+    return (line as string).split(' ')[0]!;
   }
 
   it('по умолчанию superseded показывается с пометкой [superseded]', () => {
-    const list = runCli(['list', '--type', 'decision'], cwd).stdout.trim().split('\n');
-    const oldId = idOf(list[0]);
-    const newId = idOf(list[1]);
+    const oldId = idByTitle('alpha decision unique');
+    const newId = idByTitle('beta decision unique');
     expect(runCli(['supersede', oldId, newId], cwd).status).toBe(0);
 
     const out = runCli(['search', 'decision unique'], cwd).stdout.trim().split('\n');
@@ -35,8 +40,7 @@ describe('search: superseded marking and --hide-superseded (W3)', () => {
   });
 
   it('--hide-superseded скрывает superseded объекты', () => {
-    const list = runCli(['list', '--type', 'decision'], cwd).stdout.trim().split('\n');
-    const oldId = idOf(list[0]);
+    const oldId = idByTitle('alpha decision unique');
     const out = runCli(['search', 'decision unique', '--hide-superseded'], cwd).stdout;
     expect(out).not.toContain(oldId);
     expect(out).toContain('beta decision unique');

@@ -1,16 +1,16 @@
 {
-  "version": "2.31.0",
-  "prev": "2.30.0",
+  "version": "2.32.0",
+  "prev": "2.31.0",
   "files": [
     {
       "path": "base/agents/executor-lead.md",
       "kind": "agent",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/agents/mr-wolf.md",
       "kind": "agent",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/agents/steward.md",
@@ -20,7 +20,7 @@
     {
       "path": "base/agents/worker-expert.md",
       "kind": "agent",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/agents/worker-implementer.md",
@@ -35,7 +35,7 @@
     {
       "path": "base/agents/worker-reviewer.md",
       "kind": "agent",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/commands/analyze-doc.md",
@@ -85,17 +85,17 @@
     {
       "path": "base/skills/using-skills/references/agent-language.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/references/context-and-memory.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/references/contracts.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/references/division-of-labor.md",
@@ -105,7 +105,7 @@
     {
       "path": "base/skills/using-skills/references/project-rules.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/using-skills/references/project-tools.md",
@@ -125,17 +125,17 @@
     {
       "path": "base/skills/using-skills/references/routes-execution.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/references/routes-intent.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/references/routes-quality.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/references/routes-state.md",
@@ -170,7 +170,7 @@
     {
       "path": "base/skills/wolf-council/SKILL.md",
       "kind": "skill",
-      "category": "new"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-debug/references/techniques.md",
@@ -180,7 +180,7 @@
     {
       "path": "base/skills/wolf-debug/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-design/SKILL.md",
@@ -210,7 +210,7 @@
     {
       "path": "base/skills/wolf-feedback/references/complaints.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/wolf-feedback/references/session-diagnosis.md",
@@ -245,7 +245,7 @@
     {
       "path": "base/skills/wolf-plan/SKILL.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/wolf-release-docs/SKILL.md",
@@ -255,12 +255,12 @@
     {
       "path": "base/skills/wolf-review/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-sdd/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-skill-intake/SKILL.md",
@@ -305,7 +305,7 @@
     {
       "path": "opencode/plugins/wolf-session-start.js",
       "kind": "plugin",
-      "category": "unchanged"
+      "category": "changed"
     }
   ],
   "faces": [
@@ -330,7 +330,7 @@
     {
       "template": "base/playbooks/worker-expert-playbook.md",
       "owner_skill": "worker-expert",
-      "category": "new",
+      "category": "unchanged",
       "seed": true
     },
     {
@@ -353,7 +353,7 @@
     }
   ],
   "agents_md": {
-    "category": "unchanged",
+    "category": "changed",
     "mode": "append-block"
   },
   "schema_migrations": [],

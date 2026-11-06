@@ -29,9 +29,14 @@ export type ReportNode =
   | { kind: 'banner'; version: string }
   | { kind: 'section'; title: string; children: ReportNode[] }
   | { kind: 'line'; marker: Marker; text: string; dim?: boolean }
+  /** Строка-подробность: без маркера статуса (2.32.0, Q6). Глиф статуса
+   *  принадлежит только строкам, которые сами сообщают состояние; base-set/
+   *  faces/verify/needs decision — детали проекта, а не отдельные статусы. */
+  | { kind: 'detail'; text: string }
   | { kind: 'summary'; counters: Counter[]; done: boolean };
 
 type LineNode = Extract<ReportNode, { kind: 'line' }>;
+type DetailNode = Extract<ReportNode, { kind: 'detail' }>;
 type SummaryNode = Extract<ReportNode, { kind: 'summary' }>;
 type SectionNode = Extract<ReportNode, { kind: 'section' }>;
 
@@ -39,13 +44,14 @@ const RESET = '\x1b[0m';
 const DIM = '\x1b[2m';
 const ANSI = /\x1b\[[0-9;]*m/g;
 
-/** Маркер → глиф + plain-префикс (design §«Палитра»). */
+/** Маркер → глиф + plain-префикс (design §«Палитра»; 2.32.0 Q6: info/ok/skip
+ *  больше не делят один `●` — различие обязано читаться и без цвета). */
 const MARKERS: Readonly<Record<Marker, { glyph: string; plain: string }>> = {
   info: { glyph: '●', plain: '-' },
-  ok: { glyph: '●', plain: 'ok:' },
+  ok: { glyph: '✓', plain: 'ok:' },
   warn: { glyph: '▲', plain: 'warn:' },
   error: { glyph: '✖', plain: 'error:' },
-  skip: { glyph: '●', plain: 'skip:' },
+  skip: { glyph: '·', plain: 'skip:' },
 };
 
 /** ANSI-код маркера по глубине палитры; okDim — «dim green» для ok+dim (up-to-date/unchanged). */
@@ -107,6 +113,8 @@ function plainTop(node: ReportNode): string[] {
       return [node.title, ...node.children.flatMap(plainTop)];
     case 'line':
       return [`${MARKERS[node.marker].plain} ${node.text}`];
+    case 'detail':
+      return [node.text];
     case 'summary':
       return [summaryText(node)];
   }
@@ -125,6 +133,8 @@ function styledTop(node: ReportNode, env: TermEnv): string[] {
       return sectionFrame(node, env);
     case 'line':
       return lineLines(node, env, '', Math.max(1, env.width - 3));
+    case 'detail':
+      return detailLines(node, env, '', Math.max(1, env.width - 2));
     case 'summary':
       return [`└ ${summaryText(node)}`];
   }
@@ -186,6 +196,9 @@ function contentLines(node: ReportNode, env: TermEnv, indent: string, maxInner: 
     case 'line':
       // 3 = глиф + пробел + колонка выравнивания продолжения (перенос длиннее первой строки на 1)
       return lineLines(node, env, indent, Math.max(1, maxInner - indent.length - 3));
+    case 'detail':
+      // 2 = колонка текста статусной строки (глиф + пробел): деталь встаёт под текст
+      return detailLines(node, env, indent, Math.max(1, maxInner - indent.length - 2));
     case 'summary':
       return wrap(summaryText(node), Math.max(1, maxInner - indent.length - 2)).map(
         (t, i) => indent + (i === 0 ? '' : '  ') + t
@@ -200,6 +213,13 @@ function lineLines(node: LineNode, env: TermEnv, indent: string, budget: number)
   const dim = (s: string): string => (node.dim && env.colors !== 'mono' ? paint(DIM, s) : s);
   // Перенос: продолжение выравнивается под текст (отступ маркера), текст не усекается
   return wrap(node.text, budget).map((part, i) => `${indent}${i === 0 ? glyph : '  '} ${dim(part)}`);
+}
+
+/** Деталь: без глифа и без статусного цвета; текст стоит в колонке текста
+ *  статусных строк и остаётся приглушённым (dim), чтобы не спорить со статусом. */
+function detailLines(node: DetailNode, env: TermEnv, indent: string, budget: number): string[] {
+  const dim = (s: string): string => (env.colors !== 'mono' ? paint(DIM, s) : s);
+  return wrap(node.text, budget).map((part) => `${indent}  ${dim(part)}`);
 }
 
 /** Word-wrap; неразрывные токены (пути) режутся жёстко. */

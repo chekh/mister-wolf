@@ -40,7 +40,7 @@ describe('wolf scaffold artifact (2.15 A1; 2.17.1 REQ-05 AC-3)', () => {
     expect(readdirSync(cwd)).toEqual(['package.json']); // записей нет
   });
 
-  it('acquire → scaffold (другой CLI-процесс, та же сессия) — exit=0, 4 файла', () => {
+  it('acquire → scaffold (другой CLI-процесс, та же сессия) — exit=0, 6 файлов пакета', () => {
     const artifact = probeArtifactId('demo');
     const acq = runCli(['claim', 'acquire', artifact], cwd, CLAIM_ENV);
     expect(acq.status, `claim acquire ${artifact}: ${acq.stderr}`).toBe(0);
@@ -52,19 +52,26 @@ describe('wolf scaffold artifact (2.15 A1; 2.17.1 REQ-05 AC-3)', () => {
     const dirs = readdirSync(devDir).filter((d) => d.endsWith('-demo'));
     expect(dirs).toHaveLength(1);
     const dir = join(devDir, dirs[0]!);
-    expect(readdirSync(dir).sort()).toEqual(['design.md', 'plan.md', 'requirements.md', 'test-plan.md'].sort());
+    // 2.32.0 Q5/Q4: pre-requirements и change-request — first-class документы пакета
+    expect(readdirSync(dir).sort()).toEqual(
+      ['pre-requirements.md', 'requirements.md', 'change-request.md', 'design.md', 'test-plan.md', 'plan.md'].sort()
+    );
     expect(readFileSync(join(dir, 'requirements.md'), 'utf-8')).toContain('status: draft');
+    expect(readFileSync(join(dir, 'pre-requirements.md'), 'utf-8')).toContain('## 1. Намерение и польза');
+    expect(readFileSync(join(dir, 'change-request.md'), 'utf-8')).toContain('CR-');
   });
 
-  it('повторный scaffold того же slug — exit ≠ 0, «already exists» (claim той же сессии жив)', () => {
+  it('повторный scaffold того же slug — top-up: «ничего не добавлено», файлы не перезаписаны (Q4)', () => {
     // claim из предыдущего сценария: pid 0 → не stale, отдельный re-acquire не нужен
-    const r = runCli(['scaffold', 'artifact', 'demo'], cwd, CLAIM_ENV);
-    expect(r.status).not.toBe(0);
-    expect(r.stderr + r.stdout).toContain('already exists');
-
     const devDir = join(cwd, 'docs', 'dev');
-    const dir = readdirSync(devDir).find((d) => d.endsWith('-demo'));
-    expect(readdirSync(join(devDir, dir!))).toHaveLength(4);
+    const dir = readdirSync(devDir).find((d) => d.endsWith('-demo'))!;
+    const before = readFileSync(join(devDir, dir, 'requirements.md'), 'utf-8');
+
+    const r = runCli(['scaffold', 'artifact', 'demo'], cwd, CLAIM_ENV);
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain('nothing to add');
+    expect(readFileSync(join(devDir, dir, 'requirements.md'), 'utf-8')).toBe(before);
+    expect(readdirSync(join(devDir, dir))).toHaveLength(6);
   });
 
   it('плохой slug — exit ≠ 0, сообщение про слаг', () => {

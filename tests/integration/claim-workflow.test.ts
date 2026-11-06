@@ -253,7 +253,16 @@ describe('REQ-05 (R06): claim владения артефактами — S-38�
       'dev:2026-10-14-demo'
     );
     const res = await call('agent:l1a');
-    expect(res.files).toHaveLength(4);
+    // 2.32.0 (Q5): пакет пишется в объявленном порядке — 6 документов
+    expect(res.files).toHaveLength(6);
+    expect(res.files.map((f) => f.split('/').pop())).toEqual([
+      'pre-requirements.md',
+      'requirements.md',
+      'change-request.md',
+      'design.md',
+      'test-plan.md',
+      'plan.md',
+    ]);
   });
 
   it('S-42: мёртвый PID (реальный ESRCH) и возраст > TTL — перехват, исходные файлы в следах (NFR-02)', () => {

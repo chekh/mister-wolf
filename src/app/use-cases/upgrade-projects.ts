@@ -17,7 +17,7 @@ import { parseStamp } from '../../adapters/render/stamp.js';
 import { compareVersions, type FileKind, type UpdateMap } from '../../adapters/fs/update-map.js';
 import type { Counter, Marker, ReportNode } from '../../adapters/cli/report-renderer.js';
 import { runProjectStep, type ProjectReport, type ProjectStepDeps } from './project-step.js';
-import { projectPath, type VerifyResult } from './verify-against-map.js';
+import { projectPath, type VerifyCode, type VerifyResult } from './verify-against-map.js';
 import { scanUnregistered } from './scan-unregistered.js';
 import type { JsonPlan, JsonProject } from './decisions.js';
 
@@ -95,6 +95,9 @@ interface StepOutcome {
 const msg = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 
 const line = (marker: Marker, text: string, dim = false): ReportNode => ({ kind: 'line', marker, text, dim });
+
+/** Деталь проекта: без маркера статуса (2.32.0 Q6). */
+const detail = (text: string): ReportNode => ({ kind: 'detail', text });
 
 /** Катастрофы прохода (lock занят, реестр/карта нечитаемы) — результат, не
  * throw: exit 1 + error-строка; проекты не тронуты (контракт lead). */
@@ -298,10 +301,8 @@ async function runPass(deps: UpgradeProjectsDeps, opts: UpgradeProjectsOpts): Pr
   const hint =
     opts.tty === true && opts.yes !== true && decisionsLeft > 0
       ? [
-          line(
-            'info',
-            `hint: ${decisionsLeft} ${decisionsLeft === 1 ? 'file needs' : 'files need'} a decision — run wolf upgrade --review`,
-            true
+          detail(
+            `hint: ${decisionsLeft} ${decisionsLeft === 1 ? 'file needs' : 'files need'} a decision — run wolf upgrade --review`
           ),
         ]
       : [];
@@ -442,12 +443,10 @@ function plansSection(
       children.push(line('info', `plan: ${plan.name} · ${plan.path}`));
       const floor =
         plan.stampFloor !== null && plan.stampFloor !== plan.composition ? ` (stamps from ${plan.stampFloor})` : '';
-      children.push(line('info', `composition ${plan.composition ?? 'unknown'}${floor} → ${map.version}`, true));
+      children.push(detail(`composition ${plan.composition ?? 'unknown'}${floor} → ${map.version}`));
       children.push(
-        line(
-          'info',
-          `map: ${cats.new} new · ${cats.changed} changed · ${cats.deprecated} deprecated · ${cats.removed} removed · seed×${seedFaces}`,
-          true
+        detail(
+          `map: ${cats.new} new · ${cats.changed} changed · ${cats.deprecated} deprecated · ${cats.removed} removed · seed×${seedFaces}`
         )
       );
     } else {
@@ -461,7 +460,7 @@ function plansSection(
     }
   }
   for (const dup of duplicates) {
-    children.push(line('info', `duplicate registry entry collapsed: ${dup.path}`, true));
+    children.push(detail(`duplicate registry entry collapsed: ${dup.path}`));
   }
   return { kind: 'section', title: 'Plans', children };
 }
@@ -496,19 +495,21 @@ function displayName(i: VerifyResult['items'][number], kinds: Map<string, FileKi
   return kind ? projectPath({ path: i.target, kind, category: 'new' }) : i.target;
 }
 
+/** Порядок групп решений в отчёте (2.32.0, Q6): конфликт → мутант → расхождение.
+ *  Раньше все коды печатались одной строкой, а `diverged` не назывался вовсе. */
+const DECISION_ORDER: readonly VerifyCode[] = ['conflict', 'skipped-mutated', 'diverged'];
+
 export function verifyNameLines(verify: VerifyResult, map: UpdateMap): ReportNode[] {
   const out: ReportNode[] = [];
   const kinds = kindIndex(map);
-  const named = verify.items.filter((i) => i.needsDecision && i.code !== 'diverged');
-  if (named.length > 0) {
-    out.push(
-      line('warn', `needs decision: ${named.map((i) => `${displayName(i, kinds)} (${i.code})`).join(', ')}`, true)
-    );
+  for (const code of DECISION_ORDER) {
+    const names = verify.items.filter((i) => i.needsDecision && i.code === code).map((i) => displayName(i, kinds));
+    if (names.length > 0) out.push(detail(`needs decision (${code}): ${names.join(', ')}`));
   }
   const protectedCount = verify.items.filter((i) => i.code === 'protected').length;
-  if (protectedCount > 0) out.push(line('info', `${protectedCount} protected (intentional)`, true));
+  if (protectedCount > 0) out.push(detail(`${protectedCount} protected (intentional)`));
   const kept = verify.items.filter((i) => i.code === 'kept').map((i) => displayName(i, kinds));
-  if (kept.length > 0) out.push(line('info', `${kept.length} kept (local): ${kept.join(', ')}`, true));
+  if (kept.length > 0) out.push(detail(`${kept.length} kept (local): ${kept.join(', ')}`));
   return out;
 }
 
@@ -518,8 +519,35 @@ export function backupDigestLines(report: ProjectReport): ReportNode[] {
   const out: ReportNode[] = [];
   for (const b of report.backups ?? []) {
     const took = report.sync.outcomes.some((o) => o.backup === b.backup);
-    out.push(line('info', `${took ? 'took base for' : 'removed'} ${b.file} (local saved: ${b.backup})`, true));
+    out.push(detail(`${took ? 'took base for' : 'removed'} ${b.file} (local saved: ${b.backup})`));
   }
+  return out;
+}
+
+/** Детали шага одного проекта — единственная реализация для паркового прохода и
+ *  `--here` (2.32.0: строки-подробности без маркера статуса, Q6). */
+export function stepDetailLines(report: ProjectReport, map: UpdateMap): ReportNode[] {
+  const out: ReportNode[] = [];
+  const bs = baseSetSummary(report);
+  if (bs) out.push(detail(`base-set: ${bs}`));
+  if (report.seed.length > 0) {
+    const faces = report.seed.map((s) => `${s.file.replace(/-playbook\.md$/, '')} ${s.kind ?? s.action}`).join(', ');
+    out.push(detail(`faces: ${faces}`));
+  }
+  if (report.schema.status !== 'ok') {
+    // schema: остаётся статусом (Q6) — это состояние шага, а не подробность.
+    out.push(
+      line('warn', `schema: ${report.schema.status}${report.schema.error ? ` — ${report.schema.error}` : ''}`, true)
+    );
+  }
+  const v = report.verify.summary;
+  const ok = report.verify.items.length - v.needsDecision - v.errors;
+  const parts = [`${ok}/${report.verify.items.length} ok`];
+  if (v.needsDecision > 0) parts.push(`${v.needsDecision} needs decision`);
+  if (v.errors > 0) parts.push(`${v.errors} errors`);
+  out.push(detail(`verify: ${parts.join(' · ')}`));
+  out.push(...verifyNameLines(report.verify, map));
+  out.push(...backupDigestLines(report)); // §4.12: файл + путь бэкапа
   return out;
 }
 
@@ -537,25 +565,7 @@ function projectsSection(outcomes: StepOutcome[], map: UpdateMap): ReportNode {
     );
     const r = o.report;
     if (!r) continue;
-    const bs = baseSetSummary(r);
-    if (bs) children.push(line('info', `base-set: ${bs}`, true));
-    if (r.seed.length > 0) {
-      const faces = r.seed.map((s) => `${s.file.replace(/-playbook\.md$/, '')} ${s.kind ?? s.action}`).join(', ');
-      children.push(line('info', `faces: ${faces}`, true));
-    }
-    if (r.schema.status !== 'ok') {
-      children.push(line('warn', `schema: ${r.schema.status}${r.schema.error ? ` — ${r.schema.error}` : ''}`, true));
-    }
-    const v = r.verify.summary;
-    const ok = r.verify.items.length - v.needsDecision - v.errors;
-    const parts = [`${ok}/${r.verify.items.length} ok`];
-    if (v.needsDecision > 0) parts.push(`${v.needsDecision} needs decision`);
-    if (v.errors > 0) parts.push(`${v.errors} errors`);
-    children.push(
-      line(v.errors > 0 ? 'error' : v.needsDecision > 0 ? 'warn' : 'info', `verify: ${parts.join(' · ')}`, true)
-    );
-    children.push(...verifyNameLines(r.verify, map));
-    children.push(...backupDigestLines(r));
+    children.push(...stepDetailLines(r, map));
   }
   return { kind: 'section', title: 'Projects', children };
 }
@@ -592,7 +602,7 @@ async function scanLines(deps: UpgradeProjectsDeps, registered: RegisteredProjec
         true
       ),
     ];
-    for (const path of found.top) lines.push(line('info', path, true));
+    for (const path of found.top) lines.push(detail(path));
     return lines;
   } catch (err) {
     return [line('warn', `unregistered-projects scan failed: ${msg(err)} — pass result unaffected`, true)];

@@ -6,6 +6,8 @@ import {
   designTemplate,
   planTemplate,
   testPlanTemplate,
+  preRequirementsTemplate,
+  changeRequestTemplate,
 } from '../../../src/app/use-cases/scaffold-artifact.js';
 import { UserFacingError } from '../../../src/domain/errors.js';
 
@@ -40,14 +42,22 @@ function deps(base = '/proj') {
 }
 
 describe('scaffoldArtifact', () => {
-  it('full profile creates 4 templates with front-matter', async () => {
+  it('full profile creates 6 package templates with front-matter in canonical order', async () => {
     const { deps: d, files } = deps();
     const res = await scaffoldArtifact(d, { slug: 'demo', fix: false });
     const dir = join('/proj', 'docs', 'dev', '2026-10-08-demo');
     expect(res.dir).toBe(dir);
-    expect(res.files.map((f) => f.split('/').pop()).sort()).toEqual(
-      ['design.md', 'plan.md', 'requirements.md', 'test-plan.md'].sort()
-    );
+    // 2.32.0 (Q5): порядок документов пакета — pre-requirements → requirements →
+    // change-request → design → test-plan → plan
+    expect(res.files.map((f) => f.split('/').pop())).toEqual([
+      'pre-requirements.md',
+      'requirements.md',
+      'change-request.md',
+      'design.md',
+      'test-plan.md',
+      'plan.md',
+    ]);
+    expect(res.complete).toBe(false);
     const req = files.get(join(dir, 'requirements.md')) ?? '';
     expect(req).toContain('slug: demo');
     expect(req).toContain('status: draft');
@@ -66,11 +76,37 @@ describe('scaffoldArtifact', () => {
     expect(files.get(res.files[0].replace('plan.md', 'requirements.md'))).toContain('Журнал изменений (CR)');
   });
 
-  it('existing slug refuses without side effects', async () => {
+  it('S18: top-up на существующей папке добавляет только недостающие документы', async () => {
+    // поток brainstorm → scaffold: папка уже есть, в ней только pre-requirements.md
+    const dir = join('/proj', 'docs', 'dev', '2026-10-08-demo');
+    const pre = '# Pre-requirements: итог обсуждения\n';
+    const m = memFs({ [join(dir, 'pre-requirements.md')]: pre });
+    const d = {
+      clock: { now: () => new Date('2026-10-08T10:00:00Z') },
+      fs: m.fs,
+      baseDir: '/proj',
+      claims: { requireClaim: () => {} },
+    };
+    const res = await scaffoldArtifact(d, { slug: 'demo', fix: false });
+    expect(res.files.map((f) => f.split('/').pop())).toEqual([
+      'requirements.md',
+      'change-request.md',
+      'design.md',
+      'test-plan.md',
+      'plan.md',
+    ]);
+    expect(res.existing).toEqual([join(dir, 'pre-requirements.md')]);
+    expect(m.files.get(join(dir, 'pre-requirements.md'))).toBe(pre); // не перезаписан
+  });
+
+  it('S19: полный пакет — «добавлять нечего», ни одной записи', async () => {
     const { deps: d, files } = deps();
     await scaffoldArtifact(d, { slug: 'demo', fix: false });
     const count = files.size;
-    await expect(scaffoldArtifact(d, { slug: 'demo', fix: false })).rejects.toBeInstanceOf(UserFacingError);
+    const res = await scaffoldArtifact(d, { slug: 'demo', fix: false });
+    expect(res.complete).toBe(true);
+    expect(res.files).toEqual([]);
+    expect(res.existing).toHaveLength(6);
     expect(files.size).toBe(count);
   });
 
@@ -98,5 +134,24 @@ describe('scaffoldArtifact', () => {
     expect(designTemplate('x', 'X', CREATED)).toContain('≤ 10 строк');
     expect(planTemplate('x', 'X', CREATED)).toContain('- [ ] Задача 1:');
     expect(testPlanTemplate('x', 'X', CREATED)).toContain('Given');
+  });
+
+  it('S16: pre-requirements и change-request несут объявленные разделы и номер CR', () => {
+    const pre = preRequirementsTemplate('x', 'X', CREATED);
+    for (const s of [
+      '## 1. Намерение и польза',
+      '## 2. Рамка и ключевые решения',
+      '## 3. Открытые вопросы',
+      '## 4. Что дальше',
+    ])
+      expect(pre).toContain(s);
+
+    const cr = changeRequestTemplate('x', 'X', CREATED);
+    expect(cr).toContain('change-request');
+    expect(cr).toContain('Append-only');
+    expect(cr).toContain(`CR-${CREATED}-01:`);
+    expect(cr).toContain('downstream:');
+    expect(cr).toContain('slug: x');
+    expect(cr).toContain('status: draft');
   });
 });

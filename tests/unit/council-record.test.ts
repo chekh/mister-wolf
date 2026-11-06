@@ -104,9 +104,9 @@ class FakeClock implements Clock {
 
 class FakeIdGen implements IdGenerator {
   private seq = 0;
-  generateMemoryId(_date: Date, slug: string): string {
+  generateMemoryId(_date: Date, slug?: string): string {
     this.seq += 1;
-    return `mem-${this.seq}-${slug.replace(/[^a-z0-9]+/gi, '-').slice(0, 32)}`;
+    return `mem-${this.seq}-${(slug ?? 'id').replace(/[^a-z0-9]+/gi, '-').slice(0, 32)}`;
   }
   generateEventId(_date: Date): string {
     this.seq += 1;

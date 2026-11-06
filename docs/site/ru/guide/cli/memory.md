@@ -15,6 +15,7 @@ wolf add [options]
 | `--type <type>`             | Тип памяти: `rule`, `lesson`, `decision`, `thread`, `complaint`, `tool`, `note`                                                                                                                                                                                                                                          |
 | `--title <title>`           | Заголовок                                                                                                                                                                                                                                                                                                                |
 | `--body <body>`             | Текст                                                                                                                                                                                                                                                                                                                    |
+| `--slug <slug>`             | Английский slug для id записи (`a-z0-9` и дефисы); не передан или невалиден — id без слов (см. [идентификаторы записей](/ru/guide/memory#идентификаторы-записеи))                                                                                                                                                        |
 | `--tags <tags>`             | Теги через запятую                                                                                                                                                                                                                                                                                                       |
 | `--confidence <confidence>` | Уверенность (low\|medium\|high)                                                                                                                                                                                                                                                                                          |
 | `--importance <n>`          | Важность от 0 до 1                                                                                                                                                                                                                                                                                                       |
@@ -27,6 +28,9 @@ wolf add [options]
 wolf add --type lesson --title "Вит-тесты падают от кэша" --body "В CI — флаг --no-cache" --tags "vitest,ci" --confidence medium
 
 wolf add --type note --title "Ловушка кэша CI" --body "vitest нужен --no-cache" --facet pitfall
+
+# имя id задаёт автор: mem_<date>_cache-pitfall_<hash6>
+wolf add --type lesson --title "Кэш ломает прогон" --body "vitest нужен --no-cache" --slug cache-pitfall
 ```
 
 У каждого типа есть и генерённый неймспейс: те же базовые флаги плюс типоспецифичные — `wolf note add --facet <choice>`, `wolf thread add --goal <goal> --current-state <s> --next-steps <a,b>` и т.д. Неймспейсы генерируются из таксономии — см. [модель памяти](/ru/guide/memory).

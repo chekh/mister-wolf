@@ -46,7 +46,7 @@ ok: Done (read-only)
 - `needs decision` — штампованный файл правили локально (`mutated`) либо на месте цели волфа лежит файл без штампа (`conflict`). Сам проход такие не решает;
 - `unknown` — проект не покрыт картой обновления этого релиза (`foreign`-файлы, нечитаемые проекты, сломанные онбординг-маркеры). Вне покрытия **не** значит «актуален».
 
-Каждая строка называет файлы: `mutated:`, `differ:` (все пути, а не счётчик), `foreign:`; `missing` — счётчик, его пути есть в `--json` (`missing[]`). Секция `Protections` печатается всегда — `Protections: none`, если держать нечего — и это и есть аудит второго слоя из таблицы выше.
+Каждая строка называет файлы: `mutated:`, `differ:` (все пути, а не счётчик), `foreign:`; `missing` — счётчик, его пути есть в `--json` (`missing[]`). `--check` печатает по такой строке на проект; группировка по кодам, описанная ниже, относится к проходу и `--here`, а не к `--check`. Секция `Protections` печатается всегда — `Protections: none`, если держать нечего — и это и есть аудит второго слоя из таблицы выше.
 
 Файл со штампом, отличающийся от эталона **только** строкой `wolf:rendered …`, решения не требует: проход молча перерендерит его и обновит штамп. В `--check` он показан как `current` — `identical` здесь значит «решать нечего», а не «байт-равенство».
 
@@ -227,24 +227,26 @@ wolf upgrade --here --yes             # один проект
 wolf upgrade --yes --json > run.json  # машинный канал
 ```
 
+В проходе и в `--here` неразрешённые решения проекта сгруппированы по коду, по строке на код — `needs decision (conflict): <path>`, `needs decision (skipped-mutated): <path>`, `needs decision (diverged): <path>` — поэтому дрейф не прячется в одном перечислении через запятую. `skipped-mutated` — файл, который проход пропустил, потому что его правили локально (тот же класс, что `mutated` в сводке); `diverged` — посеянное лицо, живое тело которого больше не совпадает с шаблоном.
+
 Что `--yes` решает: `mutated`-файлы — сначала бэкап, потом эталон, потом свидетель. Чего не решает: `conflict` (файл без штампа на месте цели волфа — это ваше решение, `wx`-политика сильнее `--yes`) и `diverged`-лицо (память, зона Стюарда). Они держат exit `2`.
 
 ```text
 wolf upgrade — here
 Plan
 - plan: proj · /Users/…/proj
-- composition 2.20.0 → 2.20.0
-- map: 0 new · 0 changed · 0 deprecated · 0 removed · seed×6
-- outside the registry — manual mode
+  composition 2.31.0 → 2.32.0
+  map: 0 new · 5 changed · 0 deprecated · 0 removed · seed×7
+  outside the registry — manual mode
 ok: proj — updated
-- base-set: 1 updated, 30 identical
-- faces: … skipped-live …
-- verify: 37/37 ok
-- 1 protected (intentional)
-- took base for .opencode/skills/wolf-review/SKILL.md (local saved: .wolf/backup/upgrade/2026-10-25/.opencode/skills/wolf-review/SKILL.md)
-updated 1 · new 0 · changed 0 · deprecated 0 · removed 0 · faces seeded 0
+  base-set: 62 updated
+  faces: complaint-protocol skipped-live, executor-lead skipped-live, …
+  verify: 69/69 ok
+updated 1 · new 0 · changed 5 · deprecated 0 · removed 0 · faces seeded 0
 ok: Done
 ```
+
+Детали проекта — `base-set`, `faces`, `verify`, именованные решения, бэкапы — печатаются без маркера статуса: маркер принадлежит строкам, которые сами сообщают состояние. В TTY эти детали выровнены под колонку текста статусных строк; в пайпе они идут без отступа плоскими строками, а маркеры становятся текстовыми префиксами `-`, `ok:`, `warn:`, `error:`, `skip:`. В TTY маркеры к тому же различимы без цвета — `●` info, `✓` ok, `▲` внимание, `✖` ошибка, `·` пропуск.
 
 Каждой перезаписи предшествует копия в `.wolf/backup/upgrade/<YYYY-MM-DD>/<путь>` (один каталог на дату прогона). Вторая перезапись того же файла в тот же день становится `<имя>-2.<ext>` (затем `-3`, …; расширение сохраняется): у `.opencode/skills/wolf-debug/SKILL.md` копия будет `.opencode/skills/wolf-debug/SKILL-2.md` — существующий бэкап не перезаписывается никогда. Цель `removed` копируется туда же перед удалением.
 

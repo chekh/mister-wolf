@@ -73,6 +73,8 @@ export async function saveProposal(deps: SaveProposalDeps, input: SaveProposalIn
     {
       type: 'note',
       title: input.title ?? `Proposal to ${input.addressee}: ${shortChange}`,
+      // 2.32.0: одинаковый клип заголовка не делает предложения одним и тем же
+      idFingerprint: [input.addressee, input.proposedChange, input.expectedBenefit ?? ''].join('\u0000'),
       body: input.body,
       createdBy,
       facet: 'proposal',

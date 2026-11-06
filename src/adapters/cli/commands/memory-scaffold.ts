@@ -36,6 +36,8 @@ export function memoryScaffoldCommand(): Command {
             { slug: name, fix: options.fix === true }
           );
           for (const f of res.files) console.log(`Created artifact: ${f}`);
+          if (res.complete) console.log(`Artifact is complete: ${res.dir} (nothing to add)`);
+          else if (res.files.length === 0) console.log(`Artifact exists: ${res.dir}`);
           return;
         }
         if (kind !== 'agent' && (options.persona !== undefined || options.model !== undefined)) {

@@ -52,12 +52,12 @@ async function appendRecord(baseDir: string, sequenceId: string, record: Sequenc
 
 export async function startThinking(
   deps: ThinkingDeps,
-  input: { goal: string; thread?: string }
+  input: { goal: string; thread?: string; /** 2.32.0: english slug для ID */ slug?: string }
 ): Promise<SequenceMeta> {
   const now = deps.clock.now();
   const meta: SequenceMeta = {
     kind: 'sequence',
-    id: deps.idGen.generateMemoryId(now, input.goal),
+    id: deps.idGen.generateMemoryId(now, input.slug, input.goal),
     goal: input.goal,
     thread: input.thread ?? null,
     created_at: now.toISOString(),
@@ -110,7 +110,7 @@ async function readScratch(baseDir: string, sequenceId: string): Promise<{ meta:
 
 export async function addThought(
   deps: ThinkingDeps,
-  input: { sequenceId: string; type: ThoughtType; text: string }
+  input: { sequenceId: string; type: ThoughtType; text: string; /** 2.32.0: english slug для tid */ slug?: string }
 ): Promise<Thought> {
   if (!THOUGHT_TYPES.includes(input.type)) {
     throw new Error(`Invalid thought type "${String(input.type)}". Allowed: ${THOUGHT_TYPES.join(', ')}`);
@@ -119,7 +119,7 @@ export async function addThought(
   const now = deps.clock.now();
   const thought: Thought = {
     kind: 'thought',
-    tid: deps.idGen.generateMemoryId(now, `${input.type}: ${input.text}`),
+    tid: deps.idGen.generateMemoryId(now, input.slug, `${input.type}: ${input.text}`),
     n: (thoughts[thoughts.length - 1]?.n ?? 0) + 1,
     type: input.type,
     text: input.text,

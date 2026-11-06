@@ -46,7 +46,7 @@ Each project gets one class:
 - `needs decision` — a stamped file was edited locally (`mutated`), or an unstamped file occupies a wolf target (`conflict`). The pass will not resolve these by itself.
 - `unknown` — the project is not covered by the update map of that release (`foreign` files, unreadable projects, broken onboarding markers). Out of coverage does **not** mean up to date.
 
-Every entry names its files: `mutated:`, `differ:` (all paths, not a counter), `foreign:`; `missing` is a counter — its paths are in `--json` (`missing[]`). The `Protections` section is always printed — `Protections: none` when there is nothing to hold — and it is the audit view of the second layer in the table above.
+Every entry names its files: `mutated:`, `differ:` (all paths, not a counter), `foreign:`; `missing` is a counter — its paths are in `--json` (`missing[]`). `--check` prints one such line per project; the grouping by code described below belongs to the update pass and `--here`, not to `--check`. The `Protections` section is always printed — `Protections: none` when there is nothing to hold — and it is the audit view of the second layer in the table above.
 
 A stamped file that differs from the base **only** by its `wolf:rendered …` line needs no decision: the pass re-renders it silently and refreshes the stamp. In `--check` it shows as `current` — `identical` here means "nothing to decide", not "byte-identical".
 
@@ -227,24 +227,26 @@ wolf upgrade --here --yes             # one project
 wolf upgrade --yes --json > run.json  # machine channel
 ```
 
+In the pass and in `--here`, unresolved decisions of a project are grouped by code, one line each — `needs decision (conflict): <path>`, `needs decision (skipped-mutated): <path>`, `needs decision (diverged): <path>` — so a drift is never hidden behind a single comma-separated sentence. `skipped-mutated` is the file the pass skipped because it was edited locally — the same class the summary calls `mutated`; `diverged` is a seed face whose live body no longer matches its template.
+
 What `--yes` resolves: `mutated` files — backup first, then base, then witness. What it does not: a `conflict` (an unstamped file in wolf's place is your decision — the `wx` policy is stronger than `--yes`), and a `diverged` face (memory, Steward zone). Those keep exit `2`.
 
 ```text
 wolf upgrade — here
 Plan
 - plan: proj · /Users/…/proj
-- composition 2.20.0 → 2.20.0
-- map: 0 new · 0 changed · 0 deprecated · 0 removed · seed×6
-- outside the registry — manual mode
+  composition 2.31.0 → 2.32.0
+  map: 0 new · 5 changed · 0 deprecated · 0 removed · seed×7
+  outside the registry — manual mode
 ok: proj — updated
-- base-set: 1 updated, 30 identical
-- faces: … skipped-live …
-- verify: 37/37 ok
-- 1 protected (intentional)
-- took base for .opencode/skills/wolf-review/SKILL.md (local saved: .wolf/backup/upgrade/2026-10-25/.opencode/skills/wolf-review/SKILL.md)
-updated 1 · new 0 · changed 0 · deprecated 0 · removed 0 · faces seeded 0
+  base-set: 62 updated
+  faces: complaint-protocol skipped-live, executor-lead skipped-live, …
+  verify: 69/69 ok
+updated 1 · new 0 · changed 5 · deprecated 0 · removed 0 · faces seeded 0
 ok: Done
 ```
+
+Details of a project — `base-set`, `faces`, `verify`, named decisions, backups — are printed without a status marker: the marker belongs to lines that themselves report a state. In a TTY those details align under the text column of the status lines; in a pipe they print flush-left as plain lines, while the markers become the text prefixes `-`, `ok:`, `warn:`, `error:`, `skip:`. In a TTY the markers are also distinct without colour — `●` info, `✓` ok, `▲` attention, `✖` error, `·` skipped.
 
 Every overwrite is preceded by a copy at `.wolf/backup/upgrade/<YYYY-MM-DD>/<rel-path>` (one directory per run date). A second overwrite of the same file on the same day becomes `<name>-2.<ext>` (then `-3`, …; the extension is kept), so `.opencode/skills/wolf-debug/SKILL.md` gets `.opencode/skills/wolf-debug/SKILL-2.md` — an existing backup is never overwritten. A `removed` target is copied there too before it is deleted.
 

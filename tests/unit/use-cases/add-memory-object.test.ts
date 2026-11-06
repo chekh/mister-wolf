@@ -461,3 +461,102 @@ describe('addMemoryObject related normalization (WP3 §6.3)', () => {
     expect(object.related.decisions).toEqual(['/abs/looks/like/path']);
   });
 });
+
+/* ---------- 2.32.0 (Q1/Q2): english slug, fallback, детерминизм, tie-break ---------- */
+
+describe('addMemoryObject — ID из english slug (2.32.0)', () => {
+  let dir: string;
+  let store: MarkdownMemoryStore;
+  let log: JsonlEventLog;
+  const fixedClock = { now: () => new Date('2026-11-06T10:00:00.000Z') };
+  const idGen = new HashIdGenerator();
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'wolf-add-id-'));
+    store = new MarkdownMemoryStore(dir);
+    log = new JsonlEventLog(eventsPath(dir));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('S09: --slug попадает в ID; без slug — ID без слов', async () => {
+    const withSlug = await addMemoryObject(
+      { store, log, clock: fixedClock, idGen },
+      { type: 'decision', title: 'Решение по волне', slug: 'wave-decision', createdBy: 'user:test' }
+    );
+    expect(withSlug.object.id).toMatch(/^mem_20261106_wave-decision_[0-9a-f]{6}$/);
+    expect(withSlug.warnings.join('\n')).not.toMatch(/English slug/);
+
+    const withoutSlug = await addMemoryObject(
+      { store, log, clock: fixedClock, idGen },
+      { type: 'decision', title: 'Другое решение', createdBy: 'user:test' }
+    );
+    expect(withoutSlug.object.id).toMatch(/^mem_20261106_[0-9a-f]{6}$/);
+    expect(withoutSlug.object.id).not.toBe(withSlug.object.id);
+  });
+
+  it('S10: невалидный slug → fallback + предупреждение, запись создаётся', async () => {
+    const res = await addMemoryObject(
+      { store, log, clock: fixedClock, idGen },
+      { type: 'decision', title: 'Решение', slug: 'решение', createdBy: 'user:test' }
+    );
+    expect(res.object.id).toMatch(/^mem_20261106_[0-9a-f]{6}$/);
+    expect(res.warnings.join('\n')).toMatch(/not an English slug/);
+  });
+
+  it('S12: коллизия slug+дата у разных записей → детерминированный tie-break -2, -3', async () => {
+    const first = await addMemoryObject(
+      { store, log, clock: fixedClock, idGen },
+      { type: 'decision', title: 'Первое решение', slug: 'shared-slug', createdBy: 'user:test' }
+    );
+    const second = await addMemoryObject(
+      { store, log, clock: fixedClock, idGen },
+      { type: 'decision', title: 'Второе решение', slug: 'shared-slug', createdBy: 'user:test' }
+    );
+    const third = await addMemoryObject(
+      { store, log, clock: fixedClock, idGen },
+      { type: 'decision', title: 'Третье решение', slug: 'shared-slug', createdBy: 'user:test' }
+    );
+    expect(first.object.id).toMatch(/^mem_20261106_shared-slug_[0-9a-f]{6}$/);
+    expect(second.object.id).toBe(`${first.object.id}-2`);
+    expect(third.object.id).toBe(`${first.object.id}-3`);
+    expect((await store.list()).length).toBe(3);
+  });
+
+  it('S12: idFingerprint различает законные повторы (жалобы/совет), дубль — отказ', async () => {
+    const base = {
+      type: 'complaint' as const,
+      title: 'Complaint about skill:x: r',
+      createdBy: 'user:test',
+      extra: { about: 'skill:x', rule: 'r', evidence: 'e', proposal: 'p' },
+    };
+    const first = await addMemoryObject(
+      { store, log, clock: fixedClock, idGen },
+      { ...base, idFingerprint: 'skill:x\u0000r\u0000evidence one', body: 'one' }
+    );
+    const second = await addMemoryObject(
+      { store, log, clock: fixedClock, idGen },
+      { ...base, idFingerprint: 'skill:x\u0000r\u0000evidence two', body: 'two' }
+    );
+    expect(first.object.id).not.toBe(second.object.id);
+    expect((await store.list()).length).toBe(2);
+
+    // тот же отпечаток = тот же объект → прежний отказ от дубля
+    await expect(
+      addMemoryObject(
+        { store, log, clock: fixedClock, idGen },
+        { ...base, idFingerprint: 'skill:x\u0000r\u0000evidence one', body: 'one' }
+      )
+    ).rejects.toThrow(/already exists/);
+  });
+
+  it('S12: точный дубль (тот же title+type) — отказ, а не -2', async () => {
+    const input = { type: 'decision' as const, title: 'Дубль', slug: 'dup', createdBy: 'user:test' };
+    await addMemoryObject({ store, log, clock: fixedClock, idGen }, input);
+    await expect(addMemoryObject({ store, log, clock: fixedClock, idGen }, input)).rejects.toThrow(/already exists/);
+    await expect(addMemoryObject({ store, log, clock: fixedClock, idGen }, input)).rejects.toThrow(/--slug/);
+    expect((await store.list()).length).toBe(1);
+  });
+});

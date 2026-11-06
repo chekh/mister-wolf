@@ -32,13 +32,13 @@ export async function createMemoryRepairRequest(
     relations?: RelationLog;
     lock?: MemoryLock;
   },
-  input: { problem: string; relevantIds: string[]; createdBy: string; thread?: string }
+  input: { problem: string; relevantIds: string[]; createdBy: string; thread?: string; slug?: string }
 ): Promise<{ object: MemoryObject }> {
   const run = async (): Promise<MemoryObject> => {
     const now = deps.clock.now();
     const defaults = governanceDefaults(input.createdBy);
     const object = {
-      id: deps.idGen.generateMemoryId(now, input.problem),
+      id: deps.idGen.generateMemoryId(now, input.slug, input.problem),
       type: 'note', // wave13-a: info-request → note+facet context (§5.4)
       facet: 'context',
       title: input.problem,

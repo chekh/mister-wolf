@@ -131,7 +131,7 @@ describe('wolf-session-start: инъекция (спека §5.4)', () => {
     );
     const body = source.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '').trim();
     expect(textOf(out.messages[0])).toContain(body);
-    expect(textOf(out.messages[0])).toContain('полный текст уже загружен');
+    expect(textOf(out.messages[0])).toContain('методика доставлена ниже (полный текст)');
   });
 
   it('маркер в транскрипте → инъекции нет (H3: идемпотентность)', async () => {
@@ -229,7 +229,7 @@ describe('wolf-session-start: v2 setup (context hook)', () => {
       await ctx.sessionHooks['context'](missing);
       expect(contentText(missing)).toContain('FALLBACK');
       expect(contentText(missing)).toContain('НЕ загружен');
-      expect(contentText(missing)).not.toContain('полный текст уже загружен');
+      expect(contentText(missing)).not.toContain('методика доставлена ниже (полный текст)');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

@@ -400,7 +400,23 @@ async function executeChain(
     if (base) extra.based_on = base.id;
     const { object } = await addMemoryObject(
       { store, log: deps.log, clock: deps.clock, idGen: deps.idGen, index, declarations: deps.declarations },
-      { type: 'face', title, body, tags, createdBy: actor, status: 'candidate', extra, internalFacePath: true }
+      {
+        type: 'face',
+        title,
+        // 2.32.0 (Q1): версии лица делят заголовок, поэтому slug идёт от версии —
+        // id версии детерминирован и не зависит от момента создания. owner_skill
+        // может содержать ':' (skill:demo) — в slug он нормализуется в дефис.
+        slug: `${op.ownerSkill
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')}-v${nextVersion}`,
+        body,
+        tags,
+        createdBy: actor,
+        status: 'candidate',
+        extra,
+        internalFacePath: true,
+      }
     );
     face = asFace(object);
     await stepDone(deps, op, 'add_face', { face_id: face.id, version: face.version }, actor);

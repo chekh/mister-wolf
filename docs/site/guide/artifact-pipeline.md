@@ -1,6 +1,6 @@
 # Artifact Pipeline
 
-Every feature in a Wolf-driven project lives as documents, not as tribal knowledge. The artifact pipeline is the document conveyor a feature passes through: `requirements.md` → `design.md` → `plan.md` → `test-plan.md`, kept together in a dated folder `docs/dev/<YYYY-MM-DD>-<slug>/`. Two more locations complete the picture: a wave file collects what a release wave ships, and the roadmap folder `docs/dev/roadmap/` holds the long-horizon entries.
+Every feature in a Wolf-driven project lives as documents, not as tribal knowledge. The artifact pipeline is the document conveyor a feature passes through: `pre-requirements.md` → `requirements.md` → `change-request.md` → `design.md` → `test-plan.md` → `plan.md`, kept together in a dated folder `docs/dev/<YYYY-MM-DD>-<slug>/`. Two more locations complete the picture: a wave file collects what a release wave ships, and the roadmap folder `docs/dev/roadmap/` holds the long-horizon entries.
 
 Nothing in the pipeline is "done" because an agent wrote it — it is done when it passed the gates.
 
@@ -8,7 +8,7 @@ Nothing in the pipeline is "done" because an agent wrote it — it is done when 
 
 The pipeline is a set of feature documents moving through statuses under owner and lens gates. A feature folder starts with a scaffold command and grows through review; `wolf sync` keeps the indexes current (a deprecated alias since 2.19.0 — the alias remains the index regenerator); `wolf doctor` lints the result. The conveyor covers:
 
-- the feature folder `docs/dev/<YYYY-MM-DD>-<slug>/` with the four artifact files;
+- the feature folder `docs/dev/<YYYY-MM-DD>-<slug>/` with the six package files;
 - the wave file of the current release wave;
 - the roadmap folder `docs/dev/roadmap/`.
 
@@ -18,11 +18,13 @@ Four commands run the conveyor — and since 2.17.1 the writing session holds a 
 
 ```bash
 wolf claim acquire dev:<date>-<slug>  # own the artifact — scaffold refuses without it
-wolf scaffold artifact <slug>         # create docs/dev/<YYYY-MM-DD>-<slug>/ with the full 4-file set
-wolf scaffold artifact <slug> --fix   # reduced 2-file set for fix-type work
+wolf scaffold artifact <slug>         # create docs/dev/<YYYY-MM-DD>-<slug>/ with the full 6-file package
+wolf scaffold artifact <slug> --fix   # fix profile: requirements.md + plan.md only
 wolf sync                             # regenerate indexes — idempotent
 wolf doctor                           # lint the documents
 ```
+
+The full profile writes the package in the declared order — `pre-requirements.md`, `requirements.md`, `change-request.md`, `design.md`, `test-plan.md`, `plan.md`. `pre-requirements.md` records the intent and framing agreed before formal requirements (it does not approve them); `change-request.md` is an append-only list of change requests for the package. If the folder already exists (for example a brainstorm wrote `pre-requirements.md` the same day), the command tops it up: it adds only the missing documents and never overwrites an existing one. The folder is derived from the current date and the slug, so a package started on an earlier day is not topped up — continue it by hand or start the new date's package deliberately. When every file is already present the command reports that there is nothing to add.
 
 The claim is the conveyor's write lock: two agents editing the same feature folder would silently overwrite each other, so `wolf scaffold artifact` refuses with `No claim held` until your session owns the claim for the artifact id — the refusal names the exact `claim acquire` command. When the writing session is done, release the claim (`wolf claim release dev:<date>-<slug>`) or hand it over (`--transfer-to <actor>`); `wolf claim list` shows who holds what. A claim expires after 24h, so a crashed session does not lock the folder forever.
 
@@ -34,7 +36,7 @@ The claim is the conveyor's write lock: two agents editing the same feature fold
 - broken references to REQ ids;
 - a REQ without acceptance criteria or without a Source;
 - a `[НЕОПРЕДЕЛЕНО]` ("undefined") marker inside an approved document;
-- a CR entry without downstream artifacts;
+- a CR entry without downstream artifacts, a CR number that is not `CR-<YYYY-MM-DD>-NN`, or a CR without an approver;
 - downstream statuses reset after an upstream edit;
 - duplicate requirements;
 - duplicate roadmap entries;
@@ -60,7 +62,9 @@ Security is a strictly optional lens — it is not in the default set. Add it de
 
 ## Evolution
 
-Approved does not mean frozen — it means changes now have a price. Editing an approved artifact goes only through a CR entry in `requirements.md`; the downstream artifact statuses reset to `draft` and have to earn their approval again. The `wolf doctor` lint enforces the mechanics: a CR without its downstream list and stale downstream statuses both surface as findings.
+Approved does not mean frozen — it means changes now have a price. A change enters through `change-request.md`: one numbered entry (`CR-<YYYY-MM-DD>-NN`) with what and why, the affected REQ/NFR, who approved it and which downstream artifacts must be regenerated. The request then updates `pre-requirements.md`/`requirements.md`, and the downstream statuses reset to `draft` so they earn their approval again. The flow is: remark → change request → pre-requirements/requirements → design → test-plan → plan.
+
+`change-request.md` is a separate document and not the same thing as the "Change log (CR)" section inside `requirements.md`: that section records changes to the requirements themselves, while `change-request.md` records requests that may touch any document of the package. The `wolf doctor` lint enforces the mechanics on both: a CR without its downstream list, stale downstream statuses, a malformed CR number or a CR referencing a REQ that does not exist all surface as findings.
 
 ## Language discipline
 

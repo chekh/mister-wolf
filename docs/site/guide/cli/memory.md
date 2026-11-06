@@ -15,6 +15,7 @@ Options:
 - `--type <type>` — memory type. Choices: `rule`, `lesson`, `decision`, `thread`, `complaint`, `tool`, `note`
 - `--title <title>` — title
 - `--body <body>` — body text
+- `--slug <slug>` — English slug for the record id (`a-z0-9` and dashes); omitted or invalid builds an id without words (see [Record identifiers](/guide/memory#record-identifiers))
 - `--tags <tags>` — comma-separated tags
 - `--confidence <confidence>` — confidence level (`low|medium|high`)
 - `--importance <n>` — importance from 0 to 1
@@ -28,6 +29,9 @@ wolf add --type lesson --title "Run search before writing scripts" \
   --body "A registered tool often already exists." --tags "search,before-write" --confidence medium
 
 wolf add --type note --title "CI cache pitfall" --body "vitest needs --no-cache" --facet pitfall
+
+# name the id yourself: mem_<date>_cache-pitfall_<hash6>
+wolf add --type lesson --title "Кэш ломает прогон" --body "vitest нужен --no-cache" --slug cache-pitfall
 ```
 
 Every type also has a generated namespace with these base flags plus type-specific ones — `wolf note add --facet <choice>`, `wolf thread add --goal <goal> --current-state <s> --next-steps <a,b>`, and so on. The namespaces are generated from the taxonomy; see [Memory Model](/guide/memory).

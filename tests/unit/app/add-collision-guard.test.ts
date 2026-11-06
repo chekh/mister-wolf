@@ -81,24 +81,24 @@ describe('addMemoryObject collision guard (P300/2.14 §5.1)', () => {
     expect(first.object.id).toMatch(/^mem_/);
   });
 
-  // §11.1: slug(title) обрезается до 40 симв — разные title с общим префиксом
-  // 40+ симв дают одинаковый slug → одинаковый id при том же timestamp
-  it('slug-склейка (§11.1): общие первые 40+ символов → та же коллизия', async () => {
+  // 2.32.0 (Q1/Q2): slug даёт агент-создатель, id = slug+дата; два разных
+  // заголовка с одним slug — не дубль, а коллизия → детерминированный tie-break.
+  it('одинаковый slug у разных title → tie-break -2, а не отказ (Q2)', async () => {
     const deps = { store, log, clock: fixedClock, idGen: new HashIdGenerator() };
-    await addMemoryObject(deps, {
+    const first = await addMemoryObject(deps, {
       type: 'lesson',
       title: 'A'.repeat(60) + 'one',
+      slug: 'shared-lesson-slug',
       createdBy: 'user:test',
     });
-
-    await expect(
-      addMemoryObject(deps, {
-        type: 'lesson',
-        title: 'A'.repeat(60) + 'two',
-        createdBy: 'user:test',
-      })
-    ).rejects.toThrow(/already exists/);
-    expect(await store.list()).toHaveLength(1);
+    const second = await addMemoryObject(deps, {
+      type: 'lesson',
+      title: 'A'.repeat(60) + 'two',
+      slug: 'shared-lesson-slug',
+      createdBy: 'user:test',
+    });
+    expect(second.object.id).toBe(`${first.object.id}-2`);
+    expect(await store.list()).toHaveLength(2);
   });
 
   it('сообщение содержит фактический id первого объекта', async () => {

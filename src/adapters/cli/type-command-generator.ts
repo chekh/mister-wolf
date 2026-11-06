@@ -68,6 +68,10 @@ function typeAddCommand(decl: MemoryTypeDeclaration, baseDir: string): Command {
   const cmd = new Command('add').description(`Add a ${decl.name} (generated from taxonomy)`);
   cmd.requiredOption('--title <title>', 'Title');
   cmd.option('--body <body>', 'Body text');
+  cmd.option(
+    '--slug <slug>',
+    'English slug for the record id (a-z0-9, dashes); omitted or invalid builds an id without words'
+  );
   cmd.option('--tags <tags>', 'Comma-separated tags');
   cmd.option('--confidence <confidence>', 'Confidence level (low|medium|high)');
   cmd.option('--importance <n>', 'Importance from 0 to 1', parseFloat);
@@ -108,6 +112,7 @@ function typeAddCommand(decl: MemoryTypeDeclaration, baseDir: string): Command {
         runAddAction(baseDir, {
           type: decl.name,
           title: options.title as string,
+          slug: options.slug as string | undefined,
           body: options.body as string | undefined,
           tags: options.tags as string | undefined,
           confidence: options.confidence as string | undefined,
