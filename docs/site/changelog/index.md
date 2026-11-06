@@ -8,6 +8,37 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [2.32.0] - 2026-11-06
+
+### Changed — an upgrade report that reads without noise, English ids for new records, and a first-class package of target documents
+
+Three things that were technically correct but hard to use: the upgrade report painted every line with the same marker, a new memory record got a transliterated Russian title as its id, and the document package a feature lives in had no place for the intent agreed before requirements or for change requests. This release fixes the reading of the report, makes ids carry English words supplied by the creating agent, and gives the package two first-class documents with a defined order and a defined change flow.
+
+- **`wolf upgrade` report: three distinct markers, no status marker on details, decisions by code.** `info` (●), `ok` (✓) and `skip` (·) no longer share one glyph, so the report stays readable in a mono terminal and in a pipe. Project details — `base-set`, `faces`, `verify`, named decisions, backups, the confirmation hint — are printed without a status marker and align under the text of status lines: a detail no longer impersonates a status. Unresolved decisions are grouped one line per code in a fixed order — `needs decision (conflict): <path>`, `needs decision (skipped-mutated): <path>`, `needs decision (diverged): <path>`; a diverged face is now named instead of silently counted. The park pass and `wolf upgrade --here` share one implementation of the detail lines. The machine contract is untouched: `wolf.upgrade/1` output is byte-identical to 2.31.0 for the same project.
+- **Record ids from an English slug (`mem_<YYYYMMDD>_<english-slug>_<hash6>`).** The creating agent supplies the slug — `wolf add --slug release-plan`, the `slug` field of the MCP `add` tool, or the corresponding use-case input; the CLI validates the format (lowercase `a-z0-9` and dashes), normalizes case and separators, and never transliterates a title. Without a valid slug the id is built as `mem_<YYYYMMDD>_<hash6>` — without words — and the command says so. The hash is deterministic (slug and date), so the same input on the same day produces the same id; a genuine collision of two different records gets a deterministic `-2`, `-3` suffix, while repeating the same record — same title, type and content — is still refused as a duplicate. Flows that legitimately repeat a label (complaints about the same rule, session wrap-ups, council records) hash their content, so each record keeps its own id. Existing ids are never renamed: older transliterated ids stay readable, searchable and linkable. Face versions take their slug from the version (`<owner>-v<N>`), so versions keep sharing a title without colliding.
+- **The document package gains `pre-requirements.md` and `change-request.md`.** `wolf scaffold artifact <slug>` now writes six documents in a declared order: `pre-requirements.md` → `requirements.md` → `change-request.md` → `design.md` → `test-plan.md` → `plan.md`. `pre-requirements.md` records the intent, framing, decisions and open questions agreed before formal requirements (it does not approve them); `change-request.md` is an append-only list of change requests with a package-local number `CR-<YYYY-MM-DD>-NN`, the affected REQ/NFR, the approver and the downstream artifacts to regenerate. The "Change log (CR)" section inside `requirements.md` keeps its own meaning — changes to the requirements themselves. The flow is explicit: remark → change request → pre-requirements/requirements → design → test-plan → plan.
+- **`scaffold artifact` tops up an existing folder instead of refusing it.** A folder that already exists (for example, a brainstorm already wrote `pre-requirements.md`) receives only the missing documents; an existing file is never overwritten, and a complete package answers that there is nothing to add. The `--fix` profile keeps its reduced set (`requirements.md` + `plan.md`).
+- **Lint and rules know the new documents.** `wolf doctor` reports a `change-request.md` without frontmatter, a CR number that is not `CR-<YYYY-MM-DD>-NN`, a missing `downstream:` or approver, and a CR that references a REQ which does not exist. The package rules (`using-skills` project rules, `wolf-brainstorm`, `wolf-plan`) describe the order and the change flow; the artifact-pipeline page carries the same explanation for users.
+
+### Fixed
+
+- **The delivered method no longer opens with a line that reads like an error.** The session injection used to start with "using-skills: the full text is already loaded" before the full text; it now says that the method is delivered below and does not need to be loaded again, while the degraded branch keeps its explicit `FALLBACK` wording.
+- **The complaint canon no longer carries a face version in its title.** The reference title said "(v2)" while the delivered face was v3; the version now lives in the face only, where the Steward owns it.
+
+### What this release does not do
+
+- **No automatic translation.** Wolf is local-first: the CLI does not call a translator or a model provider to name a record. A record created without a slug gets an id without words — that is the documented degradation, not a hidden fallback to transliteration.
+- **No renaming of existing memory.** Historic transliterated ids are left as they are; a memory with mixed-looking ids is the expected state.
+- **The seed pass does not re-render existing faces.** A project seeded in an earlier release keeps the face body it was seeded with until the Steward versions it. Where the platform does not provide Steward attribution (`WOLF_ACTOR=agent:steward`), the face mutation is refused — the limitation is documented in troubleshooting rather than worked around.
+- **No measured effect on reading speed or authoring quality.** The markup and id changes were verified by tests and by live runs on fixtures; no productivity claim is made.
+
+### Upgrade notes
+
+- **`npm install -g mister-wolf@2.32.0`** (or `wolf upgrade`) is enough. Nothing to migrate: ids, faces and documents that exist stay valid and addressable.
+- **`update-map.json` is re-stamped to 2.32.0 against 2.31.0**; the pass re-renders the changed skill texts and the session-start plugin, and delivers nothing else.
+- **`wolf add` accepts `--slug`**; MCP `add` accepts the `slug` field. Existing commands and scripts keep working unchanged.
+- **`wolf scaffold artifact` on an existing folder now tops it up** instead of failing with "Artifact folder already exists".
+
 ## [2.31.0] - 2026-11-06
 
 ### Added — the expert council: a restricted expert role, the wolf-council method and a durable record path

@@ -91,12 +91,14 @@ npm install -g mister-wolf
 wolf analytics --view acceptance
 ```
 
-## 9. `add` refuses: id collision guard
+## 9. `add` refuses: duplicate record
 
-- **Symptom:** `wolf add` with the same title twice (within the id millisecond window) exits non-zero instead of writing the object:
-  `Memory object "mem_…" already exists (same title produced same id).` followed by `Use: wolf edit <id> (правка) | wolf supersede <id> <new-id> (смена) | другой --title.`
-- **Cause:** before 2.14 a same-id `add` silently **overwrote** the existing object — data loss dressed as success. The guard turns that into an explicit refusal.
-- **Fix:** pick the lane the hint offers — `wolf edit <id>` to change the existing object, `wolf supersede <old> <new>` to replace it with a successor, or a different `--title` for a genuinely new object.
+- **Symptom:** `wolf add` with the same title and type twice exits non-zero instead of writing the object:
+  `Memory object "mem_…" already exists (same title produced same id).` followed by `Use: wolf edit <id> (правка) | wolf supersede <id> <new-id> (смена) | другой --title или --slug.`
+- **Cause:** before 2.14 a same-id `add` silently **overwrote** the existing object — data loss dressed as success. The guard turns that into an explicit refusal. Since 2.32.0 the id is deterministic (`mem_<date>_<slug>_<hash6>`, hash from slug and date), so the same title and type on the same day always means the same id — the refusal is now predictable, not a millisecond race. Generated flows that legitimately repeat a label (a complaint about the same rule, a session wrap-up, a council record) add their content to the hash, so two different records under one label coexist.
+- **Fix:** pick the lane the hint offers — `wolf edit <id>` to change the existing object, `wolf supersede <old> <new>` to replace it with a successor, or a different `--title`/`--slug` for a genuinely new object.
+- **Two different records, one slug:** that is a collision, not a duplicate: the second gets a deterministic `-2` suffix (`…_<hash6>-2`, then `-3`). Nothing is overwritten, and both records stay addressable.
+- **No words in the id:** you passed no `--slug`, or it was not an English slug (lowercase `a-z0-9` and dashes). The command says so on stderr and builds `mem_<date>_<hash6>` instead — pass `--slug <english-slug>` to name it.
 - **Audit trail:** any save that does overwrite a file (there are legitimate paths) records a `memory.overwritten` event with the previous title — silent overwrites no longer exist; the event log is the proof.
 
 ## 10. `upgrade`: CLI updated, projects were not touched
@@ -164,7 +166,15 @@ wolf analytics --view acceptance
 
 - **What not to do:** add a second MCP key next to the existing one. Two entries for the same server (one in each form) is a configuration opencode v1 reports as a conflict, and it makes ownership ambiguous — wolf then cannot tell which entry is its own.
 
-## 16. `subagent_depth` ignored by opencode v2
+## 16. The delivered playbook still shows an outdated sentence
+
+- **Symptom:** the complaint protocol delivered into your project still says something like "the active v2 is updated by the Steward", although the current seed template no longer contains that phrase.
+- **Cause:** playbooks are memory, not stamped files. `wolf init`/`wolf upgrade` seed only **missing** faces — an existing live face is never re-rendered from the template, because a face is owned by the Steward loop, not by the update pass. A project seeded in an earlier release keeps the body it was seeded with.
+- **Fix:** change a live face only through the Steward circuit (`wolf face new` with the mandatory mutation record, or a complaint that leads there); do not hand-edit `.wolf/memory`. Editing the delivered phrase by hand makes the project drift from the canon and the next reader will trust a stale claim.
+- **If the Steward path is refused:** `wolf face new` answers `Face mutation is steward-only: actor "user:cli" is not agent:steward`. Attribution is env-only (`WOLF_ACTOR`), so the harness must launch the Steward with `agent:steward` — wolf does not accept a substitute and there is no flag to fake it. This is a platform limitation, not a workaround target: keep the old text, note it, and re-run the mutation when the channel provides attribution.
+- **What is not affected:** the seed templates in the package are correct, so a project that has not seeded that face yet gets the current text.
+
+## 17. `subagent_depth` ignored by opencode v2
 
 - **Symptom:** subagents cannot launch subagents — `executor-lead` fails with `Subagent depth limit reached (1)` and the three-level scheme (Mr.Wolf → executor-lead → workers) never starts.
 - **Cause:** the top-level `subagent_depth` key is marked `deprecated` in the opencode config schema, and opencode v2 drops it — the effective depth stays at the platform default `1`.
