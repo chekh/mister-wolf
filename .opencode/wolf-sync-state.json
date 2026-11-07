@@ -1,309 +1,314 @@
 {
   "files": {
     ".opencode/skills/finishing-a-development-branch/SKILL.md": {
-      "hash": "ec33d002958a72f91866238f7452e4e21ecf8809d77b541391339bcd1083dfb6",
+      "hash": "9eef9f8f6721b5c17cc273e07c939ca55960e039a2c06a5a5c39a82831245ebb",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/requesting-code-review/SKILL.md": {
-      "hash": "26026262c576e55e849ecd1148cbabb166e663e86295d193cf005747de0cf54c",
+      "hash": "515f9bf12f628fd54366cbdabc9305140e5c7c4ac66df738c5b68c140d666e51",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/test-driven-development/SKILL.md": {
-      "hash": "5a74d2150037b095911a16a0d634d0f873d73b29f70e219b6a1958216bc54e2d",
+      "hash": "2df89330bdc4abc5b5948c141831b3de90fe10d5254c1524c0c0dbd689f6bb28",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/using-git-worktrees/SKILL.md": {
-      "hash": "8414b8856db0b90f5cfe2db82db8c95e837027b85f314eeb5c8b55d05f8d5232",
+      "hash": "c1f1e25daa155bae7ef2a47275b91e780a28c77f86e12c83576f8947b2851785",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/using-skills/SKILL.md": {
-      "hash": "57a7af7d32da84a8b180663790bef68aa620559d1998bbd73316d1af472d2fb9",
+      "hash": "49b6985f4bbe735bb22c7a1228650222d9f56ada1ce6732ca4ef726af3767be7",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/verification-before-completion/SKILL.md": {
-      "hash": "06ea721e2b5095e786fc39e28091e3039188db5cb4a683c2eb39b4b9556779ec",
+      "hash": "8467a3a8a85554556ba31e4d148e0e11d507352f887a426ca01693d1d045b31b",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-brainstorm/SKILL.md": {
-      "hash": "6e7f1bd8144bcd85e1277541f5e5c3b688563f1b6875e0c8864a6fe190374662",
+      "hash": "4057035f4f3bb7e7f34b71044b79d3323054565599b4efe2501b1ed7ab4d9575",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-debug/SKILL.md": {
-      "hash": "a69428e6b9c45ac480b967011056895423f14f03981305503b76fae0fc3d4976",
+      "hash": "5d8c5e71dbd4faa8d341ff4e2437ea9a36a82cc0cb0513216ceac4d1a7bd6095",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-execute/SKILL.md": {
-      "hash": "4b0b1f03adf4ff9ad53f9a2c4ff501f94322ad95ee5f41a78dc0a246c2a36aa5",
+      "hash": "f69b4ad7b9ba21e44b2088c5f87e94b3703b5e0114628491d69874a52c55d5b0",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-handoff/SKILL.md": {
-      "hash": "0b9215fb865ba521c6a756dea8da7cbfed76f5754dd13b7cb986c3c11bdd03d5",
+      "hash": "8174fecb9cdcd297f48116aaab24cd82e279ff3405060457f45c5077f362640a",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-plan/SKILL.md": {
-      "hash": "1a1ceb25e300a2b1c9f996366d2d2ac4b82dbbad6a16865a9fcd7233910c4d46",
+      "hash": "b4274df2d94ca6a4563420d99b293b03aefde6d42ad27de625ebe66bef62b866",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-review/SKILL.md": {
-      "hash": "45c075a5c976a469af9f6ded9a4404090a0aad91918f18bd5f7d4a0a975b9a31",
+      "hash": "dac3296f7516c07e0ea004a668a90d3524060968c48685b0db39a10800d1b7a0",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-sdd/SKILL.md": {
-      "hash": "d729fbebedd9c83fc2c8076476180302fdee76038a671eb3b50901ea668d4da8",
+      "hash": "f0b4f2e45305a6c0d014c1071a25cfcdc3451e6f673f3ecdd5a7fd5c19f39e7d",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/command/complain.md": {
-      "hash": "6bf13907e3941c430d91dc01ba28398e0a305ddb6349b78eb2bc87b23c641e99",
+      "hash": "debec03b2adc90a08000c49a1a650fded79a6d475c5d871713672fd5fb234e6a",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/command/doc-review.md": {
-      "hash": "f1d4471cd0640152ac0ac094713fda6b812dee68183c73926c135b514d0b8e18",
+      "hash": "2851756a3ca7b4059078782ca17ca5eac03801ee5e01e75d0c2dc093a51fcb85",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/agents/executor-lead.md": {
-      "hash": "c9dc427404efcba5c5604f31f4c0164e98a3742ac81612a8593f31633ec95192",
+      "hash": "a1ed92e524a0cca6cdb9f437fe5a8347bd3a8803e18a9c6de2d841757c41973a",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/agents/mr-wolf.md": {
-      "hash": "db819e33a33fd38e49581c862fd235e1fde62544bec7c2c030b45ad39c109314",
+      "hash": "78ee51cd6f30883f7377c3efa296e8ec0ad0b32a5fbe532c1c9656ec7bf472f9",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/agents/steward.md": {
-      "hash": "3397867ae18d09c43bf0691d5044e95989f12359f95a4d6eb2922e60b647f1c8",
+      "hash": "49ee92818c6a0937031afad6b32c8c137bc2c2f31daa311d2ded67dd9c4aed93",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/agents/worker-implementer.md": {
-      "hash": "7d3fec562c0c8603a40872c6c9a2e760f0382f6e93cceb23c1ca9bbf0bab0edb",
+      "hash": "5dcb3a34e2028b71b024ce87ac3676e5b9fa17e158b5deced1f219bb0f669e89",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/agents/worker-researcher.md": {
-      "hash": "ef9ae7ce4a778e09ab86a9a19ca5fd921d2f688b165581d49f17214d04d6d4c6",
+      "hash": "29d9370689b27f15ef30f6a51e659b62687270210ee37d034510d5dc9946fad9",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/agents/worker-reviewer.md": {
-      "hash": "505c82f86a3012b9d073ca4628ac3af70efa5f05f0abf46b03d521c866d20c1a",
+      "hash": "a7c7f60ab525dbafefc990455fb3997d420f22d43783ca62569b67623119d090",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/command/analyze-doc.md": {
-      "hash": "9346a9bf83f8d5d0a0697cc854a0db64e62a2e2c058c3490f0d361aaf522b514",
+      "hash": "d25acafccc25afb4f0c269eaa2cac605547afaf5e12fc682505a7106785c14ab",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/plugins/wolf-router.ts": {
-      "hash": "26c3e4086a7b13090d48df3b238a4b163cb99cd9c119c177142f89c97c3fcf9c",
+      "hash": "af4f44e9a25cbf8ec2be164418bf482ee0f9a46eece3cfec8e10c2b02d35fad6",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/plugins/wolf-session-start.js": {
-      "hash": "19a2a76b736d855d709a5678e36822cd7f5f331d091d921c320c51630ec05189",
+      "hash": "df65246c0fb0a99eb1fbcc40da4be236975d8d20b9ca4d32dbd6e628141e6c75",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/receiving-code-review/SKILL.md": {
-      "hash": "83a702b934839fd9cb17db9906712012772c51d169a65193457a9e6f099a298e",
+      "hash": "48a0e56dcd1db947d21c4cc35be40d92819dd057c8b3af53346fee4ddf7c5e23",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-design/SKILL.md": {
-      "hash": "ca2e567ebb12a5042a81cfa5ed7900dd2b2674f080fba4a24fc2fe7224ecd4a5",
+      "hash": "778858ab4712f0dfaa123893116ffa116497c9dfda6e5e0c054b7f32c442aa78",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-skill-intake/SKILL.md": {
-      "hash": "a688e875409bb4bbb8e215d032c0a412f04591325cb1537abad10c44d7309eab",
+      "hash": "ebc38193c57d52b86449a5344e41f615963fe291568f945123233ac4a1d6ab0d",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-testplan/SKILL.md": {
-      "hash": "0332974f7ff33386a4e3780727479fe3605ee6f6c99b1a3776494512578a206f",
+      "hash": "6274325d314b29e10112df07588d1f226a5e345e0fa5e86d087ffe47c1a21426",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/writing-skills/SKILL.md": {
-      "hash": "0ca9b417386a3410c1b0b8de09fc4a8bf757251c3c57fccd965b18f89b9dc245",
+      "hash": "ae51a5656d8725b7db4982a4757f6dac9f9f7cd38f98145765e403cc15c2815b",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-explain/SKILL.md": {
-      "hash": "3edf7850a7fae2c1e24c375a942413ff79850ec3119c41f6b754d4593935bee2",
+      "hash": "b7a37786683cd5cc904677a909779628a59622a1f13e74f53bbc8211ecca6f92",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-git/SKILL.md": {
-      "hash": "a429863c85935bb9b808acf43e9a42cb4563e6247a3b091362376d564db7574e",
+      "hash": "f9c18acc21c9a681be07b5aa3ffdbf55b97ce9c143bdb7e80299ea80ce92d107",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-git/reference/git-collaboration-policy-v1.1.md": {
-      "hash": "d81870aa8611aaf45a599bed28e2c25f1edf1afa09647a06223a5e2827143ca6",
+      "hash": "ba98e1727f6f7aa2237e926a0f290cbdbee35dba9ad719a04fa85db8d204793f",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-work-strategy/SKILL.md": {
-      "hash": "060ddfd0e180b621defb7fdb9eb77c8ac2a3e531ba6513e4680fc6168bcb2253",
+      "hash": "393bd9601b56436cae3b421ba41977a265ffed42ebb2556e326f98f394805933",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-user-report/SKILL.md": {
-      "hash": "572d155790a50e55022d79fbafdd2337339cdd8be6ac76a893a24b35ac5b80aa",
+      "hash": "570a27640575e48866255428737f580a955f73b90e4238af920f6c5531a22417",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/test-driven-development/references/test-quality.md": {
-      "hash": "e81674c052505e120c68d045c65d625faa6fe5c54bb2992e41c8f2c61f868e3c",
+      "hash": "bcbe3e48ada92260ae2f4a50dc935a16ad04e9881d8861d7e2fcca11f25140dd",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/using-skills/references/context-and-memory.md": {
-      "hash": "5a05aea5bc21b2fa9d560127471a67dffc84edea0c4088bd50d93c84087eb0d0",
+      "hash": "9c5e99731929c16515019041ee496b413ee17a234b5801c95e865e4f6d7da670",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/using-skills/references/contracts.md": {
-      "hash": "139616c9b33c10a6d11b2357689b2a022345d11b3356c284bdc4ec4b8669ad71",
+      "hash": "9407bc72400d4e7e67bfed4602d6c533c51b6d5a349584ca687a9576719ee759",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/using-skills/references/project-rules.md": {
-      "hash": "ee6813d61e200c72ac216f5c107376509423ffabe93cdf23597cfee819e1ec64",
+      "hash": "1a263508a100c02ea609f4674d4dd81b04d7463043a505a30d189e73d296c5f1",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/using-skills/references/project-tools.md": {
-      "hash": "d05140e96105b47baf4b77330793084edef94b5acdc6ed2ee3dd9e963b21aa14",
+      "hash": "7e6612af1a7afc2d41e10d8ed1e9daf16b0dbaece4793993d721ad24c3f8dfa8",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/using-skills/references/routes-capabilities.md": {
-      "hash": "4cdbc5e168eee0f2216e3fca515005265ce7e2944518611548a76a2c9460901a",
+      "hash": "3c09f1ca57650f54ef333a54834d8626d3db1e69e251d9ae4ae577c47a3e635f",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/using-skills/references/routes-communication.md": {
-      "hash": "7dcf7f1fa303eb7174f7afec32edb13ccc2892184177f608409e52274a89b92d",
+      "hash": "6ccc2c5692fb8be268dafdf90ab473ba61871e1b99c3d9f3f79c8361e3c94509",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/using-skills/references/routes-execution.md": {
-      "hash": "56837316cb72357d574ff89d71a3ac9c70af562e826d1597555cd90845676c62",
+      "hash": "152119ab77443ae5b7a46ce8197c9aec3ed5f758391872524bbb585da475a9a3",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/using-skills/references/routes-intent.md": {
-      "hash": "d0ab35ec4a663a69ad8772f6c76b854c8433114993a88ca39c1b883435c3cb45",
+      "hash": "0e40b6e27806fa6e602053afaa73102e421a426ec34d9cd6d3899029a21bd668",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/using-skills/references/routes-quality.md": {
-      "hash": "fa9638bf4eabcf1e1863252762ed6427be1a317ed0156f9e67b053258955e76b",
+      "hash": "343d92a184a17515478afbf53fc595b55975257b8cd8cab5f9e1ae886c704193",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/using-skills/references/routes-state.md": {
-      "hash": "b6f5d4dbc95b0cbcf4553d45f86c97505be9f1d0cf4ec08b0ddf662e959cd927",
+      "hash": "85f0f068d5588119d5ae92a30008dd81a2a87e8913e037a253171caa3d1994f3",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-debug/references/techniques.md": {
-      "hash": "10504f1a36cf9dbc97403d9948f00ace30dcc253e2e80ad8b091a2adfe81e106",
+      "hash": "8641952b6fd566b5381837d2511b9c9185e6af182fd7dd80c2b319d812ea7fa9",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-execute/references/technical-helpers.md": {
-      "hash": "f6e852f300ec8a4c59fcc7db4f6f97a94ce630cd2c07e12aedc6eb4f0369db3b",
+      "hash": "900ee92dafd3219145531774ea0f8c70b98dac1bc75b4e46bade1a5a2b057421",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-execute/scripts/workflow-helper.py": {
-      "hash": "d0929eacff3f07daed7c9ce5e0c82fd68189b1a9c60bf98bbcaf49bc4cf3a766",
+      "hash": "f4c1493faa639fb78e167f4ae4da01bc2206e43453e011cc45bcb180048d1ce0",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-feedback/SKILL.md": {
-      "hash": "0c04f667b9de5e24ca65738b68a568d5b7d689fe757faec68dd6199801a9e397",
+      "hash": "88ab28327d1530e0fe57414e7b42d8104944f15dcf1b190e6bbca0e5358a657f",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-feedback/references/complaints.md": {
-      "hash": "c3a8a4c0a142e4803ce746e67209aea2ff373fbf5286a58f455dda1799192559",
+      "hash": "6dfaa918768659f867aa9813886a2905facf4c61cd281657d8875fa3c91bbf11",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-feedback/references/session-diagnosis.md": {
-      "hash": "98ed661b49e34c6621e2b9476b3f7b8504655aca5fce3fe8c9bda3145ab6831d",
+      "hash": "e7e1a45fd8dad00fea7b23b7fd7dd54235647f6f576c991d3d7f6496d38d1232",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-feedback/scripts/session-reader.py": {
-      "hash": "059cfc366eb4f5127af3301158e517709f05b8bac8b4f351c1cda0a9a4667493",
+      "hash": "2af37f3432ce095766d638a358892acb40005b6c60164034f3b0b07dcdaf6cd4",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-visual-dialogue/SKILL.md": {
-      "hash": "f4982818b6211ee691b506e48040a609ccadc4a85748a372f97a46048b4d4c2a",
+      "hash": "2a64530b6e5efe40a7c9755663e51aedece03aebee6a09a251b3424565612e0f",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-code-craft/SKILL.md": {
-      "hash": "b246e218b0c7b79a91c70c75995890d905793a19f02b45c1746d8f9fcea3387f",
+      "hash": "92ee21060fb34f7077ade9ef16b4636184a07d227d356847fe17f54b96201c06",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-code-simplify/SKILL.md": {
-      "hash": "71b1a6a9369000dbe190e43fcfdc5e49f8b2b95e32fbeb051f138ebb9bac1456",
+      "hash": "8b66b3077ebac38f05c980be95cf0be091ce93b2df0764ba0257a1c6f3f37c67",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-software-design/SKILL.md": {
-      "hash": "16bda2f28c184cdf5d89bbd948841b15395789b2333dc956c7b7cc8577a17670",
+      "hash": "a86dc40c7d56908cf370ec8de5d9d9fc45f94e0bf08e1ce822ffc0bf48a5b187",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-release-docs/SKILL.md": {
-      "hash": "1f4eb70751874f87a09daa86aa170bb6e059bef7c986b8e1415b6fa6e4180a90",
+      "hash": "f84a1e2e06513aee753c80e2e8ba88f303830c69fb11e7e8729ac7297ab2f549",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/using-skills/references/agent-language.md": {
-      "hash": "15b8cac06900c6cb5060b907a1aeb22146a9a1ab05e3d77ba74124e69d348851",
+      "hash": "c5e1b82c682f9fb6c7b895928dcc849f6a508ba77fce0f7f4962811c996cdd64",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/using-skills/references/division-of-labor.md": {
-      "hash": "56e602c6b68f706535e9ca14bdcebba25589fde1223ddeb0a31b30f047b19fd6",
+      "hash": "e34832394e9e4fe0a4e5eedda2b4feae5474a94f7edf8a60925afec2337dcfd4",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/agents/worker-expert.md": {
-      "hash": "82f5a512b1b04f788ca4aceeb3bd8a848370061359c128baec280e2e421e4e24",
+      "hash": "cb6182c9d7baf933837f243caa3bf17796c1fc3d315278c460392d2d35e214c0",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
     },
     ".opencode/skills/wolf-council/SKILL.md": {
-      "hash": "1b2abe716e4bc3c6786c84f67e87be893ddfa2f28f59d0a501fa2dbf102216c2",
+      "hash": "20bce2f9ec03a1564bbb950b9925eee01ab05c37276df55445e8249897e08f5b",
       "origin": "render",
-      "base": "2.32.1"
+      "base": "2.32.2"
+    },
+    ".opencode/skills/wolf-document-readability/SKILL.md": {
+      "hash": "b39aaf6bb28d1867c3522eb6a7a96197b551989d3516996102c4f9ea0113b1b0",
+      "origin": "render",
+      "base": "2.32.2"
     }
   }
 }

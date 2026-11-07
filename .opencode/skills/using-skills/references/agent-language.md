@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=agent-language.md set=2.32.1 -->
+<!-- wolf:rendered base=agent-language.md set=2.32.2 -->
 # Спецификация внутреннего языка агентов Wolf
 
 **Статус:** версионное расширение для консилиума; этап наблюдения. Базовая спецификация утверждена владельцем (2026-11-04, решение mem_20261104_vnutrenniy_yazyk_wolf_etap_nablyudeniya_19ed1f;

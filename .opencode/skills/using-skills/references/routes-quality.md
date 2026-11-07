@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=routes-quality.md set=2.32.1 -->
+<!-- wolf:rendered base=routes-quality.md set=2.32.2 -->
 # Проверка, диагностика и обратная связь
 
 | Когда | Как применить | Результат |

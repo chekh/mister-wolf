@@ -32,6 +32,52 @@ const folderSlug = (name: string): string => name.replace(/^\d{4}-\d{2}-\d{2}-/,
 /** Идентификатор CR-записи — первые 40 символов строки (спека §4-A3 п.6). */
 const crId = (line: string): string => line.slice(0, 40);
 
+/** Legacy-однострочник журнала CR: `- CR-<YYYY-MM-DD>-NN: …` (исторические пакеты). */
+const LEGACY_CR = /^- CR-/;
+/** Блочный заголовок записи (scaffold 2.32): `### CR-<YYYY-MM-DD>-NN — название`; сразу после CR- — цифра номера. */
+const CR_BLOCK_HEADER = /^#{1,6}\s+CR-\d/;
+/** Валидный полный номер записи в любой из двух форм. */
+const CR_NUM = /(?:^- |^#{1,6}\s+)(CR-\d{4}-\d{2}-\d{2}-\d{2})\b/;
+
+/** CR-запись документа в одной из двух поддерживаемых форм: legacy-однострочник
+ *  (ровно одна строка, самодостаточна) или блочная форма scaffold 2.32 — заголовок
+ *  `### CR-<номер> — …` с полями `- затронуто:`/`- утвердил:`/`- downstream:` на отдельных строках. */
+interface CrRecord {
+  /** Полный номер CR-<YYYY-MM-DD>-NN или null, если номер невалиден/отсутствует. */
+  num: string | null;
+  /** Строки записи: legacy — одна; блочная — заголовок и тело до следующего заголовка. */
+  lines: string[];
+}
+
+/** Собирает CR-записи из строк тела документа в обеих формах. Блочная запись
+ *  накапливает строки до следующего markdown-заголовка или следующей CR-записи. */
+function collectCrRecords(lines: string[]): CrRecord[] {
+  const records: CrRecord[] = [];
+  let open: CrRecord | null = null;
+  const close = (): void => {
+    if (open) records.push(open);
+    open = null;
+  };
+  for (const line of lines) {
+    if (LEGACY_CR.test(line)) {
+      close();
+      records.push({ num: line.match(CR_NUM)?.[1] ?? null, lines: [line] });
+      continue;
+    }
+    if (CR_BLOCK_HEADER.test(line)) {
+      close();
+      open = { num: line.match(CR_NUM)?.[1] ?? null, lines: [line] };
+      continue;
+    }
+    if (open) {
+      if (/^#{1,6}\s/.test(line)) close();
+      else open.lines.push(line);
+    }
+  }
+  close();
+  return records;
+}
+
 /** Линт артефактов docs/dev (спека §4-A3): только чтение + регулярки; tolerant —
  * нечитаемое пропускается, линт никогда не бросает; находит, но не блокирует. */
 export async function runArtifactLint(deps: LintArtifactsDeps): Promise<ArtifactFinding[]> {
@@ -188,16 +234,17 @@ export async function runArtifactLint(deps: LintArtifactsDeps): Promise<Artifact
         });
       }
 
-      // 6. CR без downstream-отметки; 7. Сброс downstream (§6.7).
-      for (const line of reqLines) {
-        if (!/^- CR-/.test(line)) continue;
-        const id = crId(line);
-        if (!line.includes('downstream:')) {
+      // 6. CR без downstream-отметки; 7. Сброс downstream (§6.7). Формы: legacy-однострочник и блочная (scaffold 2.32).
+      for (const rec of collectCrRecords(reqLines)) {
+        const first = rec.lines[0] ?? '';
+        const id = LEGACY_CR.test(first) ? crId(first) : (rec.num ?? crId(first));
+        const text = rec.lines.join('\n');
+        if (!text.includes('downstream:')) {
           findings.push({ file: reqRel, message: `${id} без downstream-отметки (${reqRel})` });
           continue;
         }
         if (reqMeta.status !== 'approved') continue;
-        const lower = line.toLowerCase();
+        const lower = text.toLowerCase();
         for (const word of ['design', 'plan'] as const) {
           if (!lower.includes(word)) continue;
           const subRaw = await readOrNull(join(folderPath, `${word}.md`));
@@ -240,26 +287,26 @@ export async function runArtifactLint(deps: LintArtifactsDeps): Promise<Artifact
         });
       }
       const seenCr = new Set<string>();
-      for (const line of bodyOf(crRaw).split('\n')) {
-        if (!/^- CR-/.test(line)) continue;
-        const m = line.match(/^- (CR-\d{4}-\d{2}-\d{2}-\d{2})\b/);
-        if (!m) {
+      for (const rec of collectCrRecords(bodyOf(crRaw).split('\n'))) {
+        const head = rec.lines[0] ?? '';
+        if (rec.num === null) {
           findings.push({
             file: crRel,
-            message: `CR без номера CR-<YYYY-MM-DD>-NN: "${line.slice(0, 60)}"`,
+            message: `CR без номера CR-<YYYY-MM-DD>-NN: "${head.slice(0, 60)}"`,
           });
           continue;
         }
-        const id = m[1]!;
+        const id = rec.num;
         if (seenCr.has(id)) findings.push({ file: crRel, message: `${id} дублируется в ${crRel}` });
         seenCr.add(id);
-        if (!line.includes('downstream:')) {
+        const text = rec.lines.join('\n');
+        if (!text.includes('downstream:')) {
           findings.push({ file: crRel, message: `${id} без downstream-отметки` });
         }
-        if (!/утвердил/i.test(line)) {
+        if (!/утвердил/i.test(text)) {
           findings.push({ file: crRel, message: `${id} без отметки «утвердил»` });
         }
-        for (const ref of [...new Set(line.match(/(?:REQ|NFR)-\d{2}/g) ?? [])]) {
+        for (const ref of [...new Set(text.match(/(?:REQ|NFR)-\d{2}/g) ?? [])]) {
           if (!reqIds.has(ref)) {
             findings.push({ file: crRel, message: `${ref} не найден в requirements.md (упомянут в ${crRel})` });
           }

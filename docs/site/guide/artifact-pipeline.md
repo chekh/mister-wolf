@@ -62,9 +62,9 @@ Security is a strictly optional lens — it is not in the default set. Add it de
 
 ## Evolution
 
-Approved does not mean frozen — it means changes now have a price. A change enters through `change-request.md`: one numbered entry (`CR-<YYYY-MM-DD>-NN`) with what and why, the affected REQ/NFR, who approved it and which downstream artifacts must be regenerated. The request then updates `pre-requirements.md`/`requirements.md`, and the downstream statuses reset to `draft` so they earn their approval again. The flow is: remark → change request → pre-requirements/requirements → design → test-plan → plan.
+Approved does not mean frozen — it means changes now have a price. A change enters through `change-request.md` as a numbered entry `CR-<YYYY-MM-DD>-NN`. The scaffold writes each entry in a readable block form: an ID heading `### CR-<YYYY-MM-DD>-NN — <title>`, a what-and-why paragraph, and the fields on separate lines — `- затронуто:` (the affected REQ/NFR), `- утвердил:` (the approver) and `- downstream:` (the artifacts to regenerate). The request then updates `pre-requirements.md`/`requirements.md`, and the downstream statuses reset to `draft` so they earn their approval again. The flow is: remark → change request → pre-requirements/requirements → design → test-plan → plan.
 
-`change-request.md` is a separate document and not the same thing as the "Change log (CR)" section inside `requirements.md`: that section records changes to the requirements themselves, while `change-request.md` records requests that may touch any document of the package. The `wolf doctor` lint enforces the mechanics on both: a CR without its downstream list, stale downstream statuses, a malformed CR number or a CR referencing a REQ that does not exist all surface as findings.
+`change-request.md` is a separate document and not the same thing as the "Change log (CR)" section inside `requirements.md`: that section records changes to the requirements themselves, while `change-request.md` records requests that may touch any document of the package. The `wolf doctor` lint enforces the mechanics on both and accepts both entry shapes: the scaffold's block form and the legacy one-liner (`- CR-<YYYY-MM-DD>-NN: …`), so older documents stay lint-clean. A CR without its downstream list, stale downstream statuses, a malformed CR number or a CR referencing a REQ that does not exist all surface as findings. New scaffold packages come out in the block form; existing documents are never rewritten by force.
 
 ## Language discipline
 
@@ -77,7 +77,7 @@ Two axes grow the skill set around the pipeline:
 - **Artifact axis** — a new artifact type gets its own skill that teaches agents how to produce it.
 - **Disciplinary axis** — a repeatedly breached discipline gets an enforcement skill; the detector is the complaint loop ([Learning Loop](/guide/feedback)).
 
-The default set ships 28 skills (verified against `templates/base/skills` in the package; the set itself is described in [Base Set](/guide/base-set)):
+The default set ships 30 skills (verified against `templates/base/skills` in the package; the set itself is described in [Base Set](/guide/base-set)):
 
 | Skill                            | Axis         | Purpose                                                                                        |
 | -------------------------------- | ------------ | ---------------------------------------------------------------------------------------------- |
@@ -99,6 +99,7 @@ The default set ships 28 skills (verified against `templates/base/skills` in the
 | `wolf-execute`                   | workflow     | flat linear execution fallback                                                                 |
 | `wolf-explain`                   | disciplinary | clear explanations of results and limitations to the user                                      |
 | `wolf-user-report`               | artifact     | human reports: content, HTML/CSS and reusable project templates                                |
+| `wolf-document-readability`      | workflow     | readability editing of a finished document before content review                               |
 | `wolf-handoff`                   | workflow     | continue in a fresh session without losing progress                                            |
 | `wolf-review`                    | workflow     | multi-lens document review                                                                     |
 | `wolf-sdd`                       | workflow     | subagent-driven development                                                                    |

@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=contracts.md set=2.32.1 -->
+<!-- wolf:rendered base=contracts.md set=2.32.2 -->
 # Поручение и доказательства
 
 Загружает L1 перед составлением TASK; L2 получает применимые нормы в поручении.

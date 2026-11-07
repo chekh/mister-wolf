@@ -48,7 +48,7 @@ permissions:
     resource: '*'
     effect: 'deny'
 ---
-<!-- wolf:rendered base=worker-expert.md set=2.32.1 -->
+<!-- wolf:rendered base=worker-expert.md set=2.32.2 -->
 
 # Worker Expert
 
