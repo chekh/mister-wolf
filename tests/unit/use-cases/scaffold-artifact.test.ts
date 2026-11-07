@@ -149,9 +149,70 @@ describe('scaffoldArtifact', () => {
     const cr = changeRequestTemplate('x', 'X', CREATED);
     expect(cr).toContain('change-request');
     expect(cr).toContain('Append-only');
-    expect(cr).toContain(`CR-${CREATED}-01:`);
-    expect(cr).toContain('downstream:');
+    expect(cr).toContain(`### CR-${CREATED}-01`); // заголовочная форма с ID
+    expect(cr).toContain('- downstream:');
     expect(cr).toContain('slug: x');
     expect(cr).toContain('status: draft');
+  });
+
+  it('M2: ADR в designTemplate — настоящий заголовок с ID, поля отдельными блоками', () => {
+    const design = designTemplate('x', 'X', CREATED);
+    const lines = design.split('\n');
+    const adr = lines.findIndex((l) => l.startsWith('### ADR-'));
+    expect(adr, 'заголовок ADR с ID и названием').toBeGreaterThanOrEqual(0);
+    expect(design).toContain('владелец визирует отдельно'); // продуктовые выборы — комментарий сохранён
+    const fields = ['- Контекст:', '- Решение:', '- Последствия:', '- Статус:'].map((f) =>
+      lines.findIndex((l) => l.startsWith(f))
+    );
+    for (const [k, i] of fields.entries())
+      expect(i, `поле ${k} внутри ADR-карточки`).toBeGreaterThan(adr);
+    for (let k = 0; k < fields.length - 1; k++)
+      expect(lines[fields[k]! + 1], `пустая строка после поля ${k}`).toBe('');
+  });
+
+  it('M2: CR — заголовок с ID и служебные поля блоками во всех трёх местах', () => {
+    const docs: Array<[string, string]> = [
+      ['change-request', changeRequestTemplate('x', 'X', CREATED)],
+      ['requirements full', requirementsTemplate('x', 'X', CREATED, false)],
+      ['requirements fix', requirementsTemplate('x', 'X', CREATED, true)],
+    ];
+    for (const [where, doc] of docs) {
+      const lines = doc.split('\n');
+      const head = lines.findIndex((l) => l.startsWith(`### CR-${CREATED}-01`));
+      expect(head, `${where}: заголовок CR с ID`).toBeGreaterThanOrEqual(0);
+      expect(lines[head + 1], `${where}: пустая строка после заголовка`).toBe('');
+      const approved = lines.findIndex((l) => l.startsWith('- утвердил:'));
+      const downstream = lines.findIndex((l) => l.startsWith('- downstream:'));
+      expect(approved, `${where}: поле «утвердил»`).toBeGreaterThan(head);
+      expect(downstream, `${where}: поле «downstream» после «утвердил»`).toBeGreaterThan(approved);
+      expect(lines[approved - 1], `${where}: «утвердил» отдельным блоком`).toBe('');
+      expect(lines[downstream - 1], `${where}: «downstream» отдельным блоком`).toBe('');
+      expect(doc, `${where}: не однострочник через «;»`).not.toContain('; downstream');
+    }
+    // различие документов: журнал требований (как и CR-документ) указывает затронутое требование
+    expect(requirementsTemplate('x', 'X', CREATED, false)).toContain('- затронуто: <REQ/NFR>');
+    expect(changeRequestTemplate('x', 'X', CREATED)).toContain('- затронуто: <REQ/NFR или "нет">');
+  });
+
+  it('M2: AC в requirementsTemplate — Given/When/Then отдельными пунктами под AC', () => {
+    const req = requirementsTemplate('x', 'X', CREATED, false);
+    const lines = req.split('\n');
+    const ac = lines.findIndex((l) => l.startsWith('- AC:'));
+    expect(ac).toBeGreaterThanOrEqual(0);
+    const words = ['Given', 'When', 'Then'];
+    words.forEach((w, k) => {
+      const i = lines.findIndex((l) => l.startsWith(`  - ${w}`));
+      expect(i, `${w} — вложенный пункт сразу под AC`).toBe(ac + 1 + k);
+    });
+  });
+
+  it('M2: план — чекбокс-маркер задачи и шаги длинной задачи', () => {
+    const plan = planTemplate('x', 'X', CREATED);
+    const lines = plan.split('\n');
+    const task = lines.findIndex((l) => l.startsWith('- [ ] Задача 1:'));
+    expect(task, 'чекбокс распознаваем как маркер задачи').toBeGreaterThanOrEqual(0);
+    expect(lines[task + 1], 'подпункты-шаги под пунктом с чекбоксом').toMatch(/^ {2}- Шаг:/);
+    expect(plan).toContain('переворачивает чекбокс в [x]'); // контракт завершённости сохранён
+    expect(plan).toContain('сделано → коммит');
   });
 });
