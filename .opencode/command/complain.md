@@ -2,7 +2,7 @@
 description: Жалоба владельца через wolf-feedback и действующий триаж. Использование: /complain <текст жалобы>
 agent: mr-wolf
 ---
-<!-- wolf:rendered base=complain.md set=2.32.1 -->
+<!-- wolf:rendered base=complain.md set=2.32.2 -->
 Прими обращение: $ARGUMENTS
 
 Загрузи wolf-feedback; выбери достаточную реакцию по уже доставленным основаниям.

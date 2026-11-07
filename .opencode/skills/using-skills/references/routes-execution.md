@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=routes-execution.md set=2.32.1 -->
+<!-- wolf:rendered base=routes-execution.md set=2.32.2 -->
 # Планирование и исполнение
 
 Наниматель L0/L1 до назначения загружает полную [методику разделения труда](division-of-labor.md).

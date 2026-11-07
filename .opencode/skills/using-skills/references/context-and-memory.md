@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=context-and-memory.md set=2.32.1 -->
+<!-- wolf:rendered base=context-and-memory.md set=2.32.2 -->
 # Адресный контекст и рабочая память
 
 Загружает владелец состояния при handoff, восстановлении или сохранении значимого результата.

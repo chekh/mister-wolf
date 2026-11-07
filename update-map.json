@@ -105,7 +105,7 @@
     {
       "path": "base/skills/using-skills/references/project-rules.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/using-skills/references/project-tools.md",
@@ -120,7 +120,7 @@
     {
       "path": "base/skills/using-skills/references/routes-communication.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/using-skills/references/routes-execution.md",
@@ -186,6 +186,11 @@
       "path": "base/skills/wolf-design/SKILL.md",
       "kind": "skill",
       "category": "unchanged"
+    },
+    {
+      "path": "base/skills/wolf-document-readability/SKILL.md",
+      "kind": "skill",
+      "category": "new"
     },
     {
       "path": "base/skills/wolf-execute/references/technical-helpers.md",
@@ -255,7 +260,7 @@
     {
       "path": "base/skills/wolf-review/SKILL.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/wolf-sdd/SKILL.md",
@@ -280,7 +285,7 @@
     {
       "path": "base/skills/wolf-user-report/SKILL.md",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/wolf-visual-dialogue/SKILL.md",
