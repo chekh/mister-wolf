@@ -25,6 +25,8 @@ Frames combine instructions with harness permissions. Some boundaries are permis
 
 A checkpoint is also useful inside long work: before handoff, after a significant milestone, at a difficulty or risky decision. It preserves recorded meaning; unrecorded findings can be lost, and automatic process recovery is not provided.
 
+For authored documents the route adds a readability editing pass before substantive review: the author's text goes to a dedicated L2 technical writer (wolf-document-readability), who preserves content and accuracy. The pass is not substantive review (wolf-review) and not wolf-user-report's standalone human document — the review loop stays where it was.
+
 ## Compose an assistant and choose a session
 
 L1 composes an assistant from an L2 instance, an appropriate face, assigned skills, inputs and tools. The brief supplies the result, contribution to the goal, criteria, boundaries, sources, methods, verification, budget and return condition. Implementation, research and review profiles receive only applicable fields; a missing required input comes back as a question.

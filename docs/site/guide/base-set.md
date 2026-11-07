@@ -18,7 +18,7 @@ The composition below is the catalog of `templates/base/` in the package.
 
 Every dispatched task carries an execution block: requested model/variant, the execute/solve mode, a tool-call budget and a stop condition. Since 2.24.0 it also carries a density axis — `density standard|draft`. The owner level (L0/L1) picks the density when writing the TASK; a missing field means `standard`. In `draft` the executor shortens the visible service record — repeated retellings, narration of the obvious, ritual summaries — while keeping mandatory checks, rights, evidence and independent acceptance; substantial uncertainty widens the targeted verification instead of shrinking the answer, and an unsupported density is returned to L1. Acceptance checks observed actions, evidence and the result — not a draft label in RESULT. No numeric savings are claimed; the measurable comparison is a separate observation effort (roadmap A1.2).
 
-## Skills — 28 → `.opencode/skills/`
+## Skills — 30 → `.opencode/skills/`
 
 | Skill                            | Purpose                                                                                                                                                                         |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -32,8 +32,10 @@ Every dispatched task carries an execution block: requested model/variant, the e
 | `wolf-brainstorm`                | intent dialogue — substantive questions and proposals until the goal is understood, a visible recap before new work starts                                                      |
 | `wolf-code-craft`                | full implementation of the assigned behavior with readable means and no unnecessary complexity; also the criteria for evaluating an implementation within a mandate             |
 | `wolf-code-simplify`             | targeted simplification of a named complexity with behavior and contract preserved — assigned separately, not an obligatory stage after every edit                              |
+| `wolf-council`                   | independent positions on a substantive fork — variants compared, synthesis handed to the deciding level                                                                         |
 | `wolf-debug`                     | root-cause phases before proposing fixes                                                                                                                                        |
 | `wolf-design`                    | design.md produced from requirements.md before implementation                                                                                                                   |
+| `wolf-document-readability`      | readability editing pass on a finished document by a dedicated L2 technical writer — content and accuracy preserved, not a substantive review                                   |
 | `wolf-execute`                   | flat linear plan execution without subagents (fallback mode)                                                                                                                    |
 | `wolf-explain`                   | human explanations built from actions, reasons and consequences — restores a missing link instead of repeating, and keeps facts and the unknown apart                           |
 | `wolf-git`                       | git stages of a task — entry and resume, branch or worktree, checkpoint, handoff, finish and cleanup; ships the `git-collaboration-policy-v1.1` reference and automates nothing |
@@ -56,6 +58,8 @@ For L0/L1, bootstrap delivers the complete installed `using-skills` body rather 
 Load wolf-work-strategy once per assignment, then again only if its version changes or its text is lost. It guides action selection while preserving roles and mandatory project gates. An early question can replace an expensive investigation, including fact finding; obvious facts in the supplied inputs need no question. Without an in-call dialogue channel, L2 returns the question to L1 through its existing result contract. Updating templates does not reconcile an old active playbook; use the existing Steward workflow.
 
 Load wolf-user-report for a requested or agreed standalone human document, including updates. It is available in the full base set, not automatically loaded for chat replies or machine RESULT/EVIDENCE. Preserve the chosen format and role boundaries; do not start new research just to format the result. Project themes and templates remain project resources, not mandatory bundled CSS profiles.
+
+Load wolf-document-readability when a finished document — requirements, a change request, design/ADR, a plan, a test plan, an instruction or a report — takes the readability route: the author hands the text to a dedicated L2 technical writer before substantive review. The editing pass preserves content and accuracy (claims, numbers, dates, IDs, links, conditions, statuses, checkboxes, append-only parts), does not research code or verify technical decisions, and never creates documentation from scratch. It is not substantive review (wolf-review) and not a standalone human document (wolf-user-report); one pass covers the initial release or a substantial rework, and the skill is never applied automatically to dialogue or service TASK/RESULT.
 
 ## Commands — 3 → `.opencode/command/`
 
