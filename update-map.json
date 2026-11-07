@@ -1,6 +1,6 @@
 {
-  "version": "2.32.2",
-  "prev": "2.32.1",
+  "version": "2.33.0",
+  "prev": "2.32.2",
   "files": [
     {
       "path": "base/agents/executor-lead.md",
@@ -20,7 +20,7 @@
     {
       "path": "base/agents/worker-expert.md",
       "kind": "agent",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/agents/worker-implementer.md",
@@ -95,7 +95,7 @@
     {
       "path": "base/skills/using-skills/references/contracts.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/using-skills/references/division-of-labor.md",
@@ -170,7 +170,7 @@
     {
       "path": "base/skills/wolf-council/SKILL.md",
       "kind": "skill",
-      "category": "changed"
+      "category": "unchanged"
     },
     {
       "path": "base/skills/wolf-debug/references/techniques.md",
@@ -335,7 +335,7 @@
     {
       "template": "base/playbooks/worker-expert-playbook.md",
       "owner_skill": "worker-expert",
-      "category": "changed",
+      "category": "unchanged",
       "seed": true
     },
     {
