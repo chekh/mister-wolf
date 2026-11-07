@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { join } from 'path';
 import { runArtifactLint } from '../../../src/app/use-cases/lint-artifacts.js';
+import { changeRequestTemplate, requirementsTemplate } from '../../../src/app/use-cases/scaffold-artifact.js';
 
 /** Собирает deps с фикстурой файлов; folders — записи docs/dev (папки), extra — .opencode/skills. */
 function fixture(files: Record<string, string>, devFolders: string[] = [], skills: string[] = []) {
@@ -93,6 +94,83 @@ it('S21: корректный change-request.md новых findings по себ�
   expect(findings.filter((f) => f.file.includes('change-request.md'))).toEqual([]);
 });
 
+// F1: блочная форма CR из changeRequestTemplate (заголовок ### CR-… + поля на отдельных строках).
+it('S21/F1: блочный CR без downstream и без утвердил — оба finding (негативная самопроверка)', async () => {
+  const { deps } = fixture(
+    {
+      'docs/dev/2026-10-08-x/requirements.md':
+        '---\nslug: x\nstatus: draft\n---\n\n### REQ-01 — a\n- AC: z\n- Источник: d\n',
+      'docs/dev/2026-10-08-x/change-request.md':
+        '---\nslug: x\ntitle: X — запросы на изменение\nstatus: draft\ncreated: 2026-10-08\n---\n\n## Запросы\n\n' +
+        '### CR-2026-10-08-01 — правка REQ-01\n\n<что и почему>\n',
+    },
+    ['2026-10-08-x']
+  );
+  const findings = await runArtifactLint(deps);
+  expect(findings.some((f) => f.message.includes('CR-2026-10-08-01 без downstream-отметки'))).toBe(true);
+  expect(findings.some((f) => f.message.includes('CR-2026-10-08-01 без отметки «утвердил»'))).toBe(true);
+});
+
+it('S21/F1: блочный CR (форма changeRequestTemplate) проходит без CR-findings; битая ссылка из «затронуто» ловится', async () => {
+  const req = '---\nslug: x\nstatus: draft\n---\n\n### REQ-01 — a\n- AC: z\n- Источник: d\n';
+  const crBody =
+    '### CR-2026-10-08-01 — уточнили REQ-01\n\n<что и почему>\n\n- затронуто: REQ-01\n\n- утвердил: owner\n\n- downstream: design, test-plan\n';
+  const { deps } = fixture(
+    {
+      'docs/dev/2026-10-08-x/requirements.md': req,
+      'docs/dev/2026-10-08-x/change-request.md':
+        '---\nslug: x\ntitle: X — запросы на изменение\nstatus: draft\ncreated: 2026-10-08\n---\n\n## Запросы\n\n' +
+        crBody,
+    },
+    ['2026-10-08-x']
+  );
+  const ok = await runArtifactLint(deps);
+  expect(ok.filter((f) => f.file.includes('change-request.md'))).toEqual([]);
+
+  const { deps: deps2 } = fixture(
+    {
+      'docs/dev/2026-10-08-x/requirements.md': req,
+      'docs/dev/2026-10-08-x/change-request.md':
+        '---\nslug: x\ntitle: X — запросы на изменение\nstatus: draft\ncreated: 2026-10-08\n---\n\n## Запросы\n\n' +
+        crBody.replace('- затронуто: REQ-01', '- затронуто: REQ-09'),
+    },
+    ['2026-10-08-x']
+  );
+  const bad = await runArtifactLint(deps2);
+  expect(bad.some((f) => f.message.includes('REQ-09 не найден в requirements.md'))).toBe(true);
+});
+
+it('S21/F1: блочные CR — дубликат номера и блочный заголовок без валидного номера', async () => {
+  const { deps } = fixture(
+    {
+      'docs/dev/2026-10-08-x/requirements.md':
+        '---\nslug: x\nstatus: draft\n---\n\n### REQ-01 — a\n- AC: z\n- Источник: d\n',
+      'docs/dev/2026-10-08-x/change-request.md':
+        '---\nslug: x\ntitle: X — запросы на изменение\nstatus: draft\ncreated: 2026-10-08\n---\n\n## Запросы\n\n' +
+        '### CR-2026-10-08-01 — a\n\n- утвердил: o\n\n- downstream: нет\n\n' +
+        '### CR-2026-10-08-01 — b\n\n- утвердил: o\n\n- downstream: нет\n\n' +
+        '### CR-02 — c\n\n- утвердил: o\n\n- downstream: нет\n',
+    },
+    ['2026-10-08-x']
+  );
+  const findings = await runArtifactLint(deps);
+  expect(findings.some((f) => f.message.includes('CR-2026-10-08-01 дублируется'))).toBe(true);
+  expect(findings.some((f) => f.message.includes('CR без номера CR-<YYYY-MM-DD>-NN'))).toBe(true);
+});
+
+it('F1: scaffold→lint — changeRequestTemplate и requirementsTemplate (full и fix) проходят lint чисто', async () => {
+  const created = '2026-11-07';
+  const files = (fix: boolean) => ({
+    'docs/dev/2026-11-07-x/requirements.md': requirementsTemplate('x', 'X', created, fix),
+    'docs/dev/2026-11-07-x/change-request.md': changeRequestTemplate('x', 'X', created),
+    'docs/dev/wave-x.md': '---\nslug: wave-x\nstatus: draft\n---\n\n- x\n',
+  });
+  const run1 = fixture(files(false), ['2026-11-07-x']);
+  expect(await runArtifactLint(run1.deps)).toEqual([]);
+  const run2 = fixture(files(true), ['2026-11-07-x']);
+  expect(await runArtifactLint(run2.deps)).toEqual([]);
+});
+
 describe('runArtifactLint (спека §4-A3)', () => {
   it('duplicate REQ id in one folder', async () => {
     const { deps } = fixture(
@@ -163,6 +241,33 @@ describe('runArtifactLint (спека §4-A3)', () => {
       {
         'docs/dev/2026-10-08-x/requirements.md':
           '---\nslug: x\nstatus: approved\n---\n\n- CR-2026-10-08-01: поменяли REQ-01 — владелец; downstream: design, plan\n',
+        'docs/dev/2026-10-08-x/design.md': '---\nslug: x\nstatus: approved\n---\n',
+        'docs/dev/2026-10-08-x/plan.md': '---\nslug: x\nstatus: draft\n---\n',
+      },
+      ['2026-10-08-x']
+    );
+    const findings = await runArtifactLint(deps);
+    expect(findings.some((f) => f.message.includes('требует сброса статуса design.md'))).toBe(true);
+    expect(findings.some((f) => f.message.includes('требует сброса статуса plan.md'))).toBe(false);
+  });
+
+  it('F1: блочный CR в requirements.md без downstream (форма scaffold)', async () => {
+    const { deps } = fixture(
+      {
+        'docs/dev/2026-10-08-x/requirements.md':
+          '---\nslug: x\nstatus: draft\n---\n\n## 7. Журнал изменений (CR)\n\n### CR-2026-10-08-01 — правка REQ-01\n\n<что и почему>\n',
+      },
+      ['2026-10-08-x']
+    );
+    const findings = await runArtifactLint(deps);
+    expect(findings.some((f) => f.message.includes('CR-2026-10-08-01 без downstream-отметки'))).toBe(true);
+  });
+
+  it('F1: блочный CR в requirements.md требует сброса design/plan (§6.7)', async () => {
+    const { deps } = fixture(
+      {
+        'docs/dev/2026-10-08-x/requirements.md':
+          '---\nslug: x\nstatus: approved\n---\n\n### CR-2026-10-08-01 — правка REQ-01\n\n<что и почему>\n\n- downstream: design, plan\n',
         'docs/dev/2026-10-08-x/design.md': '---\nslug: x\nstatus: approved\n---\n',
         'docs/dev/2026-10-08-x/plan.md': '---\nslug: x\nstatus: draft\n---\n',
       },
