@@ -164,10 +164,8 @@ describe('scaffoldArtifact', () => {
     const fields = ['- Контекст:', '- Решение:', '- Последствия:', '- Статус:'].map((f) =>
       lines.findIndex((l) => l.startsWith(f))
     );
-    for (const [k, i] of fields.entries())
-      expect(i, `поле ${k} внутри ADR-карточки`).toBeGreaterThan(adr);
-    for (let k = 0; k < fields.length - 1; k++)
-      expect(lines[fields[k]! + 1], `пустая строка после поля ${k}`).toBe('');
+    for (const [k, i] of fields.entries()) expect(i, `поле ${k} внутри ADR-карточки`).toBeGreaterThan(adr);
+    for (let k = 0; k < fields.length - 1; k++) expect(lines[fields[k]! + 1], `пустая строка после поля ${k}`).toBe('');
   });
 
   it('M2: CR — заголовок с ID и служебные поля блоками во всех трёх местах', () => {
