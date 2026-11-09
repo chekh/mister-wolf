@@ -33,13 +33,13 @@ wolf task-eval --verdict accepted --task-id docs-navigation \
 
 ## Источники и интерпретация
 
-| Данные                             | Локальный источник                                 |
-| ---------------------------------- | -------------------------------------------------- |
-| Вызовы, доставка, usage и вердикты | `.wolf/metrics/session-metrics.jsonl`              |
-| Решения доставки лиц               | `.wolf/router.log`                                 |
+| Данные                                                   | Локальный источник                                 |
+| -------------------------------------------------------- | -------------------------------------------------- |
+| Вызовы, доставка, usage и вердикты                       | `.wolf/metrics/session-metrics.jsonl`              |
+| Решения доставки лиц                                     | `.wolf/router.log`                                 |
 | Вызовы скиллов (только с опциональным плагином-роутером) | `.wolf/metrics/skill-invocations.jsonl`            |
-| Объекты памяти и их изменения      | `.wolf/memory/`, `events.jsonl`, `relations.jsonl` |
-| Снапшоты эффективности             | `.wolf/metrics/effectiveness-snapshots.jsonl`      |
+| Объекты памяти и их изменения                            | `.wolf/memory/`, `events.jsonl`, `relations.jsonl` |
+| Снапшоты эффективности                                   | `.wolf/metrics/effectiveness-snapshots.jsonl`      |
 
 Поля событий, импорт usage и идентичность сессий — в [Телеметрии](/ru/guide/telemetry). Получение памяти отличается от ссылки на неё или применения; запись следующих стадий объяснена в [Интеграции харнессов](/ru/guide/harness-integration).
 

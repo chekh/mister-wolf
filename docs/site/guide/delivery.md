@@ -13,8 +13,8 @@ An agent's behavior has two halves — the static **frame** and the mutable **fa
 
 | #   | Channel           | What happens                                                                                                              | Status                                                                                                                                |
 | --- | ----------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| 1 | **plugin-inject** | the `wolf-router` plugin resolves the agent's playbook from memory and injects it into the system prompt on every message | optional; reserved since 3.0.0, not installed by `init` |
-| 2 | **pull** | the frame instructs the agent to fetch its playbook itself — `wolf search` / `wolf get` by the agent-id | standard; no plugin needed |
+| 1   | **plugin-inject** | the `wolf-router` plugin resolves the agent's playbook from memory and injects it into the system prompt on every message | optional; reserved since 3.0.0, not installed by `init`                                                                               |
+| 2   | **pull**          | the frame instructs the agent to fetch its playbook itself — `wolf search` / `wolf get` by the agent-id                   | standard; no plugin needed                                                                                                            |
 | 3   | **bake-in**       | at seed time the playbook body is baked into the frame as a static block                                                  | designed — the renderer mechanism exists (`bake` option), activated by a platform adapter for minimal platforms; not used by opencode |
 
 The plugin makes delivery deterministic — enable it if you want that guarantee; without it, delivery relies on the pull channel and the `AGENTS.md` starter block.

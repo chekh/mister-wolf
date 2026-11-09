@@ -6,9 +6,9 @@ This page is for contributors and integration authors. For the working roles, st
 
 ## Two connected loops
 
-| Loop        | Responsibility                                                                        | Persistent result                                           |
-| ----------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Delivery    | Wolf owns intent and acceptance and performs part of the work itself; wolf-* executors complete bounded work | Task state, decisions, reports and checkpoints              |
+| Loop        | Responsibility                                                                                                              | Persistent result                                           |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Delivery    | Wolf owns intent and acceptance and performs part of the work itself; wolf-\* executors complete bounded work               | Task state, decisions, reports and checkpoints              |
 | Improvement | Authorized feedback is processed and faces versioned through the governed loop (the Steward is temporarily paused in 3.0.0) | Updated methodology, reasons for change and version history |
 
 The organization is an operating protocol supported by agent frames and platform permissions. A written instruction is not proof that every boundary is enforced in code. Council execution and automatic policy scheduling must not be inferred from their architectural descriptions.
