@@ -34,7 +34,7 @@ const agentFiles = readdirSync(agentsDir).filter((f) => f.endsWith('.md'));
 
 describe('render integrity: реальные шаблоны агентов (2.32.2, ревью F-NEW-01)', () => {
   it('набор агентов непустой (не вакуумный проход)', () => {
-    expect(agentFiles.length).toBe(7);
+    expect(agentFiles.length).toBe(9);
   });
 
   it.each(agentFiles)('%s: в omit-режиме не остаётся ни одного плейсхолдера', (file) => {
@@ -69,7 +69,7 @@ describe('render integrity: реальные шаблоны агентов (2.32
   });
 
   it('профиль эксперта после рендера несёт рабочий read-канал и границы', () => {
-    const raw = readFileSync(join(agentsDir, 'worker-expert.md'), 'utf-8');
+    const raw = readFileSync(join(agentsDir, 'wolf-expert.md'), 'utf-8');
     const rendered = substitute(raw, OPENCODE_MANIFEST, MODEL_CONTEXT);
     const front = frontmatterOf(rendered);
     const rules = front['permissions'] as { action: string; resource: string; effect: string }[];

@@ -7,20 +7,22 @@ import { fileURLToPath } from 'url';
 // Агент без mode в frontmatter регистрируется с дефолтом primary
 // (schema/agent.ts) и гейтится субагент-тулом («Agent X cannot run as
 // a subagent», subagent.ts:136) — Task-цепь L0→L1→L2 умирает молча.
-// Поэтому каждый шаблон обязан явно объявлять mode, а участники
-// Task-цепи (executor-lead, worker-*) — не primary.
+// Поэтому каждый шаблон обязан явно объявлять mode, а исполнители wolf-*
+// (нанимаются task-тулом из mr-wolf) — subagent, ведущий — primary.
 const AGENTS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'templates', 'base', 'agents');
 const VALID_MODES = new Set(['primary', 'all', 'subagent']);
-// Task-цепь: спавнятся субагент-тулом (mr-wolf → executor-lead → worker-*)
-const TASK_CHAIN = [/^executor-lead\.md$/, /^worker-.*\.md$/];
+// Task-цепь: исполнители спавнятся субагент-тулом (mr-wolf → wolf-*)
+const TASK_CHAIN = [/^wolf-.*\.md$/];
 const PACKAGE_AGENTS = new Set([
-  'executor-lead.md',
   'mr-wolf.md',
-  'steward.md',
-  'worker-implementer.md',
-  'worker-researcher.md',
-  'worker-reviewer.md',
-  'worker-expert.md',
+  'wolf-researcher.md',
+  'wolf-architect.md',
+  'wolf-developer.md',
+  'wolf-reviewer.md',
+  'wolf-tester.md',
+  'wolf-editor.md',
+  'wolf-release-engineer.md',
+  'wolf-expert.md',
 ]);
 
 function frontmatter(name: string): string {
@@ -49,11 +51,16 @@ describe('agents templates mode guard (hotfix 2.16.3, C2)', () => {
     expect(VALID_MODES.has(mode), `${name}: mode "${mode}" not in ${[...VALID_MODES].join('/')}`).toBe(true);
   });
 
-  it.each(files.filter((f) => TASK_CHAIN.some((re) => re.test(f))))('%s (Task-chain) must be mode:all', (name) => {
-    const mode = modeOf(name);
-    if (mode === null) throw new Error(`${name}: Task-chain agent must declare mode explicitly`);
-    // 'all', не просто «не primary»: subagent чинит Task-спавн, но ломает
-    // прямой `opencode run --agent …` — решение владельца сохраняет обе площадки (REQ-01)
-    expect(mode, `${name}: Task-chain agents must be mode:all (Task-spawn + direct CLI)`).toBe('all');
+  it.each(files.filter((f) => TASK_CHAIN.some((re) => re.test(f))))(
+    '%s (wolf-исполнитель) must be mode:subagent',
+    (name) => {
+      const mode = modeOf(name);
+      if (mode === null) throw new Error(`${name}: wolf-исполнитель must declare mode explicitly`);
+      expect(mode, `${name}: wolf-исполнители нанимаются task-тулом из mr-wolf — mode:subagent`).toBe('subagent');
+    }
+  );
+
+  it('mr-wolf.md — ведущий двухуровневой модели: mode primary', () => {
+    expect(modeOf('mr-wolf.md')).toBe('primary');
   });
 });

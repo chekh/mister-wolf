@@ -3,23 +3,23 @@ import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
-// 2.14 §7.1 (триггер 1): цикловой триггер Стюарда в рамке координатора —
-// recap после приёмки отчётов + вложенный вызов steward + автономное
-// применение aggregate apply без повторного разрешения владельца.
-// Гард против регресса шаблона (дизъюнктен с base-frames-guard).
-describe('coordinator frame guard (mr-wolf.md)', () => {
-  it('keeps aggregation cycle-trigger markers: recap + steward + apply', () => {
+// 3.0.0, норма R-14: Стюард временно вне штатного роутинга — не вызывается
+// ни агентами, ни скиллами; сигналы принимаются без ложного закрытия.
+// Гард нормы R-14: автоматическая обработка Стюардом отключена, императивы
+// вызова в рамке отсутствуют, жалобный контур сохранён (дизъюнктен с base-frames-guard).
+describe('coordinator frame guard (R-14, mr-wolf.md)', () => {
+  it('keeps no steward-imperative markers; complaint channel stays', () => {
     const frame = readFileSync(
       join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'templates', 'base', 'agents', 'mr-wolf.md'),
       'utf-8'
     );
-    // координатор обнаруживает: recap-строка неагрегированных
-    expect(frame).toContain('wolf recap');
-    expect(frame).toContain('Стюард: агрегация');
-    // диспетчеризация вложенным вызовом, не автоспавн
-    expect(frame).toContain('вложенный вызов Стюарда');
-    // применение: Стюард сам, без повторного запроса разрешения
-    expect(frame).toContain('wolf aggregate apply');
-    expect(frame).toContain('без повторного');
+    // R-14: маркеры цикла Стюарда отменены — ни recap, ни агрегации, ни вложенного вызова
+    expect(frame).not.toContain('wolf recap');
+    expect(frame).not.toContain('Стюард');
+    expect(frame).not.toContain('steward');
+    expect(frame).not.toContain('wolf aggregate apply');
+    expect(frame).not.toContain('вложенный вызов');
+    // жалобный контур сохранён: жалобы принимаются и сохраняются как данные
+    expect(frame).toContain('wolf list --type complaint');
   });
 });

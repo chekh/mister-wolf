@@ -10,7 +10,7 @@ import yaml from 'js-yaml';
 // сеть/внешние каталоги и ask-защиту env-файлов ПОСЛЕ широкого read-allow
 // (резолвер OpenCode — last-match-wins, поэтому порядок правил и есть защита).
 const base = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'templates', 'base');
-const agentRaw = readFileSync(join(base, 'agents', 'worker-expert.md'), 'utf-8');
+const agentRaw = readFileSync(join(base, 'agents', 'wolf-expert.md'), 'utf-8');
 const councilSkill = readFileSync(join(base, 'skills', 'wolf-council', 'SKILL.md'), 'utf-8');
 const contracts = readFileSync(join(base, 'skills', 'using-skills', 'references', 'contracts.md'), 'utf-8');
 
@@ -22,7 +22,7 @@ interface Rule {
 
 function frontmatter(raw: string): Record<string, unknown> {
   const m = raw.match(/^---\n([\s\S]*?)\n---/);
-  if (!m) throw new Error('worker-expert.md: frontmatter block missing');
+  if (!m) throw new Error('wolf-expert.md: frontmatter block missing');
   return yaml.load(m[1]!) as Record<string, unknown>;
 }
 
@@ -105,7 +105,8 @@ describe('worker-expert profile: read-канал в границах проек�
   it('рамка профиля описывает фактический канал, а не мёртвое packet-only по умолчанию', () => {
     expect(agentRaw).toContain('channel');
     expect(agentRaw).toContain('isolation_limits');
-    expect(agentRaw).toContain('перечень путей');
+    expect(agentRaw).toContain('фактический channel');
+    expect(agentRaw).toContain('Поручение не расширяет технические разрешения host');
   });
 });
 
@@ -143,7 +144,7 @@ describe('worker-expert profile: граница чтения честная (2.3
   it('рамка называет обе половины границы: путь и разрешение ссылок', () => {
     expect(agentRaw).toContain('external_directory');
     expect(agentRaw).toContain('symlink');
-    expect(agentRaw).toMatch(/не должна разрешаться\s+за его пределы/);
+    expect(agentRaw).toMatch(/ни одна ссылка внутри проекта не разрешается\s+наружу/);
   });
 
   it('не требует невозможного «ни одной ссылки» правила', () => {
