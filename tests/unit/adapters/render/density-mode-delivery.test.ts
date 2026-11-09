@@ -5,9 +5,10 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OpencodeBaseSetRenderer } from '../../../../src/adapters/render/opencode/opencode-renderer.js';
 
-// A1.2 (REQ-12): носитель плотности standard|draft доставляется базовым набором
-// в контракт TASK (execution), рамки агентов и лица (плейбуки). Гард против
-// регресса: без носителя тест падает — плотность не текст-пожелание, а ось.
+// A1.2 (REQ-12), редакция S-DELIVERY 3.0.0: носитель плотности standard|draft
+// доставляется базовым набором в контракт TASK (using-skills, execution) и в
+// тела всех восьми исполнителей wolf-*; лиц больше нет. Гард против регресса:
+// без носителя тест падает — плотность не текст-пожелание, а ось.
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const base = join(root, 'templates/base');
 const harness = join(root, 'templates/opencode');
@@ -18,6 +19,17 @@ const project = () => {
   projects.push(path);
   return path;
 };
+
+const EXECUTORS = [
+  'wolf-architect',
+  'wolf-developer',
+  'wolf-editor',
+  'wolf-expert',
+  'wolf-release-engineer',
+  'wolf-researcher',
+  'wolf-reviewer',
+  'wolf-tester',
+];
 
 const sourceRead = (rel: string) => readFileSync(join(base, rel), 'utf8');
 
@@ -34,46 +46,34 @@ describe('density mode (standard|draft) delivery through the real base set', () 
     // Ось — носитель в блоке execution, отдельная от execute|solve и FULL/LITE/FIX.
     expect(using).toContain('density standard|draft');
     // Отсутствие поля трактуется как standard (совместимость, NFR-01).
-    expect(using).toContain('standard');
+    expect(using).toContain('отсутствие поля — standard');
     // Draft сокращает запись, не основания; неопределённость расширяет анализ.
-    expect(using).toContain('основания');
-    expect(using).toContain('неопределённост');
+    expect(using).toContain('сохраняя основания');
+    expect(using).toContain('Существенная неопределённость');
   });
 
-  it('delivers the contract to the lead frame and the lead playbook', async () => {
+  it('delivers the density axis to every executor frame (no faces anymore)', async () => {
     const path = project();
     await renderer().renderBaseSet(path, { models: { primary: 'test/primary', worker: 'test/worker' } });
-    const lead = readFileSync(join(path, '.opencode/agents/executor-lead.md'), 'utf8');
-    expect(lead).toContain('density standard|draft');
-    // Приёмка сверяет наблюдаемые действия и результат, а не ярлык draft в RESULT.
-    expect(lead).toContain('ярлык');
-    expect(sourceRead('playbooks/executor-lead-playbook.md')).toContain('density standard|draft');
-    expect(sourceRead('playbooks/executor-lead-playbook.md').toLowerCase()).toContain('плотность');
+    for (const role of EXECUTORS) {
+      const body = readFileSync(join(path, '.opencode/agents', `${role}.md`), 'utf8');
+      expect(body, role).toContain('density standard|draft');
+      expect(body, role).toContain('возврат нанимателю');
+    }
+    // отсутствующие роли не возвращаются: старых носителей плотности нет
+    expect(sourceRead('agents/mr-wolf.md')).not.toContain('executor-lead');
   });
 
-  it('delivers executor behavior to the implementer frame and playbook', async () => {
+  it('keeps researcher and reviewer reports honest under the axis', async () => {
     const path = project();
     await renderer().renderBaseSet(path, { models: { primary: 'test/primary', worker: 'test/worker' } });
-    const impl = readFileSync(join(path, '.opencode/agents/worker-implementer.md'), 'utf8');
-    expect(impl).toContain('плотность');
-    expect(impl).toContain('неопределённост');
-    expect(sourceRead('playbooks/worker-implementer-playbook.md').toLowerCase()).toContain('плотность');
-    expect(sourceRead('playbooks/worker-implementer-playbook.md')).toContain('draft');
-  });
-
-  it('keeps researcher and reviewer reports honest in draft', async () => {
-    const path = project();
-    await renderer().renderBaseSet(path, { models: { primary: 'test/primary', worker: 'test/worker' } });
-    const researcher = readFileSync(join(path, '.opencode/agents/worker-researcher.md'), 'utf8');
-    const reviewer = readFileSync(join(path, '.opencode/agents/worker-reviewer.md'), 'utf8');
-    expect(researcher).toContain('draft');
-    expect(researcher).toContain('GAPS');
-    expect(researcher).toContain('возврат L1');
-    expect(reviewer).toContain('draft');
-    expect(reviewer).toContain('вердикт');
-    expect(sourceRead('playbooks/worker-researcher-playbook.md').toLowerCase()).toContain('плотность');
-    expect(sourceRead('playbooks/worker-researcher-playbook.md')).toContain('возврат L1');
-    expect(sourceRead('playbooks/worker-reviewer-playbook.md').toLowerCase()).toContain('плотность');
+    const researcher = readFileSync(join(path, '.opencode/agents/wolf-researcher.md'), 'utf8');
+    const reviewer = readFileSync(join(path, '.opencode/agents/wolf-reviewer.md'), 'utf8');
+    // исследователь: findings с явными пробелами и возвратом нанимателю
+    expect(researcher).toContain('FINDINGS/CONFIDENCE/GAPS');
+    expect(researcher).toContain('QUESTION/NEEDS_CONTEXT');
+    // ревьюер: вердикт-словарь сохранён
+    expect(reviewer).toContain('APPROVED | CHANGES_REQUIRED | INCONCLUSIVE');
   });
 
   it('keeps observation scenarios fixture valid for the A1.1-based comparison', () => {

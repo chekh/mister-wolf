@@ -8,9 +8,9 @@ import { describe, it, expect } from 'vitest';
  * markdown-списком. Класс дефекта, который ловится (dogfood 2.20.0):
  * продолжение пункта списка потеряло отступ в 2 пробела — блок остался
  * «валидным» для prettier, но список распался на абзац. Проверка глазами
- * такое не держит, поэтому guard.
+ * такое не держит, поэтому guard. Редакция S-DELIVERY 3.0.0: маркер v4.
  */
-const OPEN = '<!-- wolf:onboarding v3 -->';
+const OPEN = '<!-- wolf:onboarding v4 -->';
 const CLOSE = '<!-- /wolf:onboarding -->';
 
 function block(file: string): string {
@@ -28,6 +28,7 @@ function brokenContinuations(markdown: string): string[] {
   const broken: string[] = [];
   let prev: string | null = null;
   for (const line of markdown.split('\n')) {
+    if (line.includes('wolf:onboarding')) continue;
     const inList = prev !== null && listItem.test(prev);
     const startsItem = listItem.test(line);
     if (inList && line.trim() !== '' && !startsItem && !line.startsWith(' ') && !line.startsWith('#')) {

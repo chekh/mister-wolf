@@ -2,15 +2,16 @@
 // Поведенческий тест плагина из harness-шаблона (Task 13.3, спека §9:
 // H3 идемпотентность, MAJ-1 повторная инъекция, MAJ-4 усечение L2,
 // m13 fail-safe) + контракт загрузчика opencode: ровно один export.
-//
-// computeInjection приватна (дефект догфудинга фазы C: loader opencode
-// вызывает КАЖДЫЙ export файла плагина как фабрику — лишние экспорты
-// валили загрузку всего плагина), поэтому тестируем через хуки фабрики.
+// Редакция S-DELIVERY 3.0.0 (R-12b): плагины выведены из автозагрузки —
+// шаблоны живут в templates/opencode/plugins-reserved/, рендер набора
+// .opencode/plugins НЕ создаёт; поведение зарезервированных плагинов
+// проверяется на месте (worker-* здесь — вход agent-id механизма, не роль).
 import { describe, expect, it, vi } from 'vitest';
-import { readFileSync, readdirSync, rmSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, rmSync, mkdtempSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { OpencodeBaseSetRenderer } from '../../../../src/adapters/render/opencode/opencode-renderer.js';
 
 const { execFileMock } = vi.hoisted(() => {
   // WOLF_ROUTER_LOG-шов (как в wolf-router-plugin.test.ts): лог пишется в tmp,
@@ -30,7 +31,7 @@ const { execFileMock } = vi.hoisted(() => {
 vi.mock('child_process', () => ({ execFile: execFileMock }));
 
 const templatePath = (rel: string) =>
-  fileURLToPath(new URL(`../../../../templates/opencode/plugins/${rel}`, import.meta.url));
+  fileURLToPath(new URL(`../../../../templates/opencode/plugins-reserved/${rel}`, import.meta.url));
 
 // Dual v1/v2 entry: один default-export, v1-поведение — через `.server()`.
 const { default: WolfSessionStartPlugin } = await import(templatePath('wolf-session-start.js'));
@@ -79,7 +80,6 @@ const fresh = [msg('новый вопрос после /clear')];
 const GOVERNANCE = [
   'L0',
   'L1',
-  'L2',
   'Приоритет',
   'Маршруты',
   'references/routes-intent.md',
@@ -88,11 +88,9 @@ const GOVERNANCE = [
   'references/routes-communication.md',
   'references/routes-state.md',
   'references/routes-capabilities.md',
-  'references/contracts.md',
   'TASK',
-  'RESULT',
-  'EVIDENCE',
-  'ACCEPTANCE',
+  'allowlist',
+  'Лица не используются',
 ];
 // The passive L2 bootstrap must not contain the coordinator's routing tree.
 const DISPATCH = ['references/routes-', 'Маршруты: когда', 'Таблицы веток', 'executor-L1'];
@@ -106,16 +104,30 @@ const setAgent = async (id: string | null) => {
 };
 const textOf = (m: Msg) => m.parts.map((p) => String(p.text ?? '')).join('\n');
 
-describe('wolf-session-start: контракт загрузчика opencode (дефект фазы C)', () => {
-  it('шаблоны плагинов содержат РОВНО ОДИН export — фабрику плагина', () => {
-    const pluginsDir = fileURLToPath(new URL('../../../../templates/opencode/plugins/', import.meta.url));
+describe('R-12b: плагины вне автозагрузки — зарезервированы, рендером не доставляются', () => {
+  it('шаблоны плагинов живут в plugins-reserved/ и содержат РОВНО ОДИН export — фабрику плагина', () => {
+    const pluginsDir = fileURLToPath(new URL('../../../../templates/opencode/plugins-reserved/', import.meta.url));
     const files = readdirSync(pluginsDir).filter((f) => /\.(js|ts)$/.test(f));
-    expect(files.length).toBeGreaterThanOrEqual(2); // известные два на месте
+    expect(files.sort()).toEqual(['wolf-router.ts', 'wolf-session-start.js']);
     for (const rel of files) {
       const src = readFileSync(pluginsDir + rel, 'utf-8');
       const exports = src.match(/^export\b.*$/gm) ?? [];
       expect(exports, rel).toHaveLength(1);
       expect(exports[0], rel).toMatch(/^export default\b/);
+    }
+  });
+
+  it('рендер базового набора НЕ создаёт .opencode/plugins/*', async () => {
+    const path = mkdtempSync(join(tmpdir(), 'wolf-no-plugins-'));
+    try {
+      const renderer = new OpencodeBaseSetRenderer(join(root(), 'templates/base'), {
+        harnessTemplatesRoot: join(root(), 'templates/opencode'),
+        setVersion: '9.9.9',
+      });
+      await renderer.renderBaseSet(path, { models: { primary: 'test/primary', worker: 'test/worker' } });
+      expect(existsSync(join(path, '.opencode/plugins')), 'plugins не рендерятся').toBe(false);
+    } finally {
+      rmSync(path, { recursive: true, force: true });
     }
   });
 });
@@ -143,7 +155,7 @@ describe('wolf-session-start: инъекция (спека §5.4)', () => {
   });
 
   it('маркера нет → инъекция; полный governance-набор для L0/L1 (H2)', async () => {
-    await setAgent('executor-lead');
+    await setAgent('mr-wolf-coordinator-probe');
     const out = { messages: fresh.map((m) => ({ ...m, parts: [...m.parts] })) };
     await transform({}, out);
     const injected = textOf(out.messages[0]);
@@ -184,6 +196,10 @@ describe('wolf-session-start: инъекция (спека §5.4)', () => {
     await expect(transform(null as never, { messages: [] })).resolves.toBeUndefined();
   });
 });
+
+function root(): string {
+  return fileURLToPath(new URL('../../../..', import.meta.url));
+}
 
 // v2 loader: setup(ctx) с session.hook('context') — инъекция в content[].
 const v2Message = (text: string) => ({
@@ -238,7 +254,7 @@ describe('wolf-session-start: v2 setup (context hook)', () => {
   it('инъекция в messages[].content; полный governance-набор для L0/L1 (H2)', async () => {
     const ctx = makeCtx();
     await (WolfSessionStartPlugin.setup as (c: unknown) => Promise<void>)(ctx);
-    const event = v2Event('executor-lead');
+    const event = v2Event('mr-wolf-coordinator-probe');
     await ctx.sessionHooks['context'](event);
     const injected = contentText(event);
     expect(injected).toContain(MARKER);
@@ -262,7 +278,7 @@ describe('wolf-session-start: v2 setup (context hook)', () => {
   it('идемпотентность по маркеру: второй context → без повторной инъекции', async () => {
     const ctx = makeCtx();
     await (WolfSessionStartPlugin.setup as (c: unknown) => Promise<void>)(ctx);
-    const event = v2Event('executor-lead');
+    const event = v2Event('mr-wolf-coordinator-probe');
     await ctx.sessionHooks['context'](event);
     await ctx.sessionHooks['context'](event);
     const markerParts = event.messages[0].content.filter((p) => String(p.text).includes(MARKER));

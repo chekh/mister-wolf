@@ -4,11 +4,13 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 // 2.15: guard ключевых секций скиллов конвейера (прецедент base-frames-guard 2.14 P323).
-// Редакция 2026-10-09: маркеры — имена скиллов, термины, статусы (не редакционные обороты).
+// Редакция S-DELIVERY 3.0.0: двухуровневая модель — удалённые роли заменены
+// совместимыми входами (D-2); маркеры — имена скиллов, термины, статусы
+// (не редакционные обороты).
 const skillsDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'templates', 'base', 'skills');
 const read = (name: string) => readFileSync(join(skillsDir, name, 'SKILL.md'), 'utf-8');
 
-describe('conveyor skills guard (2.15)', () => {
+describe('conveyor skills guard (2.15, редакция 3.0.0)', () => {
   it('wolf-design keeps contracts, ADR and no-implementation rule', () => {
     const s = read('wolf-design');
     expect(s).toContain('Контракты задавай типами/схемами');
@@ -39,22 +41,18 @@ describe('conveyor skills guard (2.15)', () => {
     expect(s).toContain('wolf-design');
   });
 
-  it('wolf-plan consumes requirements+design; L1-set checkbox is source of truth', () => {
+  it('wolf-plan consumes requirements+design; checkbox acceptance is source of truth', () => {
     const s = read('wolf-plan');
     expect(s).toContain('TASK из using-skills');
-    expect(s).toContain('[x] ставит L1');
+    expect(s).toContain('[x] ставит приёмник задачи');
     expect(s).toContain('не доказывает приёмку');
     expect(s).toContain('Исполнение FULL не стартует до этой сверки');
-    expect(s).toContain('wolf-sdd');
     expect(s).toContain('wolf-execute');
   });
 
   it('wolf-review keeps verdict vocabulary, budget stop and security-lens log', () => {
     const s = read('wolf-review');
     expect(s).toContain('UNRESOLVED');
-    // словарь вердиктов — через контракт отчёта ревьюера (SUMMARY/VERDICT/…);
-    // полный enum APPROVED | CHANGES_REQUIRED | INCONCLUSIVE живёт в рамке
-    // worker-reviewer и пинится в base-set-init (§11.3)
     expect(s).toContain('SUMMARY/VERDICT/FINDINGS/SCOPE/LIMITS/EVIDENCE');
     expect(s).toContain('artifact revision');
     expect(s).toContain('Security/trust обязателен');
@@ -62,15 +60,12 @@ describe('conveyor skills guard (2.15)', () => {
     expect(s).toContain('неизменённые результаты переиспользуй только при доказанной применимости');
   });
 
-  it('wolf-sdd/wolf-execute keep worker-no-commit and linear fallback semantics', () => {
+  it('deprecated skills are compatible entries pointing at surviving skills', () => {
     const sdd = read('wolf-sdd');
-    expect(sdd).toContain('Воркер не коммитит; L1 фиксирует результат');
-    // модель памяти 2.16.0: общий .wolf/ через common-dir, scope по умолчанию, promote
-    expect(sdd).toContain('scope: worktree:<name>');
-    expect(sdd).not.toContain('task-local');
-    expect(sdd).toContain('из test-plan');
-    expect(read('using-git-worktrees')).toContain('scope: worktree:<name>');
-    expect(read('using-git-worktrees')).not.toContain('task-local');
+    expect(sdd).toContain('Загрузить `wolf-execute` один раз');
+    expect(sdd).toContain('Переходная мера: удалить в следующем релизе');
+    expect(read('using-git-worktrees')).toContain('Загрузить `wolf-git` один раз');
+    expect(read('finishing-a-development-branch')).toContain('Загрузить `wolf-git` один раз');
     const exec = read('wolf-execute');
     expect(exec).toContain('TASK/RESULT/EVIDENCE');
     expect(exec).toContain('диспетчеризация');
@@ -78,23 +73,19 @@ describe('conveyor skills guard (2.15)', () => {
     expect(exec).toContain('Саморевью не независимо');
   });
 
-  it('discipline axis: review labels, RED/GREEN, evidence and worktree ownership', () => {
+  it('discipline axis: review entry, RED/GREEN, evidence and acceptance vocabulary', () => {
     const rcr = read('receiving-code-review');
-    expect(rcr).toContain('ACCEPTED, REFUTED, DEFERRED или NEEDS_CLARIFICATION');
-    expect(rcr).toContain('Отсутствие ответа ревьюера не означает одобрения');
+    expect(rcr).toContain('Загрузить `wolf-review` один раз');
+    expect(rcr).toContain('Переходная мера: удалить в следующем релизе');
     const ws = read('writing-skills');
     expect(ws).toContain('Трассировка');
-    expect(ws).toContain('wolf-skill-intake');
+    expect(ws).toContain('пробной доставке');
     const tdd = read('test-driven-development');
     expect(tdd).toContain('Запусти RED');
     expect(tdd).toContain('GREEN');
     const vbc = read('verification-before-completion');
     expect(vbc).toContain('INCONCLUSIVE, а не');
-    expect(vbc).toContain('[x] в плане ставит L1');
-    expect(read('using-git-worktrees')).toContain('.worktrees/<task>');
-    expect(read('finishing-a-development-branch')).toContain('Не предлагай недоступное действие как исполнимое');
-    expect(read('finishing-a-development-branch')).toContain(
-      'Не удаляй branch/worktree до подтверждения успешной интеграции'
-    );
+    expect(vbc).toContain('[x] в плане ставит приёмник задачи');
+    expect(vbc).toContain('ACCEPTED | PARTIAL | REJECTED | INCONCLUSIVE');
   });
 });

@@ -1,8 +1,8 @@
 // tests/integration/b0-sync.test.ts
-// REQ-04 (B0, 2.18.0), S-34: `wolf sync` не перезаписывает локальные мутации
-// штампованных файлов набора. Сценарий test-plan: init с пиннингом модели →
-// локальная правка .opencode/agents/worker-researcher.md → sync с другим
-// fresh-рендером (omit — «шаблон изменился») → mutated-skip, правка цела.
+// REQ-04 (B0), S-34, редакция S-DELIVERY 3.0.0: `wolf sync` не перезаписывает
+// локальные мутации штампованных файлов набора (9 агентов, без лиц).
+// Сценарий: init с пиннингом модели → локальная правка .opencode/agents/wolf-researcher.md
+// → sync с другим fresh-рендером (omit — «шаблон изменился») → mutated-skip, правка цела.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
@@ -21,7 +21,7 @@ function runCli(args: string[], cwd: string): { stdout: string; stderr: string; 
 
 describe('wolf sync: локальные мутации не перезаписываются (REQ-04, S-34)', () => {
   let dir: string;
-  const mutated = () => join(dir, '.opencode/agents/worker-researcher.md');
+  const mutated = () => join(dir, '.opencode/agents/wolf-researcher.md');
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'wolf-b0-sync-'));
@@ -37,14 +37,14 @@ describe('wolf sync: локальные мутации не перезаписы
     expect(res.status).toBe(0);
     // sync идёт с omit → fresh-рендер отличается от записанного (model-строки
     // вырезаны) — «шаблон изменился»; но файл мутирован локально → не тронут
-    expect(res.stdout).toContain('.opencode/agents/worker-researcher.md: skipped');
+    expect(res.stdout).toContain('.opencode/agents/wolf-researcher.md: skipped');
     expect(res.stdout).toContain('mutated');
     const body = readFileSync(mutated(), 'utf-8');
     expect(body).toContain('S-34: локальная правка пользователя');
     expect(body).toContain(`model: ${MODEL}`); // omit-рендер НЕ затёр пиннинг
-    // контраст: немутated файл с тем же изменившимся fresh-рендером — updated
-    expect(res.stdout).toContain('.opencode/agents/steward.md: updated');
-    // память sync не трогает (мутации лиц — зона Стюарда, D4)
+    // контраст: немутированный файл с тем же изменившимся fresh-рендером — updated
+    expect(res.stdout).toContain('.opencode/agents/mr-wolf.md: updated');
+    // память sync не трогает (D4)
     expect(res.stdout).toContain('Memory (.wolf/) untouched');
   });
 
@@ -52,13 +52,13 @@ describe('wolf sync: локальные мутации не перезаписы
     expect(runCli(['sync'], dir).status).toBe(0);
     const second = runCli(['sync'], dir);
     expect(second.status).toBe(0);
-    expect(second.stdout).toContain('.opencode/agents/worker-researcher.md: skipped');
+    expect(second.stdout).toContain('.opencode/agents/wolf-researcher.md: skipped');
     expect(second.stdout).toContain('mutated');
     expect(readFileSync(mutated(), 'utf-8')).toContain('S-34: локальная правка пользователя');
   });
 });
 
-describe('onboarding-блок AGENTS.md: версия формата (REQ-03, волна 2.20.0)', () => {
+describe('onboarding-блок AGENTS.md: версия формата (редакция 3.0.0)', () => {
   let d: string;
   const agentsMd = () => join(d, 'AGENTS.md');
 
@@ -69,7 +69,7 @@ describe('onboarding-блок AGENTS.md: версия формата (REQ-03, в
   });
   afterEach(() => rmSync(d, { recursive: true, force: true }));
 
-  it('R03-1/R03-2: блок v2 обновляется до шаблона; текст выше и ниже — байт-в-байт', () => {
+  it('R03-1/R03-2: блок v2 обновляется до шаблона (v4); текст выше и ниже — байт-в-байт', () => {
     const above = '# Мой проект\n\nМои правила.\n\n';
     const below = '\n## Мой хвост\n\nпосле блока\n';
     const v2 = '<!-- wolf:onboarding v2 -->\nстарый текст блока\n<!-- /wolf:onboarding -->';
@@ -80,7 +80,7 @@ describe('onboarding-блок AGENTS.md: версия формата (REQ-03, в
     const out = readFileSync(agentsMd(), 'utf-8');
     expect(out.startsWith(above)).toBe(true);
     expect(out.endsWith(below)).toBe(true);
-    expect(out).toContain('<!-- wolf:onboarding v3 -->');
+    expect(out).toContain('<!-- wolf:onboarding v4 -->');
     expect(out).not.toContain('старый текст блока');
     // R03-4: повторный проход блок не меняет
     expect(runCli(['sync'], d).status).toBe(0);
@@ -97,7 +97,7 @@ describe('onboarding-блок AGENTS.md: версия формата (REQ-03, в
   });
 
   it('R03-5: открывающий маркер без закрывающего → skipped с причиной, файл не тронут', () => {
-    const broken = '# Мой\n\n<!-- wolf:onboarding v3 -->\nбез закрывающего\n';
+    const broken = '# Мой\n\n<!-- wolf:onboarding v4 -->\nбез закрывающего\n';
     writeFileSync(agentsMd(), broken);
     const res = runCli(['sync'], d);
     expect(res.status).toBe(0);

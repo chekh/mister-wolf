@@ -1,6 +1,7 @@
 // tests/integration/base-set-init.test.ts
-// Полный `wolf init` в tmp-проекте: базовый набор (спека §11.1–11.3, §11.8)
-// + идемпотентность повторного init + проверки контента отрендеренных файлов.
+// Полный `wolf init` в tmp-проекте, редакция S-DELIVERY 3.0.0: состав набора
+// (9 агентов, 35 скиллов, 3 команды, БЕЗ плагинов и лиц) + идемпотентность
+// повторного init + проверки контента отрендеренных файлов.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, readdirSync, existsSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
@@ -17,19 +18,29 @@ function runCli(args: string[], cwd: string): { stdout: string; stderr: string; 
   return { stdout: r.stdout ?? '', stderr: r.stderr ?? '', status: r.status };
 }
 
+const MODEL = 'zai-coding-plan/glm-5.3';
 const AGENTS = [
-  'executor-lead',
   'mr-wolf',
-  'steward',
-  'worker-implementer',
-  'worker-researcher',
-  'worker-reviewer',
-  'worker-expert',
+  'wolf-architect',
+  'wolf-developer',
+  'wolf-editor',
+  'wolf-expert',
+  'wolf-release-engineer',
+  'wolf-researcher',
+  'wolf-reviewer',
+  'wolf-tester',
 ];
-const WORKERS_PLUS_STEWARD = ['steward', 'worker-implementer', 'worker-researcher', 'worker-reviewer', 'worker-expert'];
-const WORKERS = ['worker-implementer', 'worker-researcher', 'worker-reviewer'];
+const MAP_FORM_DENY = [
+  'wolf-architect',
+  'wolf-developer',
+  'wolf-editor',
+  'wolf-release-engineer',
+  'wolf-researcher',
+  'wolf-reviewer',
+  'wolf-tester',
+];
 
-describe('wolf init: базовый набор (спека §7, §11.1–11.3)', () => {
+describe('wolf init: базовый набор (S-DELIVERY 3.0.0)', () => {
   let dir: string;
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'wolf-base-set-'));
@@ -37,156 +48,122 @@ describe('wolf init: базовый набор (спека §7, §11.1–11.3)',
   });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-  it("создаёт полный набор: 7 агентов, 30 скиллов, 3 команды, 2 плагина + 7 seeded playbook'ов (§11.1)", () => {
-    const res = runCli(['init', '--full', '--model', 'zai-coding-plan/glm-5.3'], dir);
+  it('создаёт полный набор: 9 агентов, 35 скиллов, 3 команды, БЕЗ плагинов и лиц (R-08/R-11/R-12b)', () => {
+    const res = runCli(['init', '--full', '--platform', 'opencode', '--model', MODEL], dir);
     expect(res.status).toBe(0);
 
-    // 42 файла (7+30+3+2) + AGENTS.md в корне (onboarding v2 §4.2) созданы + 7 playbook'ов посеяны;
-    // F5 (§2.3): скиллы печатаются как `[skill] <имя> → <файл>` — в счётчике `- base set:` их больше нет.
-    // B0: у wolf-git кроме SKILL.md есть поставляемый регламент reference/…, поэтому
-    // `[skill]` counts both 30 SKILL.md files and their delivered references/scripts.
+    // 13 файловых целей «created» (9 агентов + 3 команды + AGENTS.md); скиллы
+    // печатаются как `[skill] <имя> → <файл>` — 55 файловых целей (35 SKILL.md + references/scripts).
     const created = (res.stdout.match(/- base set: \S+ created/g) ?? []).length;
-    expect(created).toBe(20);
-    // +1: канон разделения труда доставляется внутри существующего using-skills.
-    expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(50);
-    const laborPath = 'using-skills/references/division-of-labor.md';
-    const labor = readFileSync(join(dir, '.opencode/skills', laborPath), 'utf-8');
-    expect(labor).toContain(
-      readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../templates/base/skills', laborPath), 'utf-8')
-    );
-    expect(readFileSync(join(dir, '.opencode/skills/using-skills/SKILL.md'), 'utf-8')).toContain(
-      'references/division-of-labor.md'
-    );
+    expect(created).toBe(13);
+    expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(55);
     expect(res.stdout).toMatch(/- base set: AGENTS\.md created/);
 
     const agents = readdirSync(join(dir, '.opencode/agents')).filter((f) => f.endsWith('.md'));
-    expect(agents).toHaveLength(7);
+    expect(agents).toHaveLength(9);
+    const installed = agents.map((f) => f.replace(/\.md$/, '')).sort();
+    expect(installed).toEqual(AGENTS.slice().sort());
 
     const skills = readdirSync(join(dir, '.opencode/skills')).filter((d) =>
       existsSync(join(dir, '.opencode/skills', d, 'SKILL.md'))
     );
-    expect(skills).toHaveLength(30);
-    expect(skills).toContain('wolf-work-strategy');
-    expect(skills).toContain('wolf-user-report');
-    expect(skills).toContain('wolf-document-readability');
+    expect(skills).toHaveLength(35);
+    expect(skills).toContain('wolf-agent-language');
+    expect(skills).toContain('wolf-memory');
+    expect(skills).toContain('wolf-release');
+    expect(skills).toContain('wolf-requirements');
+    expect(skills).toContain('wolf-test');
 
     const commands = readdirSync(join(dir, '.opencode/command')).filter((f) => f.endsWith('.md'));
     expect(commands).toHaveLength(3);
 
-    const plugins = readdirSync(join(dir, '.opencode/plugins')).filter((f) => /\.(js|ts)$/.test(f));
-    expect(plugins).toHaveLength(2);
+    // R-12b: плагины вне автозагрузки — каталог не создаётся вовсе
+    expect(existsSync(join(dir, '.opencode/plugins')), 'plugins не рендерятся').toBe(false);
 
-    // посев в память: 6 playbook'ов → волна 2.17 T-05: base-set сеется ЛИЦАМИ
-    // (type face, shared/faces/, initiator: seed, owner_skill в каждом);
-    // legacy-посев note+facet howto больше не существует
-    const faces = readdirSync(join(dir, '.wolf/memory/shared/faces')).filter((f) => f.endsWith('.md'));
-    expect(faces).toHaveLength(7);
-    for (const f of faces) {
-      expect(readFileSync(join(dir, '.wolf/memory/shared/faces', f), 'utf-8')).toContain('owner_skill');
-    }
+    // R-08: лица не сеются; данных в памяти проекта нет
+    expect(existsSync(join(dir, '.wolf/memory/shared/faces')), 'faces не сеются').toBe(false);
     const list = runCli(['list', '--type', 'face'], dir).stdout;
-    expect((list.match(/\[face\]/g) ?? []).length).toBe(7);
-
-    // триггер жалобы в воркерских лицах (лица живут в shared/faces/) —
-    // процедурный, не декларативный (дефект догфудинга фазы C: декларативное
-    // правило воркеры не исполняли). Исключение 2.21.1: у reviewer жалоба
-    // переведена на рамку (W1–W4 + «Жалоба — по рамке»), без
-    // playbook-триггера
-    for (const f of ['worker-implementer', 'worker-researcher']) {
-      const seeded = readdirSync(join(dir, '.wolf/memory/shared/faces'))
-        .map((p) => readFileSync(join(dir, '.wolf/memory/shared/faces', p), 'utf-8'))
-        .find((body) => body.includes(`owner_skill: ${f}`));
-      expect(seeded, f).toBeDefined();
-      expect(seeded, f).toContain('ТРИГГЕР ЖАЛОБЫ');
-      expect(seeded, f).toContain('НЕ заменяет');
-    }
-    const reviewerFace = readdirSync(join(dir, '.wolf/memory/shared/faces'))
-      .map((p) => readFileSync(join(dir, '.wolf/memory/shared/faces', p), 'utf-8'))
-      .find((body) => body.includes('owner_skill: worker-reviewer'));
-    expect(reviewerFace, 'worker-reviewer').toBeDefined();
-    expect(reviewerFace, 'worker-reviewer').toContain('W1–W4');
-    expect(reviewerFace, 'worker-reviewer').toContain('Жалоба — по рамке');
+    expect(list.match(/\[face\]/g)).toBeNull();
   });
 
-  it("повторный init: все файловые outcomes skipped, playbook'ы не задвоены (§11.2)", () => {
-    expect(runCli(['init', '--full', '--model', 'zai-coding-plan/glm-5.3'], dir).status).toBe(0);
+  it('повторный init: все файловые outcomes skipped, дублей нет', () => {
+    expect(runCli(['init', '--full', '--platform', 'opencode', '--model', MODEL], dir).status).toBe(0);
     const agentPath = join(dir, '.opencode/agents/mr-wolf.md');
     const before = readFileSync(agentPath, 'utf-8');
 
     // повторный init на живом проекте — под K6-гейтом подтверждения: --yes применяет план
-    const again = runCli(['init', '--full', '--model', 'zai-coding-plan/glm-5.3', '--yes'], dir);
+    const again = runCli(['init', '--full', '--platform', 'opencode', '--model', MODEL, '--yes'], dir);
     expect(again.status).toBe(0);
     expect(again.stdout).not.toMatch(/- base set: \S+ created/); // всё skipped (wx-политика)
     expect(again.stdout).toMatch(/- base set: \S+ skipped/);
     expect(readFileSync(agentPath, 'utf-8')).toBe(before); // существующее не тронуто
 
     const list = runCli(['list', '--type', 'face'], dir).stdout;
-    expect((list.match(/\[face\]/g) ?? []).length).toBe(7); // снова 7, не 14
+    expect(list.match(/\[face\]/g)).toBeNull(); // лица не появились
   });
 
-  it('контент отрендеренных агентов: agent-id ×7, ЛИЦО доставлено L1/plugin у воркеров, steward — тройка с plugin-inject (§11.3, §11.8)', () => {
-    expect(runCli(['init', '--full', '--model', 'zai-coding-plan/glm-5.3'], dir).status).toBe(0);
+  it('контент отрендеренных агентов: agent-id ×9, штампы, словари исследователя/ревьюера, using-skills (§11.3)', () => {
+    expect(runCli(['init', '--full', '--platform', 'opencode', '--model', MODEL], dir).status).toBe(0);
 
     for (const a of AGENTS) {
       const body = readFileSync(join(dir, '.opencode/agents', `${a}.md`), 'utf-8');
       expect(body, a).toContain(`agent-id: ${a}`);
       expect(body, a).toContain('wolf:rendered base='); // штамп рендера
+      expect(body, a).not.toContain('{{model.'); // плейсхолдеры подставлены
+      expect(body, a).not.toContain('{{tool.'); // манифест-контракт рендера
     }
 
-    // тройка у воркеров (2.21.1): ЛИЦО доставляет L1/plugin — рамка ссылается
-    // на доставленное лицо, самостоятельного wolf search у воркеров больше нет;
-    // steward сохраняет полный контур plugin-inject + wolf search
-    for (const a of WORKERS) {
-      const body = readFileSync(join(dir, '.opencode/agents', `${a}.md`), 'utf-8');
-      // 'playbook' в любом регистре: reviewer пишет «Playbook не расширяет TASK»
-      expect(body.toLowerCase(), a).toContain('playbook');
-      expect(body, a).toContain('доставленное лицо');
-      expect(body, a).not.toContain('plugin-inject');
+    // исследователь: честный отчёт с пробелами; ревьюер: словарь вердиктов
+    const researcher = readFileSync(join(dir, '.opencode/agents/wolf-researcher.md'), 'utf-8');
+    expect(researcher).toContain('FINDINGS/CONFIDENCE/GAPS');
+    expect(researcher).toContain('QUESTION/NEEDS_CONTEXT');
+    const reviewer = readFileSync(join(dir, '.opencode/agents/wolf-reviewer.md'), 'utf-8');
+    expect(reviewer).toContain('APPROVED | CHANGES_REQUIRED | INCONCLUSIVE');
+
+    // исполнители не нанимают (map-форма permission; wolf-expert — list-form permissions)
+    for (const a of MAP_FORM_DENY) {
+      const fm = readFileSync(join(dir, '.opencode/agents', `${a}.md`), 'utf-8').split('---')[1] ?? '';
+      expect(fm, `${a}: task deny`).toMatch(/task:\s*deny/);
     }
-    const stewardBody = readFileSync(join(dir, '.opencode/agents', 'steward.md'), 'utf-8');
-    expect(stewardBody).toContain('plugin-inject');
-    expect(stewardBody).toContain('wolf search');
+    const expertFm = readFileSync(join(dir, '.opencode/agents/wolf-expert.md'), 'utf-8').split('---')[1] ?? '';
+    expect(expertFm).toContain("action: 'task'");
+    expect(expertFm).toContain("effect: 'deny'");
+    const mrWolfFm = readFileSync(join(dir, '.opencode/agents/mr-wolf.md'), 'utf-8').split('---')[1] ?? '';
+    expect(mrWolfFm).toMatch(/"wolf-developer":\s*allow/); // нанимает wolf-*
 
-    // словарь вердиктов ревьюера — полный enum в рамке worker-reviewer
-    const reviewerBody = readFileSync(join(dir, '.opencode/agents', 'worker-reviewer.md'), 'utf-8');
-    expect(reviewerBody).toContain('VERDICT: APPROVED | CHANGES_REQUIRED | INCONCLUSIVE');
-
-    // using-skills в rendered-виде: инварианты редакции 2026-10-09
+    // using-skills в rendered-виде: маршруты и плотность
     const core = readFileSync(join(dir, '.opencode/skills/using-skills/SKILL.md'), 'utf-8');
     expect(core).toContain('references/routes-intent.md');
-    const using =
-      core +
-      '\n' +
-      ['contracts.md', 'project-rules.md']
-        .map((file) => readFileSync(join(dir, '.opencode/skills/using-skills/references', file), 'utf8'))
-        .join('\n');
-    for (const marker of [
-      'Маршруты: когда, как и результат',
-      'загрузи полный текст',
-      'протокол ошибки масштаба',
-      'режим меняет только L1',
-      'Режим фиксирует L1',
-      'references/contracts.md',
-      'DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED',
-    ])
-      expect(using).toContain(marker);
+    expect(core).toContain('density standard|draft');
+    const labor = join(dir, '.opencode/skills/using-skills/references/division-of-labor.md');
+    expect(existsSync(labor), 'division-of-labor доставлен').toBe(true);
+    expect(readFileSync(labor, 'utf-8')).toContain(
+      readFileSync(
+        resolve(
+          dirname(fileURLToPath(import.meta.url)),
+          '../../templates/base/skills/using-skills/references/division-of-labor.md'
+        ),
+        'utf-8'
+      )
+    );
   });
 
-  it('worker-*: wolf_* MCP-тулы запрещены в rendered permission (изоляция памяти воркеров)', () => {
-    expect(runCli(['init', '--full', '--model', 'zai-coding-plan/glm-5.3'], dir).status).toBe(0);
+  it('wolf-*: wolf_* MCP-тулы запрещены в rendered permission (изоляция памяти исполнителей)', () => {
+    expect(runCli(['init', '--full', '--platform', 'opencode', '--model', MODEL], dir).status).toBe(0);
 
-    // воркеры: deny обоих MCP-алиасов wolf (серверы «wolf» и «mr-wolf») внутри frontmatter
-    for (const a of ['worker-implementer', 'worker-researcher', 'worker-reviewer']) {
+    // исполнители (map-форма): deny обоих MCP-алиасов wolf (серверы «wolf» и «mr-wolf») внутри frontmatter
+    for (const a of MAP_FORM_DENY) {
       const body = readFileSync(join(dir, '.opencode/agents', `${a}.md`), 'utf-8');
       const frontmatter = body.split('---')[1] ?? '';
       for (const pat of ['wolf_\\*', 'mr-wolf_\\*']) {
         expect(frontmatter, `${a}: ${pat}`).toMatch(new RegExp(`["']?${pat}["']?:\\s*deny`));
       }
     }
-    // не-воркеры запрета не получают
-    for (const a of ['mr-wolf', 'executor-lead', 'steward']) {
-      const body = readFileSync(join(dir, '.opencode/agents', `${a}.md`), 'utf-8');
-      expect(body, a).not.toMatch(/["']?(wolf|mr-wolf)_\*["']?:\s*deny/);
-    }
+    // wolf-expert (list-форма): deny-записи перекрывают всё, кроме read/glob/grep
+    const expertFm = readFileSync(join(dir, '.opencode/agents/wolf-expert.md'), 'utf-8').split('---')[1] ?? '';
+    expect(expertFm).toMatch(/\{\s*action:\s*'\*',\s*resource:\s*'\*',\s*effect:\s*'deny'\s*\}/);
+    // mr-wolf запрета не получает
+    const mrWolfFm = readFileSync(join(dir, '.opencode/agents/mr-wolf.md'), 'utf-8');
+    expect(mrWolfFm).not.toMatch(/["']?(wolf|mr-wolf)_\*["']?:\s*deny/);
   });
 });
