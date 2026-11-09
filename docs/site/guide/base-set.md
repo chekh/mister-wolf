@@ -35,6 +35,7 @@ The count includes 8 short compatibility entries carried from the pilot — mark
 | `using-git-worktrees`            | isolated worktrees for feature work and plan execution                                                                                                                          |
 | `using-skills`                   | load the required methodology before responding or acting                                                                                                                       |
 | `verification-before-completion` | run the checks before any "done" claim — evidence first                                                                                                                         |
+| `wolf-agent-language`            | the internal agent language: TASK, RESULT, QUESTION, BLOCKED, UPDATE, FINDING and handoffs between agents |
 | `wolf-brainstorm`                | intent dialogue — substantive questions and proposals until the goal is understood, a visible recap before new work starts                                                      |
 | `wolf-code-craft`                | full implementation of the assigned behavior with readable means and no unnecessary complexity; also the criteria for evaluating an implementation within a mandate             |
 | `wolf-code-simplify`             | targeted simplification of a named complexity with behavior and contract preserved — assigned separately, not an obligatory stage after every edit                              |
@@ -46,22 +47,26 @@ The count includes 8 short compatibility entries carried from the pilot — mark
 | `wolf-explain`                   | human explanations built from actions, reasons and consequences — restores a missing link instead of repeating, and keeps facts and the unknown apart                           |
 | `wolf-git`                       | git stages of a task — entry and resume, branch or worktree, checkpoint, handoff, finish and cleanup; ships the `git-collaboration-policy-v1.1` reference and automates nothing |
 | `wolf-handoff`                   | continue an overloaded session in a fresh one, without losing progress                                                                                                          |
-| `wolf-plan`                      | zero-context plans where every task is a self-sufficient worker brief                                                                                                           |
+| `wolf-memory`                    | addressed reading and saving of a TASK, mini-plan, result, decision or handoff into Wolf memory |
+| `wolf-plan`                      | zero-context plans where every task is a self-sufficient brief for an executor                                                                                                           |
+| `wolf-requirements`              | create or update requirements with verifiable REQ/NFR from an agreed goal |
 | `wolf-work-strategy`             | choose a proportionate route, ask the context holder early, and stop at sufficient evidence                                                                                     |
 | `wolf-user-report`               | reader-focused documents with sufficient depth, appropriate visuals, HTML/CSS and reusable project templates                                                                    |
 | `wolf-feedback`                  | role-scoped questions, friction, complaints and bounded session diagnosis                                                                                                       |
 | `wolf-visual-dialogue`           | visual discussion, feedback and an agreed standalone document                                                                                                                   |
+| `wolf-release`                   | release preparation of a verified revision, publication within authority and the post-check |
 | `wolf-release-docs`              | release documentation pass: coverage map, EN/RU alignment, generated pages                                                                                                      |
 | `wolf-review`                    | multi-lens document review loop                                                                                                                                                 |
 | `wolf-sdd`                       | subagent-driven development for plans with independent tasks                                                                                                                    |
 | `wolf-skill-intake`              | connect external skills through the Wolf quality loop, owner-gated                                                                                                              |
 | `wolf-software-design`           | engineering method inside wolf-design: boundaries, contracts, dependencies and state ownership of a software solution                                                           |
+| `wolf-test`                      | independent behavioral, integration and regression checks |
 | `wolf-testplan`                  | test-plan.md with Given/When/Then per requirement                                                                                                                               |
 | `writing-skills`                 | Wolf skill lifecycle: create, edit, verify                                                                                                                                      |
 
-For L0/L1, bootstrap delivers the complete installed `using-skills` body rather than a separate summary. The agent checks the route when the goal or stage changes and loads other skills before applying them. L2 receives the passive worker protocol and assigned methodologies. Missing bootstrap content is reported explicitly.
+For L0/L1, bootstrap delivers the complete installed `using-skills` body rather than a separate summary. The agent checks the route when the goal or stage changes and loads other skills before applying them. The executor receives the passive protocol and assigned methodologies. Missing bootstrap content is reported explicitly.
 
-Load wolf-work-strategy once per assignment, then again only if its version changes or its text is lost. It guides action selection while preserving roles and mandatory project gates. An early question can replace an expensive investigation, including fact finding; obvious facts in the supplied inputs need no question. Without an in-call dialogue channel, L2 returns the question to L1 through its existing result contract. Updating templates does not reconcile an old active playbook; use the existing Steward workflow.
+Load wolf-work-strategy once per assignment, then again only if its version changes or its text is lost. It guides action selection while preserving roles and mandatory project gates. An early question can replace an expensive investigation, including fact finding; obvious facts in the supplied inputs need no question. Without an in-call dialogue channel, the executor returns the question to the lead through its existing result contract. Updating templates does not reconcile an old active playbook; use the existing Steward workflow.
 
 Load wolf-user-report for a requested or agreed standalone human document, including updates. It is available in the full base set, not automatically loaded for chat replies or machine RESULT/EVIDENCE. Preserve the chosen format and role boundaries; do not start new research just to format the result. Project themes and templates remain project resources, not mandatory bundled CSS profiles.
 
@@ -75,9 +80,9 @@ Load wolf-document-readability when a finished document — requirements, a chan
 | `complain`    | file an owner complaint into the learning loop: the complaint is recorded (in 3.0.0 without automatic triage — the Steward is temporarily paused) |
 | `doc-review`  | multi-lens document review orchestrated via the wolf-review skill                   |
 
-## Plugins — 2 → `.opencode/plugins/`
+## Plugins — 2 (reserved, not installed)
 
-Plugins ship with the opencode harness layer of the package (`templates/opencode/plugins/`) and are part of the same stamped set:
+Plugins ship with the opencode harness layer of the package (`templates/opencode/plugins-reserved/`) and are part of the same stamped set:
 
 The standard delivery needs no plugins: since 3.0.0 `wolf init` does not install the Wolf plugins — they ship reserved in `templates/opencode/plugins-reserved/`, and a file there is not an enabled plugin. If you keep them enabled from an earlier release, they keep working:
 
@@ -124,7 +129,7 @@ Want to customize an agent or a skill? Do it in memory, not in the stamped file:
 
 using-skills has a small core and topical references describing when and how to
 apply a skill and its result. Assigned skills can be loaded directly; L2 does
-not browse the catalog. L1 composes an assistant from an L2 instance, its face
+not browse the catalog. The lead composes an assistant from an executor instance, its face
 and skills; programmatic tools support its mechanical work.
 
 ### The internal agent language reference
@@ -133,7 +138,7 @@ Since 2.29.0 using-skills ships `references/agent-language.md` — a static spec
 
 Status: observation stage. The specification writes down existing constructs and changes no runtime; whether it actually reduces re-asks and meaning drift has not been measured, and the language stays fixed until the stage concludes. If a term or a form itself is the problem, complaints now carry a LANGUAGE subject — `LANGUAGE/ambiguous-definition`, `LANGUAGE/insufficient-form`, `LANGUAGE/excessive-requirement` (see [The Steward](/guide/feedback)). Humans keep ordinary language in all cases.
 
-Three engineering skills ride the existing route instead of adding a stage to it: the goal reaches L1, `wolf-design` applies the software-design method where boundaries and contracts are the open question, the existing plan and test-plan follow, the implementer receives `wolf-code-craft`, and the existing independent review and project checks stay where they are.
+Three engineering skills ride the existing route instead of adding a stage to it: the goal reaches the lead, `wolf-design` applies the software-design method where boundaries and contracts are the open question, the existing plan and test-plan follow, the implementer receives `wolf-code-craft`, and the existing independent review and project checks stay where they are.
 
 A researcher answers an explicitly assigned architectural question with a comparison of variants and a recommendation — the architecture itself is approved by the responsible level. Simplification (`wolf-code-simplify`) is assigned separately when a named complexity needs its own analysis; it is not an automatic extra round, and the implementer removes the surplus complexity inside the current mandate. Documents and operations without a software implementation do not get the engineering set assigned automatically.
 
