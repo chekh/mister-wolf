@@ -707,7 +707,7 @@ describe('applyResolutions: глаголы, свидетель, бэкапы (§
     expect(readFileSync(join(proj, '.opencode/wolf-sync-state.json'), 'utf-8')).toBe(witness);
   });
 
-  it('take на цели без эталона и на removed — отказ на валидации (⛔), записей нет', async () => {
+  it('take вне карты (orphan) — отказ на валидации (⛔); take на removed разрешён (3.0.0, U1)', async () => {
     const proj = await boot('p-no-base');
     touch(proj, MR_WOLF);
     const orphan = join(proj, '.opencode/agents/orphan.md');
@@ -720,9 +720,44 @@ describe('applyResolutions: глаголы, свидетель, бэкапы (§
       cwd: proj,
     });
     expect(orphanPlan.errors.join('\n')).toMatch(/no base for a file outside the update map/);
+    // 3.0.0 (U1): removed-цель объявлена картой — take = «принять удаление», не отказ
     const removedPlan = planResolutions(reg, MAP, [{ target: gone, verb: 'take' }], { here: true, cwd: proj });
-    expect(removedPlan.errors.join('\n')).toMatch(/no base for a file outside the update map/);
+    expect(removedPlan.errors).toEqual([]);
+    expect(removedPlan.ops[0]).toMatchObject({ file: gone, cls: 'removed', verb: 'take' });
     expect(readFileSync(orphan, 'utf-8')).toContain('Orphan');
+  });
+
+  it('take на removed: бэкап → файл удалён → свидетель снят; повтор no-op; сбор решений пуст', async () => {
+    const proj = await boot('p-removed-take');
+    const gone = '.opencode/skills/gone-skill/SKILL.md';
+    const local = read(proj, gone);
+    const reg = await registryFor(proj);
+
+    const res = await applyResolutions(
+      planResolutions(reg, MAP, [{ target: gone, verb: 'take' }], { here: true, cwd: proj }).ops,
+      applyDeps()
+    );
+
+    expect(res.errors).toEqual([]);
+    expect(existsSync(join(proj, gone))).toBe(false); // файл удалён
+    expect(res.backups).toEqual([{ file: gone, backup: `.wolf/backup/upgrade/2026-10-25/${gone}` }]);
+    expect(read(proj, res.backups[0]!.backup)).toBe(local); // локальный контент сохранён байт-в-байт
+    expect(loadSyncState(proj).files[gone]).toBeUndefined(); // свидетель-запись снята
+    expect(res.applied[0]).toMatchObject({ file: gone, verb: 'take', removed: true });
+
+    // повтор: цели уже нет — идемпотентный no-op без ошибок и бэкапов
+    const again = await applyResolutions(
+      planResolutions(reg, MAP, [{ target: gone, verb: 'take' }], { here: true, cwd: proj }).ops,
+      applyDeps()
+    );
+    expect(again.errors).toEqual([]);
+    expect(again.applied[0]!.noop).toBe(true);
+    expect(again.backups).toEqual([]);
+
+    // повторный сбор решений не показывает цель; следующий проход не даёт конфликтов
+    expect((await registryFor(proj)).targets).toEqual([]);
+    const pass = await syncBaseSet(newRenderer(), proj, 'omit');
+    expect(pass.orphaned).toEqual([]);
   });
 
   it('orphan: protect гасит конфликт (следующий проход → protected), pin пишет версию базы', async () => {

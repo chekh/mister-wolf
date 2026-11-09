@@ -331,6 +331,19 @@ export async function runUpgradeHere(deps: UpgradeHereDeps, opts: UpgradeHereOpt
     ),
     ...(report ? stepDetailLines(report, map) : []),
     { kind: 'summary', counters, done: false },
+    // Подсказка §4.12 (формат парка): TTY без --yes и оставшиеся решения —
+    // путь к разбору; до resolve понятный отчёт — корректное поведение.
+    ...(opts.tty === true && opts.yes !== true && status === 'needs-decision'
+      ? [
+          line(
+            'info',
+            `hint: ${report?.verify.summary.needsDecision ?? 0} ${
+              (report?.verify.summary.needsDecision ?? 0) === 1 ? 'file needs' : 'files need'
+            } a decision — run wolf upgrade --review`,
+            true
+          ),
+        ]
+      : []),
     line(marker, finalText),
   ];
   const project: JsonProject = {
@@ -546,7 +559,14 @@ export function digestLines(applied: AppliedResolution[]): ReportNode[] {
     .map(([verb, n]) => `${verb}: ${n}`);
   const out: ReportNode[] = [line('ok', `resolved: ${applied.length} (${parts.join(', ')})`)];
   for (const a of applied) {
-    const suffix = a.backup !== undefined ? ` (local saved: ${a.backup})` : a.noop === true ? ' — no-op' : '';
+    const suffix =
+      a.backup !== undefined
+        ? a.removed === true
+          ? ` — removed (local saved: ${a.backup})`
+          : ` (local saved: ${a.backup})`
+        : a.noop === true
+          ? ' — no-op'
+          : '';
     out.push(line('info', `${a.verb} ${a.project}/${a.file}${suffix}`, true));
   }
   return out;

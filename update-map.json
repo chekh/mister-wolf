@@ -1,11 +1,21 @@
 {
-  "version": "2.33.0",
-  "prev": "2.32.2",
+  "version": "3.0.0",
+  "prev": "2.33.0",
   "files": [
+    {
+      "path": "base/agents/executor-lead.md",
+      "kind": "agent",
+      "category": "removed"
+    },
     {
       "path": "base/agents/mr-wolf.md",
       "kind": "agent",
       "category": "changed"
+    },
+    {
+      "path": "base/agents/steward.md",
+      "kind": "agent",
+      "category": "removed"
     },
     {
       "path": "base/agents/wolf-architect.md",
@@ -46,6 +56,26 @@
       "path": "base/agents/wolf-tester.md",
       "kind": "agent",
       "category": "new"
+    },
+    {
+      "path": "base/agents/worker-expert.md",
+      "kind": "agent",
+      "category": "removed"
+    },
+    {
+      "path": "base/agents/worker-implementer.md",
+      "kind": "agent",
+      "category": "removed"
+    },
+    {
+      "path": "base/agents/worker-researcher.md",
+      "kind": "agent",
+      "category": "removed"
+    },
+    {
+      "path": "base/agents/worker-reviewer.md",
+      "kind": "agent",
+      "category": "removed"
     },
     {
       "path": "base/commands/analyze-doc.md",
@@ -205,7 +235,7 @@
     {
       "path": "base/skills/wolf-document-readability/SKILL.md",
       "kind": "skill",
-      "category": "new"
+      "category": "changed"
     },
     {
       "path": "base/skills/wolf-execute/references/technical-helpers.md",
@@ -336,9 +366,62 @@
       "path": "base/skills/writing-skills/SKILL.md",
       "kind": "skill",
       "category": "changed"
+    },
+    {
+      "path": "opencode/plugins/wolf-router.ts",
+      "kind": "plugin",
+      "category": "removed"
+    },
+    {
+      "path": "opencode/plugins/wolf-session-start.js",
+      "kind": "plugin",
+      "category": "removed"
     }
   ],
-  "faces": [],
+  "faces": [
+    {
+      "template": "base/playbooks/complaint-protocol.md",
+      "owner_skill": "mr-wolf",
+      "category": "deprecated",
+      "seed": false
+    },
+    {
+      "template": "base/playbooks/executor-lead-playbook.md",
+      "owner_skill": "executor-lead",
+      "category": "deprecated",
+      "seed": false
+    },
+    {
+      "template": "base/playbooks/steward-nastavnik.md",
+      "owner_skill": "steward",
+      "category": "deprecated",
+      "seed": false
+    },
+    {
+      "template": "base/playbooks/worker-expert-playbook.md",
+      "owner_skill": "worker-expert",
+      "category": "deprecated",
+      "seed": false
+    },
+    {
+      "template": "base/playbooks/worker-implementer-playbook.md",
+      "owner_skill": "worker-implementer",
+      "category": "deprecated",
+      "seed": false
+    },
+    {
+      "template": "base/playbooks/worker-researcher-playbook.md",
+      "owner_skill": "worker-researcher",
+      "category": "deprecated",
+      "seed": false
+    },
+    {
+      "template": "base/playbooks/worker-reviewer-playbook.md",
+      "owner_skill": "worker-reviewer",
+      "category": "deprecated",
+      "seed": false
+    }
+  ],
   "agents_md": {
     "category": "changed",
     "mode": "append-block"

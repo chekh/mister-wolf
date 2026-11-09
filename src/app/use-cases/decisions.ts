@@ -6,7 +6,7 @@
 // Сбор и валидация ничего не пишут; запись — только applyResolutions, после
 // того как все ошибки собраны (AC3 «к другим файлам ничего не применено»).
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
-import { mkdir } from 'fs/promises';
+import { mkdir, unlink } from 'fs/promises';
 import { basename, dirname, join } from 'path';
 import { dedupeByRealpath, type RegisteredProject } from '../../adapters/fs/projects-registry.js';
 import type { FileKind, UpdateMap } from '../../adapters/fs/update-map.js';
@@ -448,7 +448,10 @@ const MATRIX: Record<TargetClass, Record<ResolutionVerb, true | string>> = {
     protect: 'AGENTS.md has no YAML frontmatter',
     pin: 'AGENTS.md has no YAML frontmatter',
   },
-  removed: { take: 'no base for a file outside the update map', keep: true, protect: true, pin: true },
+  // 3.0.0 (U1, two-level): removed-цель объявлена картой — take = «принять
+  // удаление» (бэкап локального контента + удаление файла, applyResolutions).
+  // orphan.take остаётся запрещённым: файлы вне карты (my-*) не трогаются.
+  removed: { take: true, keep: true, protect: true, pin: true },
   plain: { take: true, keep: true, protect: true, pin: true },
   missing: {
     take: true,
@@ -671,6 +674,8 @@ export interface AppliedResolution {
   verb: ResolutionVerb;
   /** Путь бэкапа локального контента (только `take` при отличии от эталона). */
   backup?: string;
+  /** `take` на removed-цель: файл удалён (отчёт показывает удаление с бэкапом). */
+  removed?: true;
   /** Ни файл, ни свидетель не изменились (идемпотентный повтор). */
   noop?: true;
 }
@@ -715,6 +720,32 @@ export async function applyResolutions(ops: ResolveOp[], deps: ApplyResolutionDe
 
       switch (op.verb) {
         case 'take': {
+          if (op.cls === 'removed') {
+            // 3.0.0 (U1, two-level): take на removed = «принять удаление».
+            // Эталона у removed-цели нет — рендер не вызывается: бэкап
+            // локального контента (NFR-05) → удаление файла → свидетель-запись
+            // снята. Повтор идемпотентен: цели уже нет → no-op.
+            if (current === null) {
+              applied.push({ root: op.root, project: op.project, file: op.file, verb: op.verb, noop: true });
+              continue;
+            }
+            backupPath = (await backupLocalFile(op.root, op.file, current, new Date(now()))).path;
+            await unlink(abs);
+            if (state.files[op.file] !== undefined) {
+              delete state.files[op.file];
+              saveSyncState(op.root, state);
+            }
+            applied.push({
+              root: op.root,
+              project: op.project,
+              file: op.file,
+              verb: op.verb,
+              removed: true,
+              ...(backupPath !== undefined ? { backup: backupPath } : {}),
+            });
+            backups.push({ file: op.file, backup: backupPath! });
+            continue;
+          }
           const fresh = deps.renderer.renderFreshFile(op.root, op.file);
           if (fresh === null) throw new Error('no base for a file outside the update map');
           if (current !== null && normalizeManaged(current) !== fresh) {
