@@ -58,7 +58,9 @@ export interface BaseSetDeps {
     baseDir: string,
     opts?: { models?: ModelContext | 'omit'; scope?: 'full' | 'agents-md' }
   ) => Promise<BaseSetOutcome[]>;
-  seed: (baseDir: string) => Promise<BaseSetOutcome[]>;
+  /** S-DELIVERY W2 (3.0.0): seed выведен из штатного пути (набор без лиц);
+   * опционален для совместимости внешних deps — initProject его не вызывает. */
+  seed?: (baseDir: string) => Promise<BaseSetOutcome[]>;
 }
 
 export interface InitProjectDeps {
@@ -94,7 +96,7 @@ export interface InitProjectInput {
    * ModelContext — только явный --model (opt-in). */
   models: ModelContext | 'omit';
   modelSource?: 'flag' | 'tty';
-  /** true — полный базовый набор + playbook-seed; false/undefined — минимальный набор. */
+  /** true — полный базовый набор; false/undefined — минимальный набор. */
   full?: boolean;
   /** Ответ TTY-интервью (спека §4): сеется как note+facet context; пусто/не-TTY — не сеется. */
   purpose?: string;
@@ -292,25 +294,9 @@ export async function initProject(
       baseSetOutcomes.push(
         ...(await deps.baseSet.render(baseDir, { models: input.models, scope: input.full ? 'full' : 'agents-md' }))
       );
-      if (input.full) {
-        baseSetOutcomes.push(...(await deps.baseSet.seed(baseDir)));
-        // REQ-04 (B0): §3.4-инвариант — после посева каждому базовому агенту
-        // должно соответствовать активное лицо с owner_skill === agent_id.
-        // Нарушение — не авария init (design §6: отказы B0 подсвечиваются,
-        // ловит doctor), а честный conflict-исход в отчёте.
-        const activeOwners = (await deps.store.list({ type: 'face' }))
-          .filter((o) => o.status === 'active')
-          .map((o) => (o as { owner_skill?: unknown }).owner_skill)
-          .filter((o): o is string => typeof o === 'string');
-        const violations = baseSetFaceViolations(activeOwners);
-        if (violations.length > 0) {
-          baseSetOutcomes.push({
-            file: '(base set faces)',
-            action: 'conflict',
-            reason: `no active face with owner_skill for agent(s): ${violations.join(', ')} (design §3.4)`,
-          });
-        }
-      }
+      // S-DELIVERY W2 (3.0.0): набор без лиц — seed и B0-инвариант выведены из
+      // штатного пути init; baseSetFaceViolations остаётся чистой функцией
+      // (экспорт для тестов инварианта), вызовов без лиц в пути больше нет.
     }
   }
 

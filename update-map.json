@@ -313,50 +313,7 @@
       "category": "unchanged"
     }
   ],
-  "faces": [
-    {
-      "template": "base/playbooks/complaint-protocol.md",
-      "owner_skill": "mr-wolf",
-      "category": "unchanged",
-      "seed": true
-    },
-    {
-      "template": "base/playbooks/executor-lead-playbook.md",
-      "owner_skill": "executor-lead",
-      "category": "unchanged",
-      "seed": true
-    },
-    {
-      "template": "base/playbooks/steward-nastavnik.md",
-      "owner_skill": "steward",
-      "category": "unchanged",
-      "seed": true
-    },
-    {
-      "template": "base/playbooks/worker-expert-playbook.md",
-      "owner_skill": "worker-expert",
-      "category": "unchanged",
-      "seed": true
-    },
-    {
-      "template": "base/playbooks/worker-implementer-playbook.md",
-      "owner_skill": "worker-implementer",
-      "category": "unchanged",
-      "seed": true
-    },
-    {
-      "template": "base/playbooks/worker-researcher-playbook.md",
-      "owner_skill": "worker-researcher",
-      "category": "unchanged",
-      "seed": true
-    },
-    {
-      "template": "base/playbooks/worker-reviewer-playbook.md",
-      "owner_skill": "worker-reviewer",
-      "category": "unchanged",
-      "seed": true
-    }
-  ],
+  "faces": [],
   "agents_md": {
     "category": "unchanged",
     "mode": "append-block"

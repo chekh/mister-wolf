@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { join } from 'path';
-import { readFileSync, readdirSync, existsSync } from 'fs';
+import { existsSync } from 'fs';
 import { readFile, writeFile } from 'fs/promises';
 import { createInterface } from 'node:readline/promises';
 import { createCliContainer } from '../../../bootstrap/container.js';
@@ -9,11 +9,10 @@ import { wolfUserConfigDir } from '../../../adapters/fs/user-config.js';
 import { PLATFORM_ADAPTERS, CANONICAL_MCP_COMMAND } from '../../../adapters/platforms/index.js';
 import { writeSchemaVersionIfAbsent } from '../../../adapters/fs/schema-version.js';
 import { ensureCurrentSchema } from '../../../adapters/fs/schema-guard.js';
-import { initProject, planInit, recreateConfig, type BaseSetOutcome } from '../../../app/use-cases/init-project.js';
+import { initProject, planInit, recreateConfig } from '../../../app/use-cases/init-project.js';
 import { ensureGitignoreBlock } from '../../../app/use-cases/gitignore-block.js';
 import { OpencodeBaseSetRenderer } from '../../../adapters/render/opencode/opencode-renderer.js';
 import { templatesRoot, harnessTemplatesRoot, wolfVersion } from '../../../adapters/render/templates-root.js';
-import { seedBasePlaybooks } from '../../../app/use-cases/seed-base-playbooks.js';
 import { isNpxRun } from '../../../domain/npx.js';
 import { UserFacingError } from '../../../domain/errors.js';
 import { safeCwd } from '../cli-entry.js';
@@ -106,7 +105,7 @@ export function memoryInitCommand(): Command {
         const { root } = resolveMemoryRoot(baseDir);
         if (options.recreate) {
           await recreateConfig(root);
-          // восстановление = приведение к валидному СОСТОЯНИЮ, а не тихий штамп маркера ниже:
+          // восстановление = приведение к валидному СОСТОЯНИЮ, не тихий штамп маркера ниже:
           // легаси-схема (1/без маркера) мигрирует здесь (layout + маркер), иначе markSchemaCurrent
           // дописал бы v2 без layout-миграции и objects/ остался бы осиротевшим навсегда;
           // схема из будущего — честный отказ «обнови wolf» (спека §3), а не даунгрейд 99→2
@@ -183,16 +182,8 @@ export function memoryInitCommand(): Command {
         const { initializer, store, log, clock, idGen, index, lock, declarations } = createCliContainer(baseDir);
         const registry = new ProjectsRegistry(wolfUserConfigDir());
 
-        const tplPlaybooks = join(templatesRoot(), 'playbooks');
-        const playbookFiles = new Map<string, string>();
-        if (existsSync(tplPlaybooks)) {
-          for (const f of readdirSync(tplPlaybooks)) {
-            if (f.endsWith('.md')) playbookFiles.set(f, readFileSync(join(tplPlaybooks, f), 'utf-8'));
-          }
-        }
-        // T-05 (2.17): посев base-set — лица через face-контракт (initiator='seed',
-        // внутренний путь createFaceVersion); скип по owner_skill (живое лицо или
-        // legacy-note владельца) — внутри seedBasePlaybooks (REQ-02 AC3)
+        // S-DELIVERY W2 (3.0.0): набор без лиц — init не сеет playbooks/faces;
+        // seed выведен из штатного пути (см. init-project.ts, seed опционален в BaseSetDeps).
 
         const result = await initProject(
           {
@@ -224,55 +215,15 @@ export function memoryInitCommand(): Command {
                 new OpencodeBaseSetRenderer(templatesRoot(), {
                   harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
                 }).renderBaseSet(dir, opts),
-              seed: (): Promise<BaseSetOutcome[]> =>
-                seedBasePlaybooks({
-                  files: playbookFiles,
-                  store,
-                  log,
-                  clock,
-                  idGen,
-                  index,
-                  lock,
-                  declarations,
-                }).then((os) =>
-                  // BaseSetOutcome.action = RenderAction: 'diverged' печатается как
-                  // 'conflict' (ближайший легальный исход), слово diverged — в reason
-                  os.map(
-                    (o): BaseSetOutcome => ({
-                      file: o.file,
-                      action: o.action === 'diverged' ? 'conflict' : o.action,
-                      reason: o.reason,
-                    })
-                  )
-                ),
             },
           },
           baseDir,
           input
         );
 
-        // T4 (REQ-01, design §3.6/ADR-6): re-init без --full тоже обновляет
-        // live-лица — минимальный путь не доходит до baseSet.seed (гейт
-        // input.full внутри initProject); документированная последовательность
-        // обновления «пакет → wolf init --yes» идёт этим проходом.
-        const faceOutcomes =
-          plan.live && !input.full && !result.npx
-            ? await seedBasePlaybooks({
-                files: playbookFiles,
-                store,
-                log,
-                clock,
-                idGen,
-                index,
-                lock,
-                declarations,
-              })
-            : [];
-
         console.log('# wolf init');
         console.log(`- memory skeleton: ensured (${join(baseDir, '.wolf')})`);
         for (const o of result.baseSetOutcomes) console.log(formatBaseSetLine(o)); // F5: скиллы — [skill] имя → путь
-        for (const o of faceOutcomes) console.log(formatBaseSetLine(o)); // §3.6: исходы обновления лиц
         for (const outcome of result.platformOutcomes) console.log(formatPlatformLine(outcome)); // F6: configFile + keys
         console.log(
           result.initReport.action === 'created'

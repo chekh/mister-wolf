@@ -1,4 +1,6 @@
 // tests/unit/use-cases/init-project-base-set.test.ts
+// S-DELIVERY W2 (3.0.0): набор без лиц — initProject не вызывает seed и не
+// добавляет face/conflict-исходы; render — единственный источник baseSetOutcomes.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
@@ -10,7 +12,6 @@ import type { PlatformAdapter, McpCommand } from '../../../src/ports/platform-ad
 import type { ModelContext } from '../../../src/ports/base-set-renderer.port.js';
 import { OpencodeBaseSetRenderer } from '../../../src/adapters/render/opencode/opencode-renderer.js';
 import { templatesRoot, harnessTemplatesRoot } from '../../../src/adapters/render/templates-root.js';
-import type { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
 
 class FakeInitializer implements ProjectInitializer {
   async initialize(): Promise<void> {}
@@ -34,31 +35,9 @@ class FakeRegistry {
   async register(): Promise<void> {}
 }
 
-class FakeMemoryStore {
-  objects: MemoryObject[] = [];
-  async save(o: MemoryObject): Promise<void> {
-    this.objects.push(o);
-  }
-  async get(id: string): Promise<MemoryObject | null> {
-    return this.objects.find((o) => o.id === id) ?? null;
-  }
-  async list(filters?: { type?: string }): Promise<MemoryObject[]> {
-    return filters?.type ? this.objects.filter((o) => o.type === filters.type) : [...this.objects];
-  }
-  async update(id: string, patch: Partial<MemoryObject>): Promise<MemoryObject> {
-    const o = this.objects.find((x) => x.id === id);
-    if (!o) throw new Error(`not found: ${id}`);
-    Object.assign(o, patch);
-    return o;
-  }
-}
-
 const MODELS: ModelContext = { primary: 'zai-coding-plan/glm-5.3', worker: 'zai-coding-plan/glm-5.3' };
 
-function makeDeps(
-  baseSet?: { render: InitProjectDeps['baseSet'] extends undefined ? never : NonNullable<InitProjectDeps['baseSet']> },
-  npx = false
-) {
+function makeDeps(baseSet?: NonNullable<InitProjectDeps['baseSet']>, npx = false) {
   const deps: InitProjectDeps = {
     initializer: new FakeInitializer(),
     registry: new FakeRegistry(),
@@ -66,7 +45,12 @@ function makeDeps(
     mcpCommand: { command: 'wolf', args: ['mcp'] } as McpCommand,
     npx,
     markSchemaCurrent: async () => {},
-    store: new FakeMemoryStore() as unknown as InitProjectDeps['store'],
+    store: {
+      list: async () => [],
+      get: async () => null,
+      save: async () => {},
+      update: async (_id: string, patch: unknown) => patch,
+    } as unknown as InitProjectDeps['store'],
     log: { append: async () => {} } as InitProjectDeps['log'],
     clock: { now: () => new Date('2026-09-01T00:00:00Z') },
     idGen: { generateMemoryId: () => 'mem_20260901_x_000001', generateEventId: () => 'evt_1' },
@@ -75,12 +59,16 @@ function makeDeps(
   return deps;
 }
 
+const RENDER_OUTCOMES: BaseSetOutcome[] = [
+  { file: '.opencode/agents/mr-wolf.md', action: 'created' },
+  { file: '.opencode/agents/steward.md', action: 'created' },
+];
+
 const baseSet = {
-  render: async () => [
-    { file: '.opencode/agents/mr-wolf.md', action: 'created' as const },
-    { file: '.opencode/agents/steward.md', action: 'created' as const },
+  render: async (): Promise<BaseSetOutcome[]> => RENDER_OUTCOMES,
+  seed: async (): Promise<BaseSetOutcome[]> => [
+    { file: '.opencode/skills/steward-nastavnik/SKILL.md', action: 'created' },
   ],
-  seed: async () => [{ file: '.opencode/skills/steward-nastavnik/SKILL.md', action: 'created' as const }],
 };
 
 let dir: string;
@@ -91,72 +79,43 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe('initProject + baseSet (Task 6 + §4.5: модели — в рендер)', () => {
-  it('вызывает render с models и seed, возвращает baseSetOutcomes', async () => {
+describe('initProject + baseSet (S-DELIVERY W2: набор без лиц)', () => {
+  it('render вызывается с models; seed не вызывается, baseSetOutcomes — только render', async () => {
     writeFileSync(join(dir, 'package.json'), '{}');
     const seen: (ModelContext | undefined)[] = [];
+    let seedCalls = 0;
     const spyingBaseSet = {
-      ...baseSet,
       render: async (_d: string, opts?: { models?: ModelContext }) => {
         seen.push(opts?.models);
         return baseSet.render();
       },
+      seed: async (): Promise<BaseSetOutcome[]> => {
+        seedCalls++;
+        return baseSet.seed();
+      },
     };
     const result = await initProject(makeDeps(spyingBaseSet), dir, { models: MODELS, full: true });
     expect(seen).toEqual([MODELS]);
-    // фейковый seed не создал лиц в store → guard §3.4 (B0) честно конфликтует
-    expect(result.baseSetOutcomes).toEqual([
-      { file: '.opencode/agents/mr-wolf.md', action: 'created' },
-      { file: '.opencode/agents/steward.md', action: 'created' },
-      { file: '.opencode/skills/steward-nastavnik/SKILL.md', action: 'created' },
-      {
-        file: '(base set faces)',
-        action: 'conflict',
-        reason: expect.stringContaining('no active face with owner_skill'),
-      },
-    ]);
+    expect(seedCalls).toBe(0);
+    expect(result.baseSetOutcomes).toEqual(RENDER_OUTCOMES);
   });
 
-  it('B0 guard §3.4: активные лица всех базовых агентов — конфликт-исход не добавляется', async () => {
+  it('без лиц в store — ни seed-исходов, ни (base set faces) conflict-строки', async () => {
     writeFileSync(join(dir, 'package.json'), '{}');
-    const deps = makeDeps(baseSet);
-    for (const owner of [
-      'mr-wolf',
-      'executor-lead',
-      'steward',
-      'worker-implementer',
-      'worker-researcher',
-      'worker-reviewer',
-      'worker-expert',
-    ]) {
-      (deps.store as unknown as FakeMemoryStore).objects.push({
-        id: `mem_face_${owner}`,
-        type: 'face',
-        title: owner,
-        body: '',
-        status: 'active',
-        tags: [],
-        created_at: '2026-09-01T00:00:00.000Z',
-        updated_at: '2026-09-01T00:00:00.000Z',
-        created_by: 'wolf-init',
-        owner_skill: owner,
-      } as unknown as MemoryObject);
-    }
-    const result = await initProject(deps, dir, { models: MODELS, full: true });
-    expect(result.baseSetOutcomes).toEqual([
-      { file: '.opencode/agents/mr-wolf.md', action: 'created' },
-      { file: '.opencode/agents/steward.md', action: 'created' },
-      { file: '.opencode/skills/steward-nastavnik/SKILL.md', action: 'created' },
-    ]);
+    const result = await initProject(makeDeps(baseSet), dir, { models: MODELS, full: true });
+    expect(result.baseSetOutcomes).toEqual(RENDER_OUTCOMES);
+    const text = JSON.stringify(result.baseSetOutcomes);
+    expect(text).not.toContain('base set faces');
+    expect(text).not.toContain('no active face with owner_skill');
   });
 
   it('npx: true — один outcome skipped/npx try-out, render/seed не вызываются', async () => {
     writeFileSync(join(dir, 'package.json'), '{}');
     let renderCalled = false;
     const npxBaseSet = {
-      render: async () => {
+      render: async (): Promise<BaseSetOutcome[]> => {
         renderCalled = true;
-        return [] as BaseSetOutcome[];
+        return [];
       },
       seed: baseSet.seed,
     };
@@ -181,7 +140,6 @@ function realBaseSet(): NonNullable<InitProjectDeps['baseSet']> {
       new OpencodeBaseSetRenderer(templatesRoot(), {
         harnessTemplatesRoot: harnessTemplatesRoot('opencode'),
       }).renderBaseSet(d, opts),
-    seed: async () => [],
   };
 }
 

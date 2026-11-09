@@ -70,7 +70,9 @@ export function memoryScaffoldCommand(): Command {
           sessionId: resolveSessionId(),
           detail: { playbook_id: result.playbookId, kind },
         });
-        console.log(`Created playbook: ${result.playbookId}`);
+        // playbookId опционален в контракте scaffold-frame (без --from-playbook
+        // новая рамка плейбук не создаёт) — печатаем только фактический исход
+        if (result.playbookId !== undefined) console.log(`Created playbook: ${result.playbookId}`);
         console.log(`Created frame: ${result.framePath}`);
       }
     );

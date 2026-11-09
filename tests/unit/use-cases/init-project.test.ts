@@ -440,7 +440,8 @@ describe('initProject v2 (§4: без скана, платформы/модел�
     };
     await initProject(deps, dir, { models: 'omit', full: true });
     expect(seenOpts).toEqual([{ models: 'omit', scope: 'full' }]);
-    expect(seedCalls).toBe(1);
+    // S-DELIVERY W2 (3.0.0): набор без лиц — seed выведен из штатного пути init
+    expect(seedCalls).toBe(0);
   });
 
   it('WP1: purpose сеется как note (facet context, тег project-purpose, createdBy user:init)', async () => {
