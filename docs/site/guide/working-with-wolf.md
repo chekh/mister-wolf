@@ -10,7 +10,7 @@ For example:
 
 Wolf should establish what success means and ask when a missing answer changes the route or result. Its intent-dialogue method is contextual; a fixed questionnaire is not the goal. You can correct its understanding before execution or when new information appears.
 
-The supplied organization assigns bounded tasks to wolf-* executors and integrates their results. Missing access, model capability or permissions must remain an explicit limitation, rather than an invented completed action.
+The supplied organization assigns bounded tasks to wolf-\* executors and integrates their results. Missing access, model capability or permissions must remain an explicit limitation, rather than an invented completed action.
 
 ## Understand a choice or check progress
 

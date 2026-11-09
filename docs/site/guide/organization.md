@@ -1,14 +1,14 @@
 # Organization keeps the goal in view
 
-The two-level organization exists to maintain direction over a long assignment: mr-wolf holds the user's intent, clarifies the goal and accepts results — and it performs part of the work itself. For specialized or parallel work it hires one of the eight wolf-* specialists directly; executors do not delegate further. A local difficulty returns to the participant holding the needed context; acceptance connects work back to the original goal. Memory carries recorded state across sessions. The Steward improves methods through a separate, cross-cutting loop (temporarily paused in 3.0.0).
+The two-level organization exists to maintain direction over a long assignment: mr-wolf holds the user's intent, clarifies the goal and accepts results — and it performs part of the work itself. For specialized or parallel work it hires one of the eight wolf-\* specialists directly; executors do not delegate further. A local difficulty returns to the participant holding the needed context; acceptance connects work back to the original goal. Memory carries recorded state across sessions. The Steward improves methods through a separate, cross-cutting loop (temporarily paused in 3.0.0).
 
 ## Responsibility
 
-| Level         | Owns                                                               | Boundary                                                                                          |
-| ------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| Wolf — lead | Intent, goal, success criteria, communication and final acceptance | Performs subject work on the goal itself; hires wolf-* executors directly; retains decisions and permitted Git operations |
+| Level       | Owns                                                               | Boundary                                                                                                                   |
+| ----------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| Wolf — lead | Intent, goal, success criteria, communication and final acceptance | Performs subject work on the goal itself; hires wolf-\* executors directly; retains decisions and permitted Git operations |
 
-| wolf-* executor | One finite result or research question | Does not expand scope, spawn other agents or delegate further |
+| wolf-\* executor | One finite result or research question | Does not expand scope, spawn other agents or delegate further |
 
 Frames combine instructions with harness permissions. Some boundaries are permission-enforced; others are behavioral protocols. A prohibition in text is not proof that every action is machine-validated.
 
@@ -16,11 +16,11 @@ Frames combine instructions with harness permissions. Some boundaries are permis
 
 | Step                   | Responsible             | Result                                                        |
 | ---------------------- | ----------------------- | ------------------------------------------------------------- |
-| Goal and brief | User and Wolf | Intent, scope and acceptance criteria                         |
-| Plan | Mr. Wolf | Finite tasks, dependencies, assigned methods and verification |
-| Execution | wolf-* executors | Verifiable partial results or specific questions              |
-| Integration and report | Mr. Wolf | Combined result, criteria checks and limitations              |
-| Acceptance | Wolf | Verdict against the goal and evidence                         |
+| Goal and brief         | User and Wolf           | Intent, scope and acceptance criteria                         |
+| Plan                   | Mr. Wolf                | Finite tasks, dependencies, assigned methods and verification |
+| Execution              | wolf-\* executors       | Verifiable partial results or specific questions              |
+| Integration and report | Mr. Wolf                | Combined result, criteria checks and limitations              |
+| Acceptance             | Wolf                    | Verdict against the goal and evidence                         |
 | Checkpoint             | Responsible participant | Significant state and next step recorded in memory            |
 
 A checkpoint is also useful inside long work: before handoff, after a significant milestone, at a difficulty or risky decision. It preserves recorded meaning; unrecorded findings can be lost, and automatic process recovery is not provided.
@@ -29,7 +29,7 @@ For authored documents the route adds a readability editing pass before substant
 
 ## Compose an assistant and choose a session
 
-Mr. Wolf hires an executor from the wolf-* set with an appropriate face, assigned skills, inputs and tools. The brief supplies the result, contribution to the goal, criteria, boundaries, sources, methods, verification, budget and return condition. Implementation, research and review profiles receive only applicable fields; a missing required input comes back as a question.
+Mr. Wolf hires an executor from the wolf-\* set with an appropriate face, assigned skills, inputs and tools. The brief supplies the result, contribution to the goal, criteria, boundaries, sources, methods, verification, budget and return condition. Implementation, research and review profiles receive only applicable fields; a missing required input comes back as a question.
 
 The role does not determine the model or its reasoning depth. Model/variant selection uses actual host capabilities; a wish in a brief does not prove the setting was applied. The `standard|draft` density shortens service text while preserving substantial evidence and checks.
 

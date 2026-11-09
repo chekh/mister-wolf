@@ -6,17 +6,17 @@ The composition below is the catalog of `templates/base/` in the package.
 
 ## Agents — 9 → `.opencode/agents/`
 
-| Agent                | Role                                                                                                                                                                                                                                                                                                                        |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mr-wolf`            | The lead: clarifies the goal, performs work itself, hires the eight wolf-* specialists directly and accepts their results by evidence |
-| `wolf-architect`     | Requirements, design, test plan and plan inside one assigned document |
-| `wolf-developer`     | One completed piece of implementation with tests and a verifiable result |
-| `wolf-editor`        | One readability editing pass over a finished document, without research |
-| `wolf-expert`        | Bounded professional position on one question and lens; reads project files, code included, through a tool-enabled read channel inside the project boundary; writes, shell, subagents, web fetch and external directories stay denied; degrades to packet-only with an explicit `channel`; see [Expert Council](/guide/council) |
-| `wolf-release-engineer` | Release preparation and verification of a specific accepted revision |
-| `wolf-researcher`    | Targeted research or diagnosis of one unknown; returns findings with sources and confidence; on an explicitly assigned architectural question it compares variants and returns a recommendation — it writes no files and approves no architecture |
-| `wolf-reviewer`      | Independent review of a specific revision through an assigned lens; verdict via the VERDICT/SUMMARY contract |
-| `wolf-tester`        | Independent verification of behavior, integrations and regressions |
+| Agent                   | Role                                                                                                                                                                                                                                                                                                                            |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mr-wolf`               | The lead: clarifies the goal, performs work itself, hires the eight wolf-\* specialists directly and accepts their results by evidence                                                                                                                                                                                          |
+| `wolf-architect`        | Requirements, design, test plan and plan inside one assigned document                                                                                                                                                                                                                                                           |
+| `wolf-developer`        | One completed piece of implementation with tests and a verifiable result                                                                                                                                                                                                                                                        |
+| `wolf-editor`           | One readability editing pass over a finished document, without research                                                                                                                                                                                                                                                         |
+| `wolf-expert`           | Bounded professional position on one question and lens; reads project files, code included, through a tool-enabled read channel inside the project boundary; writes, shell, subagents, web fetch and external directories stay denied; degrades to packet-only with an explicit `channel`; see [Expert Council](/guide/council) |
+| `wolf-release-engineer` | Release preparation and verification of a specific accepted revision                                                                                                                                                                                                                                                            |
+| `wolf-researcher`       | Targeted research or diagnosis of one unknown; returns findings with sources and confidence; on an explicitly assigned architectural question it compares variants and returns a recommendation — it writes no files and approves no architecture                                                                               |
+| `wolf-reviewer`         | Independent review of a specific revision through an assigned lens; verdict via the VERDICT/SUMMARY contract                                                                                                                                                                                                                    |
+| `wolf-tester`           | Independent verification of behavior, integrations and regressions                                                                                                                                                                                                                                                              |
 
 The `steward` agent is not part of the 3.0.0 set: the role is temporarily out of standard routing and returns in the next release; its mechanisms — face history and complaint intake — are preserved (see [Steward and learning](/guide/feedback)).
 
@@ -35,7 +35,7 @@ The count includes 8 short compatibility entries carried from the pilot — mark
 | `using-git-worktrees`            | isolated worktrees for feature work and plan execution                                                                                                                          |
 | `using-skills`                   | load the required methodology before responding or acting                                                                                                                       |
 | `verification-before-completion` | run the checks before any "done" claim — evidence first                                                                                                                         |
-| `wolf-agent-language`            | the internal agent language: TASK, RESULT, QUESTION, BLOCKED, UPDATE, FINDING and handoffs between agents |
+| `wolf-agent-language`            | the internal agent language: TASK, RESULT, QUESTION, BLOCKED, UPDATE, FINDING and handoffs between agents                                                                       |
 | `wolf-brainstorm`                | intent dialogue — substantive questions and proposals until the goal is understood, a visible recap before new work starts                                                      |
 | `wolf-code-craft`                | full implementation of the assigned behavior with readable means and no unnecessary complexity; also the criteria for evaluating an implementation within a mandate             |
 | `wolf-code-simplify`             | targeted simplification of a named complexity with behavior and contract preserved — assigned separately, not an obligatory stage after every edit                              |
@@ -47,20 +47,20 @@ The count includes 8 short compatibility entries carried from the pilot — mark
 | `wolf-explain`                   | human explanations built from actions, reasons and consequences — restores a missing link instead of repeating, and keeps facts and the unknown apart                           |
 | `wolf-git`                       | git stages of a task — entry and resume, branch or worktree, checkpoint, handoff, finish and cleanup; ships the `git-collaboration-policy-v1.1` reference and automates nothing |
 | `wolf-handoff`                   | continue an overloaded session in a fresh one, without losing progress                                                                                                          |
-| `wolf-memory`                    | addressed reading and saving of a TASK, mini-plan, result, decision or handoff into Wolf memory |
-| `wolf-plan`                      | zero-context plans where every task is a self-sufficient brief for an executor                                                                                                           |
-| `wolf-requirements`              | create or update requirements with verifiable REQ/NFR from an agreed goal |
+| `wolf-memory`                    | addressed reading and saving of a TASK, mini-plan, result, decision or handoff into Wolf memory                                                                                 |
+| `wolf-plan`                      | zero-context plans where every task is a self-sufficient brief for an executor                                                                                                  |
+| `wolf-requirements`              | create or update requirements with verifiable REQ/NFR from an agreed goal                                                                                                       |
 | `wolf-work-strategy`             | choose a proportionate route, ask the context holder early, and stop at sufficient evidence                                                                                     |
 | `wolf-user-report`               | reader-focused documents with sufficient depth, appropriate visuals, HTML/CSS and reusable project templates                                                                    |
 | `wolf-feedback`                  | role-scoped questions, friction, complaints and bounded session diagnosis                                                                                                       |
 | `wolf-visual-dialogue`           | visual discussion, feedback and an agreed standalone document                                                                                                                   |
-| `wolf-release`                   | release preparation of a verified revision, publication within authority and the post-check |
+| `wolf-release`                   | release preparation of a verified revision, publication within authority and the post-check                                                                                     |
 | `wolf-release-docs`              | release documentation pass: coverage map, EN/RU alignment, generated pages                                                                                                      |
 | `wolf-review`                    | multi-lens document review loop                                                                                                                                                 |
 | `wolf-sdd`                       | subagent-driven development for plans with independent tasks                                                                                                                    |
 | `wolf-skill-intake`              | connect external skills through the Wolf quality loop, owner-gated                                                                                                              |
 | `wolf-software-design`           | engineering method inside wolf-design: boundaries, contracts, dependencies and state ownership of a software solution                                                           |
-| `wolf-test`                      | independent behavioral, integration and regression checks |
+| `wolf-test`                      | independent behavioral, integration and regression checks                                                                                                                       |
 | `wolf-testplan`                  | test-plan.md with Given/When/Then per requirement                                                                                                                               |
 | `writing-skills`                 | Wolf skill lifecycle: create, edit, verify                                                                                                                                      |
 
@@ -74,11 +74,11 @@ Load wolf-document-readability when a finished document — requirements, a chan
 
 ## Commands — 3 → `.opencode/command/`
 
-| Command       | What it does                                                                        |
-| ------------- | ----------------------------------------------------------------------------------- |
-| `analyze-doc` | mr-wolf aligns the goal → a bounded analysis is assigned to wolf-researcher            |
+| Command       | What it does                                                                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `analyze-doc` | mr-wolf aligns the goal → a bounded analysis is assigned to wolf-researcher                                                                       |
 | `complain`    | file an owner complaint into the learning loop: the complaint is recorded (in 3.0.0 without automatic triage — the Steward is temporarily paused) |
-| `doc-review`  | multi-lens document review orchestrated via the wolf-review skill                   |
+| `doc-review`  | multi-lens document review orchestrated via the wolf-review skill                                                                                 |
 
 ## Plugins — 2 (reserved, not installed)
 
@@ -119,7 +119,7 @@ An unstamped file is yours (the `wx` policy): `wolf init` skips it, the update p
 `AGENTS.md` is managed in one of two modes, and both keep your authorship intact:
 
 - **Stamped whole-file mode — what a fresh `init` writes**: `AGENTS.md` carries a `wolf:rendered …` stamp and belongs to wolf entirely — local edits make it `mutated`, and `take`/`keep` decide its fate. A `protect` key is not available here because the file ships without YAML frontmatter.
-- **Block mode — what `init` appends when `AGENTS.md` already existed**: wolf owns only the lines between `<!-- wolf:onboarding v4 -->` and `<!-- /wolf:onboarding -->`. Everything above and below stays byte-for-byte, including line endings. The block itself is a versioned format: an earlier block (`v2`/`v3`) is recognized and updated in place to `v4` (the two-level protocol: mr-wolf and the wolf-* executors, addressed inputs, docs/dev rules) — no second block is ever appended, and text _inside_ the block is wolf's zone, so it is not preserved. A broken marker pair (an opening marker without a closing one) makes the file foreign: it is skipped and reported as `onboarding markers broken`, never turned into a decision.
+- **Block mode — what `init` appends when `AGENTS.md` already existed**: wolf owns only the lines between `<!-- wolf:onboarding v4 -->` and `<!-- /wolf:onboarding -->`. Everything above and below stays byte-for-byte, including line endings. The block itself is a versioned format: an earlier block (`v2`/`v3`) is recognized and updated in place to `v4` (the two-level protocol: mr-wolf and the wolf-\* executors, addressed inputs, docs/dev rules) — no second block is ever appended, and text _inside_ the block is wolf's zone, so it is not preserved. A broken marker pair (an opening marker without a closing one) makes the file foreign: it is skipped and reported as `onboarding markers broken`, never turned into a decision.
 
 `wolf upgrade` never appends a block to an unstamped `AGENTS.md` without markers — only `init` creates one. A file wolf did not create stays foreign.
 

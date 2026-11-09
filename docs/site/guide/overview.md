@@ -8,11 +8,10 @@
 
 A difficult assignment creates distractions: a broken tool, an unexpected constraint, a tempting side investigation. Wolf separates two distances of attention:
 
-| Level        | Keeps in view                  | Responsibility                                                           |
-| ------------ | ------------------------------ | ------------------------------------------------------------------------ |
-| Wolf — the lead | Your intent and the final goal | Clarification, success criteria, key decisions, final acceptance — and hands-on work on the goal itself |
-| wolf-* executor | One bounded result | Execute the assigned work and return the result or a specific difficulty; no further delegation |
-
+| Level            | Keeps in view                  | Responsibility                                                                                          |
+| ---------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Wolf — the lead  | Your intent and the final goal | Clarification, success criteria, key decisions, final acceptance — and hands-on work on the goal itself |
+| wolf-\* executor | One bounded result             | Execute the assigned work and return the result or a specific difficulty; no further delegation         |
 
 A fresh executor can be replaced without making it responsible for the whole project. Questions travel to the lead holding the needed context; acceptance connects local results back to the goal. Memory carries significant decisions and state across sessions. The lead's own work passes the same independent review. See [Organization](/guide/organization).
 
@@ -20,7 +19,7 @@ A fresh executor can be replaced without making it responsible for the whole pro
 
 A skill supplies a method, a tool performs an operation, a rule sets a boundary, and memory supplies context. The process connects them: what applies now, who acts, when to ask, what counts as enough verification, and what must survive the session.
 
-Mr. Wolf hires an executor for a task directly — by name, from the eight wolf-* specialists. Each executor works from its face (a versioned working methodology) with assigned skills and available tools. The specialization follows the task: research, documents, implementation, testing, review or release work. Executors do not delegate further; a new independent piece of work gets a fresh executor. The current shipped organization is OpenCode-first; general methods do not imply every domain or harness has a ready-made integration.
+Mr. Wolf hires an executor for a task directly — by name, from the eight wolf-\* specialists. Each executor works from its face (a versioned working methodology) with assigned skills and available tools. The specialization follows the task: research, documents, implementation, testing, review or release work. Executors do not delegate further; a new independent piece of work gets a fresh executor. The current shipped organization is OpenCode-first; general methods do not imply every domain or harness has a ready-made integration.
 
 Useful scripts can be registered as project tools and reused with their contracts. Registering a tool does not execute it. See [Base Set](/guide/base-set) and [Tool economy](/guide/tool-economy).
 

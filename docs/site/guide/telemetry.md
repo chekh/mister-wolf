@@ -7,7 +7,7 @@ Mr. Wolf measures its own usage — locally, deterministically, without an LLM i
 | File                                  | Writer                                                            | Content                                          |
 | ------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------ |
 | `.wolf/metrics/session-metrics.jsonl` | Wolf itself: CLI commands, MCP handlers, the brief/call injectors | append-only JSONL signal log, one event per line |
-| `.wolf/router.log`                    | the optional `wolf-router` plugin (reserved since 3.0.0) | playbook routing decisions (hit/miss per agent)  |
+| `.wolf/router.log`                    | the optional `wolf-router` plugin (reserved since 3.0.0)          | playbook routing decisions (hit/miss per agent)  |
 
 The signal log is the canonical telemetry source. A malformed line never breaks the loop: it is counted (`malformedLines`) and skipped.
 

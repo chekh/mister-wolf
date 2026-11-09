@@ -33,13 +33,13 @@ A recorded verdict does not itself verify the artifact. Keep the underlying chec
 
 ## Sources and interpretation
 
-| Data                                     | Local source                                       |
-| ---------------------------------------- | -------------------------------------------------- |
-| Calls, delivery, usage and task verdicts | `.wolf/metrics/session-metrics.jsonl`              |
-| Face routing decisions                   | `.wolf/router.log`                                 |
+| Data                                                            | Local source                                       |
+| --------------------------------------------------------------- | -------------------------------------------------- |
+| Calls, delivery, usage and task verdicts                        | `.wolf/metrics/session-metrics.jsonl`              |
+| Face routing decisions                                          | `.wolf/router.log`                                 |
 | Skill invocation records (only with the optional router plugin) | `.wolf/metrics/skill-invocations.jsonl`            |
-| Memory objects and their changes         | `.wolf/memory/`, `events.jsonl`, `relations.jsonl` |
-| Effectiveness snapshots                  | `.wolf/metrics/effectiveness-snapshots.jsonl`      |
+| Memory objects and their changes                                | `.wolf/memory/`, `events.jsonl`, `relations.jsonl` |
+| Effectiveness snapshots                                         | `.wolf/metrics/effectiveness-snapshots.jsonl`      |
 
 See [Telemetry](/guide/telemetry) for event fields, usage imports and session identity. Receiving memory is different from citing or applying it; [Harness integration](/guide/harness-integration) explains recording these later stages.
 

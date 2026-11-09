@@ -41,7 +41,7 @@ For example:
 
 > Prepare a concise onboarding guide for a newcomer. Use the existing project documents, include setup and a first useful task, and verify commands where safe. Ask me if a missing decision changes the result.
 
-This is an illustrative request, not a recorded run. The supplied methods direct Wolf to clarify intent and acceptance criteria, have mr-wolf do the work itself or hire bounded wolf-* executors, integrate findings and present the result. You should see the guide or its file location, the verification performed, limitations and any decision still needed from you. Actual behavior depends on the model, harness and project permissions.
+This is an illustrative request, not a recorded run. The supplied methods direct Wolf to clarify intent and acceptance criteria, have mr-wolf do the work itself or hire bounded wolf-\* executors, integrate findings and present the result. You should see the guide or its file location, the verification performed, limitations and any decision still needed from you. Actual behavior depends on the model, harness and project permissions.
 
 If the assignment continues later, ask Wolf to preserve significant state and then name the task in the next session. See [Working with Wolf](/guide/working-with-wolf).
 
