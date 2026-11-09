@@ -10,7 +10,7 @@ export const MCP_SERVERS = 'servers';
 export const MCP_SERVER_NAME = 'wolf';
 /** Дефолтный агент Wolf в opencode (§6.1). */
 export const DEFAULT_AGENT = 'mr-wolf';
-/** Глубина субагентов: executor-lead спавнит worker-* (трёхуровневая схема). */
+/** Глубина субагентов: ведущий mr-wolf нанимает исполнителей wolf-* напрямую; глубже делегирование не идёт. */
 export const SUBAGENT_DEPTH = 2;
 
 export interface ConfigKeySpec {

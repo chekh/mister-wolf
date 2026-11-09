@@ -35,24 +35,6 @@ export interface BaseSetOutcome {
   reason?: string;
 }
 
-/** REQ-04 (B0, design §3.4): базовые агенты набора — инвариант контракта
- * BaseSetSpec: каждому agent_id соответствует активное лицо с
- * owner_skill === agent_id (доставка plugin-inject ищет лицо по agent-id). */
-export const BASE_SET_AGENT_IDS = [
-  'mr-wolf',
-  'executor-lead',
-  'steward',
-  'worker-implementer',
-  'worker-researcher',
-  'worker-reviewer',
-  'worker-expert',
-] as const;
-
-/** Активные владельцы лиц → агенты без лица (нарушение §3.4). */
-export function baseSetFaceViolations(activeOwners: Iterable<string>): string[] {
-  const active = new Set(activeOwners);
-  return BASE_SET_AGENT_IDS.filter((id) => !active.has(id));
-}
 export interface BaseSetDeps {
   render: (
     baseDir: string,
@@ -294,9 +276,9 @@ export async function initProject(
       baseSetOutcomes.push(
         ...(await deps.baseSet.render(baseDir, { models: input.models, scope: input.full ? 'full' : 'agents-md' }))
       );
-      // S-DELIVERY W2 (3.0.0): набор без лиц — seed и B0-инвариант выведены из
-      // штатного пути init; baseSetFaceViolations остаётся чистой функцией
-      // (экспорт для тестов инварианта), вызовов без лиц в пути больше нет.
+      // S-DELIVERY W2 (3.0.0): набор без лиц — seed и B0-инвариант (каждому
+      // agent_id — активное лицо) выведены из штатного пути init; состав
+      // набора определяется рендером шаблонов (templates/base/agents).
     }
   }
 
