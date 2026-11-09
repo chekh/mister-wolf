@@ -160,3 +160,20 @@ describe('WP2 unpin (спека 2.16 §5): init-рендер свежего ко
     expect(raw).toContain('model: zai-coding-plan/glm-5.3');
   });
 });
+
+// R-11 (3.0.0): состав набора определяется рендером шаблонов (templates/base/agents),
+// не константным списком; двухуровневая модель — только mr-wolf и wolf-*.
+describe('R-11 (3.0.0): full init ставит двухуровневый набор из рендера шаблонов', () => {
+  it('агенты — mr-wolf и wolf-*; старых имён (executor-lead/steward/worker-*) нет', async () => {
+    writeFileSync(join(dir, 'package.json'), '{}');
+    const result = await initProject(makeDeps(realBaseSet()), dir, { models: 'omit', full: true });
+    const agents = result.baseSetOutcomes
+      .map((o) => o.file)
+      .filter((f) => f.startsWith('.opencode/agents/'))
+      .map((f) => f.slice('.opencode/agents/'.length))
+      .sort();
+    expect(agents.length).toBeGreaterThan(0);
+    expect(agents).toContain('mr-wolf.md');
+    for (const a of agents) expect(a).toMatch(/^(mr-wolf|wolf-[a-z-]+)\.md$/);
+  });
+});
