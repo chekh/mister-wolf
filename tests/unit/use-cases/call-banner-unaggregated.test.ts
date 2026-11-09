@@ -55,7 +55,7 @@ describe('getCallInjections banner (unaggregated lessons)', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it('3 зрелых урока → banner со счётчиком и вызовом Стюарда', async () => {
+  it('3 зрелых урока → banner со счётчиком и формулировкой отключения, без императива', async () => {
     await store.save(makeObj({ id: 'lesson_1', type: 'lesson', status: 'active', title: 'L1' }) as any);
     await store.save(makeObj({ id: 'lesson_2', type: 'lesson', status: 'active', title: 'L2' }) as any);
     await store.save(makeObj({ id: 'lesson_3', type: 'lesson', status: 'active', title: 'L3' }) as any);
@@ -64,7 +64,8 @@ describe('getCallInjections banner (unaggregated lessons)', () => {
 
     expect(result.banner).toContain('неагрегированных уроков: 3');
     expect(result.banner).toContain('(зрелых: 3)');
-    expect(result.banner).toContain('opencode run --agent steward');
+    expect(result.banner).toContain('автоматическая обработка Стюардом временно отключена');
+    expect(result.banner).not.toContain('opencode run --agent steward');
   });
 
   it('2 свежих урока → banner null', async () => {

@@ -79,7 +79,9 @@ export function memoryCallCommand(): Command {
             console.log(`\n[truncated: ${result.truncated} blocks omitted]`);
           }
         }
-        // 2.14 §7.1 (триггер 2): строка Стюарда — после блоков, вне blocks/бюджета
+        // 2.14 §7.1 (триггер 2): banner зрелых неагрегированных — после блоков, вне
+        // blocks/бюджета; R-14 (3.0.0): автоматическая обработка Стюардом временно
+        // отключена — счётчики показываются, без императива вызова
         if (result.banner !== null) {
           console.log('\n' + result.banner);
         }
