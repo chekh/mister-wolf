@@ -12,7 +12,7 @@ description: "Внутренние TASK/RESULT/QUESTION/BLOCKED/UPDATE/FINDING �
 
 ## TASK
 
-`TASK <id>@<version> profile=<implement|research|design|review|test|expert|writing|release>`
+`TASK <id>@<version> kind=<implement|research|design|review|test|expert|writing|release>`
 - GOAL: результат и вклад в цель пользователя.
 - INPUT: адресные документы/память с версиями, baseline, применимые нормы.
 - SCOPE: область записи, запрещённое, соседние владельцы и общий контракт.
