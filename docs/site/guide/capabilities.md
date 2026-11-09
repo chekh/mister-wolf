@@ -20,14 +20,14 @@ Wolf can complement these systems. It still depends on the harness for agent exe
 
 | Area             | What to expect                                                                                                   |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Organization     | Supplied L0/L1/L2 frames and methods, primarily exercised in OpenCode                                            |
+| Organization     | The supplied two-level organization — mr-wolf plus eight wolf-* specialists — primarily exercised in OpenCode |
 | Memory           | Local Markdown objects, relations, lifecycle and an FTS search index; project document references                |
 | Skills and tools | Shipped process skills, project tool registration and reuse contracts                                            |
-| Steward          | Authorized face versioning, complaint handling methods and autonomous aggregation of compatible mature lessons   |
+| Steward          | Authorized face versioning and complaint handling methods; in 3.0.0 the Steward is temporarily out of standard routing and returns in the next release |
 | Control          | CLI/MCP, history, upgrade review, analytics and owner face restore operations                                    |
 | Other platforms  | Memory/process access through MCP; optional platform configuration does not establish full organizational parity |
 
-The hierarchy includes instructions and harness permissions. Do not treat every instruction as runtime enforcement. Fresh-session isolation depends on what the host actually passes; checkpoints preserve meaning, not leases or running processes. [Organization](/guide/organization) and [Delivery](/guide/delivery) explain these boundaries.
+The organization includes instructions and harness permissions. Do not treat every instruction as runtime enforcement. Fresh-session isolation depends on what the host actually passes; checkpoints preserve meaning, not leases or running processes. [Organization](/guide/organization) and [Delivery](/guide/delivery) explain these boundaries.
 
 ## Direction and limits
 

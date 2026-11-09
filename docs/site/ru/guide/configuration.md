@@ -141,7 +141,7 @@ opencode мержит корневой файл раньше, а файл в `.o
 | `mcp.servers.wolf`  | верхний уровень, `mcp.servers` | каноническая (нативная) запись MCP-сервера: `{ type: 'local', command: ['wolf', 'mcp'], disabled: false }` |
 | `mcp.wolf` (легаси) | верхний уровень, `mcp`         | deprecated-плоская форма, `enabled: true`: wolf её читает и мигрирует, но не пишет                         |
 | `default_agent`     | верхний уровень                | `mr-wolf` — агент, с которого стартует opencode                                                            |
-| `subagent_depth`    | `experimental.subagent_depth`  | `2` для трёхуровневой схемы (Mr.Wolf → executor-lead → воркеры); целое ≥ 0                                 |
+| `subagent_depth`    | `experimental.subagent_depth`  | глубина вложенности субагентов; двухуровневый набор работает на платформенном дефолте `1` (исполнители не делегируют); целое ≥ 0 |
 
 Верхнеуровневый `subagent_depth` помечен `deprecated` в схеме конфига opencode, и opencode v2 его игнорирует — действующий дефолт там `1`, то есть субагент не может спавнить субагента. Поэтому Wolf пишет глубину только в `experimental` и сам переносит старое место: верхнеуровневый `subagent_depth: 2` (наше значение) переезжает в `experimental.subagent_depth` на ближайшем `init` / `doctor --repair`, а deprecated-ключ удаляется. Любое другое верхнеуровневое значение — конфликт: он сообщается с причиной (`deprecated and ignored by opencode v2`) и никогда не перезаписывается. `wolf doctor` сообщает о deprecated верхнеуровневом ключе ещё до ближайшего ремонта. Остальные поля `experimental` и прочий JSON сохраняются. При `wolf uninstall` удаляются только точные наши значения, а опустевший после этого объект `experimental` убирается.
 

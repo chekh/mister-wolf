@@ -37,13 +37,13 @@ A recorded verdict does not itself verify the artifact. Keep the underlying chec
 | ---------------------------------------- | -------------------------------------------------- |
 | Calls, delivery, usage and task verdicts | `.wolf/metrics/session-metrics.jsonl`              |
 | Face routing decisions                   | `.wolf/router.log`                                 |
-| Skill invocation records                 | `.wolf/metrics/skill-invocations.jsonl`            |
+| Skill invocation records (only with the optional router plugin) | `.wolf/metrics/skill-invocations.jsonl`            |
 | Memory objects and their changes         | `.wolf/memory/`, `events.jsonl`, `relations.jsonl` |
 | Effectiveness snapshots                  | `.wolf/metrics/effectiveness-snapshots.jsonl`      |
 
 See [Telemetry](/guide/telemetry) for event fields, usage imports and session identity. Receiving memory is different from citing or applying it; [Harness integration](/guide/harness-integration) explains recording these later stages.
 
-Costs require configured pricing and suitable usage records. A missing model, missing tokens or unknown session join is a data-quality limitation, not zero cost. `weighted = input + 0.1 × cache_read + 5 × output` is a fixed token-weight heuristic, not a provider invoice.
+Cost estimates come from raw OpenCode usage and sessions (`opencode.db`); since 3.0.0 there are no skill counters — their absence does not mean the calls did not happen. Comparisons need both windows of the measurement protocol; the "after" window is not collected yet, so no effect results exist to publish. Cost figures still require configured pricing and suitable usage records. A missing model, missing tokens or unknown session join is a data-quality limitation, not zero cost. `weighted = input + 0.1 × cache_read + 5 × output` is a fixed token-weight heuristic, not a provider invoice.
 
 The Steward view includes complaint outcomes and lesson aggregation. Compare counts with actual changes and their applicability: a closed complaint alone does not prove that a corrected methodology reached a later session or improved its behavior.
 

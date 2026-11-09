@@ -11,7 +11,7 @@ wolf tool list
 wolf search "documentation links"
 ```
 
-Inspect the candidate's contract and source before using it. An obsolete or incompatible tool should not win merely because it already exists. Report missing capability or repeated friction to the responsible executor; methodology changes follow the [Steward loop](/guide/feedback).
+Inspect the candidate's contract and source before using it. An obsolete or incompatible tool should not win merely because it already exists. Report missing capability or repeated friction to the responsible executor; methodology complaints go through the [learning loop](/guide/feedback).
 
 ## Register a checked project resource
 

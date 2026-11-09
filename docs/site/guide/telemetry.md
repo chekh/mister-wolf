@@ -7,7 +7,7 @@ Mr. Wolf measures its own usage — locally, deterministically, without an LLM i
 | File                                  | Writer                                                            | Content                                          |
 | ------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------ |
 | `.wolf/metrics/session-metrics.jsonl` | Wolf itself: CLI commands, MCP handlers, the brief/call injectors | append-only JSONL signal log, one event per line |
-| `.wolf/router.log`                    | the `wolf-router` opencode plugin                                 | playbook routing decisions (hit/miss per agent)  |
+| `.wolf/router.log`                    | the optional `wolf-router` plugin (reserved since 3.0.0) | playbook routing decisions (hit/miss per agent)  |
 
 The signal log is the canonical telemetry source. A malformed line never breaks the loop: it is counted (`malformedLines`) and skipped.
 
@@ -62,7 +62,7 @@ Limits: the model `variant` is not carried over, `cost` is not computed, `reason
 ## Session keys
 
 - `cli-<uuid>` — produced by the CLI itself, one per invocation: a single CLI process gets a single stable id shared by all its telemetry writers. An explicitly exported `WOLF_SESSION` is never overwritten.
-- `opc-<uuid>` — passed by the stamped opencode plugins (`wolf-router`, `wolf-session-start`) on every CLI spawn. A long-lived opencode process inheriting one env var would otherwise fake a single session for all deliveries. Template updates arrive with the projects pass of `wolf upgrade`.
+- `opc-<uuid>` — passed by the optional stamped opencode plugins (`wolf-router`, `wolf-session-start`; reserved since 3.0.0) on every CLI spawn. A long-lived opencode process inheriting one env var would otherwise fake a single session for all deliveries. Template updates arrive with the projects pass of `wolf upgrade`.
 - MCP channel — no session by design: `wolf mcp` is a long-lived server with one environment for all requests, so a single session id would be false attribution. Its events carry `session_id: null`.
 
 ## Privacy notes

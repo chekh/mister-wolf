@@ -1,15 +1,15 @@
 # Expert Council
 
-An expert council is a bounded consultation method for hard calls: when justified alternatives genuinely conflict, a cause stays unclear after reasonable diagnosis, an architectural choice is expensive to reverse, or a worker and a reviewer hold a substantive dispute. Routine work and unambiguous errors do not convene a council — they go through the normal process.
+An expert council is a bounded consultation method for hard calls: when justified alternatives genuinely conflict, a cause stays unclear after reasonable diagnosis, an architectural choice is expensive to reverse, or an executor and a reviewer hold a substantive dispute. Routine work and unambiguous errors do not convene a council — they go through the normal process.
 
 ## When to use it
 
 - conflicting justified variants, where the choice changes the outcome;
 - an unresolved cause after reasonable debugging;
 - an expensive architectural decision;
-- a substantive worker-versus-reviewer disagreement.
+- a substantive executor-versus-reviewer disagreement.
 
-A council is convened by the responsible level (usually L1) — it never appears on its own. One first round, at most one clarifying round; continuing beyond that requires a new goal.
+A council is convened by mr-wolf (the lead) — it never appears on its own. One first round, at most one clarifying round; continuing beyond that requires a new goal.
 
 ## How a council runs
 
@@ -20,9 +20,9 @@ A council is convened by the responsible level (usually L1) — it never appears
 
 `insufficient_evidence` is an allowed outcome: the method prefers an honest "this evidence is not enough to decide" over a forced pick.
 
-## The worker-expert role
+## The wolf-expert role
 
-`worker-expert` is a base-set agent (7 agents since 2.31.0): an L2 worker holding a narrow professional position on one question. It does not accept results, does not write memory and does not delegate.
+`wolf-expert` is a base-set agent (9 agents in 3.0.0): an executor holding a narrow professional position on one question. It does not accept results, does not write memory and does not delegate.
 
 The expert's default channel is **tool-enabled reading inside the project boundary**: project files, code included, are read normally, and `glob`/`grep` are available so the expert can find the file it needs. Everything else is denied: writes, shell, subagents, web fetch, browser, skills and reads outside the project (`external_directory` is rejected outright). Env files and typical secret files stay under the `ask` guard — `.npmrc`, `.netrc`, `.git-credentials`, `*.pem`, `*.key`, `id_rsa`/`id_ed25519`: a broad project read does not silently open them.
 
@@ -52,4 +52,4 @@ Analytics reads every historical format (legacy councils, alias and v2 envelopes
 - An expert's confidence is not proof: synthesized claims still require the listed validation.
 - Convocation is a judgment of the responsible level, not an automatic trigger.
 
-The method and the role arrive with the regular base set (`wolf init` / `wolf upgrade`), together with the seed playbook `worker-expert-playbook`. Read isolation is described separately in [Read Isolation](/guide/read-isolation).
+The method and the role arrive with the regular base set (`wolf init` / `wolf upgrade`). Read isolation is described separately in [Read Isolation](/guide/read-isolation).

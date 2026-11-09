@@ -47,7 +47,7 @@ const modes = computed(() =>
     },
     {
       name: 'LEARNING',
-      status: 'STEWARD',
+      status: 'GOVERNED',
       statusClass: 'st-available',
       cmd: {
         en: '"Check whether this method needs changing"',
@@ -58,8 +58,8 @@ const modes = computed(() =>
         ru: 'конкретное наблюдение и ожидаемое поведение.',
       },
       output: {
-        en: 'Feedback is routed to a question, correction or authorized Steward change.',
-        ru: 'Обратная связь становится вопросом, коррекцией или авторизованным изменением через Стюарда.',
+        en: 'Feedback is accepted and recorded through the authorized loop; the Steward that applies method changes is temporarily paused in 3.0.0.',
+        ru: 'Обратная связь принимается и фиксируется в авторизованном контуре; Стюард, применяющий изменения методик, в 3.0.0 временно отключён.',
       },
     },
   ].map((row) => ({ ...row, cmd: t(row.cmd), input: t(row.input), output: t(row.output) }))

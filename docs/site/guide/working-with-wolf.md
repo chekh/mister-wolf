@@ -1,6 +1,6 @@
 # Working with Wolf
 
-Talk to Wolf about the outcome you need. The coordinator connects that intent to the agent organization; you do not need to manage individual workers.
+Talk to Wolf about the outcome you need. The lead connects that intent to the agent organization; you do not need to manage individual executors.
 
 ## Give an outcome and the constraints that matter
 
@@ -10,7 +10,7 @@ For example:
 
 Wolf should establish what success means and ask when a missing answer changes the route or result. Its intent-dialogue method is contextual; a fixed questionnaire is not the goal. You can correct its understanding before execution or when new information appears.
 
-The supplied organization assigns bounded tasks to workers and integrates their results. Missing access, model capability or permissions must remain an explicit limitation, rather than an invented completed action.
+The supplied organization assigns bounded tasks to wolf-* executors and integrates their results. Missing access, model capability or permissions must remain an explicit limitation, rather than an invented completed action.
 
 ## Understand a choice or check progress
 
@@ -20,7 +20,7 @@ Useful requests include:
 - “What is complete, what is blocked, and which decision do you need from me?”
 - “Show how the result meets the agreed criteria.”
 
-These are examples of ordinary conversation, not additional CLI commands. Wolf should explain actions, reasons and consequences in human language, without pasting worker protocols or hidden reasoning.
+These are examples of ordinary conversation, not additional CLI commands. Wolf should explain actions, reasons and consequences in human language, without pasting internal protocols or hidden reasoning.
 
 ## Continue later
 
@@ -34,7 +34,7 @@ Tell Wolf what happened and what you expected:
 
 > You repeated the whole investigation instead of asking me about the missing requirement. Correct the current plan and check whether the working method needs changing.
 
-A local execution error calls for a correction. A missing decision calls for a question. A defect in a rule can become a complaint for the Steward. You do not need to classify it first; Wolf's feedback methods distinguish the routes. [The learning loop](/guide/feedback) explains the subsequent changes and limits.
+A local execution error calls for a correction. A missing decision calls for a question. A defect in a rule can be filed as a complaint; in 3.0.0 the Steward that applies method mutations is temporarily paused, and complaints are accepted and recorded until its return. You do not need to classify it first; Wolf's feedback methods distinguish the routes. [The learning loop](/guide/feedback) explains the subsequent changes and limits.
 
 Ask for the affected method, reason for change, version and validation. The owner can inspect face versions and use authorized restore operations; [Delivery & Trust](/guide/delivery) explains when a changed face reaches a session.
 

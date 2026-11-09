@@ -1,6 +1,6 @@
 # Architecture
 
-Wolf connects agents, skills, tools, rules and project memory through a working process. The three execution levels keep the original goal in view while individual sessions and workers change. The Steward provides a separate improvement loop: experience can change the methodology delivered to future sessions.
+Wolf connects agents, skills, tools, rules and project memory through a working process. The two-level organization keeps the original goal in view while individual sessions and executors change. A separate improvement loop lets experience change the methodology delivered to future sessions — the Steward behind it is temporarily paused in 3.0.0.
 
 This page is for contributors and integration authors. For the working roles, start with [Organization](/guide/organization); for face versions and delivery, see [Delivery & Trust](/guide/delivery).
 
@@ -8,10 +8,10 @@ This page is for contributors and integration authors. For the working roles, st
 
 | Loop        | Responsibility                                                                        | Persistent result                                           |
 | ----------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Delivery    | L0 owns intent and acceptance; L1 decomposes and integrates; L2 performs bounded work | Task state, decisions, reports and checkpoints              |
-| Improvement | The Steward processes authorized feedback, aggregates lessons and versions faces      | Updated methodology, reasons for change and version history |
+| Delivery    | Wolf owns intent and acceptance and performs part of the work itself; wolf-* executors complete bounded work | Task state, decisions, reports and checkpoints              |
+| Improvement | Authorized feedback is processed and faces versioned through the governed loop (the Steward is temporarily paused in 3.0.0) | Updated methodology, reasons for change and version history |
 
-The execution hierarchy is an operating protocol supported by agent frames and platform permissions. A written instruction is not proof that every boundary is enforced in code. Council execution and automatic policy scheduling must not be inferred from their architectural descriptions.
+The organization is an operating protocol supported by agent frames and platform permissions. A written instruction is not proof that every boundary is enforced in code. Council execution and automatic policy scheduling must not be inferred from their architectural descriptions.
 
 ## Sources of truth
 
@@ -56,4 +56,4 @@ Linked worktrees share the common memory root, while rendered platform files rem
 
 Checkpoints preserve the meaning and state needed to resume work. They do not provide an execution engine with leases, heartbeats or automatic crash recovery. Local storage does not mean local model inference: the selected provider still receives the context sent by the harness.
 
-Active learning consists of lesson capture, Steward aggregation and authorized face mutations. Automatic decay and the Council runtime are development directions, not current execution guarantees. Current implementation details remain in the source and [CLI reference](/guide/cli/); the [concept and maturity records](https://github.com/chekh/mister-wolf/tree/main/docs/concept) preserve design history and status.
+Active learning consists of lesson capture and authorized face mutations; Steward aggregation is temporarily paused in 3.0.0. Automatic decay and the Council runtime are development directions, not current execution guarantees. Current implementation details remain in the source and [CLI reference](/guide/cli/); the [concept and maturity records](https://github.com/chekh/mister-wolf/tree/main/docs/concept) preserve design history and status.

@@ -12,6 +12,23 @@ The mental model is three layers, from least to most permanent:
 
 Nothing here changes what the update pass does to **memory** (`.wolf/`): faces are memory, the pass never rewrites them (see [Memory Model](/guide/memory)).
 
+## Migrating to 3.0.0 (the two-level organization)
+
+3.0.0 replaces the active agent set. Run the pass as usual:
+
+```bash
+wolf upgrade --check
+wolf upgrade
+```
+
+What it does: delivers the 9-agent, 35-skill set of 3.0.0 — the former `worker-*` roles continue as `wolf-architect`, `wolf-developer`, `wolf-editor`, `wolf-expert`, `wolf-release-engineer`, `wolf-researcher`, `wolf-reviewer`, `wolf-tester`; removes `executor-lead`, `steward` and the `worker-*` frames with backups; removes the two Wolf plugins from autoload and reserves them. User edits (`take` decisions) are backed up under `.wolf/backup/upgrade/<date>/`. Memory, documents, face history and third-party files are not touched. A repeated upgrade reports the project up to date — it does not restore the old hierarchy, the old plugin autoload or automatic Steward calls.
+
+References to the old names in your own files and prompts stop resolving as active agents — update them to the `wolf-*` names; user agents keep their names.
+
+### Coming from the two-level pilot
+
+Do not run the pilot switch script on top of a standard installation. Follow the pilot transition order instead: stop the executors, hand off unfinished work through memory, then `wolf init --full` → `wolf bootstrap` → `wolf upgrade` in a fresh session. Do not mix the two instruction sets in one session; let new sessions start on the delivered set.
+
 ## Reading the plan before anything is written
 
 `wolf upgrade --check` is read-only — park-wide, and with `--here` for one project. It exits `0` always: it is a report, not a gate.
@@ -103,7 +120,7 @@ Read-only. Prints the target's state and the diff that `take` would apply:
 
 ```text
 wolf upgrade — show
-- file:      .opencode/agents/worker-reviewer.md   (project: proj /Users/…/proj)
+- file:      .opencode/agents/wolf-reviewer.md   (project: proj /Users/…/proj)
 - protect:   none
 - base:      2.20.0   file stamp: 2.20.0   witness: render @ 2.20.0 (75516f576854…)   drift: local ≠ base
 - --- a/local (as is)   +++ b/base 2.20.0   (what --resolve …=take gives you)
@@ -112,7 +129,7 @@ wolf upgrade — show
 warn:   -## Local addition
 warn:   -
 warn:   -Keep the review verdict in one line.
-- release:   wolf upgrade --resolve .opencode/agents/worker-reviewer.md=take
+- release:   wolf upgrade --resolve .opencode/agents/wolf-reviewer.md=take
 ```
 
 For a protected file `protect:` shows the value (`2.19.0 (pinned; recognized)`), for a file outside the update map it shows `base: n/a (file outside the update map)` with an explanation and no `take` hint — there is no base to take. `--show` also accepts a target that is currently not a decision (a protected file, an orphan): such a target has no decision number, so address it by path. Exit `1` only for an unknown target.
@@ -158,7 +175,7 @@ Actual output of a resolution:
 ```text
 wolf upgrade — resolve
 ok: resolved: 1 (take: 1)
-- take proj/.opencode/agents/worker-reviewer.md (local saved: .wolf/backup/upgrade/2026-10-25/.opencode/agents/worker-reviewer.md)
+- take proj/.opencode/agents/wolf-reviewer.md (local saved: .wolf/backup/upgrade/2026-10-25/.opencode/agents/wolf-reviewer.md)
 - no decisions — nothing needs a decision
 ok: Done
 ```
@@ -179,7 +196,7 @@ error: Failed
 
 ```markdown
 ---
-description: 'Worker-reviewer (L2): …'
+description: 'Wolf-reviewer: …'
 mode: all
 protect: true
 ---
@@ -240,7 +257,7 @@ Plan
   outside the registry — manual mode
 ok: proj — updated
   base-set: 62 updated
-  faces: complaint-protocol skipped-live, executor-lead skipped-live, …
+  faces: complaint-protocol skipped-live, wolf-developer skipped-live, …
   verify: 69/69 ok
 updated 1 · new 0 · changed 5 · deprecated 0 · removed 0 · faces seeded 0
 ok: Done

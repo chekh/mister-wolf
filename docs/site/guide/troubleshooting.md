@@ -123,7 +123,7 @@ wolf analytics --view acceptance
 ## 12. Broken onboarding markers in `AGENTS.md`
 
 - **Symptom:** `AGENTS.md` is no longer updated at all; `wolf upgrade --check` shows the project as `unknown` with the detail `onboarding markers broken`, and the pass reports the file as `foreign`/skipped.
-- **Cause:** the block is delimited by `<!-- wolf:onboarding v3 -->` and `<!-- /wolf:onboarding -->`. When the closing line is missing, wolf cannot tell its zone from yours and applies the `wx` policy — hands off, and the report says `onboarding markers broken`. When the opening marker is gone too, the file is simply foreign: no detail line, same hands-off outcome.
+- **Cause:** the block is delimited by `<!-- wolf:onboarding v4 -->` and `<!-- /wolf:onboarding -->`. When the closing line is missing, wolf cannot tell its zone from yours and applies the `wx` policy — hands off, and the report says `onboarding markers broken`. When the opening marker is gone too, the file is simply foreign: no detail line, same hands-off outcome.
 - **Fix:** restore the closing marker line by hand (at the end of the wolf block), then run `wolf upgrade --here --check` — the file is managed again and the block is updated in place. If you would rather own the file, leave the markers broken: wolf will not touch it, and the report will keep saying so — that state is honest, not an error.
 
 ## 13. A hand-edited frontmatter that no longer parses
@@ -176,8 +176,8 @@ wolf analytics --view acceptance
 
 ## 17. `subagent_depth` ignored by opencode v2
 
-- **Symptom:** subagents cannot launch subagents — `executor-lead` fails with `Subagent depth limit reached (1)` and the three-level scheme (Mr.Wolf → executor-lead → workers) never starts.
-- **Cause:** the top-level `subagent_depth` key is marked `deprecated` in the opencode config schema, and opencode v2 drops it — the effective depth stays at the platform default `1`.
+- **Symptom:** a subagent cannot launch a subagent — the executor fails with `Subagent depth limit reached (1)`.
+- **Cause:** the top-level `subagent_depth` key is marked `deprecated` in the opencode config schema, and opencode v2 drops it — the effective depth stays at the platform default `1`. In the two-level organization executors do not delegate, so depth `1` is the working default; raise `experimental.subagent_depth` only for your own deeper nesting.
 - **Fix:** `wolf init` or `wolf doctor --repair` moves wolf's own `subagent_depth: 2` into `experimental.subagent_depth` and removes the deprecated key; other `experimental` fields and the rest of the JSON are preserved. Restart opencode afterwards. A **foreign** top-level value is only reported (`deprecated and ignored by opencode v2`), never overwritten — set `experimental.subagent_depth` yourself (`>= 2`) in that case.
 - **How to confirm:** `wolf doctor` names the deprecated top-level key directly, and opencode logs a `configuration normalization diagnostic` warning with `path=$.subagent_depth` on startup.
 
@@ -208,6 +208,14 @@ Since 2.32.1 the body boundary is parsed by a single implementation (`src/domain
 
 ## 21. A council expert cannot read the code
 
-- **Symptom:** `worker-expert` answers from the delivered packet only, every read call returns `Permission denied: read`, and the council loses the code-confirmed part of its positions. A list of file paths in the TASK changes nothing.
-- **Cause:** read permissions are granted by the **agent profile configuration** (`.opencode/agents/worker-expert.md`), not by the prompt. Before 2.32.2 the profile was deny-all with a single `read packet/*` allow, and no project has a `packet/` directory — so the only read rule never matched. Paths typed into a TASK are text, not a permission grant; the host has no per-spawn allowlist.
-- **Fix:** update the base set so the project profile carries the project-wide read rule (`wolf upgrade` in the project, or `wolf upgrade --here`). Verify with `opencode debug agents` — the effective `worker-expert` rules must show `read`/`glob`/`grep` allow, later `ask` rules for env and typical secret files (`*.env`, `.npmrc`, `.netrc`, `.git-credentials`, `*.pem`, `*.key`, `id_rsa`/`id_ed25519`) still intact, and `edit`/`shell`/`subagent`/`webfetch`/`external_directory` deny. Then run the functional channel probe from [Expert Council](/guide/council): read a specific file and return a specific line. A content fact means the channel works; an answer built from the packet means it does not. Fixing permissions in the prompt or repeating the probe does not help. Separately run the link audit from the same guide: a working channel still forces packet-only if some link inside the project resolves outside it.
+- **Symptom:** `wolf-expert` answers from the delivered packet only, every read call returns `Permission denied: read`, and the council loses the code-confirmed part of its positions. A list of file paths in the TASK changes nothing.
+- **Cause:** read permissions are granted by the **agent profile configuration** (`.opencode/agents/wolf-expert.md`), not by the prompt. Before 2.32.2 the profile was deny-all with a single `read packet/*` allow, and no project has a `packet/` directory — so the only read rule never matched. Paths typed into a TASK are text, not a permission grant; the host has no per-spawn allowlist.
+- **Fix:** update the base set so the project profile carries the project-wide read rule (`wolf upgrade` in the project, or `wolf upgrade --here`). Verify with `opencode debug agents` — the effective `wolf-expert` rules must show `read`/`glob`/`grep` allow, later `ask` rules for env and typical secret files (`*.env`, `.npmrc`, `.netrc`, `.git-credentials`, `*.pem`, `*.key`, `id_rsa`/`id_ed25519`) still intact, and `edit`/`shell`/`subagent`/`webfetch`/`external_directory` deny. Then run the functional channel probe from [Expert Council](/guide/council): read a specific file and return a specific line. A content fact means the channel works; an answer built from the packet means it does not. Fixing permissions in the prompt or repeating the probe does not help. Separately run the link audit from the same guide: a working channel still forces packet-only if some link inside the project resolves outside it.
+
+## 22. `init` refuses: not a project root
+
+**Symptom:** `wolf init` (any form, `npx` included) exits with `Not a project root (no package.json/.git/pyproject.toml/go.mod/Cargo.toml/README.md found). cd into your project first.`, although the flags are correct — the directory choice is the problem.
+
+**Cause:** since 3.0.0 `init` requires a project marker in the directory; an empty directory without a marker is refused instead of being initialized silently.
+
+**Fix:** `cd` into the actual project and rerun. For a genuinely new directory, create the marker first (`git init`, or a minimal `package.json`/`README.md`), then run `init`.

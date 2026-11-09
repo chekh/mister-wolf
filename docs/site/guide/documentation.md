@@ -6,7 +6,7 @@ The website is the single current user guide. Its source lives in `docs/site/`; 
 
 The owner of a change updates the affected documentation in the same task. The integrating reviewer checks coverage and examples. Release preparation reviews the core pages even when the release adds no new command. Revisit the explanation when the product's scope, responsibility model, onboarding, feedback or user controls change.
 
-Keep the opening useful: what Wolf does, how it holds the goal, how processes connect skills/tools/rules/memory, how the Steward changes methods, and how a person works with it. First use should not require learning taxonomy or internal report contracts. Explain measured effects where helpful without making benchmarks the entry requirement.
+Keep the opening useful: what Wolf does, how it holds the goal, how processes connect skills/tools/rules/memory, how the learning loop changes methods, and how a person works with it. First use should not require learning taxonomy or internal report contracts. Explain measured effects where helpful without making benchmarks the entry requirement.
 
 ## Coverage checklist
 

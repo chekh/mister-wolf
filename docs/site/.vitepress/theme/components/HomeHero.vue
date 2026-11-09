@@ -33,8 +33,8 @@ const t = (s: L): string => (ru.value ? s.ru : s.en);
         <p class="wolf-hero-mech">
           {{
             t({
-              en: 'Three levels keep the goal in view. Processes connect skills, tools, rules and memory. The Steward turns experience into controlled changes to working methods. Project documents and recorded state carry the work into the next session.',
-              ru: 'Три уровня удерживают цель. Процессы связывают скиллы, инструменты, правила и память. Стюард превращает опыт в управляемые изменения методик. Документы и записанное состояние сохраняют преемственность между сессиями.',
+              en: 'One conversation, one organization: mr-wolf does the work itself or hires eight wolf-* specialists directly. Processes connect skills, tools, rules and memory. Project documents and recorded state carry the work into the next session.',
+              ru: 'Один диалог — одна организация: mr-wolf выполняет работу сам или нанимает восемь исполнителей wolf-* напрямую. Процессы связывают скиллы, инструменты, правила и память. Документы и записанное состояние сохраняют преемственность между сессиями.',
             })
           }}
         </p>

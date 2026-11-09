@@ -69,8 +69,8 @@ const inject = computed(() =>
     <p class="wolf-sessions-takeaway">
       {{
         t({
-          en: 'Recorded state supports continuity. Steward changes follow an authorized process, not an automatic guarantee of improvement.',
-          ru: 'Записанное состояние сохраняет преемственность. Изменения Стюарда проходят авторизованный процесс, а не гарантируют улучшение автоматически.',
+          en: 'Recorded state supports continuity. Method changes follow an authorized process, not an automatic guarantee of improvement; the Steward that applies them is temporarily paused in 3.0.0 and returns in the next release.',
+          ru: 'Записанное состояние сохраняет преемственность. Изменения методик проходят авторизованный процесс, а не гарантируют улучшение автоматически; Стюард, применяющий их, в 3.0.0 временно отключён и вернётся в следующем релизе.',
         })
       }}
     </p>

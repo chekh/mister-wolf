@@ -1,6 +1,6 @@
 # The Steward: learning and controlled self-mutation
 
-Wolf does more than preserve experience: through the Steward it can change future working methods. The Steward is a cross-cutting role alongside the delivery hierarchy. L0/L1/L2 advance the task; the Steward maintains methods under the authorized feedback process.
+Wolf does more than preserve experience: a governed loop can change future working methods. The Steward is a cross-cutting role alongside delivery. Delivery advances the task; the Steward maintains methods under the authorized feedback process — in 3.0.0 it is temporarily out of standard routing: complaints and proposals are accepted and recorded, and nothing invokes the Steward until its return in the next release.
 
 A saved lesson, an aggregate lesson and a new face version are different outcomes. Aggregation condenses compatible experience; face mutation changes the playbook delivered to an agent. Neither operation trains model weights.
 
@@ -9,7 +9,7 @@ You can describe the problem to Wolf in ordinary language. A missing decision ca
 For direct administration, the complaint command is:
 
 ```bash
-wolf complain --about executor-lead --rule "…" --evidence "…" --proposal "…"
+wolf complain --about wolf-reviewer --rule "…" --evidence "…" --proposal "…"
 ```
 
 ## File a complaint
@@ -52,7 +52,7 @@ Resolved complaints without either an outgoing `outcome` edge or an incoming `ou
 
 ## Escalation: behavioral → Steward
 
-A supported **open** behavioral complaint follows triage by the authorized dispatcher. The dispatcher handles targets below its level; complaints about its own or a higher level are escalated without changing their status. The Steward is invoked through the authorized route while the complaint remains open. After a verified face version and the Steward's report, the authorized participant resolves the complaint and records the outcome relation. Closing it first would hide unfinished work.
+A supported **open** behavioral complaint is recorded with status `open` and waits for its authorized handler. In 3.0.0 the Steward is temporarily out of standard routing: complaints are accepted and recorded, nothing invokes triage or mutation automatically, and signals are not silently closed — the Steward's return with a new mandate is the next release's work. When the role returns, an open complaint follows the authorized route: a verified face version and the Steward's report, then the authorized participant resolves the complaint and records the outcome relation. Closing it first would hide unfinished work.
 
 Since 2.17, playbook mutation creates a new face version (`wolf face new`) with a structured mutation record: reason, minimal change, boundaries, examples, verification and rollback. It does not edit a stamped frame. A frame or skill defect must be routed to its authorized source-change process rather than presented as a face-only fix. The current author/triage contract is shipped in the [`wolf-feedback` reference](https://github.com/chekh/mister-wolf/blob/main/templates/base/skills/wolf-feedback/references/complaints.md).
 
@@ -60,21 +60,23 @@ Technical corrections follow their applicable memory-editing route. Tool failure
 
 ## Steward aggregation {#steward-aggregation}
 
-Lessons accumulate: session after session, agents record small observations, and delivery starts drowning in near-duplicates. The Steward — the loop's background agent (see [Base Set](/guide/base-set)) — condenses mature lessons into aggregates: one generalized lesson replaces a cluster of repeats. Redistribution, not an overlay: the aggregate takes over delivery, the sources are retired.
+Lessons accumulate: session after session, agents record small observations, and delivery starts drowning in near-duplicates. The Steward — the loop's background agent, temporarily paused in 3.0.0 (see [Base Set](/guide/base-set)) — condenses mature lessons into aggregates: one generalized lesson replaces a cluster of repeats. Redistribution, not an overlay: the aggregate takes over delivery, the sources are retired.
 
 The Steward's faces — Mentor, Librarian, Archivist — and the frame/face/mutator split are described in [Delivery & Trust](/guide/delivery).
 
 **Triggers** — two event triggers, both a single status line, no daemons:
 
-1. **Cycle completion** — the coordinator runs `wolf recap` after accepting cycle reports; a non-empty aggregation line means a nested Steward call.
+1. **Cycle completion** — the coordinator runs `wolf recap` after accepting cycle reports; a non-empty aggregation line shows the debt (invoking the Steward is paused in 3.0.0).
 2. **Session start** — `wolf call` prints a banner when mature unaggregated lessons exist, so a fresh session (or the owner) sees the debt immediately.
 
 ```text
 ## Стюард: агрегация
-неагрегированных уроков: N (зрелых: M) — вызовите Стюарда: opencode run --agent steward
+неагрегированных уроков: N (зрелых: M)
 ```
 
 "Unaggregated" = an `active` lesson without a **live** incoming `aggregated_in` edge (edges from `rejected`/`archived` aggregates don't count — a rejected cluster returns to the pool and stays visible). A cluster is **mature** — worth showing in the line — when it has ≥ 3 lessons or its oldest lesson is ≥ 7 days old.
+
+Status in 3.0.0: applying aggregates waits for the Steward's return; the contract below describes the mechanism.
 
 **The Steward prepares and applies the aggregate autonomously.** Each aggregate no longer requires user approval. `proposed` is a staging state before validation, not a manual confirmation queue. Each nested invocation handles one small semantic cluster and reports the outcome and remaining work to the coordinator.
 

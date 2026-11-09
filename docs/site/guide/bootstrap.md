@@ -25,7 +25,7 @@ Then ask Mr. Wolf in the configured agent environment:
 
 > Review the bootstrap findings with me. Explain the proposed project conventions, ask about anything material that is missing, and help finish onboarding.
 
-The command itself does not invoke an LLM or automatically start the Steward. The assistant organizes the review under the project's permissions; when Steward work is needed, it follows the authorized feedback/mutation route. In memory-only mode, use your connected assistant or review the drafts with the CLI.
+The command itself does not invoke an LLM and nothing starts automatically. The assistant organizes the review under the project's permissions; method changes follow the authorized feedback route — in 3.0.0 the Steward behind it is temporarily paused, and signals are recorded until its return. In memory-only mode, use your connected assistant or review the drafts with the CLI.
 
 ## What to confirm
 

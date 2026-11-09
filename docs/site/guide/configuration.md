@@ -156,7 +156,7 @@ A config file that exists but cannot be parsed or read is named in the doctor's 
 | `mcp.servers.wolf`  | top level, under `mcp.servers` | canonical (native) MCP server entry: `{ type: 'local', command: ['wolf', 'mcp'], disabled: false }` |
 | `mcp.wolf` (legacy) | top level, under `mcp`         | deprecated flat form, `enabled: true`: read and migrated by wolf, never written                     |
 | `default_agent`     | top level                      | `mr-wolf` — the agent opencode starts with                                                          |
-| `subagent_depth`    | `experimental.subagent_depth`  | `2` for the three-level scheme (Mr.Wolf → executor-lead → workers); integer ≥ 0                     |
+| `subagent_depth`    | `experimental.subagent_depth`  | subagent nesting depth; the two-level set runs at the platform default `1` (executors do not delegate); integer ≥ 0 |
 
 A top-level `subagent_depth` is marked `deprecated` in the opencode config schema and opencode v2 ignores it — the effective default there is `1`, which forbids subagents from launching subagents. Wolf therefore writes depth only under `experimental` and migrates the old place for you: a top-level `subagent_depth: 2` (wolf's own value) is moved to `experimental.subagent_depth` on the next `init` / `doctor --repair`, and the deprecated key is removed. Any other top-level value is a conflict: it is reported with a reason (`deprecated and ignored by opencode v2`) and never overwritten. `wolf doctor` reports the deprecated top-level key even before the next repair. Other fields under `experimental` and the rest of the JSON are preserved. On `wolf uninstall` only wolf's exact values are removed, and an `experimental` object emptied by that removal is dropped.
 

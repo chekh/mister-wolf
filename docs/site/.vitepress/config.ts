@@ -40,7 +40,7 @@ const ruCliItems = [
 export default defineConfig({
   title: 'Mr. Wolf',
   description:
-    'Mr. Wolf organizes AI assistants around your goal: connected processes, project memory, governed learning through the Steward and clear human communication. Local-first, OpenCode-first.',
+    'Mr. Wolf organizes AI assistants around your goal: connected processes, project memory, a governed learning loop and clear human communication. Local-first, OpenCode-first.',
   base: '/mister-wolf/',
   // VitePress does not apply `base` to head links — hardcode it for GitHub Pages
   head: [
@@ -159,7 +159,7 @@ export default defineConfig({
       label: 'Русский',
       lang: 'ru',
       description:
-        'Mr. Wolf организует AI-помощников вокруг вашей цели: связанные процессы, память проекта, управляемое обучение через Стюарда и понятное общение с человеком. Local-first, OpenCode-first.',
+        'Mr. Wolf организует AI-помощников вокруг вашей цели: связанные процессы, память проекта, контур управляемого обучения и понятное общение с человеком. Local-first, OpenCode-first.',
       themeConfig: {
         nav: [
           { text: 'Руководство', link: '/ru/guide/overview', activeMatch: '/ru/guide/' },

@@ -8,6 +8,36 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [3.0.0] - 2026-11-09
+
+### Breaking — the two-level organization: mr-wolf executes work itself and hires the specialists directly, and the intermediate level, the old agent names and the mandatory plugins are gone
+
+The three-level route (lead → executor-lead → workers) put a coordination layer between the lead and the agents doing the work, and delivering the roles depended on two mandatory OpenCode plugins. The two-level pilot showed that mr-wolf organizes the same work without that layer. This release makes the two-level model the standard one. It replaces the active agent set of an installed project, and a repeated upgrade does not bring the old hierarchy back — hence the major version.
+
+- **Two-level model.** mr-wolf is the lead: it executes work itself and hires eight `wolf-` specialists directly — `wolf-architect`, `wolf-developer`, `wolf-editor`, `wolf-expert`, `wolf-release-engineer`, `wolf-researcher`, `wolf-reviewer`, `wolf-tester` (base set: 9 agents). Executors do not delegate further; there is no intermediate level. A new independent piece of work gets a fresh executor, reuse is bounded to defined continuation cases, and the lead's own work passes the same independent review. The document process, evidence-based review, expert councils, gitflow and the existing memory are preserved.
+- **Persistent agent names.** Every shipped agent except `mr-wolf` carries the `wolf-` prefix — the former `worker-*` roles continue under the new names — and the prefix is not forced onto user-defined agents. `executor-lead`, `steward` and the `worker-*` names leave the active set: after an upgrade they are removed (with backups) and do not remain as active duplicate routes.
+- **Delivery without mandatory plugins.** The standard process needs only the agent definitions, a short `AGENTS.md` starter block, skill loading and addressed handoff. `wolf-router` and `wolf-session-start` are no longer required: an upgrade removes the two old Wolf plugins from autoload and reserves them; third-party plugins are untouched.
+- **The skill set is 35**, including 8 short compatibility entries carried from the pilot (marked «Совместимый вход», redirecting to the current skill — an explicit transition measure, to be removed in the next release). The three commands (`analyze-doc`, `complain`, `doc-review`) stay.
+- **Migration of an ordinary project: `wolf upgrade`.** The pass delivers the new set and reserves user edits (`take` changes are backed up under `.wolf/backup/upgrade/<date>/`); memory, documents, face history and third-party files stay untouched. A repeated upgrade reports the project up to date — it does not restore the old hierarchy, face delivery, the old plugins or automatic Steward calls. Verified on a live 2.33.0 → 3.0.0 transition: one consistent set (9 agents, set 3.0.0), `verify` passing 83/83, zero old agent names, backups created; a clean `wolf init` delivers the same 9-agent, 35-skill set directly.
+- **Migration from the pilot: a separate instruction.** init → bootstrap → upgrade; do not run the pilot switch script blindly on top of a standard installation. Do not mix the two instruction sets in one session: stop the executors, hand off unfinished work through memory, and let new sessions start on the new set.
+- **`wolf init` requires the project marker in the directory.** An empty directory without the marker is refused instead of being initialized silently.
+- **Complaints accept the actual agent composition.** The hard-coded list of base agent ids is gone: a complaint target is resolved against the current agent set of the integration, including user-added project agents with or without the `wolf-` prefix. `skill:` and memory targets still work, and historic complaints about renamed or removed agents stay valid; a genuinely unknown target returns a clear error, and an unavailable discovery source is reported as such instead of being read as proof of absence.
+- **Agent scaffold is self-sufficient.** A scaffolded user agent no longer depends on a face, the router plugin or a default model.
+- **The Steward is temporarily out of the standard routing.** Nothing invokes it after acceptance, on complaints/proposals or on mature lessons — and no hidden automatically-invoked replacement ships under another name. Its mechanisms, history, face versions and the intake of complaints and proposals are preserved: signals are accepted and are not silently closed. The steward's return and its new mandate are the next release's work.
+
+### What this release does not do
+
+- **No measured speed or cost effect is claimed.** Faster appearance of answers is the owner's observation, not a measurement; no cache-share or session-count improvements are stated — those are hypotheses. Cost is measured from raw OpenCode usage and sessions (`opencode.db`): the skill counters left with `wolf-router`, and their absence does not mean the calls did not happen. The "after" window of the measurement protocol is collected later; comparisons are published only after both windows exist.
+- **No faces as behavior delivery and no new Steward features.** Face objects and their history are preserved in memory, but faces do not come back as the delivery mechanism, and the steward's powers over skill sources are not redesigned here.
+- **No new harness support.** The method core is freed of unnecessary OpenCode-specific wording as portability preparation; integrations with other harnesses are not part of this release.
+
+### Upgrade notes
+
+- **Ordinary project:** `npm install -g mister-wolf@3.0.0` (or `wolf upgrade`). The pass replaces the active set: after it a project has exactly the 9 agents and 35 skills of 3.0.0. Nothing in memory, documents or third-party files is deleted; the removed Wolf plugins and the reserved user edits are backed up under `.wolf/backup/upgrade/<date>/`.
+- **From the pilot:** follow the pilot transition instruction (init → bootstrap → upgrade); the pilot switch script is not for standard installations.
+- **Finish in-flight work first.** Migrate after the executors are stopped; new sessions use the new set, and unfinished work is handed off through memory as usual.
+- **The old names stop resolving as active agents.** References to `executor-lead`, `worker-*` or the Steward as an active routing target need updating to the `wolf-*` names; user agents keep their names.
+
 ## [2.33.0] - 2026-11-07
 
 ### Changed — scaffolded documents come out in readable block form, and a readability pass gets a dedicated skill and a route before content review

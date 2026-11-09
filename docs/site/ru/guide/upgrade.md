@@ -12,6 +12,23 @@ Wolf управляет файлами в проектах: агенты, ски
 
 Ничего из этого не меняет отношения прохода к **памяти** (`.wolf/`): лица — память, проход их не переписывает (см. [Модель памяти](/ru/guide/memory)).
 
+## Переход на 3.0.0 (двухуровневая организация)
+
+3.0.0 заменяет активный набор агентов. Прогоните проход как обычно:
+
+```bash
+wolf upgrade --check
+wolf upgrade
+```
+
+Что он делает: доставляет набор 3.0.0 — 9 агентов и 35 скиллов; прежние роли `worker-*` продолжаются как `wolf-architect`, `wolf-developer`, `wolf-editor`, `wolf-expert`, `wolf-release-engineer`, `wolf-researcher`, `wolf-reviewer`, `wolf-tester`; убирает `executor-lead`, `steward` и рамки `worker-*` с бэкапами; снимает два плагина Wolf из автозагрузки и резервирует их. Пользовательские правки (решения `take`) бэкапятся в `.wolf/backup/upgrade/<дата>/`. Память, документы, история лиц и сторонние файлы не затрагиваются. Повторный upgrade сообщает, что проект актуален, — он не возвращает старую иерархию, старую автозагрузку плагинов или автоматические вызовы Стюарда.
+
+Упоминания старых имён в ваших файлах и промптах перестают разрешаться как активные агенты — обновите их на имена `wolf-*`; пользовательские агенты сохраняют имена.
+
+### Переход с двухуровневого пилота
+
+Не запускайте пилотный switch-скрипт поверх штатной установки. Порядок перехода с пилота: остановите исполнителей, передайте незавершённую работу через память, затем в свежей сессии `wolf init --full` → `wolf bootstrap` → `wolf upgrade`. Не смешивайте два набора инструкций в одной сессии; новые сессии должны стартовать на доставленном наборе.
+
 ## Прочитать план до записи
 
 `wolf upgrade --check` только читает — по парку целиком и с `--here` для одного проекта. Exit всегда `0`: это отчёт, а не гейт.
@@ -103,7 +120,7 @@ wolf upgrade --show .opencode/agents/foo.md
 
 ```text
 wolf upgrade — show
-- file:      .opencode/agents/worker-reviewer.md   (project: proj /Users/…/proj)
+- file:      .opencode/agents/wolf-reviewer.md   (project: proj /Users/…/proj)
 - protect:   none
 - base:      2.20.0   file stamp: 2.20.0   witness: render @ 2.20.0 (75516f576854…)   drift: local ≠ base
 - --- a/local (as is)   +++ b/base 2.20.0   (what --resolve …=take gives you)
@@ -112,7 +129,7 @@ wolf upgrade — show
 warn:   -## Local addition
 warn:   -
 warn:   -Keep the review verdict in one line.
-- release:   wolf upgrade --resolve .opencode/agents/worker-reviewer.md=take
+- release:   wolf upgrade --resolve .opencode/agents/wolf-reviewer.md=take
 ```
 
 У защищённого файла `protect:` показывает значение (`2.19.0 (pinned; recognized)`); у файла вне карты обновления — `base: n/a (file outside the update map)` с пояснением и без подсказки `take`: брать нечего. `--show` принимает и цель, которая сейчас не является решением (защищённый файл, orphan): у такой цели нет номера, адресуйте путём. Exit `1` — только для неизвестной цели.
@@ -158,7 +175,7 @@ wolf upgrade --resolve my-proj/.opencode/agents/foo.md=pin,.opencode/command/baz
 ```text
 wolf upgrade — resolve
 ok: resolved: 1 (take: 1)
-- take proj/.opencode/agents/worker-reviewer.md (local saved: .wolf/backup/upgrade/2026-10-25/.opencode/agents/worker-reviewer.md)
+- take proj/.opencode/agents/wolf-reviewer.md (local saved: .wolf/backup/upgrade/2026-10-25/.opencode/agents/wolf-reviewer.md)
 - no decisions — nothing needs a decision
 ok: Done
 ```
@@ -179,7 +196,7 @@ error: Failed
 
 ```markdown
 ---
-description: 'Worker-reviewer (L2): …'
+description: 'Wolf-reviewer: …'
 mode: all
 protect: true
 ---
@@ -240,7 +257,7 @@ Plan
   outside the registry — manual mode
 ok: proj — updated
   base-set: 62 updated
-  faces: complaint-protocol skipped-live, executor-lead skipped-live, …
+  faces: complaint-protocol skipped-live, wolf-developer skipped-live, …
   verify: 69/69 ok
 updated 1 · new 0 · changed 5 · deprecated 0 · removed 0 · faces seeded 0
 ok: Done

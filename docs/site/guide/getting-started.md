@@ -10,7 +10,7 @@ The full organization is currently OpenCode-first. This path connects Wolf to an
 
 ## Install and connect
 
-Run in the project you want Wolf to work on:
+Run in the project you want Wolf to work on — `init` requires a project marker (`package.json`, `.git`, `pyproject.toml`, `go.mod`, `Cargo.toml` or `README.md`), and an empty directory is refused:
 
 ```bash
 npm install -g mister-wolf
@@ -21,7 +21,7 @@ wolf bootstrap
 
 Use exactly **`mister-wolf`**. `mr-wolf` is a different npm package.
 
-`init --full` writes the supplied agents, skills, commands and plugins, seeds missing faces, and configures the Wolf MCP server in `opencode.json`. It selects `mr-wolf` as the default agent. Existing files and local changes follow the [initialization/update policy](/guide/upgrade); an existing project may require decisions.
+`init --full` writes the supplied agents, skills and commands, and configures the Wolf MCP server in `opencode.json`; `mr-wolf` becomes the default agent. Since 3.0.0 the standard set has no mandatory plugins — the two old Wolf plugins are reserved, not installed. Existing files and local changes follow the [initialization/update policy](/guide/upgrade); an existing project may require decisions.
 
 **Restart OpenCode** so the project configuration is loaded. Without an explicit model override, platform defaults apply; initialization does not choose a new provider for you.
 
@@ -41,13 +41,14 @@ For example:
 
 > Prepare a concise onboarding guide for a newcomer. Use the existing project documents, include setup and a first useful task, and verify commands where safe. Ask me if a missing decision changes the result.
 
-This is an illustrative request, not a recorded run. The supplied methods direct Wolf to clarify intent and acceptance criteria, have L1 organize bounded L2 work, integrate findings and present the result. You should see the guide or its file location, the verification performed, limitations and any decision still needed from you. Actual behavior depends on the model, harness and project permissions.
+This is an illustrative request, not a recorded run. The supplied methods direct Wolf to clarify intent and acceptance criteria, have mr-wolf do the work itself or hire bounded wolf-* executors, integrate findings and present the result. You should see the guide or its file location, the verification performed, limitations and any decision still needed from you. Actual behavior depends on the model, harness and project permissions.
 
 If the assignment continues later, ask Wolf to preserve significant state and then name the task in the next session. See [Working with Wolf](/guide/working-with-wolf).
 
 ## If something is missing
 
 - No `mr-wolf` agent or MCP tools: check you used `--full --platform opencode`, then restart OpenCode. A bare `wolf init` is intentionally smaller.
+- `Not a project root …`: `init` ran outside a project directory — `cd` into the project (see [Troubleshooting](/guide/troubleshooting)).
 - Provider/model errors: verify your OpenCode provider setup; Wolf does not supply model credentials.
 - Integrity errors: run `wolf doctor`, read the specific issue and use [Troubleshooting](/guide/troubleshooting). A clean doctor result checks integrity, not completion of a task.
 - An unresolved project convention: discuss it with Wolf before treating a proposed rule as active.

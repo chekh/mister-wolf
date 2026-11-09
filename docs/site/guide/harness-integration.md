@@ -8,8 +8,8 @@ This page is for authors connecting an agent environment to Wolf. The integratio
 | ------------------------ | ------------------------------------------------------------------------------------------- |
 | CLI or MCP memory access | Read and update project memory through supported operations                                 |
 | Context delivery         | Supply relevant project state and the current methodology to a session                      |
-| Agent organization       | Support L0/L1/L2 dispatch, bounded task inputs, result contracts and independent acceptance |
-| Improvement loop         | Route authorized feedback to the Steward and deliver resulting face versions                |
+| Agent organization       | The two-level organization: a lead hires bounded wolf-* executors directly; bounded task inputs, result contracts and independent acceptance |
+| Improvement loop         | Accept authorized feedback (the Steward is temporarily paused in 3.0.0); deliver resulting face versions |
 
 OpenCode is the main operating integration. An MCP connection on another platform does not by itself reproduce every OpenCode plugin or delegation feature. See [MCP](/guide/mcp), [Base Set](/guide/base-set) and [Delivery & Trust](/guide/delivery).
 

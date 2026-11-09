@@ -23,8 +23,8 @@ const steps = computed(() => [
     cmd: 'wolf init --full --platform opencode',
     state: 'AGENTS + MEMORY',
     note: t({
-      en: 'Run in your project; installs the organization and its MCP configuration',
-      ru: 'Выполните в проекте: организация и её MCP-конфигурация',
+      en: 'Run inside your project (init requires a project marker); installs the organization and its MCP configuration',
+      ru: 'Выполните внутри проекта (init требует маркер проекта): организация и её MCP-конфигурация',
     }),
   },
   {

@@ -25,8 +25,8 @@ const rows: Row[] = [
       ru: 'Частные трудности уводят длинную работу в сторону',
     },
     response: {
-      en: 'L0 holds intent; L1 organizes delivery; L2 completes bounded work',
-      ru: 'L0 держит намерение; L1 организует поставку; L2 выполняют конечные задачи',
+      en: 'Wolf holds the goal; wolf-* specialists complete bounded work under the same review',
+      ru: 'Волф держит цель; исполнители wolf-* выполняют конечные задачи под тем же ревью',
     },
   },
   {
@@ -70,8 +70,8 @@ const rows: Row[] = [
       ru: 'Замечание в чате теряется вместе с разговором',
     },
     response: {
-      en: 'The Steward aggregates lessons and versions methods through the authorized loop',
-      ru: 'Стюард обобщает уроки и меняет версии методик в авторизованном контуре',
+      en: 'Feedback is accepted through the authorized loop; the Steward that versions methods is temporarily paused (back in the next release)',
+      ru: 'Обратная связь принимается в авторизованном контуре; Стюард, меняющий версии методик, временно отключён (вернётся в следующем релизе)',
     },
   },
   {
@@ -81,8 +81,8 @@ const rows: Row[] = [
       ru: 'Сделать работу понятной',
     },
     symptom: {
-      en: 'People should not have to dispatch and decode worker reports',
-      ru: 'Человек не должен диспетчировать и расшифровывать отчёты воркеров',
+      en: 'People should not have to manage executors and decode their internal reports',
+      ru: 'Человек не должен управлять исполнителями и расшифровывать их внутренние отчёты',
     },
     response: {
       en: 'Wolf clarifies intent, explains choices and integrates the result for you',
@@ -99,8 +99,8 @@ const rows: Row[] = [
     <p class="wolf-why-text">
       {{
         t({
-          en: 'Long-running work needs continuity of purpose, responsibility and experience. Wolf connects these through a project-owned organization, with a process for delivery and a separate Steward learning loop.',
-          ru: 'Длительной работе нужна преемственность цели, ответственности и опыта. Wolf связывает их в принадлежащую проекту организацию: процесс выполнения задач и отдельный контур обучения через Стюарда.',
+          en: 'Long-running work needs continuity of purpose, responsibility and experience. Wolf connects these through a project-owned organization, with a process for delivery and a governed learning loop (the Steward is temporarily paused in 3.0.0).',
+          ru: 'Длительной работе нужна преемственность цели, ответственности и опыта. Wolf связывает их в принадлежащую проекту организацию: процесс выполнения задач и контур управляемого обучения (Стюард в 3.0.0 временно отключён).',
         })
       }}
     </p>

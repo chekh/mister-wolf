@@ -23,8 +23,8 @@ const nodes = computed(() => [
       <p>
         {{
           ru
-            ? 'Вы обсуждаете цель с Wolf. Процесс связывает нужных исполнителей, методики, инструменты, правила и память; Стюард использует опыт для управляемого изменения будущей работы.'
-            : 'You discuss the goal with Wolf. The process connects the right workers, methods, tools, rules and memory; the Steward uses experience to make controlled changes to future work.'
+            ? 'Вы обсуждаете цель с Wolf. Процесс связывает нужных исполнителей, методики, инструменты, правила и память; опыт питает контур управляемого совершенствования (Стюард в 3.0.0 временно отключён).'
+            : 'You discuss the goal with Wolf. The process connects the right specialists, methods, tools, rules and memory; experience feeds a governed improvement loop (the Steward is temporarily paused in 3.0.0).'
         }}
       </p>
       <div class="wolf-system-map">
@@ -66,8 +66,8 @@ const nodes = computed(() => [
         <li>
           {{
             ru
-              ? 'Стюард обобщает уроки и изменяет лица по авторизованному протоколу. Новые версии доставляются последующим сессиям.'
-              : 'The Steward aggregates lessons and changes faces through the authorized protocol. New versions reach later sessions.'
+              ? 'Изменения методик идут по авторизованному протоколу с историей версий. Новые версии доставляются последующим сессиям; Стюард этого контура в 3.0.0 временно отключён.'
+              : 'Method changes go through the authorized protocol with version history. New versions reach later sessions; the Steward behind this loop is temporarily paused in 3.0.0.'
           }}
         </li>
       </ul>

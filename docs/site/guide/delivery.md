@@ -6,22 +6,22 @@ An agent's behavior has two halves — the static **frame** and the mutable **fa
 
 - **Frame** — the stamped agent file (`.opencode/agents/<name>.md`): role, boundaries, prohibitions. Static: the projects pass of `wolf upgrade` re-renders it, and hands off — it never carries the methodology.
 - **Face** — the playbook as a memory object in Wolf. Since 2.17 it is a core type (`face`) with its own versioning: new versions are created only through `wolf face` (`new` by the Steward, `restore`/`breakglass` by the owner), each Steward version leaves a structured mutation record (the G17 template: reason, minimal change, boundaries, examples, verification, rollback), and versions chain through supersede. Legacy playbook notes (`note` + facet `howto` + `owner_skill`, the 2.13–2.16 form) remain readable and migrate with `wolf face migrate`. Mutable: it evolves through the complaint loop, not by editing files.
-- **Mutator** — the Steward, and only the Steward. Agents file complaints (`wolf complain`); playbook mutations go through [the Learning Loop](/guide/feedback) as face versions. Nobody edits a face in place; the owner's emergency lever is `wolf face breakglass`, which is refused inside live agent sessions.
+- **Mutator** — the Steward, and only the Steward. Agents file complaints (`wolf complain`); playbook mutations go through [the Learning Loop](/guide/feedback) as face versions. In 3.0.0 the Steward is temporarily out of standard routing: complaints are accepted and recorded, and mutations resume with its return. Nobody edits a face in place; the owner's emergency lever is `wolf face breakglass`, which is refused inside live agent sessions.
 - **Delivery** — the channel that puts the resolved playbook body into the system prompt. Three channels, one primary.
 
 ## Three delivery channels
 
 | #   | Channel           | What happens                                                                                                              | Status                                                                                                                                |
 | --- | ----------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **plugin-inject** | the `wolf-router` plugin resolves the agent's playbook from memory and injects it into the system prompt on every message | primary; shipped for opencode                                                                                                         |
-| 2   | **pull**          | the frame instructs the agent to fetch its playbook itself — `wolf search` / `wolf get` by the agent-id                   | shipped; also the fallback layer when no plugin runs                                                                                  |
+| 1 | **plugin-inject** | the `wolf-router` plugin resolves the agent's playbook from memory and injects it into the system prompt on every message | optional; reserved since 3.0.0, not installed by `init` |
+| 2 | **pull** | the frame instructs the agent to fetch its playbook itself — `wolf search` / `wolf get` by the agent-id | standard; no plugin needed |
 | 3   | **bake-in**       | at seed time the playbook body is baked into the frame as a static block                                                  | designed — the renderer mechanism exists (`bake` option), activated by a platform adapter for minimal platforms; not used by opencode |
 
-The plugin is what makes delivery deterministic instead of hoping the agent remembers to pull.
+The plugin makes delivery deterministic — enable it if you want that guarantee; without it, delivery relies on the pull channel and the `AGENTS.md` starter block.
 
 ## Channel #1: plugin-inject (the router)
 
-The router is the `wolf-router` opencode plugin — a stamped file (`.opencode/plugins/wolf-router.ts`) from the Wolf base set. On every message it:
+The router is an optional opencode plugin — since 3.0.0 shipped reserved in `templates/opencode/plugins-reserved/` and not installed by `wolf init` (a file under plugins-reserved is not an enabled plugin). If enabled, on every message it:
 
 1. Reads the `agent-id: <id>` marker from the agent frame **body**. The marker must live in the body, not in frontmatter — frontmatter never reaches the system prompt (a known opencode trap).
 2. Runs `wolf search <id> playbook --hide-superseded` and fetches candidates with `wolf get` — stopping early: the first candidate that passes the ownership guard wins (search relevance already ranks them, and `--hide-superseded` cuts old versions), so a cache miss costs a single `get` instead of K sequential fetches. The canonical playbook form since 2.17 is a `face`; legacy playbook notes (the pre-2.17 `note` + facet `howto`) still resolve through the alias path — the word `playbook` narrows the candidates by title/tags on both forms.
@@ -72,9 +72,9 @@ The log's place in telemetry is covered in [Telemetry](/guide/telemetry), the me
 
 2. Create a playbook owned by that id — since 2.17 a `face` version via `wolf face new <owner_skill>` (run as the Steward; every version requires the mutation-record fields). The pre-2.17 form — a `note` with facet `howto` and `owner_skill` — still resolves; `wolf face migrate` converts existing notes into versioned faces, and `wolf doctor` flags owners where both forms coexist. A higher version supersedes the older ones; the `owner_skill` and agent-id should match (the plugin-delivery contract).
 
-`wolf scaffold agent` does both steps for you: it stamps the marker into the frame body and creates the face (see [Platform & Maintenance](/guide/cli/platform#wolf-scaffold)).
+`wolf scaffold agent` stamps the marker into the frame body; since 3.0.0 the scaffold is self-sufficient — it creates no face, no router reference and no default model (see [Platform & Maintenance](/guide/cli/platform#wolf-scaffold)).
 
-The base-set agents carry their markers out of the box (`worker-implementer`, `worker-researcher`, `worker-reviewer`, `executor-lead`, `steward`, `mr-wolf`), and `wolf init --full` seeds canonical faces for them — including the executor-lead dispatcher.
+The base-set agents carry their markers out of the box (`mr-wolf`, `wolf-architect`, `wolf-developer`, `wolf-editor`, `wolf-expert`, `wolf-release-engineer`, `wolf-researcher`, `wolf-reviewer`, `wolf-tester`).
 
 ## Trust
 
