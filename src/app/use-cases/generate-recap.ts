@@ -223,7 +223,7 @@ export function renderRecap(report: RecapReport): string {
     if (s.unaggregatedMature >= 1) {
       items.push(
         `неагрегированных уроков: ${s.unaggregatedTotal} (зрелых: ${s.unaggregatedMature}) — ` +
-          'вызовите Стюарда: opencode run --agent steward'
+          'автоматическая обработка Стюардом временно отключена; сигнал фиксируется и не теряется'
       );
     }
     if (s.proposedAggregates >= 1) {
