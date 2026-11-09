@@ -36,6 +36,12 @@ export function tmpProject(): string {
   return dir;
 }
 
+/** Фикстура агента OpenCode (R-13a): .opencode/agents/<name>.md, имя файла = имя агента. */
+export function writeAgent(dir: string, name: string): void {
+  mkdirSync(join(dir, '.opencode', 'agents'), { recursive: true });
+  writeFileSync(join(dir, '.opencode', 'agents', `${name}.md`), `---\nname: ${name}\n---\nTest agent fixture.\n`);
+}
+
 export interface LegacyInjectionSeed {
   id: string;
   title: string;

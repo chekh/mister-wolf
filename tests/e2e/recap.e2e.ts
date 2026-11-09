@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { ensureBuilt, runCli, tmpProject } from './helpers.js';
+import { ensureBuilt, runCli, tmpProject, writeAgent } from './helpers.js';
 
 describe('recap golden scenarios', () => {
   const dirs: string[] = [];
@@ -107,6 +107,8 @@ describe('recap golden scenarios', () => {
     const dir = tmpProject();
     dirs.push(dir);
     runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
+    // R-13a: жалобы резолвят агентов по .opencode/agents; минимальный init агентов не пишет
+    writeAgent(dir, 'executor-lead');
 
     const complaint = runCli(
       ['complain', '--about', 'executor-lead', '--rule', 'r', '--evidence', 'e', '--proposal', 'p'],

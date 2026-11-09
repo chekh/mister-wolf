@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtempSync, rmSync } from 'fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { memoryComplainCommand } from '../../../src/adapters/cli/commands/memory-complain.js';
@@ -11,12 +11,22 @@ import { relationsPath } from '../../../src/adapters/fs/project-paths.js';
 // baseDir инъектится tmp-каталогом — в .wolf/memory репозитория ничего не пишется.
 // Жалобный контур v2 (спека 2026-09-01 §4.2, §7.2): объект типа complaint
 // со статусом open, required-поля about/rule/evidence/proposal.
+// R-13a: состав агентов — резолв по интеграции, поэтому в tmp-проекте
+// создаются фикстуры .opencode/agents/<имя>.md (имя файла = имя агента).
 describe('wolf complain (complaint-v2)', () => {
   let dir: string;
   let logs: string[];
 
+  // Фикстура агента OpenCode в tmp-проекте
+  function writeAgent(name: string): void {
+    mkdirSync(join(dir, '.opencode', 'agents'), { recursive: true });
+    writeFileSync(join(dir, '.opencode', 'agents', `${name}.md`), `---\nname: ${name}\n---\nBody.\n`);
+  }
+
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'wolf-complain-'));
+    writeAgent('worker-implementer');
+    writeAgent('steward');
     logs = [];
     vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
       logs.push(args.map(String).join(' '));
@@ -29,8 +39,9 @@ describe('wolf complain (complaint-v2)', () => {
   });
 
   function run(args: string[]): Promise<void> {
-    // from:'user' — argv содержит только аргументы пользователя, без префикса node/script
-    return memoryComplainCommand(dir).parseAsync(args, { from: 'user' });
+    // from:'user' — argv содержит только аргументы пользователя, без префикса node/script;
+    // env {} — глобальные источники изолированы от реального $HOME
+    return memoryComplainCommand(dir, {}).parseAsync(args, { from: 'user' });
   }
 
   function recordedId(): string {

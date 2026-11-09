@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { rmSync, readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import { ensureBuilt, runCli, tmpProject } from './helpers.js';
+import { ensureBuilt, runCli, tmpProject, writeAgent } from './helpers.js';
 
 describe('relation add via CLI', () => {
   const dirs: string[] = [];
@@ -19,6 +19,8 @@ describe('relation add via CLI', () => {
     const dir = tmpProject();
     dirs.push(dir);
     runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
+    // R-13a: жалобы резолвят агентов по .opencode/agents; минимальный init агентов не пишет
+    writeAgent(dir, 'executor-lead');
     return dir;
   }
 

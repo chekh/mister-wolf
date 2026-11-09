@@ -6,39 +6,27 @@ import { createCliContainer } from '../../../bootstrap/container.js';
 import { resolveCreatedBy } from '../../../domain/actor.js';
 import { appendComplaintSignal } from '../../../adapters/fs/session-metrics-log.js';
 import { UserFacingError } from '../../../domain/errors.js';
+import {
+  COMPLAINT_KINDS,
+  resolveComplaintTarget,
+  resolveGlobalConfigDir,
+  type ComplaintKind,
+} from './complaint-target.js';
 
 // Жалобный контур v2 (спека 2026-09-01 §4.2, Q1/Q2): жалоба — структурированный
 // объект типа complaint (required: about/rule/evidence/proposal), статус open;
 // триаж — диспетчер (executor-lead), Стюарда воркер не вызывает. Прежний
 // носитель observation сохранён для семантических наблюдений; продюсеров
 // observation кроме этой команды в src/ нет (проверено спекой §3.1).
-// Источник известных agent-id — 7 базовых агентов набора (base-sets §5.1).
-const BASE_AGENT_IDS = [
-  'executor-lead',
-  'mr-wolf',
-  'steward',
-  'worker-implementer',
-  'worker-researcher',
-  'worker-reviewer',
-  'worker-expert',
-] as const;
+// R-13a (3.0.0): цели-агенты резолвятся по актуальному составу интеграции
+// OpenCode (complaint-target.ts), не по константному списку: пользовательские
+// агенты принимаются без правки кода, существование цели и kind — из одного резолва.
+export type { ComplaintKind } from './complaint-target.js';
 
-// Волна 2.14 §6.1: классификация жалоб technical/behavioral; дефолт —
-// эвристика по about, флаг --kind переопределяет (владелец/лид всегда прав).
-const COMPLAINT_KINDS = ['technical', 'behavioral'] as const;
-export type ComplaintKind = (typeof COMPLAINT_KINDS)[number];
-
-/** Дефолт-эвристика kind (спека §6.1): about = агент/скилл → behavioral;
- * mem-id → technical; прочее — без kind (явный только через --kind). */
-export function inferComplaintKind(about: string): ComplaintKind | undefined {
-  if ((BASE_AGENT_IDS as readonly string[]).includes(about) || about.startsWith('skill:')) return 'behavioral';
-  if (about.startsWith('mem_')) return 'technical';
-  return undefined;
-}
-
-// baseDir инъектится для тестов (прецедент: runValidate в memory-validate.ts);
+// baseDir и env инъектятся для тестов (прецедент: runValidate в memory-validate.ts;
+// env — изоляция глобальных источников от реального $HOME);
 // при обычной регистрации в cli-entry cwd идёт через safeCwd (§2.5).
-export function memoryComplainCommand(baseDir: string = safeCwd()): Command {
+export function memoryComplainCommand(baseDir: string = safeCwd(), env: NodeJS.ProcessEnv = process.env): Command {
   return new Command('complain')
     .description('File a complaint about a rule/playbook/agent as a memory object (type complaint, status open)')
     .requiredOption('--about <about>', 'Complaint target: agent id, skill:<name> or existing mem-id')
@@ -56,18 +44,22 @@ export function memoryComplainCommand(baseDir: string = safeCwd()): Command {
       if (options.kind !== undefined && !(COMPLAINT_KINDS as readonly string[]).includes(options.kind)) {
         throw new UserFacingError(`Invalid --kind "${options.kind}": expected technical or behavioral`);
       }
-      const kind: ComplaintKind | undefined =
-        (options.kind as ComplaintKind | undefined) ?? inferComplaintKind(options.about);
-      const { store, log, clock, idGen, index, relations, lock, declarations } = createCliContainer(baseDir);
-      const aboutKnown =
-        (BASE_AGENT_IDS as readonly string[]).includes(options.about) ||
-        options.about.startsWith('skill:') ||
-        (await store.get(options.about)) !== null;
-      if (!aboutKnown) {
+      const { store, log, clock, idGen, index, relations, lock, declarations, fs } = createCliContainer(baseDir);
+      // ЕДИНЫЙ резолв цели (R-13a): существование и дефолтный kind — из одного результата.
+      const resolution = await resolveComplaintTarget(options.about, {
+        fs,
+        store,
+        baseDir,
+        globalConfigDir: resolveGlobalConfigDir(env),
+      });
+      if (!resolution.known) {
         throw new UserFacingError(
-          `Unknown --about target "${options.about}": expected base agent id, skill:<name> or existing mem-id`
+          `Unknown --about target "${options.about}": expected an agent of the OpenCode integration ` +
+            `(project .opencode/agents, global agents dir, "agent" key in opencode.json(c)), ` +
+            `skill:<name> or existing mem-id`
         );
       }
+      const kind: ComplaintKind | undefined = (options.kind as ComplaintKind | undefined) ?? resolution.defaultKind;
       const now = clock.now();
       const shortRule = options.rule.length > 60 ? `${options.rule.slice(0, 60)}…` : options.rule;
       const result = await addMemoryObject(

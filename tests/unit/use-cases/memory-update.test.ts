@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtempSync, rmSync } from 'fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { memoryUpdateCommand } from '../../../src/adapters/cli/commands/memory-update.js';
@@ -13,6 +13,14 @@ import { eventsPath } from '../../../src/adapters/fs/project-paths.js';
 // wolf update (complaint-v2 §7.2, Q5): whitelist-режим — диспетчер меняет
 // только поля триажа (set: triage/resolution; inc: dispatch_ages/corroborations),
 // жалоба автора (rule/evidence/proposal/about) неприкосновенна; tags — append.
+/** R-13a: состав агентов — резолв по .opencode/agents; фикстуры в tmp-проекте. */
+function writeAgentFixtures(base: string): void {
+  for (const name of ['worker-implementer', 'worker-reviewer']) {
+    mkdirSync(join(base, '.opencode', 'agents'), { recursive: true });
+    writeFileSync(join(base, '.opencode', 'agents', `${name}.md`), `---\nname: ${name}\n---\nBody.\n`);
+  }
+}
+
 describe('wolf update (complaint-v2 whitelist)', () => {
   let dir: string;
   let logs: string[];
@@ -20,6 +28,7 @@ describe('wolf update (complaint-v2 whitelist)', () => {
 
   beforeEach(async () => {
     dir = mkdtempSync(join(tmpdir(), 'wolf-update-'));
+    writeAgentFixtures(dir);
     logs = [];
     vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
       logs.push(args.map(String).join(' '));
@@ -138,6 +147,7 @@ describe('complaint lifecycle transitions', () => {
 
   beforeEach(async () => {
     dir = mkdtempSync(join(tmpdir(), 'wolf-complaint-lc-'));
+    writeAgentFixtures(dir);
     logs = [];
     vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
       logs.push(args.map(String).join(' '));

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { rmSync, readFileSync, existsSync } from 'fs';
 import { spawnSync } from 'child_process';
 import { join } from 'path';
-import { ensureBuilt, runCli, tmpProject, cliPath, writeLegacyInjection } from './helpers.js';
+import { ensureBuilt, runCli, tmpProject, cliPath, writeLegacyInjection, writeAgent } from './helpers.js';
 
 // Волна 0 (0.2): session-ключ CLI-канала — per-invocation продюсер WOLF_SESSION
 // (runCli → ensureCliSessionId). Свойство-доказательство механизма (DoD ≥100
@@ -57,6 +57,8 @@ describe('session-key CLI-канала (волна 0 0.2)', () => {
     const dir = tmpProject();
     dirs.push(dir);
     runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], dir);
+    // R-13a: жалобы резолвят агентов по .opencode/agents; минимальный init агентов не пишет
+    writeAgent(dir, 'steward');
     // call-injection сеётся легаси-md файлом в shared/calls/ (2.13: тип удалён
     // из store.save, старый frontmatter читается как note+alias_origin —
     // прецедент: call.e2e.ts / writeLegacyInjection в helpers.ts)
