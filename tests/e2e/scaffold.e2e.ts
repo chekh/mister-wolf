@@ -14,7 +14,7 @@ describe('wolf scaffold (B1)', () => {
 
   afterAll(() => rmSync(cwd, { recursive: true, force: true }));
 
-  it('scaffold agent: рамка + playbook + relation owner_skill', () => {
+  it('scaffold agent: самодостаточная рамка без объекта памяти (R-13b)', () => {
     const r = runCli(['scaffold', 'agent', 'demo-agent', '--persona', 'тест'], cwd);
     expect(r.status).toBe(0);
     expect(r.stderr).toBe('');
@@ -22,27 +22,13 @@ describe('wolf scaffold (B1)', () => {
     const framePath = join(cwd, '.opencode', 'agents', 'demo-agent.md');
     expect(existsSync(framePath)).toBe(true);
     const frame = readFileSync(framePath, 'utf-8');
-    expect(frame).toContain('agent-id: demo-agent');
+    expect(frame).not.toContain('agent-id:');
+    expect(frame).not.toContain('wolf-router');
+    expect(frame).not.toContain('plugin');
     expect(frame).toContain('mode: all');
-    expect(frame).toContain('model: zai-coding-plan/glm-5.3');
+    expect(frame).not.toContain('model:'); // модель не задана — строки нет
     expect(frame).toContain('temperature: 0.2');
     expect(frame).toContain('тест');
-
-    const id = r.stdout.match(/Created playbook: (\S+)/)?.[1];
-    expect(id).toMatch(/^mem_/);
-
-    const got = runCli(['get', id!], cwd);
-    expect(got.status).toBe(0);
-    // 2.17 T-05: лицо scaffold — face-контракт (initiator=seed, version '1')
-    expect(got.stdout).toContain('"type": "face"');
-    expect(got.stdout).toContain('"owner_skill": "demo-agent"');
-    expect(got.stdout).toContain('"version": "1"');
-    expect(got.stdout).toContain('"initiator": "seed"');
-
-    const relations = readFileSync(join(cwd, '.wolf', 'memory', 'relations.jsonl'), 'utf-8');
-    expect(relations).toContain('"predicate":"owner_skill"');
-    expect(relations).toContain(`"subject":"${id}"`);
-    expect(relations).toContain('"object":"agent:demo-agent"');
   });
 
   it('повторный scaffold того же имени — чистая ошибка, exit 1', () => {

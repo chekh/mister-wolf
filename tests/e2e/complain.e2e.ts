@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { rmSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { ensureBuilt, runCli, tmpProject } from './helpers.js';
+import { ensureBuilt, runCli, tmpProject, writeAgent } from './helpers.js';
 
 // Жалобный контур v2 (спека 2026-09-01 §4.2): объект типа complaint со
 // статусом open, required-поля about/rule/evidence/proposal, relation
@@ -12,6 +12,10 @@ describe('wolf complain (complaint-v2)', () => {
     ensureBuilt();
     cwd = tmpProject();
     expect(runCli(['init', '--model', 'zai-coding-plan/glm-5.3'], cwd).status).toBe(0);
+    // R-13a: состав агентов — резолв по .opencode/agents; минимальный init агентов не пишет
+    writeAgent(cwd, 'worker-implementer');
+    writeAgent(cwd, 'steward');
+    writeAgent(cwd, 'executor-lead');
   });
   afterAll(() => rmSync(cwd, { recursive: true, force: true }));
 

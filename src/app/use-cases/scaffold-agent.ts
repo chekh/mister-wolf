@@ -10,10 +10,9 @@ import { FileSystem } from '../../ports/file-system.port.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import { MemoryTypeDeclaration } from '../../domain/memory-types.js';
 import { UserFacingError } from '../../domain/errors.js';
-import { createFaceVersion, type FaceObject } from './create-face-version.js';
 import { recordRelation } from './record-relation.js';
 
-/** Playbook-источник рамки (T-05): лицо — type 'face'; legacy — note+facet howto
+/** Playbook-источник рамки (--from-playbook): лицо — type 'face'; legacy — note+facet howto
  * (старые файлы читаются как note — alias) и старый тип playbook. */
 function isPlaybookNote(pb: MemoryObject | null): pb is MemoryObject {
   if (!pb) return false;
@@ -28,8 +27,6 @@ function isPlaybookNote(pb: MemoryObject | null): pb is MemoryObject {
 export const SCAFFOLD_KINDS = ['agent', 'skill', 'command', 'artifact'] as const;
 export type ScaffoldKind = (typeof SCAFFOLD_KINDS)[number];
 
-export const DEFAULT_SCAFFOLD_MODEL = 'zai-coding-plan/glm-5.3';
-
 export interface ScaffoldFrameInput {
   kind: ScaffoldKind;
   name: string;
@@ -40,7 +37,9 @@ export interface ScaffoldFrameInput {
 }
 
 export interface ScaffoldFrameResult {
-  playbookId: string;
+  /** Id playbook-источника (--from-playbook). Без него каркас самодостаточен:
+   * объект памяти не создаётся и поле undefined (R-13b). */
+  playbookId?: string;
   ownerSkill: string;
   /** Путь рамки относительно baseDir. */
   framePath: string;
@@ -54,30 +53,34 @@ export function frameRelativePath(kind: ScaffoldKind, name: string): string {
 }
 
 function defaultPersona(name: string): string {
-  return `You are ${name}. Work strictly by the playbook delivered by the plugin into the system prompt.`;
+  return `You are ${name}. Follow the methodology in this file.`;
 }
 
-function frameContent(input: ScaffoldFrameInput, ownerSkill: string, playbookId: string): string {
-  const description = `${input.name} frame: works by a playbook from Wolf memory (delivered by the wolf-router plugin)`;
+function frameContent(input: ScaffoldFrameInput): string {
+  const playbookId = input.fromPlaybook;
+  const description = playbookId
+    ? `${input.name} frame: methodology content is in Wolf memory (playbook ${playbookId})`
+    : `${input.name} frame: fill in the methodology in this file`;
   if (input.kind === 'agent') {
     const persona =
       input.persona?.trim() !== '' && input.persona !== undefined ? input.persona.trim() : defaultPersona(input.name);
-    const model = input.model?.trim() !== '' && input.model !== undefined ? input.model.trim() : DEFAULT_SCAFFOLD_MODEL;
-    // agent-id обязан быть в ТЕЛЕ (frontmatter не попадает в system-промпт) — грабля opencode.
+    const model = input.model?.trim() !== '' && input.model !== undefined ? input.model.trim() : undefined;
     return [
       '---',
       `description: ${description}`,
       'mode: all',
-      `model: ${model}`,
+      ...(model ? [`model: ${model}`] : []),
       'temperature: 0.2',
       '---',
-      `agent-id: ${ownerSkill}`,
       '',
       persona,
       '',
     ].join('\n');
   }
   if (input.kind === 'skill') {
+    const body = playbookId
+      ? `The methodology content is in Wolf memory (playbook ${playbookId}); this file is only a frame.`
+      : 'This file is only a frame: fill in the methodology here.';
     return [
       '---',
       `name: ${input.name}`,
@@ -86,11 +89,13 @@ function frameContent(input: ScaffoldFrameInput, ownerSkill: string, playbookId:
       '',
       `# ${input.name} — frame skill`,
       '',
-      `The methodology content is in Wolf memory (playbook ${playbookId}); this file is only a frame.`,
-      'Work strictly by the playbook delivered by the plugin into the system prompt.',
+      body,
       '',
     ].join('\n');
   }
+  const body = playbookId
+    ? `The methodology content is in Wolf memory (playbook ${playbookId}).`
+    : 'Fill in the methodology in this file.';
   return [
     '---',
     `description: ${description}. Usage: /${input.name} <task>`,
@@ -98,7 +103,7 @@ function frameContent(input: ScaffoldFrameInput, ownerSkill: string, playbookId:
     '---',
     'Execute: $ARGUMENTS',
     '',
-    'Work strictly by the playbook from Wolf memory (delivered by the wolf-router plugin).',
+    body,
     '',
   ].join('\n');
 }
@@ -120,12 +125,12 @@ export async function scaffoldFrame(
 ): Promise<ScaffoldFrameResult> {
   const run = async (): Promise<ScaffoldFrameResult> => {
     const framePath = frameRelativePath(input.kind, input.name);
-    // Идемпотентность ДО создания playbook — чтобы не плодить объекты-сироты.
+    // Идемпотентность до любых записей.
     if (await deps.fs.exists(join(deps.baseDir, framePath))) {
       throw new UserFacingError(`${framePath} already exists`);
     }
 
-    let playbookId: string;
+    let playbookId: string | undefined;
     let ownerSkill: string;
     if (input.fromPlaybook) {
       const pb = await deps.store.get(input.fromPlaybook);
@@ -140,46 +145,15 @@ export async function scaffoldFrame(
           ? existing.owner_skill
           : input.name;
     } else {
-      // Живое лицо того же владельца не перезаписывается заглушкой: scaffold —
-      // создание новой рамки, а не мутация существующего лица (штатный контур —
-      // Стюард, wolf face new). Проверка ДО любых записей.
-      const existingFace = (await deps.store.list({ type: 'face' })).find(
-        (o) => (o as FaceObject).owner_skill === input.name && o.status === 'active'
-      ) as FaceObject | undefined;
-      if (existingFace) {
-        throw new UserFacingError(
-          `Живое лицо "${input.name}" уже существует (${existingFace.id}, v${existingFace.version}): ` +
-            'scaffold его не перезаписывает. Выбери другое имя либо обнови лицо штатным контуром Стюарда ' +
-            '(wolf face new).'
-        );
-      }
-      // T-05 (design §scaffoldAgent): лицо нового агента — через face-контракт
-      // createFaceVersion с initiator='seed' (внутренний путь, ADR-6). lock не
-      // передаём: мы уже внутри deps.lock.withLock (FsMemoryLock не реентерабелен).
-      const { face } = await createFaceVersion(
-        {
-          store: deps.store,
-          log: deps.log,
-          clock: deps.clock,
-          idGen: deps.idGen,
-          index: deps.index,
-          declarations: deps.declarations,
-        },
-        {
-          command: 'seed',
-          ownerSkill: input.name,
-          reason: `scaffold stub for ${input.kind}:${input.name} frame`,
-          title: `Playbook: ${input.name}`,
-          body: `Scaffold stub for the ${input.kind}:${input.name} frame. Fill in steps and methodology.`,
-        }
-      );
-      playbookId = face.id;
+      // R-13b: без --from-playbook объект памяти не создаётся — каркас самодостаточен;
+      // живое лицо того же owner_skill не блокирует (штатный контур лица — Стюард, wolf face new).
       ownerSkill = input.name;
     }
 
-    await deps.fs.writeFile(join(deps.baseDir, framePath), frameContent(input, ownerSkill, playbookId));
+    await deps.fs.writeFile(join(deps.baseDir, framePath), frameContent(input));
 
-    if (deps.relations) {
+    // Связывать нечего без playbook-источника.
+    if (deps.relations && playbookId !== undefined) {
       await recordRelation(
         { relations: deps.relations, idGen: deps.idGen },
         deps.clock.now(),
