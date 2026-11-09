@@ -243,7 +243,7 @@ vi.mock('child_process', () => ({ execFile: execFileMock }));
 
 // vi.mock хойстится выше импортов — плагин получит замоканный execFile.
 // Тестируем templates/-канон (dogfood-копия .opencode/plugins рендерится из него).
-import WolfPlaybookPlugin from '../../templates/opencode/plugins/wolf-router.ts';
+import WolfPlaybookPlugin from '../../templates/opencode/plugins-reserved/wolf-router.ts';
 
 const HEADER = '# Актуальный playbook';
 const makeSystemOutput = (text: string) => ({ system: [text] });

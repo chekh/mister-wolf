@@ -18,7 +18,7 @@ const { execFileMock } = vi.hoisted(() => {
 vi.mock('child_process', () => ({ execFile: execFileMock }));
 
 // Тестируем templates/-канон; v1-поведение доступно через default.server().
-import WolfSessionStartPlugin from '../../templates/opencode/plugins/wolf-session-start.js';
+import WolfSessionStartPlugin from '../../templates/opencode/plugins-reserved/wolf-session-start.js';
 
 const makeSessionOutput = (text: string) => ({
   messages: [{ info: { role: 'user' }, parts: [{ type: 'text', text }] }],
