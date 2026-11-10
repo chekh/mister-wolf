@@ -4,7 +4,7 @@
 
 ## Требования
 
-- Node.js 22 или 24, macOS либо Linux с glibc.
+- Node.js 24 или новее, macOS либо Linux с glibc.
 - Установленный OpenCode и рабочая настройка модели/провайдера для полной организации.
 - Alpine/musl в этой поставке не поддерживается; Windows — best-effort.
 

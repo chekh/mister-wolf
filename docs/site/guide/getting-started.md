@@ -4,7 +4,7 @@ The full organization is currently OpenCode-first. This path connects Wolf to an
 
 ## Requirements
 
-- Node.js 22 or 24, macOS or Linux with glibc.
+- Node.js 24 or newer, macOS or Linux with glibc.
 - OpenCode installed and a working model/provider configured for the full organization.
 - Alpine/musl is unsupported in this delivery; Windows is best-effort.
 

@@ -7,9 +7,16 @@ import { fileURLToPath } from 'url';
 export const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '../..');
 export const cliPath = join(repoRoot, 'dist/bootstrap/cli.js');
 
+// Одна сборка на e2e-прогон: e2e идут в singleFork (один процесс), флаг
+// живёт до конца прогона. Без него каждый из ~58 e2e-файлов пересобирал
+// dist с нуля (~14 c) — это давало ~13 минут лишнего CPU на прогон.
+let built = false;
+
 export function ensureBuilt(): void {
+  if (built) return;
   try {
     execSync('npm run build', { cwd: repoRoot, stdio: 'inherit' });
+    built = true;
   } catch {
     // ponytail: build failed — test will fail on first CLI call anyway
   }

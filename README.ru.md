@@ -27,7 +27,7 @@ Wolf — ваша точка общения с этой организацией
 
 ## Начните со своего проекта
 
-Полная организация сейчас — **OpenCode-first**. Требования: Node.js 22 или 24; macOS либо Linux с glibc.
+Полная организация сейчас — **OpenCode-first**. Требования: Node.js 24 или новее; macOS либо Linux с glibc.
 
 ```bash
 npm install -g mister-wolf

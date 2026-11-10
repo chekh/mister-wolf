@@ -27,7 +27,7 @@ The [product guide](https://chekh.github.io/mister-wolf/guide/overview) explains
 
 ## Start with your project
 
-Current full organization: **OpenCode-first**. Requirements: Node.js 22 or 24; macOS or Linux with glibc.
+Current full organization: **OpenCode-first**. Requirements: Node.js 24 or newer; macOS or Linux with glibc.
 
 ```bash
 npm install -g mister-wolf

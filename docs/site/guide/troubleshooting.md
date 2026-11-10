@@ -65,11 +65,11 @@ wolf validate --fix
 ## 7. Node version
 
 - **Symptom:** installation or startup fails on an old runtime.
-- **Cause:** Mr. Wolf requires **Node >= 22** (Node 22 or 24; macOS and Linux glibc; Alpine/musl not supported in v1, Windows best-effort).
-- **Fix:** upgrade Node to 22 or 24 and reinstall:
+- **Cause:** Mr. Wolf requires **Node >= 24** (macOS and Linux glibc; Alpine/musl not supported in v1, Windows best-effort).
+- **Fix:** upgrade Node to 24 or newer and reinstall:
 
 ```bash
-node --version   # must be >= 22
+node --version   # must be >= 24
 npm install -g mister-wolf
 ```
 
