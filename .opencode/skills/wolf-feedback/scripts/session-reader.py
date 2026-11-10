@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# wolf:rendered base=session-reader.py set=2.32.2
+# wolf:rendered base=session-reader.py set=3.0.0
 """Bounded read-only reader for the inspected OpenCode session_v2/session_message schema."""
 import argparse
 import json

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# wolf:rendered base=workflow-helper.py set=2.32.2
+# wolf:rendered base=workflow-helper.py set=3.0.0
 """Local technical operations for an assigned task; never dispatches or accepts a task."""
 import argparse
 import hashlib
@@ -73,7 +73,7 @@ def task_pack(args):
     if missing:
         return {"ready": False, "missing": missing}, 2
     # A method/source reference is not a claim that an agent loaded its body.
-    return {"ready": True, "task": value, "limits": ["Local packaging only; L1 resolves active memory policies and assigns the task.",
+    return {"ready": True, "task": value, "limits": ["Local packaging only; the lead resolves active memory policies and assigns the task.",
             "This is a helper input format, not a new Wolf public TASK schema."]}, 0
 
 
