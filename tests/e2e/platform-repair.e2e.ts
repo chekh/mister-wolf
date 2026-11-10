@@ -1,10 +1,16 @@
-// E-1 (test-plan волны 2.16.2): e2e «установлено под v1 → рантайм v2 → doctor сообщает
-// → --repair чинит → плагин/MCP работают»; dry-run не пишет; идемпотентность.
+// E-1 (3.0.0): e2e «установлено под v1 → рантайм v2 → doctor сообщает → --repair чинит
+// (перерендер базового набора + канонизация конфига) → повторный doctor чист»;
+// dry-run не пишет (снимок дерева до/после); идемпотентность повтора.
+// 3.0.0-нюанс: init НЕ доставляет плагины, поэтому v1-состояние сеется детерминированно:
+// легаси-файл .opencode/plugins/* со штампом set < 2.14.1 (DUAL_SINCE) + запись в
+// wolf-sync-state — mismatch детектится именно по plugins-записям state (platform-mismatch.ts).
+// Repair легаси-сироту НЕ трогает (orphanedNote: remove manually / wolf uninstall, F-02),
+// поэтому сценарий повторной чистоты включает этот ручной шаг по совету repair.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { spawnSync } from 'child_process';
-import { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync, mkdirSync, chmodSync } from 'fs';
+import { mkdirSync, mkdtempSync, writeFileSync, readFileSync, readdirSync, existsSync, rmSync, chmodSync } from 'fs';
 import { tmpdir } from 'os';
-import { join, dirname } from 'path';
+import { dirname, join, relative } from 'path';
 import { fileURLToPath } from 'url';
 import { createHash } from 'crypto';
 import { ensureBuilt } from './helpers.js';
@@ -25,9 +31,37 @@ function run(args: string[], cwd: string, xdg: string, pathPrefix?: string) {
   return { stdout: r.stdout ?? '', stderr: r.stderr ?? '', status: r.status };
 }
 
-const V1_STAMP = '// wolf:rendered base=wolf-router.ts set=2.14.0';
+/** Снимок дерева: rel-путь → sha256 контента (no-write и идемпотентность — по контенту). */
+function treeSnapshot(root: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  const walk = (d: string): void => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else out[relative(root, p)] = sha256(readFileSync(p, 'utf-8'));
+    }
+  };
+  walk(root);
+  return out;
+}
 
-describe('platform repair v1→v2 (REQ-02, e2e)', () => {
+const LEGACY_PLUGIN_REL = '.opencode/plugins/wolf-router.ts';
+const V1_SET = '2.14.0'; // < DUAL_SINCE (2.14.1) — v1-only плагин
+
+/** V1-фикстура: init 3.0.0 плагины не рендерит — легаси-плагин кладём вручную:
+ * файл со штампом v1-набора + запись-свидетель в wolf-sync-state (детект читает state). */
+function seedLegacyV1Plugin(project: string): void {
+  const abs = join(project, LEGACY_PLUGIN_REL);
+  mkdirSync(dirname(abs), { recursive: true });
+  const v1Body = `// wolf:rendered base=wolf-router.ts set=${V1_SET}\n// v1-only router plugin (legacy)\nexport default {};\n`;
+  writeFileSync(abs, v1Body);
+  const statePath = join(project, '.opencode/wolf-sync-state.json');
+  const state = JSON.parse(readFileSync(statePath, 'utf-8')) as { files: Record<string, unknown> };
+  state.files[LEGACY_PLUGIN_REL] = sha256(v1Body);
+  writeFileSync(statePath, JSON.stringify(state, null, 2) + '\n');
+}
+
+describe('platform repair v1→v2 (REQ-02, 3.0.0 e2e)', () => {
   let project: string;
   let xdg: string;
   let fakeBin: string;
@@ -39,16 +73,7 @@ describe('platform repair v1→v2 (REQ-02, e2e)', () => {
     writeFileSync(join(project, 'package.json'), '{ "name": "repair-e2e" }');
     const init = run(['init', '--full', '--platform', 'opencode', '--model', 'zai-coding-plan/glm-5.3'], project, xdg);
     expect(init.status).toBe(0);
-    // Имитация «установлено под v1»: плагин отрендерен версией < 2.14.1 (v1-only).
-    // Важно: это НЕ локальная правка поверх текущего рендера — state-хэш синхронно
-    // перезаписан под v1-файл (иначе mutated-skip защищает файл, и это другой сценарий).
-    const plugin = join(project, '.opencode/plugins/wolf-router.ts');
-    const v1Body = readFileSync(plugin, 'utf-8').replace(/\/\/ wolf:rendered base=\S+ set=\S+/, V1_STAMP);
-    writeFileSync(plugin, v1Body);
-    const statePath = join(project, '.opencode/wolf-sync-state.json');
-    const state = JSON.parse(readFileSync(statePath, 'utf-8'));
-    state.files['.opencode/plugins/wolf-router.ts'] = sha256(v1Body);
-    writeFileSync(statePath, JSON.stringify(state, null, 2) + '\n');
+    seedLegacyV1Plugin(project);
     // Fake opencode CLI: рантайм v2 (read-only, только --version).
     const bin = join(fakeBin, 'opencode');
     writeFileSync(bin, '#!/bin/sh\necho "opencode v2.0.24"\n');
@@ -60,7 +85,8 @@ describe('platform repair v1→v2 (REQ-02, e2e)', () => {
     rmSync(fakeBin, { recursive: true, force: true });
   });
 
-  it('doctor сообщает о несоответствии v1→v2 (runDoctor по cwd; CLI-реестр tmp-проекты prunes как sandbox)', async () => {
+  /** in-process runDoctor по cwd=project: CLI-реестр tmp-проекты prunes как sandbox (os.tmpdir). */
+  async function doctorIssues(): Promise<string[]> {
     const { runDoctor } = await import('../../src/app/use-cases/doctor.js');
     const { makeDetectMismatch } = await import('../../src/adapters/cli/commands/memory-doctor.js');
     const { PLATFORM_ADAPTERS } = await import('../../src/adapters/platforms/index.js');
@@ -84,41 +110,64 @@ describe('platform repair v1→v2 (REQ-02, e2e)', () => {
         },
         detectMismatch: makeDetectMismatch(PLATFORM_ADAPTERS),
       });
-      const allIssues = report.entries.flatMap((e) => e.issues);
-      expect(allIssues.some((i) => i.includes('installed under v1'))).toBe(true);
-      expect(allIssues.some((i) => i.includes('--repair'))).toBe(true);
+      return report.entries.flatMap((e) => e.issues);
     } finally {
       process.env.PATH = prevPath;
     }
+  }
+
+  it('doctor (без --repair) сообщает о несоответствии v1→v2 с подсказкой --repair', async () => {
+    const issues = await doctorIssues();
+    expect(issues.some((i) => i.includes('installed under v1'))).toBe(true);
+    expect(issues.some((i) => i.includes('--repair'))).toBe(true);
   });
 
-  it('dry-run показывает план и не пишет', () => {
-    const plugin = join(project, '.opencode/plugins/wolf-router.ts');
-    const before = readFileSync(plugin, 'utf-8');
+  it('--repair --dry-run: отчёт-план (mismatch + перерендер + канонизация), проект не изменён', () => {
+    const before = treeSnapshot(project);
     const res = run(['doctor', '--repair', '--dry-run'], project, xdg, fakeBin);
     expect(res.status).toBe(0);
     expect(res.stdout).toContain('(dry-run)');
-    expect(res.stdout).toMatch(/## Platform/);
-    expect(readFileSync(plugin, 'utf-8')).toBe(before);
+    expect(res.stdout).toContain('## Platform (plan)');
+    expect(res.stdout).toContain('installed under v1');
+    expect(res.stdout).toContain('syncBaseSet: re-render');
+    expect(res.stdout).toContain('writeConfig: canonicalize');
+    expect(treeSnapshot(project)).toEqual(before); // dry-run ничего не пишет
   });
 
-  it('--repair чинит: штамп обновлён, конфиг каноничен, повторный doctor чист', () => {
+  it('--repair: базовый набор выровнен, конфиг каноничен; сирота-легаси остаётся с пометкой', () => {
     const res = run(['doctor', '--repair'], project, xdg, fakeBin);
     expect(res.status).toBe(0);
-    expect(res.stdout).toMatch(/## Platform/);
-    const plugin = readFileSync(join(project, '.opencode/plugins/wolf-router.ts'), 'utf-8');
-    // Плагин перерендерен: v1-штамп исчез, в контенте v2-маркер dual entry (плагин/MCP работают в v2).
-    expect(plugin).not.toContain('set=2.14.0');
-    expect(plugin).toMatch(/\/\/ wolf:rendered base=wolf-router\.ts set=\d+\.\d+\.\d+/);
-    expect(plugin).toMatch(/server|ctx\.session/);
+    expect(res.stdout).toContain('## Platform');
+    // перерендер штампованных целей базового набора записан в отчёте
+    expect(res.stdout).toMatch(/- \.opencode\/\S+ — /);
+    // канонизация конфига (v2-пути, без deprecated-ключей)
     const cfg = JSON.parse(readFileSync(join(project, 'opencode.json'), 'utf-8'));
     expect(cfg.mcp?.servers?.wolf?.command).toEqual(['wolf', 'mcp']);
     expect(cfg.default_agent).toBe('mr-wolf');
     expect(cfg.experimental.subagent_depth).toBe(2);
     expect(cfg.subagent_depth).toBeUndefined(); // deprecated в opencode v2
-    // Повторный doctor — чисто (идемпотентность).
-    const again = run(['doctor'], project, xdg, fakeBin);
-    expect(again.status).toBe(0);
-    expect(again.stdout).not.toContain('installed under v1');
+    // легаси-плагин repair не трогает (orphaned) — рекомендация удаления в отчёте
+    expect(existsSync(join(project, LEGACY_PLUGIN_REL))).toBe(true);
+    expect(res.stdout).toContain('orphaned stamped files are not touched');
+  });
+
+  it('повторный doctor чист после удаления сироты по совету repair; повторный --repair идемпотентен', async () => {
+    // Ручной шаг из orphanedNote (repair сироты не удаляет — F-02)
+    rmSync(join(project, LEGACY_PLUGIN_REL));
+    expect((await doctorIssues()).some((i) => i.includes('installed under v1'))).toBe(false);
+
+    // идемпотентность платформенной зоны: повторный --repair не меняет контент
+    const before = {
+      opencode: treeSnapshot(join(project, '.opencode')),
+      config: sha256(readFileSync(join(project, 'opencode.json'), 'utf-8')),
+    };
+    const res = run(['doctor', '--repair'], project, xdg, fakeBin);
+    expect(res.status).toBe(0);
+    expect({
+      opencode: treeSnapshot(join(project, '.opencode')),
+      config: sha256(readFileSync(join(project, 'opencode.json'), 'utf-8')),
+    }).toEqual(before);
+    // и после повтора mismatch не возвращается
+    expect((await doctorIssues()).some((i) => i.includes('installed under v1'))).toBe(false);
   });
 });

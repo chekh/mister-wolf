@@ -19,7 +19,7 @@ describe('unpin: init без --model (спека 2.16 §14.1-14.2)', () => {
   it('profiles have no model lines (platform default is inherited)', () => {
     // [НЕПР] частичное закрытие: ассертится только отсутствие pin-строк; фактическое
     // наследование платформенного дефолта e2e без сети проверить нельзя (Р1 спеки §2 P5)
-    for (const f of ['mr-wolf.md', 'worker-researcher.md']) {
+    for (const f of ['mr-wolf.md', 'wolf-researcher.md']) {
       const raw = readFileSync(join(cwd, '.opencode/agents', f), 'utf-8');
       expect(raw).not.toMatch(/^[^\S\n]*model:[^\S\n]*\{\{model\./m);
       expect(raw).not.toMatch(/^model:\s+\S+/m);

@@ -151,10 +151,10 @@ beforeAll(() => {
   // p-decisions: 2 mutated (агент и команда) + 1 защищённый файл (вне решений)
   mutate(projects.decisions, '.opencode/agents/mr-wolf.md');
   mutate(projects.decisions, '.opencode/command/analyze-doc.md');
-  const protectedAbs = join(projects.decisions, '.opencode/agents/executor-lead.md');
+  const protectedAbs = join(projects.decisions, '.opencode/agents/wolf-reviewer.md');
   writeFileSync(protectedAbs, insertProtect(readFileSync(protectedAbs, 'utf-8'), 'true').content);
   // p-stale: штамп-дрейф на двух целях (контент = эталон, версия набора старая)
-  ageStamp(projects.stale, '.opencode/agents/steward.md');
+  ageStamp(projects.stale, '.opencode/agents/wolf-tester.md');
   ageStamp(projects.stale, '.opencode/skills/using-skills/SKILL.md');
 }, 180_000);
 
@@ -179,7 +179,7 @@ describe('T14: парк из 3 проектов — все режимы волн
       '.opencode/command/analyze-doc.md',
     ]);
     // project в реестре защит — абсолютный корень проекта (§4.11)
-    expect(doc.protections.map((p) => p.path)).toEqual(['.opencode/agents/executor-lead.md']);
+    expect(doc.protections.map((p) => p.path)).toEqual(['.opencode/agents/wolf-reviewer.md']);
     expect(doc.protections[0]?.project).toContain('p-decisions');
     expect(doc.protections[0]?.value).toBe('true');
     expect(existsSync(join(projects.decisions, '.wolf/backup'))).toBe(false);
@@ -249,8 +249,8 @@ describe('T14: парк из 3 проектов — все режимы волн
     // повторный --check: цель в реестре защит, решение по ней больше не предлагается
     const doc = checkOf(run(['upgrade', '--check', '--json'], park));
     expect(doc.protections.map((p) => p.path).sort()).toEqual([
-      '.opencode/agents/executor-lead.md',
       '.opencode/agents/mr-wolf.md',
+      '.opencode/agents/wolf-reviewer.md',
     ]);
     expect(doc.projects.find((p) => p.name === 'p-decisions')?.mutated).toEqual(['.opencode/command/analyze-doc.md']);
   });
@@ -271,7 +271,7 @@ describe('T14: парк из 3 проектов — все режимы волн
     const backupPath = join(projects.decisions, doc.backups[0]!.backup);
     expect(readFileSync(backupPath, 'utf-8')).toBe(localBefore);
     // штамп-дрейф p-stale: версия набора приведена к текущей базе (REQ-02)
-    expect(parseStamp(readFileSync(join(projects.stale, '.opencode/agents/steward.md'), 'utf-8'))?.set).toBe(SET);
+    expect(parseStamp(readFileSync(join(projects.stale, '.opencode/agents/wolf-tester.md'), 'utf-8'))?.set).toBe(SET);
     // защищённый файл не тронут
     expect(readFileSync(join(projects.decisions, '.opencode/agents/mr-wolf.md'), 'utf-8')).toContain(
       'local owner edit'

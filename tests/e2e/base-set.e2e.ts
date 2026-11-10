@@ -43,16 +43,23 @@ describe('wolf base set: init + sync (спека §7, §11.1, §11.6)', () => {
     rmSync(xdg, { recursive: true, force: true });
   });
 
-  it('init: структура .opencode/ (agents/skills/command/plugins) + .wolf/ (§11.1)', () => {
+  it('init: структура .opencode/ (agents/skills/command) + .wolf/ (§11.1); плагины не доставляются (3.0.0)', () => {
     const oc = (sub: string) => readdirSync(join(project, '.opencode', sub));
-    expect(oc('agents').filter((f) => f.endsWith('.md'))).toHaveLength(7);
+    expect(oc('agents').filter((f) => f.endsWith('.md'))).toHaveLength(9);
     expect(oc('command').filter((f) => f.endsWith('.md'))).toHaveLength(3);
-    expect(oc('plugins').filter((f) => /\.(js|ts)$/.test(f))).toHaveLength(2);
+    // 3.0.0: init не рендерит плагины (templates/opencode/plugins/ отсутствует) —
+    // негативная гарантия: wolf-* файлов под .opencode/plugins нет
+    const pluginsDir = join(project, '.opencode/plugins');
+    if (existsSync(pluginsDir)) {
+      expect(readdirSync(pluginsDir).filter((f) => f.startsWith('wolf-'))).toEqual([]);
+    } else {
+      expect(existsSync(pluginsDir)).toBe(false);
+    }
     expect(existsSync(join(project, '.opencode/skills/using-skills/SKILL.md'))).toBe(true);
     expect(existsSync(join(project, '.wolf'))).toBe(true);
-    // плагины прошли через рендер: штамп на месте
-    const plugin = readFileSync(join(project, '.opencode/plugins/wolf-session-start.js'), 'utf-8');
-    expect(plugin).toContain('// wolf:rendered base=wolf-session-start.js');
+    // штамп рендера на месте — на базовой цели mr-wolf.md
+    const agent = readFileSync(join(project, '.opencode/agents/mr-wolf.md'), 'utf-8');
+    expect(agent).toContain('wolf:rendered base=mr-wolf.md');
   });
 
   it('sync: правка штампованного файла (штамп сохранён) → mutated-skip, правка цела (T010, §11.6)', () => {
