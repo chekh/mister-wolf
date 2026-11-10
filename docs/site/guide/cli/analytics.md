@@ -293,7 +293,7 @@ memory ROI (correlational, not causal):
 - **miss-rate by agent** — share of `variant=fallback` router lines per agent-id (a "miss" = the canonical playbook wasn't found, the universal fallback was delivered; misses are a subset of deliveries).
 - **avg injection bytes** — mean injection size, two channels kept separate: `delivery_signals` (mean `detail.injection_bytes`) and `router_log` (mean `bytes=` of playbook injections).
 - **router resolve ms** — p50/p90 over the router log's `ms=` field; the wave acceptance threshold (p90 < 500 ms) is checked against exactly this number.
-- **skills** — invocation counters per skill name from the plugin-written skill-invocations log (see [Base Set — plugins](/guide/base-set#plugins-—-2-→-opencode-plugins)): until now, skill value was invisible.
+- **skills** — invocation counters per skill name from the plugin-written skill-invocations log (see [Base Set — plugins](/guide/base-set#plugins-—-2-reserved-not-installed)): until now, skill value was invisible.
 
 The same numbers reach the session entry point: `wolf recap` prints a `Delivery (7d)` line — N deliveries (canonical+fallback over the last 7 days), M misses among them (the fallback share) and the top-3 miss agents. The section is omitted when there is no router log.
 
