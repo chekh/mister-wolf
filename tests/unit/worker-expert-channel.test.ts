@@ -176,7 +176,7 @@ describe('profiles expert/synthesis: признак channel (2.32.2 REQ-03)', ()
     expect(contracts).toContain('tool-enabled');
     expect(contracts).toContain('packet-only');
     expect(contracts).toContain('denied');
-    expect(contracts).toMatch(/isolation_limits`?\s+обязательно/);
+    expect(contracts).toMatch(/isolation_limits`?\s+is mandatory/);
   });
 });
 

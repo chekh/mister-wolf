@@ -79,13 +79,16 @@ describe('состав набора (S-DELIVERY 3.0.0)', () => {
     }
   });
 
-  it('удалённые роли/плагины не упоминаются в активных шаблонах (исторические «упразднён» — допустимы)', () => {
+  it('удалённые роли/плагины не упоминаются в активных шаблонах (исторические пометки об упразднении — допустимы)', () => {
+    // Пометка об упразднении допустима на любом языке поставки: русская форма
+    // «упраздн…» (до волны EN-базы) и английские abolished/retired/removed.
+    const RETIRED_NOTE = /упраздн|abolish|retired|removed/i;
     const violations: string[] = [];
     for (const file of walk(base)) {
       const lines = readFileSync(file, 'utf-8').split('\n');
       lines.forEach((line, i) => {
         for (const token of BANNED) {
-          if (line.includes(token) && !line.includes('упраздн')) violations.push(`${file}:${i + 1}: ${token}`);
+          if (line.includes(token) && !RETIRED_NOTE.test(line)) violations.push(`${file}:${i + 1}: ${token}`);
         }
       });
     }

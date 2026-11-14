@@ -77,11 +77,13 @@ const withMarker = [msg(`<session_context>\n${MARKER}\n\n## Recap\n…\n</sessio
 const fresh = [msg('новый вопрос после /clear')];
 
 // Bootstrap delivers the complete core, not every branch/leaf.
+// Маркеры EN-поставки (волна EN-базы); русские варианты держатся на случай
+// смешанного набора во время миграции.
 const GOVERNANCE = [
   'L0',
   'L1',
-  'Приоритет',
-  'Маршруты',
+  'Priority',
+  'Routes',
   'references/routes-intent.md',
   'references/routes-execution.md',
   'references/routes-quality.md',
@@ -90,10 +92,10 @@ const GOVERNANCE = [
   'references/routes-capabilities.md',
   'TASK',
   'allowlist',
-  'Лица не используются',
+  'Faces are not used',
 ];
 // The passive L2 bootstrap must not contain the coordinator's routing tree.
-const DISPATCH = ['references/routes-', 'Маршруты: когда', 'Таблицы веток', 'executor-L1'];
+const DISPATCH = ['references/routes-', 'Routes: when', 'Branch tables', 'executor-L1'];
 
 const hooks = await WolfSessionStartPlugin.server();
 const transform = hooks['experimental.chat.messages.transform'];

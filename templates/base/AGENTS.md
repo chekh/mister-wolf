@@ -1,44 +1,54 @@
 <!-- wolf:onboarding v4 -->
 
-# Mr. Wolf — процесс проекта
+# Mr. Wolf — project process
 
-Проект ведёт агент mr-wolf: общение с пользователем и собственное выполнение;
-для специализации и объёма он нанимает исполнителей wolf-* напрямую:
+The mr-wolf agent leads the project: it talks to the user and does its own work;
+for specialization and volume, it hires wolf-* executors directly:
 wolf-researcher, wolf-architect, wolf-developer, wolf-reviewer, wolf-tester,
-wolf-editor, wolf-release-engineer, wolf-expert. Исполнители не делегируют
-дальше; промежуточного уровня нет.
+wolf-editor, wolf-release-engineer, wolf-expert. Executors do not delegate
+further; there is no intermediate level.
 
-## Протокол сессии
+## Session protocol
 
-1. Начинай с состояния проекта: запусти `wolf call` и `wolf brief`
-   (CLI: установленный `wolf`, или `node <путь-к-repo-wolf>/dist/bootstrap/cli.js`;
-   MCP-инструменты: `mr-wolf_*`). Возвращённое — активное руководство проекта.
-2. Значимое фиксируй в памяти Wolf: решения — `wolf add --type decision`,
-   уроки — `--type lesson`, блокеры — thread (`wolf thread add`, затем
-   `wolf transition <id> blocked`), устаревшее — `wolf supersede <old-id> <new-id>`.
-3. Состояние проекта спрашивай у Wolf (`wolf search`, `wolf get`, `wolf brief`):
-   статические списки в файлах устаревают. Память Wolf — единственный источник
-   состояния проекта.
+1. Start from project state: run `wolf call` and `wolf brief`
+   (CLI: installed `wolf`, or `node <path-to-wolf-repo>/dist/bootstrap/cli.js`;
+   MCP tools: `mr-wolf_*`). What they return is active project guidance.
+2. Record what matters in Wolf memory: decisions — `wolf add --type decision`,
+   lessons — `--type lesson`, blockers — a thread (`wolf thread add`, then
+   `wolf transition <id> blocked`), outdated items — `wolf supersede <old-id> <new-id>`.
+3. Ask Wolf for project state (`wolf search`, `wolf get`, `wolf brief`):
+   static lists in files go stale. Wolf memory is the only source of project state.
 
-## Адресные входы
+## Addressed inputs
 
-- Ведущий без доставленного состояния восстанавливает thread, решения и относящиеся
-  правила адресно через память Wolf, не читает всё подряд.
-- Исполнитель с TASK не запускает общий onboarding: читает назначенные входы
-  и проектные ограничения, недостающее запрашивает у ведущего.
-- Новая самостоятельная часть — свежий исполнитель; reuse прежнего — только
-  по условиям продолжения; после одного корректирующего возврата — новый экземпляр.
-- Собственную работу ведущий проверяет независимо по тем же критериям.
+- A lead without delivered state restores the thread, decisions and related rules
+  through targeted Wolf memory queries, not by reading everything.
+- An executor with a TASK skips general onboarding: it reads the assigned inputs
+  and project constraints, and asks the lead for what is missing.
+- A new independent part gets a fresh executor; the previous one is reused only
+  under continuation conditions; one corrective return means a new instance.
+- The lead verifies its own work independently by the same criteria.
 
-## Документация этапа и правила
+## Stage documentation and rules
 
-- FULL сохраняет docs/dev/<date>-<feat>/ — пакет цели полным списком в объявленном
-  порядке (требования, дизайн, тест-план, план и другие по потоку проекта).
-  Рабочие отчёты, черновики, checkpoint и логи в docs/dev не кладутся; исполнитель
-  возвращает результат сообщением, нужное между сессиями сохраняет ведущий.
-- Лестница приоритетов: явные указания пользователя → память Wolf
-  (`wolf brief`/`wolf search`) → свои догадки; при пустых первых двух — уточнить
-  у пользователя.
-- Номер версии всегда полный X.Y.Z — в планах, тредах, волнах, тегах и разговоре.
+- FULL keeps docs/dev/<date>-<feat>/: the complete goal package, in the declared
+  order (requirements, design, test plan, plan and others per project flow).
+  Working reports, drafts, checkpoints and logs stay out of docs/dev; the executor
+  returns the result as a message, and the lead saves what must outlive the session.
+- Priority ladder: explicit user instructions → Wolf memory
+  (`wolf brief`/`wolf search`) → own guesses; if the first two give nothing,
+  ask the user.
+- The version number is always full X.Y.Z: in plans, threads, waves, tags and
+  discussion.
+
+## Session language
+
+At the start of work in a project, detect the user's language: if they already
+write in X, record X without asking; if it is unclear, ask ONE question. Record it as
+a Wolf decision "Session language: <lang>" and apply it in later sessions
+without asking again. It governs dialogue, memory records (objects, threads) and
+executor reasoning; delivery artifacts (skills, templates) always stay English,
+whatever the working language. Change it only on explicit user instruction: a new
+decision supersedes the old.
 
 <!-- /wolf:onboarding -->

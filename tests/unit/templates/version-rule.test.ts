@@ -12,8 +12,8 @@ describe('REQ-01: версионная дисциплина в AGENTS.md-шаб�
   const agentsMd = readFileSync(join(templatesRoot(), 'AGENTS.md'), 'utf-8');
 
   it('содержит правило полного X.Y.Z', () => {
-    expect(agentsMd).toContain('полный X.Y.Z');
-    expect(agentsMd).toContain('Номер версии');
+    expect(agentsMd).toMatch(/always full X\.Y\.Z/i);
+    expect(agentsMd).toMatch(/[Tt]he version number/);
   });
 
   it('не хранит исторических версий и голых миноров (примеры не устаревают)', () => {

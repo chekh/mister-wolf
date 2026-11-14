@@ -134,7 +134,7 @@ describe('wolf init: базовый набор (S-DELIVERY 3.0.0)', () => {
     // using-skills в rendered-виде: маршруты и плотность
     const core = readFileSync(join(dir, '.opencode/skills/using-skills/SKILL.md'), 'utf-8');
     expect(core).toContain('references/routes-intent.md');
-    expect(core).toContain('density standard|draft');
+    expect(core).toContain('Density standard|draft');
     const labor = join(dir, '.opencode/skills/using-skills/references/division-of-labor.md');
     expect(existsSync(labor), 'division-of-labor доставлен').toBe(true);
     expect(readFileSync(labor, 'utf-8')).toContain(

@@ -1,75 +1,89 @@
-# Документы и устройство работы проекта
+# Project documents and work structure
 
-Загружает ведущий или исполнитель при выборе места, режима и документного профиля.
+Loaded by the lead or an executor when choosing the work location, mode and document profile.
 
-## Состав документации этапа
+## Stage documentation set
 
-В FULL папка docs/dev/<date>-<feat>/ содержит пакет цели в объявленном порядке:
-pre-requirements.md → requirements.md → change-request.md → design.md →
-test-plan.md → plan.md. Это документация для следующих этапов, не рабочий каталог.
-pre-requirements.md — первый документ: намерение, рамка, принятые решения и открытые
-вопросы до формальных требований; он не утверждает требования. change-request.md —
-запросы на изменение пакета, append-only, номер CR-<YYYY-MM-DD>-NN локален для пакета.
-Это отдельный документ, а не раздел «Журнал изменений (CR)» в requirements.md: журнал
-описывает изменения самих требований. Поток изменения: замечание → change-request →
-pre-requirements/requirements → design → test-plan → plan.
-Выводы подзадач ведущий встраивает в нужный документ: решения — в ADR design.md,
-состояние/проверки — в plan.md/test-plan.md; значимую память ведёт штатным каналом.
-Исполнитель по умолчанию возвращает RESULT/findings/review сообщением. Право создать файл
-должно содержать точный путь и назначение; разрешения на каталог недостаточно.
-Явное задание обновить основной документ допустимо в назначенном разделе.
-Итог разговора по wolf-brainstorm — pre-requirements.md в папке той же цели: это
-штатный первый документ пакета, но сам по себе он не запускает пакет и не означает
-утверждённые требования. Один факт имеет каноническое место; в других документах — ссылка и нужный контекст.
+In FULL, docs/dev/<date>-<feat>/ holds the goal package in the declared order:
+pre-requirements.md → requirements.md → change-request.md → design.md → test-plan.md →
+plan.md. It serves later stages, not a working directory.
 
-Дополнения — единичные самостоятельные документы с пользой после этапа, например
-необходимый migration-guide или итоговое исследование. Ведущий до создания указывает
-в существующем plan/брифе путь, читателя/назначение, причину отдельного документа
-и владельца актуальности. Сначала проверь, достаточно ли существующего раздела.
-Новый файл не требуется на каждый TASK/раунд. Ресурс документа, например схема,
-допустим при явной необходимости и точном пути в TASK. Согласованные состав и форматы
-сохраняй; меняющий scope вопрос верни ведущему. Отдельный реестр файлов не создавай.
+pre-requirements.md comes first: intent, frame, accepted decisions and open questions before
+formal requirements; it approves no requirements. change-request.md holds package change
+requests and is append-only; its CR-<YYYY-MM-DD>-NN number is package-local. It is a separate
+document, not a "Change log (CR)" section of requirements.md, which covers changes to the
+requirements. Change flow: finding → change-request → pre-requirements/requirements → design →
+test-plan → plan.
 
-Частные report-*, decisions-*, checkpoint, черновики, логи и исполняемые скрипты
-в docs/dev не размещай, в том числе в подпапке tmp/reports. Рабочие файлы — только
-в назначенной разрешённой области вне документации; временные эксперименты — tmp.
-Постоянные скрипты/тесты — в штатных scripts/tests или библиотеке средств по
-профилю проекта. До очистки/передачи сохрани нужные evidence и незавершённое
-состояние в доступном долговечном месте вне документации. Одна ссылка на tmp
-не является сохранённым evidence. Не удаляй чужие/прежние файлы автоматически.
+The lead embeds subtask conclusions: decisions into the design.md ADR, state and verifications
+into plan.md/test-plan.md; significant memory uses the standard channel. By default an executor
+returns RESULT/findings/review as a message. A file-creation right must name the exact path and
+purpose; directory permission is not enough. An explicit instruction to update the main document
+applies within the assigned section. A wolf-brainstorm discussion ends with pre-requirements.md
+in the same goal's folder: the standard first package document, yet on its own it neither starts
+the package nor means approved requirements. One fact has one canonical place; other documents
+carry a reference and needed context.
 
-### Читаемость проектных документов
+Additions are standalone post-stage documents of value, such as a migration-guide or final
+research. Before creating one, the lead states in the existing plan/brief its path,
+reader/purpose, reason for a separate document and who keeps it current. Check first whether an
+existing section suffices; not every TASK or round needs a new file. A document resource such
+as a diagram is acceptable only when clearly needed, with an exact TASK path. Keep the agreed
+set and formats; return a scope-changing question to the lead. Create no separate file registry.
 
-Пиши для читателя, которому нужно понять, проверить, утвердить или выполнить
-описанное. Сначала обозначь назначение или результат, затем раскрой условия
-и основания. Принятую схему документа сохраняй.
+Keep private report-*, decisions-*, checkpoint, drafts, logs and executable scripts out of
+docs/dev, including tmp/reports. Working files stay in the assigned area outside documentation;
+temporary experiments go to tmp. Permanent scripts/tests go to the standard scripts/tests or the
+tooling library per project profile. Before cleanup or handoff, save needed evidence and
+unfinished state durably outside documentation. A tmp reference is not saved evidence. Do not
+delete others' or earlier files automatically.
 
-Самостоятельные части разделяй настоящими блоками Markdown: пустыми строками,
-абзацами, подзаголовками и списками. Один перенос строки новым абзацем не
-считать. Длинный пункт списка не заменяет структуру.
+### Readability of project documents
 
-CR, ADR и длинные задачи делай доступными для навигации по исходным ID и
-названиям. Независимые критерии приёмки и варианты отделяй друг от друга;
-числа, условия, исключения, статусы и основания сохраняй. Не вводи новые
-ID, обязательные секции и графику ради оформления.
+Write for a reader who must understand, verify, approve or carry out the document: purpose or
+result first, then conditions and grounds. Keep the accepted document schema.
 
-При назначенном редакционном проходе передай готовую версию исполнителю с
-wolf-document-readability. Не загружай полный навык писателя ради каждого
-частного ответа и не добавляй параллельную финальную редактуру. Передача
-писателю не освобождает автора от точности содержания.
+Separate independent parts with real Markdown blocks: blank lines, paragraphs, subheadings,
+lists. One line break is not a new paragraph. A long list item does not replace structure.
 
+Make CRs, ADRs and long tasks navigable by their source IDs and names. Separate independent
+acceptance criteria and options; keep numbers, conditions, exceptions, statuses and grounds.
+Add no new IDs, mandatory sections or graphics.
 
-## Новая цель и рабочий тред
+On a mandated editorial pass, hand the finished version to a wolf-document-readability executor.
+Do not load the full writer skill for every answer or add a parallel final edit; a writer
+handoff does not release the author from accuracy.
 
-При запросе на реальную разработку или изменение продукта L0 сверяет существующие треды и цель. Продолжение той же цели сохраняет тред. Для новой самостоятельной цели без подходящего треда создай его поддержанным механизмом памяти, например wolf thread add с title и goal; запомни фактический ID. Не создавай тред на каждое уточнение, приветствие или вопрос о текущем состоянии.
+## A new goal and the work thread
 
-Передай исполнителю ID треда, цель, известные ограничения и назначенную методику. Режим FULL/LITE/FIX фиксирует ведущий или наниматель до выбора документного профиля. До согласованного перехода к формализации не создавай requirements.md и downstream-шаблоны. По выбору пользователя допустим итог pre-requirements.md в папке той же цели по wolf-brainstorm; он не означает утверждение требований.
+On a real development or product-change request, L0 checks existing threads and the goal; the
+same goal keeps its thread. For a new independent goal without a suitable thread, create one with
+a supported memory mechanism, for example `wolf thread add` with title and goal; note the actual
+ID. Do not create a thread for every clarification, greeting or status question.
 
-В FULL исполнитель использует wolf scaffold artifact <slug>; команда создаёт пакет в docs/dev/<date>-<slug>/ в объявленном порядке (pre-requirements → requirements → change-request → design → test-plan → plan). Если папка уже есть (например, из brainstorm), команда делает top-up: добавляет только недостающие документы и не перезаписывает существующие. FIX — профиль --fix (requirements.md + plan.md), когда он подходит задаче; LITE — достаточный бриф. Ссылки на документы и принятые решения связывай с тредом существующим поддержанным способом, не придумывай поля схемы. Если инструменты памяти недоступны, обозначь ограничение и передай запись исполнителю; разговор можно продолжить, нельзя утверждать, что тред создан.
+Give the executor the thread ID, goal, known constraints and assigned skill. The lead or requester
+sets FULL/LITE/FIX before choosing the document profile. Until the agreed move to formalization,
+create no requirements.md or downstream templates. At the user's choice, wolf-brainstorm may
+produce pre-requirements.md in the same goal's folder; it does not mean approved requirements.
 
+In FULL the executor uses `wolf scaffold artifact <slug>`; the command creates the package in
+docs/dev/<date>-<slug>/ in the same declared order. If the folder exists (from wolf-brainstorm,
+for example), the command does a top-up: it adds only missing documents and does not overwrite existing ones. FIX is the --fix
+profile (requirements.md + plan.md) when it suits the task; LITE is a sufficient brief. Link
+documents and accepted decisions to the thread in an existing supported way; invent no schema
+fields. If memory tools are unavailable, state the constraint and hand the record to the
+executor; the discussion may continue, but do not claim the thread was created.
 
-## Масштаб и профиль проекта
+## Project scale and profile
 
-FULL — несколько компонентов, новые контракты, миграции или существенные риски. LITE — локальное обратимое изменение без новых контрактов. FIX — подтверждённый дефект с воспроизведением и проверкой. Режим фиксирует ведущий или наниматель. Соблюдай протокол ошибки масштаба: если в LITE/FIX обнаружились новые контракты, второй компонент или неочевидная причина — останови затронутое исполнение и верни ведущему для пересмотра; режим меняет только ведущий или наниматель. Сам не расширяй scope. Одобренную работу повторно не согласовывай без изменения существенных условий.
+FULL means several components, new contracts, migrations or substantial risks. LITE is a local
+reversible change without new contracts. FIX is a confirmed defect with a reproduction and a
+verification. The lead or requester sets the mode. Follow the scale-error protocol: if LITE/FIX turns
+up new contracts, a second component or a non-obvious cause, stop the affected work and return to
+the lead for review; only the lead or requester changes the mode. Do not extend scope yourself. Do
+not re-approve approved work unless substantial conditions change.
 
-Из AGENTS.md, конфигурации, lockfile и CI определи base branch, package manager, setup, targeted/full checks, worktree policy и права на commit/push/merge. Не предполагай npm, Vitest или main. При конфликте проверь фактический CI и запроси только недостающее решение. Не создавай новую конфигурационную схему автоматически.
+Determine the base branch, package manager, setup, targeted/full checks, worktree policy
+and commit/push/merge rights from AGENTS.md, configuration, lockfile and CI. Do not assume npm,
+Vitest or main. On a conflict, check the actual CI and request only the missing decision; create
+no new configuration schema automatically.
