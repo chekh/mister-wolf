@@ -1,28 +1,30 @@
-# Планирование и исполнение
+# Planning and execution
 
-Ведущий (L0) до назначения загружает полную [методику разделения труда](division-of-labor.md)
-и читает [канон TASK](contracts.md). Не передавай исполнителю всю организацию.
+Before assigning, the lead (L0) loads the full
+[division of labor](division-of-labor.md) skill and reads the
+[TASK canon](contracts.md). Do not hand the whole organization to an executor.
 
-| Когда | Как применить | Результат |
+| When | How to apply | Result |
 | --- | --- | --- |
-| Общую цель нужно распределить между исполнителями | ведущий поручает wolf-plan; получает готовые брифы, зависимости и интегратора, затем назначает исполнителей | Ограниченные поставки, последовательные или параллельные |
-| Есть approved-входы, нужна декомпозиция | wolf-plan: ведущий или наниматель выделяет результаты, зависимости и проверки | Исполнимые конечные TASK |
-| Нужно определить проверки | wolf-testplan: связать критерии с независимым oracle | Сценарии и команды |
-| Начинается поставка | wolf-execute: ведущий сам исполняет готовый узел или нанимает свежего исполнителя; готовый узел стартует после prerequisites — не ждать всю волну | Проверенные и интегрированные результаты |
-| Исполнитель выполняет назначенный мандат | wolf-execute: линейно выполнить только свою часть | RESULT/evidence либо конкретный вопрос нанимателю |
-| Пишется или изменяется программный код  | wolf-code-craft: полная реализация понятными средствами в принятой архитектуре | Код без ненужной сложности; проверки по действующей методике |
-| Реализуется поведение или исправление | test-driven-development: наблюдаемые RED/GREEN по применимости | Чувствительная проверка и реализация |
-| Готовится заявление о завершении | verification-before-completion: сверить claim с актуальным evidence | Обоснованное заявление, не автоматический ACCEPTED |
+| A shared goal to distribute among executors | the lead assigns wolf-plan and receives ready briefs, dependencies and an integrator, then hires executors | Bounded deliveries, sequential or parallel |
+| Approved inputs, decomposition needed | wolf-plan: the lead or requester identifies the results, dependencies and checks | Executable finite TASKs |
+| Checks need defining | wolf-testplan: tie criteria to an independent oracle | Scenarios and commands |
+| Delivery starts | wolf-execute: the lead carries out a ready node itself or hires a fresh executor; a node starts after its prerequisites, not after the whole wave | Verified, integrated results |
+| An executor carries out its mandate | wolf-execute: only its own part, linearly | RESULT/evidence or a question to the requester |
+| Code is written or changed | wolf-code-craft: full implementation by clear means in the accepted architecture | Code without needless complexity; checks per the active skill |
+| Behavior or a fix is implemented | test-driven-development: observable RED/GREEN as applicable | A sensitive check, then the implementation |
+| A completion claim is prepared | verification-before-completion: compare the claim with current evidence | A justified claim, not an automatic ACCEPTED |
 
-Для консультации по вопросу назначай wolf-expert с профилем expert и
-ограниченными правами. Исследование — wolf-researcher, проверка критериев — wolf-reviewer.
-Консилиум организует ведущий по wolf-council; синтез не расширяет TASK/полномочия.
-Исчерпанный бюджет/раунды не закрывает доказанный блокер.
+For advice assign wolf-expert with the expert profile and limited rights.
+Research goes to wolf-researcher, criterion checks to wolf-reviewer. The lead
+organizes a council per wolf-council; synthesis extends neither TASK nor rights.
+Exhausted budget or rounds do not close a proven blocker.
 
-Исполнитель — с назначенной методикой, нужными скиллами и конечным TASK. Постоянный агент или новый
-скрипт для каждого вида помощи не нужен. Группируй однотипные малые изменения
-по одному проверяемому результату; не создавай исполнителя на команду.
-Независимые ready-задачи запускай параллельно с изоляцией; общие контракты сериализуй.
-Новый результат — fresh, исправление того же непринятого — допустимый continue.
-После приёмки сохраняй нужное и закрывай ненужный экземпляр без отдельного отчёта.
-Недоступность исполнителя — ограничение, а не разрешение ведущему выполнить за него всю работу.
+An executor arrives with an assigned skill, the needed skills and a finite TASK; no
+permanent agent or new script for each kind of help. Group similar small changes per
+verifiable result; do not hire an executor per command. Start independent ready
+tasks in parallel with isolation; serialize shared contracts. A new result gets
+a fresh executor; fixing the same unaccepted result is a valid continue. After
+acceptance, save what is needed and close an unneeded instance without a report.
+An unavailable executor is a constraint, not grounds for the lead to do all its
+work.

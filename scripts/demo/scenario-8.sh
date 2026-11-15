@@ -24,7 +24,7 @@ node "$WOLF" session wrap-up --title "demo-scenario8" --tags "demo,routing" >/de
 check "сессия успешно зафиксирована"                         "[ $? -eq 0 ]"
 
 step "8.3 память проекта: объект сводки сессии сохранён с тегами"
-WRAPUP_FILE=$(ls .wolf/memory/shared/notes/*demo_scenario8* 2>/dev/null | head -1)
+WRAPUP_FILE=$(grep -l 'demo-scenario8' .wolf/memory/shared/notes/*.md 2>/dev/null | head -1)
 check "создан объект сводки сессии"                          "[ -n \"$WRAPUP_FILE\" ]"
 check "сводка содержит заголовок demo-scenario8"             "grep -q 'title: demo-scenario8' \"$WRAPUP_FILE\""
 

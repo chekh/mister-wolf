@@ -44,12 +44,12 @@ describe('density mode (standard|draft) delivery through the real base set', () 
     const read = (file: string) => readFileSync(join(path, '.opencode', file), 'utf8');
     const using = read('skills/using-skills/SKILL.md');
     // Ось — носитель в блоке execution, отдельная от execute|solve и FULL/LITE/FIX.
-    expect(using).toContain('density standard|draft');
+    expect(using).toMatch(/density standard\|draft/i);
     // Отсутствие поля трактуется как standard (совместимость, NFR-01).
-    expect(using).toContain('отсутствие поля — standard');
+    expect(using).toContain('a missing field means standard');
     // Draft сокращает запись, не основания; неопределённость расширяет анализ.
-    expect(using).toContain('сохраняя основания');
-    expect(using).toContain('Существенная неопределённость');
+    expect(using).toContain('keeping rationale');
+    expect(using).toMatch(/Substantial uncertainty|substantial uncertainty/i);
   });
 
   it('delivers the density axis to every executor frame (no faces anymore)', async () => {
@@ -57,8 +57,8 @@ describe('density mode (standard|draft) delivery through the real base set', () 
     await renderer().renderBaseSet(path, { models: { primary: 'test/primary', worker: 'test/worker' } });
     for (const role of EXECUTORS) {
       const body = readFileSync(join(path, '.opencode/agents', `${role}.md`), 'utf8');
-      expect(body, role).toContain('density standard|draft');
-      expect(body, role).toContain('возврат нанимателю');
+      expect(body, role).toContain('Density standard|draft');
+      expect(body, role).toContain('return to the requester');
     }
     // отсутствующие роли не возвращаются: старых носителей плотности нет
     expect(sourceRead('agents/mr-wolf.md')).not.toContain('executor-lead');

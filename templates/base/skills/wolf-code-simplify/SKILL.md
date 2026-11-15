@@ -1,79 +1,63 @@
 ---
 name: wolf-code-simplify
-description: 'Применять по назначенной задаче упрощения или при конкретной лишней сложности, требующей отдельного разбора. Сохраняет поведение и контракты; не является обязательной стадией после каждой правки.'
+description: 'Apply on an assigned simplification task or when concrete needless complexity needs a separate examination. Preserves behavior and contracts; not a mandatory stage after every edit.'
 ---
 
-# Упрощение существующего кода
+# Simplifying existing code
 
-Устрани конкретную сложность, сохранив необходимое поведение.
-Результат должен быть проще понимать, использовать или изменять.
+Eliminate the concrete complexity, preserving necessary behavior. The result must be easier to understand, use or change.
 
-Работай в назначенном scope. Reviewer оценивает и предлагает;
-правки выполняет уполномоченный исполнитель.
+Work in the assigned scope. The reviewer evaluates and proposes; an authorized executor edits.
 
-## 1. Назови проблему
+## 1. Name the problem
 
-Определи, что именно мешает:
-повторение правила, ненужная косвенность, запутанный поток,
-избыточное состояние или сложный протокол для потребителей.
+Identify what exactly gets in the way: rule repetition, needless indirection, a convoluted flow, redundant state or a complex consumer protocol.
 
-Одной возможности сократить строки недостаточно.
-Если проблема неясна, не начинай переписывание.
+A mere chance to shorten lines is not enough. If the problem is unclear, do not start a rewrite.
 
-## 2. Установи сохраняемый контракт
+## 2. Establish the contract to preserve
 
-Используй требования, тесты и потребителей. Учти относящиеся свойства:
+Use the requirements, tests and consumers. Account for the relevant properties:
 
-- результаты и ошибки;
-- значимые побочные эффекты и их порядок;
-- состояние и управление ресурсами;
-- совместимость, конкурентные и транзакционные гарантии;
-- необходимые характеристики производительности.
+- results and errors;
+- material side effects and their order;
+- state and resource management;
+- compatibility, concurrency and transaction guarantees;
+- necessary performance characteristics.
 
-Отсутствие теста не означает отсутствия обязательства.
-При существенной неопределённости нужна адресная проверка
-или уточнение до преобразования.
+The absence of a test does not mean the absence of an obligation. Substantial uncertainty needs an addressed verification or clarification before transformation.
 
-Обнаруженный баг отдели от рефакторинга:
-исправление поведения требует соответствующего scope и проверки.
+Separate a discovered defect from the refactoring: fixing behavior requires corresponding scope and verification.
 
-## 3. Выбери преобразование
+## 3. Choose the transformation
 
-Примени прямое средство против установленной проблемы:
+Apply a direct means against the established problem:
 
-- повторяемое правило → одно место его определения;
-- лишнее состояние → вычисление из надёжного источника;
-- запутанная вложенность → явные ветви или ранний выход;
-- повторяемый протокол → операция, владеющая его гарантиями;
-- бесполезная прослойка → удаление без переноса сложности потребителям;
-- самодельный механизм → подходящее существующее средство;
-- мёртвый код → удаление после достаточной проверки потребителей.
+- a repeated rule → one place of its definition;
+- needless state → computation from a reliable source;
+- convoluted nesting → explicit branches or an early exit;
+- a repeated protocol → an operation owning its guarantees;
+- a useless layer → removal without shifting complexity to consumers;
+- a hand-rolled mechanism → a suitable existing means;
+- dead code → removal after sufficient consumer verification.
 
-Сохраняй полезные границы безопасности, совместимости и тестируемости.
-Внешние, динамические и конфигурационные вызовы учитывай по устройству проекта;
-отсутствия текстового совпадения может быть недостаточно для удаления.
+Preserve useful safety, compatibility and testability boundaries. Account for external, dynamic and configuration calls per project structure; the absence of a textual match may not suffice for removal.
 
-Не смешивай преобразование с несвязанными перемещениями,
-переименованиями и форматированием.
+Do not mix the transformation with unrelated moves, renames and formatting.
 
-## 4. Проверь сохранение и выгоду
+## 4. Verify preservation and benefit
 
-Выполни относящиеся проверки и обязательные гейты проекта.
-При изменении I/O или состояния проверь соответствующие гарантии,
-а не только возвращаемое значение.
+Carry out applicable verifications and the project's mandatory gates. When I/O or state changes, verify corresponding guarantees, not only the return value.
 
-Сопоставь результат с исходной проблемой:
+Compare the result with the original problem:
 
-- сложность действительно уменьшилась;
-- потребителям не добавлена новая обязанность;
-- поведение и гарантии сохранены;
-- код не стал плотнее ценой ясности.
+- complexity has actually decreased;
+- no new obligation has been added for consumers;
+- behavior and guarantees are preserved;
+- the code has not become denser at the cost of clarity.
 
-Если выгода сомнительна, не включай преобразование в результат.
-Если сохранение контракта не подтверждено, не объявляй работу завершённой.
+If the benefit is doubtful, do not include the transformation in the result. If contract preservation is not confirmed, do not declare the work complete.
 
-Остановись после устранения назначенной сложности.
-Верни суть преобразования и evidence в штатном формате TASK.
+Stop after eliminating the assigned complexity. Return the transformation's essence and evidence in the standard TASK format.
 
-При ревью отличай доказанный дефект от необязательной рекомендации;
-применяй действующие нормы и severity проекта.
+In review, distinguish a proven defect from an optional recommendation; apply project rules and severity in force.

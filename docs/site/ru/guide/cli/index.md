@@ -1,3 +1,7 @@
+---
+synced: 2026-11-15
+---
+
 # Справочник CLI
 
 Быстрый индекс команд `wolf`: видимый слой плюс advanced plumbing (скрыт из `--help`). Каждая строка ведёт на описание команды; заголовки разделов — на страницы разделов.
@@ -65,7 +69,7 @@
 | [`wolf init`](/ru/guide/cli/platform#wolf-init)           | Инициализировать память Mr. Wolf для проекта (интерактив в TTY; пиннинг модели — opt-in через `--model`)             | [Платформа и обслуживание](/ru/guide/cli/platform) |
 | [`wolf bootstrap`](/ru/guide/cli/platform#wolf-bootstrap) | Сканировать проект и создать черновую стартовую память                                                               | [Платформа и обслуживание](/ru/guide/cli/platform) |
 | [`wolf mcp`](/ru/guide/cli/platform#wolf-mcp)             | Запустить MCP-сервер (stdio)                                                                                         | [Платформа и обслуживание](/ru/guide/cli/platform) |
-| [`wolf scaffold`](/ru/guide/cli/platform#wolf-scaffold)   | Создать рамку платформы opencode (agent\|skill\|command) + playbook                                                  | [Платформа и обслуживание](/ru/guide/cli/platform) |
+| [`wolf scaffold`](/ru/guide/cli/platform#wolf-scaffold)   | Создать самодостаточную рамку платформы opencode (agent\|skill\|command); лицо/playbook не сеется                    | [Платформа и обслуживание](/ru/guide/cli/platform) |
 | [`wolf tool`](/ru/guide/cli/platform#wolf-tool)           | Библиотекарь инструментов                                                                                            | [Платформа и обслуживание](/ru/guide/cli/platform) |
 | [`wolf taxonomy`](/ru/guide/cli/platform#wolf-taxonomy)   | Таксономия памяти                                                                                                    | [Платформа и обслуживание](/ru/guide/cli/platform) |
 | [`wolf migrate`](/ru/guide/cli/platform#wolf-migrate)     | Разовая миграция layout                                                                                              | [Платформа и обслуживание](/ru/guide/cli/platform) |

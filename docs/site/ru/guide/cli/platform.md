@@ -1,3 +1,7 @@
+---
+synced: 2026-11-15
+---
+
 # Платформа и обслуживание
 
 ## `wolf init`
@@ -36,7 +40,7 @@ wolf mcp
 
 ## `wolf scaffold`
 
-Создать рамку платформы opencode (agent|skill|command) + playbook в памяти Wolf.
+Создать самодостаточную рамку платформы opencode (agent|skill|command); с 3.0.0 scaffold не создаёт ни лицо (playbook), ни ссылку на роутер, ни дефолт-модель.
 
 ```bash
 wolf scaffold <kind> <name> [options]
@@ -61,7 +65,7 @@ wolf scaffold agent apprentice --persona "Ты ученик" --model "your-model
 
 ### `wolf tool register`
 
-Зарегистрировать скрипт как tool-объект (копирует в `.wolf/tools/`). Опции: `--name <name>` (уникальное), `--language <language>` (typescript, python, bash, ...), `--contract-in <text>`, `--contract-out <text>`, `--contract-env <text>`, `--notes <text>` (тело объекта), `--force` (пропустить проверку похожих тулов), `--created-by <actor>`.
+Зарегистрировать скрипт как tool-объект по ссылке (исходник не копируется в `.wolf/tools/`). Опции: `--name <name>` (обязательное, уникальное), `--language <language>` (typescript, python, bash, ...), `--contract-in <text>`, `--contract-out <text>`, `--contract-env <text>`, `--notes <text>` (тело объекта), `--force` (пропустить проверку похожих тулов), `--created-by <actor>`.
 
 ```bash
 wolf tool register <script-path> --name check --contract-in "нет" --contract-out "exit 0/1"

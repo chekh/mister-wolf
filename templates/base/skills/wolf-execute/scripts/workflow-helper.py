@@ -83,6 +83,11 @@ def wait_group_empty(pgid, cap=5.0):
             os.killpg(pgid, 0)
         except ProcessLookupError:
             return True
+        except PermissionError:
+            # EPERM here means the group is gone and the pgid has been reused
+            # by another user's process (routine on macOS runners): our group
+            # is empty. A live process of ours would answer kill(0) with 0.
+            return True
         if time.monotonic() >= deadline:
             return False
         time.sleep(0.05)

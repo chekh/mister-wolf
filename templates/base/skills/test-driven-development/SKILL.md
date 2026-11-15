@@ -1,67 +1,62 @@
 ---
 name: test-driven-development
-description: "Применять перед реализацией нового поведения или исправления дефекта; при рефакторинге, требующем сохранения контракта, и при проверке изменений, написанных до тестов."
+description: "Apply before implementing new behavior or fixing a defect; in contract-preserving refactoring and when verifying changes written before tests."
 ---
 
-# Тестовая дисциплина исполнения
+# Test discipline of execution
 
-## Обязательный вход
+## Mandatory input
 
-Исполнитель получает AC, allowlist и проектные команды. Ведущий назначает дисциплину и принимает evidence; исполнитель выполняет назначенное: сам пишет и запускает предметную проверку в своём TASK. Для нового поведения обязательна наблюдаемая RED-проверка до реализации. Для существующего поведения допустим сразу зелёный baseline-тест. Вид проверки выбирай по контракту: не заставляй документацию изображать кодовый unit-тест.
+The executor gets ACs, an allowlist and project commands. The lead assigns the discipline and accepts the evidence; the executor does the assigned work: writes and runs the domain test on its own in its TASK. New behavior requires an observable RED run before implementation; existing behavior allows a green baseline test at once. Choose the verification kind by contract: do not make documentation imitate a code unit test.
 
-Различай обязательные требования и условные; условное выполняй при наличии его основания.
+Distinguish mandatory requirements from conditional ones; carry out a conditional one when its grounds are present.
 
 
-## Вход
+## Input
 
-Исполнитель получает назначенные AC, сценарии test-plan, allowlist и команды профиля проекта. Читай необходимый существующий код. Не меняй AC и не добавляй продуктовые функции ради удобства тестирования без согласования.
+The executor gets the assigned ACs, test-plan scenarios, an allowlist, and project profile commands. Read the necessary existing code. Do not change ACs or add product features for testing convenience without approval.
 
-## Новое поведение и багфикс
+## New behavior and defect fixes
 
-1. Напиши минимальную проверку наблюдаемого контракта с независимым ожидаемым результатом. Для бага воспроизведи исходный симптом.
-2. Запусти RED. Проверь, что причиной является отсутствующее/неверное поведение, а не опечатка, сломанный setup или недоступная зависимость. Отсутствующий публичный интерфейс допустим в начале, но после его появления проверка должна проверять поведение.
-3. Напиши минимальную реализацию; запусти GREEN и связанные регрессии. Не ослабляй assertion ради зелёного результата; ошибку самого теста исправляй с обоснованием.
-4. Рефакторь в пределах задачи, сохраняя зелёные проверки. Зафиксируй RED/GREEN evidence и область регрессий.
+1. Write a minimal test of the observable contract with an independent expected result. For a defect, reproduce the original symptom.
+2. Run RED. Verify the cause is the missing/wrong behavior, not a typo, broken setup, or unavailable dependency. A missing public interface is acceptable at first; once it exists, the test must verify the behavior.
+3. Write the minimal implementation; run GREEN and related regressions. Do not weaken an assertion for a green result; fix the test's own failure with a rationale.
+4. Refactor in the task, keeping the green tests passing. Record RED/GREEN evidence and regression scope.
 
-## Существующее поведение и рефакторинг
+## Existing behavior and refactoring
 
-Characterization-тесты могут проходить сразу: они фиксируют baseline. Затем проверь, что изменение сохраняет контракт. Не требуй искусственно ломать рабочий код для каждого такого теста. Чувствительность важной регрессионной проверки подтверди на исходной версии или изолированным временным возвратом дефекта; чужие изменения не откатывай.
+Characterization tests may pass right away: they capture the baseline. Then verify the change preserves the contract. Do not require artificially breaking working code for each such test. Confirm an important regression test's sensitivity on the original version or by an isolated temporary defect reintroduction; do not roll back others' changes.
 
-## Если код уже написан
+## If code is already written
 
-Не удаляй результат автоматически. Сохрани его и отметь отклонение процесса; для нового поведения код-первый — задокументированное отклонение, которое ведущий обязан провести через ревью качества тестов (минимум DONE_WITH_CONCERNS), а не молчаливая норма. Добавь независимые проверки по требованиям. Для исправления дефекта покажи падение на baseline и прохождение на текущем коде. Если это невозможно, обозначь предел уверенности и верни нанимателю. Историю RED не выдумывай.
+Do not delete the result automatically. Preserve it, marking the process deviation; for new behavior, code-first is a documented deviation the lead must take through test quality review (at minimum DONE_WITH_CONCERNS), not a silent norm. Add independent tests per requirements. For a defect fix, show the baseline failure and the pass on current code. If impossible, state the confidence limit and return to the requester. Do not invent RED history.
 
-## Соразмерный способ проверки
+## A proportionate way to verify
 
-Выбирай проверку по назначенному поведению и риску из test-plan. Техники и
-уровни — по wolf-testplan; не запускай все типы тестов ради дисциплины TDD.
-Если неизвестен ожидаемый контракт, спроси нанимателя до его изобретения в assertion.
-Обязательные RED/GREEN и проектные регрессии сохраняются по применимости.
+Choose the test by assigned behavior and test-plan risk. Techniques and levels are per wolf-testplan; do not run all test types just for TDD discipline. If the expected contract is unknown, ask the requester before inventing it in an assertion. Mandatory RED/GREEN and project regressions remain per applicability.
 
-## Качество тестов
+## Test quality
 
-Проверяй публичное поведение, границы, ошибки и инварианты; не требуй отдельного теста для каждой внутренней функции. Моки используй для внешних границ, сохраняя интеграционную проверку там, где взаимодействие несёт риск. Fixtures должны быть изолированы, seed/time контролируемы, cleanup безопасен. Не тестируй только конфигурацию собственного мока.
+Test the public behavior, boundaries, errors and invariants; do not require a separate test per internal function. Use mocks for external boundaries, keeping an integration test where the interaction carries risk. Fixtures must be isolated, seed/time controllable, cleanup safe. Do not test only your own mock's configuration.
 
-Для документации, конфигураций и генерации выбирай валидатор, snapshot, smoke или воспроизводимую ручную проверку. Отказ от релевантной автоматической проверки должен иметь основание по политике проекта, а не обязательный вопрос владельцу на каждую мелочь.
+For documentation, configurations and generation, choose a validator, snapshot, smoke, or reproducible manual verification. Skipping a relevant automated verification must have grounds in the project policy, not a mandatory owner question for every little thing.
 
-## Готовность
+## Readiness
 
-AC покрыты, исходный дефект воспроизводился, новые проверки чувствительны к неверному поведению, связанные регрессии пройдены или ограничение явно указано. RESULT не подменяет независимое ревью и приёмку. Коммиты — зона ведущего или нанимателя.
+ACs are covered, the original defect was reproduced, new tests are sensitive to wrong behavior, related regressions have passed or a constraint is stated explicitly. A RESULT does not replace independent review and acceptance. Commits are the lead's or the requester's zone.
 
-## Гейт перехода
+## Transition gate
 
-RED/GREEN относятся к одному проверяемому свойству и известным версиям. Нельзя ослаблять требование ради GREEN или придумывать прошлое падение. Код-первый сохрани безопасно, обозначь отклонение и проверь чувствительность на baseline; Наниматель разбирает concerns. После проверки запроси нужное независимое ревью.
+RED/GREEN refer to one verifiable property and known versions. Do not weaken a requirement for GREEN or invent a past failure. Preserve code-first safely, state the deviation and verify sensitivity on the baseline; the requester addresses the concerns. After verification, request the needed independent review.
 
-## Не пропускай процесс
+## Do not skip the process
 
-| Мысль | Действие |
+| Thought | Action |
 | --- | --- |
-| «Изменение слишком маленькое для проверки» | Размер diff не определяет риск поведения. |
-| «Тест упал из-за setup — это RED» | Нужно падение по проверяемому контракту. |
-| «Удалю готовый код ради процесса» | Сохрани результат и честно проверь baseline; не уничтожай работу. |
+| "The change is too small to test" | Diff size does not determine behavior risk. |
+| "The test failed because of setup — that is RED" | A failure against the verifiable contract is needed. |
+| "I will delete finished code for process's sake" | Preserve the result and honestly verify the baseline; do not destroy the work. |
 
-## Адресные техники
+## Addressed techniques
 
-Для независимого ожидаемого результата, чувствительности и разумных моков
-при необходимости читай references/test-quality.md. Не запускай все техники
-ради TDD; один тест должен ловить конкретный дефект поведения.
+For an independent expected result, sensitivity and reasonable mocks, read references/test-quality.md when needed. Do not run all techniques just for TDD; one test must catch a specific behavior defect.

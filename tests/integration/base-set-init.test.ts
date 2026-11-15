@@ -87,6 +87,8 @@ describe('wolf init: базовый набор (S-DELIVERY 3.0.0)', () => {
   });
 
   it('повторный init: все файловые outcomes skipped, дублей нет', () => {
+    // два полных init --full в одном тесте под нагрузкой полного прогона
+    // превышают дефолтные 5s; изолированно — ~2s
     expect(runCli(['init', '--full', '--platform', 'opencode', '--model', MODEL], dir).status).toBe(0);
     const agentPath = join(dir, '.opencode/agents/mr-wolf.md');
     const before = readFileSync(agentPath, 'utf-8');
@@ -100,7 +102,7 @@ describe('wolf init: базовый набор (S-DELIVERY 3.0.0)', () => {
 
     const list = runCli(['list', '--type', 'face'], dir).stdout;
     expect(list.match(/\[face\]/g)).toBeNull(); // лица не появились
-  });
+  }, 30_000);
 
   it('контент отрендеренных агентов: agent-id ×9, штампы, словари исследователя/ревьюера, using-skills (§11.3)', () => {
     expect(runCli(['init', '--full', '--platform', 'opencode', '--model', MODEL], dir).status).toBe(0);
@@ -134,7 +136,7 @@ describe('wolf init: базовый набор (S-DELIVERY 3.0.0)', () => {
     // using-skills в rendered-виде: маршруты и плотность
     const core = readFileSync(join(dir, '.opencode/skills/using-skills/SKILL.md'), 'utf-8');
     expect(core).toContain('references/routes-intent.md');
-    expect(core).toContain('density standard|draft');
+    expect(core).toContain('Density standard|draft');
     const labor = join(dir, '.opencode/skills/using-skills/references/division-of-labor.md');
     expect(existsSync(labor), 'division-of-labor доставлен').toBe(true);
     expect(readFileSync(labor, 'utf-8')).toContain(

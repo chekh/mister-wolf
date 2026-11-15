@@ -49,16 +49,16 @@ check "память пуста перед bootstrap"    "[ -z \"$(find .wolf/mem
 step "1.3 wolf bootstrap — адаптивное наполнение из фактов проекта"
 node "$WOLF" bootstrap >/dev/null 2>&1
 check "создано ≥1 правило-черновик (факты проекта)" \
-  "[ \"$(find .wolf/memory/shared/rules -name '*stek*' -o -name '*proverka*' 2>/dev/null | wc -l | tr -d ' ')\" -ge 1 ]"
-check "README зарегистрирован по ссылке (document-ref)" \
-  "[ -f .wolf/memory/shared/documents/doc_README_md.md ]"
+  "[ \"$(find .wolf/memory/shared/rules -type f 2>/dev/null | wc -l | tr -d ' ')\" -ge 1 ]"
+check "README зарегистрирован как документ (doc_readme-объект)" \
+  "[ -n \"$(find .wolf/memory/shared/notes -name '*doc_readme*' 2>/dev/null | head -1)\" ]"
 check "создан work-thread bootstrap"    "[ -n \"$(find .wolf/memory/threads -name 'WORK-THREAD.md' 2>/dev/null | head -1)\" ]"
 check "журнал событий ведётся (появился при первой записи)" "[ -f .wolf/memory/events.jsonl ]"
 
 step "1.4 wolf brief — первый полезный вывод"
 BRIEF=$(node "$WOLF" brief 2>/dev/null)
 H1=$(echo "$BRIEF" | grep -c 'Project Snapshot' | tr -d ' ')
-H2=$(echo "$BRIEF" | grep -c 'document-ref' | tr -d ' ')
+H2=$(echo "$BRIEF" | grep -c 'Registered project document' | tr -d ' ')
 H3=$(echo "$BRIEF" | grep -ci 'proposed' | tr -d ' ')
 check "brief содержит снимок проекта"   "[ \"$H1\" -ge 1 ]"
 check "brief видит зарегистрированные документы" "[ \"$H2\" -ge 1 ]"

@@ -46,7 +46,7 @@ No options beyond `-h, --help`.
 
 ## wolf scaffold
 
-Scaffold opencode frame (agent|skill|command) + playbook in Wolf memory.
+Scaffold opencode frame (agent|skill|command); the frame is self-sufficient — no playbook seeded (R-08).
 
 ```text
 Usage: wolf scaffold [options] <kind> <name>
@@ -77,7 +77,7 @@ Commands: `register`, `list`, `use`, `expose`, `deprecate`, `revive`, `stats`.
 
 ### wolf tool register
 
-Register a script as tool memory object (copies script to `.wolf/tools/`).
+Register a script as tool memory object (registers the script by reference; the source file is not copied).
 
 ```text
 Usage: wolf tool register [options] <script-path>

@@ -16,8 +16,10 @@ describe('package hygiene (спека §5, §7)', () => {
     expect(pkg.files).toEqual(['dist', 'templates', 'update-map.json']);
   });
 
-  it('declares engines.node >= 22 (prebuilt better-sqlite3 v13 line)', () => {
-    expect(pkg.engines?.node).toBe('>=22');
+  it('declares engines.node >= 24 (Node 24 transition; prebuilt better-sqlite3 v13 line)', () => {
+    // Переход на Node 24 (2026-11): prebuilt-линия better-sqlite3 v13 покрывает
+    // Node 24 — npm ci на Node 24 в CI доказывает наличие prebuilds.
+    expect(pkg.engines?.node).toBe('>=24');
   });
 
   it('declares license and repository (npm metadata)', () => {
@@ -32,7 +34,7 @@ describe('package hygiene (спека §5, §7)', () => {
     }
   });
 
-  it('depends on prebuilt better-sqlite3 >= 13 (Node 22/24 prebuilds)', () => {
+  it('depends on prebuilt better-sqlite3 >= 13 (Node 24 prebuilds)', () => {
     expect(pkg.dependencies['better-sqlite3']).toMatch(/^\^13\./);
   });
 

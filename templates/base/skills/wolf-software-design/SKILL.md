@@ -1,98 +1,101 @@
 ---
 name: wolf-software-design
-description: 'Применять внутри wolf-design или по назначенному архитектурному вопросу: выбрать границы программных модулей, контракты, зависимости и владение состоянием. Не запускает перепроектирование при обычной реализации.'
+description: 'Apply inside wolf-design or for an assigned architecture question: choose software module boundaries, contracts, dependencies and state ownership. Does not trigger redesigning during ordinary implementation.'
 ---
 
-# Проектирование программного решения
+# Designing the software solution
 
-Выбирай конструкцию, которая выполняет требования с наименьшей совокупной
-сложностью для реализации, потребителей, проверки и эксплуатации.
+Choose the construction that meets requirements with the least total
+complexity for implementation, consumers, verification and operation.
 
-Используй действующие требования, ADR, профиль проекта и рамку TASK.
-Скилл не расширяет полномочия роли и не заменяет маршрут wolf-design.
-Назначенный wolf-researcher возвращает варианты и рекомендацию, а не утверждение
-архитектуры; решение принимает ответственный по действующим правилам проекта.
+Use the requirements in force, ADRs, the project profile and TASK frame.
+The skill does not widen role rights and does not replace the wolf-design
+route. An assigned wolf-researcher returns options and a recommendation, not
+architecture approval; the responsible party decides under project rules
+in force.
 
-## От задачи к конструкции
+## From task to construction
 
-Начни с существующего решения и затронутых потребителей. Определи,
-какое поведение требуется, какие гарантии существенны и что должно измениться.
+Start from the existing solution and affected consumers. Determine what
+behavior is required, which guarantees are substantial and what must change.
 
-Проверь, достаточно ли текущего модуля, готовой возможности проекта
-или платформы. Для существенной развилки сравни простейший достаточный
-вариант с разумной альтернативой. Очевидная правка не требует конкурса решений.
+Check whether the current module, a ready-made project solution or platform
+suffices. For a substantial fork, compare the simplest sufficient
+option with a reasonable alternative. An obvious edit needs no contest of
+solutions.
 
-Неизвестное, меняющее выбор, разреши адресным вопросом, источником
-или разрешённой ограниченной проверкой. Не проектируй цепочку на существенном
-допущении; read-only роль не создаёт код эксперимента.
+Resolve a choice-changing unknown with an addressed question, a source or a
+permitted bounded verification. Do not design a chain on a substantial
+assumption; a read-only role does not create experiment code.
 
-## Границы и ответственность
+## Boundaries and responsibility
 
-Держи вместе поведение, которое использует общие знания и меняется
-по одной причине. Разделяй независимые причины изменения и разные гарантии.
+Keep together the behavior that uses common knowledge and changes for one
+reason. Separate independent reasons for change and different guarantees.
 
-Для изменяемого состояния определи владельца, допустимые переходы
-и место обеспечения инвариантов. Не распределяй одно правило
-по нескольким потребителям.
+For mutable state define the owner, permitted transitions and where
+invariants are enforced. Do not spread one rule across several consumers.
 
-Выбирай модуль с понятным интерфейсом, скрывающим полезную сложность.
-Интерфейс — всё необходимое потребителю: данные, ошибки, порядок действий,
-эффекты и ограничения, а не только сигнатуры.
+Choose a module with a clear interface that hides useful complexity. The
+interface is everything the consumer needs: data, errors, action order,
+effects and constraints, not only signatures.
 
-Проверка удаления: если убрать модуль, сложность исчезнет
-или разойдётся по потребителям? Во втором случае он выполняет полезную работу.
+Removal check: remove the module — does complexity disappear or spread
+across consumers? In the second case it does useful work.
 
-## Конкретные приёмы
+## Concrete techniques
 
-- Отделяй вычисление решения от I/O, когда это упрощает проверку
-  и не разрывает цельное действие.
-- Передавай время, случайность и внешние зависимости там, где поведение
-  должно быть управляемым. Часто достаточно параметра функции.
-- Проверяй значимое поведение через устойчивый публичный контракт.
-  Не раскрывай внутренние детали только ради теста; адресные внутренние
-  тесты сложного алгоритма допустимы.
-- Скрывай повторяемый протокол за одной операцией, если потребители
-  иначе обязаны одинаково соблюдать сложный порядок действий.
-- Выражай внешние зависимости потребностями потребителя,
-  а не копией интерфейса поставщика.
+- Separate decision computation from I/O when it simplifies verification and
+  does not break a coherent action.
+- Pass time, randomness and external dependencies where behavior must be
+  controllable. A function parameter is often enough.
+- Verify meaningful behavior through a stable public contract. Do not expose
+  internals just for a test; addressed internal tests of a complex algorithm
+  are allowed.
+- Hide a repeating protocol behind one operation when consumers would
+  otherwise have to observe the same complex action order.
+- Express external dependencies as consumer needs, not a copy of the
+  provider's interface.
 
-Примеры:
+Examples:
 
-- Расчёту срока нужен текущий момент: передай now; ClockFactory не обязателен.
-- Несколько потребителей повторяют блокировку, изменение и освобождение:
-  рассмотри одну операцию, владеющую этим протоколом.
-- Две проверки сейчас похожи, но выражают независимые бизнес-правила:
-  совпадение строк не требует общего валидатора.
+- A deadline calculation needs the current moment: pass now; ClockFactory is
+  unnecessary.
+- Several consumers repeat lock, modify and release: consider one operation
+  that owns this protocol.
+- Two checks look alike now but express independent business rules: matching
+  strings need no shared validator.
 
-## Цена абстракции
+## The price of abstraction
 
-Порты и адаптеры вводить, когда нужна изоляция внешних зависимостей, а не ради шаблона.
+Introduce ports and adapters when external dependencies need isolation, not
+for the pattern's sake.
 
-Создавай границу, когда она концентрирует правило, изолирует внешнюю
-систему, скрывает протокол, обеспечивает нужную проверяемость
-или подтверждённую вариативность.
+Create a boundary when it concentrates a rule, isolates an external system,
+hides a protocol, provides needed verifiability or confirmed variability.
 
-Одна реализация допустима при наличии такой причины.
-Гипотетического расширения самого по себе недостаточно.
+A single implementation is allowed with such a reason. Hypothetical extension
+alone is not enough.
 
-KISS и YAGNI помогают выбирать достаточное решение.
-DRY относится к повторяемому знанию.
-SOLID помогает оценивать ответственность, контракты и зависимости.
-Ни один принцип не требует класса, интерфейса или слоя сам по себе.
+KISS and YAGNI help choose a sufficient solution. DRY is about repeated
+knowledge. SOLID helps assess responsibility, contracts and dependencies. No
+principle requires a class, an interface or a layer by itself.
 
-Следуй принятому архитектурному стилю. Hexagonal, DDD, CQRS и другие
-подходы применяй по их назначению. Локальный тестовый шов
-не означает переход проекта на новую архитектуру.
+Follow the accepted architectural style. Apply Hexagonal, DDD, CQRS and other
+approaches as intended. A local test seam does not mean a project-wide move
+to a new architecture.
 
-## Результат
+## Result
 
-Передай выбранную конструкцию, существенные контракты, последствия
-и нерешённые вопросы в существующем design/ADR или формате TASK.
-wolf-researcher возвращает FINDINGS/CONFIDENCE/GAPS сообщением; разрешённый автор
-документа пишет только назначенный файл/раздел.
+Hand off the chosen construction, substantial contracts, consequences and
+unresolved questions in the existing design/ADR or TASK format.
+wolf-researcher returns FINDINGS/CONFIDENCE/GAPS as a message; a permitted
+document author writes only the assigned file/section.
 
-Для нетривиального решения объясни, почему более простой вариант недостаточен.
-Не создавай реализацию вместо дизайна и дополнительные документы ради скилла.
+For a non-trivial decision, explain why a simpler option is insufficient. Do
+not create an implementation instead of a design, or extra documents for the
+skill's sake.
 
-Заверши, когда исполнитель может реализовать решение без угадывания
-существенных границ и гарантий либо точный пробел возвращён постановщику.
+Finish when an executor can implement the solution without guessing
+substantial boundaries and guarantees, or an exact gap goes back to the
+requester.

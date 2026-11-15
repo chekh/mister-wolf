@@ -1,20 +1,23 @@
-# Приёмы адресной диагностики
+# Addressed diagnostic techniques
 
-Выбери технику под назначенный вопрос. Она не расширяет полномочия или scope.
+Choose the technique that fits the assigned question. It does not widen
+mandate or scope.
 
-| Затруднение | Приём | Достаточный результат |
+| Difficulty | Technique | Sufficient result |
 | --- | --- | --- |
-| Ошибка проявилась глубже причины | Иди назад от неверного значения к месту его получения; на каждой границе сопоставляй вход, преобразование и выход | Первая граница, где нарушен известный контракт, с подтверждением |
-| Несколько компонентов | Поставь минимальную диагностику на подозреваемых границах, передавая корреляционный ID и метаданные без payload/секретов | Различена ошибка отправителя, передачи или получателя |
-| Тест падает только в наборе | Воспроизведи порядок, сузь предшествующий набор делением; проверь общий файл, env, cache, время и cleanup | Минимальная пара/последовательность и нарушенная изоляция |
-| Ожидается асинхронный результат | Жди наблюдаемое условие с конечным timeout и диагностикой последнего состояния | Условие выполнено либо timeout с evidence; увеличение sleep не доказательство исправления |
+| The error surfaces deeper than the cause | Walk backward from the wrong value to where it was produced; at each boundary, compare input, transformation and output | First confirmed boundary where a known contract is violated |
+| Several components | Put minimal diagnostics on suspected boundaries, passing a correlation ID and payload/secret-free metadata | Sender, transmission or receiver error discriminated |
+| A test fails only in the suite | Reproduce the order, narrow the preceding set by bisection; check shared file, env, cache, timing, cleanup | A minimal pair/sequence and broken isolation |
+| An asynchronous result is expected | Wait on an observable condition with a finite timeout and last-state diagnostics | Condition met, or a timeout with evidence; a longer sleep is not evidence of a fix |
 
-Для поиска загрязняющего теста важен фактический порядок; бинарное деление
-не гарантирует результат при нескольких совместных причинах. Отрицательный
-эксперимент — полезный исход. Не запускай бесконечные прогоны; новый способ исполнитель
-возвращает нанимателю. Временную диагностику убери после сохранения evidence.
+In finding the polluting test the actual order matters; bisection does not
+guarantee a result with several joint causes. A negative experiment is
+useful. Do not run endless test runs; the executor returns a new
+method to the requester. Remove temporary diagnostics once the evidence is
+preserved.
 
-Пример ожидания: процесс должен зарегистрировать событие с известным ID.
-Проверяй получение этого события до deadline; фиксируй отсутствие и последнее
-состояние. Не считай сам факт ожидания успешной проверкой. Если система не даёт
-наблюдаемого условия, уточни контракт или назначь ограниченную диагностику.
+A waiting example: the process must register an event with a known ID. Check
+for this event's arrival before the deadline; record the absence and last
+state. Do not count waiting itself as a successful verification. If the
+system gives no observable condition, clarify the contract or assign bounded
+diagnostics.

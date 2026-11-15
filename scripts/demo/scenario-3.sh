@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Демо-сценарий 3: новый агент = одна команда (scaffold: playbook + рамка + связь).
+# Демо-сценарий 3: новый агент = одна команда (scaffold: самодостаточная рамка; R-08 — лица не сеются).
 set -u
 source "$(dirname "$0")/lib.sh"
 new_demo_project
@@ -11,8 +11,8 @@ node "$WOLF" scaffold agent demo-reviewer \
 check "создана рамка .opencode/agents/demo-reviewer.md"  "[ -f .opencode/agents/demo-reviewer.md ]"
 check "рамка содержит маркер agent-id (для плагина)"     "grep -q 'demo-reviewer' .opencode/agents/demo-reviewer.md"
 check "рамка declares mode: all (требование headless)"   "grep -q 'mode: all' .opencode/agents/demo-reviewer.md"
-check "создан playbook-объект в памяти"                  "[ -n \"$(node "$WOLF" search 'playbook: demo-reviewer' --hide-superseded 2>/dev/null | head -1)\" ]"
-check "создана связь рамка↔playbook (relations.jsonl)"   "grep -q 'demo-reviewer' .wolf/memory/relations.jsonl"
+check "playbook не сеется (R-08: лица не сеются)"        "[ -z \"$(node "$WOLF" search 'playbook: demo-reviewer' --hide-superseded 2>/dev/null | head -1)\" ]"
+check "рамка самодостаточна: persona в теле"             "grep -q 'Ревьюер изменений корзины' .opencode/agents/demo-reviewer.md"
 
 step "3.2 идемпотентность: повторный scaffold отклоняется"
 node "$WOLF" scaffold agent demo-reviewer --persona "x" >/dev/null 2>&1

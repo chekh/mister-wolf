@@ -1,49 +1,43 @@
-# Средства проекта и карточки Wolf
+# Project tools and Wolf cards
 
-Загружает ведущий или исполнитель при создании/сохранении/обновлении инструмента; получает
-относящиеся нормы и точный контракт, а не весь каталог.
+Loaded by the lead or an executor creating, saving or updating a tool: relevant rules and the
+exact contract, not the whole catalog.
 
-## Размещение и регистрация
+## Placement and registration
 
-Используй принятый постоянный каталог вспомогательных средств проекта.
-Если его нет, ведущий выбирает и создаёт подходящее место; при существенной
-неоднозначности ведущий уточняет у пользователя. Путь фиксируется в памяти и не
-согласуется заново. Каталог отделим от функциональности продукта; зависимости
-обслуживающих процедур явны. Компоненты продукта остаются в его структуре.
+Use the project's established permanent directory for auxiliary tools. If there is none, the
+lead picks and creates one, asking the user on substantial ambiguity. The path is recorded in
+memory and not agreed again. The directory stays apart from product functionality; service
+procedure dependencies are explicit, and product components stay in the product structure.
 
-Средство может включать один/несколько файлов, ресурсы и зависимости на удобном
-проекту языке. Исходники живут в Git проекта. Карточка Wolf — назначение,
-когда применять, относительная точка входа, запуск/cwd, вход/выход, среда,
-побочные действия и основание проверки. wolf tool register хранит ссылку,
-не вторую копию; старый файл в .wolf/tools допустимо оставить по его пути.
-Обновляй известную карточку штатным способом, сохраняя ID; не создавай дубликат
-и не используй --force вместо поиска аналога. Новую команду/поле сначала проверь
-в текущем CLI/help.
+A tool may include one or more files, resources and dependencies in whatever language suits the project. Sources live in the project's Git. A Wolf card records purpose, when to apply,
+relative entry point, run command and cwd, input and output, environment, side effects and the
+basis for verification. wolf tool register stores a reference, not a second copy; an old file in
+.wolf/tools may stay at its path. Update a known card the regular way, keeping its ID; never
+duplicate it or use --force instead of finding an analogue. Check a new command or field in
+current CLI/help first.
 
-## Что сохранять
+## What to save
 
-tmp допустим для одноразовой пробы. Скрипт, необходимый для повторного
-использования, воспроизведения результата или продолжения, сохраняется и
-регистрируется до завершения задачи. Имя «временный» не отменяет зависимости.
-Одной ссылки на tmp недостаточно. Разовая команда без дальнейшей ценности
-не требует упаковки или карточки.
+tmp is acceptable for one-off trials. A script needed for reuse, reproducing a result or
+continuation is saved and registered before the task ends. The name "temporary" cancels no
+dependency, and one reference to tmp is not enough. A one-off command with no further value
+needs no packaging or card.
 
-Если скрипты создавались, исполнитель возвращает кратко назначение/путь/проверку/нужность.
-Ведущий обеспечивает сохранность и регистрацию до приёмки; Git diff не видит все
-созданные в tmp средства. Оформление уже разрешённого средства — часть завершения,
-не новое согласование. Существенное расширение автоматизации — решение владельца.
+If scripts were created, the executor briefly returns purpose, path, verification and need. The
+lead ensures preservation and registration before acceptance; Git diff does not see every tool
+created in tmp. Filling in an already permitted tool is part of completion, not a new
+agreement. A substantial expansion of automation is the owner's decision.
 
-## Поиск, качество и запуск
+## Search, quality and run
 
-Перед повторяемой работой используй доставленное средство или адресный
-wolf tool list --status active, затем контракт выбранного объекта. Не ищи
-весь каталог на каждую команду. Проверь применимость, версию значимых файлов,
-cwd/ресурсы и права. Изменение несвязанных файлов не отменяет все evidence.
-Отсутствующий путь или устаревшая карточка — ограничение, не повод создавать
-другую копию. Сохраняй исходник при ошибке регистрации.
+Before repeatable work, use a delivered tool or addressed wolf tool list --status active, then
+the contract of the chosen object. Do not search the whole catalog for every command. Check
+applicability, versions of significant files, cwd, resources and rights. A change in unrelated
+files does not void all evidence. A missing path or stale card is a constraint, not a reason to
+make another copy. Keep the source when registration fails.
 
-Средство должно быть лёгким, понятным и по возможности переиспользуемым:
-достаточные зависимости, параметры известных повторов, ясные результаты/ошибки,
-проверка назначения и существенных рисков. Не создавай универсальный продукт
-из каждой пробы. wolf tool use — учёт, не запуск и не доказательство успеха;
-реальный запуск разрешённым способом возвращает отдельный исход/evidence.
+A tool must be lightweight, clear and reusable where possible: sufficient dependencies,
+parameters for known repetitions, clear results and errors, a check of purpose and substantial
+risks. Do not build a universal product out of every trial. wolf tool use is accounting, not a run
+or evidence of success; a real run by a permitted means returns its own outcome and evidence.

@@ -15,7 +15,7 @@ describe('base frames guard', () => {
       'utf-8'
     );
     expect(frame).toContain('wolf list --type complaint');
-    expect(frame).toContain('как проверяли');
+    expect(frame).toContain('how was it verified');
   });
 
   it('wolf-reviewer.md keeps verdict marker and task-deny', () => {
@@ -23,7 +23,7 @@ describe('base frames guard', () => {
       join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'templates', 'base', 'agents', 'wolf-reviewer.md'),
       'utf-8'
     );
-    expect(reviewer).toContain('Вердикт APPROVED');
+    expect(reviewer).toContain('Verdict APPROVED');
     expect(reviewer).toContain('task: deny');
   });
 });

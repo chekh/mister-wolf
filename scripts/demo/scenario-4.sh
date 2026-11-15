@@ -7,9 +7,12 @@ new_demo_project
 node "$WOLF" scaffold agent demo-agent --persona "Демо-агент." >/dev/null 2>&1
 
 step "4.1 wolf complain — жалоба записывается с привязкой к адресату"
-node "$WOLF" complain --about "agent:demo-agent" --text "агент слишком многословен" >/dev/null 2>&1
-check "создан объект жалобы (observation с complaint)"   "grep -rq 'слишком многословен' .wolf/memory/shared 2>/dev/null"
-check "создан relation -complain-> agent:demo-agent"     "grep -q 'complain' .wolf/memory/relations.jsonl"
+node "$WOLF" complain --about "demo-agent" \
+  --rule "агент слишком многословен" \
+  --evidence "ответы превышают лимит строк" \
+  --proposal "ввести краткий формат ответа" >/dev/null 2>&1
+check "создан объект жалобы (type complaint, status open)" "grep -rq 'многословен' .wolf/memory/shared 2>/dev/null"
+check "создан relation -complain-> demo-agent"           "grep -q 'complain' .wolf/memory/relations.jsonl"
 
 step "4.2 жалоба попала в сигнальный лог Ф20 (writer-матрица)"
 check "событие complaint в session-metrics.jsonl"        "grep -q '\"event\": \"complaint\"\|\"event\":\"complaint\"' .wolf/metrics/session-metrics.jsonl"

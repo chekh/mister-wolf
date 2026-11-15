@@ -6,6 +6,8 @@
     "esModuleInterop": true,
     "strict": true,
     "outDir": "./dist",
+    "incremental": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "rootDir": "./src",
     "declaration": true,
     "declarationMap": true,

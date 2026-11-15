@@ -65,8 +65,8 @@ const steps = computed(() => [
     <p class="wolf-install-note wolf-install-note-foot">
       {{
         t({
-          en: 'Node.js 22/24 · macOS or Linux (glibc) · OpenCode with a configured model. Use exactly mister-wolf. Optional memory-only path: wolf init; try-out: npx mister-wolf init. Neither installs the full organization. See Getting Started for details.',
-          ru: 'Node.js 22/24 · macOS или Linux (glibc) · OpenCode с настроенной моделью. Имя пакета — mister-wolf. Режим только памяти: wolf init; пробный запуск: npx mister-wolf init. Полную организацию они не устанавливают. Подробности — в начале работы.',
+          en: 'Node.js 24+ · macOS or Linux (glibc) · OpenCode with a configured model. Use exactly mister-wolf. Optional memory-only path: wolf init; try-out: npx mister-wolf init. Neither installs the full organization. See Getting Started for details.',
+          ru: 'Node.js 24+ · macOS или Linux (glibc) · OpenCode с настроенной моделью. Имя пакета — mister-wolf. Режим только памяти: wolf init; пробный запуск: npx mister-wolf init. Полную организацию они не устанавливают. Подробности — в начале работы.',
         })
       }}
     </p>

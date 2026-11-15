@@ -4,7 +4,7 @@ Mr. Wolf organizes AI assistants around a project's goal, with continuing memory
 
 ## Development setup
 
-Use Node.js 22 or 24 on macOS or Linux with glibc:
+Use Node.js 24 or newer on macOS or Linux with glibc:
 
 ```bash
 npm ci

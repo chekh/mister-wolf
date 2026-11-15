@@ -1,13 +1,13 @@
-# Развитие возможностей
+# Skill development
 
-| Когда | Как применить | Результат |
+| When | How to apply | Result |
 | --- | --- | --- |
-| Создание/изменение методики | writing-skills: сценарий, канон и проверка поведения | Проверенная методика и откат |
-| Подключение внешнего пакета | wolf-skill-intake: проверить источник/revision и scope | Проверенная доступная методика |
-| Повторяемая техническая операция | [Библиотека проекта](project-tools.md): найти аналог, создать при необходимости | Инструмент и карточка |
-| Дефект действующего правила | wolf-feedback: W1–W4, complaint, действующий триаж | Основание коррекции методики |
+| Creating or changing a skill | writing-skills: scenario, canon and behavior check | A verified skill and a rollback |
+| Adding an external package | wolf-skill-intake: check the source, revision and scope | A verified skill, ready to use |
+| A recurring technical operation | [Project library](project-tools.md): find a counterpart, create one if needed | A tool and its card |
+| A defect in an active rule | wolf-feedback: W1–W4, complaint, active triage | Grounds to correct a skill |
 
-Ведущий собирает помощь из исполнителей, скиллов и доступных средств.
-Скрипт обслуживает повторяемую механику, не является обязательной формой
-помощника. Рабочие записи не становятся автоматически уроками или жалобами.
-Локальное изменение методики по решению владельца не становится глобальным шаблоном без своей проверки.
+The lead assembles help from executors, skills and available tools. A script
+serves recurring mechanics, not a mandatory form of help. Working records do not
+become lessons or complaints automatically. A local skill change by owner
+decision needs its own verification before becoming a global template.

@@ -245,7 +245,7 @@ vi.mock('child_process', () => ({ execFile: execFileMock }));
 // Тестируем templates/-канон (dogfood-копия .opencode/plugins рендерится из него).
 import WolfPlaybookPlugin from '../../templates/opencode/plugins-reserved/wolf-router.ts';
 
-const HEADER = '# Актуальный playbook';
+const HEADER = '# Current playbook';
 const makeSystemOutput = (text: string) => ({ system: [text] });
 const playbookParts = (output: { system: string[] }) => output.system.filter((p) => String(p).includes(HEADER));
 
@@ -293,7 +293,7 @@ describe('wolf-router plugin', () => {
     await expect(plugin['experimental.chat.system.transform']({}, output)).resolves.toBeUndefined();
 
     expect(playbookParts(output)).toHaveLength(1);
-    expect(playbookParts(output)[0]).toContain('Универсальный playbook');
+    expect(playbookParts(output)[0]).toContain('Universal playbook');
     expect(playbookParts(output)[0]).not.toContain('lean'); // canonical-маркер не попал
     expect(output.system).toHaveLength(2);
   });
@@ -306,7 +306,7 @@ describe('wolf-router plugin', () => {
 
     expect(playbookParts(output)).toHaveLength(1);
     expect(playbookParts(output)[0]).toContain('lean');
-    expect(playbookParts(output)[0]).not.toContain('Универсальный playbook');
+    expect(playbookParts(output)[0]).not.toContain('Universal playbook');
   });
 
   // T012: worker-hit по второму канону в моке — variant=canonical, без fallback
@@ -317,7 +317,7 @@ describe('wolf-router plugin', () => {
 
     expect(playbookParts(output)).toHaveLength(1);
     expect(playbookParts(output)[0]).toContain('reviewer-canonical-body');
-    expect(playbookParts(output)[0]).not.toContain('Универсальный playbook');
+    expect(playbookParts(output)[0]).not.toContain('Universal playbook');
 
     expect(lastLogLine()).toMatch(
       /^agent-id=worker-reviewer playbook=hit name=mem_fixture_playbook_worker_v1 variant=legacy source=legacy resolution=none face_id=- version=v1 hash=- session=\S+ injected=yes ms=\d+ bytes=\d+$/
@@ -553,7 +553,7 @@ describe('2.18.4: канонический face-resolver (wolf face resolve)', (
 
       expect(playbookParts(output)).toHaveLength(1);
       expect(playbookParts(output)[0]).toContain(FACE_BODY);
-      expect(playbookParts(output)[0]).not.toContain('Универсальный playbook');
+      expect(playbookParts(output)[0]).not.toContain('Universal playbook');
       expect(faceResolveCalls().length).toBeGreaterThan(0);
       expect(lastLogLine()).toMatch(
         new RegExp(
@@ -580,7 +580,7 @@ describe('2.18.4: канонический face-resolver (wolf face resolve)', (
       await plugin['experimental.chat.system.transform']({}, output);
 
       expect(playbookParts(output)).toHaveLength(1);
-      expect(playbookParts(output)[0]).toContain('Универсальный playbook'); // только fallback
+      expect(playbookParts(output)[0]).toContain('Universal playbook'); // только fallback
       expect(playbookParts(output)[0]).not.toContain('must never inject'); // proposed-лицо не внедрено
       // запасной поиск не выбирал кандидата: get по proposed-id не вызывался
       const getIds = getCalls().map((c) => (c[1] as string[])[2]);
@@ -608,7 +608,7 @@ describe('2.18.4: канонический face-resolver (wolf face resolve)', (
       await plugin['experimental.chat.system.transform']({}, output);
 
       expect(playbookParts(output)).toHaveLength(1);
-      expect(playbookParts(output)[0]).toContain('Универсальный playbook');
+      expect(playbookParts(output)[0]).toContain('Universal playbook');
       // legacy-поиск не выполнялся: search/get по этому агенту не спавнились
       const searched = execFileMock.mock.calls.filter(
         (c) => (c[1] as string[])[1] === 'search' && (c[1] as string[])[2] === ERROR_AGENT
@@ -642,7 +642,7 @@ describe('2.18.4: канонический face-resolver (wolf face resolve)', (
       await plugin['experimental.chat.system.transform']({}, output);
 
       expect(playbookParts(output)).toHaveLength(1);
-      expect(playbookParts(output)[0]).toContain('Универсальный playbook'); // search-hit нет → fallback
+      expect(playbookParts(output)[0]).toContain('Universal playbook'); // search-hit нет → fallback
       const searched = execFileMock.mock.calls.filter(
         (c) => (c[1] as string[])[1] === 'search' && (c[1] as string[])[2] === EXIT1_AGENT
       );

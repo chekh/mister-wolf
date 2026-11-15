@@ -1,13 +1,14 @@
 ---
 name: wolf-work-strategy
-description: "Выбор прямого пути к результату, остановка исследования и вопрос нанимателю."
+description: "Choosing the direct path to the result, stopping the research and a question to the requester."
 ---
 
-# Совместимый вход
+# Compatible input
 
-Загрузить `wolf-execute` один раз и выполнить относящуюся часть.
-Не создавать дополнительный этап или повторный круг проверок.
+Load `wolf-execute` once; do the relevant part.
+Do not add an extra stage or repeated verification cycle.
 
-Начать с прямого средства и достаточных входов; известное не расследовать повторно. Два шага без продвижения — вопрос или смена способа.
+Start with a direct means and sufficient inputs; do not re-study the known.
+Two steps without progress — a question or a method change.
 
-Переходная мера: удалить в следующем релизе.
+Transitional measure: remove in the next release.

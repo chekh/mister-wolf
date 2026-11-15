@@ -6,10 +6,10 @@ new_demo_project
 
 printf 'const fs=require("fs");\nconst cart=JSON.parse(fs.readFileSync(process.argv[2]));\nconsole.log(cart.reduce((s,i)=>s+i.qty,0));\n' > count_items.js
 
-step "5.1 wolf tool register — скрипт канонизируется в .wolf/tools/ + объект памяти"
+step "5.1 wolf tool register — скрипт регистрируется по ссылке + объект памяти"
 node "$WOLF" tool register count_items.js --name cart-count --language js \
   --contract-in "cart.json" --contract-out "число позиций" >/dev/null 2>&1
-check "скрипт уложен в .wolf/tools/"                     "[ -f .wolf/tools/cart-count.js ]"
+check "исходник остаётся по ссылке (register by reference)" "[ ! -f .wolf/tools/cart-count.js ] && [ -f count_items.js ]"
 check "tool-объект создан (status candidate)"            "node \"$WOLF\" tool list 2>/dev/null | grep 'cart-count' | grep -q 'candidate'"
 
 step "5.2 search-before-write: дубликат без --force отклоняется"
