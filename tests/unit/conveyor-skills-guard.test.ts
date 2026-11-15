@@ -44,7 +44,7 @@ describe('conveyor skills guard (2.15, редакция 3.0.0)', () => {
   it('wolf-plan consumes requirements+design; checkbox acceptance is source of truth', () => {
     const s = read('wolf-plan');
     expect(s).toContain('a TASK from using-skills');
-    expect(s).toContain('`[x]` is set by the task\'s acceptance owner');
+    expect(s).toContain("`[x]` is set by the task's acceptance owner");
     expect(s).toContain('does not prove acceptance');
     expect(s).toContain('FULL execution starts only after that');
     expect(s).toContain('wolf-execute');

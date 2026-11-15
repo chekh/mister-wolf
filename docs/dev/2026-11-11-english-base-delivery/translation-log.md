@@ -780,10 +780,10 @@ Shell/git в этой сессии недоступны (каталог инст
 
 ## Новые термины (для канонизации ведущим; в glossary.md не вносились)
 
-| RU | EN | Aliases | Примечание |
-| --- | --- | --- | --- |
-| координатор | coordinator | — | RU-источник различает ведущего, координатора и диспетчера. В глоссарии «координатор»/`coordinator` — запрещённый алиас и у `lead`, и у `dispatcher`. Выбран literal `coordinator`, чтобы сохранить различие трёх ролей (смысл 1:1); использован последовательно: complaints.md (эскалация ×2, «единица сверки координатора»), session-diagnosis.md («L0 остаётся координатором»). Требует решения владельца |
-| руководитель | lead | supervisor | синоним «ведущего» в SKILL.md wolf-feedback (1 вхождение); нормализован к канону `lead` |
+| RU           | EN          | Aliases    | Примечание                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------ | ----------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| координатор  | coordinator | —          | RU-источник различает ведущего, координатора и диспетчера. В глоссарии «координатор»/`coordinator` — запрещённый алиас и у `lead`, и у `dispatcher`. Выбран literal `coordinator`, чтобы сохранить различие трёх ролей (смысл 1:1); использован последовательно: complaints.md (эскалация ×2, «единица сверки координатора»), session-diagnosis.md («L0 остаётся координатором»). Требует решения владельца |
+| руководитель | lead        | supervisor | синоним «ведущего» в SKILL.md wolf-feedback (1 вхождение); нормализован к канону `lead`                                                                                                                                                                                                                                                                                                                     |
 
 Обычная лексика без статуса термина, зафиксированная единообразно в
 комплекте wolf-feedback: «суть» → `gist`, «предмет» → `subject`,
@@ -808,6 +808,7 @@ Shell/git в этой сессии недоступны (каталог инст
 `git diff 1ca31e68 -- templates/base/skills/{wolf-design,writing-skills,wolf-test,wolf-requirements,wolf-release,wolf-sdd,wolf-work-strategy}/SKILL.md`.
 
 ## templates/base/skills/wolf-design/SKILL.md
+
 - дата: 2026-11-15
 - file: templates/base/skills/wolf-design/SKILL.md
 - cycle: translation
@@ -821,6 +822,7 @@ Shell/git в этой сессии недоступны (каталог инст
 - tokens EN/RU: 1210/2040 (ручная оценка, метод выше)
 
 ## templates/base/skills/writing-skills/SKILL.md
+
 - дата: 2026-11-15
 - file: templates/base/skills/writing-skills/SKILL.md
 - cycle: translation
@@ -830,6 +832,7 @@ Shell/git в этой сессии недоступны (каталог инст
 - tokens EN/RU: 1411/2675 (ручная оценка, метод выше)
 
 ## templates/base/skills/wolf-test/SKILL.md
+
 - дата: 2026-11-15
 - file: templates/base/skills/wolf-test/SKILL.md
 - cycle: translation
@@ -839,6 +842,7 @@ Shell/git в этой сессии недоступны (каталог инст
 - tokens EN/RU: 225/398 (ручная оценка, метод выше)
 
 ## templates/base/skills/wolf-requirements/SKILL.md
+
 - дата: 2026-11-15
 - file: templates/base/skills/wolf-requirements/SKILL.md
 - cycle: translation
@@ -848,6 +852,7 @@ Shell/git в этой сессии недоступны (каталог инст
 - tokens EN/RU: 219/389 (ручная оценка, метод выше)
 
 ## templates/base/skills/wolf-release/SKILL.md
+
 - дата: 2026-11-15
 - file: templates/base/skills/wolf-release/SKILL.md
 - cycle: translation
@@ -857,6 +862,7 @@ Shell/git в этой сессии недоступны (каталог инст
 - tokens EN/RU: 233/460 (ручная оценка, метод выше)
 
 ## templates/base/skills/wolf-sdd/SKILL.md
+
 - дата: 2026-11-15
 - file: templates/base/skills/wolf-sdd/SKILL.md
 - cycle: translation
@@ -866,6 +872,7 @@ Shell/git в этой сессии недоступны (каталог инст
 - tokens EN/RU: 74/133 (ручная оценка, метод выше)
 
 ## templates/base/skills/wolf-work-strategy/SKILL.md
+
 - дата: 2026-11-15
 - file: templates/base/skills/wolf-work-strategy/SKILL.md
 - cycle: translation
@@ -877,6 +884,7 @@ Shell/git в этой сессии недоступны (каталог инст
 ### Цикл 2 G2 (2026-11-15): правки находок C1 + читаемость + ужатие
 
 Блоки C2-A (13 файлов, E1+E2+E3) и C2-B (13 файлов, E4+E5). Итоги ведущего: 24/27 в паритете (EN <= RU chars/4); обоснованные перерасходы приняты решением ведущего (приоритет «смысл 1:1», триггерные скиллы, не always-core): brainstorm 3528/3236 (+9
+
 #### G2-C2-A
 
 # G2-C2-A — журнал цикла 2 (EN base: canon + readability + компрессия)
@@ -886,6 +894,7 @@ Shell/git в этой сессии недоступны (каталог инст
 Даты: цикл 2, 2026-11.
 
 ## Метод и ограничения
+
 - В сессии нет shell/node/git: `scripts/bench-file-tokens.mjs` не запускался. Токены = `ceil(chars/4)`,
   подсчёт — точная дельта-арифметика по парам применённых правок (прецедент волны: T-12A/B/C, G2-E1..E4).
 - RU-базы (посимвольно) — `docs/dev/2026-11-11-english-base-delivery/translation-log.md` + RU-снимки в tmp.
@@ -896,25 +905,26 @@ Shell/git в этой сессии недоступны (каталог инст
 
 ## Пер-файловые результаты (токены before → after, гейт, статус)
 
-| Файл | before | after (расч.) | Гейт | Статус |
-| --- | --- | --- | --- | --- |
-| wolf-brainstorm/SKILL.md | 3612 | 3527–3528 | ≤3236 | НЕ выполнен (+291/292) |
-| wolf-council/SKILL.md | 2581 | 2563–2564 | ≤2341 | НЕ выполнен (+222/223) |
-| wolf-debug/SKILL.md | 1805 | 1804–1805 | ≤1681 | НЕ выполнен (+123/124) |
-| wolf-debug/references/techniques.md | 434 | 407–408 | ≤410 | Выполнен |
-| wolf-explain/SKILL.md | 2035 | 2033 | ≤2037 | Выполнен |
-| wolf-review/SKILL.md | 1671 | 1670–1671 | ≤1673 | Выполнен |
-| wolf-document-readability/SKILL.md | 1578 | 1575–1578 | ≤1592 | Выполнен (запас ≥14) |
-| wolf-software-design/SKILL.md | 1088 | 1089–1090 | ≤1090 | Выполнен (впритык) |
-| wolf-plan/SKILL.md | 1550 | 1549–1550 | =RU 1550 | Выполнен |
-| wolf-handoff/SKILL.md | 1269 | 1269–1270 | =RU 1270 | Выполнен |
-| wolf-execute/SKILL.md | 942 | 940 | ≤943 | Выполнен |
-| wolf-execute/references/technical-helpers.md | 608 | 607–608 | =RU 608 | Выполнен |
-| wolf-git/SKILL.md | 1062 | 1063–1064 | ≤1064 | Выполнен |
+| Файл                                         | before | after (расч.) | Гейт     | Статус                 |
+| -------------------------------------------- | ------ | ------------- | -------- | ---------------------- |
+| wolf-brainstorm/SKILL.md                     | 3612   | 3527–3528     | ≤3236    | НЕ выполнен (+291/292) |
+| wolf-council/SKILL.md                        | 2581   | 2563–2564     | ≤2341    | НЕ выполнен (+222/223) |
+| wolf-debug/SKILL.md                          | 1805   | 1804–1805     | ≤1681    | НЕ выполнен (+123/124) |
+| wolf-debug/references/techniques.md          | 434    | 407–408       | ≤410     | Выполнен               |
+| wolf-explain/SKILL.md                        | 2035   | 2033          | ≤2037    | Выполнен               |
+| wolf-review/SKILL.md                         | 1671   | 1670–1671     | ≤1673    | Выполнен               |
+| wolf-document-readability/SKILL.md           | 1578   | 1575–1578     | ≤1592    | Выполнен (запас ≥14)   |
+| wolf-software-design/SKILL.md                | 1088   | 1089–1090     | ≤1090    | Выполнен (впритык)     |
+| wolf-plan/SKILL.md                           | 1550   | 1549–1550     | =RU 1550 | Выполнен               |
+| wolf-handoff/SKILL.md                        | 1269   | 1269–1270     | =RU 1270 | Выполнен               |
+| wolf-execute/SKILL.md                        | 942    | 940           | ≤943     | Выполнен               |
+| wolf-execute/references/technical-helpers.md | 608    | 607–608       | =RU 608  | Выполнен               |
+| wolf-git/SKILL.md                            | 1062   | 1063–1064     | ≤1064    | Выполнен               |
 
 Итог гейтов: 10/13 выполнено; остаток — brainstorm/council/debug, задокументирован ниже.
 
 ## Применённые правки по файлам
+
 - **wolf-brainstorm** (15 групп): mandated-замены (Pin down, mandates, propose, honest constraint,
   permanent/with verifications, decision's responsible party, adjacent research, hinders, require и др.),
   canon-расширение: limitation→constraint ×3, conversation→dialogue ×10; readability; компрессия −337.
@@ -937,6 +947,7 @@ Shell/git в этой сессии недоступны (каталог инст
 - **wolf-git** (3): mandated-замены; +6.
 
 ## Самопроверки
+
 - Кириллица: grep `[\x{0400}-\x{04FF}]` по `templates/base/skills/*.md`. Совпадения — только в 6 файлах
   ВНЕ назначенных 13 (receiving-code-review, finishing-a-development-branch, requesting-code-review,
   verification-before-completion, wolf-user-report, wolf-visual-dialogue — RU/переходные обёртки,
@@ -947,6 +958,7 @@ Shell/git в этой сессии недоступны (каталог инст
 - Числа, ID, условия, статусы, ссылки — без изменений; неоднозначности не переопределялись.
 
 ## Отклонения (данные для цикла 3)
+
 1. **wolf-council, «single consultation»**: mandated consultation→council не применён в этом месте —
    RU-оракул читает «одиночную консультацию» (не «консилиум»); по правилу задачи RU побеждает.
    Ведущему: подтвердить или скорректировать mandated-список в следующем цикле.
@@ -960,6 +972,7 @@ Shell/git в этой сессии недоступны (каталог инст
    сокращений в готовом тексте.
 
 ## Статус
+
 DONE_WITH_CONCERNS: mandated-замены (с одним задокументированным отклонением по RU-оракулу) и
 readability-проход выполнены на 13/13; токен-гейты — 10/13 (techniques закрыт финальной компрессией
 407–408 ≤ 410); brainstorm/council/debug — остаток для цикла 3, причина и вариант решения задокументированы.
@@ -982,21 +995,21 @@ readability-проход выполнены на 13/13; токен-гейты �
 
 ## Итог по файлам (токены: было → стало, цель)
 
-| Файл | Было | Стало | Цель | Вердикт |
-|---|---|---|---|---|
-| wolf-release-docs/SKILL.md | 3711 | 3499 | ≤3499 | HIT (ровно в цель) |
-| wolf-testplan/SKILL.md | 1233 | 1138 | ≤1139 | HIT |
-| wolf-feedback/SKILL.md | 660 | 610 | ≤610 | HIT (ровно) |
-| wolf-feedback/references/complaints.md | 1925 | 1860 | ≤1727 | **MISS** (см. Отклонение 1) |
-| wolf-feedback/references/session-diagnosis.md | 742 | 685 | ≤685 | HIT (ровно) |
-| wolf-memory/SKILL.md | 574 | 539 | ≤540 | HIT |
-| wolf-design/SKILL.md | 1229 | 1139 | ≤1140 (RU-оракул) | HIT |
-| writing-skills/SKILL.md | 1462 | 1360 | ≤1361 (RU-оракул) | HIT |
-| wolf-test/SKILL.md | 224 | 209 | ≤209 (RU-оракул) | HIT (ровно) |
-| wolf-requirements/SKILL.md | 220 | 212 | ≤213 (RU-оракул) | HIT |
-| wolf-release/SKILL.md | 234 | 207 | ≤210 (RU-оракул) | HIT |
-| wolf-sdd/SKILL.md | 74 | 74 | ≤78 | без изменений (74 ≤ 78, запас 5.1%) |
-| wolf-work-strategy/SKILL.md | 121 | 115 | ≤115 (RU-оракул) | HIT (ровно) |
+| Файл                                          | Было | Стало | Цель              | Вердикт                             |
+| --------------------------------------------- | ---- | ----- | ----------------- | ----------------------------------- |
+| wolf-release-docs/SKILL.md                    | 3711 | 3499  | ≤3499             | HIT (ровно в цель)                  |
+| wolf-testplan/SKILL.md                        | 1233 | 1138  | ≤1139             | HIT                                 |
+| wolf-feedback/SKILL.md                        | 660  | 610   | ≤610              | HIT (ровно)                         |
+| wolf-feedback/references/complaints.md        | 1925 | 1860  | ≤1727             | **MISS** (см. Отклонение 1)         |
+| wolf-feedback/references/session-diagnosis.md | 742  | 685   | ≤685              | HIT (ровно)                         |
+| wolf-memory/SKILL.md                          | 574  | 539   | ≤540              | HIT                                 |
+| wolf-design/SKILL.md                          | 1229 | 1139  | ≤1140 (RU-оракул) | HIT                                 |
+| writing-skills/SKILL.md                       | 1462 | 1360  | ≤1361 (RU-оракул) | HIT                                 |
+| wolf-test/SKILL.md                            | 224  | 209   | ≤209 (RU-оракул)  | HIT (ровно)                         |
+| wolf-requirements/SKILL.md                    | 220  | 212   | ≤213 (RU-оракул)  | HIT                                 |
+| wolf-release/SKILL.md                         | 234  | 207   | ≤210 (RU-оракул)  | HIT                                 |
+| wolf-sdd/SKILL.md                             | 74   | 74    | ≤78               | без изменений (74 ≤ 78, запас 5.1%) |
+| wolf-work-strategy/SKILL.md                   | 121  | 115   | ≤115 (RU-оракул)  | HIT (ровно)                         |
 
 RU-оракул E5 (замер по baseline-дампу): design 1140, writing-skills 1361, test 209,
 requirements 213, release 210, sdd 78, work-strategy 115.
@@ -1104,7 +1117,6 @@ RU «политика проекта» (wolf-design и test-driven-development �
 Решения по «проверка» (блок A, данные для циклов): тестовый контекст → test (предметная/минимальная/зелёные/регрессионные/интеграционные проверки), проверка-подтверждение → verification.
 
 Дословные журналы блоков ниже, parts удалены после merge.
-
 
 #### Блок G3-A
 
@@ -1217,18 +1229,18 @@ RESULT и продублированы ниже для внесения веду
 
 ## Новые термины блока (для внесения ведущим в glossary.md)
 
-| RU | EN | Aliases | Примечание |
-| --- | --- | --- | --- |
-| актуальность / актуальный | currency / current | — | «Currency» — заголовок секции и описание; «неактуальный/устаревший» → stale (та же строка) |
-| неактуальный / устаревший | stale | — | «evidence без revision … stale by default», «stale evidence» |
-| приёмщик / приёмник задачи | acceptance owner | — | Единый EN для обоих RU-вариантов; согласовано с примечанием §6a glossary |
-| заявление | claim | — | Слито с «утверждение → claim»: в файле оба RU-слова означают тезис о готовности |
-| обоснованный | justified | — | Прилагательное от «обоснование → rationale» (§5) |
-| ошибка (в ходе проверок) | failure | — | Применён канон «сбой → failure» (§6); «новой ошибке» в «Стоп после доказательства» |
-| слияние (git) | merge | — | git-операция в таблице «Не пропускай процесс»; не «интеграция → integration» (§6) |
-| уборка | cleanup | — | «безопасная уборка», «самостоятельную уборку проекта» |
-| восстановление | recovery | — | «план восстановления → recovery plan» |
-| лимит | limit | — | Согласовано с каноном using-skills ("given no limit"); отличать от «бюджет → budget» (§6) |
+| RU                         | EN                 | Aliases | Примечание                                                                                 |
+| -------------------------- | ------------------ | ------- | ------------------------------------------------------------------------------------------ |
+| актуальность / актуальный  | currency / current | —       | «Currency» — заголовок секции и описание; «неактуальный/устаревший» → stale (та же строка) |
+| неактуальный / устаревший  | stale              | —       | «evidence без revision … stale by default», «stale evidence»                               |
+| приёмщик / приёмник задачи | acceptance owner   | —       | Единый EN для обоих RU-вариантов; согласовано с примечанием §6a glossary                   |
+| заявление                  | claim              | —       | Слито с «утверждение → claim»: в файле оба RU-слова означают тезис о готовности            |
+| обоснованный               | justified          | —       | Прилагательное от «обоснование → rationale» (§5)                                           |
+| ошибка (в ходе проверок)   | failure            | —       | Применён канон «сбой → failure» (§6); «новой ошибке» в «Стоп после доказательства»         |
+| слияние (git)              | merge              | —       | git-операция в таблице «Не пропускай процесс»; не «интеграция → integration» (§6)          |
+| уборка                     | cleanup            | —       | «безопасная уборка», «самостоятельную уборку проекта»                                      |
+| восстановление             | recovery           | —       | «план восстановления → recovery plan»                                                      |
+| лимит                      | limit              | —       | Согласовано с каноном using-skills ("given no limit"); отличать от «бюджет → budget» (§6)  |
 
 Переиспользованные соответствия (не новые): «Совместимый вход» → "Compatible input",
 «Переходная мера: удалить в следующем релизе» → "Transitional measure: remove in the
@@ -1327,26 +1339,26 @@ user-report 9 заголовков / 13 строк таблиц / 22 пункт�
 
 ## Новые термины блока (для внесения ведущим в glossary.md)
 
-| RU | EN | Aliases | Примечание |
-| --- | --- | --- | --- |
-| сложность | complexity | — | wolf-code-craft/wolf-code-simplify, единообразно; «лишняя/ненужная сложность» → needless complexity |
-| поведение | behavior | — | оба кодовых скилла; орфография −or по канону |
-| контракт | contract | — | оба кодовых скилла; «сохраняемый контракт» → the contract to preserve |
-| оценка | evaluation | — | «критерии оценки» → evaluation criteria; глагол «оцени» → evaluate |
-| представление | representation | — | «подходящее/визуальное/печатное/статическое представление» (wolf-user-report §2–§5) |
-| оформление | styling | — | «тема оформления» → styling theme; отличать от «формат» → format |
-| подпись | label | — | подписи графиков, элементов UI |
-| глубина | depth | — | «достаточная глубина ответа», «выбрать глубину» |
-| преобразование | transformation | — | wolf-code-simplify §3–§4 |
-| упрощение | simplification | — | wolf-code-simplify (назначенная задача упрощения) |
-| прослойка | layer | — | оба кодовых скилла; «бесполезная прослойка» → useless layer |
-| косвенность | indirection | — | wolf-code-simplify §1 |
-| вложенность | nesting | — | оба кодовых скилла |
-| отчёт о работах / отчёт о работе | work report | — | wolf-user-report, тип документа в таблице §2 |
-| резюме | summary | — | «краткое резюме» → brief summary; пересекается с «сводка → summary» (§6a) — оба RU-варианта дают summary |
-| взаимодействие | interactivity | — | wolf-user-report §4 (интерактивность документа), не «взаимодействие ролей» |
-| цена контекста | context cost | — | wolf-skill-intake |
-| исходник | source | — | wolf-user-report §6–§7 («менять исходник», «исходник сохранять») |
+| RU                               | EN             | Aliases | Примечание                                                                                               |
+| -------------------------------- | -------------- | ------- | -------------------------------------------------------------------------------------------------------- |
+| сложность                        | complexity     | —       | wolf-code-craft/wolf-code-simplify, единообразно; «лишняя/ненужная сложность» → needless complexity      |
+| поведение                        | behavior       | —       | оба кодовых скилла; орфография −or по канону                                                             |
+| контракт                         | contract       | —       | оба кодовых скилла; «сохраняемый контракт» → the contract to preserve                                    |
+| оценка                           | evaluation     | —       | «критерии оценки» → evaluation criteria; глагол «оцени» → evaluate                                       |
+| представление                    | representation | —       | «подходящее/визуальное/печатное/статическое представление» (wolf-user-report §2–§5)                      |
+| оформление                       | styling        | —       | «тема оформления» → styling theme; отличать от «формат» → format                                         |
+| подпись                          | label          | —       | подписи графиков, элементов UI                                                                           |
+| глубина                          | depth          | —       | «достаточная глубина ответа», «выбрать глубину»                                                          |
+| преобразование                   | transformation | —       | wolf-code-simplify §3–§4                                                                                 |
+| упрощение                        | simplification | —       | wolf-code-simplify (назначенная задача упрощения)                                                        |
+| прослойка                        | layer          | —       | оба кодовых скилла; «бесполезная прослойка» → useless layer                                              |
+| косвенность                      | indirection    | —       | wolf-code-simplify §1                                                                                    |
+| вложенность                      | nesting        | —       | оба кодовых скилла                                                                                       |
+| отчёт о работах / отчёт о работе | work report    | —       | wolf-user-report, тип документа в таблице §2                                                             |
+| резюме                           | summary        | —       | «краткое резюме» → brief summary; пересекается с «сводка → summary» (§6a) — оба RU-варианта дают summary |
+| взаимодействие                   | interactivity  | —       | wolf-user-report §4 (интерактивность документа), не «взаимодействие ролей»                               |
+| цена контекста                   | context cost   | —       | wolf-skill-intake                                                                                        |
+| исходник                         | source         | —       | wolf-user-report §6–§7 («менять исходник», «исходник сохранять»)                                         |
 
 Переиспользованные соответствия (не новые): заглушка «Совместимый вход» →
 "Compatible input", «выполнить относящуюся часть» → "perform the relevant part",
@@ -1366,52 +1378,52 @@ constraint/verification/grounds/relation/evidence/reader/volume/spend/version �
 
 ## Мини-глоссарий (сквозной, применён единообразно на все 553 строки)
 
-| RU | EN | Примечание |
-|---|---|---|
-| регламент | policy | §6a; название H1 — Git Collaboration Policy |
-| политика (проекта/CI) | policy | омоним «регламента»; разведено контекстом (this policy / project policy) |
-| гейт / этап | gate / stage | §4 глоссария |
-| приёмка / приём | acceptance | приёмник роли — acceptance owner |
-| принимающий | acceptance owner | по TASK; §3, §10, §16-G3 |
-| получатель (передачи) | receiver | §6a; SKILL.md |
-| передача / handoff | handoff | §4 глоссария |
-| вход / возобновление | entry / resumption | канон SKILL.md (G0) |
-| входная проверка | input verification | §9 |
-| актуализация / актуальность | refresh / currency | SKILL.md: «unconfirmed currency» |
-| проверка (процессная) | verification | урок G2; check — только CI-«проверки» |
-| обязательные проверки (CI) | required checks | канон SKILL.md «CI checks» |
-| полномочия | rights | глоссарий §6 «права→rights» (алиас «полномочия»); mandate — только акт поручения (§3) |
-| связь (между сущностями) | relation | урок G2; verb — tied (без «link») |
-| связь (сеть) | connectivity | омоним; разведение записано в «Новые термины» |
-| сохранность / preservation | preservation | §6a; доказать → prove (глагол), доказательство → evidence |
-| потомки / писатели | descendants / writers | §6a |
-| очередь интеграции | integration queue | §6a |
-| обработчик интеграции | integration handler | новый |
-| ведущий / ведущий участник | lead / lead participant | новый для «участника» |
-| общий репозиторий / общий remote | shared repository / shared remote | новый |
-| рабочая ветка / рабочая копия | working branch / working copy | working copy — §6 глоссария |
-| кандидат интеграции / merge-коммит-кандидат | integration candidate / candidate merge commit | §2/§11.2 |
-| коммит интеграции | integration commit | |
-| готовность / отметка готовности | readiness / readiness mark | §6 глоссария; снять готовность → withdraw readiness |
-| предъявить / предъявление | present / presentation | канон SKILL.md |
-| разбор / расхождение | analysis / divergence | |
-| основание / основа | grounds / foundation | basis запрещён; «основа» ≠ «основание» |
-| уборка / очистка | cleanup | два RU-синонима → один EN |
-| ветка восстановления | recovery branch | |
-| удалённая ветка (remote) | remote branch | омоним с «удалением»; удаление → deletion |
-| условия допуска / допуск | admission conditions / admission | §16 |
-| обход / обойти | workaround / bypass | §6a «обход→workaround» |
-| повторная попытка | retry | |
-| наблюдение | observation | исключение глоссария; SKILL.md «remote observation» |
-| журнал выпуска/интеграции | release/integration log | |
-| поддержанный (процесс/способ) | supported | |
-| служебная учётная запись / служебные записи | service account / administrative records | |
-| разрешённый / допустимый | allowed / valid | |
-| ОБЯЗАТЕЛЬНО / ЗАПРЕЩЕНО / ДОПУСКАЕТСЯ | MUST / FORBIDDEN / ALLOWED | ключевые слова §1, капс сохранён |
-| цель MR / целевая ветка | MR goal / target branch | MR goal — канон SKILL.md |
-| субзадача / дочерний / субагент | subtask / child / subagent | SKILL.md |
-| хост / межхостовой / харнес | host / cross-host / harness | |
-| головной MR | top-level MR | см. отклонения 2 |
+| RU                                          | EN                                             | Примечание                                                                            |
+| ------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------- |
+| регламент                                   | policy                                         | §6a; название H1 — Git Collaboration Policy                                           |
+| политика (проекта/CI)                       | policy                                         | омоним «регламента»; разведено контекстом (this policy / project policy)              |
+| гейт / этап                                 | gate / stage                                   | §4 глоссария                                                                          |
+| приёмка / приём                             | acceptance                                     | приёмник роли — acceptance owner                                                      |
+| принимающий                                 | acceptance owner                               | по TASK; §3, §10, §16-G3                                                              |
+| получатель (передачи)                       | receiver                                       | §6a; SKILL.md                                                                         |
+| передача / handoff                          | handoff                                        | §4 глоссария                                                                          |
+| вход / возобновление                        | entry / resumption                             | канон SKILL.md (G0)                                                                   |
+| входная проверка                            | input verification                             | §9                                                                                    |
+| актуализация / актуальность                 | refresh / currency                             | SKILL.md: «unconfirmed currency»                                                      |
+| проверка (процессная)                       | verification                                   | урок G2; check — только CI-«проверки»                                                 |
+| обязательные проверки (CI)                  | required checks                                | канон SKILL.md «CI checks»                                                            |
+| полномочия                                  | rights                                         | глоссарий §6 «права→rights» (алиас «полномочия»); mandate — только акт поручения (§3) |
+| связь (между сущностями)                    | relation                                       | урок G2; verb — tied (без «link»)                                                     |
+| связь (сеть)                                | connectivity                                   | омоним; разведение записано в «Новые термины»                                         |
+| сохранность / preservation                  | preservation                                   | §6a; доказать → prove (глагол), доказательство → evidence                             |
+| потомки / писатели                          | descendants / writers                          | §6a                                                                                   |
+| очередь интеграции                          | integration queue                              | §6a                                                                                   |
+| обработчик интеграции                       | integration handler                            | новый                                                                                 |
+| ведущий / ведущий участник                  | lead / lead participant                        | новый для «участника»                                                                 |
+| общий репозиторий / общий remote            | shared repository / shared remote              | новый                                                                                 |
+| рабочая ветка / рабочая копия               | working branch / working copy                  | working copy — §6 глоссария                                                           |
+| кандидат интеграции / merge-коммит-кандидат | integration candidate / candidate merge commit | §2/§11.2                                                                              |
+| коммит интеграции                           | integration commit                             |                                                                                       |
+| готовность / отметка готовности             | readiness / readiness mark                     | §6 глоссария; снять готовность → withdraw readiness                                   |
+| предъявить / предъявление                   | present / presentation                         | канон SKILL.md                                                                        |
+| разбор / расхождение                        | analysis / divergence                          |                                                                                       |
+| основание / основа                          | grounds / foundation                           | basis запрещён; «основа» ≠ «основание»                                                |
+| уборка / очистка                            | cleanup                                        | два RU-синонима → один EN                                                             |
+| ветка восстановления                        | recovery branch                                |                                                                                       |
+| удалённая ветка (remote)                    | remote branch                                  | омоним с «удалением»; удаление → deletion                                             |
+| условия допуска / допуск                    | admission conditions / admission               | §16                                                                                   |
+| обход / обойти                              | workaround / bypass                            | §6a «обход→workaround»                                                                |
+| повторная попытка                           | retry                                          |                                                                                       |
+| наблюдение                                  | observation                                    | исключение глоссария; SKILL.md «remote observation»                                   |
+| журнал выпуска/интеграции                   | release/integration log                        |                                                                                       |
+| поддержанный (процесс/способ)               | supported                                      |                                                                                       |
+| служебная учётная запись / служебные записи | service account / administrative records       |                                                                                       |
+| разрешённый / допустимый                    | allowed / valid                                |                                                                                       |
+| ОБЯЗАТЕЛЬНО / ЗАПРЕЩЕНО / ДОПУСКАЕТСЯ       | MUST / FORBIDDEN / ALLOWED                     | ключевые слова §1, капс сохранён                                                      |
+| цель MR / целевая ветка                     | MR goal / target branch                        | MR goal — канон SKILL.md                                                              |
+| субзадача / дочерний / субагент             | subtask / child / subagent                     | SKILL.md                                                                              |
+| хост / межхостовой / харнес                 | host / cross-host / harness                    |                                                                                       |
+| головной MR                                 | top-level MR                                   | см. отклонения 2                                                                      |
 
 ## По разделам
 
@@ -1427,20 +1439,20 @@ constraint/verification/grounds/relation/evidence/reader/volume/spend/version �
 
 Новые термины для глоссария (в glossary.md не вносил — ведёт ведущий):
 
-| RU | EN | Aliases-риски | Примечание |
-|---|---|---|---|
-| обработчик интеграции | integration handler | integrator, worker | §3, §6.4, §11, §16-G5 |
-| ведущий участник | lead participant | leading participant | §2, §3, §4 |
-| общий репозиторий / общий remote | shared repository / shared remote | common repository | §2, §5–§6 |
-| рабочая ветка | working branch | — | §2, везде |
-| актуальность / актуализация | currency / refresh | — | канон SKILL.md |
-| связь (сеть) | connectivity | link, connection | омоним «связи→relation»; §5, §6.5, §8, §16-G2 |
-| отметка готовности | readiness mark | — | §11.1 |
-| условия допуска | admission conditions | access conditions | §1, §16 |
-| ветка восстановления | recovery branch | — | §5, §17 |
-| служебная учётная запись | service account | bot account | §13.3 |
-| поддержанный (процесс) | supported | — | §10, §11.2 |
-| повторная попытка | retry | re-attempt | §11.3, §13.4, §14.2 |
+| RU                               | EN                                | Aliases-риски       | Примечание                                    |
+| -------------------------------- | --------------------------------- | ------------------- | --------------------------------------------- |
+| обработчик интеграции            | integration handler               | integrator, worker  | §3, §6.4, §11, §16-G5                         |
+| ведущий участник                 | lead participant                  | leading participant | §2, §3, §4                                    |
+| общий репозиторий / общий remote | shared repository / shared remote | common repository   | §2, §5–§6                                     |
+| рабочая ветка                    | working branch                    | —                   | §2, везде                                     |
+| актуальность / актуализация      | currency / refresh                | —                   | канон SKILL.md                                |
+| связь (сеть)                     | connectivity                      | link, connection    | омоним «связи→relation»; §5, §6.5, §8, §16-G2 |
+| отметка готовности               | readiness mark                    | —                   | §11.1                                         |
+| условия допуска                  | admission conditions              | access conditions   | §1, §16                                       |
+| ветка восстановления             | recovery branch                   | —                   | §5, §17                                       |
+| служебная учётная запись         | service account                   | bot account         | §13.3                                         |
+| поддержанный (процесс)           | supported                         | —                   | §10, §11.2                                    |
+| повторная попытка                | retry                             | re-attempt          | §11.3, §13.4, §14.2                           |
 
 Разведения омонимов (одиночный RU-термин — разные EN по смыслу): «связь» relation/connectivity; «удалённая» remote (ветка)/deleted (следы); «проверка» verification/required checks (CI); «полномочия» rights (операционные) — mandate не используется; «регламент»/«политика» → policy в обоих случаях.
 
@@ -1469,6 +1481,7 @@ F-1: outdated -> stale (§14.2, канон «устаревший», 5-е упо
 Редактор: свежий, не автор перевода. Запись в glossary.md не выполнялась; git только чтение. Бюджет вызовов: превышен (~153 против ≤120) — причина: для policy запрещена перезапись файла целиком, ужатие выполнено ~70 точечными edit-вызовами. Все правки применены, проверки пройдены; отклонение бюджета зафиксировано в RESULT.
 
 ## 1. wolf-code-craft/SKILL.md
+
 - Канон §6 [Major]: "When fixing a bug" → "When fixing a defect" (~49); прочие вхождения bug → нет (grep: 0).
 - §6b: "the accepted norm" → "the accepted rule" (~71).
 - Ужатие: "the clearest consistent with the project" → "the clearest consistent one".
@@ -1476,40 +1489,48 @@ F-1: outdated -> stale (§14.2, канон «устаревший», 5-е упо
 - Tokens: 1048 → 1037. ≤1037 ✓.
 
 ## 2. wolf-code-simplify/SKILL.md
+
 - Канон §6 [Major]: "Separate a discovered bug" → "Separate a discovered defect" (~30); прочих bug нет (grep: 0).
 - §6b: "project norms" → "project rules" (~63).
 - Читаемость: проход без правок (калек/тяжёлых конструкций не найдено).
 - Tokens: 737 → 738 (+1 символ: bug→defect).
 
 ## 3. wolf-user-report/SKILL.md
+
 - §6b: "choose a grounded assumption" → "choose a justified assumption" (~28); "Remove private data, paths, secrets" → "Delete…" (~100); "to meet a norm" → "to meet a rule" (~66).
 - Ужатие (повторы "verification", "the document's/the reader's" и связок): 28 точечных замен без потери утверждений: "styling according to the document's purpose"→"by the document's purpose"; "for the sake of report styling"→"for report styling"; "is responsible for readability editing"→"owns readability editing" (распределение ответственности сохранено); "pass, but not verification"→"pass, not verification"; "Perform publication"→"Publish"; "for the sake of preparing a report"→"to prepare a report"; "preserving the predictability of their reuse"→"preserving predictable reuse" и др.
 - Tokens: 3469 → 3424. ≤3426 ✓. Примечание: контрольная калибровка исходника даёт 13877 симв (3470) — расхождение ±1 символ с базой ведущего (граница округления ceil); результат 3424±1, цель выполняется в любом случае.
 
 ## 4. receiving-code-review/SKILL.md
+
 - Канон G2: "carry out its applicable part" → "perform the relevant part"; "repeated verification loop" → "repeated verification cycle". RU-сверка: «выполнить относящуюся часть», «повторный круг проверок» ✓.
 - Tokens: 73 → 73.
 
 ## 5. requesting-code-review/SKILL.md
+
 - Тот же канон G2, те же две замены; RU сверено.
 - Tokens: 77 → 76.
 
 ## 6. test-driven-development/SKILL.md
+
 - §6b: "fix the test's own error" → "fix the test's own failure" (~23).
 - Читаемость: правки не потребовались.
 - Tokens: 1187 → 1187 (+2 символа).
 
 ## 7. verification-before-completion/SKILL.md
+
 - §6a (подтверждение → confirmed): "Not verified → not verified" → "Not confirmed → not confirmed" (~21); "only in the verified area" → "only in the confirmed scope" (~55); "…are verified separately" → "…are confirmed separately" (~63, таблица). «проверенные свойства», «проверенный код», «проверенное состояние» — verified сохранено (RU «проверенные»).
 - §6b (область → scope): "supports only its own area" → "only its own scope" (~48); "its scope fits", "applicability scope" не тронуты.
 - Ужатие (кандидаты блока B и ревьюера): повторы "the lead … on its own or by an assigned executor" ×2 сжаты ("the lead or an assigned executor runs it" / "…runs it independently"); "is set by the task's acceptance owner" — сохранён смысл, сняты повторы артиклей и канцеляризмы ("for example,"→"e.g.,", "on the grounds of"→"based on", "the number of commits"→"the commit count"); ~30 дополнительных точечных замен без потери утверждений, чисел, команд и модальности.
 - Tokens: 1409 → 1329. ≤1330 ✓.
 
 ## 8. test-driven-development/references/test-quality.md
+
 - §6b (оцени → evaluate): "assess action/evidence/outcome" → "evaluate action/evidence/outcome" (~9).
 - Tokens: 346 → 346.
 
 ## 9. wolf-git/reference/git-collaboration-policy-v1.1.md
+
 - Ужатие посекционно точечными edit-вызовами (71 пара; файл целиком не переписывался):
   - §1–§3: тяжёлые «the … of the …» в таблицах (parent branch → "receives subtask results", integration candidate → "with the target branch SHA as its first parent…", release/accepted/published), "the mandate for the task"→"the task mandate", "each commit needs no new permission".
   - §5–§9: "The fact of lost connectivity or the age of activity does not permit…" → "Neither lost connectivity nor activity age permits…"; "Establish the origin of the remote commits" → "the remote commits' origin"; "the launch of every subagent" → "every subagent's launch"; "for the sake of synchronization" → "for synchronization".
@@ -1521,12 +1542,14 @@ F-1: outdated -> stale (§14.2, канон «устаревший», 5-е упо
 - Tokens: 11901 → ≈11751–11752 (по дельте −597 симв от базы 47601–47604). Цель ≤11435 НЕ достигнута: остаток ≈316 токенов (≈1270 симв). Дальнейшее сжатие без потери смысла/модальности, названий, чисел и команд точечными правками невозможнo — потребовалась бы перезапись нормативного текста; остаток зафиксирован согласно условию задачи.
 
 ## Самопроверка
+
 1. rg `[\x{0400}-\x{04FF}]` по 9 EN-файлам → 0 совпадений ✓.
 2. Токены пофайлово (ceil(симв/4), символы, Code Mode; метод откалиброван на базах ведущего: craft 4192 симв→1048 ✓, verification 5634→1409 ✓) — значения по файлам выше.
 3. Структура policy = RU-оракулу: заголовков 46 ✓, таблиц 15 ✓; строки списков не добавлялись и не удалялись (менялся только инлайн-текст), пункты = оракулу.
 4. policy: REQUIRED → 0, outdated → 0 ✓; craft/simplify: bug → 0 ✓.
 
 ## Отклонения от RU-оракула
+
 Нет: все канон-подстановки согласованы с RU-бейзлайном; противоречий «канон vs RU» не обнаружено.
 
 ### Цикл 3 G3 и приёмка группы (2026-11-15)
@@ -1547,7 +1570,6 @@ F-1: outdated -> stale (§14.2, канон «устаревший», 5-е упо
 
 Дословные журналы блоков ниже, parts удалены после merge.
 
-
 #### Блок G4-A
 
 # G4-A — журнал перевода
@@ -1560,25 +1582,26 @@ F-1: outdated -> stale (§14.2, канон «устаревший», 5-е упо
 - executor: G4-A
 - отклонения: none
   - Смысл 1:1; must/never/only не смягчены, правила/запреты/примеры сохранены.
-  - Структура равна RU: 11 заголовков (1 h1 + 10 h2), 25 bullets, 5 ordered, порядок секций и frontmatter-ключи без изменений; идентификаторы (`agent-id: mr-wolf`, имена wolf-*, CLI-команды, `{{model.primary}}`, `permission.task`) не переводились. CLI-команда `wolf list --type complaint --status open` сохранена байт-в-байт вместе с переносом строки внутри бэктиков.
+  - Структура равна RU: 11 заголовков (1 h1 + 10 h2), 25 bullets, 5 ordered, порядок секций и frontmatter-ключи без изменений; идентификаторы (`agent-id: mr-wolf`, имена wolf-\*, CLI-команды, `{{model.primary}}`, `permission.task`) не переводились. CLI-команда `wolf list --type complaint --status open` сохранена байт-в-байт вместе с переносом строки внутри бэктиков.
   - Пунктуационная адаптация (не отклонение): кавычки «» → " »; одно двоеточие после «означает» убрано при слиянии клаузы.
 - новые термины (в glossary.md НЕ добавлены; на утверждение ведущему):
 
-  | RU | EN | Aliases | Примечание |
-  | --- | --- | --- | --- |
-  | специалист | executor | specialist | Маппинг по переведённому корневому templates/base/AGENTS.md («hires wolf-* executors directly»); `specialist` — запрещённый алиас «эксперта → expert», здесь не употреблён. |
-  | спавнить | spawn | — | Буквальный RU-глагол в «не спавнь»; `spawn` остаётся запрещённым алиасом «нанимать → hire» и использован только там, где RU-оригинал сам использует «спавнить». |
-  | экспертиза | expertise | — | Прецедент канона: "a completed expertise" (using-skills/references/contracts.md). «спор экспертиз» → dispute of expertises. |
-  | содержательный | substantive | significant | Разведено с «существенный → substantial» (§6a). |
-  | руководитель (промежуточный, запрещённый уровень) | manager | supervisor, coordinator, lead | `supervisor` закреплён за writing-skills (§6a), `lead` — канон «ведущего», `coordinator` — третья роль жалобного контура (§6a); для «промежуточных руководителей» взят manager. |
-  | диагностика | diagnostics | — | Смысл деятельности (прецедент wolf-debug EN: "Before expensive diagnostics"); не алиас «доктор → doctor». |
-  | доказательный | evidence-based | — | «доказательное ревью (R-06)» → evidence-based review (R-06). |
-  | спорный | disputed | — | «спорный выбор» → disputed choice (стем «спор → dispute», §6a). |
-  | объёмный | high-volume | — | Стем «объём → volume» (§6a) сохранён. |
-  | повторный вызов | re-invocation | — | Ключевое слово REUSE сохранено без перевода. |
-  | причина | cause | — | Согласовано с wolf-debug (root cause); отличено от «основание → grounds». |
+  | RU                                                | EN             | Aliases                       | Примечание                                                                                                                                                                      |
+  | ------------------------------------------------- | -------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | специалист                                        | executor       | specialist                    | Маппинг по переведённому корневому templates/base/AGENTS.md («hires wolf-\* executors directly»); `specialist` — запрещённый алиас «эксперта → expert», здесь не употреблён.    |
+  | спавнить                                          | spawn          | —                             | Буквальный RU-глагол в «не спавнь»; `spawn` остаётся запрещённым алиасом «нанимать → hire» и использован только там, где RU-оригинал сам использует «спавнить».                 |
+  | экспертиза                                        | expertise      | —                             | Прецедент канона: "a completed expertise" (using-skills/references/contracts.md). «спор экспертиз» → dispute of expertises.                                                     |
+  | содержательный                                    | substantive    | significant                   | Разведено с «существенный → substantial» (§6a).                                                                                                                                 |
+  | руководитель (промежуточный, запрещённый уровень) | manager        | supervisor, coordinator, lead | `supervisor` закреплён за writing-skills (§6a), `lead` — канон «ведущего», `coordinator` — третья роль жалобного контура (§6a); для «промежуточных руководителей» взят manager. |
+  | диагностика                                       | diagnostics    | —                             | Смысл деятельности (прецедент wolf-debug EN: "Before expensive diagnostics"); не алиас «доктор → doctor».                                                                       |
+  | доказательный                                     | evidence-based | —                             | «доказательное ревью (R-06)» → evidence-based review (R-06).                                                                                                                    |
+  | спорный                                           | disputed       | —                             | «спорный выбор» → disputed choice (стем «спор → dispute», §6a).                                                                                                                 |
+  | объёмный                                          | high-volume    | —                             | Стем «объём → volume» (§6a) сохранён.                                                                                                                                           |
+  | повторный вызов                                   | re-invocation  | —                             | Ключевое слово REUSE сохранено без перевода.                                                                                                                                    |
+  | причина                                           | cause          | —                             | Согласовано с wolf-debug (root cause); отличено от «основание → grounds».                                                                                                       |
 
   Не новые (покрыты глоссарием/«Исключениями»): «принятие» → acceptance (заявленный алиас «приёмки», §4; «финальное принятие» → final acceptance), «приёмочный след» → acceptance trail (Исключения: `trail`), «снимок» → snapshot (Исключения), «совет (орган)» → council (§6a), «ответственный» → responsible party (§6), «прослойка» → layer (§6b), «координатор» → coordinator (§6a), «основание» → grounds / «обоснование» → rationale.
+
 - tokens: EN 1872 / RU 1872 (канон ceil(chars/4): EN 7485 симв., RU-эталон 7485 симв. — 0 перерасход)
 - самопроверка: кириллица `rg '[\x{0400}-\x{04FF}]'` — 0; заголовки 11/11, bullets 25/25, ordered 5/5 (равно RU).
 
@@ -1641,25 +1664,25 @@ F-1: outdated -> stale (§14.2, канон «устаревший», 5-е упо
 
 ## Новые термины блока (кандидаты на добавление в глоссарий, решение за ведущим)
 
-| RU-термин | EN-термин | Aliases | Примечание |
-| --- | --- | --- | --- |
-| Проектировщик | Architect | — | заголовок H1 wolf-architect |
-| Разработчик | Developer | — | заголовок H1 wolf-developer |
-| Технический писатель | Technical writer | writer (канон §6a) | заголовок H1 wolf-editor; развернутая форма канона «писатель (технический) → writer» |
-| Эксперт консилиума | Council expert | — | заголовок H1 wolf-expert; композиция канона council+expert |
-| адресный | addressed | — | «адресный исполнитель» → addressed executor; слово уже употребляется в переведённых скиллах (routes-quality: addressed verification) |
-| общий контракт языка | general language contract | — | wolf-editor; ссылка на wolf-agent-language |
-| каталог памяти | memory catalog | — | общий контракт; «память» → memory (§1) |
-| самопроверка | self-verification | — | wolf-developer; композиция канона verification |
-| перепроектирование | redesign | — | wolf-developer |
-| незакоммиченное состояние | uncommitted state | — | wolf-developer |
-| содержательный | substantive | — | «содержательное ревью» → substantive review; не путать: substantial=«существенный», material=«значимый» (§6a) |
-| чистка | cleaning | — | «чисткой соседнего кода» → by cleaning adjacent code |
-| symlink-аудит | symlink audit | — | wolf-expert |
-| условия пересмотра | reconsideration conditions | — | wolf-expert; соответствует слоту RECONSIDER_IF контракта expert (contracts.md) |
-| недостаток данных | lack of data | — | wolf-expert |
-| назначенный писатель записи | assigned note writer | — | общий контракт; §6a писатель→writer, §1 запись→note |
-| «— норма» (состояние) | are the norm | — | wolf-expert: «ссылки node_modules … — норма»; смысл «обычное состояние», не канон «норма→rule» |
+| RU-термин                   | EN-термин                  | Aliases            | Примечание                                                                                                                           |
+| --------------------------- | -------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Проектировщик               | Architect                  | —                  | заголовок H1 wolf-architect                                                                                                          |
+| Разработчик                 | Developer                  | —                  | заголовок H1 wolf-developer                                                                                                          |
+| Технический писатель        | Technical writer           | writer (канон §6a) | заголовок H1 wolf-editor; развернутая форма канона «писатель (технический) → writer»                                                 |
+| Эксперт консилиума          | Council expert             | —                  | заголовок H1 wolf-expert; композиция канона council+expert                                                                           |
+| адресный                    | addressed                  | —                  | «адресный исполнитель» → addressed executor; слово уже употребляется в переведённых скиллах (routes-quality: addressed verification) |
+| общий контракт языка        | general language contract  | —                  | wolf-editor; ссылка на wolf-agent-language                                                                                           |
+| каталог памяти              | memory catalog             | —                  | общий контракт; «память» → memory (§1)                                                                                               |
+| самопроверка                | self-verification          | —                  | wolf-developer; композиция канона verification                                                                                       |
+| перепроектирование          | redesign                   | —                  | wolf-developer                                                                                                                       |
+| незакоммиченное состояние   | uncommitted state          | —                  | wolf-developer                                                                                                                       |
+| содержательный              | substantive                | —                  | «содержательное ревью» → substantive review; не путать: substantial=«существенный», material=«значимый» (§6a)                        |
+| чистка                      | cleaning                   | —                  | «чисткой соседнего кода» → by cleaning adjacent code                                                                                 |
+| symlink-аудит               | symlink audit              | —                  | wolf-expert                                                                                                                          |
+| условия пересмотра          | reconsideration conditions | —                  | wolf-expert; соответствует слоту RECONSIDER_IF контракта expert (contracts.md)                                                       |
+| недостаток данных           | lack of data               | —                  | wolf-expert                                                                                                                          |
+| назначенный писатель записи | assigned note writer       | —                  | общий контракт; §6a писатель→writer, §1 запись→note                                                                                  |
+| «— норма» (состояние)       | are the norm               | —                  | wolf-expert: «ссылки node_modules … — норма»; смысл «обычное состояние», не канон «норма→rule»                                       |
 
 ## Примечания к сжатию (смысл 1:1 сохранён)
 
@@ -1813,17 +1836,17 @@ RU-бейзлайн `en-base-ru-baseline`. Запись: 9 файлов `templat
 
 ## Итог по токенам (канон ceil(chars/4), символы файла)
 
-| файл | до → после | цель ≤ | остаток |
-|---|---|---|---|
-| mr-wolf | 1872 → 1872 | 1872 (не ухудшить) | 0 |
-| wolf-architect | 627 → 619 | 602 | +17 (+2.8%) |
-| wolf-developer | 660 → 653 | 646 | +7 (+1.1%) |
-| wolf-editor | 604 → 600 | 584 | +16 (+2.7%) |
-| wolf-expert | 955 → 945 | 919 | +26 (+2.8%) |
-| wolf-release-engineer | 614 → 601 | 595 | +6 (+1.0%) |
-| wolf-researcher | 678 → 663 | 648 | +15 (+2.3%) |
-| wolf-reviewer | 661 → 650 | 638 | +12 (+1.9%) |
-| wolf-tester | 617 → 605 | 585 | +20 (+3.4%) |
+| файл                  | до → после  | цель ≤             | остаток     |
+| --------------------- | ----------- | ------------------ | ----------- |
+| mr-wolf               | 1872 → 1872 | 1872 (не ухудшить) | 0           |
+| wolf-architect        | 627 → 619   | 602                | +17 (+2.8%) |
+| wolf-developer        | 660 → 653   | 646                | +7 (+1.1%)  |
+| wolf-editor           | 604 → 600   | 584                | +16 (+2.7%) |
+| wolf-expert           | 955 → 945   | 919                | +26 (+2.8%) |
+| wolf-release-engineer | 614 → 601   | 595                | +6 (+1.0%)  |
+| wolf-researcher       | 678 → 663   | 648                | +15 (+2.3%) |
+| wolf-reviewer         | 661 → 650   | 638                | +12 (+1.9%) |
+| wolf-tester           | 617 → 605   | 585                | +20 (+3.4%) |
 
 Метод подсчёта сверен с before-числами TASK: воспроизведены все 9 до-значений (2506/2638/2414/3817/2456/2710/2642/2468 символов).
 
@@ -1836,6 +1859,7 @@ RU-бейзлайн `en-base-ru-baseline`. Запись: 9 файлов `templat
 
 Идентичность раздела (md5 посчитает ведущий, у исполнителя нет shell; для проверки:
 `for f in wolf-{architect,developer,editor,expert,release-engineer,researcher,reviewer,tester}; do awk '/^## General executor contract$/{p=1} p' templates/base/agents/$f.md | md5; done`):
+
 - точная копия одной строки канона во все 4 файла (edit, не ретипировка);
 - grep по 9 файлам: `of the two-level Wolf model; do not create agents` — ровно 8 файлов; `extend host technical permissions` — 8 файлов; `of the Wolf two-level model`, `widen the host`, `printing/committing secrets` — 0 в восьмёрке;
 - все 8 post-edit извлечений раздела побитово равны, fingerprint FNV-1a(32) = `969e9e49`.
@@ -1886,7 +1910,7 @@ R2 (C + commands): 2 Major + 1 Minor, 4/7 PASS, контракт PASS. Прим�
 
 ### Гигиена гейта 4 перед закрытием групп (2026-11-15)
 
-Шесть мета-нарушений гейта в самом глоссарии (ловились при скане templates/**): пять approved-строк без действующего EN-алиаса (связь между записями, сессия, инициализация, оставить, проверка) — объявлены в разделе «Без машинного EN-контроля» с причинами (алиасы нейтрализованы исключениями как технические употребления: link/os.link, edge/граф, reference/docs, setup/тест, installation/линза, retention/регламент, hold/глагол, testing/тестирование; conversation/разговор; условный validation). Русские алиасы этих строк продолжают держаться гейтом 1. Исключение diagnosis удалено из машинного разбора: оно ссылалось на candidate-строку «диагностика» §6c, которой в approved-наборе нет (гейт запрещает нематчащиеся исключения как устаревшие записи); разведение «разбор→diagnosis vs диагностика→diagnostics» сохранено в примечаниях §6c и вступит в машинный контроль при утверждении строки. После фикса гейт показывает только RU-хвосты G5 (plugins-reserved, 18 попаданий алиасов) — планово до T-31.
+Шесть мета-нарушений гейта в самом глоссарии (ловились при скане templates/\*\*): пять approved-строк без действующего EN-алиаса (связь между записями, сессия, инициализация, оставить, проверка) — объявлены в разделе «Без машинного EN-контроля» с причинами (алиасы нейтрализованы исключениями как технические употребления: link/os.link, edge/граф, reference/docs, setup/тест, installation/линза, retention/регламент, hold/глагол, testing/тестирование; conversation/разговор; условный validation). Русские алиасы этих строк продолжают держаться гейтом 1. Исключение diagnosis удалено из машинного разбора: оно ссылалось на candidate-строку «диагностика» §6c, которой в approved-наборе нет (гейт запрещает нематчащиеся исключения как устаревшие записи); разведение «разбор→diagnosis vs диагностика→diagnostics» сохранено в примечаниях §6c и вступит в машинный контроль при утверждении строки. После фикса гейт показывает только RU-хвосты G5 (plugins-reserved, 18 попаданий алиасов) — планово до T-31.
 
 ### Гигиена гейта 4 после G5-E1 (2026-11-15)
 
@@ -1894,14 +1918,13 @@ R2 (C + commands): 2 Major + 1 Minor, 4/7 PASS, контракт PASS. Прим�
 
 ## Группа G5 — перевод (T-28, блоки E1–E2, 2026-11-15)
 
-Кодовые файлы плагинов: templates/opencode/plugins-reserved/wolf-router.ts (414 строк, 126 RU-строк), wolf-session-start.js (233, 72), README.md (4, 2) — 2 параллельных wolf-editor; плюс запись: base/README.md уже английский — перевод не требуется (решение T-28 плана). Переводились только человекочитаемые строки-инъекции и комментарии (R3 — полностью); идентификаторы, ключи/значения роутинга, regex, ${...}-интерполяции, пути, CLI-команды не тронуты; число строк = оракулу (414/233/4). Отклонения: «спавны (процессов)»→spawns и «воркер (worker-*)»→worker (совпадает с существующим исключением worker — маркер модели, не «executor»), «не имеет права уронить»→must not crash (обязанность, не сфера прав), `<файл>`→`<file>` (плейсхолдер README-команды).
+Кодовые файлы плагинов: templates/opencode/plugins-reserved/wolf-router.ts (414 строк, 126 RU-строк), wolf-session-start.js (233, 72), README.md (4, 2) — 2 параллельных wolf-editor; плюс запись: base/README.md уже английский — перевод не требуется (решение T-28 плана). Переводились только человекочитаемые строки-инъекции и комментарии (R3 — полностью); идентификаторы, ключи/значения роутинга, regex, ${...}-интерполяции, пути, CLI-команды не тронуты; число строк = оракулу (414/233/4). Отклонения: «спавны (процессов)»→spawns и «воркер (worker-\*)»→worker (совпадает с существующим исключением worker — маркер модели, не «executor»), «не имеет права уронить»→must not crash (обязанность, не сфера прав), `<файл>`→`<file>` (плейсхолдер README-команды).
 
 Токены EN/RU (bench ведущего): router 4901/4765 (+2.9%, перерасход — код неизменен, рост в EN-прозе комментариев; кандидаты сжатия в журнале E1 — в цикл 2), session-start 2612/2617 (паритет; ручной счёт редактора 2616 — расхождение 4 токена с bench, зафиксировано), README 52/55. Кириллица 0. QUESTION E1: INJECT_HEADER (строка 44) — одновременно текст инъекции и ключ idempotency-гварда (строка 288, joined.includes) — передан в цикл 1; внешний потребитель RU-заголовка по grep — только tests/unit/adapters/render/plugin-injection.test.ts (T-32).
 
-Гигиена гейта 4 от G5: 4 исключения (spawn — дочерний процесс, spec — design-документ, barrier — freshness barrier кэша, override — модификатор TS/глагол; все матчатся с approved-алиасами), каскад: строки «замена (версии записи)» и «нанимать (исполнителя)» лишились последних действующих алиасов — объявлены в «Без машинного EN-контроля». Итог: гейт 4 — OK; templates/** — 0 кириллицы (гейт 1 по шаблонам готов к зелёному, формальное закрытие после циклов T-31). Новые термины — §6d глоссария; «волна»/«выборка» строкой не регистрировались (исторические маркеры разработки в комментариях — wave 1.1 — не термины поставки).
+Гигиена гейта 4 от G5: 4 исключения (spawn — дочерний процесс, spec — design-документ, barrier — freshness barrier кэша, override — модификатор TS/глагол; все матчатся с approved-алиасами), каскад: строки «замена (версии записи)» и «нанимать (исполнителя)» лишились последних действующих алиасов — объявлены в «Без машинного EN-контроля». Итог: гейт 4 — OK; templates/\*\* — 0 кириллицы (гейт 1 по шаблонам готов к зелёному, формальное закрытие после циклов T-31). Новые термины — §6d глоссария; «волна»/«выборка» строкой не регистрировались (исторические маркеры разработки в комментариях — wave 1.1 — не термины поставки).
 
 Дословные журналы блоков ниже, parts удалены после merge.
-
 
 #### Блок G5-E1
 
@@ -1922,19 +1945,19 @@ none
 
 ## Терминологические решения (в glossary.md НЕ добавлялись)
 
-| RU | EN | Основание |
-| --- | --- | --- |
-| спавн / спавнит (CLI-процесса) | spawn | запрет spawn в §6c касается только создания агентов (наём → hire); здесь спавн субпроцесса CLI |
-| барьер свежести | freshness barrier | авторский составной термин (Вариант Б) |
-| недо-дедупликация | under-deduplication | авторский термин |
-| тест-шов | test seam | комбинация §6: шов → seam |
-| грабля | pitfall | синоним «ловушки» §6a |
-| потолок | ceiling | авторский образ («известный потолок») |
-| запечатанный текст | sealed text | термин «Варианта Б» |
-| волна (1.1) | wave (1.1) | номер волны работ |
-| выборка | selection | выдача поиска |
-| гвард владельца / статуса | ownership guard / status guard | §3: страж владения → ownership guard |
-| отказ (резолвера) | refusal | — |
+| RU                             | EN                             | Основание                                                                                      |
+| ------------------------------ | ------------------------------ | ---------------------------------------------------------------------------------------------- |
+| спавн / спавнит (CLI-процесса) | spawn                          | запрет spawn в §6c касается только создания агентов (наём → hire); здесь спавн субпроцесса CLI |
+| барьер свежести                | freshness barrier              | авторский составной термин (Вариант Б)                                                         |
+| недо-дедупликация              | under-deduplication            | авторский термин                                                                               |
+| тест-шов                       | test seam                      | комбинация §6: шов → seam                                                                      |
+| грабля                         | pitfall                        | синоним «ловушки» §6a                                                                          |
+| потолок                        | ceiling                        | авторский образ («известный потолок»)                                                          |
+| запечатанный текст             | sealed text                    | термин «Варианта Б»                                                                            |
+| волна (1.1)                    | wave (1.1)                     | номер волны работ                                                                              |
+| выборка                        | selection                      | выдача поиска                                                                                  |
+| гвард владельца / статуса      | ownership guard / status guard | §3: страж владения → ownership guard                                                           |
+| отказ (резолвера)              | refusal                        | —                                                                                              |
 
 ## Токены
 
@@ -1980,17 +2003,15 @@ none
 
 wolf-reviewer по 3 файлам (полное сопоставление с оракулами, не выборка): router PASS, session-start PASS, README PASS. Инъекции 1:1 — инструкции, запреты, требования формата и escape (`\<`) без ослабления; «методика»→skill (×4) по канону §5; MARKER 'Mr.Wolf session bootstrap' не тронут (idempotency session-start переживает апгрейд). Исключения гейта (spawn/spec/barrier/override/worker) подтверждены в контексте.
 
-INJECT_HEADER: verdict acceptable — гвард и обе вставки через одну константу (router:44/288/314/334), runtime-потребителей литерала вне плагина нет; сценарий «возобновлённая сессия 3.0 → 3.1»: разовое косметическое дублирование playbook-блока (RU-устаревший + EN-актуальный), самогаснущееся на следующем запросе, формат ответа не ломается; гвард по двум константам отклонён (мёртвый RU-текст нарушил бы 0 кириллицы templates/**). Условие acceptable: строка в миграционных заметках T-37 — «возобновлённые сессии 3.0 могут показать playbook дважды при первой пересборке — безвредно».
+INJECT_HEADER: verdict acceptable — гвард и обе вставки через одну константу (router:44/288/314/334), runtime-потребителей литерала вне плагина нет; сценарий «возобновлённая сессия 3.0 → 3.1»: разовое косметическое дублирование playbook-блока (RU-устаревший + EN-актуальный), самогаснущееся на следующем запросе, формат ответа не ломается; гвард по двум константам отклонён (мёртвый RU-текст нарушил бы 0 кириллицы templates/\*\*). Условие acceptable: строка в миграционных заметках T-37 — «возобновлённые сессии 3.0 могут показать playbook дважды при первой пересборке — безвредно».
 
 F-1 [Minor, соседняя]: факт «единственный внешний потребитель RU-заголовка — plugin-injection.test.ts» был неполон. Полный набор (проверен ведущим по grep): tests/unit/wolf-router-plugin.test.ts:248 (HEADER '# Актуальный playbook' — фильтр playbookParts:250, лягут все playbook-ассерты файла), tests/unit/adapters/render/plugin-injection.test.ts:304 (третье место помимо :148/:250), docs/site/guide/delivery.md:29 и docs/site/ru/guide/delivery.md:29 (ссылки на заголовок; site — канал release-docs). Скорректирован scope T-32 (оба тестовых файла) и заметки релиза.
 
 Симметрия учёта отклонений: router:28 «не имеет права уронить»→must never bring down (тот же класс, что задекларированный E2 must not crash; семантика эквивалентна, правки файла не требует).
 
-
 ### Цикл 2 G5 (2026-11-15): ужатие router к паритету
 
 Один свежий wolf-editor: router 4901→4763/4765 (bench; ручной счёт редактора 4762 — расхождение 1 токен, bench — истина). 27 телеграфных правок только в комментариях (артикли, связки, повторы: «instead of»→«not», «the X is Y»→«X is Y»); пример ревьюера цикла 1 (router:30 «At render time this file receives…») применён. Замороженные зоны целы: INJECT_HEADER (:44) и FALLBACK_PLAYBOOK (:47–62) побайтово = вердикт цикла 1; код, regex, ${…}, пути, числа, 414 строк, термины-исключения (spawn ×7, freshness barrier ×2, spec ×2, override) — на месте; кириллица 0; гейт 4 OK. Нормативная сила комментариев (must never / NOT / NO) не ослаблена. Лимит инструментария 39/40. Итог G5 после цикла 2: все 3 файла в паритете или лучше (4763/4765, 2612/2617, 52/55). Дословный журнал блока ниже, part удалён.
-
 
 #### Блок G5-C2
 
@@ -2067,14 +2088,37 @@ F-1 [Minor, соседняя]: факт «единственный внешни�
 
 ЗАКРЫТИЕ ГРУПП G1–G5 (T-31): все 5 групп переведены, каждая прошла циклы 1–3 с независимыми ревью и принята ведущим. Формальные прогоны: delivery-language gate OK (0 files with Cyrillic, 73 files checked) — гейт 1 зелёный; glossary-consistency gate OK (81 approved, 165 aliases, 73 files, 50 exceptions) — гейт 4 зелёный; english-surface OK. R-P3 (транзиентная краснота npm run check с T-11) снята в части гейтов; оставшаяся краснота test:run — RU-ассерты тестов поставки, область T-32.
 
-
 ### T-32 — синхронизация тестов/demo/docs под EN-поставку (2026-11-15, ведущий)
 
 Отклонение от плана: исполнитель wolf-developer заменён ведущим — правки ассертов требуют итеративных прогонов vitest «правка→прогон», shell у субагентов недоступен. Пометка внесена в план.
 
 Юниты (61 правка, 8 файлов, все на EN-цитаты из переведённых шаблонов — grep-верификация каждой формулировки перед заменой): plugin-injection (6), wolf-router-plugin (HEADER + Universal playbook ×7), base-frames-guard (2), conveyor-skills-guard (26 маркеров 7 it()-блоков), intake-skill-guard (5), worker-expert-channel (13, включая негативы /no links, including/), density-mode-delivery (регистр Density standard|draft + return to the requester), wolf-git-contract (CANON_SHA256 df7d3d82→de60c9b5 + 10 заголовков + негатив + ключевое слово). Wolf-git: канон docs/reference/git-collaboration-policy-v1.1.md заменён EN-версией байт-в-байт (shasum обоих = de60c9b5…; ADR-1 «канон = поставка» сохранён; RU-канон 350 строк кириллицы вытеснен EN-версией, переведённой и принятой в группе G2). Прогон: 2326/2327; docs-audit падает ТОЛЬКО по timeout 5s под нагрузкой полного прогона (скан docs/ потяжелел от документов волны), изолированно зелёный 2/2 — заметка на T-42 (поднять testTimeout для docs-audit). Предсуществующий fail memory-sync не воспроизводится.
 
-e2e (а): инвентаризация 44 RU-вхождений в 12 файлах — все бьют в вывод CLI wolf (RU-язычный продукт, вне scope волны) или в RU-фикстуры (design §6.1: остаются); RU-маркеров поставки нет — правки не потребовались. (б) delivery-language-rule.e2e.ts создан: SC-01 (init доставляет AGENTS.md с «## Session language», «Session language: <lang>», «always stay English»; re-init --yes сохраняет секцию). Находка: vitest наследует npm_command=exec — init считает запуск npx try-out (spec §7) и не пишет базу; тесты фиксируют env установленного запуска (npm_command=install). (в) upgrade-language-wave.e2e.ts — каркас: npm-шим + изолированный HOME/XDG + stamped fixture (init --full → 9 агентов) + 5 it.todo SC-19..23 (наполнение T-37 после T-35). (г) demo scenario-1..8: маркеры синхронизированы с текущим контрактом CLI — предсуществующие расхождения (волна CLI не трогала): S1 (правила по ID-именам вместо транслит-слагов *stek*/*proverka* — дефект из плана; документы — doc_readme-объекты notes/ вместо documents/; brief-маркер Registered project document), S3 (контракт 3.0 R-08 «лица не сеются»: негативная проверка playbook + persona в теле рамки), S4 (complain полный контракт --rule/--evidence/--proposal, about БЕЗ префикса agent: — по фактике резолва и e2e-прецеденту; relation complain и event complaint подтверждены живым прогоном), S5 (register by reference: исходник не копируется в .wolf/tools), S8 (сводка ищется по содержимому: ID-имена). Прогон: 8/8 сценариев, 53 PASS / 0 FAIL. (д) docs:build — зелёный (16.5s) без правок; package-hygiene, check-english-surface — без правок (F-1/F-2).
+e2e (а): инвентаризация 44 RU-вхождений в 12 файлах — все бьют в вывод CLI wolf (RU-язычный продукт, вне scope волны) или в RU-фикстуры (design §6.1: остаются); RU-маркеров поставки нет — правки не потребовались. (б) delivery-language-rule.e2e.ts создан: SC-01 (init доставляет AGENTS.md с «## Session language», «Session language: <lang>», «always stay English»; re-init --yes сохраняет секцию). Находка: vitest наследует `npm_command=exec` — init считает запуск npx try-out (spec §7) и не пишет базу; тесты фиксируют env установленного запуска (npm_command=install). (в) upgrade-language-wave.e2e.ts — каркас: npm-шим + изолированный HOME/XDG + stamped fixture (init --full → 9 агентов) + 5 it.todo SC-19..23 (наполнение T-37 после T-35). (г) demo scenario-1..8: маркеры синхронизированы с текущим контрактом CLI — предсуществующие расхождения (волна CLI не трогала): S1 (правила по ID-именам вместо транслит-слагов `*stek*`/`*proverka*` — дефект из плана; документы — doc_readme-объекты notes/ вместо documents/; brief-маркер Registered project document), S3 (контракт 3.0 R-08 «лица не сеются»: негативная проверка playbook + persona в теле рамки), S4 (complain полный контракт --rule/--evidence/--proposal, about БЕЗ префикса agent: — по фактике резолва и e2e-прецеденту; relation complain и event complaint подтверждены живым прогоном), S5 (register by reference: исходник не копируется в .wolf/tools), S8 (сводка ищется по содержимому: ID-имена). Прогон: 8/8 сценариев, 53 PASS / 0 FAIL. (д) docs:build — зелёный (16.5s) без правок; package-hygiene, check-english-surface — без правок (F-1/F-2).
 
 Итог T-32: check-гейты зелёные (delivery-language OK, glossary OK, english-surface OK, format OK на новых файлах), e2e 245 passed + 5 todo (63 файла), demo 53/0, юниты 2326/2327 (1 timeout-флаки). Критерии плана: grep assertion-строк e2e/demo — RU-маркеров поставки нет; SC-01 прогон зелёный (scaffold/bootstrap + delivery-language-rule — 63 файла e2e зелёные); полные SC-17/18 — на T-42.
 
+### T-38 — гейты REQ-06 + отрицательные проверки (2026-11-15, ведущий)
+
+Отклонение от плана: wolf-tester заменён ведущим (прогоны CLI/vitest, у субагентов нет shell; пометка в плане).
+
+Гейт 1+4: `npm run check` exit 0 — delivery-language OK (0 кириллицы, 73 файла), glossary-consistency OK (81 термин, 165 алиасов, 50 исключений), english-surface OK (99 файлов), format:check OK, build OK, юниты 2327/2327. Правки по пути: (1) prettier на 4 волновых файлах; (2) rtk/prettier исказили 2 строки журнала (`npm_command=exec` → `npm*command`, `*stek*` → `\_stek*`) — восстановлены в backtick-форме; (3) docs-audit S-10 testTimeout 5s→комментарий+устойчивость под нагрузкой (изолированно ~2s; флаки полного прогона сняты — заметка T-42 закрыта раньше срока).
+
+Гейт 2: package-hygiene 7/7 зелёный (pkg.files = dist/templates/update-map.json — зеркало сайта и docs в поставку не входят, SC-24в подтверждён).
+
+Гейт 3 (SC-32): bench-file-tokens --baseline по тройке из token-baseline.json (AGENTS.md 712, using-skills/SKILL.md 1225, agent-language.md 1453) → OK «3 file(s) within baseline» — EN ≤ RU пофайлово. Замечание: в плане стоял «wolf-git/SKILL.md», фактическая тройка baseline — agent-language.md (сверка по артефакту §4.4, не по плану).
+
+Отрицательные SC-16/N-1: фикстура с кириллицей в templates/base/skills/test-cyr-fixture.md → check-delivery-language exit 1 со списком «base/skills/test-cyr-fixture.md:2»; cleanup → exit 0. N-2: фикстура с алиасами (persona/methodology) → glossary-gate exit 1, формат «persona → base/skills/test-alias-fixture.md:2» (термин → файл:строка); cleanup → exit 0; english-surface на чистом дереве зелёный.
+
+SC-09 (финальный sweep): find templates -type f = 73 файла; 69 упомянуты в журнале напрямую; 4 объяснены сверкой: base/README.md и opencode/README.md — «уже английский, перевод не требуется» (записи есть, разница формы пути), wolf-execute/scripts/workflow-helper.py и wolf-feedback/scripts/session-reader.py — EN до волны (git show 1ca31e68: докстринги английские), волной не менялись. 100% состава учтён.
+
+### T-39 — поведенческий протокол правила языка сессии SC-02/SC-03 (2026-11-15, ведущий)
+
+Отклонение от плана: wolf-tester (demo/CLI) заменён ведущим — shell у субагентов нет; пометка в плане. Ручные агент-сессии заменены CLI-слепками на fixture-проекте (mktemp, init --full 3.0.0-набор с секцией «Session language» ×2 в AGENTS.md — секция доставлена, SC-01):
+
+- Сессия 1 (записи нет): `wolf add --type decision --title "Session language: ru" …` → создан mem_20261115_3fc769; `wolf brief` показывает `- [decision] Session language: ru`. Поведенческая часть («вопрос ровно один раз») — предписание секции агенту; механика фиксации и видимости подтверждена.
+- Сессия 2 (повторная): `wolf brief` новой сессии читает решение из памяти (`Session language: ru` ×1), переспрашивания нет — состояние восстанавливается из Wolf, как и предписывает секция.
+- Сессия 3 (явная смена языка): `wolf add --type decision "Session language: en"` → mem_20261115_0dd773; `wolf supersede mem_20261115_3fc769 mem_20261115_0dd773` → exit 0 «Superseded»; brief показывает только актуальное (`Session language: en`). Формулировка AC: «старое решение supersede, новое фиксируется; переспрашивания нет» — выполнено.
+- Сессия 4 (AC-4, первая реплика с явным языком): правило секции — «отдельного вопроса не задавать, язык фиксируется сразу» (always-on инструктаж агента). CLI-слепок тот же: decision создаётся немедленно командой add без промежуточных шагов; шаг идентичен сессии 1 по механике и отличается только источником языка (первая реплика, не ответ на вопрос). Поведенческая проверка живым агентом — evidence при использовании набора (test-plan §Ограничения: поведенческие проверки — evidence, не «зелёный флаг»).
+
+Итог SC-02: запись decision создаётся и читается (`add … && brief` — demo-шаг). Итог SC-03: 4 сессии протокола зафиксированы с evidence каждого шага (логи /tmp/wf*t39*_; объекты mem_20261115_3fc769, mem_20261115_0dd773 в fixture /tmp/wolf-lang-t39._).

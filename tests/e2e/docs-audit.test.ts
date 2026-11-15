@@ -84,6 +84,8 @@ function auditFile(rel: string): { hits: string[]; historical: boolean } {
 
 describe('A10 docs audit (REQ-02)', () => {
   it('S-10: docs/**/*.md (кроме документов текущей фазы) не содержат токенов удалённых команд; исторические — с флагом historical: true', () => {
+    // полный скан docs/ под нагрузкой полного прогона превышает дефолтные 5s
+    // (документы волн растут; изолированно тест зелёный за ~2s)
     const offenders: string[] = [];
     for (const rel of walkMarkdown(join(ROOT, 'docs'))) {
       const { hits, historical } = auditFile(rel);

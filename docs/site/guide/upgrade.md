@@ -298,9 +298,9 @@ Two schemas:
 The pass and `init` manage `AGENTS.md` in two modes:
 
 - **Stamped whole-file mode — what a fresh `wolf init` writes.** `AGENTS.md` carries a `wolf:rendered …` stamp: it belongs to wolf entirely, local edits make it `mutated`, and `take`/`keep` decide its fate. `protect` is not available here (no frontmatter).
-- **Block mode — when `AGENTS.md` already existed.** `init` appends `<!-- wolf:onboarding v3 -->` … `<!-- /wolf:onboarding -->` to your file and touches nothing else. Wolf owns only the lines between the markers; everything above and below is byte-for-byte yours (a CRLF file keeps its CRLF). User text _inside_ the block is not preserved — the block is wolf's zone.
+- **Block mode — when `AGENTS.md` already existed.** `init` appends `<!-- wolf:onboarding v4 -->` … `<!-- /wolf:onboarding -->` to your file and touches nothing else. Wolf owns only the lines between the markers; everything above and below is byte-for-byte yours (a CRLF file keeps its CRLF). User text _inside_ the block is not preserved — the block is wolf's zone.
 
-Block detection is version-agnostic: an existing `v2` block on a 2.19.0 project is recognized and updated in place to `v3` (the block gained the owner-intention line), instead of appending a second block. `init` additionally aligns the stamp of a stamped file in place; `upgrade` does not append a block to an unstamped `AGENTS.md` without markers — for the pass, a file wolf did not create stays foreign (`wx` policy).
+Block detection is version-agnostic: an early existing block (`v2`/`v3`) on an older project is recognized and updated in place to `v4` (the two-level protocol: mr-wolf and the `wolf-*` executors, addressed inputs, docs/dev rules) instead of appending a second block. `init` additionally aligns the stamp of a stamped file in place; `upgrade` does not append a block to an unstamped `AGENTS.md` without markers — for the pass, a file wolf did not create stays foreign (`wx` policy).
 
 Broken markers (an opening marker without a closing one) make the file foreign: it is skipped, reported as `onboarding markers broken` in the pass details and in `--check`, and it never becomes a decision. Fix the markers by hand (add the closing line) and the next run manages it again.
 

@@ -248,75 +248,75 @@ approved_on: 2026-11-12
 
 Термины, введённые переводом G2 и отсутствовавшие в §1–6. Все строки `candidate` — вступают в силу по правилу волны; при срабатывании гейта 4 на слова, совпадающие с чужими алиасами (edge, summary, policy), вопрос выводится в исключения по примечанию.
 
-| RU-термин | EN-термин | Запрещённые варианты (aliases) | Статус |
-| --- | --- | --- | --- |
-| руководитель (испытателя, writing-skills) | supervisor | manager, chief | `candidate` |
-| руководитель (синоним ведущего, wolf-feedback) | lead | — | `candidate` |
-| переносимость | portability | — | `candidate` |
-| работоспособность | operability | — | `candidate` |
-| ответственность (раздел design) | responsibility | ownership (зарезервирован за state ownership) | `candidate` |
-| носитель решения | responsible party | decision owner | `candidate` |
-| исследование | research | — | `candidate` |
-| расследование | investigation | — | `candidate` |
-| ребро (графа) | edge | — | `candidate` |
-| совет (орган) | council | — | `candidate` |
-| стенограмма | transcript | — | `candidate` |
-| анкета | questionnaire | — | `candidate` |
-| опрос | interview | — | `candidate` |
-| обход | workaround | — | `candidate` |
-| аналог | counterpart | — | `candidate` |
-| нагрузка | load | — | `candidate` |
-| ущерб | damage | — | `candidate` |
-| деградация | degradation | — | `candidate` |
-| выдача прав | grant of rights | — | `candidate` |
-| расход | spend | — | `candidate` |
-| счётчик | counter | — | `candidate` |
-| заглушка | stub | — | `candidate` |
-| объём | volume | — | `candidate` |
-| ознакомление | familiarization pass | — | `candidate` |
-| унификация | unification | — | `candidate` |
-| рамка (разговора) | frame | — | `candidate` |
-| носитель контекста | context holder | — | `candidate` |
-| загрязняющий тест | polluting test | — | `candidate` |
-| бинарное деление | bisection | — | `candidate` |
-| организатор | organizer | — | `candidate` |
-| ревьюер (роль, не имя агента) | reviewer | — | `candidate` |
-| автор | author | — | `candidate` |
-| редактор (роль, не имя агента) | editor | — | `candidate` |
-| сводка | summary | — | `candidate` |
-| средство | means | — | `candidate` |
-| ловушка | pitfall | — | `candidate` |
-| трение | friction | — | `candidate` |
-| механика | mechanics | — | `candidate` |
-| спор | dispute | — | `candidate` |
-| читаемость | readability | — | `candidate` |
-| редактура | editing | — | `candidate` |
-| оговорка | caveat | — | `candidate` |
-| реплика | turn | — | `candidate` |
-| конструкция | construction | — | `candidate` |
-| поставщик | provider | — | `candidate` |
-| валидатор | validator | — | `candidate` |
-| проверяемость | verifiability | — | `candidate` |
-| узлы | nodes | — | `candidate` |
-| диспетчеризация | dispatching | — | `candidate` |
-| преемник | successor | — | `candidate` |
-| передающая сторона | the transferring side | — | `candidate` |
-| получатель (передачи) | receiver | — | `candidate` |
-| помощник-агент | helper agent | — | `candidate` |
-| регламент | policy | — | `candidate` |
-| спутники (скиллы) | companions | — | `candidate` |
-| сохранность | preservation | — | `candidate` |
-| потомки | descendants | — | `candidate` |
-| писатели | writers | — | `candidate` |
-| очередь интеграции | integration queue | — | `candidate` |
-| адаптер хостинга | hosting adapter | — | `candidate` |
-| постоянный контролёр | permanent controller | — | `candidate` |
-| координатор | coordinator | — | `candidate` |
-| адресат (читатель документа) | reader | audience, addressee | `candidate` |
-| существенный | substantial | significant | `candidate` |
-| значимый | material | significant | `candidate` |
-| консультация (одиночная, wolf-council) | consultation | — | `candidate` |
-| политика (проекта) | policy | rules, regulation | `candidate` |
+| RU-термин                                      | EN-термин             | Запрещённые варианты (aliases)                | Статус      |
+| ---------------------------------------------- | --------------------- | --------------------------------------------- | ----------- |
+| руководитель (испытателя, writing-skills)      | supervisor            | manager, chief                                | `candidate` |
+| руководитель (синоним ведущего, wolf-feedback) | lead                  | —                                             | `candidate` |
+| переносимость                                  | portability           | —                                             | `candidate` |
+| работоспособность                              | operability           | —                                             | `candidate` |
+| ответственность (раздел design)                | responsibility        | ownership (зарезервирован за state ownership) | `candidate` |
+| носитель решения                               | responsible party     | decision owner                                | `candidate` |
+| исследование                                   | research              | —                                             | `candidate` |
+| расследование                                  | investigation         | —                                             | `candidate` |
+| ребро (графа)                                  | edge                  | —                                             | `candidate` |
+| совет (орган)                                  | council               | —                                             | `candidate` |
+| стенограмма                                    | transcript            | —                                             | `candidate` |
+| анкета                                         | questionnaire         | —                                             | `candidate` |
+| опрос                                          | interview             | —                                             | `candidate` |
+| обход                                          | workaround            | —                                             | `candidate` |
+| аналог                                         | counterpart           | —                                             | `candidate` |
+| нагрузка                                       | load                  | —                                             | `candidate` |
+| ущерб                                          | damage                | —                                             | `candidate` |
+| деградация                                     | degradation           | —                                             | `candidate` |
+| выдача прав                                    | grant of rights       | —                                             | `candidate` |
+| расход                                         | spend                 | —                                             | `candidate` |
+| счётчик                                        | counter               | —                                             | `candidate` |
+| заглушка                                       | stub                  | —                                             | `candidate` |
+| объём                                          | volume                | —                                             | `candidate` |
+| ознакомление                                   | familiarization pass  | —                                             | `candidate` |
+| унификация                                     | unification           | —                                             | `candidate` |
+| рамка (разговора)                              | frame                 | —                                             | `candidate` |
+| носитель контекста                             | context holder        | —                                             | `candidate` |
+| загрязняющий тест                              | polluting test        | —                                             | `candidate` |
+| бинарное деление                               | bisection             | —                                             | `candidate` |
+| организатор                                    | organizer             | —                                             | `candidate` |
+| ревьюер (роль, не имя агента)                  | reviewer              | —                                             | `candidate` |
+| автор                                          | author                | —                                             | `candidate` |
+| редактор (роль, не имя агента)                 | editor                | —                                             | `candidate` |
+| сводка                                         | summary               | —                                             | `candidate` |
+| средство                                       | means                 | —                                             | `candidate` |
+| ловушка                                        | pitfall               | —                                             | `candidate` |
+| трение                                         | friction              | —                                             | `candidate` |
+| механика                                       | mechanics             | —                                             | `candidate` |
+| спор                                           | dispute               | —                                             | `candidate` |
+| читаемость                                     | readability           | —                                             | `candidate` |
+| редактура                                      | editing               | —                                             | `candidate` |
+| оговорка                                       | caveat                | —                                             | `candidate` |
+| реплика                                        | turn                  | —                                             | `candidate` |
+| конструкция                                    | construction          | —                                             | `candidate` |
+| поставщик                                      | provider              | —                                             | `candidate` |
+| валидатор                                      | validator             | —                                             | `candidate` |
+| проверяемость                                  | verifiability         | —                                             | `candidate` |
+| узлы                                           | nodes                 | —                                             | `candidate` |
+| диспетчеризация                                | dispatching           | —                                             | `candidate` |
+| преемник                                       | successor             | —                                             | `candidate` |
+| передающая сторона                             | the transferring side | —                                             | `candidate` |
+| получатель (передачи)                          | receiver              | —                                             | `candidate` |
+| помощник-агент                                 | helper agent          | —                                             | `candidate` |
+| регламент                                      | policy                | —                                             | `candidate` |
+| спутники (скиллы)                              | companions            | —                                             | `candidate` |
+| сохранность                                    | preservation          | —                                             | `candidate` |
+| потомки                                        | descendants           | —                                             | `candidate` |
+| писатели                                       | writers               | —                                             | `candidate` |
+| очередь интеграции                             | integration queue     | —                                             | `candidate` |
+| адаптер хостинга                               | hosting adapter       | —                                             | `candidate` |
+| постоянный контролёр                           | permanent controller  | —                                             | `candidate` |
+| координатор                                    | coordinator           | —                                             | `candidate` |
+| адресат (читатель документа)                   | reader                | audience, addressee                           | `candidate` |
+| существенный                                   | substantial           | significant                                   | `candidate` |
+| значимый                                       | material              | significant                                   | `candidate` |
+| консультация (одиночная, wolf-council)         | consultation          | —                                             | `candidate` |
+| политика (проекта)                             | policy                | rules, regulation                             | `candidate` |
 
 Примечания разведений: `edge` — только ребро графа памяти (алиас `relation` — «связь» — в графовом контексте не употребляется); `summary` — сводка как раздел текста, не канон RESULT-синтеза; `policy` — гит-регламент (git-collaboration-policy), не «правило»; `receiver` — получатель передачи работы, приёмка результата остаётся за acceptance owner; `coordinator` — третья роль в жалобном контуре, не lead и не dispatcher; `supervisor`/`lead` — разведение по смыслу «руководитель» (см. две строки выше и журнал G2-E4/E5). Употребления coordinator/edge/supervisor в переводах G2 проверены семантическим ревью цикла 1 (R2) как корректные по смыслу — слова добавляются в «Исключения» гейта 4, чтобы чужие алиасы не ловили верные употребления.
 
@@ -324,63 +324,63 @@ approved_on: 2026-11-12
 
 Термины, введённые переводом G3 и отсутствовавшие в §1–6a. Все строки `candidate`. Омонимы «разбор», «удаление», «связь» разведены квалификатором в RU-термине.
 
-| RU-термин | EN-термин | Запрещённые варианты (aliases) | Статус |
-| --- | --- | --- | --- |
-| актуальный | current | — | `candidate` |
-| актуальность | currency | freshness | `candidate` |
-| неактуальный / устаревший | stale | outdated | `candidate` |
-| заявление (тезис о готовности) | claim | — | `candidate` |
-| обоснованный | justified | — | `candidate` |
-| ошибка (в ходе проверок) | failure | — | `candidate` |
-| слияние (git) | merge | — | `candidate` |
-| уборка / очистка | cleanup | — | `candidate` |
-| восстановление | recovery | — | `candidate` |
-| лимит | limit | — | `candidate` |
-| разбор (замечаний ревью) | handling | — | `candidate` |
-| разбор (анализ ситуации) | analysis | — | `candidate` |
-| расхождение | divergence | — | `candidate` |
-| предметная проверка | domain test | — | `candidate` |
-| RED-проверка | RED run | — | `candidate` |
-| багфикс | defect fix | bugfix, баг | `candidate` |
-| итог (исход шага) | outcome | — | `candidate` |
-| итог (человекочитаемый, заключительная сводка) | summary | — | `candidate` |
-| сложность | complexity | — | `candidate` |
-| поведение | behavior | — | `candidate` |
-| контракт | contract | — | `candidate` |
-| оценка | evaluation | — | `candidate` |
-| представление (визуальное) | representation | — | `candidate` |
-| оформление (тема) | styling | — | `candidate` |
-| подпись | label | — | `candidate` |
-| глубина | depth | — | `candidate` |
-| преобразование | transformation | — | `candidate` |
-| упрощение | simplification | — | `candidate` |
-| прослойка | layer | — | `candidate` |
-| косвенность | indirection | — | `candidate` |
-| вложенность | nesting | — | `candidate` |
-| исходник | source | — | `candidate` |
-| резюме (краткое) | summary | — | `candidate` |
-| интерактивность (документа) | interactivity | — | `candidate` |
-| цена контекста | context cost | — | `candidate` |
-| обработчик интеграции | integration handler | — | `candidate` |
-| ведущий участник | lead participant | — | `candidate` |
-| общий репозиторий / общий remote | shared repository / shared remote | — | `candidate` |
-| рабочая ветка | working branch | — | `candidate` |
-| связь (сеть зависимостей) | connectivity | — | `candidate` |
-| отметка готовности | readiness mark | — | `candidate` |
-| условия допуска / допуск | admission conditions / admission | — | `candidate` |
-| ветка восстановления | recovery branch | — | `candidate` |
-| служебная учётная запись | service account | — | `candidate` |
-| повторная попытка | retry | — | `candidate` |
-| кандидат интеграции | integration candidate | — | `candidate` |
-| коммит интеграции | integration commit | — | `candidate` |
-| merge-коммит-кандидат | candidate merge commit | — | `candidate` |
-| предъявление | presentation | — | `candidate` |
-| основа | foundation | basis | `candidate` |
-| удалённая ветка | remote branch | — | `candidate` |
-| удаление (модуля) | removal | deletion | `candidate` |
-| удаление (ветки/данных) | deletion | removal | `candidate` |
-| обход / обойти | workaround / bypass | — | `candidate` |
-| журнал выпуска / журнал интеграции | release log / integration log | — | `candidate` |
+| RU-термин                                      | EN-термин                         | Запрещённые варианты (aliases) | Статус      |
+| ---------------------------------------------- | --------------------------------- | ------------------------------ | ----------- |
+| актуальный                                     | current                           | —                              | `candidate` |
+| актуальность                                   | currency                          | freshness                      | `candidate` |
+| неактуальный / устаревший                      | stale                             | outdated                       | `candidate` |
+| заявление (тезис о готовности)                 | claim                             | —                              | `candidate` |
+| обоснованный                                   | justified                         | —                              | `candidate` |
+| ошибка (в ходе проверок)                       | failure                           | —                              | `candidate` |
+| слияние (git)                                  | merge                             | —                              | `candidate` |
+| уборка / очистка                               | cleanup                           | —                              | `candidate` |
+| восстановление                                 | recovery                          | —                              | `candidate` |
+| лимит                                          | limit                             | —                              | `candidate` |
+| разбор (замечаний ревью)                       | handling                          | —                              | `candidate` |
+| разбор (анализ ситуации)                       | analysis                          | —                              | `candidate` |
+| расхождение                                    | divergence                        | —                              | `candidate` |
+| предметная проверка                            | domain test                       | —                              | `candidate` |
+| RED-проверка                                   | RED run                           | —                              | `candidate` |
+| багфикс                                        | defect fix                        | bugfix, баг                    | `candidate` |
+| итог (исход шага)                              | outcome                           | —                              | `candidate` |
+| итог (человекочитаемый, заключительная сводка) | summary                           | —                              | `candidate` |
+| сложность                                      | complexity                        | —                              | `candidate` |
+| поведение                                      | behavior                          | —                              | `candidate` |
+| контракт                                       | contract                          | —                              | `candidate` |
+| оценка                                         | evaluation                        | —                              | `candidate` |
+| представление (визуальное)                     | representation                    | —                              | `candidate` |
+| оформление (тема)                              | styling                           | —                              | `candidate` |
+| подпись                                        | label                             | —                              | `candidate` |
+| глубина                                        | depth                             | —                              | `candidate` |
+| преобразование                                 | transformation                    | —                              | `candidate` |
+| упрощение                                      | simplification                    | —                              | `candidate` |
+| прослойка                                      | layer                             | —                              | `candidate` |
+| косвенность                                    | indirection                       | —                              | `candidate` |
+| вложенность                                    | nesting                           | —                              | `candidate` |
+| исходник                                       | source                            | —                              | `candidate` |
+| резюме (краткое)                               | summary                           | —                              | `candidate` |
+| интерактивность (документа)                    | interactivity                     | —                              | `candidate` |
+| цена контекста                                 | context cost                      | —                              | `candidate` |
+| обработчик интеграции                          | integration handler               | —                              | `candidate` |
+| ведущий участник                               | lead participant                  | —                              | `candidate` |
+| общий репозиторий / общий remote               | shared repository / shared remote | —                              | `candidate` |
+| рабочая ветка                                  | working branch                    | —                              | `candidate` |
+| связь (сеть зависимостей)                      | connectivity                      | —                              | `candidate` |
+| отметка готовности                             | readiness mark                    | —                              | `candidate` |
+| условия допуска / допуск                       | admission conditions / admission  | —                              | `candidate` |
+| ветка восстановления                           | recovery branch                   | —                              | `candidate` |
+| служебная учётная запись                       | service account                   | —                              | `candidate` |
+| повторная попытка                              | retry                             | —                              | `candidate` |
+| кандидат интеграции                            | integration candidate             | —                              | `candidate` |
+| коммит интеграции                              | integration commit                | —                              | `candidate` |
+| merge-коммит-кандидат                          | candidate merge commit            | —                              | `candidate` |
+| предъявление                                   | presentation                      | —                              | `candidate` |
+| основа                                         | foundation                        | basis                          | `candidate` |
+| удалённая ветка                                | remote branch                     | —                              | `candidate` |
+| удаление (модуля)                              | removal                           | deletion                       | `candidate` |
+| удаление (ветки/данных)                        | deletion                          | removal                        | `candidate` |
+| обход / обойти                                 | workaround / bypass               | —                              | `candidate` |
+| журнал выпуска / журнал интеграции             | release log / integration log     | —                              | `candidate` |
 
 Примечания разведений G3: `handling` — разбор замечаний code-review (receiving-code-review), `analysis` — разбор ситуации (policy §13); `removal` — удаление модуля (software-design «Removal check», исключение ниже), `deletion` — удаление ветки/данных (policy); глаголы: «удалить (частные данные/файлы)» → delete (user-report), «remove» зарезервирован за модульным removal; `claim` — слит с RU «утверждение» в verification-before-completion (оба RU-слова означают тезис о готовности); `failure` — канон «сбой» применён к RU «ошибка» в ходе проверок, «дефект» остаётся defect; `policy` — омоним «регламента» и «политики проекта» разведён контекстом (Git Collaboration Policy / project policy); `connectivity` — связь-сеть (policy), «связь (между записями)» остаётся relation; `bypass` — глагол «обойти» (policy), «обход» остаётся workaround; `полномочия` — если сфера допустимых действий («вправе», права доступа, policy §3, G1 routes) → rights, если синоним мандата-акта назначения (wolf-git SKILL и G2-методики) → mandate — смотреть по RU-контексту; `вариант` — выбор из альтернатив → option (G2), вариация вида/исполнения → variant (user-report); `norm` — запрещён: RU «норма» как синоним правила → rule.
 
@@ -388,39 +388,39 @@ approved_on: 2026-11-12
 
 Термины, введённые переводом G4 (агенты и команды). Все строки `candidate`. Ролевые H1-заголовки — канонические названия ролей агентов.
 
-| RU-термин | EN-термин | Запрещённые варианты (aliases) | Статус |
-| --- | --- | --- | --- |
-| экспертиза | expertise | — | `candidate` |
-| содержательный | substantive | — | `candidate` |
-| руководитель (промежуточный уровень) | manager | supervisor, coordinator | `candidate` |
-| диагностика | diagnostics | diagnosis | `candidate` |
-| доказательный | evidence-based | — | `candidate` |
-| спорный | disputed | — | `candidate` |
-| объёмный | high-volume | — | `candidate` |
-| повторный вызов (REUSE) | re-invocation | — | `candidate` |
-| причина | cause | — | `candidate` |
-| Проектировщик (H1) | Architect | — | `candidate` |
-| Разработчик (H1) | Developer | — | `candidate` |
-| Технический писатель (H1) | Technical writer | — | `candidate` |
-| Эксперт консилиума (H1) | Council expert | — | `candidate` |
-| Исследователь (H1) | Researcher | — | `candidate` |
-| Инженер выпуска (H1) | Release engineer | — | `candidate` |
-| тестировщик (роль) | tester | — | `candidate` |
-| адресный | addressed | — | `candidate` |
-| каталог памяти | memory catalog | — | `candidate` |
-| самопроверка | self-verification | — | `candidate` |
-| перепроектирование | redesign | — | `candidate` |
-| незакоммиченное состояние | uncommitted state | — | `candidate` |
-| чистка | cleaning | — | `candidate` |
-| авторизация | authorization | — | `candidate` |
-| состав выпуска | release scope | composition | `candidate` |
-| обзор | survey | — | `candidate` |
-| гипотеза | hypothesis | — | `candidate` |
-| воспроизведение | reproduction | — | `candidate` |
-| технические разрешения (host) | technical permissions | — | `candidate` |
-| обращение (вход /complain) | submission | — | `candidate` |
-| экранирование | escaping | — | `candidate` |
-| результат записи | recording result | outcome | `candidate` |
+| RU-термин                            | EN-термин             | Запрещённые варианты (aliases) | Статус      |
+| ------------------------------------ | --------------------- | ------------------------------ | ----------- |
+| экспертиза                           | expertise             | —                              | `candidate` |
+| содержательный                       | substantive           | —                              | `candidate` |
+| руководитель (промежуточный уровень) | manager               | supervisor, coordinator        | `candidate` |
+| диагностика                          | diagnostics           | diagnosis                      | `candidate` |
+| доказательный                        | evidence-based        | —                              | `candidate` |
+| спорный                              | disputed              | —                              | `candidate` |
+| объёмный                             | high-volume           | —                              | `candidate` |
+| повторный вызов (REUSE)              | re-invocation         | —                              | `candidate` |
+| причина                              | cause                 | —                              | `candidate` |
+| Проектировщик (H1)                   | Architect             | —                              | `candidate` |
+| Разработчик (H1)                     | Developer             | —                              | `candidate` |
+| Технический писатель (H1)            | Technical writer      | —                              | `candidate` |
+| Эксперт консилиума (H1)              | Council expert        | —                              | `candidate` |
+| Исследователь (H1)                   | Researcher            | —                              | `candidate` |
+| Инженер выпуска (H1)                 | Release engineer      | —                              | `candidate` |
+| тестировщик (роль)                   | tester                | —                              | `candidate` |
+| адресный                             | addressed             | —                              | `candidate` |
+| каталог памяти                       | memory catalog        | —                              | `candidate` |
+| самопроверка                         | self-verification     | —                              | `candidate` |
+| перепроектирование                   | redesign              | —                              | `candidate` |
+| незакоммиченное состояние            | uncommitted state     | —                              | `candidate` |
+| чистка                               | cleaning              | —                              | `candidate` |
+| авторизация                          | authorization         | —                              | `candidate` |
+| состав выпуска                       | release scope         | composition                    | `candidate` |
+| обзор                                | survey                | —                              | `candidate` |
+| гипотеза                             | hypothesis            | —                              | `candidate` |
+| воспроизведение                      | reproduction          | —                              | `candidate` |
+| технические разрешения (host)        | technical permissions | —                              | `candidate` |
+| обращение (вход /complain)           | submission            | —                              | `candidate` |
+| экранирование                        | escaping              | —                              | `candidate` |
+| результат записи                     | recording result      | outcome                        | `candidate` |
 
 Примечания разведений G4: `специалист` → executor (specialist — алиас «эксперта», не использовать); `спавнить` → hire (spawn запрещён, прецедент G2 E3; наём — единственный глагол создания агентов); `ошибка (в артефакте, ревью)` → defect, дополняет §6b «ошибка (в ходе проверок) → failure»; `норма (обычное состояние)` → the norm (wolf-expert «node_modules-ссылки — норма»), `норма (правило)` → rule; `технические разрешения` — host-уровень (frontmatter permission), не «полномочия → mandate/rights» и не глагол permission; `composition` — запрещён: RU «состав выпуска» → release scope (прецедент G2 release-docs); `diagnosis` — запрещён для RU «диагностика» (канон diagnostics); для RU «разбор» (wolf-feedback, session-diagnosis) diagnosis — канон; строка «диагностика» — candidate (§6c), поэтому машинного запрета алиаса до её утверждения нет — разведение держат семантические ревью (находка G4-C1-R2, решение ведущего 2026-11-15).
 
@@ -428,20 +428,20 @@ approved_on: 2026-11-12
 
 Термины кодовых комментариев и строк-инъекций плагинов (wolf-router, wolf-session-start). Все строки `candidate`. `spawn`/`spec`/`barrier`/`override`/`worker` — в «Исключениях» (технические употребления), строками не дублируются; «волна»/«выборка» не регистрировались — исторические маркеры разработки в комментариях (wave 1.1), не термины поставки.
 
-| RU-термин | EN-термин | Запрещённые варианты (aliases) | Статус |
-| --- | --- | --- | --- |
-| барьер свежести | freshness barrier | — | `candidate` |
-| недо-дедупликация | under-deduplication | — | `candidate` |
-| тест-шов | test seam | — | `candidate` |
-| грабля | pitfall | — | `candidate` |
-| потолок | ceiling | — | `candidate` |
-| запечатанный | sealed | — | `candidate` |
-| гвард | guard | — | `candidate` |
-| отказ | refusal | — | `candidate` |
-| диспетчерский контур | dispatching contour | — | `candidate` |
-| воркер (worker-*) | worker | — | `candidate` |
-| Git-финал | Git finale | — | `candidate` |
-| тихий скип | silent skip | — | `candidate` |
+| RU-термин            | EN-термин           | Запрещённые варианты (aliases) | Статус      |
+| -------------------- | ------------------- | ------------------------------ | ----------- |
+| барьер свежести      | freshness barrier   | —                              | `candidate` |
+| недо-дедупликация    | under-deduplication | —                              | `candidate` |
+| тест-шов             | test seam           | —                              | `candidate` |
+| грабля               | pitfall             | —                              | `candidate` |
+| потолок              | ceiling             | —                              | `candidate` |
+| запечатанный         | sealed              | —                              | `candidate` |
+| гвард                | guard               | —                              | `candidate` |
+| отказ                | refusal             | —                              | `candidate` |
+| диспетчерский контур | dispatching contour | —                              | `candidate` |
+| воркер (worker-\*)   | worker              | —                              | `candidate` |
+| Git-финал            | Git finale          | —                              | `candidate` |
+| тихий скип           | silent skip         | —                              | `candidate` |
 
 ## Исключения (общие английские слова, не маркеры дрейфа)
 
