@@ -57,8 +57,8 @@ describe('density mode (standard|draft) delivery through the real base set', () 
     await renderer().renderBaseSet(path, { models: { primary: 'test/primary', worker: 'test/worker' } });
     for (const role of EXECUTORS) {
       const body = readFileSync(join(path, '.opencode/agents', `${role}.md`), 'utf8');
-      expect(body, role).toContain('density standard|draft');
-      expect(body, role).toContain('возврат нанимателю');
+      expect(body, role).toContain('Density standard|draft');
+      expect(body, role).toContain('return to the requester');
     }
     // отсутствующие роли не возвращаются: старых носителей плотности нет
     expect(sourceRead('agents/mr-wolf.md')).not.toContain('executor-lead');

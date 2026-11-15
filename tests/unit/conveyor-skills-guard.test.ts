@@ -13,11 +13,11 @@ const read = (name: string) => readFileSync(join(skillsDir, name, 'SKILL.md'), '
 describe('conveyor skills guard (2.15, редакция 3.0.0)', () => {
   it('wolf-design keeps contracts, ADR and no-implementation rule', () => {
     const s = read('wolf-design');
-    expect(s).toContain('Контракты задавай типами/схемами');
-    expect(s).toContain('Не вставляй готовую реализацию продукта');
+    expect(s).toContain('Specify contracts as types/schemas');
+    expect(s).toContain('do not insert a ready-made product implementation');
     expect(s).toContain('ADR');
     expect(s).toContain('approved requirements');
-    expect(s).toContain('покрытия REQ/NFR');
+    expect(s).toContain('REQ/NFR coverage map');
     expect(s).toContain('revision:path:symbol');
   });
 
@@ -28,25 +28,25 @@ describe('conveyor skills guard (2.15, редакция 3.0.0)', () => {
     expect(s).toContain('oracle');
     expect(s).toContain('derived verification');
     expect(s).toContain('REQ/NFR');
-    expect(s).toContain('не скрывай нестабильность ретраями');
+    expect(s).toContain('do not hide instability with retries');
   });
 
   it('wolf-brainstorm outputs requirements with explicit unknowns and CR trail', () => {
     const s = read('wolf-brainstorm');
     expect(s).toContain('requirements.md');
-    expect(s).toContain('Неразрешённое пометь явно');
-    expect(s).toContain('Сохрани CR');
-    expect(s).toContain('Roadmap-триаж');
-    expect(s).toContain('Не помечай approved при неподтверждённом scope');
+    expect(s).toContain('Mark the unresolved explicitly');
+    expect(s).toContain('Keep the CR');
+    expect(s).toContain('roadmap triage');
+    expect(s).toContain('unconfirmed scope');
     expect(s).toContain('wolf-design');
   });
 
   it('wolf-plan consumes requirements+design; checkbox acceptance is source of truth', () => {
     const s = read('wolf-plan');
-    expect(s).toContain('TASK из using-skills');
-    expect(s).toContain('[x] ставит приёмник задачи');
-    expect(s).toContain('не доказывает приёмку');
-    expect(s).toContain('Исполнение FULL не стартует до этой сверки');
+    expect(s).toContain('a TASK from using-skills');
+    expect(s).toContain('`[x]` is set by the task\'s acceptance owner');
+    expect(s).toContain('does not prove acceptance');
+    expect(s).toContain('FULL execution starts only after that');
     expect(s).toContain('wolf-execute');
   });
 
@@ -55,37 +55,37 @@ describe('conveyor skills guard (2.15, редакция 3.0.0)', () => {
     expect(s).toContain('UNRESOLVED');
     expect(s).toContain('SUMMARY/VERDICT/FINDINGS/SCOPE/LIMITS/EVIDENCE');
     expect(s).toContain('artifact revision');
-    expect(s).toContain('Security/trust обязателен');
-    expect(s).toContain('## Гейт');
-    expect(s).toContain('неизменённые результаты переиспользуй только при доказанной применимости');
+    expect(s).toContain('Security/trust is mandatory');
+    expect(s).toContain('## Gate');
+    expect(s).toContain('reuse unchanged results only with proven applicability');
   });
 
   it('deprecated skills are compatible entries pointing at surviving skills', () => {
     const sdd = read('wolf-sdd');
-    expect(sdd).toContain('Загрузить `wolf-execute` один раз');
-    expect(sdd).toContain('Переходная мера: удалить в следующем релизе');
-    expect(read('using-git-worktrees')).toContain('Загрузить `wolf-git` один раз');
-    expect(read('finishing-a-development-branch')).toContain('Загрузить `wolf-git` один раз');
+    expect(sdd).toContain('Load `wolf-execute` once');
+    expect(sdd).toContain('Transitional measure: remove in the next release');
+    expect(read('using-git-worktrees')).toContain('Load `wolf-git` once');
+    expect(read('finishing-a-development-branch')).toContain('Load `wolf-git` once');
     const exec = read('wolf-execute');
     expect(exec).toContain('TASK/RESULT/EVIDENCE');
-    expect(exec).toContain('диспетчеризация');
-    expect(exec).toContain('не имитирует вызов');
-    expect(exec).toContain('Саморевью не независимо');
+    expect(exec).toContain('dispatching');
+    expect(exec).toContain('not an imitated call');
+    expect(exec).toContain('Self-review is not independent');
   });
 
   it('discipline axis: review entry, RED/GREEN, evidence and acceptance vocabulary', () => {
     const rcr = read('receiving-code-review');
-    expect(rcr).toContain('Загрузить `wolf-review` один раз');
-    expect(rcr).toContain('Переходная мера: удалить в следующем релизе');
+    expect(rcr).toContain('Load `wolf-review` once');
+    expect(rcr).toContain('Transitional measure: remove in the next release');
     const ws = read('writing-skills');
-    expect(ws).toContain('Трассировка');
-    expect(ws).toContain('пробной доставке');
+    expect(ws).toContain('## Tracing');
+    expect(ws).toContain('trial delivery');
     const tdd = read('test-driven-development');
-    expect(tdd).toContain('Запусти RED');
+    expect(tdd).toContain('Run RED');
     expect(tdd).toContain('GREEN');
     const vbc = read('verification-before-completion');
-    expect(vbc).toContain('INCONCLUSIVE, а не');
-    expect(vbc).toContain('[x] в плане ставит приёмник задачи');
+    expect(vbc).toContain('INCONCLUSIVE, not');
+    expect(vbc).toContain("[x] is set by the task's acceptance owner");
     expect(vbc).toContain('ACCEPTED | PARTIAL | REJECTED | INCONCLUSIVE');
   });
 });

@@ -105,38 +105,38 @@ describe('worker-expert profile: read-канал в границах проек�
   it('рамка профиля описывает фактический канал, а не мёртвое packet-only по умолчанию', () => {
     expect(agentRaw).toContain('channel');
     expect(agentRaw).toContain('isolation_limits');
-    expect(agentRaw).toContain('фактический channel');
-    expect(agentRaw).toContain('Поручение не расширяет технические разрешения host');
+    expect(agentRaw).toContain('actual channel');
+    expect(agentRaw).toContain('mandate does not extend host technical permissions');
   });
 });
 
 describe('wolf-council: обязательная функциональная проба канала (2.32.2 REQ-02)', () => {
   it('проба канала отдельная от аудита ссылок и обе обязательны', () => {
-    expect(councilSkill).toContain('Аудит разрешения ссылок');
-    expect(councilSkill).toContain('Функциональная проба канала');
-    expect(councilSkill).toContain('одна другую не заменяет');
+    expect(councilSkill).toContain('Link resolution audit');
+    expect(councilSkill).toContain('Functional channel probe');
+    expect(councilSkill).toContain('one does not replace the other');
   });
 
   it('аудит проверяет разрешение ссылки наружу, а не сам факт ссылки', () => {
     // «есть хоть одна ссылка» отключило бы канал в любом Node-проекте
-    expect(councilSkill).toContain('разрешается за его пределы');
+    expect(councilSkill).toContain('resolves outside it');
     expect(councilSkill).toContain('node_modules');
-    expect(councilSkill).toMatch(/слишком\s+груба/);
+    expect(councilSkill).toMatch(/too\s+coarse/);
   });
 
   it('успех пробы определён фактом содержимого, а не фактом tool-вызова', () => {
-    expect(councilSkill).toContain('факт содержимого');
+    expect(councilSkill).toContain('content fact');
     expect(councilSkill).toContain('permission.rejected');
     expect(councilSkill).toContain('NEEDS_CONTEXT');
   });
 
   it('явно сказано: перечень путей в TASK не является выдачей прав', () => {
-    expect(councilSkill).toContain('перечень путей в TASK выдачей прав не является');
+    expect(councilSkill).toContain('a path list in a TASK is not a grant of rights');
   });
 
   it('isolation_limits обязателен, если канал не tool-enabled', () => {
     expect(councilSkill).toContain('isolation_limits');
-    expect(councilSkill).toMatch(/isolation_limits`?\s+обязателен/);
+    expect(councilSkill).toMatch(/isolation_limits`?\s+is mandatory/);
   });
 });
 
@@ -144,12 +144,12 @@ describe('worker-expert profile: граница чтения честная (2.3
   it('рамка называет обе половины границы: путь и разрешение ссылок', () => {
     expect(agentRaw).toContain('external_directory');
     expect(agentRaw).toContain('symlink');
-    expect(agentRaw).toMatch(/ни одна ссылка внутри проекта не разрешается\s+наружу/);
+    expect(agentRaw).toMatch(/no link inside the project resolves\s+outward/);
   });
 
   it('не требует невозможного «ни одной ссылки» правила', () => {
-    expect(agentRaw).not.toMatch(/ни одной ссылки, включая внутри/);
-    expect(agentRaw).toContain('слишком груба');
+    expect(agentRaw).not.toMatch(/no links, including/);
+    expect(agentRaw).toContain('too coarse');
   });
 
   it('документация консилиума не обещает непробиваемую границу', () => {

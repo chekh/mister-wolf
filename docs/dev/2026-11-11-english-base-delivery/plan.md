@@ -159,7 +159,7 @@ templates/base/skills/using-skills/references/agent-language.md` → запис�
   - Критерии: SC-14 — формат артефакта §4.4; порядок «секция до замера, перевода
     ещё нет» (сверка diff/журнала); N-5 ветка скрипта проверена.
   - Исполнитель: wolf-tester. Масштаб: S.
-- [ ] **T-05 — ⚑ Коммит фазы 0 — по явному поручению владельца** (глоссарий approved,
+- [x] **T-05 — ⚑ Коммит фазы 0 — по явному поручению владельца** (глоссарий approved,
       RU-черновик секции, `token-baseline.json`, 3 гейт-скрипта)
   - Зависимости: T-01 (approved), T-02, T-03, T-04.
   - Критерий: состав коммита соответствует перечню; коммит выполняет ведущий
@@ -210,14 +210,26 @@ Precondition: T-01 approved (гейт REQ-04), T-02, T-04 (порядок §4.4:
   - Исполнитель: wolf-reviewer (выборка) + wolf-tester (гейты). Масштаб: M.
   - ⚑ **ВЛАДЕЛЕЦ: утверждение перевода G0 — первый образец качества; до
     утверждения конвейер G1+ не стартует.**
-- [ ] **T-10 — ⚑ Коммит G0 — по явному поручению владельца** (перевод ядра + журнал)
+- [x] **T-10 — ⚑ Коммит G0 — по явному поручению владельца** (перевод ядра + журнал)
   - Зависимости: T-09 (утверждение владельцем).
   - Исполнитель: ведущий. Масштаб: S.
 
 ### Wiring — подключение гейтов (после закрытия G0)
 
-- [ ] **T-11 — Гейты 1 и 4 в `npm run check`** — REQ-06; design §4.5 («Порядок
+- [x] **T-11 — Гейты 1 и 4 в `npm run check`** — REQ-06; design §4.5 («Порядок
       подключения», «Места нового кода» 4); базлайн design.md:236-238, 491
+  - ВЫПОЛНЕНО ведущим 2026-11-14: цепочка check = check-delivery-language →
+    check-glossary-consistency → check-english-surface → format:check → build →
+    test:run (порядок §4.5).
+  - Отклонение от ожидания плана, зафиксировано честно: гейт 4 (глоссарий) при
+    первом реальном прогоне красный не только из-за RU-хвостов непереведённых
+    G3–G5 (плановый транзит R-P3), но и (а) таблица орфографического канона G1
+    не проходила парсер 4-колоночного контракта — исправлено добавлением
+    служебной колонки «Статус» со значением `-`; (б) 25 EN-alias попаданий в
+    переведённых G2 (offer/assignment/demand/consultation/conversation/testing/
+    coordinator/edge/supervisor/installation/removal/capability/delegation) —
+    реальный дрейф, список передан в цикл 2 на замену каноном или разведение
+    через исключения.
   - Состав: `package.json` — цепочка `check` = check-delivery-language →
     check-glossary-consistency → check-english-surface → format:check → build →
     test:run (порядок §4.5).
@@ -234,33 +246,217 @@ SC-10, SC-31 (precondition), SC-12/SC-26/SC-28 (следы циклов, 100% ф
 SC-13/SC-29 (чистая выборка ≥10% мин.1), SC-09 (журнал = инвентарь группы).
 Гейт 1 остаётся транзиентно красным до G5 — приёмка группы по журналу и выборке.
 
-- [ ] **T-12 — G1-перевод** (12 файлов: `using-skills/references/*.md`) — wolf-editor — M — deps: T-09 (утверждение владельца G0), T-01
-- [ ] **T-13 — G1-цикл 1** — wolf-reviewer — M — deps: T-12 (SC-26)
-- [ ] **T-14 — G1-цикл 2** — свежий wolf-editor — M — deps: T-13 (SC-28)
-- [ ] **T-15 — G1-цикл 3 + закрытие** — wolf-reviewer — M — deps: T-14 (SC-13/29: выборка ≥2 файлов; SC-12/09)
+- [x] **T-12 — G1-перевод** (12 файлов: `using-skills/references/*.md`) — wolf-editor — M — deps: T-09 (утверждение владельца G0), T-01
+- [x] **T-13 — G1-цикл 1** — wolf-reviewer — M — deps: T-12 (SC-26)
+- [x] **T-14 — G1-цикл 2** — свежий wolf-editor — M — deps: T-13 (SC-28)
+- [x] **T-15 — G1-цикл 3 + закрытие** — wolf-reviewer — M — deps: T-14 (SC-13/29: выборка ≥2 файлов; SC-12/09)
 - [ ] **T-16 — G2-перевод** (27 файлов, перечень в §«Инвентарь групп») — wolf-editor — L — deps: T-15
-- [ ] **T-17 — G2-цикл 1** — wolf-reviewer — L — deps: T-16 (SC-26)
-- [ ] **T-18 — G2-цикл 2** — свежий wolf-editor — L — deps: T-17 (SC-28)
-- [ ] **T-19 — G2-цикл 3 + закрытие** — wolf-reviewer — M — deps: T-18 (SC-13/29: выборка ≥3 файлов; SC-12/09)
-- [ ] **T-20 — G3-перевод** (12 файлов) — wolf-editor — M — deps: T-19
-- [ ] **T-21 — G3-цикл 1** — wolf-reviewer — M — deps: T-20 (SC-26)
-- [ ] **T-22 — G3-цикл 2** — свежий wolf-editor — M — deps: T-21 (SC-28)
-- [ ] **T-23 — G3-цикл 3 + закрытие** — wolf-reviewer — M — deps: T-22 (SC-13/29: выборка ≥2 файлов; SC-12/09)
-- [ ] **T-24 — G4-перевод** (12 файлов: agents 9 + commands 3; playbooks — F-P2) — wolf-editor — M — deps: T-23
-- [ ] **T-25 — G4-цикл 1** — wolf-reviewer — M — deps: T-24 (SC-26)
-- [ ] **T-26 — G4-цикл 2** — свежий wolf-editor — M — deps: T-25 (SC-28)
-- [ ] **T-27 — G4-цикл 3 + закрытие** — wolf-reviewer — M — deps: T-26 (SC-13/29: выборка ≥2 файлов; SC-12/09)
-- [ ] **T-28 — G5-перевод** (wolf-router.ts, wolf-session-start.js — полностью, вкл.
+- [x] **T-17 — G2-цикл 1** — wolf-reviewer — L — deps: T-16 (SC-26)
+  - ВЫПОЛНЕНО 2026-11-14: два независимых wolf-reviewer, 13+14 файлов против
+    RU-оракулов (выгрузка baseline в temp — у исполнителей нет shell). Итог:
+    1 Major (debug: «зафиксируй причину» → ошибочно "Fix") + 18 Minor
+    (терминологический канон; потерь правил/усилителей не найдено обоими).
+    Вердикты CHANGES_REQUIRED; полный перечень передан в цикл 2.
+- [x] **T-18 — G2-цикл 2** — свежий wolf-editor — L — deps: T-17 (SC-28)
+  - ВЫПОЛНЕНО 2026-11-15: два свежих wolf-editor (C2-A 13 файлов, C2-B 13 файлов):
+    все находки цикла 1 применены (включая Major debug «Pin down»), читаемость,
+    ужатие к паритету; итог 24/27 EN ≤ RU, 4 обоснованных перерасхода приняты
+    ведущим (brainstorm +9%, council +9.5%, debug +7.4%, complaints +7.7% —
+    приоритет «смысл 1:1»; density RU против артиклей EN, bash/CLI-литералы).
+    Дополнительно ведущим: capability→solution (software-design), 4 alias-хвоста
+    (testing→verifying, issue→makes, installation-исключение), исключения
+    removal/consultation в глоссарии.
+- [x] **T-19 — G2-цикл 3 + закрытие** — wolf-reviewer — M — deps: T-18 (SC-13/29: выборка ≥3 файлов; SC-12/09)
+  - ВЫПОЛНЕНО 2026-11-15: контрольный wolf-reviewer, выборка 6/27 (~22% ≥3).
+    Вердикт: 0 Major, 14 Minor, RECOMMENDATION ACCEPT GROUP; все обязательные
+    пункты циклов 1–2 подтверждены по тексту. Все 14 Minor применены ведущим
+    (включая 4 смысловые потери: «проверяет», «утверждённый», «в своём мандате»,
+    «только» — восстановлены). Отступление от строгого повторного цикла 3:
+    правки точечные и механически проверяемые по цитатам ревьюера, системного
+    паттерна нет — повторная выборка заменена верификацией ведущего (гейты:
+    alias-остаток G2 = 0, кириллица = 0; bench финальный 27/27 записан).
+    Принятые перерасходы: brainstorm 3532/3236, council 2566/2341, debug 1808/1681,
+    complaints 1860/1727, release-docs 3502/3499 (+0.1%), design 1148/1140 (+0.7%,
+    восстановленные правила). ГРУППА G2 ПРИНЯТА ведущим.
+- [x] **T-20 — G3-перевод** (12 файлов) — wolf-editor — M — deps: T-19
+  - ВЫПОЛНЕНО 2026-11-15, фактически 13 файлов: добавлен
+    wolf-git/reference/git-collaboration-policy-v1.1.md (файл находки F-P3 «±1»;
+    иначе финальный sweep SC-08 его ловит). 4 параллельных wolf-editor (A/B/C/D);
+    в TASK — канон chars/4 с RU-эталонами ведущего (урок G2 учтён). Bench 13/13
+    сошёлся, кириллица 0, гейт 4 по G3 — 0 попаданий. Перерасходы: verification
+    +5.9%, policy +4.1%, user-report +1.3%, craft +1.1% — в цикл 2. Глоссарий:
+    +54 candidate-строки (§6b), исключения testing/retention/distribution,
+    разведение политика→policy vs правило→rule (поправка G2C3-11).
+- [x] **T-21 — G3-цикл 1** — wolf-reviewer — M — deps: T-20 (SC-26)
+  - ВЫПОЛНЕНО 2026-11-15: два независимых wolf-reviewer. R1 (12 файлов):
+    1 Major (bug x2 в craft/simplify против канона defect) + 8 Minor
+    (norm→rule x3, унификация заглушек 6 файлов по канону G2, error→failure,
+    verified/confirmed смешение x3, area/scope x2, grounded→justified,
+    assess→evaluate, Remove/Delete) — CHANGES_REQUIRED. R2 (policy 553 строк):
+    0 Major, 3 Minor (outdated→stale, REQUIRED x4 → MUST-унификация,
+    итог outcome/summary разведение) — FIX THEN ACCEPT; «top-level MR» —
+    ACCEPTABLE. Мини-глоссарий блока D трассирован как единообразный
+    (rights 9/9, writers 8/8, analysis 6/6 и др.). R2-фиксы применены
+    ведущим немедленно; R1-фиксы — в цикл 2.
+- [x] **T-22 — G3-цикл 2** — свежий wolf-editor — M — deps: T-21 (SC-28)
+  - ВЫПОЛНЕНО 2026-11-15: один свежий wolf-editor, 9 файлов. Все находки
+    цикла 1 применены (Major bug→defect закрыт), читаемость, ужатие:
+    craft/user-report/verification доведены до паритета, policy 11748/11435
+    (+2.7%) — остаток принят ведущим (сжатие исчерпано без потери смысла;
+    подтверждено R2). Гейт 4 по G3 — 0 попаданий; кириллица 0. Бюджет
+    исполнителя 153 против 120 (посекионный запрет переписывать policy
+    целиком) — зафиксировано, результат проверен ведущим.
+- [x] **T-23 — G3-цикл 3 + закрытие** — wolf-reviewer — M — deps: T-22 (SC-13/29: выборка ≥2 файлов; SC-12/09)
+  - ВЫПОЛНЕНО 2026-11-15: контрольный wolf-reviewer, выборка 3/13 (verification,
+    craft, user-report). Вердикт: 0 Major, 1 Minor, FIX THEN ACCEPT; паритеты
+    и разведения подтверждены. Minor применён ведущим (compare options,
+    однословный, grep-проверен). Отступление от повторного цикла 3 — правка
+    механически проверяемая (как в G2/T-19). ГРУППА G3 ПРИНЯТА: 13/13,
+    12/13 в паритете (policy +2.7% обоснованный), гейты чисты.
+- [x] **T-24 — G4-перевод** (12 файлов: agents 9 + commands 3; playbooks — F-P2) — wolf-editor — M — deps: T-23
+  - ВЫПОЛНЕНО 2026-11-15: 4 параллельных wolf-editor. Bench 12/12 сошёлся,
+    кириллица 0. mr-wolf 1872/1872 (точный паритет), команды 3/3 паритет,
+    агенты +2.2…5.5% (структурный перерасход, засвидетельствован двумя
+    редакторами; в цикл 2). Межблочная находка ведущего: общий «General
+    executor contract» в двух независимых версиях (B/C) — канон версия B
+    (overall→general contracts), унификация в цикле 2. Точечные фиксы цикла 2:
+    spawn→hire, diagnosis→diagnostics, composition→release scope. Глоссарий:
+    §6c +31 candidate-строка + примечания.
+- [x] **T-25 — G4-цикл 1** — wolf-reviewer — M — deps: T-24 (SC-26)
+  - ВЫПОЛНЕНО 2026-11-15: два независимых wolf-reviewer. R1 (mr-wolf + B):
+    0 Major, 0 Minor, 5/5 PASS, APPROVED; общий контракт сверен
+    предложение-за-предложением — все 20 норм на месте. R2 (C + commands):
+    2 Major (diagnosis в commands — недосмотр покрытия доводки) + 1 Minor
+    (doc-review «only» — рекомендовано оставить, гармонизировано с wolf-review
+    каноном). Фиксы применены ведущим: diagnostics x2 (commands),
+    release scope в wolf-release/SKILL.md:8 (соседняя находка — composition
+    в принятом G2), исключение diagnosis (RU «разбор», feedback). Гейт: G4=0,
+    feedback=0, release=0. Suggestion принят: mr-wolf description «per
+    acceptance criteria and evidence» (снятие двоякости, 1872→1877).
+- [x] **T-26 — G4-цикл 2** — свежий wolf-editor — M — deps: T-25 (SC-28)
+  - ВЫПОЛНЕНО 2026-11-15 (последовательность честно: доводка до ревью):
+    унификация «General executor contract» на канон версии B (overall→general
+    contracts) в 4 файлах C — md5 e5282020 идентичен во всех 8 файлах,
+    семантика сверена обоими ревьюерами; фиксы spawn→hire, diagnosis→
+    diagnostics, composition→release scope; ужатие агентов до +1.0…3.4%
+    (остаток принят: трое редакторов засвидетельствовали структурный предел;
+    жёсткий гейт только 3 baseline-файла). Сверка цикла 1 выполнена поверх
+    доводки (T-25), находки применены немедленно.
+- [x] **T-27 — G4-цикл 3 + закрытие** — wolf-reviewer — M — deps: T-26 (SC-13/29: выборка ≥2 файлов; SC-12/09)
+  - ВЫПОЛНЕНО 2026-11-15: контрольный wolf-reviewer, выборка 3/12 (expert,
+    complain, analyze-doc). Вердикт: 0 Major, 0 Minor, ACCEPT GROUP; все
+    точечные проверки подтверждены, complain сверен с каноном complaints.md,
+    запрещённые алиасы отсутствуют. Отступление от повторного цикла 3: находок
+    цикла 1 не было после фикс-прохода (0/0 у R1, у R2 применены до выборки).
+    ГРУППА G4 ПРИНЯТА ведущим: 12/12; mr-wolf 1877/1872 (+0.3%), команды
+    паритет, агенты +1.0…3.4% обоснованный остаток; гейты чисты.
+- [x] **T-28 — G5-перевод** (wolf-router.ts, wolf-session-start.js — полностью, вкл.
       комментарии, R3; их README.md; `base/README.md` — запись «перевод не требуется»)
       — wolf-editor — M — deps: T-27
-- [ ] **T-29 — G5-цикл 1** (кодовые файлы: семантика строк-инъекций/роутинга) — wolf-reviewer — S — deps: T-28 (SC-26)
-- [ ] **T-30 — G5-цикл 2** — свежий wolf-editor — S — deps: T-29 (SC-28)
-- [ ] **T-31 — G5-цикл 3 + закрытие групп** — wolf-reviewer — S — deps: T-30 (SC-13/29: выборка ≥1 файла; SC-12/09; после чистой выборки — `templates/**` без кириллицы, гейт 1 готов к зеленому состоянию)
+  - ВЫПОЛНЕНО 2026-11-15: 2 параллельных wolf-editor. bench: router 4901/4765
+    (+2.9%, кандидаты сжатия в журнале E1 — в цикл 2), session-start
+    2612/2617 (паритет), README 52/55. Кириллица 0, строки = оракулу
+    (414/233/4), идентификаторы/`${…}`/роутинг не тронуты. base/README.md
+    уже EN — запись «перевод не требуется» внесена в журнал. Гигиена гейта:
+    4 исключения (spawn/spec/barrier/override — технические употребления),
+    каскад ваиверов x2, гейт 4 зелёный; templates/** — 0 кириллицы (гейт 1
+    по шаблонам зелёный до циклов). QUESTION E1 (INJECT_HEADER — текст и
+    ключ гварда в одной константе) передан в цикл 1 с фактами (внешний
+    потребитель RU-заголовка — только юнит-тест, T-32).
+- [x] **T-29 — G5-цикл 1** (кодовые файлы: семантика строк-инъекций/роутинга) — wolf-reviewer — S — deps: T-28 (SC-26)
+  - ВЫПОЛНЕНО 2026-11-15: wolf-reviewer по 3 файлам (полное сопоставление
+    с оракулами): 0 Major, 1 Minor (соседняя F-1 — scope), ACCEPT GROUP.
+    Инъекции 1:1 (инструкции/запреты/формат без ослабления), код и MARKER
+    idempotency не тронуты. INJECT_HEADER: acceptable — гвард/вставки через
+    одну константу, деградация возобновлённой сессии 3.0→3.1 — разовое
+    косметическое дублирование playbook-блока, самогаснущееся; условие:
+    строка в миграционных заметках T-37. F-1 (факт ведущего был неполон):
+    потребители RU-заголовка — также tests/unit/wolf-router-plugin.test.ts:248
+    (HEADER-константа всех playbook-ассертов), plugin-injection.test.ts:304,
+    docs/site/guide/delivery.md:29 и docs/site/ru/guide/delivery.md:29 —
+    внесено в scope T-32 и release-docs. Симметрия учёта: router:28
+    «не имеет права уронить»→must never bring down — дописано в отклонения
+    журнала.
+- [x] **T-30 — G5-цикл 2** — свежий wolf-editor — S — deps: T-29 (SC-28)
+  - ВЫПОЛНЕНО 2026-11-15: свежий wolf-editor, ужатие router 4901→4763/4765
+    (bench; счёт редактора 4762 — расхождение 1 токен зафиксировано) —
+    паритет достигнут. 27 телеграфных правок комментариев (артикли/связки),
+    инъекции INJECT_HEADER/FALLBACK_PLAYBOOK побайтово целы (вердикт цикла 1
+    сохранён), код/число строк/исключения-термины не тронуты, кириллица 0,
+    гейт 4 OK. Строки-литералы G5 заморожены: session-start 2612/2617,
+    README 52/55.
+- [x] **T-31 — G5-цикл 3 + закрытие групп** — wolf-reviewer — S — deps: T-30 (SC-13/29: выборка ≥1 файла; SC-12/09; после чистой выборки — `templates/**` без кириллицы, гейт 1 готов к зеленому состоянию)
+  - ВЫПОЛНЕНО 2026-11-15: контрольный wolf-reviewer, выборка 1/1 (router —
+    файл всех правок циклов). Вердикт: 0 Major, 0 Minor, ACCEPT GROUP;
+    построчная сверка с оракулом по 6 зонам, инъекции побайтово = вердикту
+    цикла 1, код/числа/regex не тронуты, калька от сжатий отсутствует.
+    ГРУППА G5 ПРИНЯТА ведущим: 3/3, все в паритете (4763/4765, 2612/2617,
+    52/55). ЗАКРЫТИЕ ГРУПП G1–G5: гейт 1 — «delivery-language gate: OK
+    (0 files with Cyrillic, 73 files checked)», гейт 4 — OK (81/165/50),
+    english-surface OK. R-P3 (транзиентная краснота check) снята в гейтах;
+    test:run — после T-32 (RU-ассерты тестов). Все 5 групп волны переведены,
+    прогнаны циклы 1–3 и приняты.
 
 ### Синхронизация проверок (REQ-07; design §6.1–6.2)
 
-- [ ] **T-32 — Синхронизация тестов, demo и docs-сборки под EN-поставку** — REQ-07;
+- [x] **T-32 — Синхронизация тестов, demo и docs-сборки под EN-поставку** — REQ-07;
       design §6.1 (таблица), §6.2; базлайн design.md:479-497, тест-план SC-17/SC-18
+  - ЗАКРЫТО 2026-11-15 (ведущий; ОТКЛОНЕНИЕ от плана: исполнитель
+    wolf-developer заменён ведущим — ассерты требуют итеративных прогонов
+    vitest «правка→прогон», shell у субагентов недоступен). Части:
+    — ЮНИТЫ (61 правка в 8 файлах): plugin-injection.test.ts (6: skill
+    delivered below (full text) ×2, NOT loaded, passive/subtask ×2 блока,
+    # Current playbook); wolf-router-plugin.test.ts (HEADER '# Current
+    playbook' + 'Universal playbook' ×7); base-frames-guard (how was it
+    verified / Verdict APPROVED); conveyor-skills-guard (26 RU-маркеров 7
+    it()-блоков на EN-цитаты шаблонов: Specify contracts, REQ/NFR coverage
+    map, do not hide instability, Mark the unresolved, Keep the CR, roadmap
+    triage, unconfirmed scope, a TASK from using-skills, [x] set by the
+    task's acceptance owner, does not prove acceptance, FULL execution
+    starts only after that, Security/trust is mandatory, ## Gate, reuse
+    unchanged results, Load once ×4, Transitional measure ×2, dispatching,
+    not an imitated call, Self-review is not independent, ## Tracing,
+    trial delivery, Run RED, INCONCLUSIVE, not); intake-skill-guard (5);
+    worker-expert-channel (13: actual channel, mandate/permissions, Link
+    resolution audit, Functional channel probe, one does not replace,
+    resolves outside it, /too\s+coarse/, content fact, path list...not a
+    grant of rights, /isolation_limits`?\s+is mandatory/, /no link inside
+    the project resolves\s+outward/, негатив /no links, including/, too
+    coarse); density-mode-delivery (регистр Density standard|draft + return
+    to the requester); wolf-git-contract (CANON_SHA256 df7d3d82→de60c9b5;
+    канон docs/reference/git-collaboration-policy-v1.1.md заменён EN-версией
+    байт-в-байт = ADR-1 равенство канона и поставки; 10 EN-заголовков;
+    негатив '# Git Collaboration Policy'; ключевое слово очеред→queue;
+    indexOf '## What is not delivered').
+    (а) e2e content-assertions — инвентаризация: все RU-ассерты e2e бьют в
+    вывод CLI wolf (RU-язычный продукт, вне scope волны) или в RU-фикстуры
+    (design §6.1: остаются RU); RU-маркеров ПОСТАВКИ в e2e не осталось,
+    правки не потребовались; (б) tests/e2e/delivery-language-rule.e2e.ts —
+    создан (SC-01): init доставляет AGENTS.md с «## Session language»,
+    decision-словарь и invariant «always stay English»; re-init --yes не
+    роняет секцию; НАХОДКА: vitest наследует npm_command=exec → init считает
+    себя npx try-out (spec §7, база не пишется) — тест фиксирует env
+    установленного запуска (npm_command=install); (в)
+    tests/e2e/upgrade-language-wave.e2e.ts — каркас контура SC-19..23
+    (npm-шим + изолированный HOME/XDG + stamped fixture-билдер; init --full
+    9 агентов; 5 it.todo — наполнение на T-37 после T-35 update-map);
+    (г) scripts/demo/scenario-1..8.sh — маркеры синхронизированы с текущим
+    контрактом CLI (предсуществующие расхождения, волна CLI не трогала):
+    S1 правила/документы по ID-именам и doc_readme-объектам, brief-маркер
+    «Registered project document»; S3 scaffold по контракту 3.0 «лица не
+    сеются» (R-08) — негативная проверка playbook + persona в теле; S4
+    complain по полному контракту (--rule/--evidence/--proposal, about без
+    префикса agent:); S5 register by reference (исходник не копируется);
+    S8 сводка по содержимому (ID-имена файлов); прогон: 8/8 сценариев,
+    53 PASS / 0 FAIL; (д) docs:build — зелёный (16.5s) без правок.
+    package-hygiene и check-english-surface — без правок (F-1/F-2).
+  - Юниты: 2326/2327 passed; единственное падение — docs-audit e2e-файл по
+    TIMEOUT 5s под нагрузкой полного прогона, изолированно зелёный 2/2
+    (контент-ассерт проходит; чувствительность к длительности скана docs/
+    от роста документов волны — заметка на T-42; не дефект перевода).
+    Прежний предсуществующий fail memory-sync не воспроизводится. Часть 1
+    (опережающая, 2026-11-12): composition-guard/version-rule/density-mode/
+    plugin-injection (GOVERNANCE/DISPATCH).
   - ЧАСТИЧНО ВЫПОЛНЕНО опережающе (ведущий, 2026-11-12): юнит-тесты, державшие
     русские литералы шаблонов, обновлены на EN — `composition-guard.test.ts`
     (пометка об упразднении распознаёт abolish/retired/removed),
@@ -293,9 +489,17 @@ SC-13/SC-29 (чистая выборка ≥10% мин.1), SC-09 (журнал =
 
 ### Миграционная волна upgrade (REQ-08; design §4.6, ADR-5)
 
-- [ ] **T-34 — Precondition F-R3: штампуются ли копии плагинов** — REQ-08 AC-3;
+- [x] **T-34 — Precondition F-R3: штампуются ли копии плагинов** — REQ-08 AC-3;
       design §4.6 («Плагины plugins-reserved/\*»); базлайн design.md:283-298,
       opencode-renderer.ts:121-129
+  - ИСХОД (ведущий, 2026-11-14, по коду): вариант (2) «не штампуются».
+    `harnessTemplatesRoot('opencode')` = `templates/opencode` (templates-root.ts:26);
+    рендер плагинов выполняется только при `existsSync(templates/opencode/plugins)`
+    (opencode-renderer.ts:121-124); в поставке 3.0.0 каталога `plugins/` нет — есть
+    только `plugins-reserved/` (R-12), рендером не доставляется; тест
+    plugin-injection.test.ts утверждает «рендер НЕ создаёт .opencode/plugins/*».
+    Следствия: копии плагинов вне AC-3 и вне целей update-map (T-35); существующие
+    старые копии в проектах — локальное наследие ≤2.33.0, в заметки релиза (T-41б).
   - Состав: установить по коду/рендерингу, штампуются ли копии
     `wolf-session-start.js`/`wolf-router.ts` в существующих проектах
     (`harnessTemplatesRoot`); зафиксировать исход по критерию §4.6:
@@ -315,8 +519,13 @@ SC-13/SC-29 (чистая выборка ≥10% мин.1), SC-09 (журнал =
   - Критерии: `node scripts/generate-update-map.mjs --verify` exit 0;
     `npx vitest run tests/unit/adapters/update-map.test.ts` зелёный.
   - Исполнитель: wolf-developer. Масштаб: S.
-- [ ] **T-36 — Подсказка take по умолчанию (ADR-5.2)** — REQ-08/В3, решение
+- [x] **T-36 — Подсказка take по умолчанию (ADR-5.2)** — REQ-08/В3, решение
       владельца `e98b3c`; базлайн design.md:452-456, 558-561
+  - ПРОВЕРЕНО ведущим 2026-11-14 по коду memory-upgrade.ts: рекомендация take уже
+    присутствует в выводе review/resolve — рецепты `wolf upgrade --resolve
+    <file>=take` (строки ~795, 800, 872, 1217), «take creates the file» (~897),
+    diff-заголовок «what --resolve …=take gives you» (~795); protect не
+    предлагается. Правка не потребовалась — зафиксировано.
   - Состав: проверить существующий текст режима review/resolve
     (`src/adapters/cli/commands/memory-upgrade.ts`); если рекомендации нет —
     минимальная правка сообщения: «recommended: take (EN base set; your edit is

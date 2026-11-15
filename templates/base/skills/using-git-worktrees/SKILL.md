@@ -1,11 +1,11 @@
 ---
 name: using-git-worktrees
-description: "Создание изолированного рабочего дерева для независимой или параллельной работы."
+description: "Creating an isolated worktree for independent or parallel work."
 ---
 
-# Совместимый вход
+# Compatible input
 
-Загрузить `wolf-git` один раз и выполнить относящуюся часть.
-Не создавать дополнительный этап или повторный круг проверок.
+Load `wolf-git` once; do the relevant part.
+Do not add an extra stage or repeated verification cycle.
 
-Переходная мера: удалить в следующем релизе.
+Transitional measure: remove in the next release.

@@ -1,76 +1,63 @@
 ---
 name: verification-before-completion
-description: "Применять перед утверждением о готовности, исправлении, прохождении проверок, успешной интеграции или приёмке; также при сомнении в актуальности предоставленных доказательств."
+description: "Apply before asserting readiness, a fix, passing verifications, successful integration or acceptance; also when in doubt about the currency of provided evidence."
 ---
 
-# Доказательства перед заявлением
+# Evidence before the claim
 
-## Обязательный вход
+## Mandatory input
 
-До слов «готово», «исправлено» или «проверено» сформулируй утверждение и найди подтверждающее evidence. Проверяй выполненный scope, а не более широкий воображаемый результат. Пакет и git-метаданные сверяет ведущий; запуск выполняет он сам или назначенный исполнитель. Если актуальная проверка уже есть и её область подходит, используй её; не запускай тесты на каждое сообщение.
+Before "done", "fixed" or "verified", state the claim and find supporting evidence. Verify the completed scope, not a broader imagined one. The lead reconciles the package and git metadata; the lead or an assigned executor runs it. If a current verification exists and its scope fits, use it; do not run tests per message.
 
-Различай обязательные требования и условные; условное выполняй при наличии его основания.
+Distinguish mandatory requirements from conditional ones; carry out a conditional one when its grounds are present.
 
 
-## Гейт
+## Gate
 
-1. Назови точное утверждение: какой AC выполнен, какие тесты прошли, какой симптом устранён.
-2. Выбери evidence, действительно подтверждающее его. Diff подтверждает изменение, а не корректность; exit 0 одной команды не подтверждает все требования.
-3. Проверь версию, dirty-state, входные данные, зависимости и существенную среду. Запускай недостающую проверку доступной исполнительской ролью. ACCEPTANCE проверяет ведущий и выдаёт вердикт; независимый запуск выполняет он сам или назначенный исполнитель.
-4. Прочитай результат, exit code, пропуски и предупреждения; сохрани EVIDENCE из using-skills. Частичный вывод не трактуй как полный успех.
-5. Сообщи проверенные свойства и ограничения. Не подтверждено → не подтверждено; проверка недоступна → INCONCLUSIVE, а не «должно работать».
+1. Name the exact claim: which AC is met, which tests passed, which symptom is eliminated.
+2. Pick evidence that actually supports it: a diff supports the change, not correctness; exit 0 of one command does not support all requirements.
+3. Check the version, dirty-state, inputs, dependencies and substantial environment. Run the missing verification with an available executor role. The lead verifies ACCEPTANCE and renders the verdict; the lead or an assigned executor runs it independently.
+4. Read the result, exit code, skips and warnings; save EVIDENCE from using-skills. Do not treat partial output as full success.
+5. Report the verified properties and constraints. Not confirmed → not confirmed; verification unavailable → INCONCLUSIVE, not "it should work".
 
-## Актуальность
+## Currency
 
-Результат применим, пока не изменились проверенный код, значимые зависимости, данные или среда. Новое сообщение/сессия не инвалидирует evidence само по себе. При изменениях повтори затронутые проверки; перед интеграцией проверь объединённое состояние. Если точное соответствие dirty-state установить нельзя, запусти проверку повторно.
+The result stays applicable while verified code, material dependencies, data or environment are unchanged. A new message/session does not invalidate evidence on its own. After changes, repeat affected verifications; before integration, verify the combined state. Without exact dirty-state correspondence, rerun the verification.
 
-Evidence содержит claim/AC, command/procedure, cwd, revision, время, exit/status, результат и ссылку на имеющееся подтверждение; отдельный файл лога не обязателен; при dirty-tree — digest относящихся файлов/patch, включая untracked. Отсутствующие поля отмечай, не выдумывай. Секреты в evidence не включай.
+Evidence contains claim/AC, command/procedure, cwd, revision, time, exit/status, result and a link to the existing confirmation; a separate log file is optional; with a dirty-tree — a digest of related files/patch, including untracked. Mark missing fields, do not invent them. Do not include secrets in evidence.
 
-## Состав поставки
+## Delivery composition
 
-Перед приёмкой сверяют новые файлы docs/dev (в том числе untracked) с
-основными документами и обоснованными дополнениями из plan/брифа. Частные
-отчёты/логи/скрипты не входят в документацию этапа. Полезное интегрируй,
-нужное evidence сохрани долговечно вне документации; не подтверждай приёмку
-до разбора посторонних новых файлов. Прежние/чужие файлы не удаляй автоматически.
-Исполнитель сообщает отклонение нанимателю, не проводит самостоятельную уборку проекта.
+Before acceptance, new docs/dev files (including untracked) are reconciled with main documents and justified plan/brief additions. Private reports/logs/scripts are not part of stage documentation. Integrate what is useful, keep needed evidence durably outside documentation; do not confirm acceptance while extraneous new files remain. Do not delete previous/foreign files automatically. The executor reports the deviation to the requester and runs no project cleanup on its own.
 
-## Достаточность по поручению
+## Sufficiency per the mandate
 
-Описание конфигурации подтверждается источниками; утверждение о работающем
-развёртывании требует проверки исполнения. Не запускай второе ради первого,
-если этого не требует поручение или обязательная политика. Не подменяй запрос
-на фактическую работоспособность одним чтением. Соседний неизвестный вопрос
-не расширяет claim; существенный пробел в нём остаётся ограничением.
+A configuration description is supported by sources; a working-deployment claim requires verification of execution. Do not run the second for the first unless the mandate or mandatory policy requires it. Do not substitute the request for actual operability with a single read. A neighboring unknown does not widen the claim; a substantial gap in it remains a constraint.
 
-## Масштаб проверки
+## Scale of verification
 
-Targeted-проверка подтверждает только свою область; full gate — свойства своего набора. Для NFR нужны соответствующие измерения. Ручная проверка допустима с воспроизводимым протоколом и известными ограничениями. Не запускай full suite на каждый ответ, если валидный результат уже есть.
+A targeted verification supports only its own scope; a full gate — the properties of its set. NFRs need corresponding measurements. Manual verification is allowed with a reproducible protocol and known constraints. Do not run the full suite on every answer when a valid result exists.
 
-## Стоп после доказательства
+## Stop after evidence
 
-По каждому утверждению проверь достаточность evidence один раз. Повтор — при
-изменении входов, новой ошибке или конкретном непокрытом критерии. Убедительный
-рассказ не evidence, но уже прочитанный актуальный лог не требует повторного
-запуска. Непроверенное свойство ограничивает именно соответствующий claim;
-не отменяй доказанный дефект или независимое подтверждённое свойство.
+Check the sufficiency of evidence once per claim. A repeat is due on changed inputs, a new failure or a concrete uncovered criterion. A persuasive narrative is not evidence; an already-read current log needs no rerun. An unverified property constrains exactly its own claim; do not cancel a proven defect or an independently confirmed property.
 
-## Приёмочный пакет
+## Acceptance package
 
-По каждому AC: подтверждено/не подтверждено, evidence, revision; далее независимое ревью, отклонения, нерешённые риски и план восстановления при необходимости. Исполнитель передаёт пакет ведущему; ведущий выдаёт ACCEPTED | PARTIAL | REJECTED | INCONCLUSIVE. Перед вердиктом приёмщик сверяет revision и dirty-digest из evidence с фактическим состоянием (например, git rev-parse HEAD); evidence без revision по умолчанию неактуален. Отчёт исполнителя — не доказательство.
+For each AC: confirmed/not confirmed, evidence, revision; then independent review, deviations, unresolved risks and a recovery plan if needed. The executor hands the package to the lead, who renders ACCEPTED | PARTIAL | REJECTED | INCONCLUSIVE. Before the verdict, the acceptance owner reconciles the evidence's revision and dirty-digest with the actual state (e.g., git rev-parse HEAD); evidence without a revision is stale by default. The executor's report is not evidence.
 
-[x] в плане ставит приёмник задачи — обычно ведущий — после предусмотренной проверки задачи и ревью; фиксирует evidence/revision. Задача проверена не означает, что вся поставка интегрирована или принята. Не объявляй успех на основании чужой уверенности или количества коммитов.
+In the plan, [x] is set by the task's acceptance owner, usually the lead, after the stipulated verification and review; it records evidence/revision. A verified task does not mean the whole delivery is integrated or accepted. Do not announce success based on someone else's confidence or the commit count.
 
-## Гейт перехода
+## Transition gate
 
-Исчерпание лимита не подтверждает готовность. Partial/limits назвать прямо.
+Exhausting the limit does not confirm readiness. Name partial/limits directly.
 
-Заявление допустимо только в подтверждённой области. Неполное или устаревшее evidence требует проверки либо ограниченного вывода. RESULT использует свой контракт, а вердикт приёмки — ACCEPTED/PARTIAL/REJECTED/INCONCLUSIVE; не смешивай эти словари. Пользователю поясни ограничение через wolf-explain.
+A claim is allowed only in the confirmed scope. Incomplete or stale evidence requires verification or a constrained conclusion. The RESULT uses its own contract, and the acceptance verdict — ACCEPTED/PARTIAL/REJECTED/INCONCLUSIVE; do not mix these vocabularies. Explain the constraint to the user via wolf-explain.
 
-## Не пропускай процесс
+## Do not skip the process
 
-| Мысль | Действие |
+| Thought | Action |
 | --- | --- |
-| «Исполнитель уверен» | Прочитай результат проверки и область применимости. |
-| «Тесты прошли на прежнем commit» | Сопоставь проверенное и текущее состояние. |
-| «PR создан — задача полностью внедрена» | Создание PR, merge и публикация подтверждаются отдельно. |
+| "The executor is confident" | Read the verification result and applicability scope. |
+| "The tests passed on a previous commit" | Match the verified and current state. |
+| "A PR was created — the task is fully implemented" | PR creation, merge and publication are confirmed separately. |

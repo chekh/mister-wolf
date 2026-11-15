@@ -14,7 +14,7 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 const SKILL_NAME = 'wolf-git';
 const POLICY_FILE = 'git-collaboration-policy-v1.1.md';
 // Канон: bytes/sha256 закреплены (ADR-1); поставляемая копия обязана совпадать байт-в-байт
-const CANON_SHA256 = 'df7d3d826349c4758c338044d1bd9577446f8ff563182e9a2e8a283e5056c208';
+const CANON_SHA256 = 'de60c9b5407d93fe32da93ceda15e6d8c638fe7640c126460f09b8afa81dde70';
 
 const canonPath = join(repoRoot, 'docs/reference', POLICY_FILE);
 const skillDir = join(repoRoot, 'templates/base/skills', SKILL_NAME);
@@ -76,16 +76,16 @@ describe('wolf-git: адресность и контракт пути (REQ-05, R
 
   it('присутствуют заголовки всех 10 разделов контракта (REQ-05)', () => {
     const headers = [
-      'Обязательный вход',
-      'Вход / возобновление (G0)',
-      'Создание ветки и worktree (G1)',
-      'Сохранение (checkpoint)',
-      'Передача (G2)',
-      'Завершение и уборка (G9)',
-      'Приёмка, интеграция и выпуск',
-      'Что не поставлено',
-      'Гейт перехода',
-      'Не пропускай процесс',
+      'Mandatory input',
+      'Entry / resumption (G0)',
+      'Branch and worktree creation (G1)',
+      'Saving (checkpoint)',
+      'Handoff (G2)',
+      'Completion and cleanup (G9)',
+      'Acceptance, integration, and release',
+      'What is not delivered',
+      'Transition gate',
+      'Do not skip the process',
     ];
     for (const header of headers) {
       expect(content, `нет раздела «${header}»`).toContain(header);
@@ -93,11 +93,11 @@ describe('wolf-git: адресность и контракт пути (REQ-05, R
   });
 
   it('раздел «Что не поставлено» перечисляет непоставленное по ключевым словам', () => {
-    const start = content.indexOf('## Что не поставлено');
+    const start = content.indexOf('## What is not delivered');
     expect(start).toBeGreaterThanOrEqual(0);
     const next = content.indexOf('\n## ', start + 1);
     const section = next === -1 ? content.slice(start) : content.slice(start, next);
-    for (const keyword of ['MR', 'CI', 'очеред', 'scheduler', 'inspect']) {
+    for (const keyword of ['MR', 'CI', 'queue', 'scheduler', 'inspect']) {
       expect(section.toLowerCase()).toContain(keyword.toLowerCase());
     }
   });
@@ -139,7 +139,7 @@ describe('wolf-git: охранное условие различает расх�
     tmpDirs.push(mutatedDir);
     const mutatedPath = join(mutatedDir, POLICY_FILE);
     const mutated = Buffer.from(canon);
-    const at = mutated.indexOf(Buffer.from('Регламент совместной работы с Git'));
+    const at = mutated.indexOf(Buffer.from('# Git Collaboration Policy'));
     expect(at).toBeGreaterThanOrEqual(0);
     mutated[at] = mutated[at] ^ 0x01;
     writeFileSync(mutatedPath, mutated);

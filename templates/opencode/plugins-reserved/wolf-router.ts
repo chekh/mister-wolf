@@ -1,33 +1,33 @@
 /**
- * Mr.Wolf router plugin (шаблон базового набора, спека §5.4).
+ * Mr.Wolf router plugin (base set template, spec §5.4).
  *
- * Слой доставки №1 playbook-контекста (канон §7.1): детерминированная
- * доставка вместо вероятностного wolf search агентом. Маркер
- * `agent-id: <id>` В ТЕЛЕ рамки агента (frontmatter в system-промпт не
- * попадает — известная грабля) → 2.18.4: канонический face-resolver
- * (`wolf face resolve`: type=face, status=active, owner_skill === agentId;
- * ровно одно активное лицо, иначе отказ) → 2.18.5 (AC1) поведение разделено:
- * unique → доставка лица; none → legacy-поиск note/howto/playbook с гвардами
- * владельца, типа (лица — только резолвер) и статуса (active); multiple →
- * конфликт зафиксирован, методика НЕ выбирается и НЕ внедряется; resolver
- * error → диагностируемый сбой — оба случая без запасного поиска (ревью
- * 2.18.4: текстовый fallback обходил конфликт через proposed-лицо).
- * Вариант Б (CR-2026-10-13-02): инъекция мемоизируется по opencode-сессии
- * (пересборка system в пределах сессии получает запечатанный текст той же
- * версии — без переключения посередине задания), кэш версионируется ключом
- * head-записи — новая сессия всегда получает актуальную версию.
+ * Playbook-context delivery layer #1 (canon §7.1): deterministic delivery,
+ * not probabilistic wolf search by the agent. Marker `agent-id: <id>` goes
+ * IN THE BODY of the agent frame (frontmatter doesn't reach the system
+ * prompt — a known pitfall) → 2.18.4: canonical face resolver (`wolf face
+ * resolve`: type=face, status=active, owner_skill === agentId; exactly one
+ * active face, otherwise refusal) → 2.18.5 (AC1) behavior split: unique →
+ * face delivery; none → legacy note/howto/playbook search with ownership,
+ * type (faces — resolver only) and status (active) guards; multiple →
+ * conflict recorded, the skill is NOT selected and NOT injected; resolver
+ * error → diagnosable failure — both without fallback search (review
+ * 2.18.4: text fallback bypassed the conflict via a proposed face).
+ * Variant B (CR-2026-10-13-02): injection memoized per opencode session
+ * (a system rebuild in-session gets the sealed text of the same version —
+ * no switching mid-task), cache keyed by the head note — a new session
+ * always gets the current version.
  *
- * Fallback (T012, волна 1.1): методика недоступна (miss/conflict/error) →
- * инъекция встроенного универсального FALLBACK_PLAYBOOK для любого agent-id.
- * В router.log (2.18.5, AC3): source=face|legacy|default,
+ * Fallback (T012, wave 1.1): skill unavailable (miss/conflict/error) →
+ * built-in universal FALLBACK_PLAYBOOK injected for any agent-id.
+ * In router.log (2.18.5, AC3): source=face|legacy|default,
  * resolution=unique|none|conflict|error, face_id/version/hash, session.
- * Реестр доставок = сами playbook-объекты через owner_skill, отдельного
- * конфига нет.
+ * Delivery registry = playbook objects themselves via owner_skill; no
+ * separate config.
  *
- * Ноль зависимостей (Node stdlib; ai-sdk НЕ используется). Fail-safe: всё в
- * try/catch — плагин не имеет права уронить сессию (лог: .wolf/router.log —
- * agent-id, name, variant, injected, ms, bytes). Через этот файл при рендере
- * проходят подстановка {{tool.*}} и штамп `// wolf:rendered` (ставит рендерер).
+ * Zero dependencies (Node stdlib; ai-sdk NOT used). Fail-safe: everything in
+ * try/catch — the plugin must never bring down the session (log: .wolf/router.log —
+ * agent-id, name, variant, injected, ms, bytes). At render time this file receives
+ * the {{tool.*}} substitution and the `// wolf:rendered` stamp (renderer-added).
  */
 
 import path from 'path';
@@ -39,55 +39,55 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.join(__dirname, '..', '..');
 const LOCAL_CLI = path.join(PROJECT_ROOT, 'dist', 'bootstrap', 'cli.js');
-// WOLF_ROUTER_LOG — тест-шов (юнит-тесты пишут в tmp, не в живой dogfood-лог)
+// WOLF_ROUTER_LOG — test seam (unit tests write to tmp, not the live dogfood log)
 const LOG = process.env.WOLF_ROUTER_LOG ?? path.join(PROJECT_ROOT, '.wolf', 'router.log');
-const INJECT_HEADER = '# Актуальный playbook (источник: память Wolf, доставлен плагином; обязательный формат ответа)';
-// T012 (волна 1.1): встроенный универсальный playbook для agent-id без канона
-// в памяти. Role-агностичный базовый контур Wolf; канон всегда приоритетен.
-const FALLBACK_PLAYBOOK = `# Универсальный playbook (fallback)
+const INJECT_HEADER = '# Current playbook (source: Wolf memory, delivered by the plugin; mandatory response format)';
+// T012 (wave 1.1): built-in universal playbook for an agent-id with no canon
+// in memory. Role-agnostic base contour of Wolf; canon always takes priority.
+const FALLBACK_PLAYBOOK = `# Universal playbook (fallback)
 
-Канонического playbook для твоего agent-id в памяти Wolf нет — работай
-по этому универсальному контуру.
+There is no canonical playbook for your agent-id in Wolf memory — follow
+this universal contour.
 
-1. Холодный старт сессии: \`wolf call\` → \`wolf brief\` — возвращённые
-   injections и brief — активное руководство проекта.
-2. Значимое фиксируй в память Wolf: решения — \`add --type decision\`,
-   уроки — \`--type lesson\`, блокеры — thread со статусом blocked
+1. Session cold start: \`wolf call\` → \`wolf brief\` — the returned
+   injections and brief are the active guidance of the project.
+2. Record what matters in Wolf memory: decisions — \`add --type decision\`,
+   lessons — \`--type lesson\`, blockers — a thread with the status blocked
    (\`thread add\` + \`transition <id> blocked\`).
-3. Состояние проекта спрашивай у Wolf (\`wolf search\`, \`wolf get\`,
-   \`wolf brief\`): статические списки в файлах устаревают.
-4. Правила и playbook'ы не мутируй сам — мутатор Стюард; систематически
-   плохое ПРАВИЛО → \`wolf complain\` (не тул и не разовый случай).
-5. Сбой тула — FRICTION-строка в отчёте (\`FRICTION: <n>× <тул> —
-   причина; обошёл через <что сработало>\`), не молча и не ретраи в стол.`;
-// [ \t] вместо \s: \s съедает переводы строк и вытаскивает id с чужой строки.
+3. Ask Wolf for the project state (\`wolf search\`, \`wolf get\`,
+   \`wolf brief\`): static lists in files go stale.
+4. Do not mutate rules and playbooks yourself — the Steward is the mutator; a systematically
+   bad RULE → \`wolf complain\` (not a tool and not a one-off case).
+5. A tool failure — a FRICTION line in the report (\`FRICTION: <n>× <tool> —
+   reason; worked around via <what worked>\`), never silently and never as unreported retries.`;
+// [ \t] instead of \s: \s eats newlines and pulls an id from a foreign line.
 const AGENT_ID_RE = /^agent-id:[ \t]*([\w-]+)[ \t]*$/m;
-// Спека A2: playbook — canonical-память, Стюард мутирует редко → TTL 5 минут.
-// Вариант Б: барьер свежести — search живой раз на новую сессию (мемоизация
-// в deliverPlaybook); TTL-кэш экономит только get-спавн при совпадении head,
-// не search. Негативная запись (null) в гвард hit?.value не попадает —
-// повторный miss новой сессии снова спавнит search.
+// Spec A2: a playbook is canonical memory, the Steward mutates it rarely → 5-minute TTL.
+// Variant B: freshness barrier — search runs live once per new session (memoized
+// in deliverPlaybook); TTL cache saves only the get spawn on a head match,
+// not the search. A negative entry (null) never reaches the hit?.value guard —
+// a repeated miss of a new session re-spawns the search.
 const CACHE_TTL_MS = 300_000;
 
-// agent-id последней рамки, пропущенной через system.transform (для skill-метрики B3)
+// agent-id of the last frame through system.transform (B3 skill metric)
 let lastAgentId: string | null = null;
 
-// execFile: args array, no shell. Целевой проект — глобальный `wolf`;
-// догфуд в репо Wolf — локальный dist. Ошибка обоих → исключение наверх (fail-safe).
-// WOLF_SESSION (4.C): ключ ставится фабрикой ОДИН раз на процесс opencode —
-// спавны и bash-вызовы волка наследуют его из process.env (execFile без
-// env-поля наследует сам). Известный потолок: несколько чатов одного процесса
-// opencode шарят ключ — консервативная недо-дедупликация, не ошибка.
-// 2.18.5: runWolf резолвит stdout и при ненулевом exit — контракт CLI печатает
-// разборчивый JSON ({ok:false,error:{kind}}) на stdout с exit 1; promisify
-// терял его (reject без stdout), превращая реальный miss в необъяснимый error.
+// execFile: args array, no shell. Target project — global `wolf`;
+// dogfood in the Wolf repo — local dist. Both fail → the exception goes up (fail-safe).
+// WOLF_SESSION (4.C): key is set by the factory ONCE per opencode process —
+// wolf spawns and bash calls inherit it from process.env (execFile with no
+// env field inherits it). Known ceiling: several chats of one process
+// share the key — conservative under-deduplication, not an error.
+// 2.18.5: runWolf resolves stdout even on non-zero exit — CLI contract prints
+// parseable JSON ({ok:false,error:{kind}}) to stdout with exit 1; promisify
+// lost it (reject without stdout) — a real miss became an inexplicable error.
 const runWolf = (args: string[]): Promise<{ stdout: string }> =>
   new Promise((resolve, reject) => {
     const attempt = (file: string, a: string[]): void => {
       execFile(file, a, { cwd: PROJECT_ROOT, timeout: 5000 }, (err, stdout) => {
         const out = typeof stdout === 'string' ? stdout : '';
-        // resolve при exit 0 (пустой stdout — валидный miss search) и при
-        // exit≠0 с разборчивым выводом (контракт CLI miss/conflict с exit 1)
+        // resolve on exit 0 (empty stdout — a valid search miss) and on
+        // exit≠0 with parseable output (CLI contract miss/conflict with exit 1)
         if (!err || out) return resolve({ stdout: out });
         if (file === 'wolf') return attempt('node', [LOCAL_CLI, ...args]);
         reject(err ?? new Error('wolf CLI produced no output'));
@@ -105,18 +105,18 @@ function logRoute(line: string): void {
   }
 }
 
-// ponytail: per-agent кэш на TTL 5 мин — canonical-память мутируется редко,
-// CLI-спавн не на каждое сообщение. Вариант Б (CR-2026-10-13-02): запись
-// версионируется ключом head — кэш экономит только get-спавн и отдаётся лишь
-// при совпадении id с актуальной записью живого search; устаревшая версия
-// лица не отдаётся никогда (новая сессия в пределах TTL получает head).
+// ponytail: per-agent cache, 5-minute TTL — canonical memory mutates rarely,
+// no CLI spawn on every message. Variant B (CR-2026-10-13-02): entry keyed
+// by the head key — cache saves only the get spawn, served only on an id
+// match with the live search's current note; a stale version
+// of the face is never served (a new session in the TTL gets the head).
 const cache = new Map<string, { value: RouteResult; at: number }>();
 
-// Вариант Б (а): мемоизация инъекции по opencode-сессии. Ключ сессии —
-// WOLF_SESSION (ставится на процесс opencode; несколько чатов одного
-// процесса — задокументированный потолок, см. ensureSession). Сессия
-// пригвождена к версии первого задания: пересборка system не запускает
-// ре-резолв — переключение версии посередине задания исключено (REQ-05).
+// Variant B (a): injection memoized per opencode session. Session key is
+// WOLF_SESSION (set on the opencode process; several chats of one
+// process — documented ceiling, see ensureSession). Session is pinned
+// to the first task's version: a system rebuild triggers no re-resolve —
+// mid-task version switching is excluded (REQ-05).
 interface InjectedPlaybook {
   text: string;
   name: string;
@@ -130,9 +130,9 @@ interface InjectedPlaybook {
 }
 const sessionInject = new Map<string, InjectedPlaybook>();
 
-/** Исход доставки (2.18.5, AC1/AC3): unique — каноническое лицо; none — лица
- *  нет, legacy-поиск разрешён; conflict/error — методика НЕ выбирается и НЕ
- *  внедряется (только универсальный fallback + диагностика в router.log). */
+/** Delivery outcome (2.18.5, AC1/AC3): unique — canonical face; none — no
+ *  face, legacy search allowed; conflict/error — the skill is NOT selected and NOT
+ *  injected (only universal fallback + diagnostics in router.log). */
 type RouteResolution = 'unique' | 'none' | 'conflict' | 'error';
 
 interface RouteResult {
@@ -153,17 +153,17 @@ const routeFailure = (resolution: 'conflict' | 'error'): RouteResult => ({
   hash: null,
 });
 
-// 2.18.4: канонический резолвер лица — строгий запрос type=face/status=active/
-// owner_skill (`wolf face resolve`) вместо вероятностного текстового поиска.
-// 2.18.5 (AC1): результат различается — unique доставляется; none → legacy-путь
-// ниже; conflict/error → НЕ fallback к текстовому поиску (ревью 2.18.4:
-// запасной поиск обходил конфликт, выбирая proposed-лицо по owner_skill).
+// 2.18.4: canonical face resolver — strict type=face/status=active/
+// owner_skill query (`wolf face resolve`), not probabilistic text search.
+// 2.18.5 (AC1): outcomes differ — unique delivered; none → legacy path
+// below; conflict/error → NO fallback to text search (review 2.18.4:
+// fallback search bypassed the conflict, picking a proposed face by owner_skill).
 async function resolveFaceCanonical(agentId: string): Promise<RouteResult | null> {
   let stdout: string;
   try {
     ({ stdout } = await runWolf(['face', 'resolve', agentId]));
   } catch {
-    return routeFailure('error'); // обе формы CLI упали без вывода — диагностируемый сбой
+    return routeFailure('error'); // both CLI forms failed without output — diagnosable failure
   }
   try {
     const parsed = JSON.parse(stdout) as {
@@ -182,8 +182,8 @@ async function resolveFaceCanonical(agentId: string): Promise<RouteResult | null
       };
     }
     if (parsed?.error?.kind === 'multiple') return routeFailure('conflict');
-    if (parsed?.error?.kind === 'none') return null; // miss → legacy-путь
-    return routeFailure('error'); // ok:false без kind / неразборчивый ответ
+    if (parsed?.error?.kind === 'none') return null; // miss → legacy path
+    return routeFailure('error'); // ok:false without kind / unparseable response
   } catch {
     return routeFailure('error');
   }
@@ -193,29 +193,29 @@ async function resolvePlaybook(agentId: string): Promise<RouteResult> {
   const face = await resolveFaceCanonical(agentId);
   if (face) {
     if (face.resolution === 'unique') cache.set(agentId, { value: face, at: Date.now() });
-    return face; // unique | conflict | error — стоп, запасной поиск не гасит исход
+    return face; // unique | conflict | error — stop, fallback search does not override the outcome
   }
   let found: RouteResult | null = null;
   try {
-    // 2.13: плейбуки живут как note+facet howto (type 'playbook' — legacy),
-    // поэтому без --type; слово «playbook» (title/tags канона) сужает выборку.
-    // Формат строки search: `<id> [<type>] [<facet>] <title>`.
+    // 2.13: playbooks live as note+facet howto (type 'playbook' — legacy),
+    // hence no --type; "playbook" (canon title/tags) narrows the selection.
+    // Search line format: `<id> [<type>] [<facet>] <title>`.
     const { stdout } = await runWolf(['search', agentId, 'playbook', '--hide-superseded']);
     const ids = [...stdout.matchAll(/^([\w-]+) \[\w+\]/gm)].map((m) => m[1]);
-    // Вариант Б (б): search живой на каждой новой сессии (мемоизация в
-    // deliverPlaybook гарантирует «раз на сессию», не «на сообщение») — это
-    // барьер свежести; кэш отдаётся только при совпадении head-id с первой
-    // строкой выборки, устаревшая версия лица не отдаётся.
+    // Variant B (b): search runs live on every new session (memoized in
+    // deliverPlaybook: "once per session", not "per message") — the
+    // freshness barrier; the cache is served only when head-id matches
+    // the selection's first line; a stale version of the face is not served.
     const hit = cache.get(agentId);
     if (hit?.value && Date.now() - hit.at < CACHE_TTL_MS && hit.value.id === ids[0]) {
       return hit.value;
     }
-    // Ранний стоп (спека A2-б): релевантность поиска уже отсортировала,
-    // --hide-superseded отсекает старые версии — первый кандидат, прошедший
-    // гварды, и есть результат (один get при miss вместо K подряд).
-    // 2.18.5 (AC1): гварды — owner_skill И тип (note|howto|playbook; лица
-    // только через канонический резолвер) И статус (active или не задан;
-    // proposed/superseded не доставляются).
+    // Early stop (spec A2-b): search relevance already sorted,
+    // --hide-superseded cuts off old versions — the first candidate passing
+    // the guards is the result (one get on a miss, not K in a row).
+    // 2.18.5 (AC1): guards — owner_skill AND type (note|howto|playbook; faces
+    // only via canonical resolver) AND status (active or unset;
+    // proposed/superseded not delivered).
     for (const id of ids) {
       const { stdout: json } = await runWolf(['get', id]);
       const obj = JSON.parse(json) as {
@@ -229,9 +229,9 @@ async function resolvePlaybook(agentId: string): Promise<RouteResult> {
         hash?: unknown;
       };
       const owner = obj.owner_skill ?? obj.extra?.owner_skill;
-      if (owner !== agentId && owner !== `skill:${agentId}`) continue; // гвард владельца
-      if (obj.type !== 'note' && obj.type !== 'howto' && obj.type !== 'playbook') continue; // лица — только резолвер
-      if (obj.status !== undefined && obj.status !== 'active') continue; // гвард статуса
+      if (owner !== agentId && owner !== `skill:${agentId}`) continue; // ownership guard
+      if (obj.type !== 'note' && obj.type !== 'howto' && obj.type !== 'playbook') continue; // faces — resolver only
+      if (obj.status !== undefined && obj.status !== 'active') continue; // status guard
       if (obj.body) {
         found = {
           id: String(obj.id ?? id),
@@ -245,7 +245,7 @@ async function resolvePlaybook(agentId: string): Promise<RouteResult> {
       break;
     }
   } catch {
-    // 2.18.5: сбой legacy-поиска — диагностируемый error, не молчаливый miss
+    // 2.18.5: a legacy search failure — diagnosable error, not a silent miss
     cache.set(agentId, { value: routeFailure('error'), at: Date.now() });
     return routeFailure('error');
   }
@@ -254,11 +254,11 @@ async function resolvePlaybook(agentId: string): Promise<RouteResult> {
   return result;
 }
 
-// B3: метрика вызовов скиллов. Форма входа v1: input.tool — имя тула,
-// output.args — объект аргументов; v2: event.tool + event.input (name | skill —
-// фолбэк). Отдельный JSONL-файл — инвариант: enum событий SignalEventSchema
-// закрытый, в общий router.log эти события класть нельзя. WOLF_SKILL_LOG —
-// тест-шов (читается на каждый вызов: env ставится тестами уже после импорта).
+// B3: skill invocation metric. Input shape v1: input.tool — tool name,
+// output.args — args object; v2: event.tool + event.input (name | skill —
+// fallback). Separate JSONL file — invariant: SignalEventSchema event enum
+// is closed, these events must not enter the shared router.log. WOLF_SKILL_LOG —
+// test seam (read on every invocation: env is set by tests after import).
 function recordSkillMetric(tool: unknown, args: unknown): void {
   try {
     if (tool !== 'skill') return;
@@ -271,27 +271,27 @@ function recordSkillMetric(tool: unknown, args: unknown): void {
     if (lastAgentId) entry.agent = lastAgentId;
     fs.appendFileSync(file, `${JSON.stringify(entry)}\n`);
   } catch {
-    /* fail-safe: падение метрики не роняет сессию */
+    /* fail-safe: a metric crash does not bring down the session */
   }
 }
 
-// Общая доставка playbook (v1 system.transform / v2 context): joined system-текст
-// → маркер agent-id → гвард идемпотентности INJECT_HEADER → мемоизация сессии
-// (вариант Б: запечатанный текст без ре-резолва) → resolvePlaybook → push(текст).
-// Fail-safe: не роняем сессию ни на одном шаге. 2.18.5 (AC3): каждая строка
-// журнала несёт source/resolution/face_id/version/hash/session — видно, как
-// именно доставлена методика (canonical-метка legacy-результатом не ставится).
+// Shared playbook delivery (v1 system.transform / v2 context): joined system text
+// → agent-id marker → INJECT_HEADER idempotency guard → session memoization
+// (variant B: sealed text, no re-resolve) → resolvePlaybook → push(text).
+// Fail-safe: the session is never brought down on any step. 2.18.5 (AC3): every
+// log line carries source/resolution/face_id/version/hash/session — shows how exactly
+// the skill was delivered (canonical label is not set on a legacy result).
 async function deliverPlaybook(joined: string, push: (text: string) => void): Promise<void> {
   try {
     const m = joined.match(AGENT_ID_RE);
-    if (!m) return; // рамка без маркера — не наша забота
-    if (joined.includes(INJECT_HEADER)) return; // идемпотентность: не вставляем дважды
+    if (!m) return; // frame without marker — not our concern
+    if (joined.includes(INJECT_HEADER)) return; // idempotency: never insert twice
     const agentId = m[1];
-    lastAgentId = agentId; // агент известен хуку skill-метрики (B3)
+    lastAgentId = agentId; // agent known to the skill-metric hook (B3)
     const sessionId = process.env.WOLF_SESSION ?? '-';
-    // Вариант Б (а): сессия уже получила инъекцию → отдаём запечатанный текст
-    // (то же содержание, тот же вариант), без CLI-спавнов и ре-резолва —
-    // независимо от того, персистит ли рантайм system-текст между сообщениями.
+    // Variant B (a): session already received the injection → serve sealed text
+    // (same content, same variant), without CLI spawns or a re-resolve —
+    // regardless of whether the runtime persists system text between messages.
     const memoKey = `${process.env.WOLF_SESSION ?? ''}:${agentId}`;
     const memoized = sessionInject.get(memoKey);
     if (memoized) {
@@ -329,8 +329,8 @@ async function deliverPlaybook(joined: string, push: (text: string) => void): Pr
           `${fields} session=${sessionId} injected=yes ms=${ms} bytes=${Buffer.byteLength(resolved.body)}`
       );
     } else {
-      // T012: методика недоступна (miss/conflict/error) → универсальный fallback;
-      // инъекция для любого agent-id; конфликт/сбой зафиксированы в resolution.
+      // T012: skill unavailable (miss/conflict/error) → universal fallback;
+      // injection for any agent-id; conflict/failure recorded in resolution.
       const text = `\n\n${INJECT_HEADER}\n\n${FALLBACK_PLAYBOOK}`;
       sessionInject.set(memoKey, {
         text,
@@ -350,18 +350,18 @@ async function deliverPlaybook(joined: string, push: (text: string) => void): Pr
       );
     }
   } catch {
-    /* fail-safe: не роняем сессию */
+    /* fail-safe: never bring down the session */
   }
 }
 
-// 4.C: один WOLF_SESSION на процесс opencode — спавны волка и bash-вызовы
-// наследуют ключ. Известный потолок: несколько чатов одного процесса opencode
-// шарят ключ — консервативная недо-дедупликация, не ошибка.
+// 4.C: one WOLF_SESSION per opencode process — wolf spawns and bash calls
+// inherit the key. Known ceiling: several chats of one process
+// share it — conservative under-deduplication, not an error.
 function ensureSession(): void {
   if (!process.env.WOLF_SESSION) process.env.WOLF_SESSION = 'opc-' + randomUUID();
 }
 
-// v1-фабрика: loader v1 вызывает `server()` и получает hook-объект.
+// v1 factory: loader v1 calls `server()` and gets the hook object.
 async function server() {
   ensureSession();
   return {
@@ -377,8 +377,8 @@ async function server() {
   };
 }
 
-// v2-контракт: loader v2 вызывает `setup(ctx)`; инъекция — текст-блок в
-// event.system (мутация доходит до модельного запроса), метрика — tool-hook.
+// v2 contract: loader v2 calls `setup(ctx)`; injection is a text block in
+// event.system (mutation reaches the model request), metric — a tool hook.
 interface V2ContextEvent {
   system: Array<{ type: 'text'; text: string }>;
   messages: Array<{ id: string; role: string; content: Array<{ type: 'text'; text: string }>; metadata: unknown }>;
@@ -410,5 +410,5 @@ async function setup(ctx: V2Ctx) {
   });
 }
 
-// РОВНО ОДИН export на файл (контракт loader'а opencode): dual v1/v2 entry.
+// EXACTLY ONE export per file (opencode loader contract): dual v1/v2 entry.
 export default { id: 'wolf-router', setup, server };

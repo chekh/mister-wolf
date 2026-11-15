@@ -1,11 +1,11 @@
 ---
 name: receiving-code-review
-description: "Разбор замечаний, исправления и адресная перепроверка."
+description: "Handling remarks, fixes, and addressed re-verification."
 ---
 
-# Совместимый вход
+# Compatible input
 
-Загрузить `wolf-review` один раз и выполнить относящуюся часть.
-Не создавать дополнительный этап или повторный круг проверок.
+Load `wolf-review` once and perform the relevant part.
+Create no extra stage or repeated verification cycle.
 
-Переходная мера: удалить в следующем релизе.
+Transitional measure: remove in the next release.

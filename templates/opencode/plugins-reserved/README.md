@@ -1,4 +1,4 @@
 # plugins-reserved
 
-Зарезервированные плагины прежней модели доставки: не устанавливаются и не попадают в рендер набора.
-Восстановление: `git mv templates/opencode/plugins-reserved/<файл> templates/opencode/plugins/`.
+Reserved plugins of the former delivery model: not installed and excluded from the set render.
+Recovery: `git mv templates/opencode/plugins-reserved/<file> templates/opencode/plugins/`.

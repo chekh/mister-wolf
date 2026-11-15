@@ -1,11 +1,11 @@
 ---
 name: requesting-code-review
-description: "Подготовка независимого ревью конкретной ревизии и критериев."
+description: "Preparing an independent review of a specific revision and criteria."
 ---
 
-# Совместимый вход
+# Compatible input
 
-Загрузить `wolf-review` один раз и выполнить относящуюся часть.
-Не создавать дополнительный этап или повторный круг проверок.
+Load `wolf-review` once and perform the relevant part.
+Create no extra stage or repeated verification cycle.
 
-Переходная мера: удалить в следующем релизе.
+Transitional measure: remove in the next release.

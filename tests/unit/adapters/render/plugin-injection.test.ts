@@ -145,7 +145,7 @@ describe('wolf-session-start: инъекция (спека §5.4)', () => {
     );
     const body = source.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '').trim();
     expect(textOf(out.messages[0])).toContain(body);
-    expect(textOf(out.messages[0])).toContain('методика доставлена ниже (полный текст)');
+    expect(textOf(out.messages[0])).toContain('skill delivered below (full text)');
   });
 
   it('маркер в транскрипте → инъекции нет (H3: идемпотентность)', async () => {
@@ -174,8 +174,8 @@ describe('wolf-session-start: инъекция (спека §5.4)', () => {
     await transform({}, out);
     const injected = textOf(out.messages[0]);
     expect(injected).toContain(MARKER);
-    expect(injected).toContain('пассив');
-    expect(injected).toContain('подзадач');
+    expect(injected).toContain('passive');
+    expect(injected).toContain('subtask');
     expect(injected).toContain('RESULT');
     for (const marker of DISPATCH) expect(injected, marker).not.toContain(marker);
     // L2 не дергает recap/call вообще
@@ -246,8 +246,8 @@ describe('wolf-session-start: v2 setup (context hook)', () => {
       const missing = v2Event('mr-wolf');
       await ctx.sessionHooks['context'](missing);
       expect(contentText(missing)).toContain('FALLBACK');
-      expect(contentText(missing)).toContain('НЕ загружен');
-      expect(contentText(missing)).not.toContain('методика доставлена ниже (полный текст)');
+      expect(contentText(missing)).toContain('NOT loaded');
+      expect(contentText(missing)).not.toContain('skill delivered below (full text)');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -270,8 +270,8 @@ describe('wolf-session-start: v2 setup (context hook)', () => {
     const event = v2Event('worker-implementer');
     await ctx.sessionHooks['context'](event);
     const injected = contentText(event);
-    expect(injected).toContain('пассив');
-    expect(injected).toContain('подзадач');
+    expect(injected).toContain('passive');
+    expect(injected).toContain('subtask');
     expect(injected).toContain('RESULT');
     for (const marker of DISPATCH) expect(injected, marker).not.toContain(marker);
     expect(execFileMock).not.toHaveBeenCalled();
@@ -301,7 +301,7 @@ describe('wolf-router: v2 setup (context + tool hooks)', () => {
     await (WolfPlaybookPlugin.setup as (c: unknown) => Promise<void>)(ctx);
     const event = { system: [{ type: 'text' as const, text: 'agent-id: v2-router-probe-xyz\n' }] };
     await ctx.sessionHooks['context'](event);
-    expect(event.system.some((s) => String(s.text).includes('# Актуальный playbook'))).toBe(true);
+    expect(event.system.some((s) => String(s.text).includes('# Current playbook'))).toBe(true);
     const afterFirst = event.system.length;
     await ctx.sessionHooks['context'](event);
     expect(event.system.length).toBe(afterFirst); // INJECT_HEADER → второй раз мимо
