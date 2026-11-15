@@ -47,8 +47,9 @@ based_on: design.md §4.6 («Отказные сценарии», «Откат»
 ## Миграция существующих проектов (REQ-08)
 
 - Данные волны, без нового кода (ADR-5): переведённые `templates/` +
-  перегенерированный `update-map.json` — 75 file targets, 7 faces (все
-  `deprecated`, report-only), prev 2.33.0. Гейт карты:
+  перегенерированный `update-map.json` — 65 file targets `changed`
+  (RU→EN против поставки 3.0.0), 7 faces (все `deprecated`, report-only),
+  prev 3.0.0. Гейт карты:
   `node scripts/generate-update-map.mjs --verify` → «update-map.json is in sync
   with templates/» (exit 0 на T-35; guard-тест
   `tests/unit/adapters/update-map.test.ts` зелёный 9/9). Секция «Session
@@ -77,16 +78,16 @@ based_on: design.md §4.6 («Отказные сценарии», «Откат»
 
 ### (б) Плагины — исход F-R3 (T-34)
 
-- Исход (ведущий, 2026-11-14, подтверждён картой): копии
+- Исход (ведущий, 2026-11-14, подтверждён кодом и картой): копии
   `wolf-session-start.js` / `wolf-router.ts` **не штампуются** — рендер
   доставляет плагины только из `templates/opencode/plugins/`, в поставке
   есть лишь `plugins-reserved/` (R-12), поэтому копии вне AC-3 REQ-08 и вне
-  целей миграции волны. В `update-map.json` обе записи присутствуют со
-  статусом `removed` (report-only: эталона нет, рендер не вызывается;
-  существующие копии в проектах — локальное наследие ≤2.33.0, волна их не
-  трогает). Перевод G5 (wolf-router, wolf-session-start) выполнен в
-  reserved-шаблонах репозитория до релиза — для будущих возвратов плагинов;
-  пользовательские проекты он не затрагивает.
+  целей миграции. Карта волны 3.1.0 (prev 3.0.0, 65 changed) записей
+  плагинов не содержит вовсе: removed-записи остались в карте 3.0.0
+  (report-only), существующие копии в проектах — локальное наследие
+  ≤2.33.0, `wolf upgrade` их не трогает. Перевод G5 (wolf-router,
+  wolf-session-start) выполнен в reserved-шаблонах репозитория до релиза —
+  для будущих возвратов плагинов; пользовательские проекты он не затрагивает.
 - Проверка карты: `node scripts/generate-update-map.mjs --verify` →
   «update-map.json is in sync with templates/».
 

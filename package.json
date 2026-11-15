@@ -1,6 +1,6 @@
 {
   "name": "mister-wolf",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "A local-first project organization for AI assistants: goal-directed processes, project memory and governed learning",
   "keywords": [
     "ai-agents",
@@ -44,7 +44,8 @@
     "docs:dev": "vitepress dev docs/site",
     "docs:build": "node scripts/generate-cli-reference.mjs && node scripts/generate-cli-site-page.mjs && node scripts/sync-changelog.mjs && vitepress build docs/site",
     "docs:preview": "vitepress preview docs/site",
-    "docs:check": "npm run build && npm run docs:build && node scripts/check-docs-links.mjs"
+    "docs:check": "npm run build && npm run docs:build && node scripts/check-docs-links.mjs",
+    "opencode-cost": "npm run build && node dist/opencode-cost/cli.js"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",
