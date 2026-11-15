@@ -215,7 +215,7 @@
     {
       "path": "base/skills/wolf-execute/scripts/workflow-helper.py",
       "kind": "skill",
-      "category": "unchanged"
+      "category": "changed"
     },
     {
       "path": "base/skills/wolf-execute/SKILL.md",
