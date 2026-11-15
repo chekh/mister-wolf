@@ -19,8 +19,6 @@ These remain project-owned memory and development sources, rather than a second 
 - [Active roadmap](dev/roadmap/roadmap-v4.md) and [ledger](dev/roadmap/roadmap-v4-ledger.md).
 - [Development documents](dev/INDEX.md): requirements, design, plans and test plans by task.
 - [Historical specifications](specs/README.md) and [plans](plans/README.md).
-- [Analytics notes](analytics/): internal machine analytics records (opencode session token statistics).
-- **opencode-cost** — аналитика стоимости сессий OpenCode: деревья задач, токены по ролям и агентам, top-N задач. Запуск: `npm run opencode-cost -- --days 7`; выходы: `docs/analytics/<дата>-opencode-cost.md` и `.wolf/analytics/<штамп>-opencode-cost.json`; живая база `~/.local/share/opencode/opencode.db` читается только в режиме read-only. Ручной smoke на живой базе: суммы метрик по сессиям = агрегату задачи = totals.
 - [Generated CLI source reference](reference/cli.md): generated from the CLI; the website presents the user reference.
 
 See [maintaining documentation](https://chekh.github.io/mister-wolf/guide/documentation) and [Contributing](../CONTRIBUTING.md) for ownership and validation.
