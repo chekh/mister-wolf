@@ -739,11 +739,13 @@ SC-13/SC-29 (чистая выборка ≥10% мин.1), SC-09 (журнал =
     3.0.0» (package.json/lock, update-map, CHANGELOG, changelog-страницы
     сайта, корректировка release-notes (б)/(карта)). Тег v3.1.0 → bd355968.
     Пуш: ветка en-base-wave + тег v3.1.0 → origin (GitHub) — ОК.
-    npm publish — НЕ выполнен: registry авторизация отсутствует
-    (npm whoami → E401); требуется `npm login` владельцем, затем
-    `npm publish` (dry-run проверен: mister-wolf@3.1.0, 927 файлов,
-    зеркала сайта в пакете нет). Находка release-engineer учтена:
-    карта перегенерирована ПОСЛЕ bump (version 3.1.0 внутри карты).
+    Публикация npm — через CI: workflow `.github/workflows/publish.yml`
+    (trusted publishing, OIDC, environment npm) запускается пушем тега `v*`;
+    ручной `npm publish` не нужен и не работает без сессии (npm whoami →
+    E401 — ожидаемо, долгоживущих токенов нет). Прогон 43763038400 на
+    v3.1.0 запущен пушем тега; dry-run локально чист (mister-wolf@3.1.0,
+    927 файлов, зеркала сайта в пакете нет). Находка release-engineer
+    учтена: карта перегенерирована ПОСЛЕ bump (version 3.1.0 внутри карты).
     Release-docs F-1 выполнено: docs/site/{guide,ru/guide}/delivery.md:31 —
     заголовок инъекции обновлён на актуальный `# Current playbook …`
     (та же строка — гвард идемпотентности).
