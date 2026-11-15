@@ -11,6 +11,11 @@ import { FsFileSystem } from '../../../src/adapters/fs/fs-file-system.js';
 import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
 import { UserFacingError } from '../../../src/domain/errors.js';
 
+// Docker-джоба гоняет тесты от root: chmod 000 не создаёт EACCES для root,
+// поэтому chmod-сценарии осмысленны только от обычного пользователя
+// (Node-джобы ubuntu/macos продолжают их проверять).
+const itNonRoot = it.skipIf(process.getuid?.() === 0);
+
 // R-13a (релиз 3.0.0): резолвер цели жалобы — состав агентов из интеграции OpenCode.
 // Источники (union): проектные .opencode/agents/*.md; глобальные <config>/opencode/agents/*.md;
 // ключ "agent" в opencode.json(c) локаций корень/.opencode и в глобальном конфиге.
@@ -134,7 +139,7 @@ describe('complaint target resolver (R-13a)', () => {
     await expect(resolve('a')).rejects.toThrow(/Agent discovery failed: .*opencode\.json: key "agent"/);
   });
 
-  it('дисcovery-ошибка: существующий нечитаемый конфиг-файл (EACCES) — не молчаливый пропуск', async () => {
+  itNonRoot('дисcovery-ошибка: существующий нечитаемый конфиг-файл (EACCES) — не молчаливый пропуск', async () => {
     const file = join(dir, 'opencode.json');
     writeFileSync(file, JSON.stringify({ agent: { x: {} } }));
     chmodSync(file, 0o000);
@@ -145,7 +150,7 @@ describe('complaint target resolver (R-13a)', () => {
     }
   });
 
-  it('дисcovery-ошибка: существующий нечитаемый каталог агентов (EACCES)', async () => {
+  itNonRoot('дисcovery-ошибка: существующий нечитаемый каталог агентов (EACCES)', async () => {
     const agentsDir = join(dir, '.opencode', 'agents');
     mkdirSync(agentsDir, { recursive: true });
     writeAgent(dir, 'ok-agent');
