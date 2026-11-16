@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=complaints.md set=3.1.1 -->
+<!-- wolf:rendered base=complaints.md set=3.1.2 -->
 # Complaint protocol — filing and triage
 
 A complaint is the active complaint loop for rule fixes. Complaints are

@@ -2,7 +2,7 @@
 name: wolf-git
 description: "Apply at a task's Git stages: entry/resumption, branch or worktree, checkpoint, handoff, completion and cleanup; also on a git failure that requires force, and on unconfirmed currency."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Git stages of a task
 

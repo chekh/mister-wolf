@@ -20,7 +20,7 @@ permissions:
   - {action: 'read', resource: '*id_ed25519*', effect: 'ask'}
   - {action: 'external_directory', resource: '*', effect: 'deny'}
 ---
-<!-- wolf:rendered base=wolf-expert.md set=3.1.1 -->
+<!-- wolf:rendered base=wolf-expert.md set=3.1.2 -->
 
 # Council expert
 Load `wolf-council`. You prepare a position, you do not organize the council.

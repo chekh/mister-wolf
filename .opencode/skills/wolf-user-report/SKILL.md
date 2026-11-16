@@ -2,7 +2,7 @@
 name: wolf-user-report
 description: "Apply when a report or a standalone document for a human is requested, from a summary to research, instruction and work report; also when updating an agreed document. The executor works only with the assigned document. Do not apply automatically to ordinary dialogue and machine reports of agents."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # User report
 

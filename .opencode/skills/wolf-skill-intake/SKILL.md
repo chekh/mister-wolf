@@ -2,7 +2,7 @@
 name: wolf-skill-intake
 description: "Evaluate an external skill before explicitly assigned inclusion in the base set."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Compatible input
 

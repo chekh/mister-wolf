@@ -2,7 +2,7 @@
 name: verification-before-completion
 description: "Apply before asserting readiness, a fix, passing verifications, successful integration or acceptance; also when in doubt about the currency of provided evidence."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Evidence before the claim
 

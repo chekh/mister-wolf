@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=agent-language.md set=3.1.1 -->
+<!-- wolf:rendered base=agent-language.md set=3.1.2 -->
 # Wolf internal agent language specification
 
 **Status:** versioned council extension; observation stage. Base specification approved by the owner (2026-11-04, decision mem_20261104_vnutrenniy_yazyk_wolf_etap_nablyudeniya_19ed1f; frame and rationale — docs/dev/2026-11-04-agent-language/pre-requirements.md).
@@ -8,6 +8,15 @@
 ## Coverage boundaries
 
 Covers only utterances that change work state: mandates, reports, verdicts, handoffs, complaints, proposals, status transitions. The descriptive zone is free: discussions, explanations and reasoning stay plain text (the frame is two-layer). Situations no form covers fall to the escape utterance (R6).
+
+## Session-language decision mechanics
+
+The session language decision is recorded, not inferred: after the first user
+message run `wolf add --type decision --title "Session language: <lang>"`; on an
+explicit language change record the new decision and immediately run
+`wolf supersede <old-id> <new-id>` — exactly one language decision stays active.
+The user's message language wins over host or platform language defaults. Normative
+text: AGENTS.md, "Session language".
 
 ## Terms
 

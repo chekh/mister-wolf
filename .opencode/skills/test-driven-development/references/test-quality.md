@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=test-quality.md set=3.1.1 -->
+<!-- wolf:rendered base=test-quality.md set=3.1.2 -->
 # Test independence and sensitivity
 
 A test must catch a specific wrong result, side effect, or contract violation. Name the defect that will make it fail. Correct words in source or self-report do not prove the system works.

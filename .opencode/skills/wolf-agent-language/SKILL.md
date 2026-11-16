@@ -2,7 +2,7 @@
 name: wolf-agent-language
 description: "Internal TASK/RESULT/QUESTION/BLOCKED/UPDATE/FINDING and handoff between agents."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Internal agent language
 

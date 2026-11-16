@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=division-of-labor.md set=3.1.1 -->
+<!-- wolf:rendered base=division-of-labor.md set=3.1.2 -->
 # Division of labor and mandate boundaries
 
 Loaded by the lead (L0) before assigning, continuing or replacing a subordinate. Do not

@@ -2,7 +2,7 @@
 name: wolf-release-docs
 description: "Apply when preparing any new Wolf version for release, when updating the README or the site for a release, when checking documentation readiness before publication, and after the release scope or the behavior of a documented feature changes."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Wolf documentation before a release
 

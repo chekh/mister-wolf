@@ -2,7 +2,7 @@
 name: wolf-software-design
 description: 'Apply inside wolf-design or for an assigned architecture question: choose software module boundaries, contracts, dependencies and state ownership. Does not trigger redesigning during ordinary implementation.'
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Designing the software solution
 

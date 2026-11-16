@@ -2,7 +2,7 @@
 name: wolf-requirements
 description: "Creating or changing requirements and verifiable REQ/NFRs for an agreed goal."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Formulate requirements
 

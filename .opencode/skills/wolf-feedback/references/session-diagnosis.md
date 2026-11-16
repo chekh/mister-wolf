@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=session-diagnosis.md set=3.1.1 -->
+<!-- wolf:rendered base=session-diagnosis.md set=3.1.2 -->
 # Assigned diagnosis of an episode or session
 
 The lead sets the question, boundaries, sources, answer criterion, the

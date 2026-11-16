@@ -2,7 +2,7 @@
 name: wolf-council
 description: 'Applied by the lead when a council is requested, on a substantial choice between justified alternatives or a contradiction of expert assessments; organize independent positions, the synthesis and the handoff of the decision.'
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Council
 
