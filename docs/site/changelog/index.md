@@ -8,6 +8,16 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [3.1.2] - 2026-11-16
+
+### Changed — the session-language decision is recorded by explicit commands, not left to judgment
+
+Live behavior sessions (`docs/dev/2026-11-16-behavior-check/behavior-log.md`) found the session-language rule followed in intent but skipped in mechanics: on an explicit language switch the agent recorded a new decision whose body said it superseded the old one, without running `wolf supersede` — two active language decisions in `wolf brief` until the lead intervened; with an English first message the agent skipped the record entirely (0 of 2 runs; the Russian first message recorded 1 of 1). Detection and reply language were correct in all runs — only the memory steps failed.
+
+The "Session language" section of `AGENTS.md` now makes the record a mandatory mechanical step with explicit commands: `wolf add --type decision --title "Session language: <lang>"` right after the first user message, and `wolf supersede <old-id> <new-id>` immediately after recording a replacement — so exactly one language decision stays active. It also states that host, platform or global language defaults do not replace this record: when they conflict with the user's message language, the user's message language is recorded. `agent-language.md` (the registry change of this patch) carries the same mechanics with a pointer to the normative section.
+
+`templates/base/AGENTS.md` is delivered by `wolf init` (not part of the update-map registry), so existing projects receive the rule update through their own root `AGENTS.md` (per project policy); the delivered skill reference updates through the standard `wolf upgrade`. Text-size estimates for the gated triple moved 687/1241/1445 → 801/1241/1563 (`docs/dev/2026-11-16-patch-3-1-2-language-decision/token-baseline.json`) — the growth is the explicit commands and the conflict rule the behavior sessions asked for.
+
 ## [3.1.1] - 2026-11-16
 
 ### Fixed — the macOS process-group race in the delivered verification helper no longer fails runs with an unrelated error
