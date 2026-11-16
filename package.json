@@ -28,7 +28,9 @@
     "update-map.json"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsc",
+    "build": "node scripts/build-incremental.mjs",
+    "build:clean": "rm -rf dist node_modules/.cache/tsconfig.tsbuildinfo && tsc --incremental false",
+    "prepublishOnly": "npm run build:clean",
     "build:dev": "tsc",
     "dev": "tsc --watch",
     "test": "vitest",
@@ -41,11 +43,13 @@
     "bench:search": "npm run build && node scripts/bench-search.mjs",
     "bench:tokens": "node --disable-warning=ExperimentalWarning scripts/bench-tokens.mjs",
     "check": "node scripts/check-delivery-language.mjs && node scripts/check-glossary-consistency.mjs && node scripts/check-english-surface.mjs && npm run format:check && npm run build && npm run test:run",
+    "check:quick": "npm run build && vitest run --changed",
+    "check:full": "npm run check && npm run docs:verify",
     "docs:dev": "vitepress dev docs/site",
     "docs:build": "node scripts/generate-cli-reference.mjs && node scripts/generate-cli-site-page.mjs && node scripts/sync-changelog.mjs && vitepress build docs/site",
     "docs:preview": "vitepress preview docs/site",
-    "docs:check": "npm run build && npm run docs:build && node scripts/check-docs-links.mjs",
-    "opencode-cost": "npm run build && node dist/opencode-cost/cli.js"
+    "docs:check": "npm run build && npm run docs:verify",
+    "docs:verify": "npm run docs:build && node scripts/check-docs-links.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",
