@@ -1,17 +1,18 @@
 ---
 name: wolf-release
-description: "Подготовка выпуска проверенной ревизии, публикация в рамках полномочий и post-check."
+description: "Preparing the release of a verified revision, publication within the mandate, and a post-check."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.0.0 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
 
+# Release the result
 
-# Выпустить результат
-
-Зафиксировать целевой SHA, состав, полный номер версии, обязательные checks и открытые
-ограничения. Проверить полномочия на tag/merge/publish/deploy; не переутверждать уже данное.
-Подготовить сборку, релевантную документацию, changelog, миграции и способ восстановления.
-Проектные maintainer-only правила версии сохраняются. Не выбирать новую версию самовольно.
-Без полномочий завершить подготовкой READY_FOR_RELEASE и конкретным запросом решения.
-После разрешённого выпуска проверить артефакт/работоспособность по сценарию проекта.
-Сбой → адресная диагностика, не заявление успеха. Финал: revision, выпущенное, evidence,
-ограничения и статус. Не создавать собственный release engine.
+Record target SHA, release scope, full version, required checks, open
+constraints. Verify the mandate for tag/merge/publish/deploy; do not
+re-approve what is given. Prepare build, relevant docs, changelog,
+migrations, a recovery path. Maintainer-only versioning rules hold; do not
+pick a new version on your own initiative. Without a mandate, finish at
+READY_FOR_RELEASE preparation and a concrete decision request. After the
+authorized release, verify artifact/operability by the project scenario.
+A failure → addressed diagnostics, not a success declaration.
+Final: revision, what was released, evidence, constraints, status.
+Do not create your own release engine.

@@ -1,18 +1,17 @@
 ---
 name: wolf-test
-description: "Выполнение независимых поведенческих, интеграционных и регрессионных проверок."
+description: "Execution of independent behavioral, integration and regression verifications."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.0.0 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
 
+# Verify behavior
 
-# Проверить поведение
-
-Зафиксировать revision/digest, среду, данные и критерии. Выполнить назначенные сценарии
-с oracle из требований, записывая METHOD/cwd/OUTCOME/LIMITS.
-Не повторять тот же прогон автора на неизменённом коде без причины: независимость нужна
-для значимых свойств/взаимодействий, а не второго одинакового лога.
-Сценарии с общими сервисами/данными изолировать либо упорядочить.
-Дефект: минимальное воспроизведение, expected/actual, evidence, влияние.
-Не менять продукт или AC, чтобы сделать тест зелёным. Сбой среды — ограничение проверки.
-После исправления — targeted и затронутая регрессия; после интеграции — взаимодействия.
-PASS подтверждает проверенные сценарии, не отсутствие всех дефектов.
+Record revision/digest, environment, data and criteria. Execute assigned
+scenarios with the requirements oracle, recording METHOD/cwd/OUTCOME/LIMITS.
+Do not repeat the author's run on unchanged code without a reason: independence
+is needed for significant properties/interactions, not a second identical log.
+Scenarios sharing services/data must be isolated or ordered. A defect: minimal
+reproduction, expected/actual, evidence, impact. Do not change the product or AC
+to make a test green. An environment failure is a verification limitation.
+After a fix — targeted and affected-area regression; after integration — interactions.
+PASS confirms the verified scenarios, not absence of all defects.

@@ -1,62 +1,55 @@
 ---
 name: wolf-design
-description: "Применять перед проектированием решения по утверждённым требованиям при FULL, изменении интерфейсов, состояния, миграций или границ доверия; также при пересмотре ранее принятого дизайна."
+description: "Apply before designing a solution for approved requirements in FULL, when interfaces, state, migrations or trust contours change; also when a previously accepted design is revisited."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.0.0 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
 
-# Требования → дизайн
+# Requirements → design
 
-## Обязательный вход
+## Mandatory input
 
-Ведущий согласует продуктовые решения; документы и исследование выполняет он сам или назначенный исполнитель. До проектирования проверь утверждение и версии требований. Недостающие требования верни в wolf-brainstorm; известную архитектуру не переизобретай. Для FULL заполняй design.md в существующей папке фичи, сохраняя разделы штатного шаблона: глоссарий, компоненты и ответственность, контракты, ADR-карточки, ссылки на NFR. Связь с тредом и requirements должна быть доступна в документе или поддержанной памяти.
+The lead aligns product decisions; the lead or an assigned executor produces documents, research. Before designing, verify approval and requirement versions. Return missing requirements to wolf-brainstorm; do not reinvent known architecture. For FULL, fill design.md in the existing feature folder with the standard template sections: glossary, components and responsibility, contracts, ADR cards, NFR references. The thread relation and requirements must be available in the document or maintained memory.
 
-Различай обязательные требования и условные; условное выполняй при наличии его основания.
+Distinguish mandatory from conditional requirements; carry out a conditional one when its grounds are present.
 
-## Вход и выход
+## Input and output
 
-Вход: approved requirements или утверждённый бриф, baseline SHA, существующая архитектура и профиль проекта. Выход: design.md с состоянием review, картой покрытия REQ/NFR и решениями для согласования. Автор — назначенный исполнитель или ведущий; утверждение — по политике проекта владельцем решения.
+Input: approved requirements or an approved brief, baseline SHA, existing architecture, project profile. Output: design.md with review state, a REQ/NFR coverage map, decisions for approval. The author is an assigned executor or the lead; approval follows project policy and is made by the responsible party.
 
-## Инженерная методика
+## Engineering skill
 
-Для программного решения с выбором границ, контрактов, зависимостей или состояния
-подключи wolf-software-design. Встроенная методика не создаёт отдельного гейта.
-Наниматель может поручить wolf-researcher один архитектурный вопрос с вариантами и рекомендацией;
-утверждение остаётся у ответственного уровня. Researcher отвечает сообщением,
-его полномочия не разрешают запись design.md или реализацию.
+For a software solution choosing boundaries, contracts, dependencies or state, connect wolf-software-design; the built-in skill creates no separate gate. The requester may assign wolf-researcher one architectural question with options and recommendation; approval stays at the responsible level. The researcher answers with a message, may not write design.md or implementation.
 
-## Процесс
+## Process
 
-1. Проверь актуальность требований и прочитай код затронутых компонентов и потребителей. Ссылки задавай как revision:path:symbol; номера строк — дополнительный ориентир.
-2. Для каждого REQ/NFR укажи компонент, контракт, проверяемое свойство либо обоснованное «дизайн не требуется».
-3. Опиши ответственность компонентов, владение состоянием, границы интерфейсов, потоки данных и зависимостей. Для конкурентной работы задай инварианты и порядок записи.
-4. Контракты задавай типами/схемами достаточной длины; алгоритмы — псевдокодом, если проза допускает разные реализации. Не вставляй готовую реализацию продукта.
-5. Для существенного решения запиши ADR: контекст, альтернативы, выбор, последствия, риск, проверка допущения. Продуктовые компромиссы, scope и необратимые решения верни владельцу решения; локальные технические выборы решай в своём мандате.
-6. Проверь отказ зависимостей, частичный сбой, retry/idempotency, восстановление, observability, совместимость и миграции. Для каждой неприменимой области достаточно обоснования.
-7. При работе с внешним контентом или исполнением команд опиши trust boundary, права, защиту секретов и validation. Не объявляй механизм реализованным только по наличию запрета в тексте.
-8. Укажи технические бюджеты NFR и способ измерения; предложи ограниченный spike для неопределённости, блокирующей выбор. Результат spike не становится реализацией автоматически.
-9. Передай design на wolf-review. Получи требуемые согласования и сохрани revision вердикта.
+1. Check the requirements are current; read code of affected components, consumers. Write references as revision:path:symbol; line numbers are a guide.
+2. Per REQ/NFR, state component, contract, a verifiable property, or a justified "design not required".
+3. Describe component responsibility, state ownership, interface boundaries, data flows, dependencies. For concurrent work, define invariants and write order.
+4. Specify contracts as types/schemas of sufficient length; algorithms as pseudocode when prose admits different implementations; do not insert a ready-made product implementation.
+5. For a substantial decision, write an ADR: context, alternatives, choice, consequences, risk, assumption verification. Return product trade-offs, scope and irreversible decisions to the responsible party; decide local technical choices within your mandate.
+6. Verify dependency failures, partial failure, retry/idempotency, recovery, observability, compatibility, migrations; a rationale suffices for inapplicable areas.
+7. With external content or command execution, describe the trust boundary, rights, secret protection, validation. Do not declare a mechanism implemented merely because text has a prohibition.
+8. State technical NFR budgets and measurement method; propose a limited spike for choice-blocking uncertainty; a spike result does not automatically become the implementation.
+9. Hand the design to wolf-review; obtain required approvals and keep the verdict revision.
 
-## Допущения и короткий путь
+## Assumptions and the short path
 
-Используй известный подход и существующие контракты, когда они достаточны.
-Перед spike спроси носителя решения или проверь ближайший источник: эксперимент
-нужен для оставшегося существенного неизвестного. Укажи, какой выбор изменят
-его исходы. Новое требование или существенный компромисс не угадывай по коду.
+Use the known approach and existing contracts when sufficient. Before a spike, ask the responsible party or check the nearest source: experiment is for remaining substantial unknowns. State which choices its outcomes change. Do not guess a new requirement or substantial trade-off from code.
 
-## Готовность и возврат
+## Readiness and return
 
-Проектировать test-plan параллельно после общей основы; непроверяемое вернуть в требования.
+Design the test-plan in parallel after the common basis; return the unverifiable to requirements.
 
-Каждое требование покрыто, контракты согласованы с baseline, критические допущения проверены или заблокированы. Утверждённый дизайн передай в wolf-plan и wolf-testplan. Изменение требования верни в discovery; изменение контракта инвалидирует зависимые задачи, тесты и ревью.
+Every requirement is covered, contracts match the baseline, critical assumptions are verified or blocked. Hand the approved design to wolf-plan and wolf-testplan. A requirement change returns to discovery; a contract change invalidates dependent tasks, tests, reviews.
 
-## Гейт перехода
+## Transition gate
 
-Не передавай дизайн в планирование, пока не проверены покрытие требований, отказные сценарии, необходимые согласования ADR и ревью именно этой версии. Если меняется требование, вернись в wolf-brainstorm; если меняется только техническое решение, повтори затронутое ревью. После утверждения назначь wolf-plan и wolf-testplan, не реализацию.
+Do not hand the design to planning until requirement coverage, failure scenarios, required ADR approvals and review of this exact version are verified. A requirement change returns to wolf-brainstorm; if only the technical solution changes, repeat the affected review. After approval, assign wolf-plan and wolf-testplan, not implementation.
 
-## Не пропускай процесс
+## Do not skip the process
 
-| Мысль | Действие |
+| Thought | Action |
 | --- | --- |
-| «Архитектура очевидна» | Зафиксируй границы, контракты и последствия; очевидность не заменяет документ FULL. |
-| «Требования пока черновые, но можно начать» | Не превращай предположение в утверждённый вход. |
-| «Ревью было вчера» | Сопоставь одобренную и текущую версии. |
+| "The architecture is obvious" | Write down the boundaries, contracts and consequences; obviousness does not replace the FULL document. |
+| "The requirements are still drafts, but we can start" | Do not turn an assumption into an approved input. |
+| "The review was yesterday" | Compare the approved and current versions. |

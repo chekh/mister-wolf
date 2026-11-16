@@ -1,12 +1,12 @@
 ---
 name: wolf-sdd
-description: "Исполнение утверждённого плана через собственную работу и свежих исполнителей."
+description: "Executing an approved plan through own work and fresh executors."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.0.0 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
 
-# Совместимый вход
+# Compatible input
 
-Загрузить `wolf-execute` один раз и выполнить относящуюся часть.
-Не создавать дополнительный этап или повторный круг проверок.
+Load `wolf-execute` once and perform the relevant part.
+Do not create an extra stage or a repeated verification cycle.
 
-Переходная мера: удалить в следующем релизе.
+Transitional measure: remove in the next release.

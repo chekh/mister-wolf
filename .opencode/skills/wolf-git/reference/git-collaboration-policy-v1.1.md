@@ -1,460 +1,460 @@
-<!-- wolf:rendered base=git-collaboration-policy-v1.1.md set=3.0.0 -->
-# Регламент совместной работы с Git
+<!-- wolf:rendered base=git-collaboration-policy-v1.1.md set=3.1.1 -->
+# Git Collaboration Policy
 
-**Версия документа:** 1.1  
-**Дата:** 1 ноября 2026 года  
-**Назначение:** нормативная основа для людей, агентов и разработки переносимых инструментов и скиллов Mr. Wolf.  
-**Статус:** проект регламента по итогам согласования процесса; введение в конкретном репозитории требует настройки защит и CI.
+**Document version:** 1.1  
+**Date:** November 1, 2026  
+**Purpose:** the normative foundation for people, agents, and the development of portable tools and skills of Mr. Wolf.  
+**Status:** a draft of the policy after the process was agreed; introducing it in a specific repository requires configuring protections and CI.
 
-## 1. Область действия и язык требований
+## 1. Scope and the language of requirements
 
-Регламент применяется к небольшим проектам с одной актуальной линией выпуска, одной интеграционной веткой `main` и параллельной работой людей и агентов. Ветка `dev` не используется. Постоянные ветки поддержки старых релизов не создаются.
+The policy covers small projects with one release line, one integration branch `main`, and parallel work of people and agents. A `dev` branch is not used; permanent maintenance branches for old releases are not created.
 
-Правила одинаковы для одного хоста, нескольких хостов, отдельных clones и связанных worktrees. Харнес агента, Git-хостинг, CI и registry могут различаться. Основой служат стандартный Git, переносимые скрипты и явно заданная политика проекта.
+The rules are the same for one host, several hosts, separate clones, and linked worktrees. The agent harness, Git hosting, CI, and the registry may differ. The foundation is standard Git, portable scripts, and an explicitly defined project policy.
 
-В документе:
+In this document:
 
-- **ОБЯЗАТЕЛЬНО** — условие допуска к следующему этапу.
-- **ЗАПРЕЩЕНО** — действие не входит в обычный процесс и не может выполняться ради обхода гейта.
-- **ДОПУСКАЕТСЯ** — разрешённый вариант при указанных условиях.
-- **Гейт** — проверяемые условия перехода между этапами. Непройденный гейт блокирует конкретный переход, а не всю независимую работу проекта.
+- **MUST** — a condition for admission to the next stage.
+- **FORBIDDEN** — the action is not part of the normal process and must not be performed to work around a gate.
+- **ALLOWED** — a permitted option under the stated conditions.
+- **Gate** — verifiable conditions of a transition between stages. A failed gate blocks that transition, not all independent project work.
 
-Регламент определяет требуемое поведение. Приведённые ниже поля, статусы и операции — контракт для будущей реализации, а не утверждение о существующих командах Wolf.
+The policy defines required behavior. The fields, statuses, and operations below are a contract for future implementation, not a claim about existing Wolf commands.
 
-## 2. Основные понятия
+## 2. Basic concepts
 
-| Понятие | Значение |
+| Concept | Meaning |
 |---|---|
-| Общий репозиторий | Назначенный Git remote, через который публикуют и принимают работу |
-| Локальная копия | Clone на конкретном хосте со своими локальными данными |
-| Worktree | Отдельный рабочий каталог, связанный с локальным Git-репозиторием |
-| Рабочая ветка | Ветка одной задачи с владельцем и целевой веткой |
-| Родительская ветка | Рабочая ветка ведущего участника, принимающая результаты его подзадач |
-| Baseline | Конкретный разрешённый SHA, от которого создана рабочая ветка |
-| Checkpoint | Локальный коммит, сохраняющий известный набор изменений; не является приёмкой |
-| MR | Запрос на слияние; включает также PR на платформах с таким названием |
-| Приёмка | Решение, что результат задачи отвечает требованиям и может быть предъявлен к интеграции |
-| Интеграция | Включение принятого результата в целевую ветку |
-| Кандидат интеграции | Точный merge-коммит с первым родителем — SHA целевой ветки, вторым — принятый SHA исходной ветки; проверяется до публикации |
-| Выпуск | Публикация конкретной версии из выбранного принятого коммита |
-| Digest образа | Идентификатор содержимого образа или его индекса, в отличие от изменяемого тега |
+| Shared repository | The designated Git remote where work is published and accepted |
+| Local copy | A clone on a specific host with its own local data |
+| Worktree | A separate working directory linked to a local Git repository |
+| Working branch | The branch of one task, with an owner and a target branch |
+| Parent branch | The working branch of a lead participant that receives subtask results |
+| Baseline | The specific allowed SHA from which a working branch is created |
+| Checkpoint | A local commit preserving a known set of changes; not an acceptance |
+| MR | A merge request; it also includes a PR on platforms with that name |
+| Acceptance | The decision that a task's result meets the requirements and may be presented for integration |
+| Integration | Including an accepted result into the target branch |
+| Integration candidate | The exact merge commit with the target branch SHA as its first parent and the accepted source branch SHA as its second; verified before publication |
+| Release | Publishing a specific version from a chosen accepted commit |
+| Image digest | The identifier of the image's or its index's content, as opposed to a mutable tag |
 
-**Изменено, сохранено, опубликовано, принято, интегрировано и выпущено — разные состояния.**
+**Modified, saved, published, accepted, integrated, and released are different states.**
 
-| Состояние | Минимальное подтверждение |
+| State | Minimum confirmation |
 |---|---|
-| Изменено | Файлы в рабочем каталоге |
-| Сохранено | Локальный SHA, содержащий нужную работу |
-| Опубликовано | Наблюдаемая ссылка в общем репозитории, из которой доступен этот SHA |
-| Принято | Решение уполномоченного принимающего для конкретного SHA |
-| Интегрировано | Подтверждённый результат MR в целевой ветке |
-| Выпущено | Git-тег версии и подтверждённый опубликованный образ с digest |
+| Modified | Files in the working directory |
+| Saved | A local SHA containing the needed work |
+| Published | An observable shared repository reference from which this SHA is available |
+| Accepted | The authorized acceptance owner's decision for a specific SHA |
+| Integrated | A confirmed MR result in the target branch |
+| Released | A version Git tag and a confirmed published image with a digest |
 
-## 3. Ответственность и полномочия
+## 3. Responsibility and rights
 
-Роли обозначают ответственность, а не обязательные отдельные процессы или агентов. Человек может выполнять роль ведущего; ведущий агент Wolf — принимать результаты исполнителей.
+Roles denote responsibility, not mandatory separate processes or agents. A person may perform the lead role; the Wolf lead agent may accept executor results.
 
-| Участник | Ответственность и полномочия |
+| Participant | Responsibility and rights |
 |---|---|
-| Владелец проекта | Утверждает политику, полномочия, обязательные проверки и настройки защиты |
-| Владелец задачи / ветки | Отвечает за историю ветки, checkpoint, публикацию, актуализацию и уборку своих рабочих копий |
-| Ведущий участник | Назначает подзадачи, принимает дочерние MR и отвечает за общий результат своей ветки |
-| Принимающий | Проверяет требования задачи и разрешает предъявление конкретного SHA к интеграции |
-| Обработчик интеграции | Последовательно проверяет кандидатов и обновляет `main` в пределах заданных правил |
-| Оператор выпуска | Явно запускает выпуск версии из выбранного SHA; человеком или агентом согласно политике проекта |
-| CI выпуска | Проверяет запрос, создаёт тег, собирает и публикует образ, запускает очистку registry |
+| Project owner | Approves the policy, the rights, the required checks, and the protection settings |
+| Task/branch owner | Is responsible for the branch history, checkpoints, publication, refreshing, and cleanup of their working copies |
+| Lead participant | Assigns subtasks, accepts child MRs, and is responsible for the overall result of their branch |
+| Acceptance owner | Verifies the task's requirements and permits presenting a specific SHA for integration |
+| Integration handler | Verifies candidates in sequence and updates `main` within the given rules |
+| Release operator | Explicitly triggers the release of a version from a chosen SHA; a person or an agent per the project policy |
+| Release CI | Verifies the request, creates the tag, builds and publishes the image, triggers registry cleanup |
 
-У рабочего каталога один активный писатель. У рабочей ветки один активный владелец записи и публикации. Другие участники предлагают изменения через собственные ветки и MR.
+A working directory has one active writer. A working branch has one active owner of recording and publication. Other participants propose changes through their own branches and MRs.
 
-Назначенный владелец задачи вправе и обязан создавать локальные checkpoint-коммиты своих изменений в назначенной ветке. Это постоянное полномочие: повторное разрешение на каждый коммит не требуется. Публикация рабочей ветки разрешается назначением на задачу, если проект не установил иной порядок.
+When the TASK explicitly grants commit rights, the assigned task owner is entitled and obliged to create local checkpoint commits of their changes in the assigned branch; within that TASK each further checkpoint needs no new permission. Without explicit TASK rights the executor makes no commits and hands off the changes and their state. Publication of a working branch is permitted only by an explicit task mandate, unless the project has established a different order.
 
-Владелец не вправе включать неизвестные или чужие изменения в свой коммит. Если исполнитель не имеет права коммитить, в поручении ОБЯЗАТЕЛЬНО указывается ведущий, который сохраняет его результат до остановки или передачи. Обязанность сохранить работу не может оставаться без ответственного.
+The owner must not include unknown or someone else's changes in their commit. If an executor has no right to commit, the mandate MUST name the lead who preserves their result until a stop or handoff. The obligation to preserve the work must not remain without a responsible party.
 
-Право коммитить и публиковать рабочую ветку не даёт права напрямую менять `main`, создавать релизные теги или обходить проверки. Стюард не участвует в обычном контроле Git-процесса: состояние проверяют инструменты, решения принимают назначенные участники.
+The right to commit and publish a working branch does not give the right to change `main` directly, create release tags, or bypass checks. The Steward does not participate in ordinary Git process control: the state is verified by tools, decisions are made by the assigned participants.
 
-## 4. Модель веток и дерева задач
+## 4. The branch and task tree model
 
-### 4.1. Общие правила
+### 4.1. General rules
 
-1. `main` содержит интегрированные результаты и является базой независимых задач.
-2. Непосредственная разработка и ручные checkpoint-коммиты в `main` ЗАПРЕЩЕНЫ.
-3. Каждая новая задача получает отдельную ветку. Завершённые имена веток повторно не используются.
-4. Независимые ведущие участники создают ветки от проверенного SHA общего `main`.
-5. Субзадача ответвляется от явно выбранного SHA родительской рабочей ветки и предъявляется обратно в неё.
-6. После окончательной интеграции рабочая ветка закрывается. Последующие изменения оформляются новой задачей и веткой.
-7. Опубликованную историю рабочих веток не переписывают. Историю `main` и опубликованные релизные теги не переписывают никогда в рамках штатного процесса.
+1. `main` contains integrated results and is the base of independent tasks.
+2. Direct development and manual checkpoint commits in `main` are FORBIDDEN.
+3. Each new task gets a separate branch. Completed branch names are not reused.
+4. Independent lead participants create branches from a verified SHA of the shared `main`.
+5. A subtask branches from an explicitly chosen SHA of the parent working branch and is presented back into it.
+6. After final integration, the working branch is closed. Subsequent changes are arranged as a new task and branch.
+7. The published history of working branches is not rewritten. The history of `main` and published release tags are never rewritten in the normal process.
 
-### 4.2. Пример
+### 4.2. Example
 
-| Участник | Ветка | База при создании | Цель MR |
+| Participant | Branch | Base at creation | MR goal |
 |---|---|---|---|
-| Ведущий А | `feat/123-some-a` | Проверенный SHA `main` | `main` |
-| Субагент А1 | `feat/124-some-a1` | SHA `feat/123-some-a` | `feat/123-some-a` |
-| Субагент А2 | `fix/125-some-a2` | SHA `feat/123-some-a` | `feat/123-some-a` |
-| Ведущий Б | `feat/126-some-b` | Проверенный SHA `main` | `main` |
+| Lead A | `feat/123-some-a` | Verified SHA of `main` | `main` |
+| Subagent A1 | `feat/124-some-a1` | SHA `feat/123-some-a` | `feat/123-some-a` |
+| Subagent A2 | `fix/125-some-a2` | SHA `feat/123-some-a` | `feat/123-some-a` |
+| Lead B | `feat/126-some-b` | Verified SHA of `main` | `main` |
 
-Префиксы `feat/`, `fix/`, `docs/`, `chore/` помогают навигации. Они не определяют полномочия. Имя включает уникальный идентификатор задачи и краткое описание. Связь с родителем хранится явно, а не вычисляется по похожести названий.
+The `feat/`, `fix/`, `docs/`, `chore/` prefixes help navigation. They do not define rights. The name includes a unique task ID and a brief description. The relation to the parent is stored explicitly, not computed from name similarity.
 
-Ведущий не предъявляет свою ветку в `main`, пока необходимые дочерние результаты не приняты, а оставшиеся подзадачи не закрыты, отменены или явно вынесены в самостоятельную работу. После готовности родительского MR запись в его ветку замораживается; изменение снимает готовность.
+A lead does not present their branch into `main` until the needed child results are accepted and the remaining subtasks are closed, canceled, or explicitly moved to standalone work. After the parent MR is ready, recording in its branch is frozen; a change withdraws readiness.
 
-## 5. Работа на одном и нескольких хостах
+## 5. Work on one and several hosts
 
-| Размещение | Обязательное правило |
+| Placement | Mandatory rule |
 |---|---|
-| Один clone, связанные worktrees | Каждому активному писателю — отдельный worktree и отдельная ветка |
-| Несколько clones на одном хосте | Каждый clone самостоятельно проверяет и синхронизирует состояние |
-| Разные хосты | Обмен коммитами через общий репозиторий; разные активные владельцы работают в разных ветках |
-| Передача одной ветки | Сначала остановка прежнего владельца и публикация; затем подтверждённое принятие новым |
+| One clone, linked worktrees | Each active writer gets a separate worktree and branch |
+| Several clones on one host | Each clone verifies and synchronizes the state on its own |
+| Different hosts | Commits are exchanged through the shared repository; different active owners work in different branches |
+| Handoff of one branch | First the previous owner stops and publishes; then the new one's acceptance is confirmed |
 
-Договорённость «редактируем разные файлы» не разрешает независимую одновременную запись в один рабочий каталог. Параллельные независимые писатели используют разные ветки.
+The "we edit different files" arrangement does not permit independent simultaneous recording in one working directory. Parallel independent writers use different branches.
 
-Связанные worktrees имеют общие локальные ветки и часть Git-метаданных. Инструменты ОБЯЗАТЕЛЬНО координируют операции над общими refs и служебным состоянием clone. Нельзя изменять ветку, используемую другим владельцем, или обходить защиту Git от её одновременного checkout.
+Linked worktrees share local branches and part of the Git metadata. Tools MUST coordinate operations on shared refs and the clone's internal state. A branch used by another owner must not be changed, nor Git's protection against its concurrent checkout bypassed.
 
-`git worktree lock` не считается блокировкой записи для агентов или механизмом распределённого владения. Владение отражается в состоянии задачи, а прекращение записи подтверждает прежний владелец или ответственный ведущий после остановки процесса.
+`git worktree lock` is not counted as a recording lock for agents or a distributed ownership mechanism. Ownership is reflected in the task state, and the stopping of recording is confirmed by the previous owner or the responsible lead after the process is stopped.
 
-Факт потери связи или давность активности не разрешают второму участнику немедленно продолжить запись в ту же ветку. При сомнении создаётся отдельная ветка восстановления, а владение разбирается явно.
+Neither lost connectivity nor activity age permits a second participant to immediately continue recording in the same branch. In case of doubt, a separate recovery branch is created, and ownership is resolved explicitly.
 
-## 6. Вход в работу: проверка и актуализация
+## 6. Entry into work: verification and refresh
 
-### 6.1. Обязательная последовательность
+### 6.1. Mandatory sequence
 
-При начале задачи, возобновлении после перерыва, рестарта или смены владельца участник:
+At task start, on resumption after a break, a restart, or a change of owner, the participant:
 
-1. Проверяет идентичность репозитория, адрес общего remote, хост, путь worktree и ветку задачи.
-2. Проверяет staged, unstaged, untracked-файлы и известные ценные файлы вне Git.
-3. Проверяет незавершённые merge, rebase, cherry-pick и другие Git-операции.
-4. Проверяет назначенного владельца, baseline, локальный HEAD и сохранённые сведения о задаче.
-5. Получает актуальные refs общего репозитория и фиксирует время успешного наблюдения.
-6. Отдельно сравнивает рабочую ветку с её опубликованной версией и с целевой веткой MR.
-7. Только после этого выбирает разрешённое обновление или восстановление.
+1. Verifies the repository identity, the shared remote address, the host, the worktree path, and the task branch.
+2. Verifies staged, unstaged, and untracked files and known valuable files outside Git.
+3. Verifies an unfinished merge, rebase, cherry-pick, and other Git operations.
+4. Verifies the assigned owner, the baseline, the local HEAD, and the saved task information.
+5. Obtains the current refs of the shared repository and records the time of successful observation.
+6. Separately compares the working branch with its published version and with the MR target branch.
+7. Only then chooses an allowed update or recovery.
 
-Fetch обновляет сведения об удалённом состоянии, но не означает включения изменений в рабочую ветку. Старое значение remote-tracking ref не является подтверждением текущего состояния сервера.
+Fetch updates the remote-state information, but does not mean the changes are included into the working branch. An old remote-tracking ref value is not a confirmation of the server's current state.
 
-### 6.2. Локальный `main`
+### 6.2. Local `main`
 
-После успешного получения удалённого состояния применяется таблица:
+After the remote state is successfully obtained, the table applies:
 
-| Локальный `main` относительно общего `main` | Разрешённое действие |
+| Local `main` relative to the shared `main` | Allowed action |
 |---|---|
-| Совпадает | Использовать SHA как проверенную базу |
-| Только отстаёт | Обновить fast-forward при чистом каталоге и отсутствии чужого владельца |
-| Впереди | Остановить обновление; установить происхождение и сохранить локальные коммиты |
-| История разошлась | Остановить обновление; выполнить разбор расхождения |
-| Remote недоступен | Пометить актуальность как неподтверждённую |
+| Matches | Use the SHA as the verified base |
+| Behind only | Fast-forward when the directory is clean and no other owner exists |
+| Ahead | Stop updating; establish the origin and preserve the local commits |
+| History diverged | Stop updating; perform a divergence analysis |
+| Remote unreachable | Mark currency as unconfirmed |
 
-Локальные коммиты в `main` нельзя автоматически пушить, сбрасывать или удалять ради синхронизации. Известную полезную работу можно сохранить отдельной веткой и затем предъявить через обычный MR. Приведение локального `main` к общему состоянию выполняют только после сохранения работы и проверки владения.
+Local commits in `main` must not be automatically pushed, reset, or deleted for synchronization. Known useful work may be preserved in a separate branch and then presented through a regular MR. Bringing the local `main` to the shared state is done only after the work is saved and ownership is verified.
 
-Для создания новой задачи не требуется обязательно переключать или обновлять локальный `main`: допустимо создать ветку непосредственно от проверенного SHA общего `main`. Аномалия локального `main` всё равно фиксируется и не скрывается.
+Creating a new task does not require switching or updating the local `main`: a branch may be created directly from a verified SHA of the shared `main`. An anomaly of the local `main` is still recorded and not hidden.
 
-### 6.3. Рабочая ветка и её опубликованная версия
+### 6.3. The working branch and its published version
 
-| Состояние | Действие |
+| State | Action |
 |---|---|
-| Совпадают | Продолжить после остальных проверок |
-| Локальная впереди | Проверить принадлежность коммитов задаче; опубликовать на обязательной границе |
-| Локальная только отстаёт | Установить происхождение удалённых коммитов; обновить fast-forward, если они ожидаемы |
-| Разошлись | Остановить автоматическое обновление; выяснить причины и владельца |
-| Удалённая ветка отсутствует | Различить новую неопубликованную ветку, закрытую задачу и неожиданное удаление |
+| They match | Continue after the remaining verifications |
+| Local is ahead | Verify the commits belong to the task; publish at a mandatory boundary |
+| Local is behind only | Establish the remote commits' origin; fast-forward if they are expected |
+| Diverged | Stop automatic updating; find the reasons and the owner |
+| The remote branch is missing | Distinguish a new unpublished branch, a closed task, and an unexpected deletion |
 
-Наличие ожидаемых локальных коммитов само по себе не является ошибкой. Неизвестное происхождение локальных или удалённых изменений — основание для разбора.
+The presence of expected local commits is not an error on its own. An unknown origin of local or remote changes is grounds for analysis.
 
-### 6.4. Обновление из целевой ветки
+### 6.4. Updating from the target branch
 
-Изменения цели включаются в опубликованную рабочую ветку через merge. Перед merge собственная работа сохраняется, неизвестные изменения разбираются. После разрешения конфликтов выполняются необходимые проверки.
+Target changes reach the published working branch through a merge. Before the merge, own work is saved and unknown changes are examined. After conflicts are resolved, the necessary verifications are performed.
 
-Ведущий обновляет свою ветку из `main`; субагент — из родительской ветки. Одновременное независимое вливание `main` во все уровни дерева не требуется.
+A lead updates their branch from `main`; a subagent from the parent branch. Simultaneous independent merging of `main` into all tree levels is not required.
 
-После каждого нового коммита цели немедленное обновление всех веток не требуется. Проверить положение ОБЯЗАТЕЛЬНО при входе, передаче и предъявлении результата. Включить обновления требуется при зависимости от них, конфликте, нарушении совместимости или возврате MR обработчиком. Автоматически совместимый результат может проверить сам обработчик интеграции без изменения исходной ветки.
+After each new target commit, an immediate update of all branches is not required. The state MUST be verified at entry, at handoff, and at result presentation. Updates are required when there is a dependency on them, a conflict, a compatibility violation, or an MR returned by the handler. An automatically compatible result may be verified by the integration handler on its own, without changing the source branch.
 
-Rebase допускается только для неопубликованной работы единственного владельца, от которой никто не ответвлялся. Составная команда `pull` не используется как безусловный способ исправить любое состояние: получение сведений и способ изменения истории должны быть явными.
+Rebase is allowed only for unpublished work of a single owner from which nobody has branched. The compound `pull` command is not used as an unconditional way to fix any state: obtaining information and the way history is changed must be explicit.
 
-### 6.5. Работа без связи
+### 6.5. Work without connectivity
 
-Допускается продолжать известную локальную задачу от ранее проверенной базы и создавать checkpoint. Фиксируется последнее успешное наблюдение remote. Новая независимая задача от неподтверждённой базы, приёмка в общую ветку, межхостовая передача и выпуск блокируются до восстановления связи. В отчёте нельзя называть такую копию актуальной.
+A known local task may continue from a previously verified base and create checkpoints. The last successful remote observation is recorded. A new independent task from an unconfirmed base, acceptance into the shared branch, cross-host handoff, and release are blocked until connectivity is restored. A report must not call such a copy current.
 
-## 7. Создание ветки и worktree
+## 7. Branch and worktree creation
 
-Перед созданием ОБЯЗАТЕЛЬНО определить задачу, владельца, цель MR и точный baseline SHA. Текущий HEAD не выбирается автоматически.
+Before creation, the task, the owner, the MR goal, and the exact baseline SHA MUST be determined. The current HEAD is not chosen automatically.
 
-Ветку верхнего уровня создают от проверенного `main`; дочернюю — от сохранённого и идентифицированного коммита родителя. Для передачи на другой хост этот коммит должен быть опубликован и доступен получателю. Изменения родителя, оставшиеся только в файлах, не являются базой дочерней ветки.
+A top-level branch is created from a verified `main`; a child branch from the saved and identified parent commit. For a handoff to another host, this commit must be published and available to the receiver. Parent changes left only in files are not the child branch's base.
 
-Создание включает проверку уникальности имени, отсутствия существующей работы той же задачи, безопасного пути и регистрации worktree. Непустой посторонний каталог не перезаписывается. Для продолжения задачи сначала ищут существующую ветку и worktree, а не создают дубликат.
+Creation includes verifying the name's uniqueness, the absence of existing work of the same task, a safe path, and worktree registration. Someone else's non-empty directory is not overwritten. To continue a task, an existing branch and worktree are looked for first, instead of creating a duplicate.
 
-Подготовка окружения выполняется отдельно: зависимости, локальные настройки и секреты не должны случайно попасть в коммиты. Симлинки и общие каталоги не должны позволять двум worktrees незаметно менять одни и те же исходники или результаты сборки.
+Environment preparation is done separately: dependencies, local settings, and secrets must not accidentally end up in commits. Symlinks and shared directories must not let two worktrees silently change the same sources or build results.
 
-## 8. Сохранение и публикация
+## 8. Saving and publication
 
-Checkpoint ОБЯЗАТЕЛЕН:
+A checkpoint MUST be created:
 
-- на завершённом логическом шаге;
-- перед плановой остановкой и передачей владения;
-- перед операцией, способной затронуть незакоммиченную работу;
-- перед предъявлением результата к приёмке.
+- at a completed logical step;
+- before a planned stop and ownership handoff;
+- before an operation that can affect uncommitted work;
+- before presenting a result for acceptance.
 
-Внутри непрерывной работы владельца допускаются известные незакоммиченные изменения. Коммит перед каждым действием или запуском каждого субагента не требуется. В штатной схеме субагент работает в своей ветке и сохраняет её результат сам либо через явно назначенного ответственного.
+Within an owner's continuous work, known uncommitted changes are allowed. A commit before every action or every subagent's launch is not required. In the standard scheme, a subagent works in its own branch and saves its result on its own or via an explicitly assigned responsible party.
 
-Промежуточный checkpoint допускается с незавершёнными проверками или падающими тестами, если это явно отражено в сообщении и состоянии задачи. Такой коммит сохраняет работу и не проходит гейт готовности автоматически.
+An intermediate checkpoint is allowed with unfinished verifications or failing tests, if this is explicitly reflected in the message and the task state. Such a commit preserves the work and does not pass the readiness gate automatically.
 
-Перед коммитом проверяется diff и выбирается известный набор файлов. Безусловное включение всех файлов из неизвестного состояния ЗАПРЕЩЕНО. Секреты, временные данные и локальные настройки не публикуются.
+Before a commit, the diff is verified and a known file set is chosen. Unconditional inclusion of all files from an unknown state is FORBIDDEN. Secrets, temporary data, and local settings are not published.
 
-Публикация ОБЯЗАТЕЛЬНА перед MR, межхостовой передачей и плановой остановкой при доступном remote. Если связи нет, checkpoint остаётся локальным с явным указанием этого ограничения и ответственным за последующую публикацию.
+Publication MUST happen before an MR, a cross-host handoff, and a planned stop when a remote is available. Without connectivity, the checkpoint remains local with this constraint stated explicitly and a responsible party for the subsequent publication.
 
-Подтверждение push содержит remote, ветку, SHA и время наблюдения. Успешный локальный commit или намерение выполнить push не подтверждают публикацию. Неожиданный отказ push требует повторного inspect, а не force push.
+Push confirmation contains the remote, the branch, the SHA, and the observation time. A successful local commit or an intent to push does not confirm publication. An unexpected push refusal requires a repeated inspect, not a force push.
 
-## 9. Передача задачи
+## 9. Task handoff
 
-Плановая передача выполняется последовательно:
+A planned handoff is performed in sequence:
 
-1. Прежний владелец прекращает новые изменения и останавливает писателей своей ветки.
-2. Сохраняет и публикует результат, фиксирует остаточные локальные данные.
-3. Передаёт сведения из таблицы ниже.
-4. Получатель выполняет входную проверку и подтверждает доступность нужного SHA.
-5. После подтверждения меняется активный владелец; прежний запись не возобновляет.
+1. The previous owner stops new changes and halts the writers of their branch.
+2. Saves and publishes the result, records residual local data.
+3. Hands over the information from the table below.
+4. The receiver performs the input verification and confirms the needed SHA is available.
+5. After confirmation, the active owner changes; the previous one does not resume recording.
 
-| Обязательное поле | Содержание |
+| Required field | Content |
 |---|---|
-| Задача и владелец | Кто передаёт, кто принимает, что осталось сделать |
-| Репозиторий и ветка | Общий remote, исходная ветка и цель MR |
-| База и результат | Baseline SHA и последний опубликованный SHA |
-| Рабочая копия | Хост, clone/worktree; локальный путь не считается общим адресом |
-| Состояние | Незавершённые операции, остаточные файлы, дочерние задачи |
-| Проверки | Что выполнено, на каком SHA, что не выполнено или падает |
-| Следующий шаг | Конкретное действие продолжения |
+| Task and owner | Who hands over, who accepts, what remains to be done |
+| Repository and branch | The shared remote, the source branch, and the MR goal |
+| Base and result | The baseline SHA and the last published SHA |
+| Working copy | Host, clone/worktree; a local path does not count as a shared address |
+| State | Unfinished operations, residual files, child tasks |
+| Verifications | What was done, on which SHA, what was not done or is failing |
+| Next step | The specific continuation action |
 
-При аварийном прерывании новый участник сначала восстанавливает факты. Отсутствие записи handoff не разрешает очистить каталог или объявить неопубликованную работу ненужной. Данные `stash`, reflog и локальные файлы рассматриваются как возможные источники восстановления, а не как подтверждённая передача.
+On an emergency interruption, the new participant first restores the facts. The absence of a handoff record does not permit cleaning the directory or declaring unpublished work unnecessary. `stash` data, the reflog, and local files are treated as possible sources for recovery, not as a confirmed handoff.
 
-## 10. MR и приёмка дочерних задач
+## 10. MRs and acceptance of child tasks
 
-MR ОБЯЗАТЕЛЬНО содержит задачу, исходную и целевую ветки, предъявляемый SHA, описание результата, существенные изменения контрактов, результаты проверок и известные ограничения.
+An MR MUST contain the task, the source and target branches, the presented SHA, a result description, substantial contract changes, verification results, and known constraints.
 
-Ведущий принимает дочерние MR последовательно в свою ветку. Для каждого результата проверяется совместимость с текущим состоянием родителя. Если два дочерних результата затрагивают общий контракт, ведущий отвечает за их согласование и совокупную проверку.
+A lead accepts child MRs sequentially into their own branch. For each result, compatibility with the parent's current state is verified. If two child results touch a shared contract, the lead is responsible for their coordination and joint verification.
 
-Субагент не перенаправляет MR в `main` самостоятельно. Ведущий не подменяет приёмку дочерних результатов простым наличием коммитов.
+A subagent does not redirect an MR into `main` on its own. A lead does not substitute the mere presence of commits for child-result acceptance.
 
-**Стандартный способ приёмки — merge commit (`--no-ff`)**, как для дочерних MR в родительскую рабочую ветку, так и для MR в `main`. Принятая исходная история коммитов сохраняется в графе Git: итоговый коммит интеграции имеет первым родителем актуальную цель, вторым — точный принятый SHA источника. Fast-forward вместо отдельного коммита интеграции не используется. Обновление рабочей ветки из цели по-прежнему выполняется обычным merge по §6.4.
+**The standard acceptance method is a merge commit (`--no-ff`)**, both for child MRs into the parent working branch and for MRs into `main`. The Git graph preserves the accepted original commit history: the final integration commit has the current target as its first parent and the exact accepted source SHA as its second. A fast-forward does not replace a separate integration commit. Updating the working branch from the target is still done with a regular merge per §6.4.
 
-**Squash не применяется автоматически.** Как исключение он ДОПУСКАЕТСЯ только при явном решении принимающего для небольшой независимой задачи, когда нет активных зависимых веток, сохранена прослеживаемость исходного SHA/MR и проверена возможность безопасной уборки. Исключение не меняет общий алгоритм очереди в §11: если используемый обработчик не умеет строить и проверять squash-кандидата с теми же гарантиями, такой MR интегрируется стандартным merge либо остаётся без интеграции до поддержанного процесса. Запрет переписывания опубликованной истории сохраняется.
+**Squash is not applied automatically.** As an exception it is ALLOWED only by an explicit acceptance-owner decision, for a small independent task, when there are no active dependent branches, the original SHA/MR stays traceable, and the possibility of safe cleanup has been verified. The exception does not change the general queue algorithm in §11: if the handler in use cannot build and verify a squash candidate with the same guarantees, such an MR is integrated with a standard merge or remains unintegrated until a supported process exists. The prohibition on rewriting published history remains.
 
-После интеграции исходная ветка закрывается для новых задач. Перед удалением проверяются оставшиеся зависимые ветки: их можно закончить, отменить с сохранением работы или перенести на новую подтверждённую базу. После обычного merge связь с уже принятыми исходными коммитами сохраняется и доступна через ancestry. После разрешённого squash эта связь не сохраняется; интеграцию подтверждают отдельно по записи MR и точным SHA.
+After integration, the source branch is closed to new tasks. Before deletion, the remaining dependent branches are verified: they can be finished, canceled with the work preserved, or moved to a new confirmed base. After a regular merge, the relation to the already accepted source commits is preserved and reachable through ancestry. After an allowed squash, this relation is not preserved; integration is confirmed separately by the MR record and the exact SHAs.
 
-**Происхождение изменений.** Каждый MR содержит task ID, parent task при наличии, source/target refs, предъявленный source SHA и ссылки на evidence и приёмку. Коммит интеграции должен содержать устойчивые ссылки на задачу и MR (например, `Task:` и `MR:`), а журнал интеграции — source SHA, target SHA до слияния, result SHA и результаты проверок. Это позволяет расследовать изменения по `git log --first-parent`, полному графу и `git blame` без обязательного чтения переписки агентов. Метаданные не заменяют проверок и не должны включать секреты или приватные трассы.
+**Change origin.** Each MR contains a task ID, a parent task when present, source/target refs, the presented source SHA, and references to the evidence and acceptance. The integration commit must contain stable references to the task and the MR (for example, `Task:` and `MR:`), and the integration log — the source SHA, the target SHA before the merge, the result SHA, and the verification results. Changes can be investigated via `git log --first-parent`, the full graph, and `git blame`, without reading the agents' correspondence. Metadata does not replace verifications and must not include secrets or private traces.
 
-## 11. Очередь интеграции в main
+## 11. The integration queue into main
 
-### 11.1. Хранение и запуск
+### 11.1. Storage and triggering
 
-Очередь — открытые MR в `main`, имеющие действующую отметку готовности для конкретного исходного SHA. Очередь не хранится исключительно в ожидающих CI-запусках. Для одного репозитория одновременно работает один обработчик интеграции.
+The queue is open MRs in `main` with a valid readiness mark for a specific source SHA. The queue is not stored solely in pending CI runs. One integration handler works at a time for one repository.
 
-Обработчик запускается при появлении готового MR, после завершения обработки кандидата, при значимом изменении состояния очереди и вручную. Периодический запуск раз в `reconcile_interval_minutes` восстанавливает работу после пропущенного события или сбоя.
+The handler is triggered when a ready MR appears, after candidate processing completes, on a material queue-state change, and manually. A periodic run every `reconcile_interval_minutes` restores operation after a missed event or a failure.
 
-Повторные события не отменяют активную интеграцию. Порядок готовых независимых MR — по времени получения действующей готовности, при равенстве по устойчивому идентификатору MR. Возвращённый и исправленный MR получает новое место. Зависимость должна быть выполнена до готовности; срочность допускает явно зафиксированный приоритет без пропуска проверок.
+Repeated events do not cancel an active integration. Ready independent MRs are ordered by the time valid readiness was obtained; on equality, by the stable MR identifier. A returned and corrected MR gets a new place. A dependency must be completed before readiness; urgency allows an explicitly recorded priority without skipping checks.
 
-### 11.2. Алгоритм
+### 11.2. Algorithm
 
-1. Выбрать следующий готовый MR; проверить его актуальность, целевую ветку и приёмку.
-2. Зафиксировать исходный SHA `S` и текущий SHA `main` — `T`.
-3. Построить во временном изолированном каталоге **merge-коммит-кандидат `C`** из точных `T` и `S`, с двумя родителями в порядке `T`, `S` (эквивалент `--no-ff`, даже если допустим fast-forward). При конфликте не создавать готового кандидата: вернуть задачу владельцу. Проверить дерево результата, родителей и ссылки на задачу/MR.
-4. Выполнить обязательные проверки именно для `C` по утверждённой политике CI; проверки только исходного `S` недостаточны.
-5. Перед публикацией повторно проверить: MR открыт и готов, исходный SHA всё ещё `S`, приёмка действительна, `main` всё ещё `T`.
-6. При выполнении условий опубликовать именно проверенный `C` как новый `main`, с серверной проверкой ожидаемого предыдущего состояния.
-7. Зафиксировать соответствие MR, `S`, `T`, `C` и результатов проверок; завершить MR средствами выбранной платформы.
-8. Перейти к следующему MR уже относительно обновлённого `main`.
+1. Pick the next ready MR; verify its currency, target branch, and acceptance.
+2. Record the source SHA `S` and the current `main` SHA — `T`.
+3. In a temporary isolated directory, build the **candidate merge commit `C`** from the exact `T` and `S`, with two parents in the order `T`, `S` (equivalent to `--no-ff`, even when a fast-forward would be allowed). On a conflict, do not create a ready candidate: return the task to the owner. Verify the result tree, the parents, and the task/MR references.
+4. Run the required checks exactly for `C` per the approved CI policy; checks of the source `S` alone are insufficient.
+5. Before publication, re-verify: the MR is open and ready, the source SHA is still `S`, the acceptance is valid, and `main` is still `T`.
+6. When the conditions hold, publish exactly the verified `C` as the new `main`, with a server-side verification of the expected previous state.
+7. Record the correspondence of MR, `S`, `T`, `C`, and the check results; complete the MR by the chosen platform's means.
+8. Move on to the next MR relative to the updated `main`.
 
-Если `main` или исходный SHA изменился, старый результат не публикуется. Кандидат строится заново; изменение исходной ветки также снимает готовность и требует новой приёмки. Успех CI для прежней пары SHA не переносится автоматически на новую.
+If `main` or the source SHA has changed, the old result is not published. The candidate is built anew; a source-branch change also withdraws readiness and requires a new acceptance. CI success for the previous SHA pair does not carry over automatically to the new one.
 
-Адаптер Git-хостинга ОБЯЗАТЕЛЬНО обеспечивает условное обновление цели и запрещает незаметную подмену проверенного кандидата. Обычный force push для этого не используется. Если платформа самостоятельно формирует merge-коммит, реализация должна доказать совпадение точного публикуемого коммита с проверенным `C` (включая родителей и дерево) либо построить и проверить фактически публикуемый кандидат заранее. Простая проверка исходной ветки или сходства diff недостаточна. Если хостинг не даёт такой гарантии, автоматическая публикация через этот адаптер запрещена до выбора поддержанного способа интеграции.
+The Git hosting adapter MUST provide a conditional target update and forbid silent substitution of the verified candidate. A regular force push is not used for this. If the platform forms the merge commit on its own, the implementation must prove the exact published commit matches the verified `C` (parents and tree included), or build and verify the actually published candidate in advance. A simple verification of the source branch or diff similarity is insufficient. Without such a guarantee, automatic publication through this adapter is forbidden until a supported integration method is chosen.
 
-### 11.3. Ошибки и ожидание
+### 11.3. Errors and waiting
 
-| Ситуация | Реакция |
+| Situation | Response |
 |---|---|
-| Конфликт | Снять готовность, сообщить владельцу, сразу перейти к следующему MR |
-| Ошибка обязательной проверки | То же; повторять неизменный код без причины не нужно |
-| Сбой инфраструктуры | Одна повторная попытка по умолчанию; затем снять готовность и сообщить причину |
-| Тайм-аут проверки | Завершить попытку как неуспешную, освободить очередь; исходный код не удалять |
-| Изменилась цель | Перестроить кандидата относительно нового SHA |
-| Перезапуск обработчика | Прочитать MR и фактический `main`; продолжить без повторного применения принятого результата |
+| Conflict | Withdraw readiness, inform the owner, immediately move to the next MR |
+| Required check error | The same; there is no need to retry unchanged code without a reason |
+| Infrastructure failure | One retry by default; then withdraw readiness and report the reason |
+| Check timeout | Finish the attempt as unsuccessful, release the queue; do not delete the source code |
+| The target changed | Rebuild the candidate relative to the new SHA |
+| Handler restart | Read the MR and the actual `main`; continue without re-applying the accepted result |
 
-Очередь **не ждёт исправления конфликтного MR**. Владелец может исправлять его сколько требуется; после новой приёмки MR возвращается в очередь. Начальный тайм-аут — 20 минут, изменяется параметром проекта. Результат проверки, пришедший после отмены попытки, не разрешает публикацию.
+The queue **does not wait for a conflicting MR to be fixed**. The owner may fix it as many times as needed; after a new acceptance, the MR returns to the queue. The initial timeout is 20 minutes, changed by a project parameter. A check result arriving after the attempt was canceled does not permit publication.
 
-### 11.4. Пример А и Б
+### 11.4. Example A and B
 
-А и Б начали от `M0`. Для А построен и проверен кандидат `M1`; он принят. Для Б затем проверяется кандидат от `M1`, уже включающий А. Если он совместим — принимается. При конфликте Б обновляет собственную ветку и предъявляет исправленный результат; следующий независимый MR не ждёт Б.
+A and B started from `M0`. For A, candidate `M1` was built and verified; it was accepted. For B, a candidate from `M1`, which already includes A, is then verified. If it is compatible, it is accepted. On a conflict, B updates their own branch and presents a corrected result; the next independent MR does not wait for B.
 
-Очередь устраняет гонку публикации, но не смысловые противоречия. При изменении общих API, схем данных, конфигурации и зависимостей ведущие заранее фиксируют контракт или зависимость задач. Ответственность за адаптацию обычно несёт ещё не принятый результат; нарушение ранее согласованного контракта разбирается по существу, а не по принципу «первый всегда прав».
+The queue eliminates the publication race, but not semantic contradictions. When shared APIs, data schemas, configuration, or dependencies change, leads record the contract or the task dependency in advance. Responsibility for adaptation usually lies with the not-yet-accepted result; a violation of an earlier agreed contract is analyzed on the merits, not by the "first one is always right" principle.
 
-## 12. Защита main и политика проверок
+## 12. Protecting main and the checks policy
 
-Общий `main` изменяет только механизм интеграции с ограниченными полномочиями. Прямые push участников, принудительное обновление и удаление ветки блокируются настройками сервера. Исправления, откаты и изменения самого CI проходят через рабочую ветку и MR.
+Only the integration mechanism with limited rights changes the shared `main`. Direct pushes by participants, forced updates, and branch deletion are blocked by server settings. Fixes, rollbacks, and changes to the CI itself go through a working branch and an MR.
 
-Обязательные проверки определяются проектом: корректность задачи, нужные тесты, статический анализ и другие применимые проверки. Документационные изменения могут иметь более лёгкий набор, если это заранее описано политикой. Пустое «всё проверено» без SHA и результатов не принимается.
+Required checks are defined by the project: task correctness, the needed tests, static analysis, and other applicable checks. Documentation changes may have a lighter set if the policy describes it in advance. An empty "everything is verified" without SHAs and results is not accepted.
 
-CI использует доверенную конфигурацию гейтов. Изменение CI в MR не может само снять собственные обязательные проверки или получить полномочия обновления `main`, создания тегов либо удаления образов. Проверка недоверенного кода и операции с секретами публикации разделяются по полномочиям.
+CI uses a trusted gate configuration. A CI change in an MR cannot, on its own, remove its own required checks or obtain rights to update `main`, create tags, or delete images. Verification of untrusted code and publication-secret operations are separated by rights.
 
-Слияние в `main` **не запускает публикацию контейнерного образа**. Проверки MR могут выполнять необходимую проверку сборки, если это нужно проекту; это не выпуск и не публикация образа в registry.
+A merge into `main` **does not trigger container image publication**. MR checks may perform the necessary build verification, if the project needs it; this is not a release and not image publication into the registry.
 
-## 13. Тегирование и выпуск контейнерного образа
+## 13. Tagging and release of the container image
 
-### 13.1. Общие правила
+### 13.1. General rules
 
-Проект поддерживает одну актуальную линию версий. Git-тег имеет вид `vMAJOR.MINOR.PATCH`, тег образа — `MAJOR.MINOR.PATCH`. Компоненты — неотрицательные целые числа без ведущих нулей. Стабильные версии сравниваются численно по major, затем minor, затем patch.
+The project maintains one current version line. A Git tag has the form `vMAJOR.MINOR.PATCH`; an image tag — `MAJOR.MINOR.PATCH`. The components are non-negative integers without leading zeros. Stable versions are compared numerically by major, then minor, then patch.
 
-Новая версия ОБЯЗАТЕЛЬНО больше всех ранее выпущенных стабильных версий, включая уже удалённые из registry. Источник истории выпусков — Git-теги и журнал выпуска, а не только оставшиеся образы. Опубликованные номера не используются повторно; теги версии и соответствие версии digest не перезаписываются.
+A new version MUST be greater than all previously released stable versions, including ones already deleted from the registry. Release history's source is Git tags and the release log, not only the remaining images. Published numbers are not reused; version tags and the version-to-digest correspondence are not overwritten.
 
-### 13.2. Три отдельных CI-процесса
+### 13.2. Three separate CI processes
 
-| Процесс | Запуск | Результат |
+| Process | Trigger | Result |
 |---|---|---|
-| Интеграция | Готовый MR | Принятый коммит в `main` |
-| Подготовка выпуска | Явная команда уполномоченного участника с версией и SHA | Проверенный и опубликованный Git-тег |
-| Выпуск образа | Событие публикации релизного Git-тега | Проверенный образ версии, `latest`, журнал выпуска и очистка |
+| Integration | A ready MR | An accepted commit in `main` |
+| Release preparation | An explicit command of an authorized participant with a version and a SHA | A verified and published Git tag |
+| Image release | The publication event of a release Git tag | A verified version image, `latest`, the release log, and cleanup |
 
-Создание тега не выполняется автоматически после каждого MR. Между выпусками в `main` может накопиться несколько принятых задач. Развёртывание — отдельное действие; автоматический CD этим регламентом не вводится.
+Tag creation is not done automatically after every MR. Between releases, several accepted tasks may accumulate in `main`. Deployment is a separate action; this policy does not introduce automatic CD.
 
-### 13.3. Подготовка выпуска
+### 13.3. Release preparation
 
-1. Изменения версии, changelog и необходимые обновления документации принимаются обычным MR.
-2. Оператор явно выбирает версию и полный SHA принятого коммита. Нельзя подменять его текущим HEAD, если `main` успел уйти вперёд.
-3. CI проверяет нахождение SHA в истории общего `main`, соответствие версии в исходниках, обязательные проверки и отсутствие уже опубликованной версии.
-4. Создаёт и публикует аннотированный Git-тег `vX.Y.Z` на выбранном SHA.
-5. Фиксирует запрос выпуска и запуск следующего процесса.
+1. Version changes, the changelog, and the needed documentation updates are accepted through a regular MR.
+2. The operator explicitly chooses the version and the full SHA of the accepted commit. Substituting the current HEAD for it is not allowed when `main` has moved ahead.
+3. CI verifies the SHA is in the shared `main` history, the version matches the sources, the required checks pass, and no version is already published.
+4. CI creates and publishes the annotated Git tag `vX.Y.Z` on the chosen SHA.
+5. CI records the release request and the triggering of the next process.
 
-Адаптер CI должен учитывать платформенные ограничения запуска workflow другим workflow. До ввода процесса ОБЯЗАТЕЛЬНО проверить, что созданный служебной учётной записью тег действительно запускает выпуск, а повтор события не создаёт дубликаты.
+The CI adapter must account for platform constraints on triggering a workflow from another workflow. Before the process is introduced, it MUST be verified that a tag created by the service account actually triggers the release and that an event repeat does not create duplicates.
 
-### 13.4. Публикация и частичные сбои
+### 13.4. Publication and partial failures
 
-Для одного образа подготовка версий и выпуск координируются последовательно: более новая версия не должна завершить публикацию раньше незавершённого предыдущего выпуска и затем получить устаревший `latest`. Зависший выпуск не удерживает очередь интеграции в `main`; он блокирует только последующие выпуски до возобновления либо явного завершения попытки.
+For a single image, version preparation and release are coordinated sequentially: a newer version must not finish publication before an unfinished previous release and then receive a stale `latest`. A stuck release does not hold the integration queue into `main`; it blocks only later releases until it resumes or the attempt is explicitly finished.
 
-CI получает код по тегу, проверяет его SHA, собирает и проверяет образ. Затем публикует версионный тег, подтверждает доступность digest и обновляет `latest` на тот же digest. Только после подтверждения обоих тегов запускается очистка.
+CI gets the code by the tag, verifies its SHA, builds and verifies the image. Then it publishes the version tag, confirms the digest is available, and updates `latest` to the same digest. Only after both tags are confirmed does cleanup start.
 
-| Сбой | Правило |
+| Failure | Rule |
 |---|---|
-| Сборка до публикации версии | Повторить выпуск того же Git-тега; тег не передвигать |
-| Образ версии опубликован, `latest` не обновлён | Повторить продвижение существующего digest, не пересобирать и не перезаписывать версию |
-| Неизвестно, завершилась ли публикация | Сначала прочитать фактические теги и digest; не выполнять слепую повторную запись |
-| Публикация успешна, очистка упала | Выпуск остаётся успешным, очистка отмечается отдельно как неуспешная и допускает повтор |
-| Ошибка в опубликованном продукте | Исправление через MR и новый номер версии |
+| Build before version publication | Repeat the release of the same Git tag; do not move the tag |
+| The version image is published, `latest` not updated | Repeat the promotion of the existing digest; do not rebuild or overwrite the version |
+| Unknown whether publication finished | First read the actual tags and digests; do not re-write blindly |
+| Publication succeeded, cleanup failed | The release stays successful; cleanup is marked separately as unsuccessful and allows a retry |
+| An error in the published product | A fix through an MR and a new version number |
 
-Повторная попытка проверяет согласованность Git-тега, версии, SHA и digest. Несовпадение блокирует автоматическое продолжение. Журнал выпуска содержит версию, Git SHA, digest, ссылку на CI, время и статусы публикации/очистки.
+A retry verifies the consistency of the Git tag, the version, the SHA, and the digest. A mismatch blocks automatic continuation. The release log contains the version, the Git SHA, the digest, a reference to the CI, the time, and the publication/cleanup statuses.
 
-## 14. Очистка registry
+## 14. Registry cleanup
 
-### 14.1. Политика хранения
+### 14.1. Retention policy
 
-Параметр `keep_last` — положительное целое число. Начальный пример — `5`; это настройка проекта, а не неизменное правило.
+The `keep_last` parameter is a positive integer. The initial example is `5`; this is a project setting, not an immutable rule.
 
-После успешного выпуска сохраняются:
+After a successful release, the following are preserved:
 
-- `keep_last` наибольших опубликованных стабильных версий `MAJOR.MINOR.PATCH`;
-- образ, на который указывает `latest`.
+- the `keep_last` greatest published stable versions `MAJOR.MINOR.PATCH`;
+- the image that `latest` points to.
 
-Если `latest` указывает на одну из сохраняемых версий, дополнительный образ не появляется. Если указывает за пределы списка, он всё равно защищён. Количество относится к версиям, а не слоям, платформенным манифестам или числу записей registry.
+If `latest` points to one of the preserved versions, no additional image appears. If it points outside the list, it is still protected. The count refers to versions, not to layers, platform manifests, or the number of registry entries.
 
-Политика не поддерживает отдельные релизные линии и не сортирует образы по датам сборки, изменения тега или выдаче API. Например, `2.22.10` новее `2.22.9`, а `2.10.0` новее `2.9.0`. Используется проверенный числовой parser; лексикографическая сортировка запрещена.
+The policy does not support separate release lines and does not sort images by build dates, tag changes, or API output. For example, `2.22.10` is newer than `2.22.9`, and `2.10.0` is newer than `2.9.0`. A verified numeric parser is used; lexicographic sorting is forbidden.
 
-### 14.2. Алгоритм очистки
+### 14.2. Cleanup algorithm
 
-1. Проверить параметр, конкретный registry и имя репозитория образов.
-2. Получить полный список тегов со всеми страницами; при невозможности подтвердить полноту прекратить удаление.
-3. Выделить строго допустимые стабильные версии. Неканонические и неизвестные теги показать в отчёте, но не удалять этим правилом.
-4. Отсортировать версии численно по убыванию, выбрать `keep_last` и добавить защиту `latest`.
-5. Получить соответствия тегов и digest; построить план удаления старых версий.
-6. Проверить все ссылки на удаляемое содержимое, включая сохраняемые и неизвестные теги и индексы нескольких архитектур.
-7. Повторно проверить план перед изменением; выполнить допустимые удаления и записать фактический результат.
+1. Verify the parameter, the specific registry, and the image repository name.
+2. Obtain the full tag list with all pages; if completeness cannot be confirmed, stop deletion.
+3. Extract the strictly valid stable versions. Non-canonical and unknown tags are shown in the report but not deleted by this rule.
+4. Sort the versions numerically in descending order, choose `keep_last`, and add the `latest` protection.
+5. Obtain the tag-to-digest correspondences; build a deletion plan for the old versions.
+6. Verify all references to the content being deleted, including preserved and unknown tags and multi-architecture indexes.
+7. Re-verify the plan before changing anything; perform the allowed deletions and record the actual result.
 
-По возможности удаляются только устаревшие теги. Если API удаляет сразу manifest/digest вместе со всеми его тегами, адаптер не должен затрагивать содержимое, используемое сохраняемыми или неизвестными тегами либо сохраняемыми multi-platform индексами. При невозможности доказать безопасность конкретный объект пропускается с причиной; политика количества может временно не выполняться.
+Where possible, only stale tags are deleted. If the API deletes a manifest/digest together with all its tags at once, the adapter must not touch content used by preserved or unknown tags or preserved multi-platform indexes. When safety cannot be proven, the specific object is skipped with a reason; the count policy may be temporarily unmet.
 
-Полная поддержка multi-platform графа нужна только при использовании таких образов, но неподдерживаемый формат должен приводить к отказу удаления, а не к предположению о безопасности. Фактическое освобождение слоёв выполняется средствами registry и не гарантируется одним удалением тега.
+Full support of the multi-platform graph is needed only when such images are used, but an unsupported format must lead to a refusal to delete, not to an assumption of safety. Actual layer reclamation is performed by the registry's means and is not guaranteed by a single tag deletion.
 
-Очистка выполняется в конце успешного выпуска, без отдельного обязательного расписания. Она не пересекается с публикацией того же образа; все писатели соблюдают общую координацию. Ручной повтор поддерживает тот же регламент. Ошибка конфигурации, списка или проверки не разрешает удаление «по приблизительному списку».
+Cleanup runs at the end of a successful release, without a separate mandatory schedule. It does not overlap with the same image's publication; all writers observe the shared coordination. A manual retry is supported by the same policy. A configuration, list, or verification error does not permit deletion "by an approximate list".
 
-Скрипт предоставляет режимы плана без записи и применения. После первоначального включения автоматическое применение не требует подтверждения каждого удаления, если оно укладывается в утверждённую политику. Отдельные сложные категории хранения не вводятся. Удалённые версии не гарантированы для отката; `keep_last` выбирают с учётом нужного запаса.
+The script provides modes for planning without writing or applying. After the initial enabling, automatic application does not require confirmation of each deletion, as long as it fits the approved policy. No separate complex retention categories are introduced. Deleted versions are not guaranteed for rollback; `keep_last` is chosen with the needed margin.
 
-## 15. Очистка worktrees, веток и локальных данных
+## 15. Cleanup of worktrees, branches, and local data
 
-### 15.1. Уборка как часть закрытия
+### 15.1. Cleanup as part of closure
 
-Интеграция не означает завершение уборки. Владелец каждого хоста отвечает за локальные worktrees и clones; центральный CI не объявляет их удалёнными без подтверждения с хоста.
+Integration does not mean the cleanup is complete. The owner of each host is responsible for the local worktrees and clones; the central CI does not declare them deleted without the host's confirmation.
 
-Перед удалением ОБЯЗАТЕЛЬНО:
+Before deletion, the following MUST be done:
 
-1. Остановить владельца и все связанные процессы записи.
-2. Подтвердить интеграцию задачи либо её отмену с явным решением о сохранении нужной работы.
-3. Проверить отсутствие незавершённых Git-операций, staged/unstaged/untracked-изменений и дополнительных коммитов после предъявленного SHA.
-4. Проверить ценные ignored-файлы, локальные артефакты и резервные данные: чистый `git status` сам по себе не доказывает, что каталог можно удалить.
-5. Проверить, что ветка не нужна активным потомкам, MR или другому владельцу.
-6. Сохранить необходимые локальные данные и получить свежий результат проверки непосредственно перед удалением.
+1. Stop the owner and all related recording processes.
+2. Confirm the task's integration or its cancelation with an explicit decision on preserving the needed work.
+3. Verify there are no unfinished Git operations, staged/unstaged/untracked changes, or additional commits after the presented SHA.
+4. Verify valuable ignored files, local artifacts, and backup data: a clean `git status` on its own does not prove the directory can be deleted.
+5. Verify the branch is not needed by active descendants, MRs, or another owner.
+6. Preserve the needed local data and obtain a fresh verification result immediately before deletion.
 
-При стандартном merge ОБЯЗАТЕЛЬНО подтвердить, что предъявленный исходный SHA является предком опубликованного результата интеграции, а интеграционный коммит имеет ожидаемых родителей и связан с записью MR. Эта проверка подтверждает включение коммитов, **но не отсутствие новых локальных изменений, посторонних данных или активных зависимостей**. При разрешённом squash ancestry исходного SHA отсутствует; сохранность доказывают записью интеграции MR с точными source/result SHA и проверкой актуального состояния ветки. Дополнительные коммиты после принятого source SHA разбирают отдельно при любом способе интеграции. Простой статус MR «merged» не разрешает удалить любое текущее содержимое ветки.
+With a standard merge, it MUST be confirmed that the presented source SHA is an ancestor of the published integration result, and that the integration commit has the expected parents and is tied to the MR record. This verification confirms commit inclusion, **but not the absence of new local changes, foreign data, or active dependencies**. With an allowed squash, the source SHA's ancestry is absent; preservation is proven by the MR integration record with exact source/result SHAs and by verifying the branch's current state. Additional commits after the accepted source SHA are analyzed separately under any integration method. The mere MR status "merged" does not permit deleting current branch content.
 
-### 15.2. Порядок
+### 15.2. Order
 
-Сначала очищают worktrees завершённых подзадач, затем их локальные ветки и, если больше не нужны, удалённые ветки. После принятия родительской задачи аналогично убирают её рабочую копию и ветку. Полезный принятый дочерний результат может быть сохранён в опубликованной родительской ветке до её интеграции в `main`.
+First the worktrees of completed subtasks are cleaned up, then their local branches and, if no longer needed, the remote branches. After the parent task is accepted, its working copy and branch are cleaned up likewise. A useful accepted child result may be preserved in the published parent branch until that branch's integration into `main`.
 
-Worktree удаляют штатными средствами Git, не безусловным удалением каталога. Удалённая ветка удаляется с проверкой ожидаемого SHA: появление нового коммита отменяет старое разрешение на уборку. На каждом шаге результат записывается отдельно, чтобы повтор уборки после сбоя был безопасным.
+A worktree is deleted with standard Git tooling, not by unconditional directory deletion. A remote branch is deleted with verification of the expected SHA: a new commit's appearance revokes the earlier cleanup permission. At each step the result is recorded separately, so a cleanup retry after a failure is safe.
 
-Автоматические `remove --force`, `reset --hard`, `clean` с удалением неизвестных файлов и принудительное удаление веток ради чистоты ЗАПРЕЩЕНЫ. По умолчанию локальную ветку удаляют штатным `branch -d` после снятия worktree и проверок. Если даже после стандартного merge `branch -d` отказывает из-за выбранной checkout/merge-базы, отказ разбирают, а не обходят автоматически. При разрешённом squash специальное удаление допускается только после доказанной сохранности по записи MR и повторной проверки неизменности SHA; отказ обычного `branch -d` сам по себе не является разрешением на принудительное удаление.
+Automatic `remove --force`, `reset --hard`, and `clean` that delete unknown files, and forced branch deletion for tidiness, are FORBIDDEN. By default, a local branch is deleted with the standard `branch -d` after the worktree is removed and the verifications pass. If even after a standard merge `branch -d` refuses because of the chosen checkout/merge base, the refusal is analyzed, not automatically bypassed. With an allowed squash, special deletion is permitted only after preservation is proven by the MR record and a repeated verification of the SHA's immutability; a regular `branch -d` refusal on its own is not a permission for forced deletion.
 
-Основной clone и его главный рабочий каталог не удаляются как обычный дочерний worktree. Удаление целого clone — отдельная процедура с проверкой всех веток, worktrees и локальных данных.
+The main clone and its principal working directory are not deleted like an ordinary child worktree. Deleting a whole clone is a separate procedure with verification of all branches, worktrees, and local data.
 
-### 15.3. Поиск забытых копий
+### 15.3. Finding forgotten copies
 
-При начале рабочей сессии выполняется локальный осмотр зарегистрированных рабочих копий:
+At the start of a work session, the registered working copies are inspected locally:
 
-| Найдено | Действие |
+| Found | Action |
 |---|---|
-| Завершённая задача, сохранность подтверждена | Выполнить уборку по гейту |
-| Завершённая задача, осталась работа | Установить владельца и сохранить результат |
-| Активная задача | Оставить |
-| Неизвестная задача или владелец | Поставить на разбор, не удалять |
-| Давно не использовалась | Сообщить владельцу; возраст не даёт права удаления |
-| Следы уже удалённого worktree | Проверить и затем очистить устаревшие служебные записи Git |
+| A completed task, preservation confirmed | Perform cleanup per the gate |
+| A completed task, work remains | Establish the owner and preserve the result |
+| An active task | Leave |
+| An unknown task or owner | Flag for analysis, do not delete |
+| Unused for a long time | Inform the owner; age grants no right of deletion |
+| Traces of an already deleted worktree | Verify, then clean up stale Git administrative records |
 
-Если хост недоступен, задача может иметь статус «интегрирована, уборка ожидается». Уборка других задач и работа очереди продолжаются. Полное закрытие фиксируется после подтверждения по всем зарегистрированным рабочим копиям задачи.
+If a host is unreachable, a task may have the status "integrated, cleanup pending". The cleanup of other tasks and the queue's operation continue. Full closure is recorded after confirmation across all registered working copies of the task.
 
-## 16. Сводная таблица гейтов
+## 16. Gate summary table
 
-| Гейт | Условия допуска | Кто проверяет и отвечает | При отказе |
+| Gate | Admission conditions | Who verifies and is responsible | On failure |
 |---|---|---|---|
-| G0. Вход / возобновление | Известны репозиторий, ветка, владелец, локальные изменения, Git-операции и состояние remote | Владелец через inspect/check | Разбор расхождения; ограниченная офлайн-работа только по §6.5 |
-| G1. Создание ветки | Задача, уникальное имя, разрешённый baseline SHA, цель и безопасный путь | Владелец / ведущий | Не создавать; устранить неопределённость |
-| G2. Остановка / передача | Checkpoint, публикация при доступной связи, прекращение записи, handoff | Прежний владелец; получатель подтверждает вход | Не объявлять передачу завершённой |
-| G3. Готовность MR | Опубликованный SHA, выполнение задачи, проверки и приёмка, завершение обязательных потомков | Принимающий / ведущий | Оставить MR неготовым; вернуть замечания |
-| G4. Приём дочерней задачи | Совместимость с текущим родителем, проверки конкретного кандидата | Ведущий | Вернуть владельцу подзадачи |
-| G5. Интеграция в main | Готовый MR, проверенный кандидат, неизменные source/target SHA, серверные полномочия | Единственный обработчик | Снять готовность или перестроить кандидата; очередь продолжает работу |
-| G6. Тег версии | Явный запрос, принятый SHA, корректная новая версия, проверки и документация | CI подготовки выпуска | Не создавать тег; указать причину |
-| G7. Выпуск образа | Неизменный Git-тег, проверенный образ, доступный версионный digest и `latest` | CI выпуска | Восстановить соответствующий этап без перезаписи версии |
-| G8. Очистка registry | Успешная публикация, полный список, валидный `keep_last`, безопасный план | Скрипт очистки под координацией выпуска | Не удалять непроверенное; отдельно сообщить ошибку уборки |
-| G9. Уборка worktree | Нет писателей и несохранённой работы, подтверждена судьба результата и зависимостей | Локальный владелец через check/remove | Сохранить каталог; зафиксировать причину |
+| G0. Entry / resumption | Repository, branch, owner, local changes, Git operations, and remote state are known | The owner via inspect/check | Divergence analysis; limited offline work only per §6.5 |
+| G1. Branch creation | Task, unique name, allowed baseline SHA, goal, and a safe path | Owner / lead | Do not create; remove the uncertainty |
+| G2. Stop / handoff | Checkpoint, publication when connectivity is available, recording stopped, handoff | The previous owner; the receiver confirms the entry | Do not declare the handoff complete |
+| G3. MR readiness | Published SHA, task completion, verifications and acceptance, mandatory descendants finished | Acceptance owner / lead | Leave the MR not ready; return remarks |
+| G4. Child task acceptance | Compatibility with the current parent, specific-candidate checks | Lead | Return to the subtask owner |
+| G5. Integration into main | Ready MR, verified candidate, unchanged source/target SHAs, server-side rights | The single handler | Withdraw readiness or rebuild the candidate; the queue keeps working |
+| G6. Version tag | Explicit request, accepted SHA, correct new version, checks and documentation | Release-preparation CI | Do not create the tag; state the reason |
+| G7. Image release | Unchanged Git tag, verified image, available version digest and `latest` | Release CI | Restore the corresponding stage without overwriting the version |
+| G8. Registry cleanup | Successful publication, full list, valid `keep_last`, safe plan | The cleanup script under release coordination | Do not delete anything unverified; report the cleanup error separately |
+| G9. Worktree cleanup | No writers and no unsaved work; the fate of the result and its dependencies confirmed | The local owner via check/remove | Keep the directory; record the reason |
 
-Гейт не пройден, если подтверждение отсутствует или устарело из-за изменения проверяемых SHA. Успех инструмента проверки Git не заменяет приёмку функционального результата.
+A gate is not passed when confirmation is missing or stale because the verified SHAs changed. The success of a Git verification tool does not replace the acceptance of the functional result.
 
-## 17. Восстановление и отклонения
+## 17. Recovery and deviations
 
-| Отклонение | Обязательная реакция |
+| Deviation | Required response |
 |---|---|
-| Неизвестные файлы или коммиты | Зафиксировать состояние, не включать в свою работу, выяснить происхождение и сохранить |
-| Локальный main впереди / разошёлся | Сохранить коммиты отдельной ссылкой, определить путь MR; не push/reset автоматически |
-| Два активных владельца | Прекратить конфликтующую запись, сохранить оба результата, восстановить одного владельца |
-| Незавершённый merge/rebase | Установить цель операции; осознанно завершить или отменить с сохранением работы |
-| MR принят, но владелец успел добавить коммиты | Не считать новые коммиты принятыми; оформить отдельную ветку/MR |
-| Регрессия в main | Откат либо исправление новой веткой и MR через ту же очередь; история main сохраняется |
-| Сбой между обновлением main и закрытием MR | Сверить фактический SHA и журнал; завершить учёт, не применять задачу второй раз |
-| Устаревшие сведения о публикации | Получить новое наблюдение; не выдавать старую проверку за текущую |
+| Unknown files or commits | Record the state, exclude them from your own work, find out the origin, and preserve them |
+| Local main ahead / diverged | Preserve the commits under a separate ref, determine the MR path; no automatic push/reset |
+| Two active owners | Stop the conflicting recording, preserve both results, restore a single owner |
+| An unfinished merge/rebase | Establish the operation's goal; finish it deliberately or cancel it with the work preserved |
+| The MR was accepted, but the owner managed to add commits | Do not count the new commits as accepted; arrange a separate branch/MR |
+| A regression in main | A rollback, or a fix via a new branch and an MR through the same queue; main history is preserved |
+| A failure between updating main and closing the MR | Cross-check the actual SHA and the log; finish the accounting without applying the task a second time |
+| Stale publication information | Obtain a new observation; do not present an old verification as current |
 
-Участник сообщает: что обнаружено, какие SHA/пути затронуты, что сохранено, какой переход заблокирован и кто должен продолжить. Общее «Git сломан» не считается пригодным handoff.
+The participant reports: what was found, which SHAs/paths are affected, what was preserved, which transition is blocked, and who must continue. A generic "Git is broken" does not count as a usable handoff.
 
-## 18. Настройки проекта
+## 18. Project settings
 
-Ниже — пример будущего контракта конфигурации, а не готовый формат Wolf. Значения, кроме обязательных правил процесса, настраиваются под проект.
+Below is an example of a future configuration contract, not a finished Wolf format. Values, except the mandatory process rules, are configured per project.
 
 ```yaml
 git_policy:
   remote: origin
   integration_branch: main
   acceptance_method: merge
-  merge_commit: always # предлагаемое поле политики Wolf: эквивалент --no-ff
-  squash_exception: explicit_only # лишь при условиях §10 и поддержанной проверке кандидата
+  merge_commit: always # proposed Wolf policy field: equivalent to --no-ff
+  squash_exception: explicit_only # only under the conditions of §10 and a supported candidate verification
   update_method: merge
   published_history_rewrite: false
   queue:
@@ -462,93 +462,93 @@ git_policy:
     candidate_timeout_minutes: 20
     infrastructure_retries: 1
     reconcile_interval_minutes: 10
-  required_checks: [] # заполнить реальными идентификаторами проверок до включения
+  required_checks: [] # fill in with real check identifiers before enabling
 release_policy:
   git_tag_prefix: v
   version_format: MAJOR.MINOR.PATCH
   trigger: explicit_request
   image_build_trigger: release_tag
   image_latest_tag: latest
-  keep_last: 5 # положительный параметр, свободно меняется владельцем проекта
+  keep_last: 5 # a positive parameter, freely changed by the project owner
 ```
 
-Пустой перечень обязательных проверок в примере не означает разрешения интеграции без контроля. При вводе процесса задаются реальные проверки либо явно утверждённая минимальная политика для данного типа репозитория. Также конфигурируются адрес образа, полномочия CI и используемый адаптер хостинга/registry.
+An empty list of required checks in the example does not mean integration without control is allowed. When the process is introduced, real checks or an explicitly approved minimal policy for this repository type are defined. Also configured are the image address, the CI rights, and the hosting/registry adapter in use.
 
-## 19. Требования к реализации в Wolf
+## 19. Implementation requirements in Wolf
 
-### 19.1. Разделение ответственности
+### 19.1. Separation of responsibility
 
-| Слой | Что реализует |
+| Layer | What it implements |
 |---|---|
-| Политика | Правила этого документа, настройки и полномочия проекта |
-| Переносимые скрипты | Фактический inspect/check, создание, checkpoint, публикация, безопасная уборка |
-| Адаптер Git-хостинга | MR, статусы, готовность, условное обновление цели и защита refs |
-| CI | Последовательная интеграция, подготовка тега, выпуск и очистка |
-| Скиллы | Когда запускать операции, как читать результаты и реагировать на отказ |
-| Агенты / люди | Смысловая приёмка, разрешение конфликтов и выполнение разрешённых действий |
+| Policy | The rules of this document, the settings, and the project rights |
+| Portable scripts | The actual inspect/check, creation, checkpoint, publication, safe cleanup |
+| Git hosting adapter | MRs, statuses, readiness, conditional update of the target, and refs protection |
+| CI | Sequential integration, tag preparation, release, and cleanup |
+| Skills | When to trigger operations, how to read results, and how to respond to a refusal |
+| Agents / people | Semantic acceptance, conflict resolution, and performing allowed actions |
 
-OpenCode и другие харнесы вызывают общий механизм. Инструкции не должны зависеть от специальных worktree-команд одного харнеса. Отдельный постоянный агент-контролёр и распределённая система блокировок для первой реализации не требуются.
+OpenCode and other harnesses call the shared mechanism. Instructions must not depend on the special worktree commands of one harness. A separate permanent controller agent and a distributed locking system are not required for the first implementation.
 
-### 19.2. Требования к операциям
+### 19.2. Operation requirements
 
-- Явные repository/worktree, задача, стадия и ожидаемые SHA; запрет опасных неявных значений по текущему каталогу.
-- Один фактический сборщик Git-состояния для всех проверок; отсутствие нескольких расходящихся трактовок.
-- Режим проверки без исправлений; отдельные изменяющие операции.
-- Краткий человекочитаемый итог и структурированный JSON с вердиктом, кодами причин, фактами и допустимым следующим действием.
-- Различение «условия нарушены» и «не удалось проверить»; отсутствие данных не считается успехом.
-- Повторная проверка предусловий непосредственно перед записью, общая локальная координация и серверные проверки ожидаемых refs.
-- Безопасный повтор после частичного сбоя; журнал фактических результатов и отсутствие дубликатов интеграции/выпуска.
-- Проверка собственных полномочий; отсутствие автоматического force, публикации неизвестной истории и удаления ради зелёного статуса.
+- Explicit repository/worktree, task, stage, and expected SHAs; dangerous implicit values from the current directory are forbidden.
+- One actual Git state collector for all verifications; no divergent interpretations.
+- A verification-only mode without fixes; separate mutating operations.
+- A brief human-readable summary and a structured JSON with the verdict, reason codes, facts, and an allowed next action.
+- Distinguishing "conditions violated" from "could not verify"; missing data is not counted as success.
+- Re-verification of preconditions immediately before recording, shared local coordination, and server-side verifications of expected refs.
+- A safe retry after a partial failure; a log of actual results and no integration/release duplicates.
+- Verification of own rights; no automatic force, no publication of unknown history, and no deletion for a green status.
 
-В состоянии задачи достаточно ссылок и компактных фактов: task/parent, владелец, host/clone/worktree, branch/target, baseline/HEAD, dirty-state, remote observation, MR/source/result SHA, состояние проверок, следующий шаг и состояние уборки. Состояние Wolf не заменяет фактическую проверку Git и remote.
+In the task state, references and compact facts are enough: task/parent, owner, host/clone/worktree, branch/target, baseline/HEAD, dirty-state, remote observation, MR/source/result SHA, the checks state, the next step, and the cleanup state. Wolf state does not replace actual Git and remote verification.
 
-### 19.3. Сценарии приёмки реализации
+### 19.3. Implementation acceptance scenarios
 
-Реализация считается пригодной после проверки как минимум следующих сценариев:
+An implementation is considered fit after at least the following scenarios are verified:
 
-1. А и Б на разных хостах начинают от одного SHA; оба результата последовательно принимаются с проверкой совместного состояния.
-2. Конфликт Б не задерживает следующий независимый MR.
-3. Изменение source или target после проверки не позволяет опубликовать старого кандидата.
-4. Перезапуск CI после фактического merge не приводит к повторному применению задачи.
-5. Локальные неопубликованные коммиты в main обнаруживаются и сохраняются без автоматического push/reset.
-6. Передача ветки требует остановки прежнего писателя и доступности опубликованного SHA на другом хосте.
-7. После merge проверяется ancestry принятого SHA и запись MR; завершённая ветка без новых данных убирается безопасно, а ветка с дополнительным коммитом сохраняется. При явно разрешённом squash применяется отдельная проверка сохранности по source/result SHA.
-8. Worktree с ценными ignored-файлами не удаляется по одному лишь чистому status.
-9. Между MR и выпуском main уходит вперёд; тег остаётся на явно выбранном релизном SHA.
-10. Повтор выпуска после публикации версии восстанавливает latest без перезаписи образа версии.
-11. Числовая сортировка правильно обрабатывает `2.9.0`, `2.10.0`, `2.22.9`, `2.22.10`; изменение keep_last меняет план.
-12. Неполный список registry, общий digest сохраняемого тега и multi-platform ссылки не приводят к удалению нужного содержимого.
-13. Ошибка очистки не отменяет опубликованный выпуск и допускает безопасный повтор.
-14. Обычный merge в main не публикует контейнерный образ.
-15. Приём дочернего и головного MR через merge сохраняет исходные коммиты; `git log --first-parent` показывает интеграции, а полный граф позволяет связать изменение с исходным SHA и MR.
-16. Для merge-кандидата проверены два родителя (`T`, `S`), дерево и точный SHA `C`; изменение любого из `T`/`S` запрещает публикацию ранее проверенного `C`. Не поддерживающий эту гарантию hosting adapter отказывает безопасно.
-17. Запрос squash без явного исключения или при активной дочерней ветке не интегрируется squash-способом; при разрешённом исключении проверяется безопасная уборка без ancestry.
+1. A and B on different hosts start from one SHA; both results are accepted sequentially with joint-state verification.
+2. B's conflict does not delay the next independent MR.
+3. A source or target change after verification does not allow publishing the old candidate.
+4. A CI restart after an actual merge does not lead to re-applying the task.
+5. Local unpublished commits in main are detected and preserved without automatic push/reset.
+6. A branch handoff requires the previous writer to be stopped and the published SHA to be available on the other host.
+7. After a merge, the accepted SHA's ancestry and the MR record are verified; a completed branch with no new data is cleaned up safely, and a branch with an additional commit is preserved. With an explicitly allowed squash, a separate preservation verification by source/result SHAs applies.
+8. A worktree with valuable ignored files is not deleted by a clean status alone.
+9. Between the MR and the release, main moves ahead; the tag stays on the explicitly chosen release SHA.
+10. A release retry after the version is published restores latest without overwriting the version image.
+11. Numeric sorting handles `2.9.0`, `2.10.0`, `2.22.9`, `2.22.10` correctly; changing keep_last changes the plan.
+12. An incomplete registry list, a shared digest of a preserved tag, and multi-platform references do not lead to deleting needed content.
+13. A cleanup error does not cancel the published release and allows a safe retry.
+14. A regular merge into main does not publish the container image.
+15. Accepting child and top-level MRs through a merge preserves the original commits; `git log --first-parent` shows the integrations, and the full graph makes it possible to connect a change to the original SHA and MR.
+16. For a merge candidate, the two parents (`T`, `S`), the tree, and the exact SHA `C` are verified; a change of either `T`/`S` forbids publishing the previously verified `C`. A hosting adapter that does not support this guarantee fails safely.
+17. A squash request without an explicit exception, or with an active child branch, is not integrated the squash way; with an allowed exception, safe cleanup without ancestry is verified.
 
-## 20. Краткая памятка участнику
+## 20. Quick reference for participants
 
-1. **Вход:** проверь локальную работу, владельца и remote; затем обновляй.
-2. **Новая задача:** отдельная ветка от явного SHA main; подзадача — от SHA родителя.
-3. **Работа:** один писатель, свои файлы, checkpoint на логических границах.
-4. **Передача:** остановись, сохрани, опубликуй, передай SHA и следующий шаг.
-5. **Приёмка:** предъяви опубликованный SHA и проверки; субзадачу принимает родитель.
-6. **Main:** предъяви готовый MR; интеграцию выполняет общая очередь.
-7. **Отказ:** исправь конкретную причину и предъяви новый результат; чужая независимая работа продолжается.
-8. **Выпуск:** явный запрос версии и SHA, Git-тег, сборка и публикация образа, очистка registry.
-9. **Завершение:** подтверди сохранность, убери worktree и ненужные ветки на каждом хосте.
+1. **Entry:** verify your local work, the owner, and the remote; then update.
+2. **New task:** a separate branch from an explicit main SHA; a subtask from the parent's SHA.
+3. **Work:** one writer, your own files, a checkpoint at logical boundaries.
+4. **Handoff:** stop, save, publish, hand over the SHA and the next step.
+5. **Acceptance:** present the published SHA and the verifications; a subtask is accepted by the parent.
+6. **Main:** present a ready MR; integration is done by the shared queue.
+7. **Refusal:** fix the specific reason and present a new result; someone else's independent work continues.
+8. **Release:** an explicit version and SHA request, a Git tag, image build and publication, registry cleanup.
+9. **Completion:** confirm preservation, clean up the worktree and unneeded branches on every host.
 
-## 21. Технические основания
+## 21. Technical grounds
 
-Выбор очереди, модели веток, полномочий и правил хранения — политика данного регламента. Поведение инструментов проверяется по первичной документации:
+The choice of the queue, the branch model, the rights, and the retention rules is the policy of this document. Tool behavior is verified against the primary documentation:
 
-- [Git worktree](https://git-scm.com/docs/git-worktree) — устройство связанных рабочих копий, общие refs, удаление и служебная блокировка.
-- [Git push](https://git-scm.com/docs/git-push) — обновление удалённых refs и защита от нежелательных изменений истории.
-- [Git merge](https://git-scm.com/docs/git-merge) — merge-коммиты, `--no-ff`, порядок родителей и отличия от squash.
-- [Git log](https://git-scm.com/docs/git-log) — `--first-parent` и анализ происхождения изменений.
-- [Semantic Versioning 2.0.0](https://semver.org/) — формат стабильной версии, числовой порядок и неизменность опубликованной версии.
+- [Git worktree](https://git-scm.com/docs/git-worktree) — the structure of linked working copies, shared refs, deletion, and the service lock.
+- [Git push](https://git-scm.com/docs/git-push) — updating remote refs and protection against unwanted history changes.
+- [Git merge](https://git-scm.com/docs/git-merge) — merge commits, `--no-ff`, parent order, and differences from squash.
+- [Git log](https://git-scm.com/docs/git-log) — `--first-parent` and the analysis of change origin.
+- [Semantic Versioning 2.0.0](https://semver.org/) — the stable version format, numeric ordering, and the immutability of a published version.
 
-Конкретные события CI, условия блокировки и операции удаления registry определяются адаптерами и проверяются при внедрении. Настоящий документ не предполагает, что обычный Git самостоятельно предоставляет MR, очередь, сведения о владельцах или registry API.
+The specific CI events, blocking conditions, and registry deletion operations are defined by adapters and verified at implementation time. This document does not assume that regular Git on its own provides MRs, a queue, owner information, or a registry API.
 
 
-## 22. История изменений регламента
+## 22. Policy change history
 
-- **1.1 (1 ноября 2026):** по решению владельца стандартная интеграция дочерних MR и MR в `main` изменена с squash на merge commit (`--no-ff`); уточнены два родителя и проверка точного кандидата, происхождение task/MR, уборка worktrees, конфигурация и сценарии приёмки. Squash оставлен только как явно разрешаемое исключение с отдельной проверкой сохранности. Остальные правила GitFlow не меняются.
+- **1.1 (November 1, 2026):** by the owner's decision, the standard integration of child MRs and MRs into `main` was changed from squash to a merge commit (`--no-ff`); the two parents and the verification of the exact candidate, the task/MR origin, worktree cleanup, configuration, and acceptance scenarios were clarified. Squash remains only as an explicitly granted exception with a separate preservation verification. The other GitFlow rules do not change.

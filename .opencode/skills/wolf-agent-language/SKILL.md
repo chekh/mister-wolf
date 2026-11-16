@@ -1,48 +1,47 @@
 ---
 name: wolf-agent-language
-description: "Внутренние TASK/RESULT/QUESTION/BLOCKED/UPDATE/FINDING и передача между агентами."
+description: "Internal TASK/RESULT/QUESTION/BLOCKED/UPDATE/FINDING and handoff between agents."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.0.0 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
 
+# Internal agent language
 
-# Внутренний язык агентов
-
-Словарь стабилен; расширяется только решением владельца методики. Человеку отвечай обычным языком. Слоты компактны;
-объяснение внутри них — точный обычный текст. Используй task ID и revision вместо «как выше».
-Полные контракты и профили поручений — using-skills/references/contracts.md.
+The vocabulary is stable; only a skill-owner decision extends it. Answer humans in plain language. Slots are compact;
+the explanation inside is precise plain text. Use a task ID and revision, not "as above".
+Full contracts and mandate profiles — using-skills/references/contracts.md.
 
 ## TASK
 
 `TASK <id>@<version> kind=<implement|research|design|review|test|expert|writing|release>`
-- GOAL: результат и вклад в цель пользователя.
-- INPUT: адресные документы/память с версиями, baseline, применимые нормы.
-- SCOPE: область записи, запрещённое, соседние владельцы и общий контракт.
-- CHECK: критерии готовности и проверки.
-- EXECUTION: доступный agent/model/variant, конечный бюджет, stop/return, рабочий каталог.
-- STATE: где mini-plan/result, если нужны; полномочия Git; только существенное.
-Не выдумывай технические настройки и ID. При повторе добавь `REUSE: конкретное основание`
-и номер корректирующего возврата. Поля не обязаны быть длинными; нет специальных данных — «нет».
-Форма RESULT определяется профилем поручения по contracts.md (implement/review/research/expert).
+- GOAL: the result and contribution to the user goal.
+- INPUT: addressed documents/memory with versions, baseline, applicable norms.
+- SCOPE: write scope, what is forbidden, adjacent owners, overall contract.
+- CHECK: readiness criteria and verifications.
+- EXECUTION: available agent/model/variant, finite budget, stop/return, working directory.
+- STATE: where mini-plan/result live if needed; Git rights; essentials only.
+Do not invent technical settings or IDs. On repeat add `REUSE: the concrete grounds`
+and the corrective-return number. Fields need not be long; no special data — "none".
+The RESULT form follows the mandate profile in contracts.md (implement/review/research/expert).
 
-## RESULT и состояние
+## RESULT and state
 
 `RESULT <id> DONE|DONE_WITH_CONCERNS|NEEDS_CONTEXT|BLOCKED`
-`OUT: результат; REV: SHA либо digest/dirty-state; CHECK: evidence; OPEN: остаток/вопрос`
-При подробном отчёте — ссылка на рабочую память, не копия отчёта в сообщении.
-DONE означает готовность к проверке, ACCEPTED выносит назначенный принимающий.
+`OUT: the result; REV: a SHA or digest/dirty-state; CHECK: evidence; OPEN: remainder/the question`
+For a detailed report, link to working memory, not a message copy.
+DONE means readiness for review; ACCEPTED comes from the designated acceptance owner.
 
-`QUESTION <id>: NEED / WHY / BLOCKS` — спросить до дорогой реконструкции намерения.
-`BLOCKED <id>: CAUSE / OUT / UNBLOCK` — сохранить достигнутое.
-`UPDATE <id>@vN: CHANGE / AFFECTS / EFFECTIVE_REV` — изменение для зависимых задач;
-не означает разрешение менять принятые требования.
+`QUESTION <id>: NEED / WHY / BLOCKS` — ask before costly intent reconstruction.
+`BLOCKED <id>: CAUSE / OUT / UNBLOCK` — preserve what is achieved.
+`UPDATE <id>@vN: CHANGE / AFFECTS / EFFECTIVE_REV` — a change for dependent tasks;
+not permission to change accepted requirements.
 
-## Доказательства и замечания
+## Evidence and remarks
 
-`EVIDENCE E-id: CLAIM / REV / METHOD(команда, cwd или источник) / OUTCOME / LIMITS`
+`EVIDENCE E-id: CLAIM / REV / METHOD(command, cwd, or source) / OUTCOME / LIMITS`
 `FINDING F-id: KIND(defect|risk|question|suggestion) / CRITERION / CONDITIONS /
-EVIDENCE / IMPACT / BLOCKING(основание)`.
-Ревью: VERDICT APPROVED|CHANGES_REQUIRED|INCONCLUSIVE; COVERAGE и LIMITS.
-Приёмка: ACCEPTANCE ACCEPTED|PARTIAL|REJECTED|INCONCLUSIVE по AC/evidence.
-Эксперт: POSITION / CLAIMS+EVIDENCE / ASSUMPTIONS / ALTERNATIVES / LIMITS / RECONSIDER_IF.
-Синтез: AGREEMENT / DISAGREEMENT / RECOMMENDATION / LIMITS / DECISION_OWNER.
-Для ситуации вне формата — «вне контракта» и короткое объяснение; формализм не блокирует смысл.
+EVIDENCE / IMPACT / BLOCKING(grounds)`.
+Review: VERDICT APPROVED|CHANGES_REQUIRED|INCONCLUSIVE; COVERAGE and LIMITS.
+Acceptance: ACCEPTANCE ACCEPTED|PARTIAL|REJECTED|INCONCLUSIVE per AC/evidence.
+Expert: POSITION / CLAIMS+EVIDENCE / ASSUMPTIONS / ALTERNATIVES / LIMITS / RECONSIDER_IF.
+Synthesis: AGREEMENT / DISAGREEMENT / RECOMMENDATION / LIMITS / DECISION_OWNER.
+Outside the format — "outside the contract" and a short explanation; formalism does not block meaning.

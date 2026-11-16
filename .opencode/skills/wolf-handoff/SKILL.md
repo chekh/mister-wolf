@@ -1,78 +1,77 @@
 ---
 name: wolf-handoff
-description: "Применять перед сменой сессии или исполнителя, близкой потерей контекста, длительной остановкой либо возобновлением работы по сохранённому состоянию."
+description: "Apply before a session or executor change, near-loss of context, a long stop, or resuming work from saved state."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.0.0 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
 
-# Передача состояния
+# State handoff
 
-## Обязательный вход
+## Mandatory input
 
-До передачи различи новую задачу и продолжение прежней. Сохрани существующий task/thread ID при продолжении. Передачу выполняют в пределах полномочий; исполнитель возвращает checkpoint ведущему. Не полагайся на наследование чата; сохранённые ссылки и незакоммиченная работа должны быть реально доступны преемнику.
+Before a handoff, distinguish a new task from continuing the previous one; keep the existing task/thread ID. Handoffs run within the mandate in force; an executor returns a checkpoint to the lead. Do not rely on chat inheritance: saved links and uncommitted work must be truly available to the successor.
 
-Загрузи полный текст назначенной методики до её выполнения. Обязательные пункты отслеживай в доступном трекере или рабочем брифе; не добавляй новые статусы памяти. Недоступное действие передай ответственному уровню.
+Load the assigned skill in full before executing it. Track mandatory items in an available tracker or the working brief; add no new memory statuses. Pass an unavailable action to the responsible level.
 
+A handoff is gate G2 per `wolf-git` and §9 of the policy.
 
-Передача — гейт G2 по `wolf-git` и §9 регламента.
+## Choosing the action
 
-## Выбор действия
-
-Ведущий (L0) сначала применяет полный канон
-using-skills/references/division-of-labor.md: новая поставка и replace прежнего
-поручения различаются. Замену исполнителя выполняет тот, кто его нанимал;
-передачу собственной роли инициирует владелец. Исполнитель возвращает checkpoint
-и запрос ведущему, преемника не спавнит. Порядок передачи ниже действует в
-пределах прежних прав. Tool.task не гарантирует сброс
-контекста родителя — проверь возможности платформы.
+The lead (L0) first applies the full canon
+using-skills/references/division-of-labor.md: a new delivery and a replace of the previous
+mandate differ. Whoever hired an executor performs the replace;
+the owner initiates handoff of its own role. The executor returns a checkpoint
+and a request to the lead; it does not hire a successor. The order below works
+within the previous rights. Tool.task does not guarantee resetting
+the parent's context — check platform capabilities.
 
 ## Snapshot
 
-До передачи передающий сохраняет checkpoint как адресную рабочую note/history Wolf
-по using-skills, связанную с действующим thread; текущий контекст — note/context.
-Сначала сверь уже существующий checkpoint: не создавай дубликат на каждый вызов.
-Файловый fallback вне docs — при недоступной памяти/файловых данных; новый
-checkpoint/report в docs/dev для каждой сессии не создавай. Исполнитель передаёт
-состояние сообщением ведущему; тот обеспечивает долговечность и доступность файлов,
-включая нужные материалы из tmp, прежде чем закрыть сессию/очистить рабочее место.
-Snapshot не становится проектным документом автоматически. Состав:
-- task/thread ID, цель, AC, scope и текущий ответственный;
-- base/current revision, cwd, branch/worktree, dirty/untracked, patch или другой доступный способ восстановления;
-- выполненное и оставшееся, dependencies, ожидающий внешний исход;
-- известные расходы/остаток бюджета поручения и общий лимит поставки; неизвестное
-  явно отметить — новая сессия не обнуляет бюджет; это текст состояния, не новые поля Wolf;
-- действующие ограничения задачи (`ACTIVE_CONSTRAINTS`) и активные методики/политики — IDs/версии;
-- принятые решения (`DECISIONS[]`: D-id, что решили одной строкой, почему, основание/источник) — только влияющие на продолжение;
-- проверки с evidence и областью актуальности;
-- гипотезы и неудачные эксперименты, вопросы и блокеры;
-- следующий безопасный шаг, права и действия, уже разрешённые пользователем.
+Before handoff, the transferring side saves the checkpoint as an addressed working Wolf
+note/history per using-skills, linked to the active thread; current context is note/context.
+First reconcile an existing checkpoint: create no duplicates per call.
+File fallback outside docs applies when memory/file data is unavailable; do not create a new
+checkpoint/report in docs/dev per session. The executor passes
+the state as a message to the lead; the lead ensures the files' durability and availability,
+including needed tmp materials, before session close/workplace cleanup.
+A snapshot does not become a project document automatically. Contents:
+- task/thread ID, goal, AC, scope, current responsible party;
+- base/current revision, cwd, branch/worktree, dirty/untracked, patch, or other available restore;
+- done and remaining work, dependencies, a pending external outcome;
+- known spend/remaining mandate budget and the delivery's overall limit; mark unknowns
+  explicitly — a new session does not zero the budget; state text, not new Wolf fields;
+- task constraints in force (`ACTIVE_CONSTRAINTS`) and active skills/policies — IDs/versions;
+- accepted decisions (`DECISIONS[]`: D-id, the decision in one line, why, grounds/source) — only those affecting continuation;
+- verifications with evidence and validity scope;
+- hypotheses and failed experiments, questions and blockers;
+- the next safe step, rights, and actions the user already permitted.
 
-Не копируй весь чат, код и секреты. Ссылки должны быть доступны преемнику; проверь это. Достаточный snapshot важнее предположения, что wolf call доставит любую запись.
+Do not copy the whole chat, code, or secrets. Links must be accessible to the successor — verify. A sufficient snapshot matters more than assuming wolf call will deliver any note.
 
-## Передача владения
+## Handing off ownership
 
-1. Зафиксируй snapshot revision и место. При недоступной записи передающий передаёт его ведущему, не обходит permissions.
-2. Действующим механизмом останови или отзови право записи старого исполнителя; проверь незавершённые инструменты/процессы. При неизвестном исходе сначала выясни состояние.
-3. Ведущий передаёт преемнику TASK (по канону ядра и профилю поручения в using-skills), snapshot и доступные источники. Если технической блокировки нет, установи протокольного единственного владельца и явно обозначь ограничение.
-4. Преемник подтверждает цель, revision, dirty-state и следующий шаг; сверяет память/план с фактом. Несовпадение → NEEDS_CONTEXT, не слепое продолжение.
-5. Только после подтверждения отметь передачу завершённой и сообщи ответственному уровню ID/статус.
+1. Record the snapshot revision and location. If recording is unavailable, the transferring side passes it to the lead, not bypassing permissions.
+2. With the mechanism in force, stop or revoke the old executor's right to record; check unfinished tools/processes. Unknown outcome: establish state first.
+3. The lead passes the successor a TASK (per the core canon and mandate profile in using-skills), the snapshot, and available sources. Without a technical lock, set a single protocol-level owner and mark the constraint explicitly.
+4. The successor confirms goal, revision, dirty-state, and next step, checking memory/plan against fact. A mismatch → NEEDS_CONTEXT, not blind continuation.
+5. Only after confirmation mark the handoff complete and report the ID/status to the responsible level.
 
-## Ограничения
+## Constraints
 
-Handoff не повышает права и не разрешает незапрошенные внешние действия. Новая сессия не исправляет неправильный план сама по себе. При дрейфе проверь источник ошибки и достаточность snapshot, а не только уменьши текст. Обновление скилла/процесса не подменяет инструкции уже работающего агента посередине TASK.
+A handoff does not raise rights or permit unsolicited external actions. A new session does not fix a wrong plan alone. On drift, check the error's source and the snapshot's sufficiency, not just shrink the text. A skill/process update does not substitute the instructions of an agent already working mid-TASK.
 
-## Гейт перехода
+## Transition gate
 
-Передача завершена после сохранения достаточного snapshot, определения единственного владельца записи и подтверждения преемником цели, фактического состояния и следующего шага. Нельзя одновременно продолжать запись старым и новым исполнителем. Недоступная техническая блокировка должна быть явно заменена протокольным ограничением.
+The handoff is complete after a sufficient snapshot is saved, a single recording owner is set, and the successor confirms goal, actual state, next step. The old and new executor must not keep recording at the same time. Unavailable technical locking must be explicitly replaced by a protocol-level constraint.
 
-## Не пропускай процесс
+## Do not skip the process
 
-| Мысль | Действие |
+| Thought | Action |
 | --- | --- |
-| «Новая сессия всё исправит» | Проверь достаточность плана и snapshot. |
-| «wolf call найдёт любую нужную запись» | Передай прямые доступные ссылки и версии. |
-| «Начнём новый тред для продолжения» | Сначала восстанови существующий тред той же цели. |
+| "A new session will fix everything" | Check plan and snapshot sufficiency. |
+| "wolf call will find any needed note" | Pass direct accessible links and versions. |
+| "We will start a new thread to continue" | First restore the existing thread of the same goal. |
 
-При передаче созданных средств действует using-skills/references/project-tools.md:
-нужный для продолжения скрипт не остаётся единственной копией в tmp; ведущий сохраняет
-его и карточку до закрытия исполнителя. Не создавай инструмент заново вместо проверки
-доступности существующего. Закрытие ненужной сессии не удаляет evidence/рабочую копию.
+For your tools, using-skills/references/project-tools.md applies on handoff:
+a script needed for the continuation must not remain the only copy in tmp; the lead preserves
+it and its card before the executor closes. Do not recreate a tool instead of checking
+the existing one is available. Closing an unneeded session does not delete evidence/working copies.

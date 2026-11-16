@@ -1,67 +1,69 @@
 ---
 name: wolf-execute
-description: "Применять исполнителю при выполнении назначенной конечной подзадачи по утверждённому плану или разрешённому брифу; при продолжении того же результата."
+description: "Apply as an executor when performing an assigned finite subtask under an approved plan or allowed brief; and when continuing the same result."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.0.0 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
 
-# Исполнение конечного мандата
+# Executing a finite mandate
 
-Получай TASK, назначенную методику действия и относящиеся ограничения от нанимателя.
-TASK/RESULT/EVIDENCE — по using-skills/references/contracts.md. Ведущий (L0)
-исполняет этот процесс сам либо нанимает исполнителя и принимает результат; этот навык
-не разрешает заменять исполнителей универсальным надзором. Если диспетчеризация
-недоступна, ведущий возвращает конкретное ограничение, не имитирует вызов.
+Receive the TASK, assigned action skill, applicable constraints from the requester.
+TASK/RESULT/EVIDENCE — per using-skills/references/contracts.md. The lead (L0)
+executes this process itself or hires an executor and accepts the result; the skill
+does not allow replacing executors with universal supervision. If dispatching
+is unavailable, the lead returns a concrete constraint, not an imitated call.
 
-При написании/изменении кода применяй доставленный wolf-code-craft;
-при отдельном поручении на упрощение — wolf-code-simplify. Недостающую назначенную
-методику запроси у нанимателя. Это не отменяет test-driven-development и проектные проверки
-и не запускает второй проход после каждой правки.
+When writing/changing code apply the delivered wolf-code-craft;
+for a separate simplification mandate — wolf-code-simplify. Request a missing assigned
+skill from the requester. It does not cancel test-driven-development or project verifications
+and starts no second pass per edit.
 
-Бюджет исправлений — не более двух циклов на задачу: первый — корректирующий
-возврат тому же исполнителю, второй — свежему экземпляру.
+The fix budget is two cycles per task at most: the first is a corrective
+return to the same executor, the second to a fresh instance.
 
-## Исполнение
+## Execution
 
-1. Сверь назначенные входы с фактической revision, allowlist и правами.
-   Недостающий обязательный вход — NEEDS_CONTEXT, не догадка. Не повторяй общий
-   bootstrap или поиск уже доставленной методики.
-2. Выполни только ready-шаги своего результата: нужное чтение, применимая
-   тестовая дисциплина, изменение и назначенная проверка. Не отменяй гейт
-   ради краткости; техники выбирай по пользе: условное выполняй при наличии его основания.
-3. Проверь результат, существенные инварианты и свой diff. Код-первый, неполная
-   проверка и pre-existing failure указываются честно. Саморевью не независимо.
-4. Верни RESULT по роли: статус/вердикт, изменения, evidence на проверенное
-   состояние, ограничения и адресный вопрос при необходимости. DONE — готовность
-   к независимой проверке, не ACCEPTED. Не коммить, не спавни и не интегрируй.
-5. Если созданы скрипты, верни назначение, пути, проверку и необходимость
-   сохранения. Наниматель обеспечивает постоянное место/карточку по
-   using-skills/references/project-tools.md. tmp не единственный источник
-   нужного следующему исполнителю средства.
+1. Check assigned inputs against actual revision, allowlist, rights.
+   A missing mandatory input — NEEDS_CONTEXT, not a guess. Do not repeat the general
+   bootstrap or search for an already delivered skill.
+2. Carry out only your result's ready steps: needed reading, applicable
+   test discipline, the change, assigned verification. Do not cancel a gate
+   for brevity; pick techniques by benefit: carry out conditionals when their premise applies.
+3. Check the result, substantial invariants, your diff. Code-first, incomplete
+   verification, and pre-existing failures are stated honestly. Self-review is not independent.
+4. Return a RESULT per role: status/verdict, changes, evidence for the verified
+   state, constraints, an addressed question when needed. DONE is readiness
+   for independent review, not ACCEPTED. Without explicit commit permission in
+   the TASK, hand off the changes and their state instead of committing.
+   Do not hire or integrate.
+5. If scripts were created, return purpose, paths, verification, whether
+   to keep them. The requester provides a permanent location/card per
+   using-skills/references/project-tools.md. tmp must not be the only source
+   of a tool the next executor needs.
 
-## Вопрос, блокер и остановка
+## Question, blocker, and stop
 
-Вопрос руководителю — нормальное действие до провалов. Используй wolf-feedback
-для относящегося затруднения; сбой инструмента не запускает полный аудит.
-Локальную очевидную коррекцию выполни в лимите; неизвестную причину, новый способ,
-существенный выход за scope верни нанимателю с установленным и нужным входом.
-Без заданного лимита возврат не позднее 8 обращений; два шага без продвижения —
-раньше. Не повышай model/variant и не продлевай бюджет сам.
+Asking the lead is normal before failures. Use wolf-feedback
+for a relevant difficulty; a tool failure does not launch a full audit.
+Carry out a local, obvious correction within the limit; return an unknown cause, new method,
+or substantial scope overrun to the requester with what is established and needed input.
+Without a set limit, return within 8 calls; two steps without progress —
+earlier. Do not raise model/variant or extend the budget yourself.
 
-После результата заверши вызов. Не добавляй соседних исследований и проверок
-без влияющего на вывод основания. При продолжении того же непринятого результата
-используй ответ нанимателя и сохранённое состояние; уже достаточное не повторяй.
-Соблюдай `ACTIVE_CONSTRAINTS` своего TASK и не переоткрывай без нового основания
-вопросы, закрытые в `DECISIONS[]`; контрпример или изменившееся основание верни нанимателю.
-Новая независимая задача получает fresh по решению нанимателя. После приёмки ненужный
-экземпляр закрывается без отдельной церемонии, с сохранением нужных материалов
-и окончанием записи; закрытие сессии не удаляет worktree/evidence.
+After the result, end the call. Do not add adjacent research or verifications
+without grounds affecting the conclusion. When continuing the same unaccepted result,
+use the requester's reply and saved state; do not repeat what is already sufficient.
+Observe your TASK's `ACTIVE_CONSTRAINTS`; do not reopen questions closed in
+`DECISIONS[]` without new grounds; return a counterexample or changed grounds to the requester.
+A new independent task gets a fresh instance at the requester's decision. After acceptance an unneeded
+instance closes without separate ceremony, keeping needed materials, ending recording;
+closing a session does not delete worktree/evidence.
 
-## Гейт
+## Gate
 
-Результат соответствует конечному TASK либо предел явно указан. Наниматель проверяет
-evidence, назначает независимое ревью, интегрирует и принимает поставку (ACCEPTANCE).
-Служебный RESULT не требует отдельного файла или пользовательского отчёта.
+The result matches the finite TASK, or the limit is stated explicitly. The requester verifies
+evidence, assigns independent review, integrates, and accepts the delivery (ACCEPTANCE).
+A service RESULT needs no separate file or user report.
 
-Для повторяемых технических операций при необходимости читай
-[контракты средств](references/technical-helpers.md). Они не заменяют исполнителя
-и не создают дополнительную процедуру для каждой простой задачи.
+For repeatable technical operations read
+[tool contracts](references/technical-helpers.md) when needed. They do not replace an executor
+and create no extra procedure for every simple task.

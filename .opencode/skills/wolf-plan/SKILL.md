@@ -1,83 +1,82 @@
 ---
 name: wolf-plan
-description: "Применять перед декомпозицией утверждённого решения в исполнимые задачи, перед передачей работы исполнителям или при изменении зависимостей и состава существующего плана."
+description: "Apply before decomposing an approved solution into executable tasks, before handing work to executors, or when an existing plan's dependencies and composition change."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.0.0 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
 
-# Дизайн → задачи
+# Design → tasks
 
-## Обязательный вход
+## Mandatory input
 
-До планирования проверь тред, режим, актуальные требования, действующие записи change-request.md, дизайн и основание их утверждения. Ведущий поручает планирование и принимает общий план; исполнитель может готовить назначенную часть, но не владеть общим планом. В FULL заполняй plan.md существующей папки: задачи чекбоксами с task_id, ссылками на design и baseline. В LITE/FIX используй разрешённый бриф; не создавай весь пакет документов ради формальности. Автор плана не начинает реализацию в рамках этого скилла.
+Before planning, check thread, mode, current requirements, active change-request.md entries, design, and grounds of approval. The lead assigns planning and accepts the overall plan; an executor may prepare an assigned part, never own the overall plan. In FULL, fill in the folder's plan.md: tasks as checkboxes with task_id, links to design and baseline. In LITE/FIX, use the allowed brief; do not create the whole package for formality. The plan author does not start implementation in this skill.
 
-Различай обязательные требования и условные; условное выполняй при наличии его основания.
-Отслеживай применимые обязательства в существующем TASK/трекере; не создавай новые статусы памяти; недоступное обязательное действие передай ответственному уровню.
+Distinguish mandatory requirements from conditional; carry out conditionals when their premise applies.
+Track applicable obligations in the existing TASK/tracker; do not create new memory statuses; pass an unavailable mandatory action to the responsible level.
 
+## Input and output
 
-## Вход и выход
+Input: approved requirements/design or an allowed LITE/FIX brief; baseline SHA, project profile, known test-plan. Output: plan.md or a TASK list with dependencies and integration points. The planning author does not perform implementation.
 
-Вход: approved requirements/design либо разрешённый LITE/FIX-бриф; baseline SHA, профиль проекта и известный test-plan. Выход: plan.md или список TASK с зависимостями и точками интеграции. Автор планирования не выполняет реализацию.
+## Scale of the mandate
 
-## Масштаб поручения
+Before splitting, load using-skills/references/division-of-labor.md unless it
+has been delivered. Plan within your TASK boundaries: distributing a common goal
+across deliveries, or a delivery's internal finite tasks.
+In the first case the lead prepares constrained briefs with criteria,
+inputs, dependencies/readiness conditions, shared-resource boundaries, budget,
+and a technical-integration owner. Mandates use the existing TASK core
+and frame without a new profile; a short summary and links go to the role's REPORT.
+The lead makes the mandates; a planning executor hires nobody.
 
-До разбиения загрузи using-skills/references/division-of-labor.md, если текст
-ещё не доставлен. Планируй в границах своего TASK: распределение общей цели
-между поставками либо внутренние конечные задачи одной поставки.
-Для первого случая ведущий готовит ограниченные брифы с критериями,
-входами, зависимостями/условиями готовности, границами общих ресурсов, бюджетом
-и владельцем технической интеграции. Поручения используют существующее ядро
-TASK и рамку без нового профиля; краткая сводка и ссылки идут в REPORT роли.
-Назначения выполняет ведущий; планирующий исполнитель никого не нанимает.
+A delivery boundary is a finished result acceptable on its own, not the whole
+goal/thread or session. Separate deliveries get fresh executors even sequentially.
+Do not split small related work across files/stages; a delivery's internal plan
+may include related stages, reviews, fixes in one mandate.
+An accepted plan-only mandate result does not permit delivery execution.
 
-Граница поставки — законченный самостоятельно принимаемый результат, не вся
-цель/thread или сессия. Отдельные поставки получают новых исполнителей даже последовательно.
-Не дроби малую связанную работу по файлам/этапам; внутренний план поставки
-может включать связанные этапы, ревью и исправления в одном поручении.
-Принятый результат поручения только на план не разрешает исполнение поставок.
+## Process
 
-## Процесс
+Ready nodes start right after prerequisites, not the whole wave.
+Check shared databases, ports, test environments, other resources: different files do not guarantee independence.
+Lens-based reviews and independent tests may run in parallel on one revision.
+Integrate results in small batches; verify interactions on a shared revision.
 
-Готовые узлы стартуют сразу после prerequisites, а не после всей волны.
-Проверить общие БД, порты, тестовые среды и другие ресурсы: разные файлы не гарантируют независимость.
-Ревью по линзам и независимые тесты можно запускать параллельно на одной ревизии.
-Интегрируй результаты небольшими порциями; взаимодействия проверяй на общей ревизии.
+1. Check input versions. Map each REQ/NFR to a task and verification; record gaps before execution.
+2. Split the work by results and responsibility. Task size is set by independent verification and available context, not a mandatory 2–5 minutes.
+3. For each task, fill in a TASK from using-skills per the core canon and mandate profile; do not duplicate the field list, refer to the canon. Allow reading affected code and consumers; absent session history does not mean reading is forbidden.
+4. Specify sufficiently precise actions and symbols, not full implementation code. Examples are allowed for an ambiguous contract but do not duplicate design. Do not prescribe exact test code instead of the verifiable property.
+5. Build dependencies. Allow parallelism only for independent outputs, isolated writes, and a defined integration owner. Serialize shared contracts and migrations.
+6. For TASK outputs, specify a message or exact file/section; assign the temporary area outside documentation. For an extra stage document, state purpose, reader, owner right in the plan, without a separate registry. Add a separate integration task: combining order, interaction verification, the full gate, conflict-resolution rules. Specify intermediate checkpoints for long-running work.
+7. Reconcile the plan with the test-plan: scenarios enter the matching tasks, NFRs have measurements, tests run via project commands. FULL execution starts only after that.
+8. Carry out self-review and the assigned independent review. Fix a plan error with re-verifying affected dependencies.
 
-1. Проверь версии входов. Отнеси каждый REQ/NFR к задаче и проверке; зафиксируй пробелы до исполнения.
-2. Раздели работу по результатам и ответственности. Размер задачи определяется независимой проверкой и доступным контекстом, а не обязательными 2–5 минутами.
-3. Для каждой задачи заполни TASK из using-skills по канону ядра и профилю поручения; перечень полей не дублируй, сошлись на канон. Разреши читать затронутый код и потребителей; отсутствие истории сессии не означает запрета чтения.
-4. Укажи достаточно точные действия и символы, не полный код реализации. Примеры допустимы для неоднозначного контракта, но не дублируют design. Не предписывай точный код теста вместо проверяемого свойства.
-5. Построй зависимости. Параллельность разреши только для независимых outputs, изолированной записи и определённого владельца интеграции. Общие контракты и миграции сериализуй.
-6. Для выходов TASK укажи сообщение либо точный файл/раздел; временную область назначь вне документации. Дополнительному документу этапа задай назначение, читателя и владельца прямо в plan, без отдельного реестра. Добавь отдельную интеграционную задачу: порядок объединения, проверка взаимодействий, полный гейт и правила разрешения конфликтов. Укажи промежуточные чекпоинты для длительной работы.
-7. Сверь plan с test-plan: сценарии входят в соответствующие задачи, NFR имеют измерения, тесты запускаются проектными командами. Исполнение FULL не стартует до этой сверки.
-8. Проведи саморевью и назначенное независимое ревью. Ошибку плана исправляй с повторной проверкой затронутых зависимостей.
+## Planning by certainty
 
-## План по определённости
+Detail what is already executable; first resolve a route-changing unknown —
+with a question to the context holder, a ready source, or a limited probe.
+Do not write a detailed implementation chain on an unverified assumption. Mark dependent
+tasks conditional in the plan text, without a new memory status; after an answer, change
+only the affected part. Do not split an obvious simple result to grow the task count.
 
-Детализируй то, что уже можно исполнять; неизвестное, меняющее маршрут, сначала
-сними вопросом носителю контекста, готовым источником или ограниченной пробой.
-Не пиши подробную цепочку реализации на непроверенном допущении. Отметь зависимые
-задачи условными в тексте плана, без нового статуса памяти; после ответа измени
-только затронутую часть. Простой понятный результат не дроби ради числа задач.
+## Tracking
 
-## Трекинг
+Write tasks as checkboxes with task_id. `[x]` is set by the task's acceptance owner — usually the lead — after checking the result and necessary reviews, recording revision/evidence and integration status nearby. A commit or checkbox alone does not prove acceptance. The overall plan is changed by the lead, not parallel executors.
 
-Пиши задачи чекбоксами с task_id. [x] ставит приёмник задачи — обычно ведущий — после проверки результата и необходимых ревью; рядом фиксирует revision/evidence и статус интеграции. Коммит или чекбокс отдельно не доказывает приёмку. Общий plan изменяет ведущий, не параллельные исполнители.
+On resumption compare `[x]` with code, evidence, and verdicts; a mismatch returns the task to verification. Do not repeat already confirmed actions automatically.
 
-При восстановлении сравни [x] с кодом, доказательствами и вердиктами; несовпадение возвращает задачу в проверку. Не повторяй уже подтверждённые действия автоматически.
+## Handoff
 
-## Передача
+On moving to execution, wolf-execute applies: the lead executes a ready node itself or hires a fresh executor for a finite mandate. Unavailable dispatching is a
+concrete owner constraint, not implementation deferral. Do not ask the user to choose an internal mechanism without substantial effect on cost, risk, or preferences.
 
-При переходе к исполнению применяется wolf-execute: ведущий сам исполняет готовый узел или нанимает свежего исполнителя для конечного мандата. Недоступность диспетчеризации —
-конкретное ограничение владельца, а не перенос реализации. Не проси пользователя выбирать внутренний механизм без существенного влияния на стоимость, риск или его предпочтения.
+## Transition gate
 
-## Гейт перехода
+The plan is ready for execution after dependencies are checked, design conformance confirmed, test-plan agreed, and necessary review done. Document states and approval grounds must match current versions. The lead organizes execution per wolf-execute; the assigned executor applies it for a finite mandate. Implementation is not part of planning.
 
-План готов к исполнению после проверки зависимостей, соответствия design, согласования test-plan и необходимого ревью. Состояния документов и основания утверждения должны соответствовать текущим версиям. Ведущий организует исполнение по wolf-execute; назначенный исполнитель применяет его для конечного мандата. Реализация не является частью планирования.
+## Do not skip the process
 
-## Не пропускай процесс
-
-| Мысль | Действие |
+| Thought | Action |
 | --- | --- |
-| «План — это список файлов» | Каждая задача имеет цель, проверяемый результат, входы и зависимости. |
-| «Тесты добавим после реализации» | Свяжи проверки с задачами до старта. |
-| «Исполнители сами разделят общую работу» | Общий план и порядок интеграции принадлежат ведущему. |
+| "A plan is a list of files" | Every task has a goal, verifiable result, inputs, dependencies. |
+| "We will add tests after implementation" | Link verifications to tasks before start. |
+| "Executors will split the shared work themselves" | The overall plan and integration order belong to the lead. |
