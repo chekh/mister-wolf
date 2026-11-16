@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# wolf:rendered base=workflow-helper.py set=3.0.0
+# wolf:rendered base=workflow-helper.py set=3.1.1
 """Local technical operations for an assigned task; never dispatches or accepts a task."""
 import argparse
 import hashlib
@@ -83,6 +83,11 @@ def wait_group_empty(pgid, cap=5.0):
         try:
             os.killpg(pgid, 0)
         except ProcessLookupError:
+            return True
+        except PermissionError:
+            # EPERM here means the group is gone and the pgid has been reused
+            # by another user's process (routine on macOS runners): our group
+            # is empty. A live process of ours would answer kill(0) with 0.
             return True
         if time.monotonic() >= deadline:
             return False

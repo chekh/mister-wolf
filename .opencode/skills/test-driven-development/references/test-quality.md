@@ -1,23 +1,13 @@
-<!-- wolf:rendered base=test-quality.md set=3.0.0 -->
-# Независимость и чувствительность проверки
+<!-- wolf:rendered base=test-quality.md set=3.1.1 -->
+# Test independence and sensitivity
 
-Тест должен ловить конкретный неверный результат, побочный эффект или нарушение
-контракта. Назови дефект, который заставит его упасть. Правильные слова в source
-или самоотчёте не доказывают работу системы.
+A test must catch a specific wrong result, side effect, or contract violation. Name the defect that will make it fail. Correct words in source or self-report do not prove the system works.
 
-- Ожидаемое получай из требования, ручного расчёта или независимого эталона,
-  не тем же helper, которым реализация вычисляет фактическое.
-- Проверяй потребительский эффект, а не только значение константы или внутренний
-  порядок вызовов. Точный текст проверяй, когда это сам контракт.
-- Мок оправдан для внешней границы; не проверяй только настройку собственного
-  мока. Важное взаимодействие подтверждай подходящей интеграционной проверкой.
-- Для бага покажи чувствительность на baseline с дефектом. Для characterization
-  допустим зелёный baseline; не ломай рабочее поведение ради ритуального RED.
-- Для навыка оцени действие/evidence/итог на сыром сценарии. Наличие «scope» или
-  «draft» — лишь структурный сигнал, не поведенческий pass.
-- Время, seed, файлы, env и cleanup контролируй там, где они влияют на тест.
+- Get the expected value from the requirement, manual calculation, or an independent oracle, not the same helper the implementation computes the actual value with.
+- Test the consumer effect, not only a constant's value or the internal call order. Verify exact text when text itself is the contract.
+- A mock is justified at an external boundary; do not test only your own mock's setup. Confirm an important interaction by a suitable integration test.
+- For a defect, show sensitivity on a baseline with the defect. For characterization, a green baseline is acceptable; do not break working behavior for ritual RED.
+- For a skill, evaluate action/evidence/outcome on a raw scenario. The presence of "scope" or "draft" is only a structural signal, not a behavioral pass.
+- Control time, seed, files, env, cleanup affecting the test.
 
-Пример: парсер должен вернуть сумму 3 и 4. Ожидаемое 7 задаётся независимо;
-повторный вызов того же парсера справа от assertion дефект не поймает.
-Скрипт фиксации evidence испытай командой с ненулевым exit: успешной отметки
-быть не должно. Проба поддельного самоотчёта помогает проверить rubric, не модель.
+Example: a parser must return the sum of 3 and 4. Expected 7 is set independently; calling the same parser again to the right of an assertion catches no defect. Test the evidence-recording script with a command exiting non-zero: no success mark may appear. A fake self-report probe helps verify the rubric, not the model.

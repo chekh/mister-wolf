@@ -1,190 +1,260 @@
 ---
 name: wolf-brainstorm
-description: "Применять L0 при новой идее, разработке, существенном изменении или новом содержательном поручении, включая анализ и подготовку документа, когда понимание цели ещё не сверено; до исследования предмета, требований, проектирования и постановки исполнения. исполнители применяют назначенную часть по согласованному брифу без повторного опроса пользователя."
+description: "Apply L0 on a new idea, development, a substantial change or a new substantive mandate, including analysis and document preparation, when the understanding of the goal is not yet aligned; before researching the subject, requirements, design and setting up execution. Executors apply the assigned part under an agreed brief without re-interviewing the user."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.0.0 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
 
-# Намерение пользователя → общее понимание → нужный результат
+# User intent → shared understanding → the needed result
 
-Применяй к задачам любой предметной области: разработке, анализу, организации
-работы, подготовке материалов и другим поручениям. Выясняй намерение из текущего
-контекста; не переноси цель, источники или способ работы из прежнего примера.
-Результатом могут быть решение, объяснение, документ или выполненное действие.
-Технические требования и проектная папка нужны только при соответствующей задаче.
+Apply this to tasks in any domain: development, analysis, organizing work,
+preparing materials and other mandates. Establish the intent from the current
+context; do not carry over a goal, sources or a way of working from an earlier
+example. The result may be a decision, explanation, document or completed
+action. Technical requirements and a project folder are needed only for a
+matching task.
 
-## Обязательный вход и роли
+## Mandatory input and roles
 
-Загрузи полный текст до прояснения новой цели. Ведущий ведёт разговор; он же организует
-исследование, документы и исполнителей. Поясняй по wolf-explain в этом же
-разговоре, без отдельного агента и повторной загрузки актуальной методики.
+Load the full text before clarifying a new goal. The lead runs the dialogue;
+the same lead organizes research, documents and executors. Explain per
+wolf-explain within the same dialogue, without a separate agent or reloading
+the current skill.
 
-Вход: запрос, относящийся контекст, действующие решения/ограничения, доставленные
-брифы/отчёты, task/thread ID при наличии. Не подменяй цель старой подзадачей.
-Продолжение согласованной неизменившейся работы не требует нового discovery.
+Input: the request, the related context, decisions/constraints in force,
+delivered briefs/reports, task/thread IDs where present. Do not substitute the
+goal with an old subtask. Continuing agreed, unchanged work needs no new
+discovery.
 
-Ведущий использует метаданные. Содержательное изучение материалов и поиск
-фактов задачи ведущий выполняет сам или поручает исполнителю. Markdown, read-only, «информационный вопрос»
-и «быстро посмотрю» не создают исключений из роли.
+The lead handles metadata. Substantive study of the material and the search for
+task facts the lead performs on its own or assigns to an executor. Markdown,
+read-only, an "informational question" and "a quick look" create no exception to
+the role.
 
-## Выбери глубину разговора, сохрани цель
+## Choose the depth of the dialogue, keep the goal
 
-| Ситуация | Действие |
+| Situation | Action |
 | --- | --- |
-| Пользователь ищет идею/направление | Помоги осмыслить проблему, подходы и последствия; документ или разработка не обязательны. |
-| Конкретное поручение: изучить, сравнить, написать, исправить | Кратко сверь цель/результат; затем организуй порученную работу, без автоматического requirements.md. |
-| Существенно разные прочтения | Покажи различие сценарием или предположением и выясни намерение. |
-| Простой вопрос с ответом в доставленном контексте | Ответь; не запускай тред и исследование ради формальности. |
+| The user is looking for an idea/direction | Help make sense of the problem, approaches and consequences; a document or development is not required. |
+| A concrete mandate: study, compare, write, fix | Briefly align on the goal/result; then organize the assigned work, without an automatic requirements.md. |
+| Substantially different readings | Show the difference with a scenario or assumption and establish the intent. |
+| A simple question whose answer is in the delivered context | Answer; do not start a thread or research for form's sake. |
 
-До дорогого исследования, scaffold и требований покажи понимание новой цели
-так, чтобы пользователь мог поправить существенное. Используй доставленный
-контекст; при необходимости назначь короткое адресное ознакомление,
-не полный аудит. Если цель/результат/границы достаточны, продолжай порученное
-без ритуального ожидания ответа. Существенную развилку уточни до зависимой работы;
-молчание не подтверждает неизвестное. Гейты ещё не показанных requirements/design
-сохраняются. Продолжение той же цели не требует повторной сверки.
+Before expensive research, scaffolding and requirements, show your understanding
+of the new goal so the user can correct what matters. Use the delivered
+context; if needed, assign a short addressed familiarization pass, not a full
+audit. If the goal/result/boundaries are sufficient, continue the assigned work
+without ritually waiting for an answer. Clarify a substantial fork before
+dependent work; silence does not confirm the unknown. Gates for
+requirements/design not yet shown stay in force. Continuing the same goal needs
+no re-confirmation.
 
-Различай желаемый результат и предложенный способ его получить. Не превращай
-сравнение в обязательную унификацию, совет — в проект внедрения, а подготовку
-документа — в разработку новой системы. Широта исходных материалов сама по себе
-не разрешает расширять задачу или применять процесс разработки FULL.
+Distinguish the desired result from the proposed way of obtaining it. Do not
+turn a comparison into mandatory unification, advice into an implementation
+project, or preparing a document into developing a new system. Breadth of
+source material alone does not permit expanding the task or applying the
+FULL development process.
 
-## Содержательный диалог вместо анкеты
+## Substantive dialogue instead of a questionnaire
 
-Помоги выразить, чего пользователь хочет добиться и почему. Количество вопросов,
-заполненные поля и уверенный тон не доказывают понимания. Не задавай обязательные
-два, три или пять вопросов и не проходи универсальную анкету.
+Help the user express what they want to achieve and why. The number of
+questions, filled-in fields and a confident tone do not prove understanding.
+Do not ask a mandatory two, three or five questions or run a universal
+questionnaire.
 
-Опирайся на контекст и последний ответ. Выбери полезный ход: проверь предположение,
-покажи сценарий/последствие, предложи подход, выяви противоречие, возрази с
-основанием или спроси. Вопрос нужен, когда ответ меняет понимание, выбор или
-ближайшее действие. Не спрашивай известное и не требуй готовых требований.
+Build on the context and the latest answer. Choose a useful move: test an
+assumption, show a scenario/consequence, propose an approach, expose a
+contradiction, object with grounds, or ask. A question is needed when the
+answer changes the understanding, the choice or the next action. Do not ask
+what is already known and do not require ready-made requirements.
 
-Одна основная мысль за реплику; обычно один содержательный вопрос, если нужен.
-Не пересказывай весь разговор и не показывай внутренний перебор сомнений.
-Объясняй варианты через конкретные действия и последствия. Рекомендуй с причиной
-и существенным компромиссом. Обсуждай технические предложения пользователя
-на равных; не соглашайся автоматически. Свои предложения не выдавай за его
-решения; число альтернатив определяется реальным выбором.
+One main idea per turn; usually one substantive question, if needed. Do not
+retell the whole dialogue or show your inner churn of doubts. Explain the
+options through concrete actions and consequences. Recommend with a reason
+and a substantial trade-off. Discuss the user's technical proposals as an
+equal; do not agree automatically. Do not present your proposals as their
+decisions; the number of alternatives is set by the real choice.
 
-## Исследование и консилиум
+## Research and council
 
-Разговор не разрешает фоновое исследование, документы и спавн сам по себе.
-Покажи, какой вопрос и зачем нужно проверить; поручай отдельную задачу исполнителю
-с источниками/границами, ожидаемым результатом, бюджетом и условием остановки.
-В уже порученном исследовании не запрашивай разрешение на каждое чтение;
-изменение цели или объёма сначала верни на согласование.
+A dialogue does not on its own authorize background research, documents or
+hiring agents. Show which question needs checking and why; assign a separate
+task to an executor with sources/boundaries, the expected result, a budget and
+a stop condition. In already assigned research, do not ask permission for
+every reading; return a change of goal or volume for approval first.
 
-Выбирай источники по вопросу и требуемой надёжности ответа; используй уже
-доставленный контекст. Углубляй поиск, когда конкретный пробел мешает результату,
-а не ради полного обзора всех материалов. Неизвестное отмечай; оно не всегда
-требует нового исследования. Репозиторий, код и документация — возможные
-источники для подходящих задач, не обязательный маршрут любого поручения.
+Choose sources by the question and the reliability the answer requires; use
+the context already delivered. Deepen the search when a specific gap hinders
+the result, not for a complete survey of all material. Mark what is unknown;
+it does not always require new research. Repository, code and documentation
+are possible sources for suitable tasks, not a mandatory route for every
+mandate.
 
-Консилиум организуй по явному запросу, для существенного выбора альтернатив
-или содержательного противоречия. Полный канон — wolf-council; профили — contracts.md.
-Соблюдай независимость первых позиций и ограничения экспертной роли. Верни значимое согласие, расхождение и основания,
-не стенограмму. Согласие участников не доказывает верность. Экспертиза не расширяет права
-и не разрешает самостоятельное исследование.
+Organize a council on explicit request, for a substantial choice between
+alternatives or a substantive contradiction. The full canon is wolf-council;
+the profiles are in contracts.md. Preserve the independence of first
+positions and the expert role's constraints. Return the material
+agreement, disagreement and grounds, not a transcript. The participants'
+agreement does not prove correctness. Expertise does not expand rights and
+does not permit independent research.
 
-## Готовность к следующему действию
+## Readiness for the next action
 
-Различать согласие с рамкой, утверждение требований и разрешение реализации.
+Distinguish agreement with the frame, approval of the requirements and
+permission to implement.
 
-Перед требованиями или исполнением проверь по разговору:
+Before requirements or implementation, check against the dialogue:
 
-- Можешь объяснить проблему, результат и пользу своими словами.
-- Учёл границы и поправки; пользователь мог проверить понимание, основание
-  продолжения относится к этой задаче.
-- Различимы факты, подтверждённые решения, предложения и неизвестное.
-- Нет расхождения, меняющего цель, результат или ближайший дорогой шаг.
+- You can explain the problem, result and benefit in your own words.
+- You have taken the boundaries and corrections into account; the user has
+  been able to verify the understanding, and the grounds for continuing belong
+  to this task.
+- Facts, confirmed decisions, proposals and the unknown are distinguishable.
+- There is no disagreement that changes the goal, result or the nearest
+  expensive step.
 
-Если пробел существенен, продолжи разговор либо поставь адресное исследование
-в согласованном мандате. Знать весь дизайн заранее не нужно. Не экзаменуй
-пользователя и не согласовывай повторно неизменившееся. После поправки цели
-обнови понимание и затронутые решения до продолжения.
+If a gap is substantial, continue the dialogue or set an addressed research
+task within the agreed mandate. Knowing the whole design in advance is
+unnecessary. Do not examine the user or re-approve what has not changed.
+After a correction to the goal, update the understanding and the affected
+decisions before continuing.
 
-## Выход разговора и сохранение контекста
+## Exiting the dialogue and preserving context
 
-Допустимы продолжение и завершение без документа/разработки. Когда есть что
-фиксировать, а следующий шаг не выбран, предложи: «Зафиксируем выводы документом
-или перейдём к требованиям?» Не повторяй в каждой реплике и не навязывай два
-выхода. Явный выбор действия пользователем не требует ещё такого же вопроса.
+Continuing and ending without a document/development are both allowed. When
+there is something to record and the next step is not chosen, propose: "Shall
+we record the conclusions in a document, or move on to requirements?" Do not
+repeat this every turn or force two ways out. An explicit choice of action by
+the user does not call for the same question again.
 
-Для разговора о будущей разработке по выбору сохранить итог поручай запись `pre-requirements.md` в
-`docs/dev/<date>-<slug>/` рядом с будущими документами той же цели: намерение/польза,
-границы, принятые решения с основаниями, варианты, предложения и открытые вопросы.
-Это первый документ пакета, не временный отчёт и не новый тип памяти. Сверь папку,
-владельца и права записи/claim; для одного итога не создавай остальные документы пакета.
-Отдельный CLI-профиль/авторегистрация этим скиллом не поставляются. После
-утверждения требований актуальное поведение задаёт requirements.md; здесь
-остаётся замысел. Рабочие следы — адресные note/context/history по using-skills,
-без новых статусов и lessons/complaints для черновиков.
+For a dialogue about future development, when keeping the outcome is chosen,
+assign recording `pre-requirements.md` in `docs/dev/<date>-<slug>/` next to
+the future documents of the same goal: intent/benefit, boundaries, accepted
+decisions with grounds, alternatives, proposals and open questions. This is
+the first document of the package, not a temporary report or a new memory
+type. Verify the folder, the owner and the write/claim rights; with a single
+outcome, do not create the other package documents. A separate CLI
+profile/auto-registration is not delivered by this skill. After the
+requirements are approved, requirements.md defines the actual behavior; what
+remains here is the intent. Working traces are addressed note/context/history
+per using-skills, without new statuses or lessons/complaints for drafts.
 
-Для иных задач выбирай результат и место сохранения по их назначению и правилам
-проекта; не создавай docs/dev и pre-requirements.md автоматически.
+For other tasks, choose the result and its storage place by their purpose and
+the project's rules; do not create docs/dev and pre-requirements.md
+automatically.
 
-Передавай цель, решения/ограничения, существенные отклонённые варианты с причинами
-и неизвестное, не стенограмму и повторный опрос. Для порученного анализа или
-руководства передай исполнителю именно этот результат и критерии, без нового
-пакета требований. Для самостоятельной разработки Ведущий сверяет/создаёт один
-реальный тред; при недоступной записи обозначает ограничение и поручает её исполнителю.
-Свяжи сохранённый итог с тредом поддержанным способом.
+Hand on the goal, decisions/constraints, substantial rejected alternatives
+with reasons and the unknown — not a transcript and a repeated interview.
+For an assigned analysis or steering, pass the executor exactly this result
+and its criteria, without a new requirements package. For independent
+development, the lead verifies/creates one real thread; if recording is
+unavailable, the lead states the constraint and assigns recording to an
+executor. Link the kept outcome to the thread in a supported way.
 
-При переходе к формализации разработки FULL даёт requirements.md, LITE —
-утверждённый бриф; режим определяет ведущий. Сверка намерения не утверждает ещё
-не написанные требования, дизайн или реализацию. Далее действуют правила ниже.
+When moving to formalizing development, FULL provides requirements.md, LITE
+an approved brief; the lead sets the mode. Aligning the intent does not
+approve requirements, design or implementation not yet written. The rules
+below then apply.
 
-## Документы по штатному шаблону
+## Documents per the standard template
 
-Этот раздел и гейты требований ниже применяй при выбранном переходе к требованиям
-разработки. Для обсуждения, анализа и иных поручений они не являются обязательным
-продолжением разговора. Контракт совета применяй, только когда совет проводится.
+Apply this section and the requirement gates below when the chosen transition
+is to development requirements. For discussion, analysis and other mandates
+they are not a mandatory continuation of the dialogue. Apply the council
+contract only when a council is actually held.
 
-До записи полного requirements ведущий определяет режим и назначает ответственного за папку. Для новой папки в FULL выполни wolf scaffold artifact <slug>. Команда создаёт пакет в порядке pre-requirements.md → requirements.md → change-request.md → design.md → test-plan.md → plan.md; пустые downstream-шаблоны не являются утверждёнными документами. Для подтверждённого FIX подходит wolf scaffold artifact <slug> --fix (requirements.md + plan.md); LITE не требует полного пакета.
+Before recording full requirements, the lead sets the mode and appoints the
+responsible party for the folder. For a new folder in FULL, run
+wolf scaffold artifact <slug>. The command creates the package in the order
+pre-requirements.md → requirements.md → change-request.md → design.md →
+test-plan.md → plan.md; empty downstream templates are not approved documents.
+For a confirmed FIX, wolf scaffold artifact <slug> --fix is suitable
+(requirements.md + plan.md); LITE does not require the full package.
 
-Проверь доступность команды перед выбором fallback. Если папка уже существует, проверь её связь с той же целью и продолжи её; не создавай дубликат. Для папки с pre-requirements.md вызывай wolf scaffold artifact: команда делает top-up — добавляет только недостающие документы и никогда не перезаписывает итог дискуссии и прежние файлы. Если команда недоступна, подготовь только недостающие документы по точному шаблону установленной версии, сохранив прежние файлы. Если генератор недоступен, используй точный шаблон установленной версии из доступного проверенного источника. При недоступном шаблоне сохрани черновик и ограничение; не объявляй произвольный формат штатным. L0 поручает запись документов исполнителю.
+Check the command's availability before choosing a fallback. If the folder
+already exists, verify it belongs to the same goal and continue it; do not
+create a duplicate. For a folder with pre-requirements.md, call wolf scaffold
+artifact: the command performs a top-up — it adds only missing documents and
+never overwrites the discussion's outcome or the previous files. If the
+command is unavailable, prepare only the missing documents from the exact
+template of the installed version, keeping the previous files. If the
+generator is unavailable, use the exact template of the installed version from
+an available verified source. If the template is unavailable, keep the draft
+and the constraint; do not declare an arbitrary format standard. L0 assigns
+document recording to an executor.
 
-Для FULL сохрани frontmatter slug/title/status/created и семь разделов:
+For FULL, keep the frontmatter slug/title/status/created and the seven
+sections:
 
-1. Контекст и проблема.
-2. Область.
-3. Глоссарий.
-4. Функциональные требования.
-5. Нефункциональные требования (NFR).
-6. Ограничения и допущения.
-7. Журнал изменений (CR).
+1. Context and problem.
+2. Scope.
+3. Glossary.
+4. Functional requirements.
+5. Non-functional requirements (NFR).
+6. Constraints and assumptions.
+7. Change log (CR).
 
-Шаблонный комментарий или заглушка не являются заполненным требованием. Раздел, который неприменим, сохраняй с кратким обоснованием. В требованиях пиши языком владельца, поясняя необходимые термины. Для REQ сохрани ID, историю, условие/поведение, обоснование, AC, приоритет и источник; для NFR — ограничение, измеримый AC и источник. Не добавляй новую схему метаданных только текстом.
+A template comment or a stub is not a completed requirement. Keep a section
+that does not apply, with a brief rationale. Write the requirements in the
+owner's language, explaining the necessary terms. For a REQ, keep the ID,
+history, condition/behavior, rationale, AC, priority and source; for an NFR —
+the constraint, a measurable AC and the source. Do not add a new metadata
+schema as text alone.
 
-Неразрешённое пометь явно. Неизвестное фиксируй в подходящем разделе и рабочем брифе; не скрывай его placeholder-ом в approved. Создание папки и запись требований — организация артефактов, не реализация продукта. Свяжи фактические пути и существенные решения с тредом поддержанными полями/ссылками.
+Mark the unresolved explicitly. Record the unknown in the suitable section
+and the working brief; do not hide it behind a placeholder in approved.
+Creating the folder and recording requirements is artifact organization, not
+product implementation. Link the actual paths and substantial decisions to
+the thread with supported fields/references.
 
-## Проверка и утверждение
+## Verification and approval
 
-7. Сверь атомарность, совместимость, отрицательные сценарии, метрику успеха и точную структуру выбранного профиля. Если доступен wolf doctor, используй его через исполнителя; отсутствие замечаний линтера не заменяет проверку смысла и всех разделов.
-8. Передай требования на wolf-review в предусмотренном объёме. Представь пользователю единый пакет существенных решений и открытых вопросов. Уже данное утверждение именно этих требований сохраняй как основание без повторного гейта; Не помечай approved при неподтверждённом scope; общее «хорошо» не утверждает новый или изменённый scope.
-9. Выход: thread ID либо явное ограничение записи, режим, путь/бриф, версия, результат проверки структуры, REQ/NFR/AC, нерешённые вопросы и основание утверждения. Не утверждай, что создан ресурс или выполнена проверка, только потому, что это записано в плане.
+7. Check atomicity, compatibility, negative scenarios, the success metric and
+   the chosen profile's exact structure. If wolf doctor is available, use it
+   via an executor; the absence of linter remarks does not replace
+   verification of the meaning and all sections.
+8. Hand the requirements to wolf-review within the volume provided for. Present
+   the user with a single package of substantial decisions and open
+   questions. Keep an approval already given for exactly these requirements
+   as the basis, without a repeated gate; do not mark approved with an
+   unconfirmed scope; a generic "fine" does not approve a new or changed
+   scope.
+9. Exit: a thread ID or an explicit recording constraint, the mode, the
+   path/brief, the version, the structure verification result, REQ/NFR/AC,
+   unresolved questions and the grounds for approval. Do not claim a resource
+   was created or a verification performed just because the plan records it.
 
-## Гейт перехода
+## Transition gate
 
-Проблема, scope, AC и ограничения понятны; структура соблюдена; существенные вопросы разрешены либо явно блокируют следующий этап. После утверждения FULL передай в wolf-design. LITE допускает исполнение по утверждённому брифу с AC и проверками, если отдельный дизайн не нужен. Коммиты документа — только уполномоченный наниматель с действующим разрешением. Код реализации продукта здесь не пиши.
+The problem, scope, AC and constraints are understood; the structure
+is followed; substantial questions are resolved or explicitly block the next
+stage. After FULL approval, hand over to wolf-design. LITE allows execution
+against an approved brief with AC and verifications when a separate design is
+not needed. Document commits are made only by the authorized requester with a
+permission in force. Do not write product implementation code here.
 
-## Изменение требований
+## Changing requirements
 
-Сохрани CR: что меняется, причина, затронутые ID, основание утверждения и downstream-артефакты. Верни design/plan/test-plan и связанные вердикты на перепроверку по влиянию. Не исправляй утверждённый AC незаметно. Roadmap-триаж отделяй от требований фичи: кандидат имеет один основной статус и место, источник решения и причину отклонения/отложения.
+Keep the CR: what changes, the reason, the affected IDs, the approval grounds
+and the downstream artifacts. Return the design/plan/test-plan and the
+related verdicts for re-verification by impact. Do not quietly fix an approved
+AC. Separate roadmap triage from the feature's requirements: a candidate has
+one primary status and place, the decision's source and the reason for
+rejection/postponement.
 
-## Советы и выбор решения
+## Councils and choosing a decision
 
-Организацию независимых позиций задаёт wolf-council, профили expert/synthesis —
-contracts.md. Не дублируй схему здесь. Мнение не вердикт ревью, синтез не решение
-владельца; недостаток данных допустим. Поручение на исследование оформляется отдельно.
+wolf-council defines how independent positions are organized; the
+expert/synthesis profiles are in contracts.md. Do not duplicate the scheme here.
+An opinion is not a review verdict, and a synthesis is not the owner's decision;
+insufficient data is allowed. A research mandate is drawn up separately.
 
-## Не пропускай процесс
+## Do not skip the process
 
-| Мысль | Действие |
+| Thought | Action |
 | --- | --- |
-| «Я и так понимаю запрос» | Проверь намерение, успех и существенные неизвестные; не изображай загрузку |
-| «Сначала план, требования по дороге» | Новая цель проходит брейншторм до планирования |
-| «Создам папку как привык» | Используй штатный генератор либо точный проверенный шаблон |
-| «Тред появится сам от scaffold» | Создание документов и треда — разные действия; проверь оба |
-| «Вызвал скилл вручную — дальше обычный разговор» | Пройди обязательные шаги и проверь выход |
-| «Нужно спрашивать даже очевидное» | После сверки намерения не устраивай дополнительный опрос ради формы |
+| "I already understand the request" | Verify the intent, success and the substantial unknowns; do not fake loading. |
+| "Plan first, requirements along the way" | A new goal goes through brainstorming before planning. |
+| "I will create the folder the way I am used to" | Use the standard generator or the exact verified template. |
+| "A thread will appear from the scaffold by itself" | Creating documents and a thread are different actions; check both. |
+| "I invoked the skill manually — the rest is a normal dialogue" | Go through the mandatory steps and check the exit. |
+| "Even the obvious must be asked" | After the intent is aligned, do not run an extra interview for form's sake. |

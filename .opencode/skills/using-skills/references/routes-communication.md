@@ -1,27 +1,26 @@
-<!-- wolf:rendered base=routes-communication.md set=3.0.0 -->
-# Объяснение, визуальный диалог и документ
+<!-- wolf:rendered base=routes-communication.md set=3.1.1 -->
+# Explanation, visual dialogue and document
 
-| Когда | Как применить | Результат |
+| When | How to apply | Result |
 | --- | --- | --- |
-| Нужно объяснить человеку | wolf-explain: восстановить недостающую связь, причины и последствия | Понятное объяснение |
-| Лучше увидеть вариант или механизм | wolf-visual-dialogue: показать, получить feedback, уточнить | Общее понимание либо выбранный вариант |
-| Запрошен самостоятельный документ | wolf-user-report: структурировать достаточный ответ в нужном формате | Читаемый документ с основаниями |
-| Готовый документ или изменённые разделы нужно проверить на читаемость | wolf-document-readability: назначенный исполнитель редактирует структуру и язык, сохраняя содержание | Отредактированный документ; неоднозначности адресованы ведущему |
+| A person needs an explanation | wolf-explain: restore the missing connection, causes and consequences | A clear explanation |
+| An option or a mechanism is easier to see | wolf-visual-dialogue: show it, get feedback, refine | Shared understanding or a chosen option |
+| A standalone document is requested | wolf-user-report: structure a sufficient answer in the right format | A readable document with grounds |
+| A finished document or changed sections need a readability check | wolf-document-readability: the assigned executor edits structure and language, keeping content | An edited document; ambiguities sent to the lead |
 
-Навыки могут создавать один результат без трёх агентов/файлов. Ведущий ведёт разговор
-и поручает подготовку исполнителям с нужными скиллами. HTML-документ —
-по запросу или согласованию; уже данное согласование сохраняется. Для ответа
-в чате и служебного RESULT report не обязателен. Выбор макета не утверждает
-ещё не показанные требования. Показывай графику по пользе, не ради украшения.
+Skills can produce one result without three agents or files. The lead conducts
+the discussion, assigning preparation to executors with the needed skills. An
+HTML document comes on request or by agreement; a given agreement stands. A chat
+reply and a service RESULT need no report. Choosing a layout approves no
+requirements not yet shown. Show graphics when useful, not as decoration.
 
-Проектные требования, CR, design/ADR, планы и test-plan читаются человеком
-даже тогда, когда далее используются агентами. Для нового или существенно
-переработанного документа ведущий назначает один проход технического писателя
-перед существующим содержательным ревью. Короткая очевидная локальная
-правка не требует отдельного вызова.
+Project requirements, CR, design/ADR, plans and test-plan are read by a person
+even when agents use them later. For new or substantially reworked documents,
+the lead has the technical writer do one pass before the existing substantive
+review. A short obvious local fix needs no separate call.
 
-Писатель — назначенный исполнитель (wolf-editor) с wolf-document-readability, а не
-новый уровень организации. Вход: готовая версия, точные файлы/разделы,
-назначение, читатель и ограничения редактирования. Нового отчёта и гейта
-утверждения не создавать. Не вызывать писателя на промежуточные ответы
-экспертов и служебные TASK/RESULT.
+The writer is an assigned executor (wolf-editor) with wolf-document-readability,
+not a new organizational level. Input: the finished version, exact
+files/sections, purpose, reader, editing constraints. Create no new report or
+approval gate. Do not call the writer for interim expert answers or service
+TASK/RESULT.

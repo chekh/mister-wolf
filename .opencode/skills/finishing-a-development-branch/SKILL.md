@@ -1,12 +1,12 @@
 ---
 name: finishing-a-development-branch
-description: "Завершение ветки, передача, интеграция и безопасная уборка."
+description: "Branch completion, handoff, integration and safe cleanup."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.0.0 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
 
-# Совместимый вход
+# Compatible input
 
-Загрузить `wolf-git` один раз и выполнить относящуюся часть.
-Не создавать дополнительный этап или повторный круг проверок.
+Load `wolf-git` once; do the relevant part.
+Do not add an extra stage or repeated verification cycle.
 
-Переходная мера: удалить в следующем релизе.
+Transitional measure: remove in the next release.

@@ -1,12 +1,12 @@
 ---
 name: wolf-visual-dialogue
-description: "Визуальное объяснение вариантов или связей в диалоге."
+description: "Visually explains alternatives or relations in dialogue."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.0.0 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
 
-# Совместимый вход
+# Compatible input
 
-Загрузить `wolf-explain` один раз и выполнить относящуюся часть.
-Не создавать дополнительный этап или повторный круг проверок.
+Load `wolf-explain` once and perform the relevant part.
+Do not create an extra stage or a repeated verification cycle.
 
-Переходная мера: удалить в следующем релизе.
+Transitional measure: remove in the next release.

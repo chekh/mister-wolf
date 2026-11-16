@@ -1,17 +1,17 @@
 ---
-description: Анализ документа по порученному вопросу с проверяемыми выводами. Использование: /analyze-doc <путь-к-файлу> [вопрос]
+description: Document analysis of an assigned question with verifiable conclusions. Usage: /analyze-doc <file-path> [question]
 agent: mr-wolf
 ---
-<!-- wolf:rendered base=analyze-doc.md set=3.0.0 -->
-Проанализируй документ: $ARGUMENTS
+<!-- wolf:rendered base=analyze-doc.md set=3.1.1 -->
+Analyze the document: $ARGUMENTS
 
-L0 применяет using-skills, wolf-work-strategy и wolf-brainstorm: сверяет
-ожидаемый результат по запросу и доставленному контексту, при существенной
-неоднозначности задаёт короткий вопрос пользователю. После действующей сверки
-выполняет адресное чтение сам или нанимает исполнителя напрямую (wolf-researcher
-для исследования/диагностики) с конечным TASK: цель, адресные входы, назначенная
-полная методика, проверка и лимит. Отсутствие подробного ТЗ не превращается
-в аудит окружающей системы. Исполнитель не исследует за границами TASK
-и возвращает RESULT с основаниями и ограничениями. Достаточный связанный
-источник допустим; эксперименты и изменения должны входить в мандат. Жалобы
-на методику — через wolf-feedback, без самомутации.
+L0 applies using-skills, wolf-work-strategy and wolf-brainstorm: aligns the
+expected result with request and delivered context; on substantial
+ambiguity asks the user a short question. After a working alignment it does
+addressed reading on its own or hires an executor directly (wolf-researcher
+for research/diagnostics) with a finite TASK: goal, addressed inputs, assigned
+skill in full, verification, limit. A missing detailed brief does not become
+an audit of the surrounding system. The executor researches nothing beyond
+the TASK boundary, returning a RESULT with grounds and constraints. A
+sufficient related source is allowed; experiments and changes must fit the
+mandate. Skill complaints go via wolf-feedback, without self-mutation.

@@ -1,21 +1,21 @@
-<!-- wolf:rendered base=routes-intent.md set=3.0.0 -->
-# Понимание и выбор решения
+<!-- wolf:rendered base=routes-intent.md set=3.1.1 -->
+# Understanding and choosing a solution
 
-| Когда | Как применить | Результат |
+| When | How to apply | Result |
 | --- | --- | --- |
-| Новая цель или существенное разночтение | wolf-brainstorm: ведущий сверяет намерение по контексту; адресное чтение выполняет сам или поручает исполнителю | Понятные цель, границы и выбранный следующий шаг |
-| Ясное поручение с достаточными входами | wolf-brainstorm: показать понимание и продолжить без ритуального вопроса | Исполнение в согласованном scope |
-| Нужен ответ исследованием | ведущий назначает вопрос wolf-researcher с методикой, источниками и остановкой | FINDINGS/CONFIDENCE/GAPS |
-| Утверждены требования, нужен дизайн | wolf-design: контракты и решения по FULL/новым интерфейсам | Проверяемое решение без реализации |
-| Нужен выбор программных границ, контрактов или зависимостей | wolf-software-design внутри wolf-design; назначенный researcher сравнивает варианты и рекомендует | Обоснованная конструкция для решения ответственным уровнем |
+| A new goal or divergent readings | wolf-brainstorm: the lead checks intent against context and does the addressed reading itself or assigns an executor | A clear goal, boundaries and next step |
+| A clear mandate, sufficient inputs | wolf-brainstorm: state the understanding and continue without ritual questions | Execution within the agreed scope |
+| An answer needs research | the lead assigns wolf-researcher a question with skill, sources and a stop condition | FINDINGS/CONFIDENCE/GAPS |
+| Requirements approved, design needed | wolf-design: contracts and decisions for FULL and new interfaces | A verifiable solution without implementation |
+| Choosing software boundaries, contracts, dependencies | wolf-software-design inside wolf-design; the assigned researcher weighs options and recommends | A justified design for the responsible level to decide |
 
-Выбор обоснованных альтернатив/прямой запрос консилиума/существенное противоречие:
-ведущий поручает wolf-council и получает позиции wolf-expert и синтез.
-Не требуй предварительного тупика. Источники/исследование и принятие решения
-имеют свои мандаты; совет их не разрешает автоматически.
+Justified alternatives, a direct council request or a substantial contradiction:
+the lead assigns wolf-council for wolf-expert positions and synthesis. No prior
+deadlock is needed. Sources, research and the decision keep their own
+mandates; the council does not resolve them automatically.
 
-Продолжение неизменившейся цели не возвращай в discovery. Понимание цели не
-утверждает ещё не показанные requirements/design. Пользователь может выбирать
-разговор, объяснение или документ; полный пакет разработки не обязателен.
-Для наглядного обсуждения подключи wolf-visual-dialogue, для ясного языка —
-wolf-explain. Исследование и консилиум требуют собственного основания.
+Do not return an unchanged goal to discovery. Understanding the goal approves no
+requirements or design not yet shown. The user may pick a discussion, explanation
+or document; a full development package is not required. For a visual discussion
+use wolf-visual-dialogue; for plain language, use wolf-explain. Research and a
+council each need their own ground.

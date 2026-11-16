@@ -1,109 +1,56 @@
-<!-- wolf:rendered base=agent-language.md set=3.0.0 -->
-# Спецификация внутреннего языка агентов Wolf
+<!-- wolf:rendered base=agent-language.md set=3.1.1 -->
+# Wolf internal agent language specification
 
-**Статус:** версионное расширение для консилиума; этап наблюдения. Базовая спецификация утверждена владельцем (2026-11-04, решение mem_20261104_vnutrenniy_yazyk_wolf_etap_nablyudeniya_19ed1f;
-рамка и обоснования — docs/dev/2026-11-04-agent-language/pre-requirements.md).
+**Status:** versioned council extension; observation stage. Base specification approved by the owner (2026-11-04, decision mem_20261104_vnutrenniy_yazyk_wolf_etap_nablyudeniya_19ed1f; frame and rationale — docs/dev/2026-11-04-agent-language/pre-requirements.md).
 
-**Назначение:** уточняет термины и правила употребления внутреннего языка
-агентов (агенты — ИИ-помощники, выполняющие задачи проекта через фиксированные
-формы сообщений). Формы сообщений — обязательные поля (слоты) каждого типа
-высказывания — нормативно определены в contracts.md (соседний файл) и здесь НЕ
-дублируются: спецификация ссылается на него. Профили expert и synthesis добавлены для консилиума по поручению владельца
-2026-11-05; формы прежних профилей не меняются. Словарь фиксирован на поставку,
-не мутирует в сеансе; пробелы передаются через LANGUAGE.
+**Purpose:** refines terms and usage rules of the internal agent language (agents are AI assistants carrying out project tasks through fixed message forms). Message forms — the mandatory fields (slots) per utterance type — are defined normatively in contracts.md and not repeated here. The expert and synthesis profiles for the council come from the owner's mandate of 2026-11-05; earlier forms do not change. Vocabulary is fixed at delivery and does not mutate within a session; gaps go through LANGUAGE.
 
-## Границы покрытия
+## Coverage boundaries
 
-Язык покрывает только высказывания, меняющие состояние работы: поручения,
-отчёты, вердикты, передачи, жалобы, предложения, переходы статусов.
-Описательная зона свободна: обсуждения, объяснения и рассуждения остаются
-обычным текстом (двухслойность рамки). Ситуации, которые формы не выражают,
-покрывает escape-высказывание (R6).
+Covers only utterances that change work state: mandates, reports, verdicts, handoffs, complaints, proposals, status transitions. The descriptive zone is free: discussions, explanations and reasoning stay plain text (the frame is two-layer). Situations no form covers fall to the escape utterance (R6).
 
-## Термины
+## Terms
 
-Определения следуют действующим контрактам (contracts.md, complaints.md) и рамке
-решения владельца; при первом употреблении термин сопровождается расшифровкой.
+Definitions follow the contracts in force (contracts.md, complaints.md) and the owner's decision frame; each term gets a gloss on first use.
 
-- **TASK** — поручение исполнителю: ядро (обязательные элементы поручения)
-  плюс поля применимого профиля (implement | review | research | expert). Полный состав
-  слотов — contracts.md.
-- **RESULT** — отчёт исполнителя по форме своей роли. Статусы implement-профиля:
-  DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED. DONE — готовность к
-  ревью, не приёмка.
-- **DONE ≠ ACCEPTED** — разные высказывания разных уровней: DONE сообщает
-  готовность к ревью; ACCEPTED — решение назначенного принимающего по
-  результатам приёмки (ведущий принимает результат исполнителя в пределах полномочий;
-  владелец — там, где предусмотрено его решение).
-- **EVIDENCE** — подтверждение утверждения/критерия: команда или процедура,
-  cwd, revision, exit/статус, результат. Состав — contracts.md.
-- **ACCEPTANCE** — сверка каждого критерия приёмки с evidence и итоговый
-  вердикт принимающего: ACCEPTED | PARTIAL | REJECTED | INCONCLUSIVE.
-  Вердикт независимого ревью: APPROVED | CHANGES_REQUIRED | INCONCLUSIVE.
-- **SCOPE** — граница допустимого: что входит в задачу и что запрещено;
-  для ревью SCOPE — покрытие проверки.
-- **LIMITS/GAPS** — что не проверено, где нет данных или остался риск;
-  отсутствие данных не равно нулю или успеху.
-- **BLOCKED** — статус: работа не может продолжаться без внешнего
-  входа/решения.
-- **NEEDS_CONTEXT** — статус: недостаёт обязательного входа поручения;
-  запрашивается, не додумывается.
-- **HANDOFF** — фиксация передачи работы (результата, ответственности,
-  открытых вопросов) между исполнителями/сессиями.
-- **VERDICT** — итоговое решение проверки/приёмки одним из перечисленных
-  статусов, с evidence.
-- **COMPLAINT** — жалоба на правило (методика/рамка/правило памяти), не на
-  разовый случай; подавается объектом памяти через wolf-feedback (поля
-  rule/evidence/proposal, класс дефекта — kind: technical|behavioral).
-  Предмет LANGUAGE — см. раздел жалоб wolf-feedback.
-- **PROPOSAL** — предложение улучшения/изменения с основанием.
-- **TRANSITION** — переход объекта работы в новый статус по допустимым
-  переходам.
+- **TASK** — a mandate to an executor: the core (mandatory elements) plus fields of the applicable profile (implement | review | research | expert). Full slot composition — contracts.md.
+- **RESULT** — the executor's report in its role's form. Implement-profile statuses: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED. DONE means ready for review, not acceptance.
+- **DONE ≠ ACCEPTED** — different utterances at different levels: DONE reports readiness for review; ACCEPTED is the designated acceptance owner's decision on acceptance results (the lead accepts the executor's result within its mandate; the owner where its decision is provided for).
+- **EVIDENCE** — confirmation of a claim/criterion: command or procedure, cwd, revision, exit/status, result; composition — contracts.md.
+- **ACCEPTANCE** — checking each criterion against evidence plus the acceptance owner's verdict: ACCEPTED | PARTIAL | REJECTED | INCONCLUSIVE. Independent review verdict: APPROVED | CHANGES_REQUIRED | INCONCLUSIVE.
+- **SCOPE** — the boundary of what is permitted: what the task includes and what is forbidden; for review, SCOPE is verification coverage.
+- **LIMITS/GAPS** — what was not verified, where data is missing or risk remains; missing data does not equal zero or success.
+- **BLOCKED** — status: work cannot continue without an external input or decision.
+- **NEEDS_CONTEXT** — status: a mandatory mandate input is missing; requested, not guessed.
+- **HANDOFF** — a record of work handoff (result, responsibility, open questions) between executors or sessions.
+- **VERDICT** — the final decision of a verification or acceptance, in one of the listed statuses, with evidence.
+- **COMPLAINT** — about a rule (skill/frame/memory rule), not a single case; filed via wolf-feedback as a memory object (fields rule/evidence/proposal; defect class — kind: technical|behavioral). Subject LANGUAGE: see its complaints section.
+- **PROPOSAL** — an improvement or change with rationale.
+- **TRANSITION** — moving a work object to a new status along permitted transitions.
 
-## Экспертиза и синтез
+## Expertise and synthesis
 
-Позиция эксперта — обоснованный ответ по линзе; не VERDICT ревью.
-Рекомендация синтеза — предложение ответственному за решение; не ACCEPTANCE.
-Основание подтверждается EVIDENCE, допущение принято условно, неизвестное
-передаётся в LIMITS/GAPS. Согласие нескольких экспертов не делает допущение фактом.
-Условия пересмотра указывают, какие данные изменят позицию. Предложенная проверка
-не разрешает запуск; ведущий отдельно назначает её в пределах полномочий.
-Профили RESULT expert/synthesis и поля v2 нормативно определены в contracts.md.
-`ready | insufficient_evidence` обозначает исход синтеза, не новые статусы памяти.
+An expert's position is a reasoned answer within the lens, not a review VERDICT; a synthesis recommendation is a proposal to the responsible party, not an ACCEPTANCE. EVIDENCE confirms the grounds, an assumption is accepted conditionally, the unknown goes to LIMITS/GAPS. Agreement among experts does not make an assumption a fact. Reconsideration conditions state which data would change it. A proposed verification does not authorise running it; the lead sets it separately within its mandate. Expert and synthesis RESULT profiles and v2 fields are normatively defined in contracts.md. `ready | insufficient_evidence` denotes a synthesis outcome, not new memory statuses.
 
-## Правила употребления R1–R6
+## Usage rules R1–R6
 
-- **R1** — одно понятие — одно имя.
-- **R2** — запрет анафоры (анафора — отсылки вроде «то же, что выше», «эта
-  задача»); ссылки — по идентификатору с версией, например T-42@v2.
-- **R3** — полная поставка: документ языка приезжает со скиллами целиком;
-  частичная доставка не предусмотрена.
-- **R4** — человек получает обычный язык; термины — с расшифровкой при первом
-  употреблении.
-- **R5** — DONE ≠ ACCEPTED: исполнитель сообщает готовность к ревью; признание
-  результата — решение назначенного принимающего (см. определение
-  DONE ≠ ACCEPTED выше).
-- **R6** — escape (выход): свободный текст с пометкой «вне контракта» для
-  ситуаций, которые форма не покрывает.
+- **R1** — one concept, one name.
+- **R2** — anaphora is banned (references such as "the same as above", "this task"); references go by identifier with a version, e.g. T-42@v2.
+- **R3** — full delivery: the language document arrives with the skills in full; partial delivery is not provided for.
+- **R4** — a human receives ordinary language; terms carry a gloss on first use.
+- **R5** — DONE ≠ ACCEPTED: the executor reports readiness for review; recognition of the result is the designated acceptance owner's decision (see the definition above).
+- **R6** — escape: free text marked "outside the contract" for situations the form does not cover.
 
-## Правило при недопонимании
+## Rule on misunderstanding
 
-Смысл понятен — продолжать. Недостающая информация влияет на действие —
-уточнить, не угадывать. Несоблюдение языка оставляет текущий уровень — не хуже
-сегодняшнего (соблюдение даёт лаконичность и точность, не штраф).
+If the meaning is clear, continue; if missing information affects the action, ask rather than guess. Non-compliance leaves the level no worse than today: compliance brings brevity and precision, not a penalty.
 
-## Примеры (условные, для иллюстрации — не шаблоны)
+## Examples (conditional, illustrative, not templates)
 
-1. Обмен TASK→RESULT:
-   TASK: «T-7@v1: обнови справочник команд в guides/cli.md — добавь раздел
-   про sync. Проверка: раздел виден в оглавлении. Лимит: 6 обращений».
-   RESULT: «T-7 DONE: раздел добавлен; проверка пройдена (оглавление содержит
-   sync); без отклонений».
-2. Вердикт и приёмка:
-   VERDICT: «T-7 APPROVED: замечаний нет». ACCEPTANCE: «T-7 ACCEPTED: оба
-   критерия подтверждены evidence».
-3. LANGUAGE-жалоба:
-   COMPLAINT (предмет LANGUAGE): rule: «LANGUAGE/ambiguous-definition —
-   определение DONE допускает чтение как окончательной приёмки»; evidence:
-   «в задаче X RESULT со статусом DONE принят без ревью, ревью не
-   состоялось»; proposal: «уточнить определение DONE примером».
+1. TASK→RESULT exchange:
+   TASK: "T-7@v1: update the command reference in guides/cli.md — add a section on sync. Verification: the section appears in the table of contents. Limit: 6 calls."
+   RESULT: "T-7 DONE: section added; verification passed (the table of contents contains sync); no deviations."
+2. Verdict and acceptance:
+   VERDICT: "T-7 APPROVED: no findings." ACCEPTANCE: "T-7 ACCEPTED: both criteria confirmed by evidence."
+3. LANGUAGE complaint:
+   COMPLAINT (subject LANGUAGE): rule: "LANGUAGE/ambiguous-definition — the definition of DONE allows reading as final acceptance"; evidence: "in task X a RESULT with status DONE was accepted without review, and no review took place"; proposal: "refine the DONE definition with an example".
