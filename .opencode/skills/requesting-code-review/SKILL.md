@@ -2,7 +2,7 @@
 name: requesting-code-review
 description: "Preparing an independent review of a specific revision and criteria."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Compatible input
 

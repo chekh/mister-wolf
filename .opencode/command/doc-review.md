@@ -2,7 +2,7 @@
 description: Independent document review against the goal and applicable wolf-review lenses. Usage: /doc-review <file-path> [goal]
 agent: mr-wolf
 ---
-<!-- wolf:rendered base=doc-review.md set=3.1.1 -->
+<!-- wolf:rendered base=doc-review.md set=3.1.2 -->
 Run doc-review of the document: $ARGUMENTS
 
 Apply using-skills, wolf-work-strategy and wolf-review. L0 aligns the goal,

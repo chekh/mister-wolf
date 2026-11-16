@@ -2,7 +2,7 @@
 name: wolf-test
 description: "Execution of independent behavioral, integration and regression verifications."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Verify behavior
 

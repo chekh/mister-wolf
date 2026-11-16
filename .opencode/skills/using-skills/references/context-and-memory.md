@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=context-and-memory.md set=3.1.1 -->
+<!-- wolf:rendered base=context-and-memory.md set=3.1.2 -->
 # Addressed context and working memory
 
 The state owner loads this on handoff, restoration or saving a substantial result.

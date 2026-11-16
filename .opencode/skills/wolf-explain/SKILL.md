@@ -2,7 +2,7 @@
 name: wolf-explain
 description: "Apply before every Wolf explanation to the user: when discussing intent, mechanism, approaches, result, progress, errors or choices; especially on an unfamiliar topic, growing complexity and a request to explain more clearly."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Wolf Explain — plain human language
 

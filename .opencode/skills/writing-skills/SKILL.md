@@ -2,7 +2,7 @@
 name: writing-skills
 description: "Apply when creating, changing or verifying a Wolf skill before delivery; on a repeated skill skip, a violation of its procedure, or an update to the base set."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Wolf skill development
 

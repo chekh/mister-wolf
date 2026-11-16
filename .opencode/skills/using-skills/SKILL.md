@@ -2,7 +2,7 @@
 name: using-skills
 description: "Apply L0/L1 on a new request, a substantial condition change or a stage transition to choose applicable skills; an executor gets assigned skills without walking the catalog."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Choosing the Wolf process
 

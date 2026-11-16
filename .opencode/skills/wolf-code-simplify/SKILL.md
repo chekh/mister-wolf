@@ -2,7 +2,7 @@
 name: wolf-code-simplify
 description: 'Apply on an assigned simplification task or when concrete needless complexity needs a separate examination. Preserves behavior and contracts; not a mandatory stage after every edit.'
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Simplifying existing code
 

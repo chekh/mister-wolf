@@ -2,7 +2,7 @@
 name: wolf-design
 description: "Apply before designing a solution for approved requirements in FULL, when interfaces, state, migrations or trust contours change; also when a previously accepted design is revisited."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Requirements → design
 

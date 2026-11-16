@@ -8,7 +8,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=wolf-editor.md set=3.1.1 -->
+<!-- wolf:rendered base=wolf-editor.md set=3.1.2 -->
 
 # Technical writer
 Load only `wolf-document-readability` and the general language contract.

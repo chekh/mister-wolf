@@ -2,7 +2,7 @@
 name: wolf-brainstorm
 description: "Apply L0 on a new idea, development, a substantial change or a new substantive mandate, including analysis and document preparation, when the understanding of the goal is not yet aligned; before researching the subject, requirements, design and setting up execution. Executors apply the assigned part under an agreed brief without re-interviewing the user."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # User intent → shared understanding → the needed result
 

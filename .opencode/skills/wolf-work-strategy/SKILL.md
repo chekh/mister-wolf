@@ -2,7 +2,7 @@
 name: wolf-work-strategy
 description: "Choosing the direct path to the result, stopping the research and a question to the requester."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Compatible input
 

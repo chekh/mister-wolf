@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=project-tools.md set=3.1.1 -->
+<!-- wolf:rendered base=project-tools.md set=3.1.2 -->
 # Project tools and Wolf cards
 
 Loaded by the lead or an executor creating, saving or updating a tool: relevant rules and the

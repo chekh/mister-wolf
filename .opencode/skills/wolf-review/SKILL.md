@@ -2,7 +2,7 @@
 name: wolf-review
 description: "Applied by the lead to organize independent review of artifacts, re-check changed grounds and resolve contradictory verdicts."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Organizing review
 

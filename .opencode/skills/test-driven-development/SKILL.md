@@ -2,7 +2,7 @@
 name: test-driven-development
 description: "Apply before implementing new behavior or fixing a defect; in contract-preserving refactoring and when verifying changes written before tests."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Test discipline of execution
 

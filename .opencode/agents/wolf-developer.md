@@ -9,7 +9,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=wolf-developer.md set=3.1.1 -->
+<!-- wolf:rendered base=wolf-developer.md set=3.1.2 -->
 
 # Developer
 Load `wolf-code-craft`, `verification-before-completion`; at a Git boundary `wolf-git`.

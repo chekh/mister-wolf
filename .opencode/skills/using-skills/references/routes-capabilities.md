@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=routes-capabilities.md set=3.1.1 -->
+<!-- wolf:rendered base=routes-capabilities.md set=3.1.2 -->
 # Skill development
 
 | When | How to apply | Result |

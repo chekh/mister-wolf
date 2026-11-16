@@ -2,7 +2,7 @@
 name: using-git-worktrees
 description: "Creating an isolated worktree for independent or parallel work."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Compatible input
 

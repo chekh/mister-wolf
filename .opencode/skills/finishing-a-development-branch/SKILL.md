@@ -2,7 +2,7 @@
 name: finishing-a-development-branch
 description: "Branch completion, handoff, integration and safe cleanup."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Compatible input
 

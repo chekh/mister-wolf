@@ -2,7 +2,7 @@
 name: wolf-execute
 description: "Apply as an executor when performing an assigned finite subtask under an approved plan or allowed brief; and when continuing the same result."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Executing a finite mandate
 

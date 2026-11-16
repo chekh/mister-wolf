@@ -9,7 +9,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=wolf-reviewer.md set=3.1.1 -->
+<!-- wolf:rendered base=wolf-reviewer.md set=3.1.2 -->
 
 # Reviewer
 Load `wolf-review`. Verify the assigned artifact, criteria and lens.

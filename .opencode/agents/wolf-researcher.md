@@ -8,7 +8,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=wolf-researcher.md set=3.1.1 -->
+<!-- wolf:rendered base=wolf-researcher.md set=3.1.2 -->
 
 # Researcher
 Primary skill `wolf-debug` for a defect; otherwise research per the TASK.

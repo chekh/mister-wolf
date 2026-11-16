@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=contracts.md set=3.1.1 -->
+<!-- wolf:rendered base=contracts.md set=3.1.2 -->
 # Mandate and evidence
 
 The lead loads this before composing a TASK; the executor gets the applicable norms in the mandate.

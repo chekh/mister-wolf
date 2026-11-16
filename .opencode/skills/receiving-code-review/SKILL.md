@@ -2,7 +2,7 @@
 name: receiving-code-review
 description: "Handling remarks, fixes, and addressed re-verification."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.1 -->
+<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
 
 # Compatible input
 
