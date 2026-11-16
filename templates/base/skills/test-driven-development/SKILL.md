@@ -43,7 +43,7 @@ For documentation, configurations and generation, choose a validator, snapshot, 
 
 ## Readiness
 
-ACs are covered, the original defect was reproduced, new tests are sensitive to wrong behavior, related regressions have passed or a constraint is stated explicitly. A RESULT does not replace independent review and acceptance. Commits are the lead's or the requester's zone.
+ACs are covered, the original defect was reproduced, new tests are sensitive to wrong behavior, related regressions have passed or a constraint is stated explicitly. A RESULT does not replace independent review and acceptance. Commit rights follow the TASK and the Git policy in force.
 
 ## Transition gate
 

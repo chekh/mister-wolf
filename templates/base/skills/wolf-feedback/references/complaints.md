@@ -80,12 +80,15 @@ grounds: …".
 
 ## B. TRIAGE (the lead or an assigned triager)
 
-1. **A standing obligation**: at the acceptance of EVERY report, before the
-   verdict — `wolf list --type complaint --status open`. Empty → regular
-   acceptance; not empty → triage of every complaint. The task verdict is not
-   blocked by a complaint (it is about a rule, not the task). The obligation
-   stands even without COMPLAINT lines in reports: a complaint lives in
-   memory, not in the report.
+1. **A standing obligation**: at an acceptance, before the verdict, check new
+   relevant signals, not the whole archive every time:
+   `wolf list --type complaint --status open`, addressed to what appeared
+   since the task's last checked point. No new relevant complaint → regular
+   acceptance; a new relevant complaint → addressed triage. The task verdict
+   is not blocked by a complaint (it is about a rule, not the task). A
+   complaint lives in memory, not in the report: the check does not depend on
+   COMPLAINT lines. The full open-complaint package review runs at a goal
+   boundary or on explicit request, not after every report.
 2. **Mandate**: triage complaints about targets below your level (executors,
    their skills, skills, templates). Complaints about your own level or
    higher — do NOT touch the status or fields (including dispatch_ages) → a

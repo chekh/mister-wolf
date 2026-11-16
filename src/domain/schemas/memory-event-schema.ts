@@ -15,6 +15,9 @@ const EVENT_PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
   'memory.face.op_step': ['opId', 'step'],
   'memory.face.op_committed': ['opId'],
   'memory.face.op_aborted': ['opId', 'by', 'reason'],
+  // волна 3.2.0 REQ-10: пошаговый след применения агрегата (archive_source с
+  // source_id, activate); завершение прогона — существующее memory.aggregated.
+  'memory.aggregate.op_step': ['aggregate_id', 'step'],
 };
 
 export const MemoryEventSchema = z
@@ -41,6 +44,8 @@ export const MemoryEventSchema = z
       'memory.face.op_step',
       'memory.face.op_committed',
       'memory.face.op_aborted',
+      // волна 3.2.0 REQ-10: пошаговый след применения агрегата
+      'memory.aggregate.op_step',
     ]),
     timestamp: z.string().datetime(),
     actor: z.string().min(1),

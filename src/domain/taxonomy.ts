@@ -1,6 +1,7 @@
 import { CORE_TAXONOMY, MemoryType, MemoryTypeDeclaration, MemoryStatus } from './memory-types.js';
 import { ALLOWED_TRANSITIONS } from './governance.js';
 import type { PricingTable } from './pricing.js';
+import type { LearningMode } from './learning-mode.js';
 
 export interface WolfConfig {
   artifact_sources: string[];
@@ -12,11 +13,15 @@ export interface WolfConfig {
   /** Ф20: проектная таксономия классов ошибок — матчится раньше дефолтной таблицы (§2.1) */
   errorClassTaxonomy?: { id: string; match: string[] }[];
   /** Ф21: порог паттерна N≥3 — параметр процесса (§2.2, §16); Ф26: TTL-override по типам (сессии);
-   * E1.2: пороги effectiveness-панели (проценты, undefined-поля отбрасываются) */
+   * E1.2: пороги effectiveness-панели (проценты, undefined-поля отбрасываются);
+   * 3.2.0 T-04: learning.mode (REQ-12, design §6) — off/suggest/apply-approved;
+   * чтение в resolveLearningMode. Маппинг config.yaml → это поле — задача
+   * владельца config-file (сейчас режим подаётся через env WOLF_LEARNING_MODE). */
   learning?: {
     patternThreshold?: number;
     decayTtl?: Record<string, number>;
     effectivenessThresholds?: { noiseOk?: number; noiseWarn?: number; silentOk?: number };
+    mode?: LearningMode;
   };
   /** M3: $-прайсы ($/Mtok) из config.yaml; без прайса $-поля скрыты (D9). */
   pricing?: PricingTable;

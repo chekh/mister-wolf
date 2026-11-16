@@ -3,7 +3,7 @@ name: wolf-skill-intake
 description: "Evaluate an external skill before explicitly assigned inclusion in the base set."
 ---
 
-# Compatible input
+# Compatibility entry
 
 Load `writing-skills` once and perform the relevant part.
 Do not create an extra stage or a repeated verification cycle.

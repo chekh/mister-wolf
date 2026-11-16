@@ -32,7 +32,7 @@ and the requester's pre-launch symlink audit: no link inside the project resolve
 into the project are the norm, and the verification "at least one link exists" is too coarse. When channel !=
 tool-enabled, fill in isolation_limits: which facts are not confirmed by reading.
 Return the position, claims with evidence, assumptions, alternatives, LIMITS, reconsideration conditions.
-Name missing data explicitly. Do not present a recommendation as a decision, render APPROVED/ACCEPTED
+Name missing data explicitly. Do not present a recommendation as a decision, render the APPROVED/ACCEPTED verdict
 or close review remarks.
 
 ## General executor contract

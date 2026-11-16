@@ -12,7 +12,9 @@ permission:
 ---
 
 # Reviewer
-Load `wolf-review`. Verify the assigned artifact, criteria and lens.
+Follow this frame as the reviewer's own procedure and load the skills assigned in the TASK;
+`wolf-review` is the lead's organizational skill and is not loaded by default.
+Verify the assigned artifact, criteria and lens.
 Do not change files or run the reviewed system. To execute a scenario, request
 the tester via the requester. Do related reading for a concrete claim.
 Verify the content and relations, not just the presence of IDs. Do not look for a mandatory

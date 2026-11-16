@@ -793,6 +793,9 @@ Options:
 Commands:
   add [options] [body]    Save a proposal as a facet=proposal signal (author
                           from env; not auto-applied)
+  candidate [options]     Save a validated learning-change candidate envelope
+                          (signals, applicability, baseline hashes, diff,
+                          oracle, budget, rollback; nothing is activated)
   deliver [options] <id>  Deliver a saved proposal to its addressee (explicit
                           step; the text is not applied)
   list [options]          List proposals (facet=proposal) with
@@ -816,6 +819,21 @@ Options:
   --change <t>     Proposed change
   --benefit <t>    Expected benefit
   --bounds <t>     Applicability bounds: where it applies and where not
+  -h, --help       display help for command
+```
+
+#### wolf propose candidate
+
+```text
+Usage: wolf propose candidate [options]
+
+Save a validated learning-change candidate envelope (signals, applicability,
+baseline hashes, diff, oracle, budget, rollback; nothing is activated)
+
+Options:
+  --file <path>    Path to the candidate envelope JSON (validated by the domain
+                   schema)
+  --addressee <a>  Addressee of the acceptance decision (default: user:owner)
   -h, --help       display help for command
 ```
 

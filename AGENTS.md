@@ -73,8 +73,15 @@ further; there is no intermediate level.
 
 At the start of work in a project, detect the user's language from their first
 message: if they already write in X, record X without asking; if it is unclear,
-ask ONE question. The record is a mandatory mechanical step, not a judgment call:
-run `wolf add --type decision --title "Session language: <lang>"` (body: the
+ask ONE question. Read the existing state before creating a record
+(`wolf search "Session language"`; `wolf brief` also shows active decisions).
+If an active language decision already exists, apply it and record nothing: a
+new session on the same or a different language, without an explicit switch
+instruction, never creates a duplicate. The reply still follows the user's
+current message language; the recorded decision changes only on an explicit
+switch. If no active decision exists, the record is a mandatory mechanical
+step, not a judgment call: run
+`wolf add --type decision --title "Session language: <lang>"` (body: the
 source of the language and the date) right after the first user message. Host,
 platform or global language defaults do not replace this record; when they
 conflict with the user's message language, record the user's message language.

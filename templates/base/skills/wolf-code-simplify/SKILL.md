@@ -58,6 +58,6 @@ Compare the result with the original problem:
 
 If the benefit is doubtful, do not include the transformation in the result. If contract preservation is not confirmed, do not declare the work complete.
 
-Stop after eliminating the assigned complexity. Return the transformation's essence and evidence in the standard TASK format.
+Stop after eliminating the assigned complexity. Return the transformation's essence and evidence as a RESULT per your role contract.
 
 In review, distinguish a proven defect from an optional recommendation; apply project rules and severity in force.

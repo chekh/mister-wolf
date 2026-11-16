@@ -1,9 +1,11 @@
 // src/adapters/cli/commands/propose.ts
 import { Command, Option } from 'commander';
+import { readFileSync } from 'fs';
 import { safeCwd } from '../cli-entry.js';
-import { saveProposal, type ProposalObject } from '../../../app/use-cases/save-proposal.js';
+import { saveProposal, saveLearningCandidate, type ProposalObject } from '../../../app/use-cases/save-proposal.js';
 import { deliverProposal } from '../../../app/use-cases/deliver-proposal.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
+import { loadWolfConfigSync } from '../../../adapters/fs/config-file.js';
 import { UserFacingError } from '../../../domain/errors.js';
 
 /** Волна 2.17 T-09 (design §«CLI: проектируемые команды», REQ-08/REQ-09):
@@ -45,6 +47,12 @@ interface ListOptions {
   createdBy?: string;
 }
 
+interface CandidateOptions {
+  file: string;
+  addressee?: string;
+  createdBy?: string;
+}
+
 // baseDir инъектится для тестов (прецедент: face.ts).
 export function proposeCommand(baseDir: string = safeCwd()): Command {
   const cmd = new Command('propose').description('Manage proposals: save a signal, deliver it, list (REQ-08/09)');
@@ -74,6 +82,44 @@ export function proposeCommand(baseDir: string = safeCwd()): Command {
       }
     );
     console.log(`Proposal saved: ${saved.id} (pending; deliver with: wolf propose deliver ${saved.id})`);
+  });
+
+  // 3.2.0 T-04 (REQ-05, design §9): `propose candidate` — запись валидного
+  // конверта кандидата (REQ-03/05) из JSON-файла; дедуп по request_key и режим
+  // off решает домен (saveLearningCandidate). Ничего не активирует: кандидат
+  // остаётся предложением phase=proposed до решения владельца (REQ-08).
+  createdByTrap(
+    cmd
+      .command('candidate')
+      .description(
+        'Save a validated learning-change candidate envelope (signals, applicability, baseline hashes, diff, oracle, budget, rollback; nothing is activated)'
+      )
+      .requiredOption('--file <path>', 'Path to the candidate envelope JSON (validated by the domain schema)')
+      .option('--addressee <a>', 'Addressee of the acceptance decision (default: user:owner)')
+  ).action(async (options: CandidateOptions) => {
+    denyCreatedBy(options);
+    let envelope: unknown;
+    try {
+      envelope = JSON.parse(readFileSync(options.file, 'utf-8'));
+    } catch (err) {
+      throw new UserFacingError(
+        `Cannot read candidate envelope from ${options.file}: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+    const { store, log, clock, idGen, index, lock, declarations } = createCliContainer(baseDir);
+    const result = await saveLearningCandidate(
+      { store, log, clock, idGen, index, lock, declarations, env: process.env, config: loadWolfConfigSync(baseDir) },
+      { envelope, addressee: options.addressee }
+    );
+    if (result.deduplicated) {
+      console.log(
+        `Existing learning candidate returned: ${result.object.id} (change_id=${result.envelope.change_id}, request_key=${result.envelope.request_key.slice(0, 12)}; no new candidate created)`
+      );
+    } else {
+      console.log(
+        `Learning candidate saved: ${result.object.id} (change_id=${result.envelope.change_id}, request_key=${result.envelope.request_key.slice(0, 12)}, phase=${result.envelope.phase}; nothing is activated — acceptance/activation stay null)`
+      );
+    }
   });
 
   createdByTrap(

@@ -1,5 +1,5 @@
 ---
-description: "Addressed research or diagnostics of a concrete unknown."
+description: "Research into the assigned question or diagnostics of a concrete unknown."
 agent-id: wolf-researcher
 mode: subagent
 model: {{model.primary}}

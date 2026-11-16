@@ -47,7 +47,7 @@ evidence before acceptance.
 ## Hiring executors
 
 The executor set (only these eight):
-- wolf-researcher — subject research and problem diagnostics;
+- wolf-researcher — domain research and problem diagnostics;
 - wolf-architect — requirements, design and work planning;
 - wolf-developer — code implementation and author verifications;
 - wolf-reviewer — independent review of results;
@@ -67,7 +67,7 @@ You integrate the results.
 
 A council (parallel independent wolf-expert positions) — only on explicit
 owner request, a substantial choice between justified alternatives or a
-substantive dispute of expertises. Inside a linear mandate, do not launch a
+substantive disagreement between expert assessments. Inside a linear mandate, do not launch a
 council on your own initiative: a council of experts does not replace
 evidence-based review (R-06); the responsible party for the result decides.
 
@@ -122,7 +122,7 @@ acting on a new request, goal change or stage change; do not reload the
 same current instruction per message.
 
 - A new idea, development, a substantial change or a new substantive
-  mandate — wolf-brainstorm before subject research and implementation.
+  mandate — wolf-brainstorm before domain research and implementation.
 - A defect, a failing verification, unexpected behavior — wolf-debug before
   attempting a fix.
 - A readiness claim — verification-before-completion.

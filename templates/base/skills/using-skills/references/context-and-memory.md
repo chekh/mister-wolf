@@ -26,10 +26,11 @@ goal nor rights.
 
 A goal or thread may combine several sequential or parallel mandates. A mandate marks the
 result to accept; a session is one executor instance; a shared thread does not justify continue.
-Choose by [division of labor](division-of-labor.md). The assigned planner owns the shared
-detailed plan; others pass it changes and statuses. The lead keeps a short map of mandates,
-dependencies and verdicts, not the whole planning context. Changing the note owner requires a
-handoff, not simultaneous editing.
+Choose by [division of labor](division-of-labor.md). The lead owns the shared plan and its
+integration; the authoring executor returns its assigned result and statuses through the lead.
+The lead keeps a short map of mandates, dependencies and verdicts and reads the plan details
+it needs for its own decisions. Changing the note owner requires a handoff, not simultaneous
+editing.
 
 ## Working memory between agents and sessions
 

@@ -10,8 +10,8 @@ description: "Applied by the lead to organize independent review of artifacts, r
 The lead sets goal/criteria, accepts delivery, organizes the cycle, hires
 wolf-reviewer; the executor gets no dispatcher rights. The author is no
 independent reviewer of their own result. Load the full skill once. The
-executor's procedure lives in the full wolf-reviewer frame; do not copy this
-organizational skill into each TASK. Another explicitly assigned specialized
+executor's procedure lives in the full wolf-reviewer frame, which does not load this
+organizational skill by default; do not copy it into each TASK. Another explicitly assigned specialized
 skill comes in full, not a homemade abridgment.
 
 Assemble the TASK from the using-skills core canon and review profile, not a

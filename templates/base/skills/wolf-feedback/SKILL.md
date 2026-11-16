@@ -24,7 +24,8 @@ temporarily disabled; the signal is recorded and is not lost. When recording
 is forbidden, pass rule/evidence/proposal to the lead without invented ID;
 the lead answers with context/means/a decision, triages, passes a complaint
 about their own or a higher level up. The lead organizes the diagnosis and
-does not investigate logs personally. Evidence is preserved through an
+may run an addressed log investigation itself or delegate it; a substantial audit goes
+to a delegate as needed, not by absolute prohibition. Evidence is preserved through an
 authorized channel; the skill is changed by the owner in their contour,
 requesting the missing through the dispatcher.
 
