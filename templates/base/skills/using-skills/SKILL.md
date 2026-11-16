@@ -16,7 +16,8 @@ actions, and carry one out when its premise applies.
 Two levels: the lead (L0) owns the goal, talks to the user, accepts results and
 carries out the work itself or hires an executor (L1) directly. An executor performs
 a finite TASK, reads the sources it needs, writes only within the allowlist, and does
-not create agents, commit or delegate further. Faces are not used; the former
+not create agents or delegate further. It commits and publishes only with explicit
+permission in the TASK; otherwise it hands off the changes and their state. Faces are not used; the former
 intermediate level (executor-lead) has been abolished. Host permissions and security
 rules still apply; do not bypass a channel constraint by launching a shell.
 

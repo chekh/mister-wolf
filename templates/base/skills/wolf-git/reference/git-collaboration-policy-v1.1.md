@@ -65,7 +65,7 @@ Roles denote responsibility, not mandatory separate processes or agents. A perso
 
 A working directory has one active writer. A working branch has one active owner of recording and publication. Other participants propose changes through their own branches and MRs.
 
-The assigned task owner is entitled and obliged to create local checkpoint commits of their changes in the assigned branch. The right is permanent: each commit needs no new permission. Publication of a working branch is permitted by the task mandate, unless the project has established a different order.
+When the TASK explicitly grants commit rights, the assigned task owner is entitled and obliged to create local checkpoint commits of their changes in the assigned branch; within that TASK each further checkpoint needs no new permission. Without explicit TASK rights the executor makes no commits and hands off the changes and their state. Publication of a working branch is permitted only by an explicit task mandate, unless the project has established a different order.
 
 The owner must not include unknown or someone else's changes in their commit. If an executor has no right to commit, the mandate MUST name the lead who preserves their result until a stop or handoff. The obligation to preserve the work must not remain without a responsible party.
 

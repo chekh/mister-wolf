@@ -41,13 +41,15 @@ counter in the TASK. "Author", "knows the project", "more convenient" are not ba
 
 Assessment and planning are existing work kinds, not four mandatory calls per hire. Use
 sufficient inputs and the accepted plan. If distributing the shared goal among several
-executors needs subject work, the lead mandates a plan under wolf-plan. The planning executor
-organizes needed help and returns ready bounded briefs, dependencies/start conditions,
-parallelism proposals, the total budget and the integration owner. The lead accepts the plan
-against goal and rights and hires, adding no technical decomposition; a gap returns to the plan
-author. A plan is a separate result when planning itself was mandated; accepting it does not
-permit implementation. A small, clear delivery needs no separate planner: the lead plans its own
-mandate and hires within it, and planning extends no hiring right.
+executors needs subject work, the lead mandates a plan under wolf-plan. The planning
+executor returns a bounded planning result — proposed briefs, dependencies and start
+conditions, parallelism suggestions, the total budget and the integration owner — as
+proposals; it organizes no help and hires nobody. The lead owns the shared plan, its
+distribution and integration: accepts it against goal and rights, may fix a clear local
+gap itself, and returns substantial errors to the plan author. A plan is a separate result
+when planning itself was mandated; accepting it does not permit implementation. A small,
+clear delivery needs no separate planner: the lead plans its own mandate and hires within
+it, and planning extends no hiring right.
 
 Run ready independent mandates in parallel within the total budget and host capacity. Write
 and shared-resource boundaries, dependencies and integration order must be known; a blocker stops
@@ -55,7 +57,7 @@ the dependent ones, not the rest. With several deliveries each belongs to its ow
 assigned integrator organizes technical integration and the owner keeps the final verdict. The
 shared plan, memory and other mutable artifacts have one assigned writer; a change of owner goes
 through handoff. The owner gets short statuses and version links, not the whole planning context;
-the assigned planner keeps the detailed plan.
+the lead owns the plan, and the authoring executor returns its detailed material through the lead.
 
 ## Communication and completion
 
