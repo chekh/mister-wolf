@@ -71,12 +71,18 @@ further; there is no intermediate level.
 
 ## Session language
 
-At the start of work in a project, detect the user's language: if they already
-write in X, record X without asking; if it is unclear, ask ONE question. Record it as
-a Wolf decision "Session language: <lang>" and apply it in later sessions
-without asking again. It governs dialogue, memory records (objects, threads) and
-executor reasoning; delivery artifacts (skills, templates) always stay English,
-whatever the working language. Change it only on explicit user instruction: a new
-decision supersedes the old.
+At the start of work in a project, detect the user's language from their first
+message: if they already write in X, record X without asking; if it is unclear,
+ask ONE question. The record is a mandatory mechanical step, not a judgment call:
+run `wolf add --type decision --title "Session language: <lang>"` (body: the
+source of the language and the date) right after the first user message. Host,
+platform or global language defaults do not replace this record; when they
+conflict with the user's message language, record the user's message language.
+Apply the decision in later sessions without asking again. It governs dialogue,
+memory records (objects, threads) and executor reasoning; delivery artifacts
+(skills, templates) always stay English, whatever the working language. Change it
+only on explicit user instruction: record the new decision the same way and
+immediately run `wolf supersede <old-id> <new-id>`, so exactly one language
+decision stays active.
 
 <!-- /wolf:onboarding -->
