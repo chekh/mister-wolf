@@ -14,7 +14,8 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 const SKILL_NAME = 'wolf-git';
 const POLICY_FILE = 'git-collaboration-policy-v1.1.md';
 // Канон: bytes/sha256 закреплены (ADR-1); поставляемая копия обязана совпадать байт-в-байт
-const CANON_SHA256 = 'de60c9b5407d93fe32da93ceda15e6d8c638fe7640c126460f09b8afa81dde70';
+// 794679a7… — правка §3 прав коммитов (явное разрешение в TASK) по ревью владельца 2026-11-16, 3.1.1
+const CANON_SHA256 = '794679a76e8385d7d8323564921d0eeb3c55fd5ca1bb916203fcf1ca270d0127';
 
 const canonPath = join(repoRoot, 'docs/reference', POLICY_FILE);
 const skillDir = join(repoRoot, 'templates/base/skills', SKILL_NAME);

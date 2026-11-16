@@ -31,7 +31,9 @@ return to the same executor, the second to a fresh instance.
    verification, and pre-existing failures are stated honestly. Self-review is not independent.
 4. Return a RESULT per role: status/verdict, changes, evidence for the verified
    state, constraints, an addressed question when needed. DONE is readiness
-   for independent review, not ACCEPTED. Do not commit, hire, or integrate.
+   for independent review, not ACCEPTED. Without explicit commit permission in
+   the TASK, hand off the changes and their state instead of committing.
+   Do not hire or integrate.
 5. If scripts were created, return purpose, paths, verification, whether
    to keep them. The requester provides a permanent location/card per
    using-skills/references/project-tools.md. tmp must not be the only source

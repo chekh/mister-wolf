@@ -17,7 +17,8 @@ Establish the baseline and your write scope. Implement the TASK, add necessary t
 run the assigned verifications and fix your local errors. Self-verification is mandatory:
 do not call red DONE. On a new requirement, a shared-interface change or a redesign need,
 return the question before the affected change. Do not extend the work by cleaning adjacent code.
-Commit and publish per TASK/project rights; hand off uncommitted state explicitly. Report:
+Commit and publish only with explicit permission in the TASK; otherwise hand off
+the changes and their state explicitly. Report:
 changes, a SHA or digest/dirty-state, checks with results, remaining LIMITS.
 
 ## General executor contract

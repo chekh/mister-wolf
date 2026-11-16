@@ -10,6 +10,22 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [3.1.1] - 2026-11-16
+
+### Fixed — the macOS process-group race in the delivered verification helper no longer fails runs with an unrelated error
+
+After a verification command finishes, `wait_group_empty` in the delivered `workflow-helper.py` checks that the process group is empty with `os.killpg(pgid, 0)` and handled only `ProcessLookupError`. On macOS, once the group is gone and the pgid has been reused by another user's process, the call answers EPERM (`PermissionError`); it escaped to the top-level `except OSError` in `main()` and the helper exited with code 2 and `{"error": "[Errno 1] Operation not permitted"}`, failing tests that assert exit codes 0 or 1 — sporadically, timing-dependent (observed in CI main run 42742061297 and in PR #18, a different test each time). `PermissionError` is now treated as "our group has finished": a live process of ours would answer `kill(0)` with 0. Reproduced with a direct spawnSync loop over the test scenarios — 3 failures within the first 5 iterations before the fix; 80 iterations on Node 22 and 40 on Node 24 without a failure after it. The regenerated `update-map.json` carries the helper as `changed` against 3.1.0.
+
+### Changed — executor commit and publish rights are stated once, and the planning rule matches the two-level model
+
+- **Commit and publish only with explicit permission in the TASK.** The router banned commits unconditionally (`using-skills/SKILL.md`), the developer role allowed them "per TASK/project rights" (`wolf-developer.md`), the execution skill banned them at the result step (`wolf-execute/SKILL.md`), and the wolf-git canon granted permanent checkpoint-commit rights on assignment (§3 of `git-collaboration-policy-v1.1.md`) — one question, four answers. All four now state the owner's rule: an executor commits and publishes only with explicit permission in the TASK; otherwise it hands off the changes and their state. When a TASK grants the right, further checkpoints inside that TASK need no new permission. The canon bytes changed accordingly: the pinned sha256 of `git-collaboration-policy-v1.1.md` is now `794679a76e8385d7d8323564921d0eeb3c55fd5ca1bb916203fcf1ca270d0127` (the previous `de60c9b5…dde70` in the 3.1.0 entry above stays as the released fact); the file keeps its name, and the pinned-sha guard in tests was updated.
+- **Planning: the lead owns the plan.** `division-of-labor.md` said the planning executor "organizes needed help" and kept the detailed plan with the planner while the lead accepted it "adding no technical decomposition" — traces of the abolished intermediate level. The planning executor now returns a bounded planning result (proposed briefs, dependencies and start conditions, parallelism suggestions, the total budget, the integration owner) as proposals and organizes no help; the lead owns the shared plan, its distribution and integration, may fix a clear local gap itself, and returns substantial errors to the plan author.
+
+### Docs — the project's entry documents state the current model
+
+- The root `AGENTS.md` no longer opens with the retired L0/L1/L2 ladder and steward-led learning: the two-level model is the stated baseline, and steward-led skill improvement is named as a separate planned roadmap direction, not part of the current model.
+- The active roadmap (`roadmap-v4.md`) now states released facts: 3.0.0 released 2026-11-10 (tag `v3.0.0`, npm, site, host switched to the 3.0 set), 3.1.0 released 2026-11-15 (tag `v3.1.0`, npm, site, GitHub Release = Latest, wave merged via PR #18, CI green); the post-release main fixes ship in this patch. The roadmap ledger records the status correction without changing the queue.
+
 ## [3.1.0] - 2026-11-15
 
 ### Changed — the delivery is fully in English: the base set (9 agents, 35 skills, the commands, `AGENTS.md`), the two reserved plugins and the wolf-git canon are translated, and existing projects migrate through the standard `wolf upgrade`
