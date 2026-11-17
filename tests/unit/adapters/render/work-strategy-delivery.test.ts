@@ -28,6 +28,7 @@ const AGENTS = [
   'wolf-release-engineer',
   'wolf-researcher',
   'wolf-reviewer',
+  'wolf-steward',
   'wolf-tester',
 ];
 const WORKER_MODEL = new Set(['wolf-developer', 'wolf-editor', 'wolf-tester']);
@@ -45,7 +46,7 @@ describe('work strategy delivery through the real base set', () => {
     const delivered = read('skills/wolf-work-strategy/SKILL.md');
     // Check actual payload delivery, not a shortened paraphrase of the methodology.
     expect(delivered.replace(/^<!-- wolf:rendered.*-->\n/gm, '')).toBe(source);
-    // Рамки всех 9 агентов доставлены, плейсхолдеров моделей нет; исполнители
+    // Рамки всех 10 агентов доставлены, плейсхолдеров моделей нет; исполнители
     // не нанимают (task-spawn запрещён), mr-wolf нанимает wolf-*.
     for (const role of AGENTS) {
       const text = read(`agents/${role}.md`);

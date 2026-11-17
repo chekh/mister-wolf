@@ -53,4 +53,40 @@ export const SQLITE_SCHEMA = `
     updated_at TEXT NOT NULL
   );
   INSERT OR IGNORE INTO learning_cursor (id, cursor, updated_at) VALUES (0, 0, '');
+
+  -- 3.2.0 T-09 (REQ-09/REQ-11, design §10): micro-note attribution. One row per
+  -- actual selection/delivery event (id + exact content revision); observations
+  -- default to unknown and are only set from existing data. CREATE IF NOT
+  -- EXISTS runs on every open — existing databases migrate lazily (same path
+  -- as learning_signals).
+  CREATE TABLE IF NOT EXISTS micro_note_deliveries (
+    memory_id TEXT NOT NULL,
+    revision TEXT NOT NULL,
+    channel TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    ts TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_micro_note_deliveries_id ON micro_note_deliveries(memory_id);
+
+  -- S-27: contradiction → note temporarily out of delivery; BOTH evidences are
+  -- kept verbatim, the original fact in memory is never touched. One open
+  -- conflict per note (upsert by memory_id); resolution is an audit field.
+  CREATE TABLE IF NOT EXISTS micro_note_suppressions (
+    memory_id TEXT PRIMARY KEY,
+    revision TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    note_evidence TEXT NOT NULL,
+    contradiction_evidence TEXT NOT NULL,
+    suppressed_at TEXT NOT NULL,
+    resolved_at TEXT,
+    resolution TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS micro_note_observations (
+    memory_id TEXT PRIMARY KEY,
+    revision TEXT NOT NULL,
+    observed_use TEXT,
+    observed_outcome TEXT NOT NULL DEFAULT 'unknown',
+    updated_at TEXT NOT NULL
+  );
 `;

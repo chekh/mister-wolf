@@ -34,7 +34,7 @@ const agentFiles = readdirSync(agentsDir).filter((f) => f.endsWith('.md'));
 
 describe('render integrity: реальные шаблоны агентов (2.32.2, ревью F-NEW-01)', () => {
   it('набор агентов непустой (не вакуумный проход)', () => {
-    expect(agentFiles.length).toBe(9);
+    expect(agentFiles.length).toBe(10);
   });
 
   it.each(agentFiles)('%s: в omit-режиме не остаётся ни одного плейсхолдера', (file) => {

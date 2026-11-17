@@ -70,12 +70,12 @@ describe('R-08: init/re-init не трогают лица (штатный пут
     const res = runCli(['init', '--full', '--platform', 'opencode'], dir);
     expect(res.status).toBe(0);
     expect(res.stdout).not.toContain('steward-nastavnik.md created');
-    expect(res.stdout).not.toMatch(/face|playbook|steward/i);
+    expect(res.stdout).not.toMatch(/face|playbook|(?<![-\w])steward/i);
     expect(existsSync(join(dir, '.wolf/memory/shared/faces'))).toBe(false);
 
     const reinit = runCli(['init', '--full', '--platform', 'opencode', '--yes'], dir);
     expect(reinit.status, reinit.stderr).toBe(0);
-    expect(reinit.stdout).not.toMatch(/face|playbook|steward/i);
+    expect(reinit.stdout).not.toMatch(/face|playbook|(?<![-\w])steward/i);
     expect(existsSync(join(dir, '.wolf/memory/shared/faces'))).toBe(false);
     // посев лиц удалён из штатного пути: face-операций в журнале нет
     expect(readEvents(dir).filter((e) => String(e['type'] ?? '').startsWith('memory.face'))).toEqual([]);
@@ -101,7 +101,7 @@ describe('R-08: init/re-init не трогают лица (штатный пут
     // re-init: лицо не мутируется, никаких face-строк и «diverged»/«template update»
     const reinit = runCli(['init', '--full', '--platform', 'opencode', '--yes'], dir);
     expect(reinit.status, reinit.stderr).toBe(0);
-    expect(reinit.stdout).not.toMatch(/face|playbook|steward|diverged|template update/i);
+    expect(reinit.stdout).not.toMatch(/face|playbook|(?<![-\w])steward|diverged|template update/i);
     expect(facesSnapshot(dir)).toEqual(before);
     expect(faceIds(runCli(['face', 'history', 'steward'], dir).stdout)).toEqual(historyBefore);
     expect(readEvents(dir).filter((e) => String(e['type'] ?? '').startsWith('memory.face.op_')).length).toBe(
@@ -155,7 +155,7 @@ describe('R-08: init/re-init не трогают лица (штатный пут
     const reinit = runCli(['init', '--full', '--platform', 'opencode', '--yes'], dir);
     expect(reinit.status, reinit.stderr).toBe(0);
     expect(reinit.stdout).not.toContain('diverged');
-    expect(reinit.stdout).not.toMatch(/face|playbook|steward/i);
+    expect(reinit.stdout).not.toMatch(/face|playbook|(?<![-\w])steward/i);
     expect(facesSnapshot(dir)).toEqual(before);
     expect(faceIds(runCli(['face', 'history', 'steward'], dir).stdout)).toEqual(historyBefore);
 

@@ -45,7 +45,7 @@ describe('wolf base set: init + sync (спека §7, §11.1, §11.6)', () => {
 
   it('init: структура .opencode/ (agents/skills/command) + .wolf/ (§11.1); плагины не доставляются (3.0.0)', () => {
     const oc = (sub: string) => readdirSync(join(project, '.opencode', sub));
-    expect(oc('agents').filter((f) => f.endsWith('.md'))).toHaveLength(9);
+    expect(oc('agents').filter((f) => f.endsWith('.md'))).toHaveLength(10);
     expect(oc('command').filter((f) => f.endsWith('.md'))).toHaveLength(3);
     // 3.0.0: init не рендерит плагины (templates/opencode/plugins/ отсутствует) —
     // негативная гарантия: wolf-* файлов под .opencode/plugins нет

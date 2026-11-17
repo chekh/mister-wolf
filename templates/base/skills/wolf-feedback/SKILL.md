@@ -19,8 +19,9 @@ not obligatory.
 | Unknown cause affecting the result | The lead assigns an [episode diagnosis](references/session-diagnosis.md) | Findings/evidence/gaps and the further route |
 
 The executor records the relevant fact, returns a RESULT, without widening the
-mandate or waiting for a rule fix: automatic processing by the Steward is
-temporarily disabled; the signal is recorded and is not lost. When recording
+mandate or waiting for a rule fix: the signal is recorded and is not lost;
+processing goes through an assigned wolf-steward mandate or the `wolf learn due`
+queue (available in suggest mode; in off mode nothing is assigned or suggested). When recording
 is forbidden, pass rule/evidence/proposal to the lead without invented ID;
 the lead answers with context/means/a decision, triages, passes a complaint
 about their own or a higher level up. The lead organizes the diagnosis and

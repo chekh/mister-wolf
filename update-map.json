@@ -43,6 +43,11 @@
       "category": "unchanged"
     },
     {
+      "path": "base/agents/wolf-steward.md",
+      "kind": "agent",
+      "category": "new"
+    },
+    {
       "path": "base/agents/wolf-tester.md",
       "kind": "agent",
       "category": "unchanged"
@@ -166,6 +171,11 @@
       "path": "base/skills/wolf-agent-language/SKILL.md",
       "kind": "skill",
       "category": "unchanged"
+    },
+    {
+      "path": "base/skills/wolf-learning-cycle/SKILL.md",
+      "kind": "skill",
+      "category": "new"
     },
     {
       "path": "base/skills/wolf-brainstorm/SKILL.md",

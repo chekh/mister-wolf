@@ -1,6 +1,6 @@
 // tests/e2e/b0-playground.test.ts
 // REQ-04 (B0), редакция S-DELIVERY 3.0.0: внешний проект → init → doctor/call;
-// состав набора — 9 агентов без лиц и плагинов, onboarding v4; re-init (--yes)
+// состав набора — 10 агентов без лиц и плагинов, onboarding v4; re-init (--yes)
 // поверх живого проекта не возвращает legacy-иерархию и не теряет локальные
 // правки файлов набора (mutated-skip).
 //
@@ -26,6 +26,7 @@ const AGENTS = [
   'wolf-release-engineer',
   'wolf-researcher',
   'wolf-reviewer',
+  'wolf-steward',
   'wolf-tester',
 ];
 const LEGACY = [
@@ -68,7 +69,7 @@ describe('wolf B0 на внешнем проекте: init → doctor/call (S-33
   }, 120_000);
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-  it('S-33: init без ошибок; структура набора на месте (9 агентов, без плагинов и лиц)', () => {
+  it('S-33: init без ошибок; структура набора на месте (10 агентов, без плагинов и лиц)', () => {
     for (const sub of ['agents', 'skills', 'command']) {
       expect(readdirSync(join(dir, '.opencode', sub)).length, sub).toBeGreaterThan(0);
     }
@@ -125,7 +126,8 @@ describe('wolf B0 на внешнем проекте: init → doctor/call (S-33
     for (const legacy of LEGACY) expect(installed, legacy).not.toContain(legacy);
     expect(existsSync(join(dir, '.opencode/plugins'))).toBe(false);
     expect(existsSync(join(dir, '.wolf/memory/shared/faces'))).toBe(false);
-    // вывод re-init — без face/playbook/steward-строк
-    expect(res.stdout).not.toMatch(/face|playbook|steward/i);
+    // вывод re-init — без face/playbook-строк и без голого legacy `steward`
+    // (lookbehind: пофайловые `wolf-steward.md skipped` легальны)
+    expect(res.stdout).not.toMatch(/face|playbook|(?<![-\w])steward/i);
   }, 120_000);
 });

@@ -1,6 +1,6 @@
 // tests/unit/templates/composition-guard.test.ts
 // S-DELIVERY 3.0.0: validate-подход к составу набора (по образцу пилотного
-// validate_content): ровно 9 агентов (mr-wolf + 8 wolf-*), ровно 35 скиллов,
+// validate_content): ровно 10 агентов (mr-wolf + 9 wolf-*), ровно 36 скиллов,
 // frontmatter валиден у всех; удалённые роли/плагины не упоминаются в активных
 // шаблонах (исторические пометки «упразднён» — допустимы, using-skills/SKILL.md:19);
 // task-спавн разрешён только mr-wolf; команды адресуют mr-wolf.
@@ -20,6 +20,7 @@ const AGENTS = [
   'wolf-release-engineer',
   'wolf-researcher',
   'wolf-reviewer',
+  'wolf-steward',
   'wolf-tester',
 ];
 const BANNED = [
@@ -50,16 +51,16 @@ const frontmatterOf = (raw: string, what: string): Record<string, unknown> =>
   yaml.load(frontmatterRaw(raw, what)) as Record<string, unknown>;
 
 describe('состав набора (S-DELIVERY 3.0.0)', () => {
-  it('в templates/base/agents ровно 9 .md: mr-wolf без префикса + 8 с wolf-префиксом', () => {
+  it('в templates/base/agents ровно 10 .md: mr-wolf без префикса + 9 с wolf-префиксом', () => {
     const files = readdirSync(join(base, 'agents'))
       .filter((f) => f.endsWith('.md'))
       .sort();
     expect(files).toEqual([...AGENTS].sort().map((a) => `${a}.md`));
   });
 
-  it('ровно 35 каталогов скиллов, в каждом SKILL.md', () => {
+  it('ровно 36 каталогов скиллов, в каждом SKILL.md', () => {
     const dirs = readdirSync(join(base, 'skills')).filter((d) => statSync(join(base, 'skills', d)).isDirectory());
-    expect(dirs).toHaveLength(35);
+    expect(dirs).toHaveLength(36);
     for (const d of dirs) expect(existsSync(join(base, 'skills', d, 'SKILL.md')), d).toBe(true);
   });
 

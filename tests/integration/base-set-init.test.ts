@@ -28,6 +28,7 @@ const AGENTS = [
   'wolf-release-engineer',
   'wolf-researcher',
   'wolf-reviewer',
+  'wolf-steward',
   'wolf-tester',
 ];
 const MAP_FORM_DENY = [
@@ -37,6 +38,7 @@ const MAP_FORM_DENY = [
   'wolf-release-engineer',
   'wolf-researcher',
   'wolf-reviewer',
+  'wolf-steward',
   'wolf-tester',
 ];
 
@@ -48,27 +50,28 @@ describe('wolf init: базовый набор (S-DELIVERY 3.0.0)', () => {
   });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-  it('создаёт полный набор: 9 агентов, 35 скиллов, 3 команды, БЕЗ плагинов и лиц (R-08/R-11/R-12b)', () => {
+  it('создаёт полный набор: 10 агентов, 36 скиллов, 3 команды, БЕЗ плагинов и лиц (R-08/R-11/R-12b)', () => {
     const res = runCli(['init', '--full', '--platform', 'opencode', '--model', MODEL], dir);
     expect(res.status).toBe(0);
 
-    // 13 файловых целей «created» (9 агентов + 3 команды + AGENTS.md); скиллы
-    // печатаются как `[skill] <имя> → <файл>` — 55 файловых целей (35 SKILL.md + references/scripts).
+    // 14 файловых целей «created» (10 агентов + 3 команды + AGENTS.md); скиллы
+    // печатаются как `[skill] <имя> → <файл>` — 56 файловых целей (36 SKILL.md + references/scripts).
     const created = (res.stdout.match(/- base set: \S+ created/g) ?? []).length;
-    expect(created).toBe(13);
-    expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(55);
+    expect(created).toBe(14);
+    expect((res.stdout.match(/\[skill\] /g) ?? []).length).toBe(56);
     expect(res.stdout).toMatch(/- base set: AGENTS\.md created/);
 
     const agents = readdirSync(join(dir, '.opencode/agents')).filter((f) => f.endsWith('.md'));
-    expect(agents).toHaveLength(9);
+    expect(agents).toHaveLength(10);
     const installed = agents.map((f) => f.replace(/\.md$/, '')).sort();
     expect(installed).toEqual(AGENTS.slice().sort());
 
     const skills = readdirSync(join(dir, '.opencode/skills')).filter((d) =>
       existsSync(join(dir, '.opencode/skills', d, 'SKILL.md'))
     );
-    expect(skills).toHaveLength(35);
+    expect(skills).toHaveLength(36);
     expect(skills).toContain('wolf-agent-language');
+    expect(skills).toContain('wolf-learning-cycle');
     expect(skills).toContain('wolf-memory');
     expect(skills).toContain('wolf-release');
     expect(skills).toContain('wolf-requirements');
