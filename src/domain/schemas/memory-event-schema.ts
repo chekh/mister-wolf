@@ -18,6 +18,16 @@ const EVENT_PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
   // волна 3.2.0 REQ-10: пошаговый след применения агрегата (archive_source с
   // source_id, activate); завершение прогона — существующее memory.aggregated.
   'memory.aggregate.op_step': ['aggregate_id', 'step'],
+  // волна 3.2.0 T-06 REQ-08: журнал apply/rollback одиночного кандидата
+  // (design §8). op_started несёт план и намерение операции (planned per-file
+  // hashes — resume детерминирован); op_step — шаг (backup/write_file/verify/
+  // activate/restore_file/deactivate, detail необязателен); accepted/applied/
+  // rolled_back — финалы решений и применений по change_id.
+  'memory.learning.op_started': ['opId', 'op', 'change_id', 'plan', 'input'],
+  'memory.learning.op_step': ['opId', 'step'],
+  'memory.learning.accepted': ['change_id'],
+  'memory.learning.applied': ['change_id'],
+  'memory.learning.rolled_back': ['change_id'],
 };
 
 export const MemoryEventSchema = z
@@ -46,6 +56,12 @@ export const MemoryEventSchema = z
       'memory.face.op_aborted',
       // волна 3.2.0 REQ-10: пошаговый след применения агрегата
       'memory.aggregate.op_step',
+      // волна 3.2.0 T-06 REQ-08: apply/rollback одиночного кандидата
+      'memory.learning.op_started',
+      'memory.learning.op_step',
+      'memory.learning.accepted',
+      'memory.learning.applied',
+      'memory.learning.rolled_back',
     ]),
     timestamp: z.string().datetime(),
     actor: z.string().min(1),

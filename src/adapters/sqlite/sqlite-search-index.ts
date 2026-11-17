@@ -2,7 +2,14 @@ import { mkdirSync } from 'fs';
 import { dirname } from 'path';
 import Database from 'better-sqlite3';
 import { SearchIndex, SearchOptions, SearchResult } from '../../ports/search-index.port.js';
+import {
+  LearningSignal,
+  LearningSignalDisposition,
+  LearningSignalIndex,
+} from '../../ports/learning-signal-index.port.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
+import { isLearningSignal, learningSignalRevision } from '../../domain/learning-signals.js';
+import { UserFacingError } from '../../domain/errors.js';
 import { SQLITE_SCHEMA } from './sqlite-schema.js';
 import { runWithBusyRetry } from './busy-retry.js';
 
@@ -54,7 +61,41 @@ export function buildFtsQuery(query: string): string {
   return parts.join(' ');
 }
 
-export class SQLiteSearchIndex implements SearchIndex {
+// --- 3.2.0 T-05 (REQ-03/REQ-12, NFR-05, design §7): адресная очередь сигналов ---
+//
+// due/list читают ТОЛЬКО проекцию learning_signals (диапазон по индексу seq,
+// LIMIT в SQL): body не читается никогда, full-scan истории невозможен
+// (S-29). Тело выбирает вызывающий по id страницы через store — отдельно.
+
+/** Живые статусы — те же, что исключает поиск из выдачи. */
+const LIVE_SIGNAL_STATUSES = "status NOT IN ('superseded', 'archived')";
+
+const DUE_SQL = `SELECT memory_id, type, status, title, revision, seq, changed_at, disposition
+  FROM learning_signals
+  WHERE seq > ? AND disposition = 'pending' AND ${LIVE_SIGNAL_STATUSES}
+  ORDER BY seq ASC
+  LIMIT ?`;
+
+const LIST_SQL = `SELECT memory_id, type, status, title, revision, seq, changed_at, disposition
+  FROM learning_signals
+  WHERE seq > ?
+  ORDER BY seq ASC
+  LIMIT ?`;
+
+function rowToSignal(row: any): LearningSignal {
+  return {
+    memory_id: row.memory_id,
+    type: row.type,
+    status: row.status,
+    title: row.title,
+    revision: row.revision,
+    seq: row.seq,
+    changed_at: row.changed_at,
+    disposition: row.disposition,
+  };
+}
+
+export class SQLiteSearchIndex implements SearchIndex, LearningSignalIndex {
   private db: Database.Database | null = null;
 
   constructor(private readonly dbPath: string) {}
@@ -100,21 +141,33 @@ export class SQLiteSearchIndex implements SearchIndex {
 
   async indexObject(object: MemoryObject): Promise<void> {
     runWithBusyRetry(() => {
-      this.removeFromIndex(object.id);
-      this.insertIntoIndex(object);
+      // T-05: signal-проекция атомарна с поисковым индексом (прецедент rebuild)
+      const upsert = this.getDb().transaction(() => {
+        this.removeFromIndex(object.id);
+        this.insertIntoIndex(object);
+        this.syncSignal(object);
+      });
+      upsert();
     });
   }
 
   async removeObject(id: string): Promise<void> {
-    runWithBusyRetry(() => this.removeFromIndex(id));
+    runWithBusyRetry(() => {
+      this.getDb().prepare('DELETE FROM learning_signals WHERE memory_id = ?').run(id);
+      this.removeFromIndex(id);
+    });
   }
 
   async rebuild(objects: MemoryObject[]): Promise<void> {
     runWithBusyRetry(() => {
       const rebuild = this.getDb().transaction(() => {
-        this.getDb().exec('DELETE FROM memory_search; DELETE FROM memory_meta;');
+        this.getDb().exec('DELETE FROM memory_search; DELETE FROM memory_meta; DELETE FROM learning_signals;');
+        // Перенумерация seq сбрасывает домен курсора — курсор 0: после rebuild
+        // все живые pending-сигналы снова due (консистентность, не «тишина»).
+        this.getDb().prepare("UPDATE learning_cursor SET cursor = 0, updated_at = '' WHERE id = 0").run();
         for (const obj of objects) {
           this.insertIntoIndex(obj);
+          this.syncSignal(obj);
         }
       });
       rebuild();
@@ -231,6 +284,97 @@ export class SQLiteSearchIndex implements SearchIndex {
       )
       .all() as any[];
     return rows.map((row) => this.rowToResult(row));
+  }
+
+  // --- T-05: LearningSignalIndex (проекция сигналов + курсор) ---
+
+  /** Синхронизация signal-проекции одним объектом. Новая/изменившаяся ревизия
+   * получает свежий seq (встают в очередь); идентичный ре-индекс — no-op, seq
+   * и курсор на месте (S-23); dismissed не возвращается в очередь (REQ-03). */
+  syncSignal(object: MemoryObject): void {
+    if (!isLearningSignal(object)) return;
+    const db = this.getDb();
+    const revision = learningSignalRevision(object);
+    const existing = db
+      .prepare('SELECT revision, disposition FROM learning_signals WHERE memory_id = ?')
+      .get(object.id) as { revision: string; disposition: string } | undefined;
+    if (existing && existing.revision === revision) return;
+    if (existing && existing.disposition === 'dismissed') {
+      db.prepare(
+        'UPDATE learning_signals SET revision = ?, status = ?, title = ?, changed_at = ? WHERE memory_id = ?'
+      ).run(revision, object.status, object.title, object.updated_at, object.id);
+      return;
+    }
+    const seq = (db.prepare('SELECT COALESCE(MAX(seq), 0) + 1 AS next FROM learning_signals').get() as { next: number })
+      .next;
+    db.prepare(
+      `INSERT INTO learning_signals (memory_id, type, status, title, revision, seq, changed_at, disposition)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+       ON CONFLICT(memory_id) DO UPDATE SET
+         type = excluded.type, status = excluded.status, title = excluded.title,
+         revision = excluded.revision, seq = excluded.seq, changed_at = excluded.changed_at`
+    ).run(object.id, object.type, object.status, object.title, revision, seq, object.updated_at);
+  }
+
+  getCursor(): number {
+    const row = this.getDb().prepare('SELECT cursor FROM learning_cursor WHERE id = 0').get() as
+      | { cursor: number }
+      | undefined;
+    return row?.cursor ?? 0;
+  }
+
+  maxSeq(): number {
+    return (this.getDb().prepare('SELECT COALESCE(MAX(seq), 0) AS m FROM learning_signals').get() as { m: number }).m;
+  }
+
+  dueCount(): number {
+    const cursor = this.getCursor();
+    return (
+      this.getDb()
+        .prepare(
+          `SELECT COUNT(*) AS n FROM learning_signals WHERE seq > ? AND disposition = 'pending' AND ${LIVE_SIGNAL_STATUSES}`
+        )
+        .get(cursor) as { n: number }
+    ).n;
+  }
+
+  duePage(limit: number): LearningSignal[] {
+    return (this.getDb().prepare(DUE_SQL).all(this.getCursor(), limit) as any[]).map(rowToSignal);
+  }
+
+  listSignalPage(limit: number, afterSeq: number): LearningSignal[] {
+    return (this.getDb().prepare(LIST_SQL).all(afterSeq, limit) as any[]).map(rowToSignal);
+  }
+
+  advanceCursor(seq: number): void {
+    // Только вперёд (S-23): MAX не даёт курсору откатиться при ack меньшим seq.
+    runWithBusyRetry(() =>
+      this.getDb()
+        .prepare('UPDATE learning_cursor SET cursor = MAX(cursor, ?), updated_at = ? WHERE id = 0')
+        .run(seq, new Date().toISOString())
+    );
+  }
+
+  setDisposition(memoryId: string, disposition: LearningSignalDisposition): void {
+    runWithBusyRetry(() => {
+      const res = this.getDb()
+        .prepare('UPDATE learning_signals SET disposition = ? WHERE memory_id = ?')
+        .run(disposition, memoryId);
+      if (res.changes === 0) {
+        throw new UserFacingError(
+          `unknown signal "${memoryId}": not in the learning signal index (REQ-03: unknown stays unknown)`
+        );
+      }
+    });
+  }
+
+  /** S-29: план фактического due/list SQL — тест asserting SEARCH по
+   * idx_learning_signals_seq вместо SCAN (инструментирование отсутствия full-scan). */
+  signalQueryPlan(kind: 'due' | 'list'): string[] {
+    const sql = kind === 'due' ? DUE_SQL : LIST_SQL;
+    return (this.getDb().prepare(`EXPLAIN QUERY PLAN ${sql}`).all(this.getCursor(), 20) as any[]).map((r) =>
+      String(r.detail)
+    );
   }
 
   private rowToResult(row: any): SearchResult {

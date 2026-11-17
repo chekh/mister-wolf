@@ -866,6 +866,141 @@ Options:
   -h, --help       display help for command
 ```
 
+### wolf learn
+
+```text
+Usage: wolf learn [options] [command]
+
+Learning cycle: due queue, signal index audit, ack/dismiss, accept / apply /
+rollback approved candidates (REQ-03/REQ-08/REQ-12)
+
+Options:
+  -h, --help             display help for command
+
+Commands:
+  accept [options] <id>  Record the owner acceptance decision
+                         (proposed/trialled → approved; nothing is applied yet)
+  apply <id>             Apply exactly the accepted version of an approved
+                         candidate (preflight baseline hashes, journaled
+                         recovery; repeat apply is a noop)
+  rollback <id>          Restore the exact previous content of an applied
+                         candidate (refuses on any later foreign edit; repeat
+                         rollback is a noop)
+  due [options]          Deterministic due queue: new/changed signals after the
+                         cursor (bounded page; read-only; nothing dispatched)
+  list [options]         Audit the signal index page by seq (all signals incl.
+                         processed; works in any mode)
+  ack [options]          Mark the processed batch: advance the cursor
+                         (monotonic; does not dispatch anything)
+  dismiss <id>           Dismiss a signal: excluded from due; a new revision
+                         does not bring it back automatically (REQ-03)
+  help [command]         display help for command
+```
+
+#### wolf learn accept
+
+```text
+Usage: wolf learn accept [options] <id>
+
+Record the owner acceptance decision (proposed/trialled → approved; nothing is
+applied yet)
+
+Arguments:
+  id                     Learning candidate memory id
+
+Options:
+  --verdict-ref <ref>    Reference to the independent verdict/evidence (trial
+                         result, review)
+  --accepted-by <actor>  Accepting actor (default: env WOLF_ACTOR, then
+                         user:owner)
+  -h, --help             display help for command
+```
+
+#### wolf learn apply
+
+```text
+Usage: wolf learn apply [options] <id>
+
+Apply exactly the accepted version of an approved candidate (preflight baseline
+hashes, journaled recovery; repeat apply is a noop)
+
+Arguments:
+  id          Learning candidate memory id
+
+Options:
+  -h, --help  display help for command
+```
+
+#### wolf learn rollback
+
+```text
+Usage: wolf learn rollback [options] <id>
+
+Restore the exact previous content of an applied candidate (refuses on any
+later foreign edit; repeat rollback is a noop)
+
+Arguments:
+  id          Learning candidate memory id
+
+Options:
+  -h, --help  display help for command
+```
+
+#### wolf learn due
+
+```text
+Usage: wolf learn due [options]
+
+Deterministic due queue: new/changed signals after the cursor (bounded page;
+read-only; nothing dispatched)
+
+Options:
+  --limit <n>  Max entries on the page (1..200) (default: "20")
+  --json       JSON output
+  -h, --help   display help for command
+```
+
+#### wolf learn list
+
+```text
+Usage: wolf learn list [options]
+
+Audit the signal index page by seq (all signals incl. processed; works in any
+mode)
+
+Options:
+  --limit <n>      Max entries on the page (1..200) (default: "20")
+  --after-seq <n>  Show signals with seq greater than this (pagination)
+                   (default: "0")
+  --json           JSON output
+  -h, --help       display help for command
+```
+
+#### wolf learn ack
+
+```text
+Usage: wolf learn ack [options]
+
+Mark the processed batch: advance the cursor (monotonic; does not dispatch
+anything)
+
+Options:
+  --seq <n>   Advance to this seq (default: the highest indexed seq)
+  -h, --help  display help for command
+```
+
+#### wolf learn dismiss
+
+```text
+Usage: wolf learn dismiss [options] <id>
+
+Dismiss a signal: excluded from due; a new revision does not bring it back
+automatically (REQ-03)
+
+Options:
+  -h, --help  display help for command
+```
+
 ### wolf tool
 
 ```text
