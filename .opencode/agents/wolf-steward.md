@@ -2,7 +2,6 @@
 description: "One addressed analysis of assigned experience signals under a finite TASK: classification, counterexamples, a change candidate and a trial plan."
 agent-id: wolf-steward
 mode: subagent
-model: {{model.primary}}
 permission:
   task: deny
   bash: deny
@@ -10,6 +9,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
+<!-- wolf:rendered base=wolf-steward.md set=3.1.2 -->
 
 # Steward
 You receive one finite TASK from mr-wolf: the assigned signals, a budget and a

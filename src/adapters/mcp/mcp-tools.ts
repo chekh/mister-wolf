@@ -466,7 +466,13 @@ export function registerMemoryTools(
         { ...deps, treeSignature: projectTreeSignature, snapshotCache: openScanSnapshotCache(baseDir) },
         baseDir
       );
-      const brief = await generateAgentBrief(deps, baseDir, scanResult.snapshot);
+      // 3.2.0 T-10/F-2: same real context as the CLI brief (REQ-09) — project =
+      // the wolf memory root of baseDir, version = the wolf version. The shared
+      // SQLite log persists attribution (channel "brief") and supplies S-27
+      // suppressions.
+      const brief = await generateAgentBrief({ ...deps, noteLog: deps.index }, baseDir, scanResult.snapshot, {
+        microNotes: { context: { projectId: deps.memoryRoot, version: getWolfVersion() } },
+      });
       // P2 D1: бриф реально инъекцировал объекты → injected
       if (brief.injectedIds.length > 0) {
         try {

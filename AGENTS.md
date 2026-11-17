@@ -33,7 +33,7 @@ Mr. Wolf — постоянная проектная организация из
 The mr-wolf agent leads the project: it talks to the user and does its own work;
 for specialization and volume, it hires wolf-* executors directly:
 wolf-researcher, wolf-architect, wolf-developer, wolf-reviewer, wolf-tester,
-wolf-editor, wolf-release-engineer, wolf-expert. Executors do not delegate
+wolf-editor, wolf-release-engineer, wolf-expert, wolf-steward. Executors do not delegate
 further; there is no intermediate level.
 
 ## Session protocol
