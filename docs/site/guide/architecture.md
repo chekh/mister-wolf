@@ -1,15 +1,15 @@
 # Architecture
 
-Wolf connects agents, skills, tools, rules and project memory through a working process. The two-level organization keeps the original goal in view while individual sessions and executors change. A separate improvement loop lets experience change the methodology delivered to future sessions — the Steward behind it is temporarily paused in 3.0.0.
+Wolf connects agents, skills, tools, rules and project memory through a working process. The two-level organization keeps the original goal in view while individual sessions and executors change. A separate improvement loop lets experience change the methodology delivered to future sessions — since 3.2.0 the `wolf-steward` role and the `wolf-learning-cycle` method run it as finite mandates, with the lead's accept before anything applies.
 
 This page is for contributors and integration authors. For the working roles, start with [Organization](/guide/organization); for face versions and delivery, see [Delivery & Trust](/guide/delivery).
 
 ## Two connected loops
 
-| Loop        | Responsibility                                                                                                              | Persistent result                                           |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Delivery    | Wolf owns intent and acceptance and performs part of the work itself; wolf-\* executors complete bounded work               | Task state, decisions, reports and checkpoints              |
-| Improvement | Authorized feedback is processed and faces versioned through the governed loop (the Steward is temporarily paused in 3.0.0) | Updated methodology, reasons for change and version history |
+| Loop        | Responsibility                                                                                                                                                      | Persistent result                                           |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Delivery    | Wolf owns intent and acceptance and performs part of the work itself; wolf-\* executors complete bounded work                                                       | Task state, decisions, reports and checkpoints              |
+| Improvement | Authorized feedback is processed and faces versioned through the governed loop (since 3.2.0: `wolf-steward` finite analysis, lead's accept, `apply-approved` apply) | Updated methodology, reasons for change and version history |
 
 The organization is an operating protocol supported by agent frames and platform permissions. A written instruction is not proof that every boundary is enforced in code. Council execution and automatic policy scheduling must not be inferred from their architectural descriptions.
 
@@ -56,4 +56,4 @@ Linked worktrees share the common memory root, while rendered platform files rem
 
 Checkpoints preserve the meaning and state needed to resume work. They do not provide an execution engine with leases, heartbeats or automatic crash recovery. Local storage does not mean local model inference: the selected provider still receives the context sent by the harness.
 
-Active learning consists of lesson capture and authorized face mutations; Steward aggregation is temporarily paused in 3.0.0. Automatic decay and the Council runtime are development directions, not current execution guarantees. Current implementation details remain in the source and [CLI reference](/guide/cli/); the [concept and maturity records](https://github.com/chekh/mister-wolf/tree/main/docs/concept) preserve design history and status.
+Active learning consists of lesson capture, the governed learning cycle (`wolf learn`, `learning.mode`, micro-notes) and authorized face mutations; lesson aggregation applies with full-set preflight and journaled recovery. Automatic decay and the Council runtime are development directions, not current execution guarantees. Current implementation details remain in the source and [CLI reference](/guide/cli/); the [concept and maturity records](https://github.com/chekh/mister-wolf/tree/main/docs/concept) preserve design history and status.

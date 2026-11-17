@@ -4,11 +4,11 @@ The base set is the agent harness Mr. Wolf delivers into a project: agents, skil
 
 The composition below is the catalog of `templates/base/` in the package.
 
-## Agents — 9 → `.opencode/agents/`
+## Agents — 10 → `.opencode/agents/`
 
 | Agent                   | Role                                                                                                                                                                                                                                                                                                                            |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mr-wolf`               | The lead: clarifies the goal, performs work itself, hires the eight wolf-\* specialists directly and accepts their results by evidence                                                                                                                                                                                          |
+| `mr-wolf`               | The lead: clarifies the goal, performs work itself, hires the nine wolf-\* specialists directly and accepts their results by evidence                                                                                                                                                                                           |
 | `wolf-architect`        | Requirements, design, test plan and plan inside one assigned document                                                                                                                                                                                                                                                           |
 | `wolf-developer`        | One completed piece of implementation with tests and a verifiable result                                                                                                                                                                                                                                                        |
 | `wolf-editor`           | One readability editing pass over a finished document, without research                                                                                                                                                                                                                                                         |
@@ -16,13 +16,14 @@ The composition below is the catalog of `templates/base/` in the package.
 | `wolf-release-engineer` | Release preparation and verification of a specific accepted revision                                                                                                                                                                                                                                                            |
 | `wolf-researcher`       | Targeted research or diagnosis of one unknown; returns findings with sources and confidence; on an explicitly assigned architectural question it compares variants and returns a recommendation — it writes no files and approves no architecture                                                                               |
 | `wolf-reviewer`         | Independent review of a specific revision through an assigned lens; verdict via the VERDICT/SUMMARY contract                                                                                                                                                                                                                    |
+| `wolf-steward`          | Finite analysis of lead-selected signals under [wolf-learning-cycle](/guide/feedback): classify the experience, keep bounds and counterexamples, prepare a validated candidate; does not hire, does not accept its own changes, by default writes nothing                                                                       |
 | `wolf-tester`           | Independent verification of behavior, integrations and regressions                                                                                                                                                                                                                                                              |
 
-The `steward` agent is not part of the 3.0.0 set: the role is temporarily out of standard routing and returns in the next release; its mechanisms — face history and complaint intake — are preserved (see [Steward and learning](/guide/feedback)).
+Since 3.2.0 the steward role is back as `wolf-steward` with a bounded mandate: the lead selects signals and assigns a finite analysis, the candidate passes independent verification, and only the lead accepts and applies (in `apply-approved` mode). The legacy `steward` actor in old memory records reads as history — face versions, complaint intake and mutation records stay readable (see [Steward and learning](/guide/feedback)).
 
 Every dispatched task carries an execution block: requested model/variant, the execute/solve mode, a tool-call budget and a stop condition. Since 2.24.0 it also carries a density axis — `density standard|draft`. The lead picks the density when writing the TASK; a missing field means `standard`. In `draft` the executor shortens the visible service record — repeated retellings, narration of the obvious, ritual summaries — while keeping mandatory checks, rights, evidence and independent acceptance; substantial uncertainty widens the targeted verification instead of shrinking the answer, and an unsupported density is returned to the lead. Acceptance checks observed actions, evidence and the result — not a draft label in RESULT. No numeric savings are claimed; the measurable comparison is a separate observation effort (roadmap A1.2).
 
-## Skills — 35 → `.opencode/skills/`
+## Skills — 36 → `.opencode/skills/`
 
 The count includes 8 short compatibility entries carried from the pilot — marked «Совместимый вход», redirecting to the current skill, to be removed in the next release (`finishing-a-development-branch`, `receiving-code-review`, `requesting-code-review`, `using-git-worktrees`, `wolf-sdd`, `wolf-skill-intake`, `wolf-visual-dialogue`, `wolf-work-strategy`); new against 2.33.0: `wolf-agent-language`, `wolf-memory`, `wolf-release`, `wolf-requirements`, `wolf-test`.
 
@@ -74,11 +75,11 @@ Load wolf-document-readability when a finished document — requirements, a chan
 
 ## Commands — 3 → `.opencode/command/`
 
-| Command       | What it does                                                                                                                                      |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `analyze-doc` | mr-wolf aligns the goal → a bounded analysis is assigned to wolf-researcher                                                                       |
-| `complain`    | file an owner complaint into the learning loop: the complaint is recorded (in 3.0.0 without automatic triage — the Steward is temporarily paused) |
-| `doc-review`  | multi-lens document review orchestrated via the wolf-review skill                                                                                 |
+| Command       | What it does                                                                                                                                                                 |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `analyze-doc` | mr-wolf aligns the goal → a bounded analysis is assigned to wolf-researcher                                                                                                  |
+| `complain`    | file an owner complaint into the learning loop: the complaint is recorded; since 3.2.0 selected signals feed the learning queue (`wolf learn due`) — still nothing automatic |
+| `doc-review`  | multi-lens document review orchestrated via the wolf-review skill                                                                                                            |
 
 ## Plugins — 2 (reserved, not installed)
 
@@ -123,7 +124,7 @@ An unstamped file is yours (the `wx` policy): `wolf init` skips it, the update p
 
 `wolf upgrade` never appends a block to an unstamped `AGENTS.md` without markers — only `init` creates one. A file wolf did not create stays foreign.
 
-Want to customize an agent or a skill? Do it in memory, not in the stamped file: file a complaint (`wolf complain`) — in 3.0.0 it is accepted and recorded; the Steward that mutates playbooks is temporarily paused — or fork the file by removing its stamp, accepting that the update pass will no longer manage it. If you only need to keep the local version of a file wolf does manage, declare the intent in the file (`protect: true`, or `wolf upgrade --resolve <file>=protect`) instead of removing the stamp: the file stays visible in `wolf upgrade --check`, which is the point. Full workflow: [Upgrading a Project and a Park](/guide/upgrade).
+Want to customize an agent or a skill? Do it in memory, not in the stamped file: file a complaint (`wolf complain`) — it is accepted and recorded, and since 3.2.0 a selected signal can go through the learning cycle to a verified candidate the lead applies — or fork the file by removing its stamp, accepting that the update pass will no longer manage it. If you only need to keep the local version of a file wolf does manage, declare the intent in the file (`protect: true`, or `wolf upgrade --resolve <file>=protect`) instead of removing the stamp: the file stays visible in `wolf upgrade --check`, which is the point. Full workflow: [Upgrading a Project and a Park](/guide/upgrade).
 
 ## Addressed routes and project tools
 

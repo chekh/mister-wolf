@@ -57,7 +57,8 @@ describe('generateRecap stewardAggregation', () => {
     expect(report.stewardAggregation?.unaggregatedMature).toBe(3);
     const text = renderRecap(report);
     expect(text).toContain('неагрегированных уроков: 3 (зрелых: 3)');
-    expect(text).toContain('автоматическая обработка Стюардом временно отключена');
+    expect(text).toContain('сигнал фиксируется и не теряется');
+    expect(text).not.toContain('временно отключена');
     expect(text).not.toContain('opencode run --agent steward');
     // размещение: после Контура поправок, до Recent decisions (прецедент indexOf)
     expect(text.indexOf('## Стюард: агрегация')).toBeGreaterThan(text.indexOf('## Контур поправок'));

@@ -64,7 +64,8 @@ describe('getCallInjections banner (unaggregated lessons)', () => {
 
     expect(result.banner).toContain('неагрегированных уроков: 3');
     expect(result.banner).toContain('(зрелых: 3)');
-    expect(result.banner).toContain('автоматическая обработка Стюардом временно отключена');
+    expect(result.banner).toContain('сигнал фиксируется и не теряется');
+    expect(result.banner).not.toContain('временно отключена');
     expect(result.banner).not.toContain('opencode run --agent steward');
   });
 

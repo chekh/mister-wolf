@@ -223,7 +223,7 @@ export function renderRecap(report: RecapReport): string {
     if (s.unaggregatedMature >= 1) {
       items.push(
         `неагрегированных уроков: ${s.unaggregatedTotal} (зрелых: ${s.unaggregatedMature}) — ` +
-          'автоматическая обработка Стюардом временно отключена; сигнал фиксируется и не теряется'
+          'сигнал фиксируется и не теряется; разбор — по поручению wolf-steward или через `wolf learn due`'
       );
     }
     if (s.proposedAggregates >= 1) {

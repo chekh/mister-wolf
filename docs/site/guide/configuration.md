@@ -4,21 +4,22 @@
 
 Each project's configuration lives in `.wolf/config.yaml` (YAML validated by a zod schema). Keys and defaults:
 
-| Key                                 | Type / default                                                                                                                           |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `schema_version`                    | int; current **2**. Legacy projects without the marker are treated as 1                                                                  |
-| `wolf_version`                      | semver stamp of the wolf that wrote the config; taxonomy drift marker — a mismatch with the running binary warns `wolf migrate taxonomy` |
-| `artifact_sources`                  | string[]; default `[]`                                                                                                                   |
-| `memory_types.project`              | your custom types: `lifecycle`, `subdir_thread`, `subdir_shared`, `fields`; cannot conflict with core types                              |
-| `error_class_taxonomy`              | `[{id, match[]}]`; default `[]`                                                                                                          |
-| `facets.character`                  | string[] of **7–10** values; closed "record character" dictionary for the `note` type's `--facet`; default — the canonical 7             |
-| `learning.pattern_threshold`        | int >= 1; default **3**                                                                                                                  |
-| `learning.decay_ttl`                | map of type → number of sessions without a hit                                                                                           |
-| `learning.effectiveness_thresholds` | `{noise_ok, noise_warn, silent_ok}` — percentages                                                                                        |
-| `pricing`                           | map model → `{input, output, cache_read}` in $/Mtok; without the block `$` fields are hidden (numbers are never invented)                |
-| `analytics.thresholds`              | memory lifecycle classification: `{new_days, workhorse_uses}`; default `{14, 3}`                                                         |
-| `delivery.context_budget_tokens`    | int > 0; session context budget for the injection warning, tokens; default **200000**                                                    |
-| `delivery.context_warning_pct`      | number ≥ 0; warn when session injections exceed this share of the budget, %; default **20**, `0` disables                                |
+| Key                                 | Type / default                                                                                                                                                                                                                                        |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema_version`                    | int; current **2**. Legacy projects without the marker are treated as 1                                                                                                                                                                               |
+| `wolf_version`                      | semver stamp of the wolf that wrote the config; taxonomy drift marker — a mismatch with the running binary warns `wolf migrate taxonomy`                                                                                                              |
+| `artifact_sources`                  | string[]; default `[]`                                                                                                                                                                                                                                |
+| `memory_types.project`              | your custom types: `lifecycle`, `subdir_thread`, `subdir_shared`, `fields`; cannot conflict with core types                                                                                                                                           |
+| `error_class_taxonomy`              | `[{id, match[]}]`; default `[]`                                                                                                                                                                                                                       |
+| `facets.character`                  | string[] of **7–10** values; closed "record character" dictionary for the `note` type's `--facet`; default — the canonical 7                                                                                                                          |
+| `learning.mode`                     | learning-cycle mode: `off` (nothing assigned or suggested) / `suggest` (**default** — queue and suggestions, nothing activates) / `apply-approved` (only the exact accepted version applies); `WOLF_LEARNING_MODE` overrides when the config omits it |
+| `learning.pattern_threshold`        | int >= 1; default **3**                                                                                                                                                                                                                               |
+| `learning.decay_ttl`                | map of type → number of sessions without a hit                                                                                                                                                                                                        |
+| `learning.effectiveness_thresholds` | `{noise_ok, noise_warn, silent_ok}` — percentages                                                                                                                                                                                                     |
+| `pricing`                           | map model → `{input, output, cache_read}` in $/Mtok; without the block `$` fields are hidden (numbers are never invented)                                                                                                                             |
+| `analytics.thresholds`              | memory lifecycle classification: `{new_days, workhorse_uses}`; default `{14, 3}`                                                                                                                                                                      |
+| `delivery.context_budget_tokens`    | int > 0; session context budget for the injection warning, tokens; default **200000**                                                                                                                                                                 |
+| `delivery.context_warning_pct`      | number ≥ 0; warn when session injections exceed this share of the budget, %; default **20**, `0` disables                                                                                                                                             |
 
 Example (defaults shape):
 

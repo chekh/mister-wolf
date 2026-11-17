@@ -1,6 +1,6 @@
 # Organization keeps the goal in view
 
-The two-level organization exists to maintain direction over a long assignment: mr-wolf holds the user's intent, clarifies the goal and accepts results — and it performs part of the work itself. For specialized or parallel work it hires one of the eight wolf-\* specialists directly; executors do not delegate further. A local difficulty returns to the participant holding the needed context; acceptance connects work back to the original goal. Memory carries recorded state across sessions. The Steward improves methods through a separate, cross-cutting loop (temporarily paused in 3.0.0).
+The two-level organization exists to maintain direction over a long assignment: mr-wolf holds the user's intent, clarifies the goal and accepts results — and it performs part of the work itself. For specialized or parallel work it hires one of the nine wolf-\* specialists directly; executors do not delegate further. A local difficulty returns to the participant holding the needed context; acceptance connects work back to the original goal. Memory carries recorded state across sessions. The Steward (`wolf-steward`) improves methods through the governed learning loop — a finite analysis assigned by the lead, an independent verification, and a lead's accept before anything applies (3.2.0).
 
 ## Responsibility
 
@@ -49,6 +49,6 @@ A council is a bounded consultation method for hard forks: uncertainty, high ris
 
 ## Improve the organization
 
-The working cycle retains experience. The governed loop handles supported feedback and versions faces under the authorized protocol; in 3.0.0 the Steward behind it is temporarily out of standard routing, signals are recorded, and the role returns in the next release. It is not an execution level. Methods can change while history and owner control remain.
+The working cycle retains experience. The governed learning loop handles supported feedback: since 3.2.0 the lead assigns `wolf-steward` the finite analysis, a candidate passes independent verification, and the lead's accept and `apply-approved` apply turn it into an exact, reversible change. It is not an execution level. Methods can change while history and owner control remain.
 
 [Steward and learning](/guide/feedback) · [Memory](/guide/memory) · [Base Set](/guide/base-set) · [Current boundaries](/guide/capabilities)

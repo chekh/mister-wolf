@@ -10,6 +10,29 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [3.2.0] - 2026-11-17
+
+### Added — the governed learning cycle ships: `wolf-steward` (the 10th agent) and `wolf-learning-cycle` (the 36th skill) turn accepted signals into exact, reversible method changes
+
+The loop that 3.0.0 parked is back as a bounded specialist, not the old autonomous actor. The lead assigns `wolf-steward` a finite mandate: classify selected signals (complaints, lessons, observed working practices, repeated failures, explicitly named external sources), produce a validated candidate — a `wolf:learning-change:v1` envelope stored in the proposal body with phases `proposed → trialled → approved → active` (envelope phases, not memory statuses) — and hand it to independent verification. The lead accepts with `wolf learn accept <id> --verdict-ref <ref>`; nothing is applied at that point. The lead does not hand the acceptance of a candidate to its author, and the steward does not hire agents or accept its own changes.
+
+Applying is the app's job, gated by `learning.mode`: `off` (nothing is assigned or suggested), `suggest` (the default — queue and suggestions, activation needs a separate permission), `apply-approved` (only the exact accepted version is applied). `wolf learn apply <id>` runs a preflight of every baseline hash before the first write, journals each step for recovery on partial failure, and a repeated apply is a noop. `wolf learn rollback <id>` restores the exact previous content and refuses when the files carry any later foreign edit; a repeated rollback is a noop. The mode resolves from `learning.mode` in `.wolf/config.yaml`, then `WOLF_LEARNING_MODE`, then `suggest`. The full cycle: signal → the lead's selection and budget → steward's analysis and candidate → independent verification → the lead's acceptance → apply (only in `apply-approved`) → delivery of the exact version in a new session → effect and counter-evidence.
+
+**CLI and MCP.** `wolf learn` groups seven subcommands: `due` (deterministic queue of new/changed signals after the cursor, read-only), `list`, `ack` (advance the cursor), `dismiss`, `accept`, `apply`, `rollback`. The candidate envelope is saved with `wolf propose candidate --file <envelope.json>` (validated by the domain schema, deduplicated by `request_key`), and the MCP catalog grows to 9 tools with `propose_candidate` — the same use-case, nothing activated (`learning.mode: off` rejects the call). The old `learn digest/status/gate/evolve` subcommands do not return — they died with the 2.13 diet.
+
+### Added — micro-notes: addressed delivery of local knowledge in `wolf call` and `wolf brief` (CLI and MCP), with attribution
+
+Mark a memory object (note, lesson or rule) with the `micro-note` tag and it participates in addressed delivery; the passthrough `applies` field bounds applicability (`projects`/`environments`/`versions`/`targets`; no field — the note is universal; a malformed field — the note is not delivered, fail-closed). The `constraint` tag marks a mandatory limitation the volume budget never drops (a long text is truncated, but delivered). The budget is 4,800 characters / 8 records; delivery output carries the exact `id@rev` of every delivered note. The delivery log records `selected` (eligible after filters) and `delivered` (actually emitted) per note and channel — attribution, not an effect claim. An observed contradiction suppresses the note from delivery until explicitly resolved; both evidence sides (the note and the observation) are kept and the original fact is not edited. Selection is deterministic over the already-read object list — no new RAG, no model calls; an empty result stays empty.
+
+**Accounting slices.** The analytics report gains `slices` over the same unique calls: `learning` and `council` are attribution slices of the calls, not additions to the total; without configured pricing the cost basis is reported as unknown with reasons — no invented dollar figures.
+
+### Changed — the composition register, guards and living documentation describe one set: 10 agents, 36 skills
+
+- `update-map.json` carries `base/agents/wolf-steward.md` and `base/skills/wolf-learning-cycle/SKILL.md` as `new` targets; `wolf init` and `wolf upgrade` deliver them; the keep/protect mechanics for local edits are unchanged. The legacy `steward` actor in old memory records reads as history; the new role is `wolf-steward`.
+- The coordinator-frame guard is updated to the 3.2.0 norm: old-cycle imperatives and the bare legacy `steward` are banned (lookbehind), and `wolf-steward` routes.
+- The root `AGENTS.md` header states the shipped model; README and the site (EN + RU mirror) describe the cycle, `wolf learn`, `learning.mode` and micro-notes, and the upgrade guide gains the 3.1.2 → 3.2.0 migration note. No living documentation path claims "the Steward is disabled" or "learning is not part of the model" anymore.
+- The dead pressure-test script is removed — its `learn` gate has been gone since 2.13.
+
 ## [3.1.2] - 2026-11-16
 
 ### Changed — the session-language decision is recorded by explicit commands, not left to judgment
