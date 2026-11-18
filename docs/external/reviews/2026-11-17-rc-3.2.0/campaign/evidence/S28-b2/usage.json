@@ -1,0 +1,15 @@
+{
+  "session_id": "ses_e14801c4cffeiJiMzIAZFbC1h6",
+  "session_id_source": "step-event majority",
+  "model_calls_visible": 16,
+  "n_events": 63,
+  "tokens": {
+    "input": 59069,
+    "output": 4713,
+    "reasoning": 3949,
+    "cache_read": 288576,
+    "cache_write": 0
+  },
+  "total_tokens": 356307,
+  "tokens_note": "sum of step-finish tokens incl. nested cache.read/write; cost not reported by router (unknown)"
+}

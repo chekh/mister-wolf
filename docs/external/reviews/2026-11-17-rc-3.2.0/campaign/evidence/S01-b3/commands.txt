@@ -1,0 +1,2 @@
+wolf add --type decision --title "Session language: Russian" --body "Source: user's first message is in Russian (запрос отчёта о состоянии проекта). Date: 2026-11-17."
+wolf call; echo "---BRIEF---"; wolf brief

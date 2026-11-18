@@ -1,0 +1,19 @@
+git status --short; echo "---"; git log --oneline -5
+wolf brief 2>&1 | head -50; echo "---"; wolf call 2>&1 | head -30
+find . -path ./.git -prune -o -type f -print | sort; echo "---bin---"; ls -la bin/ 2>/dev/null && cat bin/* 2>/dev/null; echo "---exp dir---"; ls -la docs/dev/exp/ 2>/dev/null
+wolf search "Session language" 2>&1; echo "---"; wolf search "metrics" 2>&1; echo "---"; wolf add --help 2>&1 | head -20
+cat bin/wolf; echo "---"; ls -la docs/dev/exp/ data/; echo "---"; find docs data -type f | sort
+wolf add --type decision --title "Session language: ru" --body "Source: user messages in Russian (2026-11-17, session S03-c2). Applies to dialogue, memory records and executor reasoning; delivery artifacts stay English." --confidence high 2>&1
+stat -f '%Sm' -t '%Y-%m-%dT%H:%M:%SZ' data/metrics.json
+echo "== 1. JSON validity + updated_at =="; python3 -m json.tool data/metrics.json; echo "== 2. recomputed aggregates =="; python3 -c "
+import json
+d = json.load(open('data/metrics.json'))
+s = d['sources']; total = sum(s.values())
+print('sources:', s); print('total:', total)
+print('shares:', {k: f'{round(v/total*100)}%' for k, v in s.items()})
+print('updated_at:', d['updated_at'])
+"; echo "== 3. report mentions updated_at =="; grep -n "updated" docs/dev/exp/report.md; echo "== 4. scope of changes =="; git status --short; git diff --stat
+wolf add --type decision --title "metrics.json: updated_at from pre-edit file mtime" --body "Plan docs/dev/exp/plan.md step 3 required updated_at in data/metrics.json but the field was missing (gap found 2026-11-17). Decision: add the field with value = file mtime captured before the edit (2026-11-17T13:57:24Z), not 'now' — the data itself was not changed by the fix, only its metadata; mtime reflects the data's actual freshness." --confidence high --tags "exp,plan-gap" 2>&1
+echo "== git status --short =="; git status --short; echo; echo "== git diff (3 files) =="; git diff -- data/metrics.json docs/dev/exp/plan.md
+git status --porcelain
+wolf add --type note --facet history --title "Plan exp: steps 3-5 executed and accepted" --body "Gap fix: added updated_at=2026-11-17T13:57:24Z (pre-edit mtime) to data/metrics.json (decision mem_20261117_be288e). Step 3-4: report docs/dev/exp/report.md (api 12/60%, web 8/40%, total 20, updated_at included); plan.md steps 3-4 (done). Step 5: wolf-reviewer ses_e16d42a32ffeYSyMagNSZPadzj verified C1-C3, C5 PASS; C4 git part closed by lead evidence (git status/diff: only the 3 in-scope files + .wolf bookkeeping + pre-existing bin/ shim) -> APPROVED per reviewer's conversion rule. Accepted 2026-11-17. Not committed (no user mandate)." --tags "exp,plan-complete" 2>&1

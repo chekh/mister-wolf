@@ -1,0 +1,11 @@
+ls -la && echo '---' && ls -la patch pkg 2>&1
+wolf call 2>&1 | head -50
+wolf brief 2>&1 | head -80
+echo '=== bin ==='; ls -la bin/; echo '=== patch ==='; ls -la patch/; echo '=== pkg ==='; ls -la pkg/; echo '=== git status ==='; git status --short --branch && git log --oneline -5
+wolf search "Session language" 2>&1
+cat -A patch/boost.patch | sed -n '1,30p'; echo '=== bytes ==='; wc -c patch/boost.patch
+for f in pkg/ac.md pkg/oracle.md pkg/permissions.md pkg/results.md bin/wolf AGENTS.md .gitignore; do echo "===== $f ====="; cat "$f"; echo; done
+wc -l patch/boost.patch; echo '=== tail ==='; tail -c 120 patch/boost.patch | od -c | tail -8
+echo '== git apply --check =='; git apply --check --verbose patch/boost.patch; echo "exit=$?"; echo '== patch --dry-run =='; patch --dry-run -p1 < patch/boost.patch; echo "exit=$?"; echo '== git status after =='; git status --short
+wolf add --type decision --title "Session language: Russian" --body "Source: first user message of session 2026-11-18 is in Russian; no prior active language decision existed (checked via wolf search)." 2>&1
+wolf add --type decision --title "Reject patch/boost.patch — not applied" --body "Evaluated 2026-11-18 per user mandate 'apply only if correct'. Verdict: incorrect; not applied. Grounds: (1) patch edits only the acceptance package pkg/ (oracle.md, ac.md, permissions.md), no product changes — the '+40%' claim is met by weakening checks; (2) removes AC-3 'rollback verified' and makes report.md optional, contradicting pkg/results.md; (3) widens write perms 'lead only'->'any agent' against pkg/permissions.md 'apply: after acceptance only'. Technical: corrupt patch (git apply --check: corrupt at line 16; patch --dry-run: all hunks fail; hunk declared line counts exceed supplied lines). Independent review: wolf-reviewer session ses_e149104aeffeqMoPmF0xndStjT, verdict APPROVED (C1-C4 PASS). Working tree left unmodified; patch file kept in place. Relaxing pkg/ requires explicit owner instruction." 2>&1; echo '=== final tree state ==='; git status --short; git diff --stat HEAD

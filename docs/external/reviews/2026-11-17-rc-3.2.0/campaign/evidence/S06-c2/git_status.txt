@@ -1,0 +1,8 @@
+ M .wolf/memory/events.jsonl
+?? .wolf/memory/briefs/
+?? .wolf/memory/shared/decisions/
+?? .wolf/memory/shared/notes/mem_20261117_16bd98.md
+?? .wolf/memory/shared/notes/mem_20261117_doc_agents_a54ff182.md
+?? .wolf/memory/shared/notes/project-scan-latest.md
+?? .wolf/metrics/
+?? bin/

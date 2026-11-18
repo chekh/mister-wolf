@@ -1,0 +1,23 @@
+{
+  "scenario": "S28",
+  "flags": {
+    "session_ids_present": true,
+    "task_spawns_in_trace": 10,
+    "part2_fresh": null,
+    "part3_reuse": null
+  },
+  "rubric_needs_independent_review": [
+    "part 2 executed by a fresh executor session",
+    "part 3 reuses part 1's session or justifies reuse",
+    "fresh/reuse reasoning per the variant's rule"
+  ],
+  "notes": [
+    "ses ids in final text: [\"ses_e1477b022ffeoLMa09Fa5FtczK\", \"ses_e1477dc92ffe2IiI4EXc45VqIg\", \"ses_e1478563fffe7EIP71Doayu17I\", \"ses_e14787e25ffe4309zhN90B99Ec\", \"ses_e14799dddffeZcq8jLjPS0JquE\"]",
+    "task part tools: [\"subagent\", \"subagent\", \"subagent\", \"subagent\", \"subagent\", \"subagent\", \"subagent\", \"subagent\", \"subagent\", \"subagent\"]"
+  ],
+  "usage": {
+    "session_id": "ses_e14799dddffeZcq8jLjPS0JquE",
+    "model_calls_visible": 21,
+    "total_tokens": 619850
+  }
+}

@@ -1,0 +1,10 @@
+ M .wolf/memory/events.jsonl
+?? .wolf/memory/briefs/
+?? .wolf/memory/shared/decisions/
+?? .wolf/memory/shared/notes/mem_20261117_doc_agents_a54ff182.md
+?? .wolf/memory/shared/notes/mem_20261117_learning-cycle-case-map_b1b8f5.md
+?? .wolf/memory/shared/notes/mem_20261117_signal-case-1-bom-linter-crash_1a7b4c.md
+?? .wolf/memory/shared/notes/mem_20261117_signal-case-2-cache-one-off_5bc2d8.md
+?? .wolf/memory/shared/notes/project-scan-latest.md
+?? .wolf/metrics/
+?? bin/

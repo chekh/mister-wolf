@@ -1,0 +1,24 @@
+ls -la && ls cases/ 2>/dev/null
+wolf brief 2>&1 | head -60
+ls -la cases/logs/ && find . -path ./.git -prune -o -name "*.md" -print 2>/dev/null | head -20
+wolf search signal 2>&1 | head -30; echo "---"; wolf search experience 2>&1 | head -30; echo "---"; wolf search language 2>&1 | head -10
+find .wolf -type f | head -40; echo "---docs---"; ls docs 2>/dev/null; find . -path ./.git -prune -o -iname "*signal*" -print -o -iname "*feedback*" -print 2>/dev/null
+wolf list 2>&1 | head -40
+wolf add --type decision --title "Session language: Russian" --body "Source: user's first message in this session is in Russian. Recorded 2026-11-17. Applies to dialogue, memory records and executor reasoning; delivery artifacts stay English." 2>&1
+cat cases/logs/bom-crash.log; echo "---"; wolf list --type complaint 2>&1; echo "---help---"; wolf --help 2>&1 | head -40
+wolf propose --help 2>&1; echo "==="; wolf propose add --help 2>&1; echo "==="; wolf complain --help 2>&1; echo "==="; wolf add --help 2>&1
+ls -R bin | head; head -20 bin/* 2>/dev/null | head -40
+wolf propose add \
+  --addressee user:owner \
+  --basis "Tool friction: the linter wrapper crashes on files with a BOM. Three evidenced occurrences this week (2026-11-10, 2026-11-13, 2026-11-16), each reproduced on a minimal file; log preserved at cases/logs/bom-crash.log. The wrapper is external to this repo (no fix in-repo possible)." \
+  --change "Introduce a rule/skill 'strip BOM before lint' for everyone handling external files, as an interim constraint until the wrapper itself is fixed by its owner." \
+  --benefit "Eliminates a repeated, evidenced crash class before linting; keeps external-file handling deterministic while the tool fix is pending." \
+  --bounds "Applies when linting external files that may carry a BOM; does not replace fixing the wrapper (the proper fix is in the tool's own contour, owned by its owner)." \
+  "Add rule/skill 'strip BOM before lint' (case-1, repeated evidenced tool defect)" 2>&1
+wolf add --type note --facet history \
+  --title "One-off doc build cache workaround (2026-11-14)" \
+  --body "Case 2: a single doc build failure on 2026-6-14 — stale cache; fixed locally by removing .cache/ by hand. No repetition observed; helped this one time only. Per the feedback methodology this is a one-off deviation corrected within scope: recorded as history, NOT promoted to a complaint or lesson. Promotion criterion: if the failure repeats, file a proper signal with evidence." \
+  --tags "feedback,one-off,doc-build" \
+  --confidence high 2>&1
+wolf edit mem_20261117_9c75e4 --body "Case 2: a single doc build failure on 2026-11-14 — stale cache; fixed locally by removing .cache/ by hand. No repetition observed; helped this one time only. Per the feedback methodology this is a one-off deviation corrected within scope: recorded as history, NOT promoted to a complaint or lesson. Promotion criterion: if the failure repeats, file a proper signal with evidence. Source: cases/case-2.md." 2>&1; echo "==="; wolf get mem_20261117_1f9c74 2>&1 | head -30; echo "==="; wolf get mem_20261117_9c75e4 2>&1 | head -20
+wolf propose deliver mem_20261117_1f9c74 2>&1; echo "==="; wolf propose list 2>&1; echo "==="; wolf list --type complaint --status open 2>&1

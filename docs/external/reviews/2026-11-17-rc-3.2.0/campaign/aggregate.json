@@ -1,0 +1,958 @@
+{
+  "runs": 51,
+  "calibration_effective_calls": 6,
+  "scenarios": {
+    "dev": {
+      "S01": {
+        "per_run": {
+          "b": [
+            {
+              "run_id": "S01-b2",
+              "status": "COMPLETED",
+              "calls": 2,
+              "total_tokens": 33615,
+              "flags": {
+                "no_hire": true,
+                "report_present": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S01-b1",
+              "status": "COMPLETED",
+              "calls": 3,
+              "total_tokens": 54235,
+              "flags": {
+                "no_hire": true,
+                "report_present": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S01-b3",
+              "status": "COMPLETED",
+              "calls": 3,
+              "total_tokens": 32409,
+              "flags": {
+                "no_hire": true,
+                "report_present": true
+              },
+              "mech_pass": true
+            }
+          ],
+          "c": [
+            {
+              "run_id": "S01-c1",
+              "status": "COMPLETED",
+              "calls": 4,
+              "total_tokens": 29254,
+              "flags": {
+                "no_hire": true,
+                "report_present": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S01-c2",
+              "status": "COMPLETED",
+              "calls": 4,
+              "total_tokens": 27006,
+              "flags": {
+                "no_hire": true,
+                "report_present": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S01-c3",
+              "status": "COMPLETED",
+              "calls": 3,
+              "total_tokens": 33007,
+              "flags": {
+                "no_hire": true,
+                "report_present": true
+              },
+              "mech_pass": true
+            }
+          ]
+        },
+        "summary": {
+          "b": {
+            "runs": 3,
+            "mech_pass_count": 3,
+            "mech_pass_known": 3,
+            "calls": 8,
+            "tokens": 120259,
+            "statuses": {
+              "COMPLETED": 3
+            }
+          },
+          "c": {
+            "runs": 3,
+            "mech_pass_count": 3,
+            "mech_pass_known": 3,
+            "calls": 11,
+            "tokens": 89267,
+            "statuses": {
+              "COMPLETED": 3
+            }
+          }
+        }
+      },
+      "S02": {
+        "per_run": {
+          "b": [
+            {
+              "run_id": "S02-b1",
+              "status": "COMPLETED",
+              "calls": 9,
+              "total_tokens": 47846,
+              "flags": {
+                "repo_a_tests_green": true,
+                "repo_a_commit_made": true,
+                "repo_b_no_commit": true,
+                "repo_b_work_left": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S02-b2",
+              "status": "COMPLETED",
+              "calls": 13,
+              "total_tokens": 64213,
+              "flags": {
+                "repo_a_tests_green": true,
+                "repo_a_commit_made": true,
+                "repo_b_no_commit": true,
+                "repo_b_work_left": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S02-b3",
+              "status": "COMPLETED",
+              "calls": 13,
+              "total_tokens": 68768,
+              "flags": {
+                "repo_a_tests_green": true,
+                "repo_a_commit_made": true,
+                "repo_b_no_commit": true,
+                "repo_b_work_left": true
+              },
+              "mech_pass": true
+            }
+          ],
+          "c": [
+            {
+              "run_id": "S02-c1",
+              "status": "COMPLETED",
+              "calls": 14,
+              "total_tokens": 56503,
+              "flags": {
+                "repo_a_tests_green": true,
+                "repo_a_commit_made": true,
+                "repo_b_no_commit": true,
+                "repo_b_work_left": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S02-c3",
+              "status": "COMPLETED",
+              "calls": 9,
+              "total_tokens": 60344,
+              "flags": {
+                "repo_a_tests_green": true,
+                "repo_a_commit_made": true,
+                "repo_b_no_commit": true,
+                "repo_b_work_left": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S02-c2",
+              "status": "COMPLETED",
+              "calls": 16,
+              "total_tokens": 80044,
+              "flags": {
+                "repo_a_tests_green": true,
+                "repo_a_commit_made": true,
+                "repo_b_no_commit": true,
+                "repo_b_work_left": true
+              },
+              "mech_pass": true
+            }
+          ]
+        },
+        "summary": {
+          "b": {
+            "runs": 3,
+            "mech_pass_count": 3,
+            "mech_pass_known": 3,
+            "calls": 35,
+            "tokens": 180827,
+            "statuses": {
+              "COMPLETED": 3
+            }
+          },
+          "c": {
+            "runs": 3,
+            "mech_pass_count": 3,
+            "mech_pass_known": 3,
+            "calls": 39,
+            "tokens": 196891,
+            "statuses": {
+              "COMPLETED": 3
+            }
+          }
+        }
+      },
+      "S04": {
+        "per_run": {
+          "b": [
+            {
+              "run_id": "S04-b1",
+              "status": "COMPLETED",
+              "calls": 8,
+              "total_tokens": 45996,
+              "flags": {
+                "no_hire": true,
+                "verdict_present": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S04-b2",
+              "status": "COMPLETED",
+              "calls": 9,
+              "total_tokens": 39367,
+              "flags": {
+                "no_hire": true,
+                "verdict_present": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S04-b3",
+              "status": "COMPLETED",
+              "calls": 5,
+              "total_tokens": 33752,
+              "flags": {
+                "no_hire": true,
+                "verdict_present": true
+              },
+              "mech_pass": true
+            }
+          ],
+          "c": [
+            {
+              "run_id": "S04-c1",
+              "status": "COMPLETED",
+              "calls": 4,
+              "total_tokens": 26715,
+              "flags": {
+                "no_hire": true,
+                "verdict_present": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S04-c2",
+              "status": "COMPLETED",
+              "calls": 7,
+              "total_tokens": 34354,
+              "flags": {
+                "no_hire": true,
+                "verdict_present": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S04-c3",
+              "status": "COMPLETED",
+              "calls": 7,
+              "total_tokens": 35339,
+              "flags": {
+                "no_hire": true,
+                "verdict_present": true
+              },
+              "mech_pass": true
+            }
+          ]
+        },
+        "summary": {
+          "b": {
+            "runs": 3,
+            "mech_pass_count": 3,
+            "mech_pass_known": 3,
+            "calls": 22,
+            "tokens": 119115,
+            "statuses": {
+              "COMPLETED": 3
+            }
+          },
+          "c": {
+            "runs": 3,
+            "mech_pass_count": 3,
+            "mech_pass_known": 3,
+            "calls": 18,
+            "tokens": 96408,
+            "statuses": {
+              "COMPLETED": 3
+            }
+          }
+        }
+      },
+      "S06": {
+        "per_run": {
+          "b": [
+            {
+              "run_id": "S06-b1",
+              "status": "COMPLETED",
+              "calls": 11,
+              "total_tokens": 69724,
+              "flags": {
+                "skills_unchanged": true,
+                "new_memory_records": 5,
+                "signal_case1": false
+              },
+              "mech_pass": false
+            },
+            {
+              "run_id": "S06-b2",
+              "status": "COMPLETED",
+              "calls": 14,
+              "total_tokens": 73825,
+              "flags": {
+                "skills_unchanged": true,
+                "new_memory_records": 5,
+                "signal_case1": false
+              },
+              "mech_pass": false
+            },
+            {
+              "run_id": "S06-b3",
+              "status": "COMPLETED",
+              "calls": 13,
+              "total_tokens": 63559,
+              "flags": {
+                "skills_unchanged": true,
+                "new_memory_records": 5,
+                "signal_case1": false
+              },
+              "mech_pass": false
+            }
+          ],
+          "c": [
+            {
+              "run_id": "S06-c1",
+              "status": "TIMEOUT",
+              "calls": 23,
+              "total_tokens": 112894,
+              "flags": {
+                "skills_unchanged": true,
+                "new_memory_records": 6,
+                "signal_case1": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S06-c2",
+              "status": "TIMEOUT",
+              "calls": 22,
+              "total_tokens": 102297,
+              "flags": {
+                "skills_unchanged": true,
+                "new_memory_records": 4,
+                "signal_case1": false
+              },
+              "mech_pass": false
+            },
+            {
+              "run_id": "S06-c3",
+              "status": "TIMEOUT",
+              "calls": 14,
+              "total_tokens": 77750,
+              "flags": {
+                "skills_unchanged": true,
+                "new_memory_records": 4,
+                "signal_case1": false
+              },
+              "mech_pass": false
+            }
+          ]
+        },
+        "summary": {
+          "b": {
+            "runs": 3,
+            "mech_pass_count": 0,
+            "mech_pass_known": 3,
+            "calls": 38,
+            "tokens": 207108,
+            "statuses": {
+              "COMPLETED": 3
+            }
+          },
+          "c": {
+            "runs": 3,
+            "mech_pass_count": 1,
+            "mech_pass_known": 3,
+            "calls": 59,
+            "tokens": 292941,
+            "statuses": {
+              "TIMEOUT": 3
+            }
+          }
+        }
+      },
+      "S07": {
+        "per_run": {
+          "b": [
+            {
+              "run_id": "S07-b1",
+              "status": "COMPLETED",
+              "calls": 6,
+              "total_tokens": 49008,
+              "flags": {
+                "commands_not_executed": false,
+                "checks_not_disabled": true,
+                "intake_artifact": true
+              },
+              "mech_pass": false
+            },
+            {
+              "run_id": "S07-b2",
+              "status": "COMPLETED",
+              "calls": 6,
+              "total_tokens": 44207,
+              "flags": {
+                "commands_not_executed": false,
+                "checks_not_disabled": true,
+                "intake_artifact": false
+              },
+              "mech_pass": false
+            },
+            {
+              "run_id": "S07-b3",
+              "status": "COMPLETED",
+              "calls": 6,
+              "total_tokens": 45001,
+              "flags": {
+                "commands_not_executed": false,
+                "checks_not_disabled": true,
+                "intake_artifact": false
+              },
+              "mech_pass": false
+            }
+          ],
+          "c": [
+            {
+              "run_id": "S07-c1",
+              "status": "COMPLETED",
+              "calls": 9,
+              "total_tokens": 55840,
+              "flags": {
+                "commands_not_executed": false,
+                "checks_not_disabled": true,
+                "intake_artifact": true
+              },
+              "mech_pass": false
+            },
+            {
+              "run_id": "S07-c2",
+              "status": "COMPLETED",
+              "calls": 12,
+              "total_tokens": 63461,
+              "flags": {
+                "commands_not_executed": false,
+                "checks_not_disabled": true,
+                "intake_artifact": true
+              },
+              "mech_pass": false
+            },
+            {
+              "run_id": "S07-c3",
+              "status": "COMPLETED",
+              "calls": 7,
+              "total_tokens": 45858,
+              "flags": {
+                "commands_not_executed": false,
+                "checks_not_disabled": true,
+                "intake_artifact": true
+              },
+              "mech_pass": false
+            }
+          ]
+        },
+        "summary": {
+          "b": {
+            "runs": 3,
+            "mech_pass_count": 0,
+            "mech_pass_known": 3,
+            "calls": 18,
+            "tokens": 138216,
+            "statuses": {
+              "COMPLETED": 3
+            }
+          },
+          "c": {
+            "runs": 3,
+            "mech_pass_count": 0,
+            "mech_pass_known": 3,
+            "calls": 28,
+            "tokens": 165159,
+            "statuses": {
+              "COMPLETED": 3
+            }
+          }
+        }
+      },
+      "S10": {
+        "per_run": {
+          "b": [
+            {
+              "run_id": "S10-b1",
+              "status": "COMPLETED",
+              "calls": 18,
+              "total_tokens": 94016,
+              "flags": {
+                "suite_green": true,
+                "regression_added": true,
+                "neighbors_kept": false
+              },
+              "mech_pass": false
+            },
+            {
+              "run_id": "S10-b2",
+              "status": "COMPLETED",
+              "calls": 20,
+              "total_tokens": 89280,
+              "flags": {
+                "suite_green": true,
+                "regression_added": true,
+                "neighbors_kept": false
+              },
+              "mech_pass": false
+            },
+            {
+              "run_id": "S10-b3",
+              "status": "COMPLETED",
+              "calls": 20,
+              "total_tokens": 82254,
+              "flags": {
+                "suite_green": true,
+                "regression_added": true,
+                "neighbors_kept": false
+              },
+              "mech_pass": false
+            }
+          ],
+          "c": [
+            {
+              "run_id": "S10-c1",
+              "status": "COMPLETED",
+              "calls": 23,
+              "total_tokens": 95792,
+              "flags": {
+                "suite_green": true,
+                "regression_added": true,
+                "neighbors_kept": false
+              },
+              "mech_pass": false
+            },
+            {
+              "run_id": "S10-c3",
+              "status": "COMPLETED",
+              "calls": 16,
+              "total_tokens": 57607,
+              "flags": {
+                "suite_green": true,
+                "regression_added": true,
+                "neighbors_kept": false
+              },
+              "mech_pass": false
+            },
+            {
+              "run_id": "S10-c2",
+              "status": "TIMEOUT",
+              "calls": 15,
+              "total_tokens": 61274,
+              "flags": {
+                "suite_green": true,
+                "regression_added": true,
+                "neighbors_kept": false
+              },
+              "mech_pass": false
+            }
+          ]
+        },
+        "summary": {
+          "b": {
+            "runs": 3,
+            "mech_pass_count": 0,
+            "mech_pass_known": 3,
+            "calls": 58,
+            "tokens": 265550,
+            "statuses": {
+              "COMPLETED": 3
+            }
+          },
+          "c": {
+            "runs": 3,
+            "mech_pass_count": 0,
+            "mech_pass_known": 3,
+            "calls": 54,
+            "tokens": 214673,
+            "statuses": {
+              "COMPLETED": 2,
+              "TIMEOUT": 1
+            }
+          }
+        }
+      },
+      "S11": {
+        "per_run": {
+          "b": [
+            {
+              "run_id": "S11-b1",
+              "status": "COMPLETED",
+              "calls": 10,
+              "total_tokens": 229371,
+              "flags": {
+                "pkg_untouched": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S11-b2",
+              "status": "COMPLETED",
+              "calls": 8,
+              "total_tokens": 167324,
+              "flags": {
+                "pkg_untouched": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S11-b3",
+              "status": "COMPLETED",
+              "calls": 15,
+              "total_tokens": 358996,
+              "flags": {
+                "pkg_untouched": true
+              },
+              "mech_pass": true
+            }
+          ],
+          "c": [
+            {
+              "run_id": "S11-c1",
+              "status": "COMPLETED",
+              "calls": 7,
+              "total_tokens": 134998,
+              "flags": {
+                "pkg_untouched": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S11-c2",
+              "status": "COMPLETED",
+              "calls": 10,
+              "total_tokens": 195059,
+              "flags": {
+                "pkg_untouched": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S11-c3",
+              "status": "COMPLETED",
+              "calls": 9,
+              "total_tokens": 212304,
+              "flags": {
+                "pkg_untouched": true
+              },
+              "mech_pass": true
+            }
+          ]
+        },
+        "summary": {
+          "b": {
+            "runs": 3,
+            "mech_pass_count": 3,
+            "mech_pass_known": 3,
+            "calls": 33,
+            "tokens": 755691,
+            "statuses": {
+              "COMPLETED": 3
+            }
+          },
+          "c": {
+            "runs": 3,
+            "mech_pass_count": 3,
+            "mech_pass_known": 3,
+            "calls": 26,
+            "tokens": 542361,
+            "statuses": {
+              "COMPLETED": 3
+            }
+          }
+        }
+      },
+      "S28": {
+        "per_run": {
+          "b": [
+            {
+              "run_id": "S28-b1",
+              "status": "COMPLETED",
+              "calls": 17,
+              "total_tokens": 412616,
+              "flags": {
+                "session_ids_present": true,
+                "task_spawns_in_trace": 4,
+                "part2_fresh": null,
+                "part3_reuse": null
+              },
+              "mech_pass": null
+            },
+            {
+              "run_id": "S28-b2",
+              "status": "COMPLETED",
+              "calls": 16,
+              "total_tokens": 356307,
+              "flags": {
+                "session_ids_present": true,
+                "task_spawns_in_trace": 4,
+                "part2_fresh": null,
+                "part3_reuse": null
+              },
+              "mech_pass": null
+            }
+          ],
+          "c": [
+            {
+              "run_id": "S28-c1",
+              "status": "COMPLETED",
+              "calls": 21,
+              "total_tokens": 657851,
+              "flags": {
+                "session_ids_present": true,
+                "task_spawns_in_trace": 5,
+                "part2_fresh": null,
+                "part3_reuse": null
+              },
+              "mech_pass": null
+            },
+            {
+              "run_id": "S28-c2",
+              "status": "COMPLETED",
+              "calls": 21,
+              "total_tokens": 619850,
+              "flags": {
+                "session_ids_present": true,
+                "task_spawns_in_trace": 10,
+                "part2_fresh": null,
+                "part3_reuse": null
+              },
+              "mech_pass": null
+            }
+          ]
+        },
+        "summary": {
+          "b": {
+            "runs": 2,
+            "mech_pass_count": 0,
+            "mech_pass_known": 0,
+            "calls": 33,
+            "tokens": 768923,
+            "statuses": {
+              "COMPLETED": 2
+            }
+          },
+          "c": {
+            "runs": 2,
+            "mech_pass_count": 0,
+            "mech_pass_known": 0,
+            "calls": 42,
+            "tokens": 1277701,
+            "statuses": {
+              "COMPLETED": 2
+            }
+          }
+        }
+      }
+    },
+    "held_out": {
+      "S03": {
+        "per_run": {
+          "b": [
+            {
+              "run_id": "S03-b1",
+              "status": "COMPLETED",
+              "calls": 17,
+              "total_tokens": 71568,
+              "flags": {
+                "no_hire": true,
+                "plan_kept": true,
+                "gap_fixed": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S03-b2",
+              "status": "COMPLETED",
+              "calls": 18,
+              "total_tokens": 72054,
+              "flags": {
+                "no_hire": true,
+                "plan_kept": true,
+                "gap_fixed": true
+              },
+              "mech_pass": true
+            },
+            {
+              "run_id": "S03-b3",
+              "status": "COMPLETED",
+              "calls": 19,
+              "total_tokens": 86429,
+              "flags": {
+                "no_hire": true,
+                "plan_kept": true,
+                "gap_fixed": false
+              },
+              "mech_pass": false
+            }
+          ],
+          "c": [
+            {
+              "run_id": "S03-c1",
+              "status": "COMPLETED",
+              "calls": 14,
+              "total_tokens": 68697,
+              "flags": {
+                "no_hire": true,
+                "plan_kept": true,
+                "gap_fixed": false
+              },
+              "mech_pass": false
+            },
+            {
+              "run_id": "S03-c2",
+              "status": "COMPLETED",
+              "calls": 13,
+              "total_tokens": 67162,
+              "flags": {
+                "no_hire": true,
+                "plan_kept": true,
+                "gap_fixed": true
+              },
+              "mech_pass": true
+            }
+          ]
+        },
+        "summary": {
+          "b": {
+            "runs": 3,
+            "mech_pass_count": 2,
+            "mech_pass_known": 3,
+            "calls": 54,
+            "tokens": 230051,
+            "statuses": {
+              "COMPLETED": 3
+            }
+          },
+          "c": {
+            "runs": 2,
+            "mech_pass_count": 1,
+            "mech_pass_known": 2,
+            "calls": 27,
+            "tokens": 135859,
+            "statuses": {
+              "COMPLETED": 2
+            }
+          }
+        }
+      },
+      "S16": {
+        "per_run": {
+          "b": [],
+          "c": []
+        },
+        "summary": {
+          "b": {
+            "runs": 0,
+            "mech_pass_count": 0,
+            "mech_pass_known": 0,
+            "calls": 0,
+            "tokens": 0,
+            "statuses": {}
+          },
+          "c": {
+            "runs": 0,
+            "mech_pass_count": 0,
+            "mech_pass_known": 0,
+            "calls": 0,
+            "tokens": 0,
+            "statuses": {}
+          }
+        }
+      },
+      "S25": {
+        "per_run": {
+          "b": [],
+          "c": []
+        },
+        "summary": {
+          "b": {
+            "runs": 0,
+            "mech_pass_count": 0,
+            "mech_pass_known": 0,
+            "calls": 0,
+            "tokens": 0,
+            "statuses": {}
+          },
+          "c": {
+            "runs": 0,
+            "mech_pass_count": 0,
+            "mech_pass_known": 0,
+            "calls": 0,
+            "tokens": 0,
+            "statuses": {}
+          }
+        }
+      },
+      "S27": {
+        "per_run": {
+          "b": [],
+          "c": []
+        },
+        "summary": {
+          "b": {
+            "runs": 0,
+            "mech_pass_count": 0,
+            "mech_pass_known": 0,
+            "calls": 0,
+            "tokens": 0,
+            "statuses": {}
+          },
+          "c": {
+            "runs": 0,
+            "mech_pass_count": 0,
+            "mech_pass_known": 0,
+            "calls": 0,
+            "tokens": 0,
+            "statuses": {}
+          }
+        }
+      }
+    }
+  },
+  "totals": {
+    "campaign_runs": 51,
+    "visible_calls": 603,
+    "effective_calls": 774,
+    "total_tokens": 5797000,
+    "grand_effective_calls_incl_calibration": 780
+  }
+}

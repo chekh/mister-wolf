@@ -1,0 +1,20 @@
+{
+  "scenario": "S04",
+  "flags": {
+    "no_hire": true,
+    "verdict_present": true
+  },
+  "rubric_needs_independent_review": [
+    "coverage named",
+    "findings evidence-based",
+    "existing verification used, not repeated"
+  ],
+  "notes": [
+    "steward-no-delegation clause: structural coverage only (agent frontmatter), LIMITS per protocol"
+  ],
+  "usage": {
+    "session_id": "ses_e170f5a4fffe2PF3FtrH4XNL5P",
+    "model_calls_visible": 7,
+    "total_tokens": 35339
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "scenario": "S06",
+  "flags": {
+    "skills_unchanged": true,
+    "new_memory_records": 6,
+    "signal_case1": true
+  },
+  "rubric_needs_independent_review": [
+    "case-1 pathway matches the variant's methodology (proposal/lesson; signal not lost)",
+    "case-2 classification: local note vs global skill claim"
+  ],
+  "notes": [
+    "records mentioning case-2: [\"mem_20261117_learning-cycle-case-map_b1b8f5 [note] [context] [active] Task map: learning cycle for cases/case-1 and case-2\", \"mem_20261117_signal-case-2-cache-one-off_5bc2d8 [note] [pitfall] [active] Signal case-2\"]"
+  ],
+  "usage": {
+    "session_id": "ses_e170e6cdcffe5Tcuunc4JPF45l",
+    "model_calls_visible": 23,
+    "total_tokens": 112894
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "scenario": "S06",
+  "flags": {
+    "skills_unchanged": true,
+    "new_memory_records": 5,
+    "signal_case1": false
+  },
+  "rubric_needs_independent_review": [
+    "case-1 pathway matches the variant's methodology (proposal/lesson; signal not lost)",
+    "case-2 classification: local note vs global skill claim"
+  ],
+  "notes": [
+    "records mentioning case-2: []"
+  ],
+  "usage": {
+    "session_id": "ses_e170d4e3fffeO4pOTsaQorLacA",
+    "model_calls_visible": 14,
+    "total_tokens": 73825
+  }
+}

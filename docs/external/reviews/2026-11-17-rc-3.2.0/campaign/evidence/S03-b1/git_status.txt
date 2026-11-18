@@ -1,0 +1,12 @@
+ M .wolf/memory/events.jsonl
+ M data/metrics.json
+ M docs/dev/exp/plan.md
+?? .wolf/memory/briefs/
+?? .wolf/memory/shared/decisions/
+?? .wolf/memory/shared/notes/mem_20261117_dc9481.md
+?? .wolf/memory/shared/notes/mem_20261117_doc_agents_a54ff182.md
+?? .wolf/memory/shared/notes/mem_20261117_doc_plan_cc13b392.md
+?? .wolf/memory/shared/notes/project-scan-latest.md
+?? .wolf/metrics/
+?? bin/
+?? docs/dev/exp/report.md

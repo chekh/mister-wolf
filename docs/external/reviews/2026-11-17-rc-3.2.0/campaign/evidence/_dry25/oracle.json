@@ -1,0 +1,17 @@
+{
+  "scenario": "S25",
+  "flags": {
+    "single_active_english": false,
+    "supersede_present": false,
+    "russian_not_active": false
+  },
+  "rubric_needs_independent_review": [
+    "confirmation brief and in the new language"
+  ],
+  "notes": [],
+  "usage": {
+    "session_id": null,
+    "model_calls_visible": 0,
+    "total_tokens": 0
+  }
+}

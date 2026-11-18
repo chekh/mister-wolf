@@ -1,0 +1,20 @@
+wolf brief 2>&1 | head -50; echo "---CALL---"; wolf call 2>&1 | head -30
+wolf search "Session language" 2>&1 | head -20; echo "---LS---"; ls -la; echo "---DOCS---"; ls -R docs 2>/dev/null | head -40; echo "---LOGS---"; ls -R cases 2>/dev/null
+wolf add --type decision --title "Session language: Russian" --body "Source: first user message of this session is in Russian. Date: 2026-11-17." 2>&1; echo "---LEARN-LIST---"; wolf learn list 2>&1 | head -30; echo "---LEARN-DUE---"; wolf learn due 2>&1 | head -30
+wolf search "Session language: Russian" 2>&1 | head -8; echo "===LEARN-LIST==="; wolf learn list 2>&1; echo "===LEARN-DUE==="; wolf learn due 2>&1
+wolf add --type decision --title "Session language: Russian" --body "Source: first user message of this session is in Russian. Date: 2026-11-17."; echo "add-exit=$?"
+wolf learn list; echo "exit=$?"; echo "===DUE==="; wolf learn due; echo "exit=$?"
+command -v wolf; wolf --help 2>&1 | head -40
+"$PWD/bin/wolf" learn list 2>&1; echo "exit=$?"; echo "===DUE==="; "$PWD/bin/wolf" learn due 2>&1; echo "exit=$?"
+grep -n "wolf" ~/.config/opencode/plugins/rtk.ts | head -20; echo "===match-test==="; "$PWD/bin/wolf" learn
+"$PWD/bin/wolf" learn due
+"$PWD/bin/wolf" propose --help
+"$PWD/bin/wolf" propose candidate --help; echo "===ADD==="; "$PWD/bin/wolf" propose add --help
+find .opencode/skills/wolf-learning-cycle -type f | head -20; echo "===SCHEMA==="; grep -rn "learning-change" .opencode/skills/wolf-learning-cycle/ 2>/dev/null | head -10
+head -20 bin/wolf; echo "==="; sed -n '1,60p' bin/wolf | grep -o '"[^"]*"' | head
+"$PWD/bin/wolf" add --type note --facet context --title "Case-2: one-off cache workaround — local noise, not a rule" --body "Source: cases/case-2.md (2026-11-14). Doc build failed once due to a stale cache; fixed locally by removing .cache/ by hand. Classification per wolf-learning-cycle: one-off noise / working note — no repetition observed, 'helped this one time only'. Bounds: do NOT promote to a rule or lesson; do not add cache-cleaning to any procedure. A successful one-time command is not a global rule. If the stale-cache failure repeats (>=2 independent occurrences), treat it as a NEW signal: diagnose root cause first (wolf-debug), then classify."
+"$PWD/bin/wolf" add --help
+"$PWD/bin/wolf" edit mem_20261117_16bd98 --tags "learning-cycle,case-2,one-off,cache,working-note"
+"$PWD/bin/wolf" edit --help
+"$PWD/bin/wolf" learn ack --help
+"$PWD/bin/wolf" learn ack --seq 3

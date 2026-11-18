@@ -1,0 +1,2 @@
+wolf brief 2>&1 | head -50; echo "---"; wolf search "Session language" 2>&1 | head -10
+wolf add --type decision --title "Session language: ru" --body "Source: first user message of session S01-c3 is in Russian; global host rules also default to Russian. Recorded 2026-11-17." 2>&1 | head -5

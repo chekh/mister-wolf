@@ -1,0 +1,19 @@
+{
+  "scenario": "S02",
+  "flags": {
+    "repo_a_tests_green": true,
+    "repo_a_commit_made": true,
+    "repo_b_no_commit": true,
+    "repo_b_work_left": true
+  },
+  "rubric_needs_independent_review": [
+    "TDD red->green visible in trace",
+    "session IDs reported for both developer sessions"
+  ],
+  "notes": [],
+  "usage": {
+    "session_id": "ses_e171c7f62ffepSfk3PstUToFxg",
+    "model_calls_visible": 13,
+    "total_tokens": 64213
+  }
+}

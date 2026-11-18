@@ -1,0 +1,27 @@
+ls -la /private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/t12/runs/S10-c2 && cat package.json 2>/dev/null | head -40
+wolf call 2>&1 | head -50; echo "---"; wolf brief 2>&1 | head -60
+cat AGENTS.md; echo "==="; wolf search "Session language" 2>&1 | head -20; echo "==="; wolf search "debug" 2>&1 | head -30
+find src tests bin -type f | head -30; echo "==="; ls -la src tests
+wolf add --type decision --title "Session language: Russian" --body "Source: first user message of session (bug report) written in Russian; date 2026-11-17." 2>&1 | tail -2
+node -e "
+import('./src/paginate.js').then(({paginate}) => {
+  const items = Array.from({length: 20}, (_, i) => i);
+  const pages = paginate(items, 20);
+  console.log('pages:', pages.length);
+  console.log('last page:', JSON.stringify(pages[pages.length-1]));
+  // и не-кратный случай для полноты картины:
+  const p2 = paginate([1,2,3,4,5], 2);
+  console.log('5 items, pageSize=2 ->', JSON.stringify(p2));
+})"
+git log --oneline -5; echo "---"; git log -1 --format="%H %s"; echo "---"; git status --short; git show --stat HEAD | head -20
+wolf add --type note --facet context --title "Bug: paginate adds trailing empty page" --body "Symptom: paginate(20 items, pageSize=20) returns 2 pages, 2nd empty (reproduced on 005fc42a). Also non-multiple cases: 5 items/pageSize=2 -> trailing []. Suspected root: src/paginate.js line5 '+ (items.length > 0 ? 1 : 0)' inflates pageCount for any non-empty input; empty case already handled by fallback on line 9. Plan: regression test first (red), remove the term (Math.ceil), suite green. Status: root cause confirmed by reproduction; fix pending." 2>&1 | tail -2
+node --test tests/ 2>&1 | tail -30
+node --test 2>&1 | tail -25
+node --test 2>&1 | grep -A 12 "not ok"
+node --test 2>&1 | tail -10; echo "==="; node -e "
+import('./src/paginate.js').then(({paginate}) => {
+  console.log('20/20 ->', JSON.stringify(paginate(Array.from({length:20},(_,i)=>i), 20).length), 'pages');
+  console.log('5/2   ->', JSON.stringify(paginate([1,2,3,4,5], 2)));
+  console.log('0/10  ->', JSON.stringify(paginate([], 10)));
+})"
+git diff src tests; wolf add --type note --facet history --title "Fix: trailing empty page in paginate" --body "Root cause (confirmed): src/paginate.js pageCount included '+ (items.length > 0 ? 1 : 0)' — inflated count for ANY non-empty input (trailing empty page); empty-input case already handled by fallback. Fix: pageCount = Math.ceil(items.length/pageSize), fallback kept (commit 005fc42a baseline). TDD: 2 regression tests (exact multiple 20/20; remainder 5/2) RED on baseline (node --test: fail 2), GREEN after fix (pass 5, fail 0). Empty-input contract preserved: [[]]. Residual: pageSize<1 still degenerate (was so before; out of scope). Review: pending wolf-reviewer." 2>&1 | tail -2
