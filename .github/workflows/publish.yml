@@ -6,7 +6,7 @@ on:
     tags: ['v*']
 
 permissions:
-  contents: read
+  contents: write # GitHub Release page (notes from CHANGELOG)
   id-token: write # npm trusted publishing (OIDC) + provenance; долгоживущих токенов нет
 
 jobs:
@@ -47,3 +47,29 @@ jobs:
 
       - name: Publish (OIDC + provenance)
         run: npm publish --provenance
+
+      - name: GitHub Release (notes from CHANGELOG)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          node -e "
+            const fs = require('fs');
+            const tag = process.env.VERSION;
+            const version = tag.replace(/^v/, '');
+            const lines = fs.readFileSync('CHANGELOG.md', 'utf8').split('\n');
+            const start = lines.findIndex((l) => l.startsWith('## [' + version + ']'));
+            if (start === -1) { console.error('CHANGELOG has no section for ' + version); process.exit(1); }
+            let end = lines.length;
+            for (let i = start + 1; i < lines.length; i++) {
+              if (lines[i].startsWith('## [')) { end = i; break; }
+            }
+            const body = lines.slice(start + 1, end).join('\n').trim();
+            if (body.length === 0) { console.error('CHANGELOG section for ' + version + ' is empty'); process.exit(1); }
+            fs.writeFileSync('release-notes.md', body + '\n');
+          "
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release edit "${GITHUB_REF_NAME}" --notes-file release-notes.md
+          else
+            gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --notes-file release-notes.md
+          fi

@@ -188,3 +188,68 @@ describe('selectMicroNotes (S-27: contradiction suppression, selector side)', ()
     expect(result.underReview).toEqual([]);
   });
 });
+
+// --- REQ-321-5 (R-5): тело микро-заметки доставляется в пределах бюджета ---
+
+describe('selectMicroNotes (REQ-321-5: full body within budget)', () => {
+  it('AC-5.1: multi-line body is delivered in full when it fits the budget', () => {
+    const obj = note('n_build', { body: 'Build note\nNEVER run deploy before approval' });
+    const result = selectMicroNotes([obj], { environment: 'darwin' });
+    expect(result.delivered.map((c) => c.id)).toEqual(['n_build']);
+    const text = result.blocks.join('\n');
+    expect(text).toContain('Build note');
+    expect(text).toContain('NEVER run deploy before approval');
+  });
+
+  it('AC-5.2: budget-clipped text carries a visible truncation marker, not a silent cut', () => {
+    const obj = note('n_big', { tags: [MICRO_NOTE_TAG, CONSTRAINT_TAG], body: 'X'.repeat(5000) });
+    const result = selectMicroNotes([obj], { environment: 'darwin' }, { maxChars: 100 });
+    expect(result.delivered).toHaveLength(1);
+    expect(result.blocks.join('\n')).toContain('truncated');
+    expect(result.blocks[0]!.length).toBeLessThanOrEqual(1250);
+  });
+
+  it('AC-5.3: constraint-tagged note keeps every line of the limit within budget', () => {
+    const obj = note('n_c', {
+      tags: [MICRO_NOTE_TAG, CONSTRAINT_TAG],
+      body: 'Build note\nNEVER run deploy before approval',
+    });
+    const result = selectMicroNotes([obj], { environment: 'darwin' });
+    expect(result.delivered.map((c) => c.id)).toEqual(['n_c']);
+    const text = result.blocks.join('\n');
+    expect(text).toContain('Build note');
+    expect(text).toContain('NEVER run deploy before approval');
+    expect(result.dropped).toEqual([]);
+  });
+});
+
+// --- REQ-321-2 (AC-2.4): worktree-scope учитывается и в микро-селекторе ---
+
+describe('selectMicroNotes (AC-2.4: worktree scope)', () => {
+  /** Подмена видимости copy (та же форма, что у createWorktreeVisibility). */
+  const visibility = (visibleIds: Record<string, boolean>) => ({
+    isVisible: (o: Record<string, unknown>): boolean => visibleIds[o.id as string] ?? true,
+    conflicts: (): string[] => [],
+    currentToken: null,
+    identity: undefined,
+  });
+
+  it('micro-note scoped to a foreign worktree is not delivered in main', () => {
+    const scoped = note('n_foreign_wt', { scope: 'worktree:w-fedcba987654' });
+    const result = selectMicroNotes(
+      [scoped, note('n_ok')],
+      { environment: 'darwin' },
+      {},
+      [],
+      visibility({ n_foreign_wt: false })
+    );
+    expect(result.delivered.map((c) => c.id)).toEqual(['n_ok']);
+    expect(result.blocks.join('\n')).not.toContain('n_foreign_wt');
+  });
+
+  it('micro-note scoped to the own worktree is delivered in its copy', () => {
+    const scoped = note('n_own_wt', { scope: 'worktree:w-0123456789ab' });
+    const result = selectMicroNotes([scoped], { environment: 'darwin' }, {}, [], visibility({ n_own_wt: true }));
+    expect(result.delivered.map((c) => c.id)).toEqual(['n_own_wt']);
+  });
+});

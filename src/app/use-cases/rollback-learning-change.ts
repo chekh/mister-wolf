@@ -159,9 +159,19 @@ export async function rollbackLearningChange(
       const entry = backupByPath.get(f.path);
       if (!entry) {
         problems.push(`- ${f.path}: rollback backup has no baseline entry for this file`);
-      } else if (entry.sha256 !== f.baselineSha) {
+        continue;
+      }
+      // REQ-321-1 (R-1): содержимое бэкапа хэшируется до первой записи — поле
+      // sha256 хранится рядом с content и само по себе содержимое не доказывает:
+      // испорченный content при интактном sha256 ловится ДО записи, а не после.
+      const contentSha = sha256Of(entry.content);
+      if (entry.sha256 !== f.baselineSha) {
         problems.push(
           `- ${f.path}: rollback backup holds sha256 ${entry.sha256}, expected baseline ${f.baselineSha} — refusing without overwrite`
+        );
+      } else if (contentSha !== entry.sha256) {
+        problems.push(
+          `- ${f.path}: rollback backup content hash ${contentSha} does not match its stored sha256 ${entry.sha256} (expected baseline ${f.baselineSha}) — refusing without overwrite`
         );
       }
     }

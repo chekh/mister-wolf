@@ -7,7 +7,8 @@ import { tokenize } from '../../domain/solve/scenarios.js';
 import { finalScore } from '../../domain/solve/relevance.js';
 import { highlightFacet } from '../../domain/facet-colors.js';
 import { checksumBlock } from '../../adapters/fs/session-delivery-registry.js';
-import { brokenWorktreeHint, resolveWorktreeIdentity, type WorktreeIdentity } from '../../adapters/fs/memory-root.js';
+import { brokenWorktreeHint, type WorktreeIdentity } from '../../adapters/fs/memory-root.js';
+import { createDeliveryAdmission, createWorktreeVisibility } from './memory-delivery-admission.js';
 import { detectUnaggregatedLessons } from './detect-unaggregated-lessons.js';
 import {
   selectMicroNotes,
@@ -16,13 +17,6 @@ import {
   type MicroNoteDeliveryResult,
 } from './micro-note-delivery.js';
 import type { MicroNoteDeliveryLog } from '../../ports/micro-note-delivery-log.port.js';
-
-const WT_PREFIX = 'worktree:';
-/** Формат WT-ID-токена (design §3.2). Свой токен сравнивается с текущим напрямую;
- * чужой WT-ID-токен НЕ сравнивается с текущим молча — падает в общий legacy-разбор
- * ниже: каталог, названный `w-<12hex>`, маппится по basename или честно конфликтует
- * (R2-01 fallthrough). */
-const WT_ID_TOKEN = /^w-[0-9a-f]{12}$/;
 
 export interface CallInjectionResult {
   blocks: string[];
@@ -119,43 +113,24 @@ export async function getCallInjections(
       (o.type === 'call-injection' || (o.type === 'note' && o.alias_origin === 'call-injection'))
   );
 
-  // 2.17.1 REQ-02 (R02), design §3.2 (ADR-1/ADR-2): ЕДИНЫЙ предикат isVisible —
-  // единственная точка знания о scope; каждая ветвь отбора ниже обязана
-  // пропускать кандидатов через него до ранжирования. WT-ID сравнивается строго
-  // (без git); legacy-токен `worktree:<name>` маппится через идентичность копии
-  // (лениво, ≤1 git-подпроцесс на процесс — NFR-01); неоднозначное имя — честный
-  // конфликт (scopeConflicts), fail-closed: не видно никому.
-  const current = input.currentScope ?? 'main';
-  const currentToken =
-    current === 'main' ? null : current.startsWith(WT_PREFIX) ? current.slice(WT_PREFIX.length) : current;
-  const scopeOf = (o: Record<string, unknown>): string | null => {
-    const s = o.scope;
-    return typeof s === 'string' && s.startsWith(WT_PREFIX) ? s : null;
-  };
-  const scopeConflicts = new Set<string>();
-  let identity: WorktreeIdentity | null | undefined; // undefined — ещё не резолвили (лениво)
-  const identityOf = (): WorktreeIdentity | null => {
-    if (identity === undefined) {
-      identity = (deps.resolveIdentity ?? resolveWorktreeIdentity)(deps.baseDir ?? process.cwd());
-    }
-    return identity;
-  };
-  const isVisible = (o: Record<string, unknown>): boolean => {
-    const s = scopeOf(o);
-    if (s === null) return true; // main/project/global — доставляются везде (как раньше)
-    if (currentToken === null) return false; // main-вид: worktree-scoped невидимы
-    const token = s.slice(WT_PREFIX.length);
-    // Свой WT-ID — прямое сравнение. Чужой WT-ID-токен уходит в общий
-    // legacy-разбор (R2-01 fallthrough): маппинг по basename или конфликт.
-    if (WT_ID_TOKEN.test(token) && token === currentToken) return true;
-    const id = identityOf();
-    if (id === null) return false; // сбой git-метаданных — fail-closed (design §5)
-    if (token !== id.legacyName) return false;
-    if (id.legacyUnique) return true; // однозначное legacy-имя маппится на эту копию
-    scopeConflicts.add(s); // неоднозначное — честный конфликт, не тихое присвоение
-    return false;
-  };
-  const visible = injections.filter(isVisible);
+  // REQ-321-2 (R-2): единая политика допуска доставки. Worktree-видимость канала
+  // (2.17.1 REQ-02 design §3.2) перенесена в memory-delivery-admission.ts и теперь
+  // общая с brief и микро-селектором (AC-2.4); каждая legacy-ветка отбора ниже
+  // проходит предикат допуска: применимость (AC-2.2), подавление открытым
+  // противоречием (AC-2.3), исключение micro-note из legacy-пути (AC-2.1).
+  const worktree = createWorktreeVisibility({
+    currentScope: input.currentScope,
+    baseDir: deps.baseDir,
+    resolveIdentity: deps.resolveIdentity,
+  });
+  const admission = createDeliveryAdmission({
+    context: input.microNotes,
+    suppressions: deps.noteLog?.suppressions() ?? [],
+    worktree,
+  });
+  /** Допуск legacy-ветки доставки: micro-note доставляется только селектором (AC-2.1). */
+  const deliverable = (o: Record<string, unknown>): boolean => admission.admitted(o).admitted;
+  const visible = injections.filter(worktree.isVisible);
   const hiddenCount = injections.length - visible.length;
 
   // 2. topic matching
@@ -173,6 +148,8 @@ export async function getCallInjections(
       }
     }
     matched = visible.filter((obj) => {
+      // REQ-321-2: допуск единой политики до матчинга (AC-2.1..2.4).
+      if (!deliverable(obj)) return false;
       const kw: string[] = (obj.trigger_keywords as string[]) ?? [];
       if (kw.some((k) => topicTokens.includes(k))) return true;
       return ftsIds.has(obj.id as string);
@@ -185,21 +162,21 @@ export async function getCallInjections(
     };
     const lessons = activeOf('lesson') as Record<string, unknown>[];
     for (const l of lessons) {
-      if (isVisible(l) && kwMatched(l) && !matched.some((m) => m.id === l.id)) matched.push(l);
+      if (deliverable(l) && kwMatched(l) && !matched.some((m) => m.id === l.id)) matched.push(l);
     }
     const rules = activeOf('rule') as Record<string, unknown>[];
-    const keywordRules = rules.filter((r) => !isMachineState(r) && kwMatched(r) && isVisible(r));
+    const keywordRules = rules.filter((r) => !isMachineState(r) && deliverable(r) && kwMatched(r));
     for (const r of keywordRules) {
       if (!matched.some((m) => m.id === r.id)) matched.push(r);
     }
     // 3. fallback to rules if no matches (keyword-matched rules excluded)
     if (matched.length === 0) {
       matched = rules
-        .filter((r) => isVisible(r) && !isMachineState(r) && !keywordRules.some((k) => k.id === r.id))
+        .filter((r) => deliverable(r) && !isMachineState(r) && !keywordRules.some((k) => k.id === r.id))
         .slice(0, 3);
     }
   } else {
-    matched = visible;
+    matched = visible.filter(deliverable);
   }
 
   // 4. thread mode: append project rules + open blockers with matching thread
@@ -207,7 +184,7 @@ export async function getCallInjections(
     const threadId = typeof input.thread === 'string' ? input.thread : null;
     const rules = activeOf('rule') as Record<string, unknown>[];
     for (const r of rules) {
-      if (!isMachineState(r) && r.scope === 'project' && isVisible(r) && !matched.some((m) => m.id === r.id)) {
+      if (!isMachineState(r) && r.scope === 'project' && deliverable(r) && !matched.some((m) => m.id === r.id)) {
         matched.push(r);
       }
     }
@@ -221,7 +198,7 @@ export async function getCallInjections(
           ((o.facet === 'pitfall' || o.alias_origin === 'blocker') as boolean)
       );
       for (const b of blockers) {
-        if (b.thread === threadId && isVisible(b) && !matched.some((m) => m.id === b.id)) {
+        if (b.thread === threadId && deliverable(b) && !matched.some((m) => m.id === b.id)) {
           matched.push(b);
         }
       }
@@ -283,7 +260,7 @@ export async function getCallInjections(
       ...input.microNotes,
       environment: input.microNotes.environment ?? process.platform,
     };
-    micro = selectMicroNotes(memoryObjects, ctx, input.microNotes.budget, deps.noteLog?.suppressions() ?? []);
+    micro = selectMicroNotes(memoryObjects, ctx, input.microNotes.budget, deps.noteLog?.suppressions() ?? [], worktree);
     const deliveredSet = new Set(deliveredIds);
     for (const candidate of micro.delivered) {
       // Сессионная дедупликация (P108): та же checksum блока в реестре — не повторяем.
@@ -340,17 +317,17 @@ export async function getCallInjections(
   // 2.17.1 REQ-02 (R02), design §3.2/§5: конфликт scope и битые git-метаданные —
   // stderr-подсказка wolf call (CLI-слой не меняется; вывод сюда — единственный
   // путь к stderr нетронутого memory-call.ts). Doctor подхватывает конфликт из
-  // результата своей задачей (T2).
-  if (scopeConflicts.size > 0) {
+  // результата своей задачей (T2). Состояние видимости — в worktree (admission).
+  if (worktree.conflicts().length > 0) {
     console.error(
-      `[wolf] worktree scope conflict: ${[...scopeConflicts].join(', ')} — ` +
+      `[wolf] worktree scope conflict: ${worktree.conflicts().join(', ')} — ` +
         'ambiguous legacy worktree name (two live checkouts share the basename); objects stay hidden until promoted'
     );
   }
-  if (currentToken === null) {
+  if (worktree.currentToken === null) {
     const hint = brokenWorktreeHint(deps.baseDir ?? process.cwd());
     if (hint) console.error(`[wolf] ${hint}`);
-  } else if (identity === null) {
+  } else if (worktree.identity === null) {
     // design §5, второй sub-case: fs-парс .git успешен (WT-ID копии известен),
     // но git worktree list упал — legacy-разбор fail-closed; предупреждение,
     // не молчаливое скрытие (identity резолвился и вернул null; undefined —
@@ -368,8 +345,8 @@ export async function getCallInjections(
     deduplicated,
     banner,
     poolSize: injections.length,
-    hidden: hiddenCount > 0 ? { scope: current, count: hiddenCount } : null,
-    scopeConflicts: [...scopeConflicts],
+    hidden: hiddenCount > 0 ? { scope: input.currentScope ?? 'main', count: hiddenCount } : null,
+    scopeConflicts: worktree.conflicts(),
     microNotes: micro,
   };
 }
