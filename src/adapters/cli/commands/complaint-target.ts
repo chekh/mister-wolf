@@ -79,10 +79,24 @@ export async function discoverAgentIds(deps: ComplaintTargetDeps): Promise<Set<s
     const globalDir = join(deps.globalConfigDir, 'opencode');
     sources.push(mdAgentNames(deps.fs, join(globalDir, 'agents')), configAgentNames(deps.fs, globalDir));
   }
+  // Ретрофикс 3.3.0 (unhandled-гонка): цикл с частичным await прерывался на
+  // первом отказе источника — остальные уже запущенные промисы оставались без
+  // слушателя и всплывали unhandled после теста (EACCES-сценарий: два конфига
+  // одного каталога читают один нечитаемый файл; 12 изолированных прогонов
+  // стабильны, гонка проявлялась только под нагрузкой полного прогона).
+  // allSettled собирает ВСЕ источники всегда; первая ошибка по порядку
+  // массива пробрасывается — контракт «отказ discovery = fail-closed» не меняется.
+  const settled = await Promise.allSettled(sources);
   const names = new Set<string>();
-  for (const source of sources) {
-    for (const name of await source) names.add(name);
+  let firstError: unknown;
+  for (const outcome of settled) {
+    if (outcome.status === 'rejected') {
+      firstError ??= outcome.reason;
+      continue;
+    }
+    for (const name of outcome.value) names.add(name);
   }
+  if (firstError !== undefined) throw firstError;
   return names;
 }
 
