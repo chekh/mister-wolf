@@ -3,10 +3,12 @@
 /**
  * 3.2.0 T-09 (REQ-09, REQ-11, design §10): attribution log for addressed
  * micro-notes. Four facts per design §10 — selected, delivered, observed_use,
- * observed_outcome — recorded through the same SQLite store as the signal
- * projection (no parallel storage, no background runtime mechanics):
+ * observed_outcome — recorded through one persistent delivery log:
  * the use-cases write a record only at the moment they actually select or
  * deliver a note, and read observations from existing signal data.
+ * (Patch 3.3.1: the log moved out of the SQLite cache into the persistent
+ * `.wolf/memory/micro-note-delivery.jsonl` journal owned by
+ * JsonlMicroNoteDeliveryLog — REQ-331-2.)
  *
  * Delivered does not prove usefulness (design §10): counters are attribution,
  * not effect evidence. Unknown stays unknown — observed_outcome defaults to
@@ -27,6 +29,13 @@ export interface MicroNoteDeliveryRecord {
 }
 
 export interface MicroNoteSuppressionRecord {
+  /**
+   * Patch 3.3.1 (REQ-331-1, ADR-1): identity of THIS contradiction record —
+   * the primary key of the journal. Several records per note are allowed;
+   * format `cnr_YYYYMMDD_<hex>`.
+   */
+  suppression_id: string;
+  /** The contradicted note; NOT unique — several records may address one note. */
   memory_id: string;
   /** Note content revision at suppression time (S-27: binds the conflict). */
   revision: string;
@@ -53,11 +62,18 @@ export interface MicroNoteObservation {
 
 export interface MicroNoteDeliveryLog {
   recordDelivery(record: MicroNoteDeliveryRecord): void;
-  /** Upsert by note id: the current conflict replaces a previous record; both
-   * evidences of the current one are kept verbatim (S-27). */
+  /**
+   * Patch 3.3.1 (REQ-331-1, ADR-1): append — every contradiction is a new
+   * record. A duplicate `suppression_id` is a UserFacingError (the journal is
+   * append-only; silent overwrite is forbidden — a retry generates a new id).
+   */
   recordSuppression(record: MicroNoteSuppressionRecord): void;
-  /** Resolve the open conflict (audit row stays; delivery resumes). */
-  resolveSuppression(memoryId: string, resolution: string, at: string): void;
+  /**
+   * Patch 3.3.1 (REQ-331-1): resolve addresses ONE record by its
+   * `suppression_id` (audit row stays; delivery of that record's constraint
+   * resumes; other open records of the same note keep suppressing).
+   */
+  resolveSuppression(suppressionId: string, resolution: string, at: string): void;
   /** All records, open ones first-class for the selector (S-27 filter). */
   suppressions(): MicroNoteSuppressionRecord[];
   deliveries(): MicroNoteDeliveryRecord[];

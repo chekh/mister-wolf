@@ -103,19 +103,24 @@ export const ProposeCandidateInputSchema = z.object({ input: z.object({}) });
  * составной тул с action:'report'|'resolve' (прецедент: council_record /
  * propose_candidate). Поля действия требуются НА УРОВНЕ СХЕМЫ
  * (discriminatedUnion): неполный вход — ошибка схемы до handler'а, не тихий
- * пропуск. Актёра в схеме нет — журнал подавлений (S-27) актёра не хранит,
- * схема 3.2.0 не меняется.
+ * пропуск. Актёра в схеме нет — журнал подавлений (S-27) актёра не хранит.
+ *
+ * Патч 3.3.1 (REQ-331-4 AC-4.3, design §8): reason и contradiction_evidence —
+ * первая линия защиты trim().min(1) (ошибка схемы до use-case; правило use-case
+ * от схемы не зависит — CLI покрыт тем же местом). REQ-331-1 AC-1.3: resolve
+ * адресует запись журнала — обязательный suppression_id, note_id из
+ * resolve-ветки удалён. Новых actions и тулов нет (NFR-331-1).
  */
 export const NoteContradictionInputSchema = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('report'),
     note_id: z.string(),
-    reason: z.string(),
-    contradiction_evidence: z.string(),
+    reason: z.string().trim().min(1),
+    contradiction_evidence: z.string().trim().min(1),
   }),
   z.object({
     action: z.literal('resolve'),
-    note_id: z.string(),
+    suppression_id: z.string(),
     resolution: z.string(),
   }),
 ]);

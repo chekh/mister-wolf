@@ -1182,9 +1182,10 @@ Options:
 Commands:
   report [options]   Record a contradiction against an active micro-note
                      (suppresses delivery until resolved)
-  resolve [options]  Resolve the open suppression of a micro-note (delivery
+  resolve [options]  Resolve one suppression record by its id (delivery
                      resumes; audit row stays)
-  list               List open micro-note suppressions (read-only)
+  list               List open micro-note suppressions with revision and block
+                     actuality (read-only)
   help [command]     display help for command
 ```
 
@@ -1208,11 +1209,13 @@ Options:
 ```text
 Usage: wolf contradict resolve [options]
 
-Resolve the open suppression of a micro-note (delivery resumes; audit row
-stays)
+Resolve one suppression record by its id (delivery resumes; audit row stays)
 
 Options:
-  --note <id>                Memory id of the suppressed micro-note
+  --id <suppression_id>      Suppression record id (cnr_…; see: wolf contradict
+                             list)
+  --note <id>                Deprecated note addressing: refused with the list
+                             of open record ids
   --resolution <resolution>  How the contradiction was resolved
   -h, --help                 display help for command
 ```
@@ -1222,7 +1225,7 @@ Options:
 ```text
 Usage: wolf contradict list [options]
 
-List open micro-note suppressions (read-only)
+List open micro-note suppressions with revision and block actuality (read-only)
 
 Options:
   -h, --help  display help for command

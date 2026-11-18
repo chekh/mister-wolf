@@ -10,12 +10,6 @@ import {
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import { isLearningSignal, learningSignalRevision } from '../../domain/learning-signals.js';
 import { UserFacingError } from '../../domain/errors.js';
-import {
-  MicroNoteDeliveryLog,
-  MicroNoteDeliveryRecord,
-  MicroNoteObservation,
-  MicroNoteSuppressionRecord,
-} from '../../ports/micro-note-delivery-log.port.js';
 import { SQLITE_SCHEMA } from './sqlite-schema.js';
 import { runWithBusyRetry } from './busy-retry.js';
 
@@ -101,7 +95,7 @@ function rowToSignal(row: any): LearningSignal {
   };
 }
 
-export class SQLiteSearchIndex implements SearchIndex, LearningSignalIndex, MicroNoteDeliveryLog {
+export class SQLiteSearchIndex implements SearchIndex, LearningSignalIndex {
   private db: Database.Database | null = null;
 
   constructor(private readonly dbPath: string) {}
@@ -383,136 +377,9 @@ export class SQLiteSearchIndex implements SearchIndex, LearningSignalIndex, Micr
     );
   }
 
-  // --- T-09: MicroNoteDeliveryLog (attribution delivery/suppression/observation) ---
-
-  recordDelivery(record: MicroNoteDeliveryRecord): void {
-    runWithBusyRetry(() =>
-      this.getDb()
-        .prepare('INSERT INTO micro_note_deliveries (memory_id, revision, channel, kind, ts) VALUES (?, ?, ?, ?, ?)')
-        .run(record.memory_id, record.revision, record.channel, record.kind, record.ts)
-    );
-  }
-
-  recordSuppression(record: MicroNoteSuppressionRecord): void {
-    runWithBusyRetry(() =>
-      this.getDb()
-        .prepare(
-          `INSERT INTO micro_note_suppressions
-             (memory_id, revision, reason, note_evidence, contradiction_evidence, suppressed_at, resolved_at, resolution)
-           VALUES (?, ?, ?, ?, ?, ?, NULL, NULL)
-           ON CONFLICT(memory_id) DO UPDATE SET
-             revision = excluded.revision, reason = excluded.reason,
-             note_evidence = excluded.note_evidence,
-             contradiction_evidence = excluded.contradiction_evidence,
-             suppressed_at = excluded.suppressed_at, resolved_at = NULL, resolution = NULL`
-        )
-        .run(
-          record.memory_id,
-          record.revision,
-          record.reason,
-          record.note_evidence,
-          record.contradiction_evidence,
-          record.suppressed_at
-        )
-    );
-  }
-
-  resolveSuppression(memoryId: string, resolution: string, at: string): void {
-    runWithBusyRetry(() => {
-      const res = this.getDb()
-        .prepare(
-          'UPDATE micro_note_suppressions SET resolved_at = ?, resolution = ? WHERE memory_id = ? AND resolved_at IS NULL'
-        )
-        .run(at, resolution, memoryId);
-      if (res.changes === 0) {
-        throw new UserFacingError(
-          `unknown or already resolved suppression for "${memoryId}" (REQ-03: unknown stays unknown)`
-        );
-      }
-    });
-  }
-
-  suppressions(): MicroNoteSuppressionRecord[] {
-    const rows = this.getDb()
-      .prepare(
-        `SELECT memory_id, revision, reason, note_evidence, contradiction_evidence,
-                suppressed_at, resolved_at, resolution
-         FROM micro_note_suppressions ORDER BY suppressed_at ASC, memory_id ASC`
-      )
-      .all() as any[];
-    return rows.map((row) => ({
-      memory_id: row.memory_id,
-      revision: row.revision,
-      reason: row.reason,
-      note_evidence: row.note_evidence,
-      contradiction_evidence: row.contradiction_evidence,
-      suppressed_at: row.suppressed_at,
-      resolved_at: row.resolved_at ?? null,
-      resolution: row.resolution ?? null,
-    }));
-  }
-
-  deliveries(): MicroNoteDeliveryRecord[] {
-    return (
-      this.getDb()
-        .prepare('SELECT memory_id, revision, channel, kind, ts FROM micro_note_deliveries ORDER BY ts ASC, rowid ASC')
-        .all() as any[]
-    ).map((row) => ({
-      memory_id: row.memory_id,
-      revision: row.revision,
-      channel: row.channel,
-      kind: row.kind,
-      ts: row.ts,
-    }));
-  }
-
-  setObservation(input: {
-    memory_id: string;
-    revision: string;
-    field: 'observed_use' | 'observed_outcome';
-    value: string;
-    at: string;
-  }): void {
-    runWithBusyRetry(() => {
-      const db = this.getDb();
-      const existing = db
-        .prepare('SELECT revision, observed_use, observed_outcome FROM micro_note_observations WHERE memory_id = ?')
-        .get(input.memory_id) as
-        | { revision: string; observed_use: string | null; observed_outcome: string }
-        | undefined;
-      const base = existing ?? { revision: input.revision, observed_use: null, observed_outcome: 'unknown' };
-      const next = {
-        memory_id: input.memory_id,
-        revision: input.revision,
-        observed_use: input.field === 'observed_use' ? input.value : base.observed_use,
-        observed_outcome: input.field === 'observed_outcome' ? input.value : base.observed_outcome,
-        updated_at: input.at,
-      };
-      db.prepare(
-        `INSERT INTO micro_note_observations (memory_id, revision, observed_use, observed_outcome, updated_at)
-         VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT(memory_id) DO UPDATE SET
-           revision = excluded.revision, observed_use = excluded.observed_use,
-           observed_outcome = excluded.observed_outcome, updated_at = excluded.updated_at`
-      ).run(next.memory_id, next.revision, next.observed_use, next.observed_outcome, next.updated_at);
-    });
-  }
-
-  observations(): MicroNoteObservation[] {
-    return (
-      this.getDb()
-        .prepare(
-          'SELECT memory_id, revision, observed_use, observed_outcome, updated_at FROM micro_note_observations ORDER BY memory_id ASC'
-        )
-        .all() as any[]
-    ).map((row) => ({
-      memory_id: row.memory_id,
-      revision: row.revision,
-      observed_use: row.observed_use ?? null,
-      observed_outcome: row.observed_outcome,
-      updated_at: row.updated_at,
-    }));
-  }
+  // --- T-09 (3.2.0) удалено в 3.3.1 (REQ-331-2, design §3): таблицы и методы
+  // журнала micro_note_* переехали в JsonlMicroNoteDeliveryLog (постоянный
+  // JSONL вне кэша); SQLiteSearchIndex — снова только поисковый индекс/кэш.
 
   private rowToResult(row: any): SearchResult {
     return {

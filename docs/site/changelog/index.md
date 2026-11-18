@@ -8,6 +8,73 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [3.3.1] - 2026-11-19
+
+### Changed — contradiction journal integrity: per-record identity, persistent storage outside `.wolf/cache`
+
+Post-release review of 3.3.0 (P1-1, P1-2, P2-1, P2-2): a repeated contradiction
+report overwrote the previous observation together with its resolution, and the
+whole journal lived in the disposable cache `index.sqlite` — an index rebuild or
+cache loss silently erased suppressions and attribution history.
+
+- **Breaking: `wolf contradict resolve` addresses a suppression record by id.**
+  Use `--id <suppression_id>` (the `cnr_…` id printed by `report` and `list`);
+  every contradiction to a note is now a separate record with its own id, so a
+  repeated report never overwrites a previous observation or resolution, and
+  resolving one record leaves other open records of the same note suppressing.
+  The legacy `--note` addressing is refused with the list of open record ids of
+  that note. The MCP `note_contradiction` resolve action takes `suppression_id`
+  the same way (`note_id` removed from that action's schema).
+- **The journal moved out of the cache.** Suppressions, deliveries and
+  observations now live in the persistent append-only file
+  `.wolf/memory/micro-note-delivery.jsonl` (next to `events.jsonl`), so losing,
+  deleting or rebuilding `index.sqlite` loses no journal record and active
+  suppressions keep blocking delivery. The `micro_note_*` tables are no longer
+  created in `index.sqlite`; rows left there by a 3.3.0 project are migrated
+  once (deterministic order, values 1:1 including NULLs) and then kept untouched
+  as a frozen copy — a rollback to 3.3.0 still reads them. Direct reads of those
+  tables are not a public contract.
+- **`report` validates reason and evidence.** Empty or whitespace-only values
+  are refused with a named cause (one rule in the use-case covers CLI and MCP;
+  the MCP schema additionally rejects them before the use-case). Values are
+  stored trimmed.
+- **`contradict list` shows revision and block actuality.** Each line carries the
+  record id, `note_id@revision`, the reason, the suppression time and
+  `block: actual | superseded | unknown` — actuality follows the same rule as the
+  delivery filter, so `list` cannot show "actual" for a record that does not
+  block delivery, or vice versa.
+
+## [3.3.0] - 2026-11-18
+
+### Added — contradiction operations reachable by the lead: `wolf contradict` and the `note_contradiction` MCP tool
+
+The micro-note contradiction loop (S-27) existed since 3.2.0 but was reachable only
+from tests — the owner's post-release review flagged it as an unfinished user process
+(finding R-4). Now the lead registers and resolves contradictions through both
+channels, with the evidence pair kept verbatim.
+
+- **CLI `wolf contradict report|resolve|list`.** `report --note <id> --reason --evidence`
+  suppresses an active micro-note's delivery until resolved (output carries the exact
+  `id@rev` and the verbatim observation); `resolve --note --resolution` resumes
+  delivery and keeps the audit row; `list` shows open suppressions read-only.
+  Unknown ids and missing options refuse with named causes ("unknown stays unknown").
+- **MCP tool `note_contradiction`** with `action: 'report' | 'resolve'` — the same
+  use-case and the same suppression journal as the CLI (catalog is now 10 tools,
+  threshold ≤ 12 preserved; the input schema enforces the per-action fields, so
+  incomplete inputs fail at the schema level).
+- **Single journal, single behavior.** The suppression recorded through either
+  channel is consulted by the unified delivery admission filter shipped in 3.2.1:
+  a contradicted note leaves every `wolf call` and `wolf brief` section until the
+  lead resolves it; both evidences (the note and the observation) stay in the audit
+  journal, the underlying fact is never deleted or edited.
+- **Docs regenerated**: `docs/reference/cli.md` (P224 guard), MCP guide pages EN/RU
+  — the RU mirror also caught up on tool rows that had drifted since 2.31.0.
+
+Scope note: `reconcileMicroNoteObservations` (observed-use analytics) has no user
+route yet and stays internal. Next agreed step: repeat the deferred held-out
+behavioral scenarios (S-16/25/27) before any expansion of `apply-approved`
+auto-apply.
+
 ## [3.2.1] - 2026-11-18
 
 ### Fixed — post-release review of 3.2.0: rollback verifies backup content, one delivery admission filter, scope boundaries, micro-note body in full

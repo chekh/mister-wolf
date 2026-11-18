@@ -4,6 +4,7 @@ import { projectTreeSignature } from '../../fs/heuristic-project-scanner.js';
 import { openScanSnapshotCache } from '../../fs/scan-snapshot-cache.js';
 import { generateAgentBrief } from '../../../app/use-cases/generate-agent-brief.js';
 import { createCliContainer } from '../../../bootstrap/container.js';
+import { JsonlMicroNoteDeliveryLog } from '../../../adapters/fs/jsonl-micro-note-delivery-log.js';
 import { appendMemoryStageSignal } from '../../fs/session-metrics-log.js';
 import { resolveCreatedBy, resolveSessionId } from '../../../domain/actor.js';
 import { getWolfVersion } from '../../version.js';
@@ -31,12 +32,18 @@ export function memoryBriefCommand(): Command {
       // 3.2.0 T-10/F-2 (REQ-09): the brief is the lead's route for project
       // knowledge — deliver addressed micro-notes under the same real context
       // as `wolf call`: project = the wolf memory root, version = the wolf
-      // version (brief has no topic, so no target). The shared SQLite log
-      // persists attribution (channel "brief"); S-27 suppressions are read, so
-      // a contradicted note stays out of the brief until resolved.
-      const brief = await generateAgentBrief({ store, fs, clock, noteLog: index }, process.cwd(), scanResult.snapshot, {
-        microNotes: { context: { projectId: memoryRoot, version: getWolfVersion() } },
-      });
+      // version (brief has no topic, so no target). 3.3.1 (REQ-331-2): the log
+      // is the persistent JSONL journal (outside .wolf/cache); S-27 suppressions
+      // are read from it, so a contradicted note stays out of the brief until
+      // resolved.
+      const brief = await generateAgentBrief(
+        { store, fs, clock, noteLog: new JsonlMicroNoteDeliveryLog(process.cwd()) },
+        process.cwd(),
+        scanResult.snapshot,
+        {
+          microNotes: { context: { projectId: memoryRoot, version: getWolfVersion() } },
+        }
+      );
       // P2 D1: бриф инъекцировал объекты → injected; пусто → событие НЕ пишется
       if (brief.injectedIds.length > 0) {
         try {

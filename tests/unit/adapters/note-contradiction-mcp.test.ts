@@ -4,26 +4,24 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { buildMcpServer } from '../../../src/adapters/mcp/mcp-server.js';
 import { NoteContradictionInputSchema } from '../../../src/adapters/mcp/mcp-schemas.js';
+import { JsonlMicroNoteDeliveryLog } from '../../../src/adapters/fs/jsonl-micro-note-delivery-log.js';
 import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
-import { SQLiteSearchIndex } from '../../../src/adapters/sqlite/sqlite-search-index.js';
-import { indexPath } from '../../../src/adapters/fs/project-paths.js';
 import { getCallInjections } from '../../../src/app/use-cases/get-call-injections.js';
 import { learningSignalRevision } from '../../../src/domain/learning-signals.js';
 import { MICRO_NOTE_TAG } from '../../../src/app/use-cases/micro-note-delivery.js';
 import { UserFacingError } from '../../../src/domain/errors.js';
 import type { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
 
-// Волна R-4 (REQ-R4-2): MCP-тул `note_contradiction` — один составной тул с
-// action:'report'|'resolve' (прецедент: propose_candidate), тот же use-case
-// 3.2.0 T-09 и тот же журнал подавлений, что CLI `wolf contradict` (один носитель).
-// AC-2.1 report подавляет как CLI; AC-2.2 resolve снимает, unknown id — отказ
-// use-case; AC-2.3 схема требует action/note_id + поля действия (ошибка схемы,
-// не тихий пропуск).
-describe('MCP note_contradiction (REQ-R4-2)', () => {
+// Патч 3.3.1 (REQ-331-1/4): MCP-тул `note_contradiction` — один составной тул с
+// action:'report'|'resolve' (тот же use-case и тот же постоянный JSONL-журнал,
+// что CLI `wolf contradict` — один носитель). report печатает suppression_id;
+// resolve адресует запись журнала (suppression_id); note_id-адресация resolve
+// отклоняется схемой; пустые reason/evidence — ошибка схемы до use-case
+// (T-4.3, первая линия). Каталог тулов не растёт (guard без правок).
+describe('MCP note_contradiction (patch 3.3.1)', () => {
   let dir: string;
 
-  const NOW = new Date('2026-11-18T00:00:00.000Z');
-  const clock = { now: () => NOW };
+  const clock = { now: () => new Date('2026-11-18T00:00:00.000Z') };
 
   function microNote(id: string): MemoryObject {
     return {
@@ -58,8 +56,8 @@ describe('MCP note_contradiction (REQ-R4-2)', () => {
     return tool.handler;
   }
 
-  function journal(): SQLiteSearchIndex {
-    return new SQLiteSearchIndex(indexPath(dir));
+  function journal(): JsonlMicroNoteDeliveryLog {
+    return new JsonlMicroNoteDeliveryLog(dir);
   }
 
   function callDelivered(): Promise<string[]> {
@@ -85,7 +83,7 @@ describe('MCP note_contradiction (REQ-R4-2)', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it('AC-2.1: action=report suppresses like the CLI — same journal, exact id@rev12, verbatim evidence', async () => {
+  it('AC-2.1: action=report suppresses like the CLI — same journal, prints the cnr_ record id, verbatim evidence', async () => {
     const obj = microNote('n_conf');
     await new MarkdownMemoryStore(dir).save(obj as never);
     const rev12 = learningSignalRevision(obj).slice(0, 12);
@@ -97,6 +95,8 @@ describe('MCP note_contradiction (REQ-R4-2)', () => {
       contradiction_evidence: 'observed B in session sess-1',
     });
     const text = result.content[0]!.text;
+    const id = text.match(/cnr_\d{8}_[0-9a-f]{6}/)?.[0];
+    expect(id).toBeDefined();
     expect(text).toContain(`n_conf@${rev12}`);
     expect(text).toContain('suppressed until resolved');
     expect(text).toContain('observed B in session sess-1');
@@ -104,49 +104,79 @@ describe('MCP note_contradiction (REQ-R4-2)', () => {
     // тот же носитель, что CLI (wolf contradict report) — одна запись журнала
     const records = journal().suppressions();
     expect(records).toHaveLength(1);
+    expect(records[0]!.suppression_id).toBe(id);
     expect(records[0]!.note_evidence).toBe(`n_conf@${rev12}`);
     expect(records[0]!.resolved_at).toBeNull();
     expect(await callDelivered()).toEqual([]);
   });
 
-  it('AC-2.2: action=resolve lifts the suppression (audit row kept); unknown id refuses with the use-case text', async () => {
+  it('AC-1.3: action=resolve lifts the suppression by record id (audit row kept); unknown id refuses with the port text', async () => {
     const obj = microNote('n_conf');
     await new MarkdownMemoryStore(dir).save(obj as never);
     const h = handler();
-    await h({ action: 'report', note_id: 'n_conf', reason: 'note says A', contradiction_evidence: 'observed B' });
+    const reported = await h({
+      action: 'report',
+      note_id: 'n_conf',
+      reason: 'note says A',
+      contradiction_evidence: 'observed B',
+    });
+    const id = reported.content[0]!.text.match(/cnr_\d{8}_[0-9a-f]{6}/)?.[0]!;
 
-    const resolved = await h({ action: 'resolve', note_id: 'n_conf', resolution: 'note fixed by edit mem_x' });
+    const resolved = await h({ action: 'resolve', suppression_id: id, resolution: 'note fixed by edit mem_x' });
     expect(resolved.content[0]!.text).toContain('resolved');
+    expect(resolved.content[0]!.text).toContain(`n_conf@${learningSignalRevision(obj).slice(0, 12)}`);
 
     const records = journal().suppressions();
     expect(records).toHaveLength(1);
     expect(records[0]!.resolved_at).not.toBeNull();
     expect(await callDelivered()).toEqual(['n_conf']);
 
-    await expect(h({ action: 'resolve', note_id: 'n_ghost', resolution: 'r' })).rejects.toThrow(UserFacingError);
-    await expect(h({ action: 'resolve', note_id: 'n_ghost', resolution: 'r' })).rejects.toThrow(
-      'unknown or already resolved suppression for "n_ghost"'
+    const exactUnknown = `unknown or already resolved suppression for "cnr_20261118_ffffff" (REQ-03: unknown stays unknown)`;
+    await expect(h({ action: 'resolve', suppression_id: 'cnr_20261118_ffffff', resolution: 'r' })).rejects.toThrow(
+      UserFacingError
+    );
+    await expect(h({ action: 'resolve', suppression_id: 'cnr_20261118_ffffff', resolution: 'r' })).rejects.toThrow(
+      exactUnknown
     );
     await expect(h({ action: 'report', note_id: 'n_ghost', reason: 'r', contradiction_evidence: 'e' })).rejects.toThrow(
       'unknown micro-note "n_ghost"'
     );
   });
 
-  it('AC-2.3: schema requires action/note_id and the action fields; incomplete input is a schema error', async () => {
+  it('AC-1.3/AC-4.3: schema refuses resolve by note_id and empty reason/evidence before the use-case', async () => {
+    await new MarkdownMemoryStore(dir).save(microNote('n_conf') as never);
+    const h = handler();
+    await h({ action: 'report', note_id: 'n_conf', reason: 'note says A', contradiction_evidence: 'observed B' });
+
+    // resolve по note_id больше не существует в схеме (адресация по записи — AC-1.3)
+    await expect(h({ action: 'resolve', note_id: 'n_conf', resolution: 'r' })).rejects.toThrow();
+    // пустые reason/evidence отклоняются схемой (первая линия, T-4.3)
+    await expect(
+      h({ action: 'report', note_id: 'n_conf', reason: '   ', contradiction_evidence: 'e' })
+    ).rejects.toThrow();
+    await expect(h({ action: 'report', note_id: 'n_conf', reason: 'r', contradiction_evidence: '' })).rejects.toThrow();
+    // журнал не изменён отказами
+    expect(journal().suppressions()).toHaveLength(1);
+  });
+
+  it('AC-2.3: schema requires action and the action fields; incomplete input is a schema error', async () => {
     // нет action
     expect(await schemaIssues({ note_id: 'n_conf' })).not.toEqual([]);
     // нет note_id
     expect(await schemaIssues({ action: 'report', reason: 'r', contradiction_evidence: 'e' })).not.toEqual([]);
     // report без reason/contradiction_evidence
     expect(await schemaIssues({ action: 'report', note_id: 'n_conf' })).not.toEqual([]);
-    // resolve без resolution
-    expect(await schemaIssues({ action: 'resolve', note_id: 'n_conf' })).not.toEqual([]);
+    // resolve без suppression_id/resolution
+    expect(await schemaIssues({ action: 'resolve' })).not.toEqual([]);
+    expect(await schemaIssues({ action: 'resolve', suppression_id: 'cnr_20261118_0000aa' })).not.toEqual([]);
     // неизвестный action
     expect(await schemaIssues({ action: 'merge', note_id: 'n_conf' })).not.toEqual([]);
     // полные входы обоих действий проходят
     expect(
       await schemaIssues({ action: 'report', note_id: 'n_conf', reason: 'r', contradiction_evidence: 'e' })
     ).toEqual([]);
-    expect(await schemaIssues({ action: 'resolve', note_id: 'n_conf', resolution: 'r' })).toEqual([]);
+    expect(await schemaIssues({ action: 'resolve', suppression_id: 'cnr_20261118_0000aa', resolution: 'r' })).toEqual(
+      []
+    );
   });
 });

@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { MemoryAddInputSchema, normalizeAddInputKeys } from '../../../src/adapters/mcp/mcp-schemas.js';
+import {
+  MemoryAddInputSchema,
+  normalizeAddInputKeys,
+  NoteContradictionInputSchema,
+} from '../../../src/adapters/mcp/mcp-schemas.js';
 import { CORE_TAXONOMY } from '../../../src/domain/memory-types.js';
 
 describe('MemoryAddInputSchema (derived from taxonomy)', () => {
@@ -134,5 +138,42 @@ describe('normalizeAddInputKeys', () => {
     expect(result.value?.current_state).toBe('s');
     expect(result.value?.next_steps).toEqual(['a']);
     expect(result.value?.createdBy).toBe('user:x');
+  });
+});
+
+// Патч 3.3.1 (REQ-331-4 AC-4.3, design §8): MCP-схема note_contradiction —
+// первая линия защиты: report требует непустые после trim reason и
+// contradiction_evidence (ошибка схемы до use-case); правило use-case от схемы
+// не зависит (T-4.1). resolve адресует запись журнала (AC-1.3): обязательный
+// suppression_id, note_id из resolve-ветки удалён. Новых actions/тулов нет
+// (NFR-331-1, guard не трогается).
+describe('NoteContradictionInputSchema (patch 3.3.1)', () => {
+  /** Тот же путь, что SDK: ~standard.validate обёрнутой схемы. */
+  async function issues(input: unknown): Promise<string[]> {
+    const result = (await NoteContradictionInputSchema['~standard'].validate(input)) as {
+      issues?: Array<{ message: string }>;
+    };
+    return (result.issues ?? []).map((i) => i.message);
+  }
+
+  it('T-4.3: report rejects empty and whitespace-only reason and contradiction_evidence', async () => {
+    for (const input of [
+      { action: 'report', note_id: 'n1', reason: '', contradiction_evidence: 'e' },
+      { action: 'report', note_id: 'n1', reason: '   ', contradiction_evidence: 'e' },
+      { action: 'report', note_id: 'n1', reason: ' \n\t ', contradiction_evidence: 'e' },
+      { action: 'report', note_id: 'n1', reason: 'r', contradiction_evidence: '' },
+      { action: 'report', note_id: 'n1', reason: 'r', contradiction_evidence: ' \t ' },
+    ]) {
+      expect(await issues(input)).not.toEqual([]);
+    }
+    expect(await issues({ action: 'report', note_id: 'n1', reason: 'r', contradiction_evidence: 'e' })).toEqual([]);
+  });
+
+  it('resolve requires suppression_id and no longer accepts note_id addressing', async () => {
+    expect(await issues({ action: 'resolve', resolution: 'r' })).not.toEqual([]);
+    expect(await issues({ action: 'resolve', note_id: 'n1', resolution: 'r' })).not.toEqual([]);
+    expect(await issues({ action: 'resolve', suppression_id: 'cnr_20261118_0000aa', resolution: 'r' })).toEqual([]);
+    // неизвестный action по-прежнему отклоняется (каталог не растёт)
+    expect(await issues({ action: 'merge', note_id: 'n1' })).not.toEqual([]);
   });
 });
