@@ -3,29 +3,25 @@ import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { memoryContradictCommand } from '../../../src/adapters/cli/commands/memory-contradict.js';
+import { JsonlMicroNoteDeliveryLog } from '../../../src/adapters/fs/jsonl-micro-note-delivery-log.js';
 import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
-import { SQLiteSearchIndex } from '../../../src/adapters/sqlite/sqlite-search-index.js';
-import { indexPath } from '../../../src/adapters/fs/project-paths.js';
 import { getCallInjections } from '../../../src/app/use-cases/get-call-injections.js';
 import { learningSignalRevision } from '../../../src/domain/learning-signals.js';
 import { MICRO_NOTE_TAG } from '../../../src/app/use-cases/micro-note-delivery.js';
 import { UserFacingError } from '../../../src/domain/errors.js';
 import type { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
 
-// Волна R-4 (REQ-R4-1): CLI-маршрут `wolf contradict report|resolve|list` поверх
-// use-case 3.2.0 T-09 (S-27). Команда зовётся напрямую через parseAsync (без
-// регистрации в cli-entry), baseDir инъектится tmp-каталогом — в .wolf/memory
-// репозитория ничего не пишется (прецедент: complain.test.ts).
-// AC-1.1 report подавляет доставку; AC-1.2 unknown id — текст use-case;
-// AC-1.3 resolve возвращает доставку, аудит сохраняется; AC-1.4 resolve без
-// открытого подавления — отказ порта; AC-1.5 list — id@rev+причина/'no open
-// suppressions'; AC-1.6 обязательные опции — отказ с именованной причиной.
-describe('wolf contradict (REQ-R4-1)', () => {
+// Патч 3.3.1 (REQ-331-1/4/5): CLI `wolf contradict` поверх use-case с
+// идентичностью записей. report печатает suppression_id; resolve адресует запись
+// (--id), переданный --note — отказ с перечнем открытых id записей заметки
+// (AC-1.4); list — формат design §9: id, note_id@revision, reason,
+// (suppressed at ts), block: actual|superseded|unknown (T-5.1/T-5.2); пустой
+// список — «no open suppressions» без регрессии REQ-R4 AC-1.5 (T-5.3).
+describe('wolf contradict (patch 3.3.1)', () => {
   let dir: string;
   let logs: string[];
 
-  const NOW = new Date('2026-11-18T00:00:00.000Z');
-  const clock = { now: () => NOW };
+  const clock = { now: () => new Date('2026-11-18T00:00:00.000Z') };
 
   function microNote(id: string, overrides: Partial<MemoryObject> & Record<string, unknown> = {}): MemoryObject {
     return {
@@ -60,8 +56,14 @@ describe('wolf contradict (REQ-R4-1)', () => {
     return cmd.parseAsync(args, { from: 'user' });
   }
 
-  function journal(): SQLiteSearchIndex {
-    return new SQLiteSearchIndex(indexPath(dir));
+  function journal(): JsonlMicroNoteDeliveryLog {
+    return new JsonlMicroNoteDeliveryLog(dir);
+  }
+
+  function reportedId(): string {
+    const match = logs.join('\n').match(/cnr_\d{8}_[0-9a-f]{6}/);
+    if (!match) throw new Error('report output did not contain a cnr_ suppression id');
+    return match[0];
   }
 
   function callDelivered(): Promise<string[]> {
@@ -84,13 +86,16 @@ describe('wolf contradict (REQ-R4-1)', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it('AC-1.1: report suppresses the active micro-note — exact id@rev12, verbatim evidence, delivery stops', async () => {
+  it('AC-1.1/T-1.2: report prints the record id, journal keeps exact id@rev12 and verbatim evidence, delivery stops', async () => {
     const obj = microNote('n_conf');
     await new MarkdownMemoryStore(dir).save(obj as never);
     const rev12 = learningSignalRevision(obj).slice(0, 12);
 
     await run(['report', '--note', 'n_conf', '--reason', 'note says A', '--evidence', 'observed B in session sess-1']);
 
+    // вывод report содержит id записи (AC-1.2)
+    const id = reportedId();
+    expect(logs[0]).toContain(id);
     expect(logs[0]).toContain(`n_conf@${rev12}`);
     expect(logs[0]).toContain('suppressed until resolved');
     // evidence повторяется вербатимно
@@ -98,6 +103,7 @@ describe('wolf contradict (REQ-R4-1)', () => {
 
     const records = journal().suppressions();
     expect(records).toHaveLength(1);
+    expect(records[0]!.suppression_id).toBe(id);
     expect(records[0]!.note_evidence).toBe(`n_conf@${rev12}`);
     expect(records[0]!.contradiction_evidence).toBe('observed B in session sess-1');
     expect(records[0]!.resolved_at).toBeNull();
@@ -121,15 +127,31 @@ describe('wolf contradict (REQ-R4-1)', () => {
     expect(journal().suppressions()).toEqual([]);
   });
 
-  it('AC-1.3: resolve lifts the suppression — note delivered again, audit row kept with evidence', async () => {
+  it('AC-4.1: report with empty/whitespace reason or evidence refuses with the use-case text', async () => {
+    await new MarkdownMemoryStore(dir).save(microNote('n_conf') as never);
+    for (const [reason, evidence] of [
+      ['', 'e'],
+      ['   ', 'e'],
+      ['r', ''],
+      ['r', ' \t '],
+    ]) {
+      await expect(run(['report', '--note', 'n_conf', '--reason', reason, '--evidence', evidence])).rejects.toThrow(
+        'report requires reason and contradiction evidence (REQ-03: unknown stays unknown)'
+      );
+    }
+    expect(journal().suppressions()).toEqual([]);
+  });
+
+  it('AC-1.3: resolve by record id lifts exactly that record — note delivered again, audit row kept', async () => {
     const obj = microNote('n_conf');
     await new MarkdownMemoryStore(dir).save(obj as never);
     const rev12 = learningSignalRevision(obj).slice(0, 12);
     await run(['report', '--note', 'n_conf', '--reason', 'note says A', '--evidence', 'observed B']);
+    const id = reportedId();
     expect(await callDelivered()).toEqual([]);
 
     logs = [];
-    await run(['resolve', '--note', 'n_conf', '--resolution', 'note fixed by edit mem_x']);
+    await run(['resolve', '--id', id, '--resolution', 'note fixed by edit mem_x']);
     expect(logs[0]).toContain(`n_conf@${rev12}`);
     expect(logs[0]).toContain('resolved at');
 
@@ -145,32 +167,87 @@ describe('wolf contradict (REQ-R4-1)', () => {
     expect(await callDelivered()).toEqual(['n_conf']);
   });
 
-  it('AC-1.4: resolve without an open suppression refuses with the port text', async () => {
-    await expect(run(['resolve', '--note', 'n_ghost', '--resolution', 'r'])).rejects.toThrow(UserFacingError);
-    await expect(run(['resolve', '--note', 'n_ghost', '--resolution', 'r'])).rejects.toThrow(
-      'unknown or already resolved suppression for "n_ghost"'
-    );
+  it('AC-1.4: resolve with --note refuses and lists the OPEN record ids of that note (actual list, not a stub)', async () => {
+    await new MarkdownMemoryStore(dir).save(microNote('n_conf') as never);
+    await run(['report', '--note', 'n_conf', '--reason', 'first', '--evidence', 'e1']);
+    const id1 = reportedId();
+    logs = [];
+    await run(['report', '--note', 'n_conf', '--reason', 'second', '--evidence', 'e2']);
+    const id2 = reportedId();
+
+    logs = [];
+    await expect(run(['resolve', '--note', 'n_conf', '--resolution', 'r'])).rejects.toThrow(UserFacingError);
+    await expect(run(['resolve', '--note', 'n_conf', '--resolution', 'r'])).rejects.toThrow(/--id/);
+    await expect(run(['resolve', '--note', 'n_conf', '--resolution', 'r'])).rejects.toThrow(`"${id1}"`);
+    await expect(run(['resolve', '--note', 'n_conf', '--resolution', 'r'])).rejects.toThrow(`"${id2}"`);
+    // обе записи остались открытыми (отказ ничего не снял)
+    expect(
+      journal()
+        .suppressions()
+        .every((s) => s.resolved_at === null)
+    ).toBe(true);
   });
 
-  it('AC-1.5: list shows open suppressions with id@rev and reason', async () => {
+  it('AC-1.4: resolve with --note on a note without open records refuses with an explicit empty list', async () => {
+    await new MarkdownMemoryStore(dir).save(microNote('n_fresh') as never);
+    await expect(run(['resolve', '--note', 'n_fresh', '--resolution', 'r'])).rejects.toThrow(UserFacingError);
+    await expect(run(['resolve', '--note', 'n_fresh', '--resolution', 'r'])).rejects.toThrow('no open suppressions');
+  });
+
+  it('T-5.1: every list line carries id, note@revision, reason, suppressed-at and the block state', async () => {
     const a = microNote('n_a');
-    const b = microNote('n_b');
     await new MarkdownMemoryStore(dir).save(a as never);
-    await new MarkdownMemoryStore(dir).save(b as never);
     await run(['report', '--note', 'n_a', '--reason', 'reason A', '--evidence', 'e A']);
-    await run(['report', '--note', 'n_b', '--reason', 'reason B', '--evidence', 'e B']);
+    const id = reportedId();
+    const rev = learningSignalRevision(a);
 
     logs = [];
     await run(['list']);
-    expect(
-      logs.some((l) => l.includes(`n_a@${learningSignalRevision(a).slice(0, 12)}`) && l.includes('reason A'))
-    ).toBe(true);
-    expect(
-      logs.some((l) => l.includes(`n_b@${learningSignalRevision(b).slice(0, 12)}`) && l.includes('reason B'))
-    ).toBe(true);
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toContain(id);
+    expect(logs[0]).toContain(`n_a@${rev}`);
+    expect(logs[0]).toContain('reason A');
+    expect(logs[0]).toMatch(/\(suppressed at [^)]+\)/);
+    expect(logs[0]).toMatch(/block: actual$/);
   });
 
-  it('AC-1.5: list on an empty journal prints an explicit "no open suppressions"', async () => {
+  it('T-5.2: list marks actual / superseded / unknown per the delivery rule', async () => {
+    await new MarkdownMemoryStore(dir).save(microNote('n_par') as never);
+    await run(['report', '--note', 'n_par', '--reason', 'contradiction v1', '--evidence', 'e1']);
+    const id = reportedId();
+
+    // actual: ревизия записи = текущей ревизии
+    logs = [];
+    await run(['list']);
+    expect(logs[0]).toMatch(/block: actual$/);
+
+    // superseded: заметка пересмотрена
+    await new MarkdownMemoryStore(dir).save(microNote('n_par', { body: 'Body of n_par, revised.' }) as never);
+    logs = [];
+    await run(['list']);
+    expect(logs[0]).toMatch(/block: superseded$/);
+
+    // unknown: заметки нет в store (REQ-03) — запись в журнал вносится напрямую
+    logs = [];
+    journal().recordSuppression({
+      suppression_id: 'cnr_20261118_0000ff',
+      memory_id: 'n_ghost',
+      revision: 'rev000',
+      reason: 'ghost contradiction',
+      note_evidence: 'n_ghost@rev000',
+      contradiction_evidence: 'observed nothing',
+      suppressed_at: '2026-11-18T00:00:00.000Z',
+      resolved_at: null,
+      resolution: null,
+    });
+    await run(['list']);
+    expect(logs).toHaveLength(2);
+    const ghostLine = logs.find((l) => l.includes('cnr_20261118_0000ff'));
+    expect(ghostLine).toBeDefined();
+    expect(ghostLine).toMatch(/block: unknown$/);
+  });
+
+  it('T-5.3: list on an empty journal prints an explicit "no open suppressions"', async () => {
     await run(['list']);
     expect(logs).toEqual(['no open suppressions']);
   });
@@ -178,6 +255,8 @@ describe('wolf contradict (REQ-R4-1)', () => {
   it('AC-1.6: missing required options refuse with the named option', async () => {
     await expect(run(['report', '--note', 'n_conf', '--evidence', 'e'])).rejects.toThrow(/required option '--reason/);
     await expect(run(['report', '--reason', 'r', '--evidence', 'e'])).rejects.toThrow(/required option '--note/);
-    await expect(run(['resolve', '--note', 'n_conf'])).rejects.toThrow(/required option '--resolution/);
+    await expect(run(['report', '--note', 'n_conf', '--reason', 'r'])).rejects.toThrow(/required option '--evidence/);
+    await expect(run(['resolve', '--resolution', 'r'])).rejects.toThrow(/--id/);
+    await expect(run(['resolve', '--id', 'cnr_20261118_0000aa'])).rejects.toThrow(/required option '--resolution/);
   });
 });

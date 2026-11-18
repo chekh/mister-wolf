@@ -21,6 +21,7 @@ import {
   resolveMicroNoteSuppression,
 } from '../../app/use-cases/micro-note-contradiction.js';
 import { loadWolfConfigSync } from '../fs/config-file.js';
+import { JsonlMicroNoteDeliveryLog } from '../fs/jsonl-micro-note-delivery-log.js';
 import { scanProjectCached } from '../../app/use-cases/scan-project.js';
 import { openScanSnapshotCache } from '../fs/scan-snapshot-cache.js';
 import { projectTreeSignature } from '../fs/heuristic-project-scanner.js';
@@ -166,6 +167,10 @@ export function registerMemoryTools(
   deps: ReturnType<typeof createCliContainer>,
   baseDir: string
 ): void {
+  // 3.3.1 (REQ-331-2, design §3): инъекция журнала разделяется — поиск остаётся
+  // sqlite-индексом (deps.index), журнал атрибуции/подавлений — постоянный
+  // append-only JSONL вне кэша (тот же носитель, что CLI call/brief/contradict).
+  const noteLog = new JsonlMicroNoteDeliveryLog(baseDir);
   // P1 D5: телеметрия mcp_call вокруг каждого handler'а. Дешёвая: appendMcpCallSignal
   // с signalKey(mcp_call) = null → без reparse лога; сбой телеметрии не ломает вызов.
   // Волна 0 0.1: обогащение detail по инструменту (args_summary/memory_id/memory_ids,
@@ -458,12 +463,13 @@ export function registerMemoryTools(
     }
   );
 
-  // Волна R-4 (REQ-R4-2, AC-2.1/AC-2.2): противоречия микро-заметок — тот же
-  // use-case 3.2.0 T-09 (S-27) и тот же журнал подавлений, что CLI
-  // `wolf contradict` (один носитель, deps.index как noteLog — как в brief).
-  // Требования полей действия — на уровне схемы (discriminatedUnion,
-  // AC-2.3); ошибки use-case/порта пробрасываются без подмены текстов.
-  // Актёра не вводим (схема журнала 3.2.0 не меняется).
+  // Волна R-4 (REQ-R4-2) + патч 3.3.1 (REQ-331-1/4): противоречия микро-заметок —
+  // тот же use-case и тот же постоянный JSONL-журнал (noteLog), что CLI
+  // `wolf contradict` (один носитель). report печатает suppression_id; resolve
+  // адресует запись журнала по id. Требования полей действия — на уровне схемы
+  // (discriminatedUnion, AC-2.3); пустые reason/evidence отклоняются схемой
+  // до use-case (T-4.3). Ошибки use-case/порта пробрасываются без подмены
+  // текстов. Актёра не вводим. Новых тулов/actions нет (NFR-331-1).
   register(
     'note_contradiction',
     {
@@ -474,36 +480,41 @@ export function registerMemoryTools(
     async (input: unknown) => {
       const args = input as {
         action: 'report' | 'resolve';
-        note_id: string;
-        reason: string;
-        contradiction_evidence: string;
-        resolution: string;
+        note_id?: string;
+        reason?: string;
+        contradiction_evidence?: string;
+        suppression_id?: string;
+        resolution?: string;
       };
       if (args.action === 'report') {
         const result = await reportMicroNoteContradiction(
-          { store: deps.store, clock: deps.clock, log: deps.index },
-          { note_id: args.note_id, reason: args.reason, contradiction_evidence: args.contradiction_evidence }
+          { store: deps.store, clock: deps.clock, log: noteLog, idGen: deps.idGen },
+          {
+            note_id: args.note_id!,
+            reason: args.reason!,
+            contradiction_evidence: args.contradiction_evidence!,
+          }
         );
         return {
           content: [
             {
               type: 'text' as const,
-              text: `Contradiction recorded: ${result.note_evidence} (suppressed until resolved; suppressed at ${result.suppressed_at}). Evidence: ${result.contradiction_evidence}`,
+              text: `Contradiction recorded: ${result.suppression_id} for ${result.note_evidence} (suppressed until resolved; suppressed at ${result.suppressed_at}). Evidence: ${result.contradiction_evidence}`,
             },
           ],
         };
       }
       const result = resolveMicroNoteSuppression(
-        { clock: deps.clock, log: deps.index },
-        { note_id: args.note_id, resolution: args.resolution }
+        { clock: deps.clock, log: noteLog },
+        { suppression_id: args.suppression_id!, resolution: args.resolution! }
       );
       // Точный id@rev12 — из записи журнала (аудит сохраняется и после резолва)
-      const record = deps.index.suppressions().find((s) => s.memory_id === result.memory_id);
+      const record = noteLog.suppressions().find((s) => s.suppression_id === result.suppression_id);
       return {
         content: [
           {
             type: 'text' as const,
-            text: `Suppression resolved: ${record?.note_evidence ?? result.memory_id} (resolved at ${result.resolved_at})`,
+            text: `Suppression resolved: ${record?.note_evidence ?? result.suppression_id} (resolved at ${result.resolved_at})`,
           },
         ],
       };
@@ -525,10 +536,10 @@ export function registerMemoryTools(
         baseDir
       );
       // 3.2.0 T-10/F-2: same real context as the CLI brief (REQ-09) — project =
-      // the wolf memory root of baseDir, version = the wolf version. The shared
-      // SQLite log persists attribution (channel "brief") and supplies S-27
-      // suppressions.
-      const brief = await generateAgentBrief({ ...deps, noteLog: deps.index }, baseDir, scanResult.snapshot, {
+      // the wolf memory root of baseDir, version = the wolf version. 3.3.1: the
+      // persistent JSONL log supplies S-27 suppressions and records attribution
+      // (channel "brief").
+      const brief = await generateAgentBrief({ ...deps, noteLog }, baseDir, scanResult.snapshot, {
         microNotes: { context: { projectId: deps.memoryRoot, version: getWolfVersion() } },
       });
       // P2 D1: бриф реально инъекцировал объекты → injected

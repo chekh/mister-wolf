@@ -167,14 +167,40 @@ function formatMicroBlock(candidate: Omit<MicroNoteCandidate, 'block'>, body: st
  * единая политика допуска REQ-321-2 — используется селектором и legacy-ветками):
  * подавление живёт на ревизии; правка факта — исход пересмотра, запись
  * возвращается в доставку. null — активного подавления этой ревизии нет.
+ *
+ * Патч 3.3.1 (AC-1.5, design §4): семантика «some» — блокирует ЛЮБАЯ открытая
+ * запись текущей ревизии (записей одной заметки может быть несколько);
+ * причина — от последней открытой записи этой ревизии (детерминированно).
  */
 export function openContradiction(
   obj: MemoryObject,
   suppressions: readonly MicroNoteSuppressionRecord[]
 ): { revision: string; reason: string } | null {
   const revision = learningSignalRevision(obj);
-  const open = suppressions.find((s) => s.memory_id === obj.id && s.resolved_at === null && s.revision === revision);
-  return open === undefined ? null : { revision, reason: open.reason };
+  let latest: MicroNoteSuppressionRecord | undefined;
+  for (const s of suppressions) {
+    if (s.memory_id !== obj.id || s.resolved_at !== null || s.revision !== revision) continue;
+    if (latest === undefined || s.suppressed_at > latest.suppressed_at) latest = s;
+  }
+  return latest === undefined ? null : { revision, reason: latest.reason };
+}
+
+/**
+ * Патч 3.3.1 (AC-5.2/AC-5.4, design §9): актуальность блокировки открытой записи —
+ * ТО ЖЕ правило, что фильтр доставки (openContradiction): actual — ревизия записи
+ * равна текущей ревизии заметки (блокирует доставку сейчас); superseded — заметка
+ * пересмотрена (запись истории); unknown — заметки нет в store или ревизию
+ * определить нельзя (REQ-03: unknown stays unknown). list не может показать
+ * «actual» для не блокирующей записи и наоборот.
+ */
+export type SuppressionBlockState = 'actual' | 'superseded' | 'unknown';
+
+export function suppressionBlockState(
+  record: MicroNoteSuppressionRecord,
+  note: MemoryObject | undefined
+): SuppressionBlockState {
+  if (note === undefined) return 'unknown';
+  return record.revision === learningSignalRevision(note) ? 'actual' : 'superseded';
 }
 
 /**

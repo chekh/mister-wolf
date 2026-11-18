@@ -244,6 +244,7 @@ describe('generateAgentBrief', () => {
 
   function openSuppression(id: string, obj: MemoryObject): MicroNoteSuppressionRecord {
     return {
+      suppression_id: `cnr_test_${id}`,
       memory_id: id,
       revision: learningSignalRevision(obj),
       reason: 'observed contradiction',

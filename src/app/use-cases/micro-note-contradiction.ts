@@ -5,6 +5,7 @@ import { SignalEvent } from '../../adapters/fs/session-metrics-log.js';
 import { learningSignalRevision } from '../../domain/learning-signals.js';
 import type { MemoryStore } from '../../ports/memory-store.port.js';
 import type { Clock } from '../../ports/clock.port.js';
+import type { IdGenerator } from '../../ports/id-generator.port.js';
 import type { MicroNoteDeliveryLog } from '../../ports/micro-note-delivery-log.port.js';
 import { MICRO_NOTE_TAG } from './micro-note-delivery.js';
 
@@ -27,6 +28,8 @@ export interface ReportMicroNoteContradictionInput {
 }
 
 export interface MicroNoteSuppressionResult {
+  /** Patch 3.3.1 (AC-1.2): id of THIS contradiction record (cnr_YYYYMMDD_<hex>). */
+  suppression_id: string;
   memory_id: string;
   revision: string;
   note_evidence: string;
@@ -44,10 +47,28 @@ function isMicroNoteObject(obj: MemoryObject): boolean {
   );
 }
 
+/**
+ * Patch 3.3.1 (REQ-331-1, design §4): suppression id from the project id
+ * generator (the same one that creates `mem_…` ids) with the `cnr_` prefix —
+ * `cnr_<YYYYMMDD>_<hash6>`. The observation fingerprint (note + both evidences
+ * + timestamp) makes distinct reports distinct ids; a retry at a later moment
+ * generates a new id (design §4: duplicate → port refusal, retry ok).
+ */
+function suppressionId(idGen: IdGenerator, at: Date, fingerprint: string): string {
+  return idGen.generateMemoryId(at, undefined, fingerprint).replace(/^mem_/, 'cnr_');
+}
+
 export async function reportMicroNoteContradiction(
-  deps: { store: MemoryStore; clock: Clock; log: MicroNoteDeliveryLog },
+  deps: { store: MemoryStore; clock: Clock; log: MicroNoteDeliveryLog; idGen: IdGenerator },
   input: ReportMicroNoteContradictionInput
 ): Promise<MicroNoteSuppressionResult> {
+  // Patch 3.3.1 (REQ-331-4, design §8): одно место правила для CLI и MCP —
+  // пустая или whitespace-only reason ИЛИ evidence — отказ; в журнал пишутся trim-значения.
+  const reason = input.reason.trim();
+  const evidence = input.contradiction_evidence.trim();
+  if (!reason || !evidence) {
+    throw new UserFacingError('report requires reason and contradiction evidence (REQ-03: unknown stays unknown)');
+  }
   const objects = await deps.store.list();
   const note = objects.find((o) => o.id === input.note_id);
   if (!note || !isMicroNoteObject(note)) {
@@ -55,28 +76,33 @@ export async function reportMicroNoteContradiction(
     throw new UserFacingError(`unknown micro-note "${input.note_id}": no active micro-note with this id`);
   }
   const revision = learningSignalRevision(note);
-  const at = deps.clock.now().toISOString();
+  const at = deps.clock.now();
   const noteEvidence = `${note.id}@${revision.slice(0, 12)}`;
-  deps.log.recordSuppression({
+  const record = {
+    suppression_id: suppressionId(deps.idGen, at, `${input.note_id}|${reason}|${evidence}|${at.toISOString()}`),
     memory_id: note.id,
     revision,
-    reason: input.reason,
+    reason,
     note_evidence: noteEvidence,
-    contradiction_evidence: input.contradiction_evidence,
-    suppressed_at: at,
+    contradiction_evidence: evidence,
+    suppressed_at: at.toISOString(),
     resolved_at: null,
     resolution: null,
-  });
+  };
+  deps.log.recordSuppression(record);
   return {
+    suppression_id: record.suppression_id,
     memory_id: note.id,
     revision,
     note_evidence: noteEvidence,
-    contradiction_evidence: input.contradiction_evidence,
-    suppressed_at: at,
+    contradiction_evidence: evidence,
+    suppressed_at: record.suppressed_at,
   };
 }
 
 export interface ResolveSuppressionResult {
+  /** Patch 3.3.1 (AC-1.3): resolve addresses ONE suppression record by its id. */
+  suppression_id: string;
   memory_id: string;
   resolved_at: string;
   resolution: string;
@@ -84,15 +110,22 @@ export interface ResolveSuppressionResult {
 
 export function resolveMicroNoteSuppression(
   deps: { clock: Clock; log: MicroNoteDeliveryLog },
-  input: { note_id: string; resolution: string }
+  input: { suppression_id: string; resolution: string }
 ): ResolveSuppressionResult {
-  if (!input.note_id.trim() || !input.resolution.trim()) {
-    throw new UserFacingError('resolve requires note id and resolution text (REQ-03: unknown stays unknown)');
+  if (!input.suppression_id.trim() || !input.resolution.trim()) {
+    throw new UserFacingError('resolve requires suppression id and resolution text (REQ-03: unknown stays unknown)');
   }
+  const suppressionId = input.suppression_id.trim();
   const at = deps.clock.now().toISOString();
-  // Unknown/unresolved id → port refuses (REQ-03: unknown stays unknown).
-  deps.log.resolveSuppression(input.note_id.trim(), input.resolution.trim(), at);
-  return { memory_id: input.note_id.trim(), resolved_at: at, resolution: input.resolution.trim() };
+  // Unknown/unresolved record id → port refuses (REQ-03: unknown stays unknown).
+  deps.log.resolveSuppression(suppressionId, input.resolution.trim(), at);
+  const record = deps.log.suppressions().find((s) => s.suppression_id === suppressionId)!;
+  return {
+    suppression_id: record.suppression_id,
+    memory_id: record.memory_id,
+    resolved_at: at,
+    resolution: input.resolution.trim(),
+  };
 }
 
 /** Valid memory_stage signal guard (same shape as build-analytics). */

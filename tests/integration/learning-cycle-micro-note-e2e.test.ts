@@ -30,6 +30,7 @@ import {
 } from '../../src/app/use-cases/micro-note-contradiction.js';
 import { MarkdownMemoryStore } from '../../src/adapters/fs/markdown-memory-store.js';
 import { SQLiteSearchIndex } from '../../src/adapters/sqlite/sqlite-search-index.js';
+import { JsonlMicroNoteDeliveryLog } from '../../src/adapters/fs/jsonl-micro-note-delivery-log.js';
 import { FsFileSystem } from '../../src/adapters/fs/fs-file-system.js';
 import { HeuristicProjectScanner } from '../../src/adapters/fs/heuristic-project-scanner.js';
 import { indexPath, targetPathFor } from '../../src/adapters/fs/project-paths.js';
@@ -64,6 +65,12 @@ describe('learning cycle end-to-end: signal → candidate → apply → micro-no
     };
   }
 
+  /** Патч 3.3.1 (REQ-331-2): журнал — постоянный JSONL вне кэша, каждый шаг
+   * канала моделирует новый процесс, читающий тот же файл. */
+  function journal(): JsonlMicroNoteDeliveryLog {
+    return new JsonlMicroNoteDeliveryLog(container.memoryRoot);
+  }
+
   it('delivers an accepted learning change as an attributed, suppressible micro-note', async () => {
     // Step 1 — a signal is recorded (a lesson enters the memory and the index).
     const { object: signal } = await addMemoryObject(
@@ -80,12 +87,12 @@ describe('learning cycle end-to-end: signal → candidate → apply → micro-no
     // nothing — the lesson is not delivered and nothing is attributed.
     const gate = fresh();
     const beforeTag = await getCallInjections(
-      { store: gate.store, clock, noteLog: gate.index },
+      { store: gate.store, clock, noteLog: journal() },
       { microNotes: { projectId: container.memoryRoot, version: '3.2.0' } }
     );
     expect(beforeTag.microNotes!.blocks).toEqual([]);
     expect(beforeTag.deliveredIds).not.toContain(signal.id);
-    expect(gate.index.deliveries()).toEqual([]);
+    expect(journal().deliveries()).toEqual([]);
 
     // Step 2 — `wolf learn due`: deterministic read-only hint; nothing dispatched.
     const due = getLearningDue({ signals: container.index, mode: 'suggest' });
@@ -188,13 +195,13 @@ describe('learning cycle end-to-end: signal → candidate → apply → micro-no
     const rev = learningSignalRevision(signal);
     const call = fresh();
     const result = await getCallInjections(
-      { store: call.store, clock, noteLog: call.index },
+      { store: call.store, clock, noteLog: journal() },
       { microNotes: { projectId: container.memoryRoot, version: '3.2.0', target: 'retry before rerun' } }
     );
     expect(result.microNotes!.delivered.map((c) => c.id)).toEqual([signal.id]);
     expect(result.microNotes!.blocks.join('\n')).toContain(`[${signal.id}@${rev.slice(0, 12)}]`);
     expect(result.deliveredIds).toContain(signal.id);
-    expect(call.index.deliveries()).toEqual([
+    expect(journal().deliveries()).toEqual([
       { memory_id: signal.id, revision: rev, channel: 'call', kind: 'delivered', ts: FIXED_TS },
     ]);
 
@@ -202,9 +209,8 @@ describe('learning cycle end-to-end: signal → candidate → apply → micro-no
     // attributes channel "brief"; the context here is explicit because this
     // fixture bypasses the adapters (their wiring: memory-brief.test.ts).
     const snapshot = await new HeuristicProjectScanner(new FsFileSystem()).scan(dir);
-    const briefIndex = new SQLiteSearchIndex(indexPath(container.memoryRoot));
     const brief = await generateAgentBrief(
-      { store: fresh().store, fs: new FsFileSystem(), clock, noteLog: briefIndex },
+      { store: fresh().store, fs: new FsFileSystem(), clock, noteLog: journal() },
       dir,
       snapshot,
       { microNotes: { context: { projectId: container.memoryRoot } } }
@@ -216,12 +222,12 @@ describe('learning cycle end-to-end: signal → candidate → apply → micro-no
     // The delivery log is persistent and shared: it holds the call row from
     // step 7 and appends this brief delivery after it.
     expect(
-      briefIndex
+      journal()
         .deliveries()
         .filter((d) => d.kind === 'delivered')
         .map((d) => d.channel)
     ).toEqual(['call', 'brief']);
-    expect(briefIndex.deliveries().at(-1)).toMatchObject({
+    expect(journal().deliveries().at(-1)).toMatchObject({
       memory_id: signal.id,
       revision: rev,
       channel: 'brief',
@@ -233,7 +239,7 @@ describe('learning cycle end-to-end: signal → candidate → apply → micro-no
     // the same revision stays out; both evidences are kept verbatim.
     const conflict = fresh();
     const report = await reportMicroNoteContradiction(
-      { store: conflict.store, clock, log: conflict.index },
+      { store: conflict.store, clock, log: journal(), idGen: container.idGen },
       {
         note_id: signal.id,
         reason: 'hint says retry; observed retries masked the broken probe',
@@ -241,30 +247,31 @@ describe('learning cycle end-to-end: signal → candidate → apply → micro-no
       }
     );
     expect(report.memory_id).toBe(signal.id);
+    expect(report.suppression_id).toMatch(/^cnr_\d{8}_[0-9a-f]{6}$/);
 
     const suppressed = fresh();
     const during = await getCallInjections(
-      { store: suppressed.store, clock, noteLog: suppressed.index },
+      { store: suppressed.store, clock, noteLog: journal() },
       { microNotes: { projectId: container.memoryRoot } }
     );
     expect(during.microNotes!.delivered).toEqual([]);
     expect(during.microNotes!.underReview.map((u) => u.id)).toEqual([signal.id]);
-    const record = suppressed.index.suppressions()[0]!;
+    const record = journal().suppressions()[0]!;
     expect(record.resolved_at).toBeNull();
     expect(record.note_evidence).toBe(`${signal.id}@${rev.slice(0, 12)}`);
     expect(record.contradiction_evidence).toBe('session sess-e2e: rerun failed twice with retry applied');
 
     // Step 9 — resolve: delivery resumes; the audit row keeps the resolution.
     resolveMicroNoteSuppression(
-      { clock, log: suppressed.index },
-      { note_id: signal.id, resolution: 'lead confirmed: probe fixed, hint stays' }
+      { clock, log: journal() },
+      { suppression_id: record.suppression_id, resolution: 'lead confirmed: probe fixed, hint stays' }
     );
     const released = fresh();
     const after = await getCallInjections(
-      { store: released.store, clock, noteLog: released.index },
+      { store: released.store, clock, noteLog: journal() },
       { microNotes: { projectId: container.memoryRoot } }
     );
     expect(after.microNotes!.delivered.map((c) => c.id)).toEqual([signal.id]);
-    expect(released.index.suppressions()[0]!.resolution).toBe('lead confirmed: probe fixed, hint stays');
+    expect(journal().suppressions()[0]!.resolution).toBe('lead confirmed: probe fixed, hint stays');
   });
 });

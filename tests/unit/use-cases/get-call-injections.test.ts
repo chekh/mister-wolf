@@ -892,6 +892,7 @@ describe('getCallInjections', () => {
   /** Открытое подавление противоречием на текущей ревизии содержимого (S-27). */
   function openSuppression(id: string, obj: Record<string, unknown>): MicroNoteSuppressionRecord {
     return {
+      suppression_id: `cnr_test_${id}`,
       memory_id: id,
       revision: learningSignalRevision(obj as MemoryObject),
       reason: 'observed contradiction',

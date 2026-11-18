@@ -12,8 +12,7 @@ import { tmpdir } from 'os';
 import { join, dirname } from 'path';
 import yaml from 'js-yaml';
 import { buildMcpServer } from '../../../../src/adapters/mcp/mcp-server.js';
-import { SQLiteSearchIndex } from '../../../../src/adapters/sqlite/sqlite-search-index.js';
-import { indexPath } from '../../../../src/adapters/fs/project-paths.js';
+import { JsonlMicroNoteDeliveryLog } from '../../../../src/adapters/fs/jsonl-micro-note-delivery-log.js';
 import { learningSignalRevision } from '../../../../src/domain/learning-signals.js';
 
 describe('micro-note context wiring in the brief/call adapters (T-10 F-2)', () => {
@@ -68,9 +67,11 @@ describe('micro-note context wiring in the brief/call adapters (T-10 F-2)', () =
     writeFileSync(path, `---\n${yaml.dump(fm)}---\n\nCheck the probe before retrying.`);
   }
 
+  // Патч 3.3.1 (REQ-331-2): журнал доставок — постоянный JSONL вне кэша,
+  // читается тем же адаптером, которым его пишут call/brief-адаптеры.
   function deliveredRows(channel: string): unknown[] {
-    const index = new SQLiteSearchIndex(indexPath(memoryRoot()));
-    return index.deliveries().filter((d) => d.kind === 'delivered' && d.channel === channel);
+    const journal = new JsonlMicroNoteDeliveryLog(memoryRoot());
+    return journal.deliveries().filter((d) => d.kind === 'delivered' && d.channel === channel);
   }
 
   it('CLI brief delivers a project-scoped micro-note with id@rev and attributes channel "brief"', async () => {

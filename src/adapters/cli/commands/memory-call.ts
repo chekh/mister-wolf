@@ -12,6 +12,7 @@ import {
 import { loadDeliverySettings } from '../../../adapters/fs/config-file.js';
 import { resolveMemoryRoot } from '../../../adapters/fs/memory-root.js';
 import { colorsEnabled } from '../../../domain/facet-colors.js';
+import { JsonlMicroNoteDeliveryLog } from '../../../adapters/fs/jsonl-micro-note-delivery-log.js';
 import { getWolfVersion } from '../../version.js';
 import { withCliCall } from './with-cli-call.js';
 
@@ -42,10 +43,13 @@ export function memoryCallCommand(): Command {
         const sessionKey = resolveSessionId();
         const registry = sessionKey ? loadSessionRegistry(baseDir, sessionKey) : null;
         const { store, index, clock, relations, worktree, memoryRoot } = createCliContainer(baseDir);
+        // 3.3.1 (REQ-331-2): поиск — sqlite-индекс, журнал атрибуции/подавлений —
+        // постоянный append-only JSONL вне кэша (переживает rebuild index.sqlite).
+        const noteLog = new JsonlMicroNoteDeliveryLog(baseDir);
         const result = await getCallInjections(
-          // 3.2.0 T-10 (REQ-09/REQ-11): shared SQLite log persists micro-note
+          // 3.2.0 T-10 (REQ-09/REQ-11): the delivery log persists micro-note
           // attribution (selected/delivered, channel "call") and S-27 suppressions.
-          { store, index, clock, relations, noteLog: index },
+          { store, index, clock, relations, noteLog },
           {
             topic: options.for,
             thread: options.thread !== undefined ? options.thread : undefined,
