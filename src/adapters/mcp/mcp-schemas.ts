@@ -97,3 +97,25 @@ export const MemoryTransitionInputSchema = z.object({
  * поверхностями T-05/T-06 одним изменением каталога.
  */
 export const ProposeCandidateInputSchema = z.object({ input: z.object({}) });
+
+/**
+ * Волна R-4 (REQ-R4-2, AC-2.3): вход тула `note_contradiction` — один
+ * составной тул с action:'report'|'resolve' (прецедент: council_record /
+ * propose_candidate). Поля действия требуются НА УРОВНЕ СХЕМЫ
+ * (discriminatedUnion): неполный вход — ошибка схемы до handler'а, не тихий
+ * пропуск. Актёра в схеме нет — журнал подавлений (S-27) актёра не хранит,
+ * схема 3.2.0 не меняется.
+ */
+export const NoteContradictionInputSchema = z.discriminatedUnion('action', [
+  z.object({
+    action: z.literal('report'),
+    note_id: z.string(),
+    reason: z.string(),
+    contradiction_evidence: z.string(),
+  }),
+  z.object({
+    action: z.literal('resolve'),
+    note_id: z.string(),
+    resolution: z.string(),
+  }),
+]);

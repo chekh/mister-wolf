@@ -8,6 +8,69 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [3.2.1] - 2026-11-18
+
+### Fixed — post-release review of 3.2.0: rollback verifies backup content, one delivery admission filter, scope boundaries, micro-note body in full
+
+The owner's post-release review of v3.2.0 (verdict CHANGES_REQUIRED, journal
+`mem_20261118_84e9a5`) found two P1 defects and three functional gaps. 3.2.1 fixes four
+of them (R-4, the CLI/MCP contradiction operations, is a separate mandate after this
+patch). Every fix carries a regression test pinned to the reviewer's reproduction:
+red on 3.2.0 mechanics, green after the fix; independent review of the whole wave
+passed with no blocking findings.
+
+- **Rollback verifies backup content before the first write (R-1, P1).** The check
+  compared the stored `sha256` field with the baseline but never hashed the backup's
+  actual content: corrupted backup content with an intact field was written into the
+  target file, and the mismatch surfaced only after the write. Now every backup entry
+  is content-hashed before the first write (all-or-nothing refusal, named cause); the
+  same verification runs when `apply` reuses an existing backup (the recovered path
+  of an interrupted run).
+- **One admission filter for every delivery section (R-2, P1).** The 3.2.0 micro-note
+  selector filtered applicability, contradiction suppression and worktree scope, but
+  the legacy delivery branches (`wolf call` topic/lessons/keyword/fallback/thread and
+  the `wolf brief` sections) delivered objects without those checks: a darwin-scoped
+  rule landed in output under linux, a contradiction-suppressed rule landed in `call`,
+  a foreign-worktree record landed in main. A single admission policy
+  (`memory-delivery-admission.ts`) is now consulted by every selection branch of both
+  channels; micro-note-tagged objects are delivered only through the micro selector;
+  the selector's exclusions match the actual output and exact `id@rev` attribution is
+  preserved. Universal objects (no `applies`/`scope`/suppressions) deliver exactly as
+  before.
+- **`wolf brief` joins read isolation (R-2 consequence).** The frozen 2.17.1 contract
+  "isolated: `wolf call` only" is extended by an explicit requirements change (the
+  owner's unified-filter decision): `wolf brief` (and its MCP mirror `mr-wolf_brief`)
+  now apply the same worktree/applicability/contradiction admission. Canonical pages
+  `guide/read-isolation` (EN/RU) and the doc-guard test were updated in the same
+  change, per the frozen-contract procedure.
+- **`apply` cross-checks `scope.target_paths` with baseline and patch (R-3, P2).** The
+  preflight verified patch↔candidate-hash↔baseline↔disk but never the declared scope:
+  a candidate declaring `other/approved.md` while touching `skills/a.md` was accepted
+  and applied. Now the accept gate refuses a candidate whose baseline lies outside its
+  declared scope, and the apply preflight refuses any baseline/patch path outside the
+  scope before the first write; paths are normalized on both sides (`./x` equals `x`).
+- **Micro-note body is delivered in full within budget (R-5, P2).** `formatMicroBlock`
+  emitted only the first line of the body regardless of the budget: the repro note
+  "Build note / NEVER run deploy before approval" lost its constraint. Now the full
+  body is delivered when it fits; budget clipping always carries a visible
+  `… [truncated]` marker — a constraint-tagged note is never silently truncated.
+
+### Added — release pipeline
+
+- **`publish.yml` creates the GitHub Release page automatically.** After a successful
+  publish, the workflow extracts the released version's section from `CHANGELOG.md`
+  and creates the release page (updates notes on a re-run, keeps an existing title).
+  A pushed tag now delivers both the npm package and the release page.
+
+### Deferred (out of 3.2.1 scope, owner decision 2026-11-18)
+
+- R-4: lead-accessible CLI/MCP operations to register and resolve micro-note
+  contradictions (the use-case exists since 3.2.0; no CLI/MCP route yet) — separate
+  mandate after this patch, before any expansion of `apply-approved` auto-apply.
+- Deferred behavioral scenarios (held-out S-16/25/27) and a new model campaign: after
+  R-4. Baseline↔patch path matching without normalization (pre-3.2.0 behavior, not a
+  regression) is a candidate for a future hardening wave.
+
 ## [3.2.0] - 2026-11-17
 
 ### Added — the governed learning cycle ships: `wolf-steward` (the 10th agent) and `wolf-learning-cycle` (the 36th skill) turn accepted signals into exact, reversible method changes

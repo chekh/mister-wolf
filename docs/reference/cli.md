@@ -1169,6 +1169,65 @@ Options:
   -h, --help             display help for command
 ```
 
+### wolf contradict
+
+```text
+Usage: wolf contradict [options] [command]
+
+Micro-note contradictions: report/resolve/list (REQ-R4-1; suppression journal)
+
+Options:
+  -h, --help         display help for command
+
+Commands:
+  report [options]   Record a contradiction against an active micro-note
+                     (suppresses delivery until resolved)
+  resolve [options]  Resolve the open suppression of a micro-note (delivery
+                     resumes; audit row stays)
+  list               List open micro-note suppressions (read-only)
+  help [command]     display help for command
+```
+
+#### wolf contradict report
+
+```text
+Usage: wolf contradict report [options]
+
+Record a contradiction against an active micro-note (suppresses delivery until
+resolved)
+
+Options:
+  --note <id>            Memory id of the micro-note
+  --reason <reason>      Why the note is contradicted
+  --evidence <evidence>  Verbatim observation contradicting the note
+  -h, --help             display help for command
+```
+
+#### wolf contradict resolve
+
+```text
+Usage: wolf contradict resolve [options]
+
+Resolve the open suppression of a micro-note (delivery resumes; audit row
+stays)
+
+Options:
+  --note <id>                Memory id of the suppressed micro-note
+  --resolution <resolution>  How the contradiction was resolved
+  -h, --help                 display help for command
+```
+
+#### wolf contradict list
+
+```text
+Usage: wolf contradict list [options]
+
+List open micro-note suppressions (read-only)
+
+Options:
+  -h, --help  display help for command
+```
+
 ### wolf analytics
 
 ```text

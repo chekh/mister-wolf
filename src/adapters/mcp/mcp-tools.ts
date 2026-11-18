@@ -15,7 +15,11 @@ import { listMemoryObjects } from '../../app/use-cases/list-memory-objects.js';
 import { transitionMemoryObject } from '../../app/use-cases/transition-memory-object.js';
 import { recordCouncil, type CouncilRecordEnvelope } from '../../app/use-cases/record-council.js';
 import { saveLearningCandidate } from '../../app/use-cases/save-proposal.js';
-import { ProposeCandidateInputSchema } from './mcp-schemas.js';
+import { ProposeCandidateInputSchema, NoteContradictionInputSchema } from './mcp-schemas.js';
+import {
+  reportMicroNoteContradiction,
+  resolveMicroNoteSuppression,
+} from '../../app/use-cases/micro-note-contradiction.js';
 import { loadWolfConfigSync } from '../fs/config-file.js';
 import { scanProjectCached } from '../../app/use-cases/scan-project.js';
 import { openScanSnapshotCache } from '../fs/scan-snapshot-cache.js';
@@ -30,8 +34,9 @@ import { resolveSessionId } from '../../domain/actor.js';
 
 /**
  * Каталог MCP-тулов: диета 2.13 (спека §6.2, §7 C11) + REL-231-A P04/W4
- * (AC-A3) council_record + 3.2.0 T-04/T-05 propose_candidate = 9 тулов,
- * порог ≤ 12. `ping` — отдельный health-check в mcp-server.ts, в каталог не входит.
+ * (AC-A3) council_record + 3.2.0 T-04/T-05 propose_candidate + волна R-4
+ * note_contradiction = 10 тулов, порог ≤ 12. `ping` — отдельный health-check
+ * в mcp-server.ts, в каталог не входит.
  */
 export const MCP_TOOL_NAMES = [
   'search',
@@ -43,6 +48,7 @@ export const MCP_TOOL_NAMES = [
   'recap',
   'council_record',
   'propose_candidate',
+  'note_contradiction',
 ] as const;
 
 /** REL-231-A W4 (D-W4-2): envelope приходит объектом в поле `input` (без чтения
@@ -449,6 +455,58 @@ export function registerMemoryTools(
         ? `Existing learning candidate returned: ${result.object.id} (change_id=${result.envelope.change_id}, request_key=${result.envelope.request_key.slice(0, 12)}; no new candidate created)`
         : `Learning candidate saved: ${result.object.id} (change_id=${result.envelope.change_id}, request_key=${result.envelope.request_key.slice(0, 12)}, phase=${result.envelope.phase}; nothing is activated — acceptance/activation stay null)`;
       return { content: [{ type: 'text' as const, text }] };
+    }
+  );
+
+  // Волна R-4 (REQ-R4-2, AC-2.1/AC-2.2): противоречия микро-заметок — тот же
+  // use-case 3.2.0 T-09 (S-27) и тот же журнал подавлений, что CLI
+  // `wolf contradict` (один носитель, deps.index как noteLog — как в brief).
+  // Требования полей действия — на уровне схемы (discriminatedUnion,
+  // AC-2.3); ошибки use-case/порта пробрасываются без подмены текстов.
+  // Актёра не вводим (схема журнала 3.2.0 не меняется).
+  register(
+    'note_contradiction',
+    {
+      description:
+        'Report or resolve a micro-note contradiction (suppresses/resumes delivery; both evidences kept verbatim)',
+      inputSchema: NoteContradictionInputSchema,
+    },
+    async (input: unknown) => {
+      const args = input as {
+        action: 'report' | 'resolve';
+        note_id: string;
+        reason: string;
+        contradiction_evidence: string;
+        resolution: string;
+      };
+      if (args.action === 'report') {
+        const result = await reportMicroNoteContradiction(
+          { store: deps.store, clock: deps.clock, log: deps.index },
+          { note_id: args.note_id, reason: args.reason, contradiction_evidence: args.contradiction_evidence }
+        );
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Contradiction recorded: ${result.note_evidence} (suppressed until resolved; suppressed at ${result.suppressed_at}). Evidence: ${result.contradiction_evidence}`,
+            },
+          ],
+        };
+      }
+      const result = resolveMicroNoteSuppression(
+        { clock: deps.clock, log: deps.index },
+        { note_id: args.note_id, resolution: args.resolution }
+      );
+      // Точный id@rev12 — из записи журнала (аудит сохраняется и после резолва)
+      const record = deps.index.suppressions().find((s) => s.memory_id === result.memory_id);
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Suppression resolved: ${record?.note_evidence ?? result.memory_id} (resolved at ${result.resolved_at})`,
+          },
+        ],
+      };
     }
   );
 
