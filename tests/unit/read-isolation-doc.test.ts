@@ -30,7 +30,7 @@ function srcTsFiles(dir = join(root, 'src')): string[] {
 describe('NFR-03 (R02): doc — страница «изоляция чтения» с замороженным списком', () => {
   it('EN-страница существует и содержит оба крыла замороженного списка', () => {
     const doc = read('docs/site/guide/read-isolation.md');
-    expect(doc).toContain('## Isolated: `wolf call` only');
+    expect(doc).toContain('## Isolated: `wolf call` and `wolf brief`');
     expect(doc).toContain('## Not isolated: the whole project memory');
     expect(doc).toContain('worktree');
     // сентинелы поэлементного состава (Minor-3 ревью T6): не только заголовки
@@ -41,7 +41,7 @@ describe('NFR-03 (R02): doc — страница «изоляция чтения
 
   it('RU-страница существует и содержит оба крыла замороженного списка', () => {
     const doc = read('docs/site/ru/guide/read-isolation.md');
-    expect(doc).toContain('## Изолировано: только `wolf call`');
+    expect(doc).toContain('## Изолировано: `wolf call` и `wolf brief`');
     expect(doc).toContain('## Не изолировано: вся память проекта');
     expect(doc).toContain('worktree');
     expect(doc).toContain('`wolf brief`');
@@ -58,9 +58,17 @@ describe('NFR-03 (R02): doc — страница «изоляция чтения
 describe('NFR-03 (R02): code — состав изолированных read-путей соответствует списку', () => {
   const files = srcTsFiles();
 
-  it('предикат видимости (isVisible) живёт только в call-пути доставкe', () => {
+  it('предикат видимости (isVisible) живёт только в delivery-admission путях (call/brief)', () => {
+    // 3.2.1 (REQ-321-2, R-2): единая политика допуска — scope-фильтр перенесён в
+    // memory-delivery-admission.ts и применяется И к brief (изменение требований
+    // владельца: «единый фильтр допуска до формирования любых секций вывода»).
+    // Реализация — admission-модуль; потребители — call-инъекции и микро-селектор.
     const withPredicate = files.filter((f) => /isVisible/.test(read(f)));
-    expect(withPredicate).toEqual(['src/app/use-cases/get-call-injections.ts']);
+    expect(withPredicate).toEqual([
+      'src/app/use-cases/get-call-injections.ts',
+      'src/app/use-cases/memory-delivery-admission.ts',
+      'src/app/use-cases/micro-note-delivery.ts',
+    ]);
   });
 
   it('call-инъекции потребляются только каналами контракта (CLI wolf call; MCP-зеркало)', () => {

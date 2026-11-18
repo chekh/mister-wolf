@@ -2,6 +2,7 @@
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import { learningSignalRevision } from '../../domain/learning-signals.js';
 import type { MicroNoteSuppressionRecord } from '../../ports/micro-note-delivery-log.port.js';
+import type { WorktreeVisibility } from './memory-delivery-admission.js';
 
 /**
  * 3.2.0 T-09 (REQ-09, design §3.1/§7): адресный selector micro-notes — короткие
@@ -103,7 +104,7 @@ function stringArrayOf(raw: unknown): string[] | null {
 }
 
 /** undefined — no applicability declared (universal); null — malformed (fail-closed). */
-function applicabilityOf(obj: MemoryObject): ParsedApplicability | null | undefined {
+export function applicabilityOf(obj: MemoryObject): ParsedApplicability | null | undefined {
   const raw = (obj as Record<string, unknown>).applies;
   if (raw === undefined) return undefined;
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return null;
@@ -141,11 +142,39 @@ export function appliesToContext(applies: ParsedApplicability | null | undefined
   );
 }
 
+/** AC-5.2 (REQ-321-5): маркер видимого усечения — бюджет режет текст, но не молча. */
+const TRUNCATION_MARKER = '… [truncated]';
+
+/** Усечение с явным маркером (AC-5.2/AC-5.3): результат не длиннее cap. */
+function truncateWithMarker(text: string, cap: number): string {
+  if (text.length <= cap) return text;
+  return text.slice(0, Math.max(0, cap - TRUNCATION_MARKER.length)) + TRUNCATION_MARKER;
+}
+
 function formatMicroBlock(candidate: Omit<MicroNoteCandidate, 'block'>, body: string): string {
   const lines = [`- [${candidate.id}@${candidate.revision.slice(0, 12)}] ${candidate.title}`];
-  const first = body.split('\n')[0].trim();
-  if (first !== '') lines.push(`  ${first}`);
+  // REQ-321-5 (R-5): тело доставляется ЦЕЛИКОМ, не только первая строка (AC-5.1);
+  // режет текст только бюджет — и всегда с явным маркером (AC-5.2/AC-5.3).
+  for (const line of body.split('\n')) {
+    const text = line.trim();
+    if (text !== '') lines.push(`  ${text}`);
+  }
   return lines.join('\n');
+}
+
+/**
+ * Открытое противоречие, привязанное к ТЕКУЩЕЙ ревизии содержимого (S-27;
+ * единая политика допуска REQ-321-2 — используется селектором и legacy-ветками):
+ * подавление живёт на ревизии; правка факта — исход пересмотра, запись
+ * возвращается в доставку. null — активного подавления этой ревизии нет.
+ */
+export function openContradiction(
+  obj: MemoryObject,
+  suppressions: readonly MicroNoteSuppressionRecord[]
+): { revision: string; reason: string } | null {
+  const revision = learningSignalRevision(obj);
+  const open = suppressions.find((s) => s.memory_id === obj.id && s.resolved_at === null && s.revision === revision);
+  return open === undefined ? null : { revision, reason: open.reason };
 }
 
 /**
@@ -159,31 +188,28 @@ export function selectMicroNotes(
   objects: readonly Record<string, unknown>[],
   ctx: MicroNoteContext,
   budget: Partial<MicroNoteBudget> = {},
-  suppressions: readonly MicroNoteSuppressionRecord[] = []
+  suppressions: readonly MicroNoteSuppressionRecord[] = [],
+  /** REQ-321-2 (AC-2.4): worktree-видимость канала; не передана — scope не проверяется. */
+  worktree?: WorktreeVisibility | null
 ): MicroNoteDeliveryResult {
   const limits = { ...DEFAULT_MICRO_NOTE_BUDGET, ...budget };
-  const openByRevision = new Map<string, string>(); // memory_id → reason (open conflict on this revision)
-  for (const s of suppressions) {
-    if (s.resolved_at === null) openByRevision.set(s.memory_id, s.reason);
-  }
 
   const selected: MicroNoteCandidate[] = [];
   const underReview: MicroNoteDeliveryResult['underReview'] = [];
   for (const source of objects) {
     const obj = source as unknown as MemoryObject;
     if (!isMicroNote(obj)) continue;
+    // AC-2.4: та же worktree-видимость, что у legacy-веток канала (единая политика).
+    if (worktree && !worktree.isVisible(source)) continue;
     if (!appliesToContext(applicabilityOf(obj), ctx)) continue;
 
     const revision = learningSignalRevision(obj);
-    const reason = openByRevision.get(obj.id);
-    if (reason !== undefined) {
-      // S-27: open conflict binds to the revision it contradicted; a revised
-      // note is a review outcome and returns to delivery, evidence stays in the log.
-      const suppressedRevision = suppressions.find((s) => s.memory_id === obj.id && s.resolved_at === null)?.revision;
-      if (suppressedRevision === revision) {
-        underReview.push({ id: obj.id, revision, reason });
-        continue;
-      }
+    // S-27: открытое противоречие привязано к ревизии, которую оно противоречило;
+    // подавленная подсказка не доставляется и видна в underReview (openContradiction).
+    const conflict = openContradiction(obj, suppressions);
+    if (conflict !== null) {
+      underReview.push({ id: obj.id, revision, reason: conflict.reason });
+      continue;
     }
     const mandatory = (obj.tags ?? []).includes(CONSTRAINT_TAG);
     const candidate: MicroNoteCandidate = {
@@ -214,10 +240,11 @@ export function selectMicroNotes(
   const skipped: MicroNoteCandidate[] = [];
   let used = 0;
   for (const candidate of order) {
-    // S-18: mandatory constraints are never dropped — oversized text is shortened.
+    // S-18: mandatory constraints are never dropped — oversized text is shortened
+    // with a visible truncation marker (AC-5.2/AC-5.3), never silently.
     let block = candidate.block;
     if (candidate.mandatory && used + block.length > limits.maxChars && block.length > SINGLE_NOTE_HARD_CAP) {
-      block = block.slice(0, SINGLE_NOTE_HARD_CAP);
+      block = truncateWithMarker(block, SINGLE_NOTE_HARD_CAP);
     }
     const fits = used + block.length <= limits.maxChars;
     if (candidate.mandatory) {

@@ -5,12 +5,14 @@ import { Clock } from '../../ports/clock.port.js';
 import { ProjectSnapshot } from '../../domain/schemas/project-scan-schema.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import { briefsDir } from '../../adapters/fs/project-paths.js';
+import { resolveMemoryRoot, type WorktreeIdentity } from '../../adapters/fs/memory-root.js';
 import {
   selectMicroNotes,
   type MicroNoteBudget,
   type MicroNoteContext,
   type MicroNoteDeliveryResult,
 } from './micro-note-delivery.js';
+import { createDeliveryAdmission, createWorktreeVisibility } from './memory-delivery-admission.js';
 import type { MicroNoteDeliveryLog } from '../../ports/micro-note-delivery-log.port.js';
 
 export interface GenerateAgentBriefResult {
@@ -25,6 +27,13 @@ export interface GenerateAgentBriefResult {
 export interface GenerateAgentBriefOptions {
   /** Контекст micro-notes; не передан — { environment: process.platform }. */
   microNotes?: { context?: MicroNoteContext; budget?: Partial<MicroNoteBudget> };
+  /** REQ-321-2: seam'ы политики допуска (worktree-видимость). Не переданы —
+   * токен текущей копии резолвится из root (fs-парс .git, без подпроцессов),
+   * резолвер identity — прод-дефолт resolveWorktreeIdentity. */
+  admission?: {
+    currentScope?: string;
+    resolveIdentity?: (baseDir: string) => WorktreeIdentity | null;
+  };
 }
 
 export async function generateAgentBrief(
@@ -44,10 +53,31 @@ export async function generateAgentBrief(
   const isNote = (obj: MemoryObject, facet: string): boolean =>
     obj.type === 'note' && (obj as { facet?: string }).facet === facet;
 
+  // REQ-321-2 (R-2): единая политика допуска во ВСЕХ секциях брифа (Active Memory,
+  // Open Questions, Blockers): применимость (AC-2.2), подавление открытым
+  // противоречием (AC-2.3), worktree-scope (AC-2.4; токен текущей копии — fs-парс
+  // .git из root, как в memory-call), исключение micro-note из legacy-секций
+  // (AC-2.1: micro-note доставляется только микро-селектором ниже).
+  const worktree = createWorktreeVisibility({
+    currentScope: options.admission?.currentScope ?? resolveMemoryRoot(root).worktree ?? 'main',
+    baseDir: root,
+    resolveIdentity: options.admission?.resolveIdentity,
+  });
+  const admission = createDeliveryAdmission({
+    context: options.microNotes?.context,
+    suppressions: deps.noteLog?.suppressions() ?? [],
+    worktree,
+  });
+  const deliverable = (obj: MemoryObject): boolean => admission.admitted(obj as Record<string, unknown>).admitted;
+
   const acceptedMemory = memoryObjects
     .filter(
       (obj) =>
-        obj.review_state === 'accepted' && obj.status === 'active' && !isNote(obj, 'context') && !isNote(obj, 'pitfall')
+        obj.review_state === 'accepted' &&
+        obj.status === 'active' &&
+        deliverable(obj) &&
+        !isNote(obj, 'context') &&
+        !isNote(obj, 'pitfall')
     )
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
     .slice(0, 10);
@@ -64,10 +94,11 @@ export async function generateAgentBrief(
         (obj.status === 'active' && (obj as { alias_origin?: string }).alias_origin === 'open-question')
       );
     })
+    .filter(deliverable)
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
   const blockers = memoryObjects
-    .filter((obj) => isNote(obj, 'pitfall') && obj.status === 'active')
+    .filter((obj) => isNote(obj, 'pitfall') && obj.status === 'active' && deliverable(obj))
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
   // 3.2.0 T-09 (REQ-09): адресные micro-notes — детерминированная выборка из уже
@@ -80,7 +111,8 @@ export async function generateAgentBrief(
     memoryObjects,
     microCtx,
     options.microNotes?.budget,
-    deps.noteLog?.suppressions() ?? []
+    deps.noteLog?.suppressions() ?? [],
+    worktree
   );
   if (deps.noteLog) {
     const deliveredNow = new Set(micro.delivered.map((c) => c.id));

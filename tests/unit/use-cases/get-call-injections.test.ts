@@ -6,6 +6,9 @@ import yaml from 'js-yaml';
 import { getCallInjections } from '../../../src/app/use-cases/get-call-injections.js';
 import { MarkdownMemoryStore } from '../../../src/adapters/fs/markdown-memory-store.js';
 import { checksumBlock } from '../../../src/adapters/fs/session-delivery-registry.js';
+import { learningSignalRevision } from '../../../src/domain/learning-signals.js';
+import type { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
+import type { MicroNoteSuppressionRecord } from '../../../src/ports/micro-note-delivery-log.port.js';
 
 const NOW = new Date('2026-08-24T00:00:00.000Z');
 const clock = { now: () => NOW };
@@ -882,5 +885,206 @@ describe('getCallInjections', () => {
     expect(result.blocks).toEqual([]);
     expect(result.poolSize).toBe(1);
     expect(result.hidden).toBeNull();
+  });
+
+  // --- REQ-321-2 (R-2, patch 3.2.1): единая политика допуска доставки ---
+
+  /** Открытое подавление противоречием на текущей ревизии содержимого (S-27). */
+  function openSuppression(id: string, obj: Record<string, unknown>): MicroNoteSuppressionRecord {
+    return {
+      memory_id: id,
+      revision: learningSignalRevision(obj as MemoryObject),
+      reason: 'observed contradiction',
+      note_evidence: `${id}`,
+      contradiction_evidence: 'observed behavior contradicts the record',
+      suppressed_at: '2026-08-20T00:00:00.000Z',
+      resolved_at: null,
+      resolution: null,
+    };
+  }
+
+  /** Полный заглушка-журнал доставки (нужны только suppressions/recordDelivery). */
+  function noteLogStub(suppressions: () => MicroNoteSuppressionRecord[]) {
+    return {
+      recordDelivery: () => {},
+      recordSuppression: () => {},
+      resolveSuppression: () => {},
+      suppressions,
+      deliveries: () => [],
+      setObservation: () => {},
+      observations: () => [],
+    };
+  }
+
+  it('AC-2.1: правило с тегом micro-note доставляется только микро-селектором, legacy-ветки молчат', async () => {
+    await seed(
+      makeObj({
+        id: 'rule_mn',
+        type: 'rule',
+        status: 'active',
+        scope: 'project',
+        trigger_keywords: ['deploy'],
+        tags: ['micro-note'],
+        title: 'Micro tagged rule',
+      })
+    );
+
+    for (const input of [{ topic: 'deploy' }, {}, { thread: true }, { topic: 'zzz-no-match' }]) {
+      const r = await getCallInjections({ store, clock }, { ...input });
+      expect(r.blocks.join('\n')).not.toContain('rule_mn');
+    }
+
+    // позитивный контроль: тот же объект доставляется через микро-селектор
+    const micro = await getCallInjections({ store, clock }, { microNotes: {} });
+    expect(micro.microNotes?.delivered.map((c) => c.id)).toEqual(['rule_mn']);
+    expect(micro.blocks.join('\n')).toContain('rule_mn');
+  });
+
+  it('AC-2.2: micro-note правило applies:[darwin] отсутствует в выводе при linux; селектор исключает', async () => {
+    await seed(
+      makeObj({
+        id: 'rule_darwin',
+        type: 'rule',
+        status: 'active',
+        scope: 'project',
+        trigger_keywords: ['deploy'],
+        tags: ['micro-note'],
+        applies: { environments: ['darwin'] },
+        title: 'Darwin only rule',
+      })
+    );
+
+    const r = await getCallInjections({ store, clock }, { topic: 'deploy', microNotes: { environment: 'linux' } });
+    const all = r.blocks.join('\n');
+    expect(all).not.toContain('rule_darwin');
+    expect(r.microNotes?.delivered ?? []).toEqual([]);
+    expect(r.microNotes?.selected ?? []).toEqual([]);
+    expect(r.microNotes?.underReview ?? []).toEqual([]);
+  });
+
+  it('AC-2.3: активный объект под открытым противоречием отсутствует во всех секциях call', async () => {
+    const rule = makeObj({
+      id: 'rule_sup',
+      type: 'rule',
+      status: 'active',
+      scope: 'project',
+      trigger_keywords: ['deploy'],
+      title: 'Suppressed rule',
+    });
+    await seed(rule);
+    const noteLog = noteLogStub(() => [openSuppression('rule_sup', rule)]);
+
+    const byTopic = await getCallInjections({ store, clock, noteLog }, { topic: 'deploy', microNotes: {} });
+    expect(byTopic.blocks.join('\n')).not.toContain('rule_sup');
+    const byThread = await getCallInjections({ store, clock, noteLog }, { thread: 'mem_t1', microNotes: {} });
+    expect(byThread.blocks.join('\n')).not.toContain('rule_sup');
+
+    // после разрешения противоречия — доставляется как прежде
+    const resolved = await getCallInjections(
+      { store, clock, noteLog: noteLogStub(() => []) },
+      { topic: 'deploy', microNotes: {} }
+    );
+    expect(resolved.blocks.join('\n')).toContain('rule_sup');
+  });
+
+  it('AC-2.4: micro-note со scope чужого worktree не доставляется в main; свой scope доставляется', async () => {
+    // Сеем worktree-scoped micro-note правилом — не потому, что note/lesson не
+    // несут scope (схема passthrough, чужие поля переживают чтение; рантайм-проба
+    // review-321-wave Q3), а потому что rule — канонический носитель scope
+    // (декларация в memory-types) и у note дополнительно обязателен facet.
+    await seed(
+      makeObj({
+        id: 'note_foreign_wt',
+        type: 'rule',
+        status: 'active',
+        scope: 'worktree:w-fedcba987654',
+        tags: ['micro-note'],
+        title: 'Foreign worktree note',
+      }),
+      makeObj({
+        id: 'note_own_wt',
+        type: 'rule',
+        status: 'active',
+        scope: `worktree:${OWN_HASH}`,
+        tags: ['micro-note'],
+        title: 'Own worktree note',
+      })
+    );
+
+    const fromMain = await getCallInjections({ store, clock }, { microNotes: {} });
+    expect(fromMain.blocks.join('\n')).not.toContain('note_foreign_wt');
+    expect(fromMain.microNotes?.delivered ?? []).toEqual([]);
+
+    const inCopy = await getCallInjections({ store, clock }, { currentScope: OWN_HASH, microNotes: {} });
+    expect(inCopy.microNotes?.delivered.map((c) => c.id)).toEqual(['note_own_wt']);
+    expect(inCopy.blocks.join('\n')).toContain('note_own_wt');
+    expect(inCopy.blocks.join('\n')).not.toContain('note_foreign_wt');
+  });
+
+  it('AC-2.5: исключённое селектором отсутствует в итоговом выводе; доставленное несёт точный id@rev', async () => {
+    const rule = makeObj({
+      id: 'rule_mn_sup',
+      type: 'rule',
+      status: 'active',
+      scope: 'project',
+      trigger_keywords: ['deploy'],
+      tags: ['micro-note'],
+      title: 'Suppressed micro rule',
+    });
+    await seed(
+      rule,
+      makeObj({
+        id: 'rule_plain',
+        type: 'rule',
+        status: 'active',
+        scope: 'global',
+        trigger_keywords: ['deploy'],
+        title: 'Plain rule',
+      }),
+      makeObj({
+        id: 'note_del',
+        type: 'note',
+        status: 'active',
+        tags: ['micro-note'],
+        title: 'Delivered note',
+        body: 'hint',
+      })
+    );
+    const noteLog = noteLogStub(() => [openSuppression('rule_mn_sup', rule)]);
+
+    const r = await getCallInjections({ store, clock, noteLog }, { topic: 'deploy', microNotes: {} });
+    const all = r.blocks.join('\n');
+    expect(all).toContain('rule_plain'); // позитивный контроль legacy-ветки
+    expect(all).not.toContain('rule_mn_sup'); // подавленное не доставлено ни одной веткой
+    expect(r.microNotes?.underReview.map((u) => u.id)).toEqual(['rule_mn_sup']);
+    for (const c of r.microNotes?.delivered ?? []) {
+      expect(all).toContain(`[${c.id}@${c.revision.slice(0, 12)}]`); // REQ-09: точная атрибуция
+    }
+  });
+
+  it('AC-2.6: универсальные объекты (без applies) доставляются как прежде', async () => {
+    await seed(
+      makeObj({
+        id: 'rule_u',
+        type: 'rule',
+        status: 'active',
+        scope: 'project',
+        trigger_keywords: ['deploy'],
+        title: 'Universal rule',
+      }),
+      makeObj({
+        id: 'inj_u',
+        type: 'call-injection',
+        status: 'active',
+        trigger_keywords: ['deploy'],
+        title: 'Universal injection',
+        body: 'x',
+      })
+    );
+
+    const r = await getCallInjections({ store, clock }, { topic: 'deploy', microNotes: {} });
+    const all = r.blocks.join('\n');
+    expect(all).toContain('rule_u');
+    expect(all).toContain('inj_u');
   });
 });

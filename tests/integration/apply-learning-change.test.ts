@@ -377,4 +377,215 @@ describe('REQ-08: apply/rollback одиночного кандидата (integr
       expect(await resolveActiveLearningVersions({ store: container.store }, 'proj-other')).toEqual([]);
     });
   });
+
+  describe('patch 3.2.1: REQ-321-1 (содержимое backup до записи) и REQ-321-3 (scope↔baseline↔patch)', () => {
+    /** Кандидат с заданным scope.target_paths (baseline/patch трогают skills/alpha|beta). */
+    async function seedWithScope(targetPaths: string[]): Promise<string> {
+      for (const [p, c] of Object.entries(BASELINE_CONTENT)) {
+        mkdirSync(join(dir, p, '..'), { recursive: true });
+        writeFileSync(join(dir, p), c, 'utf-8');
+      }
+      const patch = { files: Object.entries(APPLIED_CONTENT).map(([path, content]) => ({ path, content })) };
+      mkdirSync(join(dir, 'patches'), { recursive: true });
+      writeFileSync(join(dir, DIFF_REF), JSON.stringify(patch, null, 2), 'utf-8');
+      const input: LearningCandidateInput = {
+        ...validCandidateInput(),
+        scope: { ...validCandidateInput().scope, target_paths: targetPaths, project_id: 'proj-demo' },
+        baseline: {
+          files: Object.entries(BASELINE_CONTENT).map(([p, c]) => ({ path: p, sha256: sha256Of(c) })),
+          model: 'company/code',
+          harness: 'opencode',
+        },
+        candidate: {
+          diff_ref: DIFF_REF,
+          sha256: sha256Of(readFileSync(join(dir, DIFF_REF))),
+          rationale: 'r',
+          negative_cases: ['false trigger'],
+        },
+        rollback: {
+          previous_ref: BACKUP_REF,
+          expected_active_sha256: canonicalActiveHash(
+            Object.entries(APPLIED_CONTENT).map(([p, c]) => ({ path: p, sha256: sha256Of(c) }))
+          ),
+        },
+      };
+      const saved = await saveLearningCandidate(
+        { ...container, env: {} },
+        { envelope: input, addressee: 'user:owner' }
+      );
+      return saved.object.id;
+    }
+
+    /** Порча содержимого одной записи backup при интактном поле sha256 (repro владельца R-1). */
+    function corruptBackupContent(path: string, content: string): void {
+      const backup = JSON.parse(readFileSync(join(dir, BACKUP_REF), 'utf-8')) as {
+        files: Array<{ path: string; content: string; sha256: string }>;
+      };
+      const entry = backup.files.find((f) => f.path === path);
+      if (!entry) throw new Error(`backup has no entry for ${path}`);
+      entry.content = content;
+      writeFileSync(join(dir, BACKUP_REF), JSON.stringify(backup, null, 2) + '\n', 'utf-8');
+    }
+
+    it('AC-1.1: испорченный content backup при интактном sha256 → откат отказывает, целевой файл не изменён', async () => {
+      const id = await seedAccepted();
+      await applyLearningChange(deps(), id);
+      corruptBackupContent('skills/alpha/SKILL.md', 'CORRUPTED CONTENT\n');
+      const logLength = (await container.log.readAll()).length;
+
+      const err = await rollbackLearningChange({ ...container, baseDir: dir }, id).catch((e: unknown) => e as Error);
+      expect(err).toBeInstanceOf(UserFacingError);
+      expect(err.message).toMatch(/nothing was written/);
+      expect(err.message).toMatch(/skills\/alpha\/SKILL\.md/);
+      expect(err.message).toMatch(/does not match its stored sha256/);
+      // порча не дошла до целевого файла: применённая версия цела
+      expect(targetBytes()).toEqual(APPLIED_CONTENT);
+      expect((await container.log.readAll()).length).toBe(logLength);
+    });
+
+    it('AC-1.2: испорчена вторая запись → отказ до первой записи, ни один файл не восстановлен', async () => {
+      const id = await seedAccepted();
+      await applyLearningChange(deps(), id);
+      corruptBackupContent('skills/beta/SKILL.md', 'CORRUPTED SECOND\n');
+
+      await expect(rollbackLearningChange({ ...container, baseDir: dir }, id)).rejects.toThrow(
+        /skills\/beta\/SKILL\.md/
+      );
+      // все-или-ничего: alpha (первая запись плана) тоже не восстановлен
+      expect(targetBytes()).toEqual(APPLIED_CONTENT);
+      expect(
+        (await learningEvents()).some((e) => e.type === 'memory.learning.op_started' && e.payload['op'] === 'rollback')
+      ).toBe(false);
+    });
+
+    it('AC-1.3: повтор apply переиспользует backup — та же проверка содержимого до записи', async () => {
+      const id = await seedAccepted();
+      let writes = 0;
+      await expect(
+        applyLearningChange(
+          {
+            ...deps(),
+            fault: (point) => {
+              if (point === 'write_file' && ++writes === 1) throw new Error('injected fault at write_file');
+            },
+          },
+          id
+        )
+      ).rejects.toThrow(/injected fault/);
+      // alpha уже несёт применённое содержимое (recovered), backup на диске
+      expect(readFileSync(join(dir, 'skills/alpha/SKILL.md'), 'utf-8')).toBe(APPLIED_CONTENT['skills/alpha/SKILL.md']);
+      corruptBackupContent('skills/beta/SKILL.md', 'CORRUPTED REUSE\n');
+
+      await expect(applyLearningChange(deps(), id)).rejects.toThrow(/content hash/);
+      await expect(applyLearningChange(deps(), id)).rejects.toThrow(/nothing was written/);
+      // ничего не дозаписано: beta осталась baseline, alpha без перезаписи
+      expect(readFileSync(join(dir, 'skills/beta/SKILL.md'), 'utf-8')).toBe(BASELINE_CONTENT['skills/beta/SKILL.md']);
+      expect(readFileSync(join(dir, 'skills/alpha/SKILL.md'), 'utf-8')).toBe(APPLIED_CONTENT['skills/alpha/SKILL.md']);
+    });
+
+    it('AC-1.4: валидный нетронутый backup → откат работает как прежде (без регрессии)', async () => {
+      const id = await seedAccepted();
+      await applyLearningChange(deps(), id);
+
+      const rolled = await rollbackLearningChange({ ...container, baseDir: dir }, id);
+      expect(rolled).toMatchObject({
+        restored: ['skills/alpha/SKILL.md', 'skills/beta/SKILL.md'],
+        already_restored: [],
+        deactivated: true,
+        noop: false,
+      });
+      expect(targetBytes()).toEqual(BASELINE_CONTENT);
+      expect((await envelopeOf(id)).phase).toBe('rolled_back');
+    });
+
+    it('AC-3.1 accept: baseline вне scope.target_paths → приёмка отказывает, phase остаётся proposed', async () => {
+      const id = await seedWithScope(['other/approved.md']);
+      const before = targetBytes();
+      const logLength = (await container.log.readAll()).length;
+
+      await expect(
+        acceptLearningChange(container, { candidateId: id, acceptedBy: 'user:owner', verdictRef: 'trial-result-1' })
+      ).rejects.toThrow(/outside scope\.target_paths/);
+      const env = await envelopeOf(id);
+      expect(env.phase).toBe('proposed');
+      expect(env.acceptance).toBeNull();
+      expect(targetBytes()).toEqual(before);
+      expect((await container.log.readAll()).length).toBe(logLength);
+    });
+
+    it('AC-3.1 apply: baseline вне scope.target_paths → preflight отказывает, ничего не записано', async () => {
+      const id = await seedWithScope(['other/approved.md']);
+      // легальная приёмка уже отказала (AC-3.1 accept); до apply добирается только
+      // рукописный approved-конверт — preflight обязан отказать и ему
+      const env = await envelopeOf(id);
+      await container.store.update(id, {
+        body: JSON.stringify(
+          {
+            ...env,
+            phase: 'approved',
+            acceptance: {
+              decision: 'accepted',
+              accepted_by: 'user:owner',
+              accepted_at: '2026-11-18T00:00:00.000Z',
+              accepted_candidate_sha256: env.candidate.sha256,
+              verdict_ref: 'trial-result-1',
+            },
+          },
+          null,
+          2
+        ),
+      });
+      const before = targetBytes();
+      const logLength = (await container.log.readAll()).length;
+
+      await expect(applyLearningChange(deps(), id)).rejects.toThrow(/outside scope\.target_paths/);
+      expect(targetBytes()).toEqual(before);
+      expect((await container.log.readAll()).length).toBe(logLength);
+    });
+
+    it('R-WA-1 (ревью 3.2.1): patch-путь вне scope при baseline внутри — accept проходит, apply отказывает до записи', async () => {
+      // Изолированный случай patch-стороны REQ-321-3: baseline (alpha, beta) внутри
+      // scope — accept-гейт (конверт, без чтения diff) проходит; patch несёт gamma
+      // вне scope — apply-preflight обязан отказать до первой записи.
+      const id = await seedWithScope(['skills/alpha/SKILL.md', 'skills/beta/SKILL.md']);
+      const env = await envelopeOf(id);
+      // Расширяем patch путём вне scope и пересобираем пин candidate.sha256.
+      const diffPath = join(dir, env.candidate.diff_ref);
+      const patch = JSON.parse(readFileSync(diffPath, 'utf-8')) as { files: Array<{ path: string; content: string }> };
+      patch.files.push({ path: 'skills/gamma/SKILL.md', content: 'GAMMA CONTENT' });
+      writeFileSync(diffPath, JSON.stringify(patch, null, 2), 'utf-8');
+      const newDiffSha = sha256Of(readFileSync(diffPath));
+      await container.store.update(id, {
+        body: JSON.stringify({ ...env, candidate: { ...env.candidate, sha256: newDiffSha } }, null, 2),
+      });
+      // Accept-гейт на этом конверте проходит: baseline целиком внутри scope;
+      // acceptance пинует новый diff-хэш (accepted_candidate_sha256 = newDiffSha).
+      const acc = await acceptLearningChange(container, {
+        candidateId: id,
+        acceptedBy: 'user:owner',
+        verdictRef: 'trial-result-1',
+      });
+      expect(acc.phase).toBe('approved');
+
+      const before = targetBytes();
+      const logLength = (await container.log.readAll()).length;
+      await expect(applyLearningChange(deps(), id)).rejects.toThrow(/outside scope\.target_paths/);
+      expect(targetBytes()).toEqual(before);
+      expect((await container.log.readAll()).length).toBe(logLength);
+    });
+
+    it('AC-3.2: один путь в разной записи (./) — ложного отказа нет, приёмка и apply работают', async () => {
+      const id = await seedWithScope(['./skills/alpha/SKILL.md', './skills/beta/SKILL.md']);
+
+      const acc = await acceptLearningChange(container, {
+        candidateId: id,
+        acceptedBy: 'user:owner',
+        verdictRef: 'trial-result-1',
+      });
+      expect(acc.phase).toBe('approved');
+      const result = await applyLearningChange(deps(), id);
+      expect(result.applied).toEqual(['skills/alpha/SKILL.md', 'skills/beta/SKILL.md']);
+      expect(targetBytes()).toEqual(APPLIED_CONTENT);
+    });
+  });
 });

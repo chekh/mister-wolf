@@ -11,11 +11,16 @@ import { HashIdGenerator } from '../../../src/adapters/fs/hash-id-generator.js';
 import { JsonlEventLog } from '../../../src/adapters/fs/jsonl-event-log.js';
 import { eventsPath } from '../../../src/adapters/fs/project-paths.js';
 import { HeuristicProjectScanner } from '../../../src/adapters/fs/heuristic-project-scanner.js';
+import { learningSignalRevision } from '../../../src/domain/learning-signals.js';
+import type { MicroNoteSuppressionRecord } from '../../../src/ports/micro-note-delivery-log.port.js';
 import type { MemoryObject } from '../../../src/domain/schemas/memory-object-schema.js';
 import type { ProjectSnapshot } from '../../../src/domain/schemas/project-scan-schema.js';
 
 /** Валидный объект для посева фикстуры перф-теста (T013). */
-function fixtureObject(id: string, overrides: Partial<MemoryObject> & Pick<MemoryObject, 'type'>): MemoryObject {
+function fixtureObject(
+  id: string,
+  overrides: (Partial<MemoryObject> & Record<string, unknown>) & Pick<MemoryObject, 'type'>
+): MemoryObject {
   return {
     title: `Fixture ${id}`,
     body: `Body of ${id}.`,
@@ -24,7 +29,9 @@ function fixtureObject(id: string, overrides: Partial<MemoryObject> & Pick<Memor
     confidence: 'medium',
     importance: 0.5,
     created_at: '2026-09-01T00:00:00Z',
-    updated_at: new Date(Date.parse('2026-09-01T00:00:00Z') + Number(id.slice(-6)) * 1000).toISOString(),
+    updated_at: new Date(
+      Date.parse('2026-09-01T00:00:00Z') + (Number.isFinite(Number(id.slice(-6))) ? Number(id.slice(-6)) : 0) * 1000
+    ).toISOString(),
     created_by: 'user:test',
     schema_version: 1,
     source: { kind: 'manual' },
@@ -213,4 +220,162 @@ describe('generateAgentBrief', () => {
     expect(last!.content).toContain('## Blockers');
     expect(last!.injectedIds.length).toBeGreaterThan(0);
   }, 30_000);
+
+  // --- REQ-321-2 (R-2, patch 3.2.1): единая политика допуска в секциях брифа ---
+
+  /** Минимальный валидный снапшот (как в T013) — секции памяти рендерятся отдельно. */
+  function fakeSnapshot(): ProjectSnapshot {
+    return {
+      projectName: 'admission-test',
+      root: '.',
+      generatedAt: '2026-11-18T00:00:00.000Z',
+      summary: {
+        languages: ['ts'],
+        entryPoints: ['src/index.ts'],
+        configFiles: ['package.json'],
+        dependencies: ['vitest'],
+        topLevelDirectories: ['src'],
+        fileCount: 1,
+      },
+      files: [{ path: 'src/index.ts', extension: 'ts', size: 20 }],
+      docs: [],
+    };
+  }
+
+  function openSuppression(id: string, obj: MemoryObject): MicroNoteSuppressionRecord {
+    return {
+      memory_id: id,
+      revision: learningSignalRevision(obj),
+      reason: 'observed contradiction',
+      note_evidence: `${id}`,
+      contradiction_evidence: 'observed behavior contradicts the record',
+      suppressed_at: '2026-11-16T00:00:00.000Z',
+      resolved_at: null,
+      resolution: null,
+    };
+  }
+
+  function noteLogStub(suppressions: () => MicroNoteSuppressionRecord[]) {
+    return {
+      recordDelivery: () => {},
+      recordSuppression: () => {},
+      resolveSuppression: () => {},
+      suppressions,
+      deliveries: () => [],
+      setObservation: () => {},
+      observations: () => [],
+    };
+  }
+
+  describe('generateAgentBrief admission policy (REQ-321-2)', () => {
+    let dir: string;
+    let fs: FsFileSystem;
+    let clock: SystemClock;
+
+    beforeEach(() => {
+      dir = mkdtempSync(join(tmpdir(), 'wolf-brief-adm-'));
+      fs = new FsFileSystem();
+      clock = new SystemClock();
+    });
+
+    afterEach(() => {
+      rmSync(dir, { recursive: true, force: true });
+    });
+
+    function activeMemorySection(content: string): string {
+      return content.split('## Active Memory')[1]!.split('## ')[0]!;
+    }
+
+    it('AC-2.1: micro-note объекты не попадают в legacy-секции; доставляет только селектор', async () => {
+      const store = new MarkdownMemoryStore(dir);
+      await store.save(fixtureObject('rule_mn', { type: 'rule', tags: ['micro-note'], title: 'Micro tagged rule' }));
+      await store.save(fixtureObject('rule_plain', { type: 'rule', title: 'Plain accepted rule' }));
+      await store.save(
+        fixtureObject('block_mn', {
+          type: 'note',
+          facet: 'pitfall',
+          tags: ['micro-note'],
+          title: 'Micro tagged blocker',
+        })
+      );
+
+      const r = await generateAgentBrief({ store, fs, clock }, dir, fakeSnapshot(), {
+        microNotes: { context: { environment: 'darwin' } },
+      });
+
+      const activeMemory = activeMemorySection(r.content);
+      expect(activeMemory).toContain('Plain accepted rule'); // позитивный контроль
+      expect(activeMemory).not.toContain('Micro tagged rule'); // RED: сегодня попадает
+      const blockersSection = r.content.split('## Blockers')[1]!.split('## ')[0]!;
+      expect(blockersSection).not.toContain('Micro tagged blocker'); // RED: сегодня попадает
+      expect(r.microNotes?.delivered.map((c) => c.id)).toEqual(['block_mn', 'rule_mn']); // id asc
+      expect(r.content).toContain('## Local Micro-Notes');
+    });
+
+    it('AC-2.2: micro-note правило applies:[darwin] отсутствует в брифе при linux', async () => {
+      const store = new MarkdownMemoryStore(dir);
+      await store.save(
+        fixtureObject('rule_darwin', {
+          type: 'rule',
+          tags: ['micro-note'],
+          applies: { environments: ['darwin'] },
+          title: 'Darwin brief rule',
+        })
+      );
+
+      const r = await generateAgentBrief({ store, fs, clock }, dir, fakeSnapshot(), {
+        microNotes: { context: { environment: 'linux' } },
+      });
+
+      expect(r.content).not.toContain('Darwin brief rule'); // RED: сегодня в Active Memory
+      expect(r.microNotes?.delivered ?? []).toEqual([]);
+    });
+
+    it('AC-2.3: подавленный открытым противоречием объект отсутствует в секциях брифа', async () => {
+      const store = new MarkdownMemoryStore(dir);
+      const rule = fixtureObject('rule_sup_brief', { type: 'rule', title: 'Suppressed brief rule' });
+      await store.save(rule);
+      const noteLog = noteLogStub(() => [openSuppression('rule_sup_brief', rule)]);
+
+      const r = await generateAgentBrief({ store, fs, clock, noteLog }, dir, fakeSnapshot(), { microNotes: {} });
+      expect(r.content).not.toContain('Suppressed brief rule'); // RED: сегодня в Active Memory
+
+      // разрешение противоречия → объект снова в Active Memory
+      const resolved = await generateAgentBrief(
+        { store, fs, clock, noteLog: noteLogStub(() => []) },
+        dir,
+        fakeSnapshot(),
+        { microNotes: {} }
+      );
+      expect(resolved.content).toContain('Suppressed brief rule');
+    });
+
+    it('AC-2.4: accepted-объект со scope чужого worktree не доставляется в main-виде брифа', async () => {
+      const store = new MarkdownMemoryStore(dir);
+      await store.save(
+        fixtureObject('rule_wt', { type: 'rule', scope: 'worktree:w-fedcba987654', title: 'Foreign worktree rule' })
+      );
+      await store.save(fixtureObject('rule_main', { type: 'rule', scope: 'project', title: 'Main rule' }));
+
+      const r = await generateAgentBrief({ store, fs, clock }, dir, fakeSnapshot());
+      const activeMemory = activeMemorySection(r.content);
+      expect(activeMemory).toContain('Main rule'); // позитивный контроль
+      expect(activeMemory).not.toContain('Foreign worktree rule'); // RED: сегодня содержится
+    });
+
+    it('AC-2.5: подавленное micro-note отсутствует в выводе, underReview репортит id', async () => {
+      const store = new MarkdownMemoryStore(dir);
+      const rule = fixtureObject('rule_mn_sup_b', {
+        type: 'rule',
+        tags: ['micro-note'],
+        title: 'Suppressed micro brief',
+      });
+      await store.save(rule);
+      const noteLog = noteLogStub(() => [openSuppression('rule_mn_sup_b', rule)]);
+
+      const r = await generateAgentBrief({ store, fs, clock, noteLog }, dir, fakeSnapshot(), { microNotes: {} });
+      expect(r.content).not.toContain('Suppressed micro brief'); // RED: сегодня в Active Memory
+      expect(r.microNotes?.underReview.map((u) => u.id)).toEqual(['rule_mn_sup_b']);
+    });
+  });
 });

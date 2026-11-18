@@ -1,6 +1,6 @@
 // src/app/use-cases/apply-learning-change.ts
 import { mkdir, readFile, writeFile } from 'fs/promises';
-import { dirname } from 'path';
+import { dirname, posix } from 'path';
 import type { MemoryStore } from '../../ports/memory-store.port.js';
 import type { EventLog } from '../../ports/event-log.port.js';
 import type { Clock } from '../../ports/clock.port.js';
@@ -89,6 +89,16 @@ export function readActivation(envelope: { activation: unknown; change_id: strin
 }
 
 /**
+ * Нормализация относительного пути для сравнения scope<->baseline<->patch
+ * (REQ-321-3): схлопывание './', повторных слэшей и '..' — одна и та же
+ * нормализация на обеих сторонах сравнения, разные записи одного пути
+ * не дают ложного отказа.
+ */
+function normalizeLearningPath(p: string): string {
+  return posix.normalize(p);
+}
+
+/**
  * Приёмка кандидата владельцем/ведущим (REQ-08: proposed/trialled → approved).
  * Ничего не применяет: только фиксирует решение (acceptance-запись c
  * идентичностью принятой версии и ссылкой на независимый вердикт) и событие
@@ -119,6 +129,20 @@ export async function acceptLearningChange(
     if (envelope.phase !== 'proposed' && envelope.phase !== 'trialled') {
       throw new UserFacingError(
         `candidate ${input.candidateId} is phase "${envelope.phase}": acceptance expects "proposed" or "trialled"`
+      );
+    }
+    // REQ-321-3 (R-3): приёмка отказывает кандидату, чей baseline трогает пути
+    // вне объявленного scope (полную сверку baseline+patch перед первой записью
+    // делает apply; приёмка сверяет согласованность самого конверта).
+    const scopePaths = new Set(envelope.scope.target_paths.map(normalizeLearningPath));
+    const outside = envelope.baseline.files.filter((f) => !scopePaths.has(normalizeLearningPath(f.path)));
+    if (outside.length > 0) {
+      throw new UserFacingError(
+        `candidate ${input.candidateId} cannot be accepted: baseline.files ${outside
+          .map((f) => f.path)
+          .join(
+            ', '
+          )} lie outside scope.target_paths (${envelope.scope.target_paths.join(', ')}) — scope declares the boundary of the change`
       );
     }
     const record = {
@@ -306,6 +330,17 @@ export async function applyLearningChange(
         problems.push(`- ${p.path}: diff touches a file outside baseline.files`);
       }
     }
+    // REQ-321-3 (R-3): scope.target_paths — объявленная граница применения:
+    // baseline и patch не могут трогать пути вне неё. Пути сравниваются в
+    // единой нормализации (см. normalizeLearningPath).
+    const scopePaths = new Set(envelope.scope.target_paths.map(normalizeLearningPath));
+    for (const p of [...envelope.baseline.files.map((f) => f.path), ...patch.files.map((f) => f.path)]) {
+      if (!scopePaths.has(normalizeLearningPath(p))) {
+        problems.push(
+          `- ${p}: baseline/patch touch a path outside scope.target_paths (${envelope.scope.target_paths.join(', ')}) — refusing without overwrite`
+        );
+      }
+    }
     const expectedActive = canonicalActiveHash(
       envelope.baseline.files.map((f) => ({ path: f.path, sha256: sha256Of(patchByPath.get(f.path) ?? '') }))
     );
@@ -340,9 +375,14 @@ export async function applyLearningChange(
     for (const f of files) {
       const existing = backupEntries.get(f.path);
       if (existing) {
-        if (existing.sha256 !== f.baselineSha) {
+        // REQ-321-1 (R-1): переиспользование backup — содержимое хэшируется до
+        // записи наравне с полем sha256: backup читается с диска, и его поле
+        // sha256 само содержимое не доказывает (та же проверка, что в rollback).
+        const existingContentSha =
+          typeof existing.content === 'string' ? sha256Of(existing.content) : '<content is not a string>';
+        if (existing.sha256 !== f.baselineSha || existingContentSha !== f.baselineSha) {
           throw new UserFacingError(
-            `rollback backup at ${envelope.rollback.previous_ref} holds sha256 ${existing.sha256} for ${f.path}, expected baseline ${f.baselineSha}; nothing was written`
+            `rollback backup at ${envelope.rollback.previous_ref} holds ${f.path} with sha256 ${existing.sha256} / content hash ${existingContentSha}, expected baseline ${f.baselineSha}; nothing was written`
           );
         }
         continue;
