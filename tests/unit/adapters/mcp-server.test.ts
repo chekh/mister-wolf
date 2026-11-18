@@ -167,7 +167,8 @@ describe('buildMcpServer', () => {
   // 2.31.0 (REL-231-A P04): каталог расширен council_record — одна доменная
   // операция recordCouncil поверх note envelope (CLI: council record).
   // 3.2.0 (T-04/T-05): + propose_candidate (конверт кандидата, CLI: propose candidate).
-  it('registers exactly the catalog (2.13 diet + council_record + propose_candidate) and none of the removed tools', () => {
+  // R-4 (REQ-R4-2): + note_contradiction (один составной тул, CLI: wolf contradict).
+  it('registers exactly the catalog (2.13 diet + council_record + propose_candidate + note_contradiction) and none of the removed tools', () => {
     const server = buildMcpServer(dir);
     const tools = (server as unknown as { _registeredTools: Record<string, unknown> })._registeredTools;
     const names = Object.keys(tools).sort();
@@ -177,6 +178,7 @@ describe('buildMcpServer', () => {
       'council_record',
       'get',
       'list',
+      'note_contradiction',
       'ping',
       'propose_candidate',
       'recap',

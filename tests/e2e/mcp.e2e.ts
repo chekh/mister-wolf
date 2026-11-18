@@ -32,7 +32,7 @@ function sendAndReceive(proc: ChildProcess, message: unknown): Promise<unknown> 
   });
 }
 
-describe('MCP stdio: catalog diet (2.13 survivors + council_record + propose_candidate 3.2.0 REQ-05, 9 tools + ping)', () => {
+describe('MCP stdio: catalog diet (2.13 survivors + council_record + propose_candidate 3.2.0 + note_contradiction R-4, 10 tools + ping)', () => {
   let cwd: string;
   let child: ChildProcess;
   beforeAll(() => {
@@ -48,7 +48,7 @@ describe('MCP stdio: catalog diet (2.13 survivors + council_record + propose_can
     rmSync(cwd, { recursive: true, force: true });
   });
 
-  it('tools/list exposes exactly the diet survivors + propose_candidate (3.2.0) + ping', async () => {
+  it('tools/list exposes exactly the diet survivors + propose_candidate (3.2.0) + note_contradiction (R-4) + ping', async () => {
     await sendAndReceive(child, {
       jsonrpc: '2.0',
       id: 1,
@@ -70,6 +70,7 @@ describe('MCP stdio: catalog diet (2.13 survivors + council_record + propose_can
       'council_record',
       'get',
       'list',
+      'note_contradiction',
       'ping',
       'propose_candidate',
       'recap',
@@ -102,5 +103,28 @@ describe('MCP stdio: catalog diet (2.13 survivors + council_record + propose_can
     const message = res.error?.message ?? '';
     expect(message).toContain("unknown tool 'frobnicate'");
     expect(message).toContain('search/get/list/add/transition/brief/recap');
+  });
+
+  it('F-1 (R4 review): tools/call note_contradiction with an incomplete input fails at the schema level, no silent pass', async () => {
+    // Сквозной пин: SDK валидирует вход ДО handler'а (обёртка T011) — неполный
+    // report (нет reason/contradiction_evidence) обязан вернуть ошибку схемы,
+    // а не тихий вызов/пропуск. Отклонения на уровне схемы подробно покрыты в
+    // note-contradiction-mcp.test.ts; здесь — живой stdio-путь.
+    const res = (await sendAndReceive(child, {
+      jsonrpc: '2.0',
+      id: 5,
+      method: 'tools/call',
+      params: { name: 'note_contradiction', arguments: { action: 'report', note_id: 'mem_x' } },
+    })) as {
+      error?: { message?: string };
+      result?: { isError?: boolean; content?: { type: string; text: string }[] };
+    };
+    // MCP-форма schema-failure: CallToolResult с isError=true (не JSON-RPC error),
+    // handler не вызывался; текст называет тул и недостающие поля действия.
+    const text = res.result?.content?.map((c) => c.text).join('\n') ?? '';
+    expect(res.result?.isError).toBe(true);
+    expect(text).toContain('Invalid arguments for tool note_contradiction');
+    expect(text).toContain('reason');
+    expect(text).toContain('contradiction_evidence');
   });
 });

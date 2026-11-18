@@ -324,6 +324,14 @@ export const COMMANDS: CommandSpec[] = [
     load: () => import('./commands/memory-complain.js').then((m) => m.memoryComplainCommand()),
   },
   {
+    // Волна R-4 (REQ-R4-1): маршрут противоречий микро-заметок (use-case
+    // S-27 3.2.0) — report/resolve/list поверх журнала подавлений.
+    name: 'contradict',
+    description: 'Micro-note contradictions: report/resolve/list',
+    usage: '<report|resolve|list> [options]',
+    load: () => import('./commands/memory-contradict.js').then((m) => m.memoryContradictCommand()),
+  },
+  {
     name: 'update',
     description:
       'Update triage fields of a memory object (whitelist: --set triage|resolution, --inc dispatch_ages|corroborations, --tags append)',

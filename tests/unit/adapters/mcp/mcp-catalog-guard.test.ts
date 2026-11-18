@@ -15,17 +15,19 @@ function docToolNames(): string[] {
   return [...new Set(names)].sort();
 }
 
-// P223 (спека 2.13 §6.2/§7 C11) + REL-231-A W4 + 3.2.0 T-04/T-05: каталог MCP
-// = 9 тулов ≤ 12 (диета 7 + council_record + propose_candidate); ping —
-// health-check поверх каталога, регистрируется в mcp-server.ts.
+// P223 (спека 2.13 §6.2/§7 C11) + REL-231-A W4 + 3.2.0 T-04/T-05 + R-4
+// (REQ-R4-2): каталог MCP = 10 тулов ≤ 12 (диета 7 + council_record +
+// propose_candidate + note_contradiction); ping — health-check поверх
+// каталога, регистрируется в mcp-server.ts.
 describe('MCP catalog guard: registry == docs/site/guide/mcp.md', () => {
-  it('catalog is exactly the 9 tools (diet 7 + council_record + propose_candidate), <= 12', () => {
+  it('catalog is exactly the 10 tools (diet 7 + council_record + propose_candidate + note_contradiction), <= 12', () => {
     expect([...MCP_TOOL_NAMES].sort()).toEqual([
       'add',
       'brief',
       'council_record',
       'get',
       'list',
+      'note_contradiction',
       'propose_candidate',
       'recap',
       'search',

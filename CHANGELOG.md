@@ -4,6 +4,37 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [3.3.0] - 2026-11-18
+
+### Added — contradiction operations reachable by the lead: `wolf contradict` and the `note_contradiction` MCP tool
+
+The micro-note contradiction loop (S-27) existed since 3.2.0 but was reachable only
+from tests — the owner's post-release review flagged it as an unfinished user process
+(finding R-4). Now the lead registers and resolves contradictions through both
+channels, with the evidence pair kept verbatim.
+
+- **CLI `wolf contradict report|resolve|list`.** `report --note <id> --reason --evidence`
+  suppresses an active micro-note's delivery until resolved (output carries the exact
+  `id@rev` and the verbatim observation); `resolve --note --resolution` resumes
+  delivery and keeps the audit row; `list` shows open suppressions read-only.
+  Unknown ids and missing options refuse with named causes ("unknown stays unknown").
+- **MCP tool `note_contradiction`** with `action: 'report' | 'resolve'` — the same
+  use-case and the same suppression journal as the CLI (catalog is now 10 tools,
+  threshold ≤ 12 preserved; the input schema enforces the per-action fields, so
+  incomplete inputs fail at the schema level).
+- **Single journal, single behavior.** The suppression recorded through either
+  channel is consulted by the unified delivery admission filter shipped in 3.2.1:
+  a contradicted note leaves every `wolf call` and `wolf brief` section until the
+  lead resolves it; both evidences (the note and the observation) stay in the audit
+  journal, the underlying fact is never deleted or edited.
+- **Docs regenerated**: `docs/reference/cli.md` (P224 guard), MCP guide pages EN/RU
+  — the RU mirror also caught up on tool rows that had drifted since 2.31.0.
+
+Scope note: `reconcileMicroNoteObservations` (observed-use analytics) has no user
+route yet and stays internal. Next agreed step: repeat the deferred held-out
+behavioral scenarios (S-16/25/27) before any expansion of `apply-approved`
+auto-apply.
+
 ## [3.2.1] - 2026-11-18
 
 ### Fixed — post-release review of 3.2.0: rollback verifies backup content, one delivery admission filter, scope boundaries, micro-note body in full
