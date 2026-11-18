@@ -2,7 +2,7 @@
 name: wolf-execute
 description: "Apply as an executor when performing an assigned finite subtask under an approved plan or allowed brief; and when continuing the same result."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
+<!-- wolf:rendered base=SKILL.md set=3.2.0 -->
 
 # Executing a finite mandate
 
@@ -34,7 +34,8 @@ return to the same executor, the second to a fresh instance.
    state, constraints, an addressed question when needed. DONE is readiness
    for independent review, not ACCEPTED. Without explicit commit permission in
    the TASK, hand off the changes and their state instead of committing.
-   Do not hire or integrate.
+   An executor (L1) does not hire or integrate; the lead keeps its own
+   hiring and integration responsibility.
 5. If scripts were created, return purpose, paths, verification, whether
    to keep them. The requester provides a permanent location/card per
    using-skills/references/project-tools.md. tmp must not be the only source

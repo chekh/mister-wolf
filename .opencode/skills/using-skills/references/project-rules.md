@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=project-rules.md set=3.1.2 -->
+<!-- wolf:rendered base=project-rules.md set=3.2.0 -->
 # Project documents and work structure
 
 Loaded by the lead or an executor when choosing the work location, mode and document profile.

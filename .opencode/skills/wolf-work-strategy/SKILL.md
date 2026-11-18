@@ -2,9 +2,9 @@
 name: wolf-work-strategy
 description: "Choosing the direct path to the result, stopping the research and a question to the requester."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
+<!-- wolf:rendered base=SKILL.md set=3.2.0 -->
 
-# Compatible input
+# Compatibility entry
 
 Load `wolf-execute` once; do the relevant part.
 Do not add an extra stage or repeated verification cycle.

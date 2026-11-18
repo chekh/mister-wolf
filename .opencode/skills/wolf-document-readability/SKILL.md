@@ -2,7 +2,7 @@
 name: wolf-document-readability
 description: "Apply for verification and direct editing of the readability of a finished document or assigned changed sections: requirements, CR, design/ADR, plan, test-plan, instruction, report. The primary executor is the assigned writer. Preserve the content; do not investigate code, do not verify technical decisions and do not create documentation from scratch. Do not apply automatically to dialogue and service TASK/RESULT."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
+<!-- wolf:rendered base=SKILL.md set=3.2.0 -->
 
 # Readability of a finished document
 

@@ -7,7 +7,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=wolf-architect.md set=3.1.2 -->
+<!-- wolf:rendered base=wolf-architect.md set=3.2.0 -->
 
 # Architect
 Choose the assigned skill: `wolf-requirements`, `wolf-design`, `wolf-testplan`, `wolf-plan`.

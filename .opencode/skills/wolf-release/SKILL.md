@@ -2,7 +2,7 @@
 name: wolf-release
 description: "Preparing the release of a verified revision, publication within the mandate, and a post-check."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
+<!-- wolf:rendered base=SKILL.md set=3.2.0 -->
 
 # Release the result
 

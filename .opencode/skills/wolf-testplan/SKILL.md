@@ -2,7 +2,7 @@
 name: wolf-testplan
 description: "Apply before executing a FULL plan, when preparing verifications of new behavior, when acceptance criteria or risks change; in LITE/FIX — when the verifiable result needs to be defined."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
+<!-- wolf:rendered base=SKILL.md set=3.2.0 -->
 
 # Requirements → verification plan
 

@@ -2,7 +2,7 @@
 description: Document analysis of an assigned question with verifiable conclusions. Usage: /analyze-doc <file-path> [question]
 agent: mr-wolf
 ---
-<!-- wolf:rendered base=analyze-doc.md set=3.1.2 -->
+<!-- wolf:rendered base=analyze-doc.md set=3.2.0 -->
 Analyze the document: $ARGUMENTS
 
 L0 applies using-skills, wolf-work-strategy and wolf-brainstorm: aligns the

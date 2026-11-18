@@ -2,7 +2,7 @@
 name: wolf-user-report
 description: "Apply when a report or a standalone document for a human is requested, from a summary to research, instruction and work report; also when updating an agreed document. The executor works only with the assigned document. Do not apply automatically to ordinary dialogue and machine reports of agents."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
+<!-- wolf:rendered base=SKILL.md set=3.2.0 -->
 
 # User report
 
@@ -14,7 +14,7 @@ Conciseness means absence of the needless while preserving the necessary. Choose
 
 Load the full text before preparing the document if not yet delivered; a continuation of the task uses the already loaded skill. Distinguish mandatory requirements from conditional ones; carry out a conditional one when its grounds are present. Apply wolf-explain within its scope without reloading for formality.
 
-The input is the reader's question, the assigned result, available materials and constraints. The output is a standalone document in the agreed format and a short handoff with verification boundaries. L0 assigns execution and accepts by reports; this skill does not give it the right to study sources, assemble the file or run verifications instead of the executor. The executor prepares only the assigned document and writes only the allowlist; a missing input or going beyond the mandate is returned to the lead. The user document supplements, but does not replace, the mandatory TASK/RESULT/EVIDENCE/ACCEPTANCE of its role.
+The input is the reader's question, the assigned result, available materials and constraints. The output is a standalone document in the agreed format and a short handoff with verification boundaries. L0 assigns execution and accepts by reports; the lead may prepare the report itself or assign it to an executor — a short report does not by itself require hiring an author. General rights come from the role and TASK; this skill adds none, and independent review of the result stays per risk and policy. The executor prepares only the assigned document and writes only the allowlist; a missing input or going beyond the mandate is returned to the lead. The user document supplements, but does not replace, the mandatory TASK/RESULT/EVIDENCE/ACCEPTANCE of its role.
 
 wolf-user-report is responsible for content sufficiency, the document's purpose and a suitable format. A finished text may go through wolf-document-readability per its purpose: that skill owns readability editing and content preservation. It replaces a similar final readability pass, not verification of completeness, facts, technical decisions and rendering of the special format. Do not add a repeat editorial cycle of the same kind.
 

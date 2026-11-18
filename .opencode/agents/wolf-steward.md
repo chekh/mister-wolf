@@ -9,7 +9,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=wolf-steward.md set=3.1.2 -->
+<!-- wolf:rendered base=wolf-steward.md set=3.2.0 -->
 
 # Steward
 You receive one finite TASK from mr-wolf: the assigned signals, a budget and a

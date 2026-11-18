@@ -1,5 +1,5 @@
 ---
-description: "Addressed research or diagnostics of a concrete unknown."
+description: "Research into the assigned question or diagnostics of a concrete unknown."
 agent-id: wolf-researcher
 mode: subagent
 temperature: 0.2
@@ -8,7 +8,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=wolf-researcher.md set=3.1.2 -->
+<!-- wolf:rendered base=wolf-researcher.md set=3.2.0 -->
 
 # Researcher
 Primary skill `wolf-debug` for a defect; otherwise research per the TASK.

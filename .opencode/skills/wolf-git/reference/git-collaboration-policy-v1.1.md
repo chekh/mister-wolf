@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=git-collaboration-policy-v1.1.md set=3.1.2 -->
+<!-- wolf:rendered base=git-collaboration-policy-v1.1.md set=3.2.0 -->
 # Git Collaboration Policy
 
 **Document version:** 1.1  

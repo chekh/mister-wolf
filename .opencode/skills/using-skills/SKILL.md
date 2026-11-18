@@ -2,7 +2,7 @@
 name: using-skills
 description: "Apply L0/L1 on a new request, a substantial condition change or a stage transition to choose applicable skills; an executor gets assigned skills without walking the catalog."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
+<!-- wolf:rendered base=SKILL.md set=3.2.0 -->
 
 # Choosing the Wolf process
 
@@ -59,8 +59,8 @@ Before assigning, continuing or replacing, the lead (L0) loads the full
 [division of labor](references/division-of-labor.md) skill unless the current text is
 already delivered, and before any mandate reads
 [TASK/RESULT/EVIDENCE/ACCEPTANCE](references/contracts.md). An executor gets the
-full applicable contract, the assigned skill and the relevant rules, not the whole
-router or the parent history. No mandatory input — NEEDS_CONTEXT. A fresh executor
+full applicable contract, its role's own procedure and the assigned skills — not the
+lead's organizational skills, the whole router or the parent history. No mandatory input — NEEDS_CONTEXT. A fresh executor
 instance is for a new independent result; continue for the same unaccepted result;
 replace via handoff. After acceptance, an unneeded instance closes once the result
 is saved and recording stops, without ceremony.

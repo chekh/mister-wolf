@@ -2,7 +2,7 @@
 name: wolf-handoff
 description: "Apply before a session or executor change, near-loss of context, a long stop, or resuming work from saved state."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
+<!-- wolf:rendered base=SKILL.md set=3.2.0 -->
 
 # State handoff
 

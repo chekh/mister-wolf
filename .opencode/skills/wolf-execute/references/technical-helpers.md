@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=technical-helpers.md set=3.1.2 -->
+<!-- wolf:rendered base=technical-helpers.md set=3.2.0 -->
 # Technical operations of a finite mandate
 
 A helper agent is an executor with a finite TASK and assigned skills. The Python 3 helper below serves

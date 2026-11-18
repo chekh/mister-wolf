@@ -2,7 +2,7 @@
 name: wolf-agent-language
 description: "Internal TASK/RESULT/QUESTION/BLOCKED/UPDATE/FINDING and handoff between agents."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
+<!-- wolf:rendered base=SKILL.md set=3.2.0 -->
 
 # Internal agent language
 
@@ -22,6 +22,15 @@ Full contracts and mandate profiles — using-skills/references/contracts.md.
 Do not invent technical settings or IDs. On repeat add `REUSE: the concrete grounds`
 and the corrective-return number. Fields need not be long; no special data — "none".
 The RESULT form follows the mandate profile in contracts.md (implement/review/research/expert).
+
+The six slots are a compact display of the single ten-element core in contracts.md, not a
+second contract: GOAL carries `task_id`, goal and expected result; INPUT carries inputs and
+assigned skill, plus `ACTIVE_CONSTRAINTS`/`DECISIONS[]` when in force; SCOPE carries scope
+and authority; CHECK carries AC and verification; EXECUTION carries the `execution` block —
+model/variant/mode, finite budget, stop/return; STATE carries where working material lives
+and Git rights (part of scope and authority), essentials only. The expected RESULT form
+follows the role profile in contracts.md; a slot with nothing to carry states "none" and
+no core obligation is dropped.
 
 ## RESULT and state
 
