@@ -18,8 +18,8 @@ const REMOVED: ReadonlyArray<RemovedCase & { name: string }> = [
   { argv: ['run', 'do something'], name: 'run' },
   { argv: ['coord'], name: 'coord' },
   { argv: ['memory-stage', '--stage', 'injected', '--memory-ids', 'mem_x'], name: 'memory-stage' },
-  { argv: ['learn', 'status'], name: 'learn' },
-  { argv: ['learn', 'digest'], name: 'learn' },
+  // 3.2.0 вернул `learn` живой командой (due/list/ack/dismiss, T-05): пары
+  // learn status / learn digest больше не removed-кейсы — см. тест ниже.
   { argv: ['session', 'checkpoint', '--thread', 'thr_x'], name: 'checkpoint' },
   { argv: ['help', 'learn'], name: 'learn' },
   // §6.2 P222: `<type> create` у type-неймспейсов
@@ -91,6 +91,20 @@ describe('removed commands answer with a migration hint (wave 2.13 diet)', () =>
     expect(res.status).not.toBe(0);
     expect(res.stderr).toContain("unknown command 'tally'");
     expect(res.stderr).not.toContain('was removed in wolf 2.13');
+  });
+
+  // 3.2.0 (T-05): `learn` снова живая команда — status/digest её неизвестные
+  // подкоманды, а не removed-кейс (прецедент — council tally выше).
+  it('wolf learn status/digest -> unknown subcommand, no removed hint (learn restored in 3.2.0)', () => {
+    const dir = tmpProject();
+    dirs.push(dir);
+    expect(runCli(['init'], dir).status).toBe(0);
+    for (const sub of ['status', 'digest']) {
+      const res = runCli(['learn', sub], dir);
+      expect(res.status).not.toBe(0);
+      expect(res.stderr).toContain(`unknown command '${sub}'`);
+      expect(res.stderr).not.toContain('was removed in wolf 2.13');
+    }
   });
 
   it('wolf council record --help is live', () => {

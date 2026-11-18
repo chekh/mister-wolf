@@ -12,9 +12,12 @@ describe('aggregate apply via CLI', () => {
     ensureBuilt();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     const dir = dirs.pop();
     if (dir) rmSync(dir, { recursive: true, force: true });
+    // vitest #8164: длинный синхронный spawnSync задерживает ACK onTaskUpdate
+    // за RPC-таймаут воркера → ложный unhandled error. Уступаем цикл событий.
+    await new Promise((res) => setTimeout(res, 120));
   });
 
   function newProject(): string {

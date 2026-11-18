@@ -25,8 +25,11 @@ afterAll(() => {
 
 /** Изолированное окружение: tmp-HOME + XDG + PATH с bin установленного бинаря. */
 function isolatedEnv(): NodeJS.ProcessEnv {
+  // npm_command срезаем: npx-guard продукта (src/domain/npx.ts) по нему
+  // переводит init в try-out — npx-запуск vitest протекает переменной в детей.
+  const { npm_command: _npxGuard, ...base } = process.env;
   return {
-    ...process.env,
+    ...base,
     HOME: home,
     XDG_CONFIG_HOME: join(home, '.config'),
     PATH: `${join(prefix, 'bin')}:${process.env.PATH ?? ''}`,
@@ -42,6 +45,13 @@ function isolatedEnv(): NodeJS.ProcessEnv {
 }
 
 describe('tarball-assert (спека §5, §7)', () => {
+  // vitest #8164: длинные синхронные spawnSync (npm install -g, npx) задерживают
+  // ACK onTaskUpdate за RPC-таймаут воркера → ложный unhandled error и смерть
+  // singleFork-прогона. Уступаем цикл событий на границе тестов.
+  afterEach(async () => {
+    await new Promise((res) => setTimeout(res, 120));
+  });
+
   it('package contains ONLY dist/ + templates/ + README + LICENSE + package.json', () => {
     const out = execSync('npm pack --dry-run --json', { cwd: repoRoot, encoding: 'utf-8' });
     const files = (JSON.parse(out)[0].files as { path: string }[]).map((f) => f.path);

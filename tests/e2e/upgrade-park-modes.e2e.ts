@@ -54,6 +54,7 @@ function run(args: string[], cwd: string, extraEnv: NodeJS.ProcessEnv = {}): Run
     encoding: 'utf-8',
     timeout: 120_000,
     env: { ...rest, ...extraEnv },
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
   return { stdout: r.stdout ?? '', stderr: r.stderr ?? '', status: r.status };
 }

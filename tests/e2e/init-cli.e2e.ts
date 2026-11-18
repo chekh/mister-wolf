@@ -14,9 +14,11 @@ const cli = join(REPO, 'dist', 'bootstrap', 'cli.js');
 const legacyMd =
   '---\nid: mem_legacy\ntype: decision\ntitle: Legacy decision\nstatus: active\nreview_state: accepted\nconfidence: medium\nimportance: 0.5\ncreated_at: 2026-06-29T14:00:00Z\nupdated_at: 2026-06-29T14:00:00Z\ncreated_by: user:test\nschema_version: 1\nsource:\n  kind: manual\nrelated:\n  files: []\n  docs: []\n  decisions: []\ntags: []\nsuperseded_by: null\n---\n\nBody.\n';
 
-/** Изолированное окружение: tmp XDG, чтобы e2e не трогал реальный ~/.config/wolf. */
+/** Изолированное окружение: tmp XDG, чтобы e2e не трогал реальный ~/.config/wolf.
+ *  npm_command срезаем: npx-guard продукта (src/domain/npx.ts) читает его. */
 function env(xdg: string): NodeJS.ProcessEnv {
-  return { ...process.env, XDG_CONFIG_HOME: xdg };
+  const { npm_command: _npxGuard, ...base } = process.env;
+  return { ...base, XDG_CONFIG_HOME: xdg };
 }
 
 function newProject(markers: 'opencode' | 'none'): { project: string; xdg: string } {

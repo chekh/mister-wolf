@@ -27,11 +27,15 @@ export function runCli(
   cwd: string,
   env?: NodeJS.ProcessEnv
 ): { stdout: string; stderr: string; status: number | null } {
+  // npx-guard (src/domain/npx.ts:8) ветвит init/sync по env.npm_command
+  // ('exec'|'npx' → try-out). Воркер vitest, запущенный через npx, протекает
+  // этой переменной в детей — срезаем её, как это делает run() в park-modes.
+  const { npm_command: _npxGuard, ...base } = process.env;
   const result = spawnSync('node', [cliPath, ...args], {
     cwd,
     encoding: 'utf-8',
     timeout: 30_000,
-    env: env && { ...process.env, ...env },
+    env: { ...base, ...(env ?? {}) },
   });
   return { stdout: result.stdout ?? '', stderr: result.stderr ?? '', status: result.status };
 }

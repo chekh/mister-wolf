@@ -32,7 +32,7 @@ function sendAndReceive(proc: ChildProcess, message: unknown): Promise<unknown> 
   });
 }
 
-describe('MCP stdio: catalog diet (2.13 survivors + council_record, 8 tools + ping)', () => {
+describe('MCP stdio: catalog diet (2.13 survivors + council_record + propose_candidate 3.2.0 REQ-05, 9 tools + ping)', () => {
   let cwd: string;
   let child: ChildProcess;
   beforeAll(() => {
@@ -48,7 +48,7 @@ describe('MCP stdio: catalog diet (2.13 survivors + council_record, 8 tools + pi
     rmSync(cwd, { recursive: true, force: true });
   });
 
-  it('tools/list exposes exactly the diet survivors + ping (spec 2.13 §6.2)', async () => {
+  it('tools/list exposes exactly the diet survivors + propose_candidate (3.2.0) + ping', async () => {
     await sendAndReceive(child, {
       jsonrpc: '2.0',
       id: 1,
@@ -64,7 +64,18 @@ describe('MCP stdio: catalog diet (2.13 survivors + council_record, 8 tools + pi
     })) as { result?: { tools?: { name: string }[] } };
 
     const names = (tools.result?.tools ?? []).map((t) => t.name).sort();
-    expect(names).toEqual(['add', 'brief', 'council_record', 'get', 'list', 'ping', 'recap', 'search', 'transition']);
+    expect(names).toEqual([
+      'add',
+      'brief',
+      'council_record',
+      'get',
+      'list',
+      'ping',
+      'propose_candidate',
+      'recap',
+      'search',
+      'transition',
+    ]);
   });
 
   it('tools/call of a removed tool (create_thread) returns an error hinting add/transition (P223)', async () => {
