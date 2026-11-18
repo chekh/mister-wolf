@@ -8,10 +8,14 @@ Use Node.js 24 or newer on macOS or Linux with glibc:
 
 ```bash
 npm ci
-npm run check
+npm run check:quick   # inner loop: incremental build + tests affected by changed files (no static gates)
+npm run check         # code gate: language/glossary/EN-surface, format, build, unit+integration
+npm run check:full    # complete gate: check + docs build + link check
 npm run e2e
-npm run docs:check
+npm run build:clean   # cold rebuild of dist, for release and shipping artifacts
 ```
+
+Builds are incremental: `npm run build` keeps its cache in `node_modules/.cache` and takes seconds, while `build:clean` recompiles everything. Remove `dist` only through `build:clean`: a manual deletion leaves the cache claiming fresh output, and `npm run build` detects that case and rebuilds from scratch before use. Test workers default to half of the logical CPUs (maximum 4) to keep the machine responsive; set `WOLF_TEST_MAX_FORKS` to override. `check:full` runs `tsc` once and reuses the result for both the code and documentation steps. `check:quick` omits the static gates and covers only tests affected by tracked changes, so run `check` before a pull request: new untracked test files are not picked up by `--changed`.
 
 ## Git flow
 

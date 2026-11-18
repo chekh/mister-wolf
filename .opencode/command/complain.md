@@ -20,8 +20,9 @@ wolf-expert), project user agents (no wolf- prefix required), skill:<name>,
 existing memory objects (mem-id).
 
 Signal sources: the user, the lead agent, executors within their rights.
-Automatic processing by the Steward is temporarily disabled: the signal is
-recorded and not lost; processing is designed for the next release.
+The signal is recorded and is not lost; processing goes through an assigned
+wolf-steward mandate or the `wolf learn due` queue (available in learning mode
+suggest; in off mode nothing is assigned or suggested).
 A proven result defect is fixed the usual way; a proposal to change a skill
 is separate work. If diagnostics is needed, assign it via L1; a sufficient
 complaint does not require it. Report briefly: what was accepted, factual

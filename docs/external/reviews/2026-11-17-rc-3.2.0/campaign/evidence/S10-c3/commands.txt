@@ -1,0 +1,32 @@
+find . -type f -not -path './.git/*' -not -path './node_modules/*' | head -60; echo "---"; ls -la
+wolf search "Session language" 2>&1 | head -20
+wolf call 2>&1 | head -50; echo "---BRIEF---"; wolf brief 2>&1 | head -80
+find src tests bin -type f | head -30; echo "---package.json---"; cat package.json; echo "---AGENTS.md---"; cat AGENTS.md
+wolf add --type decision --title "Session language: ru" --body "Source: first user message is in Russian (bug report on pagination), 2026-11-17." 2>&1 | tail -3
+node -e "
+import('./src/paginate.js').then(({paginate}) => {
+  const items = Array.from({length: 20}, (_, i) => i + 1);
+  const pages = paginate(items, 20);
+  console.log('20 items, pageSize=20 ->', pages.length, 'pages; last page:', JSON.stringify(pages.at(-1)));
+  console.log('21 items, pageSize=20 ->', paginate(items.concat([21]), 20).length, 'pages');
+  console.log('19 items, pageSize=20 ->', paginate(items.slice(0,19), 20).length, 'pages');
+  console.log('empty, pageSize=20 ->', JSON.stringify(paginate([], 20)));
+});"
+git log --oneline -5; echo "---status---"; git status --short
+node --test tests/ 2>&1 | tail -15
+node --test tests/ 2>&1 | head -40; echo "===try file==="; node --test tests/suite.test.mjs 2>&1 | tail -12
+node --test tests/suite.test.mjs 2>&1 | grep -E "^(not ok|ok|# (tests|pass|fail))"
+node --test tests/suite.test.mjs 2>&1 | grep -E "^(not ok|ok|# (tests|pass|fail))"; echo "---repro check---"; node -e "
+import('./src/paginate.js').then(({paginate}) => {
+  const items = Array.from({length: 20}, (_, i) => i + 1);
+  console.log('20/20 ->', paginate(items, 20).length, 'page(s)');
+  console.log('21/20 ->', paginate(items.concat([21]), 20).length, 'pages');
+  console.log('19/20 ->', paginate(items.slice(0,19), 20).length, 'page(s)');
+  console.log('40/20 ->', paginate([...items, ...items], 20).length, 'pages');
+  console.log('empty ->', JSON.stringify(paginate([], 20)));
+});"
+git diff -- src tests | head -60
+wolf add --type note --facet history --title "Debug log: paginate trailing empty page" --body "Symptom: any non-empty list got one extra trailing empty page (reported: 20 items pageSize=20 -> 2 pages). Reproduced via node -e and failing tests (RED: 3 new regression tests fail on contract). Root cause: src/paginate.js pageCount formula had third term '+ (items.length > 0 ? 1 : 0)' double-counting the 'at least one page' guarantee already provided by the pages.length===0 fallback. Discriminating evidence: 19 items (non-multiple) also got empty page -> not boundary rounding. Fix (TDD GREEN 6/6): pageCount = Math.ceil(items.length / pageSize); empty-input behavior preserved via existing fallback. Evidence: node --test tests/suite.test.mjs -> 6 pass / 0 fail; repro matrix 20/20=1, 21/20=2, 19/20=1, 40/20=2, empty=[[]]. Residual risks: none known; chunk.js unrelated and untouched." 2>&1 | tail -2
+wolf list --type complaint --status open 2>&1 | tail -5
+node --test tests/suite.test.mjs 2>&1 | grep -E "^# (tests|pass|fail)"; echo "---diff scope---"; git diff --stat -- src tests; echo "---untracked in src/tests?---"; git status --short -- src tests
+wolf add --type note --facet history --title "Accepted: paginate off-by-one fix + regression tests" --body "Revision: src/paginate.js pageCount = Math.ceil(items.length/pageSize) + 3 regression tests in tests/suite.test.mjs. Independent review (wolf-reviewer, ses_e16e60f5effeyFeGrqIiGePt0c): ACCEPT on all 6 criteria (root cause vs symptom patch, input family, test sensitivity vs pre-fix formula, no weakened assertions, preserved contracts, no scope creep); its channel had no shell, so literal runs were done by lead. Lead verification on current tree: node --test 6/6 pass; boundary matrix 20/20=1, 21/20=2, 19/20=1, 40/20=2, empty=[[]]; diff --stat exactly 2 files (+13/-3); open complaints: none. Related: mem_20261117_440ef7 (debug log). Changes uncommitted (no commit mandate)." 2>&1 | tail -2

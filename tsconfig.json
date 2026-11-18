@@ -7,7 +7,9 @@
     "strict": true,
     "outDir": "./dist",
     "incremental": true,
-    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    // Вне dist: иначе повторная сборка стирает кэш вместе с каталогом
+    // и каждый прогон заново типизирует весь src (~14s вместо ~2s).
+    "tsBuildInfoFile": "./node_modules/.cache/tsconfig.tsbuildinfo",
     "rootDir": "./src",
     "declaration": true,
     "declarationMap": true,

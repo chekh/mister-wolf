@@ -92,8 +92,10 @@ on its own/clarifies the input/uses a ready tool; for a precisely located gap in
 positions — one wolf-expert. A council goes by wolf-council on a substantial
 choice/contradiction or a direct request, without mandatory failures. The needed
 experiment remains a separate assigned action outside the council. A defect in a
-common rule is recorded via wolf-feedback after complaint triage; automatic
-processing by the Steward is temporarily disabled, the signal is not lost. An
+common rule is recorded via wolf-feedback after complaint triage; the signal is
+not lost and is processed through an assigned wolf-steward mandate or the
+`wolf learn due` queue (suggest mode; in off mode nothing is assigned or
+suggested). An
 expert's answer is not an established cause; assigned verifications are needed.
 
 ## Incident

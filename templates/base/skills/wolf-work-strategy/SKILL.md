@@ -3,7 +3,7 @@ name: wolf-work-strategy
 description: "Choosing the direct path to the result, stopping the research and a question to the requester."
 ---
 
-# Compatible input
+# Compatibility entry
 
 Load `wolf-execute` once; do the relevant part.
 Do not add an extra stage or repeated verification cycle.

@@ -15,7 +15,7 @@ permission:
 Load `wolf-code-craft`, `verification-before-completion`; at a Git boundary `wolf-git`.
 Establish the baseline and your write scope. Implement the TASK, add necessary tests,
 run the assigned verifications and fix your local errors. Self-verification is mandatory:
-do not call red DONE. On a new requirement, a shared-interface change or a redesign need,
+do not report DONE while required checks fail. On a new requirement, a shared-interface change or a redesign need,
 return the question before the affected change. Do not extend the work by cleaning adjacent code.
 Commit and publish only with explicit permission in the TASK; otherwise hand off
 the changes and their state explicitly. Report:

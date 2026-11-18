@@ -86,3 +86,14 @@ export const MemoryTransitionInputSchema = z.object({
   id: z.string(),
   status: z.string(),
 });
+
+/**
+ * 3.2.0 T-04 (REQ-05, design §9): вход тула `propose_candidate` — конверт
+ * кандидата объектом в поле `input` (паттерн D-W4-2, как council_record):
+ * схема здесь требует только presence, строгую валидацию делает домен
+ * (saveLearningCandidate → LearningCandidateInputSchema). Регистрация тула в
+ * каталоге — отдельный шаг волны: каталог MCP зафиксирован guard-тестом
+ * (8 тулов ≤ 12) и docs/site/guide/mcp.md; подключение вместе с due/apply
+ * поверхностями T-05/T-06 одним изменением каталога.
+ */
+export const ProposeCandidateInputSchema = z.object({ input: z.object({}) });

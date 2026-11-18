@@ -7,7 +7,7 @@ import { OpencodeBaseSetRenderer } from '../../../../src/adapters/render/opencod
 
 // A1.2 (REQ-12), редакция S-DELIVERY 3.0.0: носитель плотности standard|draft
 // доставляется базовым набором в контракт TASK (using-skills, execution) и в
-// тела всех восьми исполнителей wolf-*; лиц больше нет. Гард против регресса:
+// тела всех девяти исполнителей wolf-*; лиц больше нет. Гард против регресса:
 // без носителя тест падает — плотность не текст-пожелание, а ось.
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const base = join(root, 'templates/base');
@@ -28,6 +28,7 @@ const EXECUTORS = [
   'wolf-release-engineer',
   'wolf-researcher',
   'wolf-reviewer',
+  'wolf-steward',
   'wolf-tester',
 ];
 

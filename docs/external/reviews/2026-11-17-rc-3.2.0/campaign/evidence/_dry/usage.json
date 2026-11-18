@@ -1,0 +1,14 @@
+{
+  "session_id": null,
+  "model_calls_visible": 0,
+  "n_events": 1,
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "reasoning": 0,
+    "cache_read": 0,
+    "cache_write": 0
+  },
+  "total_tokens": 0,
+  "tokens_note": "no step-finish events: unknown (no model response captured)"
+}

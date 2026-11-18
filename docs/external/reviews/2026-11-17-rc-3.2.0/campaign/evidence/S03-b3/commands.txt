@@ -1,0 +1,21 @@
+wolf brief
+wolf add --type decision --title "Session language: ru" --body "Source: first user message of session S03-b3 is Russian. Date: 2026-11-17."
+wolf search metrics && echo --- && wolf search aggregate
+wolf search "Init report"
+wolf get mem_20261117_3ee94b
+wolf add --type decision --title "Plan exp: step 3 without updated_at" --body "Gap: data/metrics.json (verified at commit 219de89, 2026-11-17) contains only {\"sources\":{\"api\":12,\"web\":8}} — no updated_at field, which plan step 3 assumes. User reported the gap and mandated continue. Decision: summary report omits updated_at and explicitly states it is absent in the source data; no value is fabricated; source data is not modified; accepted plan text stays unchanged. Rejected alternatives: deriving updated_at from file mtime (fabricates semantics), adding the field to data/metrics.json (mutating a source input)." --tags plan-exp,deviation
+python3 -c "
+import json
+d = json.load(open('data/metrics.json'))
+src = d.get('sources', {})
+per = {k: v for k, v in src.items()}
+print('per_source:', per)
+print('total:', sum(per.values()))
+print('has_updated_at:', 'updated_at' in d)
+print('top_level_keys:', sorted(d.keys()))
+"
+git rev-parse HEAD && git status --porcelain
+wolf list --type complaint --status open
+git rev-parse HEAD && git status --porcelain && echo "--- data/metrics.json in status? ---" && (git status --porcelain | grep -c "data/metrics.json" || echo "0 (not modified)")
+wolf add --type note --title "Plan exp: steps 3-5 ACCEPTED" --body "ACCEPTANCE (lead verdict, 2026-11-17, revision 219de89): plan docs/dev/exp/plan.md executed in full. AC1 aggregation matches source (api=12, web=8, total=20): organizer recompute + independent recompute by reviewer (E-1). AC2 updated_at absent, no fabricated value, source unmodified: reviewer E-2 + direct git status --porcelain (data/metrics.json not in status, re-run at verdict). AC3 report at plan path, cited commit = HEAD: reviewer E-3/E-5 + git rev-parse HEAD. Independent review: rev-exp-report-r1 (wolf-reviewer, ses_e16cf8ce3ffe7ODLOzkFs0yDwK), verdict APPROVED, findings none; reviewer LIMITS items 1-3 closed by organizer evidence (shell commands run by organizer; decision content authored by lead). Open complaints: 0. Dirty state at acceptance: delivery artifact docs/dev/exp/report.md (untracked); pre-existing foreign untracked bin/ untouched. Deviation: step 3 without updated_at per decision mem_20261117_0447b0. Plan file updated: steps 3-5 marked done with evidence refs." --tags plan-exp,acceptance
+wolf add --type note --facet history --title "Plan exp: steps 3-5 ACCEPTED" --body "ACCEPTANCE (lead verdict, 2026-11-17, revision 219de89): plan docs/dev/exp/plan.md executed in full. AC1 aggregation matches source (api=12, web=8, total=20): organizer recompute + independent recompute by reviewer (E-1). AC2 updated_at absent, no fabricated value, source unmodified: reviewer E-2 + direct git status --porcelain (data/metrics.json not in status, re-run at verdict). AC3 report at plan path, cited commit = HEAD: reviewer E-3/E-5 + git rev-parse HEAD. Independent review: rev-exp-report-r1 (wolf-reviewer, ses_e16cf8ce3ffe7ODLOzkFs0yDwK), verdict APPROVED, findings none; reviewer LIMITS items 1-3 closed by organizer evidence (shell commands run by organizer; decision content authored by lead). Open complaints: 0. Dirty state at acceptance: delivery artifact docs/dev/exp/report.md (untracked); pre-existing foreign untracked bin/ untouched. Deviation: step 3 without updated_at per decision mem_20261117_0447b0. Plan file updated: steps 3-5 marked done with evidence refs." --tags plan-exp,acceptance

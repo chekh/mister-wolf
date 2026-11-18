@@ -1,0 +1,2 @@
+wolf call; echo "---BRIEF---"; wolf brief; echo "---COMPLAINTS---"; wolf list --type complaint --status open
+wolf add --type decision --title "Session language: Russian" --body "Source: first user message is in Russian (status report request). Recorded 2026-11-17."

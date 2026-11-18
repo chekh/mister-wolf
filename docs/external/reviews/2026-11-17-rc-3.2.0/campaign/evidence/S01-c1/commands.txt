@@ -1,0 +1,4 @@
+wolf call 2>&1 | head -50
+wolf brief 2>&1 | head -80
+wolf search "Session language" 2>&1 | head -20
+wolf add --type decision --title "Session language: ru" --body "Source: user's first message is in Russian. Date: 2026-11-17." 2>&1 | head -5

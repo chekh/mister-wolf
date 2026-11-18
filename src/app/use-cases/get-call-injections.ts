@@ -9,6 +9,13 @@ import { highlightFacet } from '../../domain/facet-colors.js';
 import { checksumBlock } from '../../adapters/fs/session-delivery-registry.js';
 import { brokenWorktreeHint, resolveWorktreeIdentity, type WorktreeIdentity } from '../../adapters/fs/memory-root.js';
 import { detectUnaggregatedLessons } from './detect-unaggregated-lessons.js';
+import {
+  selectMicroNotes,
+  type MicroNoteBudget,
+  type MicroNoteContext,
+  type MicroNoteDeliveryResult,
+} from './micro-note-delivery.js';
+import type { MicroNoteDeliveryLog } from '../../ports/micro-note-delivery-log.port.js';
 
 const WT_PREFIX = 'worktree:';
 /** Формат WT-ID-токена (design §3.2). Свой токен сравнивается с текущим напрямую;
@@ -25,9 +32,10 @@ export interface CallInjectionResult {
   /** P108 (4.C): сколько объектов отфильтровано сессионной дедупликацией
    * (id уже в реестре сессии с той же checksum блока). */
   deduplicated: number;
-  /** 2.14 §7.1 (триггер 2): строка «зрелые неагрегированные уроки»; R-14 (3.0.0):
-   * автоматическая обработка Стюардом временно отключена — счётчик показывается,
-   * без императива вызова; null = relations не передан (MCP-канал) или зрелых нет. В blocks
+  /** 2.14 §7.1 (триггер 2): строка «зрелые неагрегированные уроки»; с 3.2.0 (REQ-02):
+   * разбор — по поручению wolf-steward или через `wolf learn due` (learning mode
+   * suggest; off — ничего не назначается), счётчик показывается без императива вызова;
+   * null = relations не передан (MCP-канал) или зрелых нет. В blocks
    * не входит — не занимает бюджет доставки. */
   banner: string | null;
   /** WP3 §6.2: активных кандидатов в пуле (после status-фильтра, до scope/topic-фильтров). */
@@ -38,6 +46,10 @@ export interface CallInjectionResult {
    * сопоставленные никому (неоднозначное имя — две живые копии с тем же basename).
    * Честный конфликт: stderr-подсказка wolf call + doctor; объекты не переписываются. */
   scopeConflicts: string[];
+  /** 3.2.0 T-09 (REQ-09): адресные micro-notes; null — канал не запросил доставку
+   * (input.microNotes не передан). Блоки micro-notes уже добавлены в blocks/
+   * deliveredIds. */
+  microNotes: MicroNoteDeliveryResult | null;
 }
 
 function formatBlock(obj: Record<string, unknown>, colors?: boolean): string {
@@ -62,6 +74,9 @@ export async function getCallInjections(
     baseDir?: string;
     /** Тестовый seam: резолвер identity (прод-дефолт — resolveWorktreeIdentity). */
     resolveIdentity?: (baseDir: string) => WorktreeIdentity | null;
+    /** 3.2.0 T-09: журнал attribution micro-notes (selected/delivered, S-27
+     * suppressions); не передан — доставка работает, атрибуция не пишется. */
+    noteLog?: MicroNoteDeliveryLog;
   },
   input: {
     topic?: string;
@@ -76,6 +91,10 @@ export async function getCallInjections(
      * (`w-<12 hex>` из resolveMemoryRoot().worktree, полный `worktree:…` тоже
      * принят) либо undefined/'main' — main-вид: worktree-scoped объекты скрыты. */
     currentScope?: string;
+    /** 3.2.0 T-09 (REQ-09): контекст адресных micro-notes; не передан — доставка
+     * micro-notes выключена (нулевое изменение поведения существующих вызовов).
+     * environment не передан — берётся process.platform. */
+    microNotes?: MicroNoteContext & { budget?: Partial<MicroNoteBudget> };
   }
 ): Promise<CallInjectionResult> {
   const now = deps.clock.now();
@@ -255,6 +274,52 @@ export async function getCallInjections(
     }
   }
 
+  // 6a. 3.2.0 T-09 (REQ-09): адресные micro-notes — детерминированная выборка из
+  // того же прочитанного списка (без дополнительных проходов и без LLM);
+  // подавленные противоречием (S-27) не доставляются; бюджет отдельный (NFR-02).
+  let micro: MicroNoteDeliveryResult | null = null;
+  if (input.microNotes !== undefined) {
+    const ctx: MicroNoteContext = {
+      ...input.microNotes,
+      environment: input.microNotes.environment ?? process.platform,
+    };
+    micro = selectMicroNotes(memoryObjects, ctx, input.microNotes.budget, deps.noteLog?.suppressions() ?? []);
+    const deliveredSet = new Set(deliveredIds);
+    for (const candidate of micro.delivered) {
+      // Сессионная дедупликация (P108): та же checksum блока в реестре — не повторяем.
+      if (input.deliveredRegistry && input.deliveredRegistry[candidate.id] === checksumBlock(candidate.block)) {
+        micro.skipped.push(candidate);
+        continue;
+      }
+      if (deliveredSet.has(candidate.id)) {
+        micro.skipped.push(candidate);
+        continue;
+      }
+      blocks.push(candidate.block);
+      deliveredIds.push(candidate.id);
+      deps.noteLog?.recordDelivery({
+        memory_id: candidate.id,
+        revision: candidate.revision,
+        channel: 'call',
+        kind: 'delivered',
+        ts: now.toISOString(),
+      });
+    }
+    if (deps.noteLog) {
+      const deliveredNow = new Set(micro.delivered.map((c) => c.id));
+      for (const candidate of micro.selected) {
+        if (deliveredNow.has(candidate.id)) continue;
+        deps.noteLog.recordDelivery({
+          memory_id: candidate.id,
+          revision: candidate.revision,
+          channel: 'call',
+          kind: 'selected',
+          ts: now.toISOString(),
+        });
+      }
+    }
+  }
+
   // 2.14 §7.1 (триггер 2): banner про зрелых неагрегированных — по ВСЕМ
   // объектам (не по matched); Р8 спеки: без повторной загрузки — один cast
   // уже прочитанного memoryObjects + один list() лога рёбер
@@ -268,7 +333,7 @@ export async function getCallInjections(
     if (detect.mature >= 1) {
       banner =
         `неагрегированных уроков: ${detect.total} (зрелых: ${detect.mature}) — ` +
-        'автоматическая обработка Стюардом временно отключена; сигнал фиксируется и не теряется';
+        'сигнал фиксируется и не теряется; разбор — по поручению wolf-steward или через `wolf learn due`';
     }
   }
 
@@ -305,5 +370,6 @@ export async function getCallInjections(
     poolSize: injections.length,
     hidden: hiddenCount > 0 ? { scope: current, count: hiddenCount } : null,
     scopeConflicts: [...scopeConflicts],
+    microNotes: micro,
   };
 }

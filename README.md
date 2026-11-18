@@ -16,10 +16,10 @@ Wolf is also your point of contact with that organization: explain what you need
 
 ## Why Wolf
 
-- **Keep the goal in view.** mr-wolf, the lead agent, owns the goal and final acceptance: it executes work itself and hires the eight `wolf-` specialists directly — `wolf-architect`, `wolf-developer`, `wolf-editor`, `wolf-expert`, `wolf-release-engineer`, `wolf-researcher`, `wolf-reviewer`, `wolf-tester`. Executors do not delegate further: no intermediate level sits between the lead and the agent doing the work, and the lead stays accountable for the outcome over a long assignment.
+- **Keep the goal in view.** mr-wolf, the lead agent, owns the goal and final acceptance: it executes work itself and hires the nine `wolf-` specialists directly — `wolf-architect`, `wolf-developer`, `wolf-editor`, `wolf-expert`, `wolf-release-engineer`, `wolf-researcher`, `wolf-reviewer`, `wolf-steward`, `wolf-tester`. Executors do not delegate further: no intermediate level sits between the lead and the agent doing the work, and the lead stays accountable for the outcome over a long assignment.
 - **Connect the methods.** A process determines which skills, rules, context and tools apply, what to delegate, when to ask and how to verify. Assigned skills supply each executor's specialization; a new independent piece of work gets a fresh executor, reuse is bounded to defined continuation cases, and the lead's own work passes the same independent review.
 - **Continue across sessions.** Project documents are part of memory, alongside decisions, working state and lessons. Original documents stay canonical in their own files; Wolf records references and relevant context for later work.
-- **Learn from feedback.** Complaints and proposals are accepted and recorded with reasons and history; mature lessons can be aggregated. The Steward, which turned such feedback into automatic versioned method changes, is temporarily out of the standard routing and returns in the next release; its mechanisms and history are preserved. This is organizational learning, not model-weight training.
+- **Learn from feedback.** Complaints, lessons and observed practices are recorded with reasons and history. Since 3.2.0 the governed learning cycle turns accepted signals into exact, reversible method changes: the lead assigns `wolf-steward` a finite analysis under the `wolf-learning-cycle` method, an independent verification follows, and the lead accepts; the app applies only the exact accepted version (`wolf learn accept` → `apply` → `rollback` as the safety lever) and only in `apply-approved` mode — by default the cycle suggests and nothing activates. Addressed micro-notes deliver relevant local knowledge in `wolf call` and `wolf brief`. This is organizational learning, not model-weight training.
 - **Work comfortably with people.** Intent dialogue, clear explanations and timely questions are part of the working method. Internal executor reports are integrated into a useful human-facing answer.
 - **Accumulate capabilities you own.** Useful scripts and methods can become reusable project resources. Local files, CLI and MCP keep project state under your control; model calls still use your configured provider.
 
@@ -48,7 +48,7 @@ Wolf's supplied methods direct it to clarify the goal, organize bounded work, ch
 
 ## Everyday use and updates
 
-Discuss a task or correction with Wolf in your agent environment. [Working with Wolf](https://chekh.github.io/mister-wolf/guide/working-with-wolf) covers clarification, progress, continuation and feedback. [Feedback](https://chekh.github.io/mister-wolf/guide/feedback) explains how complaints and lessons are recorded and how you retain control. The CLI also ships three commands: `analyze-doc` and `doc-review` for document analysis and review, `complain` to file a complaint about an agent, a skill or a memory note.
+Discuss a task or correction with Wolf in your agent environment. [Working with Wolf](https://chekh.github.io/mister-wolf/guide/working-with-wolf) covers clarification, progress, continuation and feedback. [Feedback and learning](https://chekh.github.io/mister-wolf/guide/feedback) explains how complaints and lessons are recorded, how the learning cycle works and how you retain control. The delivered command set includes `analyze-doc` and `doc-review` for document analysis and review, and `complain` to file a complaint about an agent, a skill or a memory note; the CLI adds the `wolf learn` group (`due`/`list`/`ack`/`dismiss`/`accept`/`apply`/`rollback`) for the learning cycle.
 
 ```bash
 wolf upgrade --check   # inspect CLI and registered-project freshness
@@ -57,7 +57,7 @@ wolf upgrade          # update the package and registered projects
 
 Review local modifications before choosing an update resolution. [Upgrade workflow](https://chekh.github.io/mister-wolf/guide/upgrade) explains diffs, protection and backups.
 
-Updating an installed project to 3.0.0 with `wolf upgrade` delivers the current set and reserves your local edits and the removed Wolf plugins under `.wolf/backup/upgrade/<date>/`. The shipped agents carry persistent `wolf-` names; a repeated upgrade reports the project up to date and does not bring the old hierarchy back. Migrating from a pilot installation follows a separate instruction — see the 3.0.0 upgrade notes in the [changelog](CHANGELOG.md).
+Updating an installed project with `wolf upgrade` delivers the current set — 10 agents and 36 skills since 3.2.0 — and reserves your local edits (keep/protect mechanics unchanged) with backups under `.wolf/backup/upgrade/<date>/`. The shipped agents carry persistent `wolf-` names; a repeated upgrade reports the project up to date and does not bring the old hierarchy back. What a 3.1.2 → 3.2.0 upgrade adds and what changes by default: see the [migration note](https://chekh.github.io/mister-wolf/guide/upgrade). Migrating from a pilot installation follows a separate instruction — see the 3.0.0 upgrade notes in the [changelog](CHANGELOG.md).
 
 ## Scope and development
 

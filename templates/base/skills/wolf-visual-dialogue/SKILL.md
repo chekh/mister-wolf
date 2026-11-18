@@ -3,7 +3,7 @@ name: wolf-visual-dialogue
 description: "Visually explains alternatives or relations in dialogue."
 ---
 
-# Compatible input
+# Compatibility entry
 
 Load `wolf-explain` once and perform the relevant part.
 Do not create an extra stage or a repeated verification cycle.

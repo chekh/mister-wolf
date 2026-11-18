@@ -1,0 +1,14 @@
+{
+  "session_id": "ses_e1700916affe14HewrC5P27hr1",
+  "model_calls_visible": 6,
+  "n_events": 27,
+  "tokens": {
+    "input": 44487,
+    "output": 1581,
+    "reasoning": 2940,
+    "cache_read": 0,
+    "cache_write": 0
+  },
+  "total_tokens": 49008,
+  "tokens_note": "sum of step-finish tokens; cost not reported by router (unknown)"
+}

@@ -19,7 +19,7 @@ A fresh executor can be replaced without making it responsible for the whole pro
 
 A skill supplies a method, a tool performs an operation, a rule sets a boundary, and memory supplies context. The process connects them: what applies now, who acts, when to ask, what counts as enough verification, and what must survive the session.
 
-Mr. Wolf hires an executor for a task directly — by name, from the eight wolf-\* specialists. Each executor works from its face (a versioned working methodology) with assigned skills and available tools. The specialization follows the task: research, documents, implementation, testing, review or release work. Executors do not delegate further; a new independent piece of work gets a fresh executor. The current shipped organization is OpenCode-first; general methods do not imply every domain or harness has a ready-made integration.
+Mr. Wolf hires an executor for a task directly — by name, from the nine wolf-\* specialists. Each executor works from its frame with assigned skills and available tools. The specialization follows the task: research, documents, implementation, testing, review or release work. Executors do not delegate further; a new independent piece of work gets a fresh executor. The current shipped organization is OpenCode-first; general methods do not imply every domain or harness has a ready-made integration.
 
 Useful scripts can be registered as project tools and reused with their contracts. Registering a tool does not execute it. See [Base Set](/guide/base-set) and [Tool economy](/guide/tool-economy).
 
@@ -31,7 +31,7 @@ Original documents remain canonical in their own files. Wolf can register docume
 
 ## The Steward changes future work
 
-Delivery advances the current task. The **Steward** is a separate, cross-cutting role that maintains and improves working methods through an authorized feedback loop. In 3.0.0 the Steward is temporarily out of standard routing — feedback is accepted and recorded, and the role returns in the next release.
+Delivery advances the current task. The **Steward** (`wolf-steward`) is a separate specialist for the governed learning loop: the lead assigns it a finite analysis of selected signals under the `wolf-learning-cycle` method, the candidate passes independent verification, and only the lead accepts and applies it — since 3.2.0 via `wolf learn`, in `apply-approved` mode only. By default the cycle suggests and nothing activates.
 
 - A question can resolve missing context without changing a rule.
 - A supported complaint can lead to a new version of an agent's face, with a reason, verification and rollback information.

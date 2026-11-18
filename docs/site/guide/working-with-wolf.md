@@ -34,7 +34,7 @@ Tell Wolf what happened and what you expected:
 
 > You repeated the whole investigation instead of asking me about the missing requirement. Correct the current plan and check whether the working method needs changing.
 
-A local execution error calls for a correction. A missing decision calls for a question. A defect in a rule can be filed as a complaint; in 3.0.0 the Steward that applies method mutations is temporarily paused, and complaints are accepted and recorded until its return. You do not need to classify it first; Wolf's feedback methods distinguish the routes. [The learning loop](/guide/feedback) explains the subsequent changes and limits.
+A local execution error calls for a correction. A missing decision calls for a question. A defect in a rule can be filed as a complaint; since 3.2.0 selected signals feed the learning queue, where the lead assigns `wolf-steward` a finite analysis and a verified candidate can change the method — by default the cycle suggests and nothing activates. You do not need to classify it first; Wolf's feedback methods distinguish the routes. [The learning loop](/guide/feedback) explains the subsequent changes and limits.
 
 Ask for the affected method, reason for change, version and validation. The owner can inspect face versions and use authorized restore operations; [Delivery & Trust](/guide/delivery) explains when a changed face reaches a session.
 

@@ -20,6 +20,7 @@ import { median, type EconomyResult, type RunLogEntry } from '../../domain/tool-
 import { UNCATEGORIZED_ERROR_CLASS } from '../../domain/error-class.js';
 import type { RouterLogRow } from '../../domain/router-log.js';
 import { runCostUsd, type PricingTable, type RawTokens } from '../../domain/pricing.js';
+import { buildCallSlices, type CallSlices } from './accounting-slices.js';
 import { mondayOf } from './generate-insights.js';
 import { toolStats } from './tool-stats.js';
 import { classifyCouncilRecord, type ClassifiedCouncilRecord } from './council-normalizer.js';
@@ -473,6 +474,9 @@ export interface AnalyticsReport {
   acceptance: AcceptanceStats & AcceptanceView;
   coverage: CoverageStats;
   dataQuality: DataQualityStats;
+  /** 3.2.0 T-09 (REQ-11, S-21/S-22): срезы по уникальным вызовам; learning/council —
+   * срезы тех же вызовов, к сумме не прибавляются; unknown tariff → basis unknown. */
+  slices: CallSlices;
 }
 
 export interface AnalyticsDeps {
@@ -2129,6 +2133,13 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
     completeTraceRatePct: null,
     completeTraceRateReason: 'span model planned P2',
   };
+  // 3.2.0 T-09 (REQ-11): срезы по уникальным вызовам — те же дедуплицированные
+  // signals; council-сессии из существующих source.session_id council-записей.
+  const councilSessions = new Set<string>();
+  for (const o of allObjects) {
+    if (classifyCouncilRecord(o).kind !== null && o.source?.session_id) councilSessions.add(o.source.session_id);
+  }
+  const slices = buildCallSlices(signals, { pricing: input.pricing, councilSessions });
   return {
     generatedAt: now.toISOString(),
     thresholds,
@@ -2158,6 +2169,7 @@ export async function buildAnalyticsReport(deps: AnalyticsDeps, input: Analytics
     },
     coverage,
     dataQuality,
+    slices,
   };
 }
 

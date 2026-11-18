@@ -1,6 +1,6 @@
 # Agent Brief: mr-wolf
 
-Mr. Wolf — постоянная проектная организация из временных AI-помощников («I solve problems»): двухуровневая модель — ведущий выполняет работу сам и напрямую нанимает специалистов wolf-*; цели, процессы, память. Текущая полная организация — OpenCode-first. Стек: TypeScript, Node, vitest; валидация — `npm run check`. Управляемое обучение набора (Стюард) — отдельное планируемое направление в roadmap, в действующую модель не входит.
+Mr. Wolf — постоянная проектная организация из временных AI-помощников («I solve problems»): двухуровневая модель — ведущий выполняет работу сам и напрямую нанимает специалистов wolf-*; цели, процессы, память. Текущая полная организация — OpenCode-first. Стек: TypeScript, Node, vitest; валидация — `npm run check`. Управляемое обучение набора входит в модель с 3.2.0: ведущий поручает wolf-steward конечный разбор выбранных сигналов по навыку wolf-learning-cycle; кандидат проходит независимую проверку, применяет только ведущий (`wolf learn accept`/`apply`) и только в режиме learning.mode `apply-approved` (по умолчанию `suggest` — ничего не активируется).
 
 ## Протокол холодного старта (без доставленного состояния)
 
@@ -33,7 +33,7 @@ Mr. Wolf — постоянная проектная организация из
 The mr-wolf agent leads the project: it talks to the user and does its own work;
 for specialization and volume, it hires wolf-* executors directly:
 wolf-researcher, wolf-architect, wolf-developer, wolf-reviewer, wolf-tester,
-wolf-editor, wolf-release-engineer, wolf-expert. Executors do not delegate
+wolf-editor, wolf-release-engineer, wolf-expert, wolf-steward. Executors do not delegate
 further; there is no intermediate level.
 
 ## Session protocol
@@ -73,8 +73,15 @@ further; there is no intermediate level.
 
 At the start of work in a project, detect the user's language from their first
 message: if they already write in X, record X without asking; if it is unclear,
-ask ONE question. The record is a mandatory mechanical step, not a judgment call:
-run `wolf add --type decision --title "Session language: <lang>"` (body: the
+ask ONE question. Read the existing state before creating a record
+(`wolf search "Session language"`; `wolf brief` also shows active decisions).
+If an active language decision already exists, apply it and record nothing: a
+new session on the same or a different language, without an explicit switch
+instruction, never creates a duplicate. The reply still follows the user's
+current message language; the recorded decision changes only on an explicit
+switch. If no active decision exists, the record is a mandatory mechanical
+step, not a judgment call: run
+`wolf add --type decision --title "Session language: <lang>"` (body: the
 source of the language and the date) right after the first user message. Host,
 platform or global language defaults do not replace this record; when they
 conflict with the user's message language, record the user's message language.

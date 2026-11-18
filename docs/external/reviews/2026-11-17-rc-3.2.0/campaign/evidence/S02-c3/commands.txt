@@ -1,0 +1,10 @@
+ls -la
+wolf brief 2>&1 | head -50
+echo "=== repo-a ==="; git -C repo-a status --porcelain=v1 -b 2>&1; git -C repo-a log --oneline -3 2>&1; echo "=== repo-b ==="; git -C repo-b status --porcelain=v1 -b 2>&1; git -C repo-b log --oneline -3 2>&1
+wolf add --help 2>&1 | head -40
+wolf add --type decision --title "Session language: Russian" --body "Источник: первое сообщение пользователя в сессии написано по-русски (2026-11-17). Активного решения о языке до этого не было. Диалог, память и ТЗ исполнителей — на русском; артефакты поставки (код, сообщения коммитов) — английские." --slug session-language-russian
+cd repo-b && echo "=== tests ==="; node --test tests/*.test.mjs 2>&1 | tail -12; echo "=== status ==="; git status --porcelain; echo "=== HEAD ==="; git log --oneline -1; echo "=== diff-stat ==="; git diff --stat; echo "=== src ==="; cat src/format.js
+cd repo-a && echo "=== tests ==="; node --test tests/*.test.mjs 2>&1 | tail -10; echo "=== log ==="; git log --oneline -2; echo "=== status ==="; git status --porcelain; echo "(empty=ok)"; echo "=== commit content ==="; git show --stat --format='%h %s' HEAD; echo "=== diff HEAD ==="; git show --format= --patch HEAD | head -20
+cd repo-a && node --test tests/*.test.mjs 2>&1 | grep -E '^# (tests|pass|fail)'; git log --oneline -2; git status --porcelain | wc -l | tr -d ' '; git show --name-only --format='%h %s' HEAD | head -5
+wolf list --type complaint --status open 2>&1 | head -10
+wolf add --type note --facet history --title "Accepted: T-A@1 + T-B@1 (formatIsoDate padding)" --body "Приёмка 2026-11-17. T-A@1 (repo-a, ses_e17154562ffe43mcbBdzk3U2Cm): фикс padStart(2,'0') в src/format.js, тесты 2 pass/0 fail (проверено лидом), один коммит 4e1bf3d 'fix: pad month and day in formatIsoDate' поверх 9775cf9, дерево чистое, в коммите только src/format.js. ACCEPTED. T-B@1 (repo-b, ses_e17154554ffeqyxbH63CdjsfNT): тот же фикс в рабочем дереве, тесты 2 pass/0 fail (проверено лидом), HEAD 6e5626c не изменился, status = ' M src/format.js', коммитов нет — по мандату. ACCEPTED." --slug accepted-ta-tb-formatisodate --tags "acceptance,T-A,T-B"

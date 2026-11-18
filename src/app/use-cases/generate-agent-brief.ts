@@ -5,18 +5,33 @@ import { Clock } from '../../ports/clock.port.js';
 import { ProjectSnapshot } from '../../domain/schemas/project-scan-schema.js';
 import { MemoryObject } from '../../domain/schemas/memory-object-schema.js';
 import { briefsDir } from '../../adapters/fs/project-paths.js';
+import {
+  selectMicroNotes,
+  type MicroNoteBudget,
+  type MicroNoteContext,
+  type MicroNoteDeliveryResult,
+} from './micro-note-delivery.js';
+import type { MicroNoteDeliveryLog } from '../../ports/micro-note-delivery-log.port.js';
 
 export interface GenerateAgentBriefResult {
   content: string;
   path: string;
   /** Id объектов, попавших в бриф (acceptedMemory + openQuestions + blockers) — P2 D1. */
   injectedIds: string[];
+  /** 3.2.0 T-09 (REQ-09): адресные micro-notes в брифе (блоки уже в content). */
+  microNotes: MicroNoteDeliveryResult | null;
+}
+
+export interface GenerateAgentBriefOptions {
+  /** Контекст micro-notes; не передан — { environment: process.platform }. */
+  microNotes?: { context?: MicroNoteContext; budget?: Partial<MicroNoteBudget> };
 }
 
 export async function generateAgentBrief(
-  deps: { store: MemoryStore; fs: FileSystem; clock: Clock },
+  deps: { store: MemoryStore; fs: FileSystem; clock: Clock; noteLog?: MicroNoteDeliveryLog },
   root: string,
-  snapshot: ProjectSnapshot
+  snapshot: ProjectSnapshot,
+  options: GenerateAgentBriefOptions = {}
 ): Promise<GenerateAgentBriefResult> {
   // T013: ровно ОДИН store.list() — MarkdownMemoryStore.list() в любом случае
   // обходит все файлы, type-фильтры не сокращают IO; три фильтрованных вызова
@@ -55,13 +70,54 @@ export async function generateAgentBrief(
     .filter((obj) => isNote(obj, 'pitfall') && obj.status === 'active')
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
+  // 3.2.0 T-09 (REQ-09): адресные micro-notes — детерминированная выборка из уже
+  // прочитанного списка (без новых проходов, без LLM; NFR-02 бюджет).
+  const microCtx: MicroNoteContext = {
+    ...(options.microNotes?.context ?? {}),
+    environment: options.microNotes?.context?.environment ?? process.platform,
+  };
+  const micro = selectMicroNotes(
+    memoryObjects,
+    microCtx,
+    options.microNotes?.budget,
+    deps.noteLog?.suppressions() ?? []
+  );
+  if (deps.noteLog) {
+    const deliveredNow = new Set(micro.delivered.map((c) => c.id));
+    const at = deps.clock.now().toISOString();
+    for (const candidate of micro.delivered) {
+      deps.noteLog.recordDelivery({
+        memory_id: candidate.id,
+        revision: candidate.revision,
+        channel: 'brief',
+        kind: 'delivered',
+        ts: at,
+      });
+    }
+    for (const candidate of micro.selected) {
+      if (deliveredNow.has(candidate.id)) continue;
+      deps.noteLog.recordDelivery({
+        memory_id: candidate.id,
+        revision: candidate.revision,
+        channel: 'brief',
+        kind: 'selected',
+        ts: at,
+      });
+    }
+  }
+
   const description = await buildProjectDescription(deps.fs, root, snapshot);
-  const content = renderBrief(deps.clock, snapshot, description, acceptedMemory, openQuestions, blockers);
+  const content = renderBrief(deps.clock, snapshot, description, acceptedMemory, openQuestions, blockers, micro);
 
   const briefPath = join(briefsDir(root), 'agent-brief-latest.md');
   await deps.fs.writeFile(briefPath, content);
 
-  return { content, path: briefPath, injectedIds: [...acceptedMemory, ...openQuestions, ...blockers].map((o) => o.id) };
+  return {
+    content,
+    path: briefPath,
+    injectedIds: [...acceptedMemory, ...openQuestions, ...blockers, ...micro.delivered].map((o) => o.id),
+    microNotes: micro,
+  };
 }
 
 async function buildProjectDescription(fsPort: FileSystem, root: string, snapshot: ProjectSnapshot): Promise<string> {
@@ -113,7 +169,8 @@ function renderBrief(
   description: string,
   activeMemory: MemoryObject[],
   openQuestions: MemoryObject[],
-  blockers: MemoryObject[]
+  blockers: MemoryObject[],
+  microNotes: MicroNoteDeliveryResult | null
 ): string {
   const lines: string[] = [
     `# Agent Brief: ${snapshot.projectName}`,
@@ -157,6 +214,21 @@ function renderBrief(
   lines.push(...renderListSection('Open Questions', openQuestions, '_No open questions._', (q) => `- ${q.title}`));
 
   lines.push(...renderListSection('Blockers', blockers, '_No active blockers._', (b) => `- ${b.title}`));
+
+  // 3.2.0 T-09 (REQ-09): addressed micro-notes with exact id@version (S-17);
+  // suppressed-by-contradiction notes are listed for review, not delivered (S-27).
+  if (microNotes !== null) {
+    if (microNotes.blocks.length > 0) {
+      lines.push('## Local Micro-Notes', ...microNotes.blocks, '');
+    }
+    if (microNotes.underReview.length > 0) {
+      lines.push(
+        '## Micro-Notes Under Review',
+        ...microNotes.underReview.map((u) => `- [${u.id}] conflicting evidence recorded: ${u.reason}`),
+        ''
+      );
+    }
+  }
 
   lines.push(
     '## Sources',

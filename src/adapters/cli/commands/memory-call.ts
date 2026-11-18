@@ -12,6 +12,7 @@ import {
 import { loadDeliverySettings } from '../../../adapters/fs/config-file.js';
 import { resolveMemoryRoot } from '../../../adapters/fs/memory-root.js';
 import { colorsEnabled } from '../../../domain/facet-colors.js';
+import { getWolfVersion } from '../../version.js';
 import { withCliCall } from './with-cli-call.js';
 
 function parseCompact(v: string | undefined): number | true {
@@ -40,9 +41,11 @@ export function memoryCallCommand(): Command {
         // ensureCliSessionId в cli-entry); null → фильтр выключен (MCP-контур).
         const sessionKey = resolveSessionId();
         const registry = sessionKey ? loadSessionRegistry(baseDir, sessionKey) : null;
-        const { store, index, clock, relations, worktree } = createCliContainer(baseDir);
+        const { store, index, clock, relations, worktree, memoryRoot } = createCliContainer(baseDir);
         const result = await getCallInjections(
-          { store, index, clock, relations },
+          // 3.2.0 T-10 (REQ-09/REQ-11): shared SQLite log persists micro-note
+          // attribution (selected/delivered, channel "call") and S-27 suppressions.
+          { store, index, clock, relations, noteLog: index },
           {
             topic: options.for,
             thread: options.thread !== undefined ? options.thread : undefined,
@@ -52,6 +55,12 @@ export function memoryCallCommand(): Command {
             colors: colorsEnabled(process.stdout, process.env),
             // WP3 §6.2: гейтинг доставки по scope (undefined — main-чекоут)
             currentScope: worktree ?? undefined,
+            // 3.2.0 T-10 (REQ-09): addressed micro-notes deliver by default; the
+            // `micro-note` tag gates them — objects without the tag leave the
+            // channel output unchanged. Real context: project = the wolf memory
+            // root, version = the wolf version, target = the call topic (--for);
+            // environment defaults to process.platform inside the use-case.
+            microNotes: { projectId: memoryRoot, version: getWolfVersion(), target: options.for },
           }
         );
         if (result.blocks.length === 0) {
@@ -80,8 +89,9 @@ export function memoryCallCommand(): Command {
           }
         }
         // 2.14 §7.1 (триггер 2): banner зрелых неагрегированных — после блоков, вне
-        // blocks/бюджета; R-14 (3.0.0): автоматическая обработка Стюардом временно
-        // отключена — счётчики показываются, без императива вызова
+        // blocks/бюджета; R-14 (3.0.0) снял императив вызова; с 3.2.0 обработка —
+        // через цикл wolf-learning-cycle (поручение wolf-steward / `wolf learn due`),
+        // banner остаётся счётчиками, без императива
         if (result.banner !== null) {
           console.log('\n' + result.banner);
         }

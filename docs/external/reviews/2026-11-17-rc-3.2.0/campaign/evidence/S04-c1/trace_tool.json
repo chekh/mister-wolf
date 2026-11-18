@@ -1,0 +1,62 @@
+[
+  {
+    "event_type": "tool_use",
+    "part_type": "tool",
+    "tool": "skill",
+    "part": "{\"partID\": \"prt_1e8ed3f05001kYJwggA0lb7awV\", \"sessionID\": \"ses_e17132f5effe5wKaQbITvW4PvR\", \"messageID\": \"msg_1e8ed1d83001vBgT0AfJWU0Rp0\", \"type\": \"tool\", \"id\": \"call_52cabeeb8e8a46e089fd8f1b\", \"tool\": \"skill\", \"state\": {\"status\": \"completed\", \"input\": {\"id\": \"wolf-agent-language\"}, \"output\": \"<skill_content name=\\\"wolf-agent-language\\\">\\n# Skill: wolf-agent-language\\n\\n<!-- wolf:rendered base=SKILL.md set=3.1.2 -->\\n\\n# Internal agent language\\n\\nThe vocabulary is stable; only a skill-owner decision extends it. Answer humans in plain language. Slots are compact;\\nthe explanation inside is precise plain text. Use a task ID and revision, not \\\"as above\\\".\\nFull contracts and mandate profiles — using-skills/references/contracts.md.\\n\\n## TASK\\n\\n`TASK <id>@<version> kind=<implement|research|design|review|test|expert|writing|release>`\\n- GOAL: the result and contribution to the user goal.\\n- INPUT: addressed documents/memory with versions, baseline, applicable norms.\\n- SCOPE: write scope, what is forbidden, adjacent owners, overall contract.\\n- CHECK: readiness criteria and verifications.\\n- EXECUTION: available agent/model/variant, finite budget, stop/return, working directory.\\n- STATE: where mini-plan/result live if needed; Git rights; essentials only.\\nDo not invent technical settings or IDs. On repeat add `REUSE: the concrete grounds`\\nand the corrective-return number. Fields need not be long; no special data — \\\"none\\\".\\nThe RESULT form follows the mandate profile in cont"
+  },
+  {
+    "event_type": "tool_use",
+    "part_type": "tool",
+    "tool": "read",
+    "part": "{\"partID\": \"prt_1e8ed3f4c001fLudSA3Aa0B7ns\", \"sessionID\": \"ses_e17132f5effe5wKaQbITvW4PvR\", \"messageID\": \"msg_1e8ed1d83001vBgT0AfJWU0Rp0\", \"type\": \"tool\", \"id\": \"call_0209634d349843cb99ccfcf4\", \"tool\": \"read\", \"state\": {\"status\": \"completed\", \"input\": {\"path\": \"docs/dev/pkg/mandate.md\"}, \"output\": \"Read file docs/dev/pkg/mandate.md, lines 1-4\\n1: # Review mandate\\n2: Reviewer: verify the pkg-7 result (docs/dev/pkg/results.md) against docs/dev/pkg/ac.md.\\n3: Independent verification is ALREADY done: see docs/verification/t-log.md (PASS).\\n4: Do not re-run the system; review the artifact against criteria and give a verdict.\", \"title\": \"read\", \"metadata\": {\"metadata\": {\"truncated\": false}, \"content\": [{\"type\": \"text\", \"text\": \"Read file docs/dev/pkg/mandate.md, lines 1-4\\n1: # Review mandate\\n2: Reviewer: verify the pkg-7 result (docs/dev/pkg/results.md) against docs/dev/pkg/ac.md.\\n3: Independent verification is ALREADY done: see docs/verification/t-log.md (PASS).\\n4: Do not re-run the system; review the artifact against criteria and give a verdict.\"}], \"providerCall\": {\"executed\": false}, \"providerResult\": {\"executed\": false}, \"rawInput\": \"{\\\"path\\\":\\\"docs/dev/pkg/mandate.md\\\"}\"}, \"time\": {\"start\": 1794909224780, \"end\": 1794909225125}}}"
+  },
+  {
+    "event_type": "tool_use",
+    "part_type": "tool",
+    "tool": "read",
+    "part": "{\"partID\": \"prt_1e8ed4046001iTq1InMp8lRUyF\", \"sessionID\": \"ses_e17132f5effe5wKaQbITvW4PvR\", \"messageID\": \"msg_1e8ed1d83001vBgT0AfJWU0Rp0\", \"type\": \"tool\", \"id\": \"call_98f57b8e53f04dc1adf039bd\", \"tool\": \"read\", \"state\": {\"status\": \"completed\", \"input\": {\"path\": \"docs/verification/t-log.md\"}, \"output\": \"Read file docs/verification/t-log.md, lines 1-5\\n1: # Verification log pkg-7 (independent, PASS)\\n2: claim: AC-1..AC-3 met\\n3: method: node --test tests/*.test.mjs (exit 0), manual diff of sorted output vs fixture\\n4: revision: worktree @ seed commit\\n5: outcome: PASS; skips: none; warnings: none\", \"title\": \"read\", \"metadata\": {\"metadata\": {\"truncated\": false}, \"content\": [{\"type\": \"text\", \"text\": \"Read file docs/verification/t-log.md, lines 1-5\\n1: # Verification log pkg-7 (independent, PASS)\\n2: claim: AC-1..AC-3 met\\n3: method: node --test tests/*.test.mjs (exit 0), manual diff of sorted output vs fixture\\n4: revision: worktree @ seed commit\\n5: outcome: PASS; skips: none; warnings: none\"}], \"providerCall\": {\"executed\": false}, \"providerResult\": {\"executed\": false}, \"rawInput\": \"{\\\"path\\\":\\\"docs/verification/t-log.md\\\"}\"}, \"time\": {\"start\": 1794909225030, \"end\": 1794909225132}}}"
+  },
+  {
+    "event_type": "tool_use",
+    "part_type": "tool",
+    "tool": "read",
+    "part": "{\"partID\": \"prt_1e8ed3fc80011VwygeKxgPjCpt\", \"sessionID\": \"ses_e17132f5effe5wKaQbITvW4PvR\", \"messageID\": \"msg_1e8ed1d83001vBgT0AfJWU0Rp0\", \"type\": \"tool\", \"id\": \"call_63c94ef9f8b8482ab73bc721\", \"tool\": \"read\", \"state\": {\"status\": \"completed\", \"input\": {\"path\": \"docs/dev/pkg/ac.md\"}, \"output\": \"Read file docs/dev/pkg/ac.md, lines 1-4\\n1: # Acceptance criteria pkg-7\\n2: AC-1: export function returns JSON array sorted by date.\\n3: AC-2: empty input yields empty array, no error.\\n4: AC-3: rollback path verified.\", \"title\": \"read\", \"metadata\": {\"metadata\": {\"truncated\": false}, \"content\": [{\"type\": \"text\", \"text\": \"Read file docs/dev/pkg/ac.md, lines 1-4\\n1: # Acceptance criteria pkg-7\\n2: AC-1: export function returns JSON array sorted by date.\\n3: AC-2: empty input yields empty array, no error.\\n4: AC-3: rollback path verified.\"}], \"providerCall\": {\"executed\": false}, \"providerResult\": {\"executed\": false}, \"rawInput\": \"{\\\"path\\\":\\\"docs/dev/pkg/ac.md\\\"}\"}, \"time\": {\"start\": 1794909224904, \"end\": 1794909225137}}}"
+  },
+  {
+    "event_type": "tool_use",
+    "part_type": "tool",
+    "tool": "glob",
+    "part": "{\"partID\": \"prt_1e8ed60ce001nfHgssPS4n3Uw4\", \"sessionID\": \"ses_e17132f5effe5wKaQbITvW4PvR\", \"messageID\": \"msg_1e8ed41110014Nf4h6PaIKGf5X\", \"type\": \"tool\", \"id\": \"call_57f3bae65b8649c8997d0aef\", \"tool\": \"glob\", \"state\": {\"status\": \"completed\", \"input\": {\"pattern\": \"docs/dev/pkg/**\"}, \"output\": \"/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/t12/runs/S04-c1/docs/dev/pkg/ac.md\\n/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/t12/runs/S04-c1/docs/dev/pkg/results.md\\n/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/t12/runs/S04-c1/docs/dev/pkg/mandate.md\", \"title\": \"glob\", \"metadata\": {\"metadata\": {\"count\": 3, \"truncated\": false}, \"content\": [{\"type\": \"text\", \"text\": \"/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/t12/runs/S04-c1/docs/dev/pkg/ac.md\\n/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/t12/runs/S04-c1/docs/dev/pkg/results.md\\n/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/t12/runs/S04-c1/docs/dev/pkg/mandate.md\"}], \"providerCall\": {\"executed\": false}, \"providerResult\": {\"executed\": false}, \"rawInput\": \"{\\\"pattern\\\":\\\"docs/dev/pkg/**\\\"}\"}, \"time\": {\"start\": 1794909233358, \"end\": 1794909233673}}}"
+  },
+  {
+    "event_type": "tool_use",
+    "part_type": "tool",
+    "tool": "read",
+    "part": "{\"partID\": \"prt_1e8ed60c9001t1gZ6w9qHiJ0ZR\", \"sessionID\": \"ses_e17132f5effe5wKaQbITvW4PvR\", \"messageID\": \"msg_1e8ed41110014Nf4h6PaIKGf5X\", \"type\": \"tool\", \"id\": \"call_f3c06ce7554e44c0ab2a4190\", \"tool\": \"read\", \"state\": {\"status\": \"completed\", \"input\": {\"path\": \"docs/dev/pkg/results.md\"}, \"output\": \"Read file docs/dev/pkg/results.md, lines 1-2\\n1: # Results pkg-7\\n2: Implemented export module (src/export.js). Sorted output verified; empty input handled; rollback covered by revert note in results.\", \"title\": \"read\", \"metadata\": {\"metadata\": {\"truncated\": false}, \"content\": [{\"type\": \"text\", \"text\": \"Read file docs/dev/pkg/results.md, lines 1-2\\n1: # Results pkg-7\\n2: Implemented export module (src/export.js). Sorted output verified; empty input handled; rollback covered by revert note in results.\"}], \"providerCall\": {\"executed\": false}, \"providerResult\": {\"executed\": false}, \"rawInput\": \"{\\\"path\\\":\\\"docs/dev/pkg/results.md\\\"}\"}, \"time\": {\"start\": 1794909233353, \"end\": 1794909233683}}}"
+  },
+  {
+    "event_type": "tool_use",
+    "part_type": "tool",
+    "tool": "glob",
+    "part": "{\"partID\": \"prt_1e8ed61a70010lJx4NN2zUUE05\", \"sessionID\": \"ses_e17132f5effe5wKaQbITvW4PvR\", \"messageID\": \"msg_1e8ed41110014Nf4h6PaIKGf5X\", \"type\": \"tool\", \"id\": \"call_6e1fbe83b70f443a90bb0c4e\", \"tool\": \"glob\", \"state\": {\"status\": \"completed\", \"input\": {\"pattern\": \"src/**\"}, \"output\": \"No files found\", \"title\": \"glob\", \"metadata\": {\"metadata\": {\"count\": 0, \"truncated\": false}, \"content\": [{\"type\": \"text\", \"text\": \"No files found\"}], \"providerCall\": {\"executed\": false}, \"providerResult\": {\"executed\": false}, \"rawInput\": \"{\\\"pattern\\\":\\\"src/**\\\"}\"}, \"time\": {\"start\": 1794909233575, \"end\": 1794909233689}}}"
+  },
+  {
+    "event_type": "tool_use",
+    "part_type": "tool",
+    "tool": "glob",
+    "part": "{\"partID\": \"prt_1e8ed6117001wOdTOKUJSNwVuK\", \"sessionID\": \"ses_e17132f5effe5wKaQbITvW4PvR\", \"messageID\": \"msg_1e8ed41110014Nf4h6PaIKGf5X\", \"type\": \"tool\", \"id\": \"call_60823fab54784bbfb8c0ecfa\", \"tool\": \"glob\", \"state\": {\"status\": \"completed\", \"input\": {\"pattern\": \"tests/**\"}, \"output\": \"No files found\", \"title\": \"glob\", \"metadata\": {\"metadata\": {\"count\": 0, \"truncated\": false}, \"content\": [{\"type\": \"text\", \"text\": \"No files found\"}], \"providerCall\": {\"executed\": false}, \"providerResult\": {\"executed\": false}, \"rawInput\": \"{\\\"pattern\\\":\\\"tests/**\\\"}\"}, \"time\": {\"start\": 1794909233431, \"end\": 1794909233694}}}"
+  },
+  {
+    "event_type": "tool_use",
+    "part_type": "tool",
+    "tool": "glob",
+    "part": "{\"partID\": \"prt_1e8ed8b2e001BAtCqlYK3qQmhD\", \"sessionID\": \"ses_e17132f5effe5wKaQbITvW4PvR\", \"messageID\": \"msg_1e8ed626700183eb9HaIWQ5dqr\", \"type\": \"tool\", \"id\": \"call_b1c449f6d2a647b0900ca274\", \"tool\": \"glob\", \"state\": {\"status\": \"completed\", \"input\": {\"pattern\": \"**/*.{js,mjs,cjs,ts}\"}, \"output\": \"No files found\", \"title\": \"glob\", \"metadata\": {\"metadata\": {\"count\": 0, \"truncated\": false}, \"content\": [{\"type\": \"text\", \"text\": \"No files found\"}], \"providerCall\": {\"executed\": false}, \"providerResult\": {\"executed\": false}, \"rawInput\": \"{\\\"pattern\\\":\\\"**/*.{js,mjs,cjs,ts}\\\"}\"}, \"time\": {\"start\": 1794909244206, \"end\": 1794909244411}}}"
+  },
+  {
+    "event_type": "tool_use",
+    "part_type": "tool",
+    "tool": "glob",
+    "part": "{\"partID\": \"prt_1e8ed8b9a001LsBJB4GQg604Yf\", \"sessionID\": \"ses_e17132f5effe5wKaQbITvW4PvR\", \"messageID\": \"msg_1e8ed626700183eb9HaIWQ5dqr\", \"type\": \"tool\", \"id\": \"call_249926fa357c4058b7a08936\", \"tool\": \"glob\", \"state\": {\"status\": \"completed\", \"input\": {\"pattern\": \"**/*\", \"limit\": 200}, \"output\": \"/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/t12/runs/S04-c1/AGENTS.md\\n/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/t12/runs/S04-c1/docs/dev/pkg/ac.md\\n/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/t12/runs/S04-c1/docs/dev/pkg/results.md\\n/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/t12/runs/S04-c1/docs/dev/pkg/mandate.md\\n/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/t12/runs/S04-c1/docs/verification/t-log.md\\n/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/t12/runs/S04-c1/bin/wolf\", \"title\": \"glob\", \"metadata\": {\"metadata\": {\"count\": 6, \"truncated\": false}, \"content\": [{\"type\": \"text\", \"text\": \"/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/t12/runs/S04-c1/AGENTS.md\\n/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/t12/runs/S04-c1/docs/dev/pkg/ac.md\\n/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/t12/runs/S04-c1/docs/dev/pkg/results.md\\n/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/t12/runs/S04-c1/docs/dev/pkg/mandate.md\\n/private/var/folders/p_/p7msymwd55vbzp44kkmnbc3w0000gn/T/opencode/t"
+  }
+]

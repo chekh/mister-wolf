@@ -56,8 +56,9 @@ and shared-resource boundaries, dependencies and integration order must be known
 the dependent ones, not the rest. With several deliveries each belongs to its own executor; the
 assigned integrator organizes technical integration and the owner keeps the final verdict. The
 shared plan, memory and other mutable artifacts have one assigned writer; a change of owner goes
-through handoff. The owner gets short statuses and version links, not the whole planning context;
-the lead owns the plan, and the authoring executor returns its detailed material through the lead.
+through handoff. The plan writer gets short statuses and version links, not the whole planning context;
+the lead owns the plan, may read the details it needs for its own decisions, and the
+authoring executor returns its detailed material through the lead.
 
 ## Communication and completion
 

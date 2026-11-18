@@ -10,13 +10,20 @@ const ROOT = join(__dirname, '..', '..');
 
 // Tokens ловятся с границей слова/символа, чтобы не путать `wolf run` (удалена)
 // с `wolf run-log` (другая команда) или `learn` в составе `learnable`.
+// 3.2.0 (решение ведущего при интеграции): `wolf learn` снова активная команда —
+// но это НОВЫЙ learning-цикл кандидатов (REQ-03/REQ-08: due/apply/rollback),
+// семантически не связанный с удалённым контуром самообучения 2.x. Поэтому
+// banned-токен уточнён до точных команд удалённого контура; миграционная
+// заметка о совпадении имени — обязанность релиз-документации (T-14/CHANGELOG).
 const FORBIDDEN_TOKENS = [
-  'wolf learn',
+  'wolf learn digest',
+  'wolf learn status',
+  'wolf learn gate',
+  'learn --from-session',
   'sandbox-replay',
   'Sandbox Replay',
   'STOP-гейт',
   'STOP gate',
-  'learn --from-session',
   'wolf run ', // пробел после — отсекает wolf run-log
   '`wolf run`', // backtick-форма
   'wolf run\n', // перевод строки
@@ -157,8 +164,10 @@ describe('A10 docs audit (REQ-02)', () => {
   });
 
   it('S-61: сканер чувствителен — вносит токен в образец текста и ловит его', () => {
-    expect(scanText('текст с `wolf learn digest` внутри')).toContain('wolf learn');
+    expect(scanText('текст с `wolf learn digest` внутри')).toContain('wolf learn digest');
     expect(scanText('исторический протокол Sandbox Replay')).toContain('Sandbox Replay');
     expect(scanText('чистый текст про add --type lesson')).toEqual([]);
+    // 3.2.0: новая группа `wolf learn` (REQ-03/REQ-08) не токен удалённого контура
+    expect(scanText('running `wolf learn due` is the current command')).toEqual([]);
   });
 });

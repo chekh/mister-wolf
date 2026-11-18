@@ -26,10 +26,11 @@ goal nor rights.
 
 A goal or thread may combine several sequential or parallel mandates. A mandate marks the
 result to accept; a session is one executor instance; a shared thread does not justify continue.
-Choose by [division of labor](division-of-labor.md). The assigned planner owns the shared
-detailed plan; others pass it changes and statuses. The lead keeps a short map of mandates,
-dependencies and verdicts, not the whole planning context. Changing the note owner requires a
-handoff, not simultaneous editing.
+Choose by [division of labor](division-of-labor.md). The lead owns the shared plan and its
+integration; the authoring executor returns its assigned result and statuses through the lead.
+The lead keeps a short map of mandates, dependencies and verdicts and reads the plan details
+it needs for its own decisions. Changing the note owner requires a handoff, not simultaneous
+editing.
 
 ## Working memory between agents and sessions
 
@@ -53,8 +54,10 @@ file or tool, not a long note.
 
 For working notes, save memory_class=working, truth_role=proposed_knowledge,
 lifetime=short_term, review_state=proposed, status=active explicitly. Strictly one-off context
-allows lifetime=session. Here review_state is not a mandate for automatic triage (Steward
-processing is off for now): a working note, not a proposed lesson or rule. A history note
+allows lifetime=session. Here review_state is not a mandate for automatic triage: a working
+note, not a proposed lesson or rule. A recorded signal is kept and not lost; it is processed
+only through an assigned wolf-steward mandate or the `wolf learn due` queue (learning mode
+`suggest`; mode `off` assigns and suggests nothing). A history note
 with accepted may reach the shared brief; do not turn a private result into accepted shared
 memory. These fields give no TTL, privacy or guaranteed hiding from search. Do not use
 facet=proposal without a real structured proposal.
@@ -80,5 +83,6 @@ working notes of the current task, not another's state or required audit, keepin
 required acceptance trace; lifetime alone deletes nothing. A meaningful checkpoint replacement
 is a new note plus supersede, not copies per executor. A lesson or complaint is split out only
 when its grounds exist; the new card references the original evidence, and the original note is
-not renamed into lesson/complaint. The working archive is not an aggregation queue; automatic
-Steward processing is off for now.
+not renamed into lesson/complaint. The working archive is not an aggregation queue; recorded
+experience is processed only through an assigned wolf-steward mandate or the `wolf learn due`
+queue (learning mode `suggest`; mode `off` — nothing is assigned or suggested).

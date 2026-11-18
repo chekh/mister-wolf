@@ -45,6 +45,8 @@ See [Telemetry](/guide/telemetry) for event fields, usage imports and session id
 
 Cost estimates come from raw OpenCode usage and sessions (`opencode.db`); since 3.0.0 there are no skill counters — their absence does not mean the calls did not happen. Comparisons need both windows of the measurement protocol; the "after" window is not collected yet, so no effect results exist to publish. Cost figures still require configured pricing and suitable usage records. A missing model, missing tokens or unknown session join is a data-quality limitation, not zero cost. `weighted = input + 0.1 × cache_read + 5 × output` is a fixed token-weight heuristic, not a provider invoice.
 
+Since 3.2.0 the analytics report carries accounting slices over the same unique calls (`slices` in `wolf analytics --json` and the MCP `analytics` tool): `learning` (calls attributed to the steward) and `council` are attribution slices of the total, not additions to it; without configured pricing the cost basis is reported as unknown with reasons — no invented dollar figures.
+
 The Steward view includes complaint outcomes and lesson aggregation. Compare counts with actual changes and their applicability: a closed complaint alone does not prove that a corrected methodology reached a later session or improved its behavior.
 
 ## Optional comparisons

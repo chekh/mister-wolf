@@ -1,0 +1,2 @@
+wolf brief 2>&1 | head -50
+wolf add --type decision --title "Session language: Russian" --body "Source: user's first message is in Russian, 2026-11-17. No prior language decision in memory."

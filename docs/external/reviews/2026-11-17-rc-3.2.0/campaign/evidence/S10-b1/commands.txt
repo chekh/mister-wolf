@@ -1,0 +1,37 @@
+wolf brief 2>&1 | head -50; echo "---"; ls -la
+find src tests bin -type f | head -40; echo "---package---"; cat package.json
+wolf add --type decision --title "Session language: Russian" --body "Source: first user message written in Russian. Date: 2026-11-17." 2>&1 | tail -3
+git log --oneline -10; echo "---"; git status --short
+node --test tests/ 2>&1 | tail -12; echo "=== REPRO ==="; node -e "
+import('./src/paginate.js').then(({ paginate }) => {
+  const mk = n => Array.from({ length: n }, (_, i) => i + 1);
+  console.log('20 items / pageSize 20:', JSON.stringify(paginate(mk(20), 20)));
+  console.log('21 items / pageSize 20: pages =', paginate(mk(21), 20).length, 'last page:', JSON.stringify(paginate(mk(21), 20).at(-1)));
+  console.log('5 items / pageSize 2: pages =', paginate(mk(5), 2).length, 'last page:', JSON.stringify(paginate(mk(5), 2).at(-1)));
+  console.log('0 items / pageSize 10:', JSON.stringify(paginate([], 10)));
+});"
+node --version; echo "==="; node --test tests/ 2>&1 | head -40
+node --test tests/suite.test.mjs 2>&1 | tail -8; echo "=== discovery ==="; node --test 2>&1 | tail -8
+node --test tests/suite.test.mjs 2>&1 | grep -E "^(not ok|ok|# (tests|pass|fail))" | head -12
+node --test 2>&1 | grep -E "^(not ok|ok|# (tests|pass|fail))"; echo "=== REPRO-RECHECK ==="; node -e "
+import('./src/paginate.js').then(({ paginate }) => {
+  const mk = n => Array.from({ length: n }, (_, i) => i + 1);
+  console.log('20/20:', JSON.stringify(paginate(mk(20), 20)));
+  console.log('21/20:', JSON.stringify(paginate(mk(21), 20)));
+  console.log('5/2:', JSON.stringify(paginate(mk(5), 2)));
+  console.log('0/10:', JSON.stringify(paginate([], 10)));
+});"
+node --test 2>&1 | grep -E "^# (tests|pass|fail)"; echo "=== REPRO ==="; node -e "
+import('./src/paginate.js').then(({ paginate }) => {
+  const mk = n => Array.from({ length: n }, (_, i) => i + 1);
+  console.log('20/20:', JSON.stringify(paginate(mk(20), 20)));
+  console.log('21/20:', JSON.stringify(paginate(mk(21), 20)));
+  console.log('5/2:', JSON.stringify(paginate(mk(5), 2)));
+  console.log('0/10:', JSON.stringify(paginate([], 10)));
+});"; echo "=== SCOPE ==="; git diff --stat; echo "--- untracked/unmodified product files:"; git status --porcelain -- src tests bin; echo "=== WORKTREE ==="; git worktree list
+git worktree remove ~/.local/share/opencode/worktree/7653fb/wolf-review-paginate-head && echo "worktree removed"; git worktree list
+wolf add --type lesson --title "Page-count formulas: guard term after floor+remainder adds a phantom page" --body "floor(n/size) + (n%size ? 1 : 0) already equals ceil(n/size). Adding a guard term like +(n>0 ? 1 : 0) on top produced exactly one extra empty page for EVERY non-empty input (bug: 20 items, pageSize=20 -> [[all],[]]). Prefer Math.ceil(n/size) and let the zero-pages fallback (pages.length===0 -> [[]]) own the empty-input contract. Sensitivity check for boundary regressions: assert exact page arrays at n=size and n=size+1. Scope: pagination/chunking counting logic; found in t12-s10 src/paginate.js, 2026-11-17." 2>&1 | tail -1
+wolf add --type note --title "Latent: paginate hangs on pageSize<=0 (pre-existing, unfixed)" --body "Reviewer finding 2026-11-17: Math.ceil(len/pageSize) with pageSize<=0 gives Infinity for non-empty input -> unbounded loop (hang/OOM). Same behavior existed before the fix (floor(len/0)=Infinity), so NOT a regression from the 20/20 phantom-page fix. Out of the accepted mandate; candidate follow-up: validate pageSize>=1 in paginate (needs owner decision)." 2>&1 | tail -1
+wolf add --type note --title "Accepted: fix paginate phantom empty page (20/20 case)" --body "Defect: 20 items, pageSize=20 -> extra empty page. Root cause: extra guard term in pageCount in src/paginate.js. Fix: pageCount = Math.ceil(items.length/pageSize); empty-input contract kept by existing fallback. Regression tests added: 'exact boundary -> no extra empty page', 'trailing page is never empty'. Evidence: RED before fix (tests 2,3 failed, existing green), GREEN after (node --test: 5/5), repro cases 20/20, 21/20, 5/2, 0/10 correct. Independent review (ses_e16f4df38ffeXaSylmV8Sdm72A): no defects found; static + math proof of root cause; execution evidence supplied by lead runs. Accepted by lead 2026-11-17. Working tree uncommitted (no commit mandate). Diff: src/paginate.js -3+1, tests/suite.test.mjs +8." 2>&1 | tail -1
+wolf add --type note --facet pitfall --title "Latent: paginate hangs on pageSize<=0 (pre-existing, unfixed)" --body "Reviewer finding 2026-11-17: Math.ceil(len/pageSize) with pageSize<=0 gives Infinity for non-empty input -> unbounded loop (hang/OOM). Same behavior existed before the fix (floor(len/0)=Infinity), so NOT a regression from the 20/20 phantom-page fix. Out of the accepted mandate; candidate follow-up: validate pageSize>=1 in paginate (needs owner decision)." 2>&1 | tail -1
+wolf add --type note --facet history --title "Accepted: fix paginate phantom empty page (20/20 case)" --body "Defect: 20 items, pageSize=20 -> extra empty page. Root cause: extra guard term in pageCount in src/paginate.js. Fix: pageCount = Math.ceil(items.length/pageSize); empty-input contract kept by existing fallback. Regression tests added: 'exact boundary -> no extra empty page', 'trailing page is never empty'. Evidence: RED before fix (tests 2,3 failed, existing green), GREEN after (node --test: 5/5), repro cases 20/20, 21/20, 5/2, 0/10 correct. Independent review (ses_e16f4df38ffeXaSylmV8Sdm72A): no defects found; static + math proof of root cause; execution evidence supplied by lead runs. Accepted by lead 2026-11-17. Working tree uncommitted (no commit mandate). Diff: src/paginate.js -3+1, tests/suite.test.mjs +8." 2>&1 | tail -1

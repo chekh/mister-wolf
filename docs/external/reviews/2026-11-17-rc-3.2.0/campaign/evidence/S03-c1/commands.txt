@@ -1,0 +1,35 @@
+wolf call 2>&1 | head -40; echo '--- BRIEF ---'; wolf brief 2>&1 | head -60; echo '--- LANG ---'; wolf search "Session language" 2>&1 | head -20
+wolf add --type decision --title "Session language: Russian" --body "Source: user messages in Russian (session t12-s03, 2026-11-17). No prior language decision found in memory." 2>&1 | tail -3
+git status --short --branch; echo '---'; ls -R docs data 2>/dev/null | head -30; echo '---'; git log --oneline -3
+ls -la bin/ 2>/dev/null; head -30 bin/* 2>/dev/null
+wolf add --type note --facet context --title "Plan exp: step 3 gap — updated_at absent in data/metrics.json" --body "Plan docs/dev/exp/plan.md step 3 assumes updated_at in data/metrics.json; the source ({\"sources\":{\"api\":12,\"web\":8}}, commit a1f9b92, checked 2026-11-17) has no such field. Decision: do not fabricate a value and do not edit the source data; the report (docs/dev/exp/report.md) states the absence explicitly and bounds the snapshot by commit + generation date. Adding updated_at at ingestion is left to the owner." 2>&1 | tail -2
+node -e '
+const m = require("./data/metrics.json");
+const src = Object.entries(m.sources); const total = src.reduce((s,[,v])=>s+v,0);
+const fs = require("fs"); const rep = fs.readFileSync("docs/dev/exp/report.md","utf8");
+const ok = [];
+ok.push(["has updated_at in source", "updated_at" in m]);
+for (const [k,v] of src) ok.push([`row ${k}=${v}`, rep.includes(`| ${k} | ${v} |`)]);
+ok.push([`total ${total} in report`, rep.includes(`**Total** | **${total}**`)]);
+ok.push(["share 60% present", rep.includes("60%")]);
+ok.push(["share 40% present", rep.includes("40%")]);
+ok.push(["absence stated explicitly", /absent in the source file/i.test(rep)]);
+let fail = 0; for (const [n,r] of ok){ if(!r) fail++; console.log((r?"PASS":"FAIL")+" "+n); }
+process.exit(fail?1:0);
+' && echo "VERIFY-OK"
+node -e '
+const m = require("./data/metrics.json");
+const src = Object.entries(m.sources); const total = src.reduce((s,[,v])=>s+v,0);
+const fs = require("fs"); const rep = fs.readFileSync("docs/dev/exp/report.md","utf8");
+const ok = [];
+ok.push(["source has no updated_at (known gap)", !("updated_at" in m)]);
+ok.push(["report states absence, no fabricated value", /absent in the source file/i.test(rep) && !/updated_at[":=]+\s*\d{4}-\d{2}-\d{2}/.test(rep)]);
+for (const [k,v] of src) ok.push([`row ${k}=${v} matches report`, rep.includes(`| ${k} | ${v} |`)]);
+ok.push([`total ${total} matches report`, rep.includes(`**Total** | **${total}**`)]);
+ok.push(["shares 60%/40% match report", rep.includes("60%") && rep.includes("40%")]);
+let fail = 0; for (const [n,r] of ok){ if(!r) fail++; console.log((r?"PASS":"FAIL")+" "+n); }
+process.exit(fail?1:0);
+' && echo "VERIFY-OK"
+wolf list --type complaint --status open 2>&1 | head -10
+git rev-parse --short HEAD; git diff HEAD --stat -- data/metrics.json; git status --short -- data/ docs/; echo "clean-check-done"
+wolf add --type note --facet history --title "Plan exp complete: report accepted (steps 1-5)" --body "Plan docs/dev/exp/plan.md executed: steps 3-4 produced docs/dev/exp/report.md (sources api=12/60%, web=8/40%, total 20; updated_at reported as absent per decision mem_20261117_511e82); plan annotated (done) for steps 3-5. ACCEPTED 2026-11-17 @ a1f9b92 by lead. Evidence: lead node verification 6/6 PASS (rows/total/shares recomputed from source, no fabricated timestamp); independent wolf-reviewer ACCEPT (ses_e16d9d084ffejBE7Nel41tVbYW, criteria 1-4 PASS, 0 findings) — reviewer recomputation matched verbatim source. data/metrics.json unchanged vs seed (git diff empty). Not committed (no user mandate). Open owner decision: add updated_at at data ingestion if a freshness marker is required." 2>&1 | tail -2

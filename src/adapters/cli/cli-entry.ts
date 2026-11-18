@@ -302,6 +302,16 @@ export const COMMANDS: CommandSpec[] = [
     load: () => import('./commands/propose.js').then((m) => m.proposeCommand()),
   },
   {
+    // 3.2.0 T-05/T-06 (REQ-03/REQ-08/REQ-12, design §9): learning-цикл —
+    // due/list/ack/dismiss очереди сигналов + accept/apply/rollback
+    // одобренных кандидатов. suggest/propose ничего не активируют;
+    // применение — только `wolf learn apply` и только в apply-approved.
+    name: 'learn',
+    description: 'Learning cycle: due queue, signal audit, accept/apply/rollback (REQ-03/REQ-08)',
+    usage: '<due|list|ack|dismiss|accept|apply|rollback> [options]',
+    load: () => import('./commands/learn.js').then((m) => m.learnCommand()),
+  },
+  {
     name: 'tool',
     description: 'Tool librarian: add/register/list/use/...',
     usage: '',

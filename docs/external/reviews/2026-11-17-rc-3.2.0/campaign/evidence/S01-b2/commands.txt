@@ -1,0 +1,1 @@
+wolf brief; echo "---"; wolf add --type decision --title "Session language: Russian" --body "Source: first user message written in Russian, 2026-11-17"

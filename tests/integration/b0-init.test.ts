@@ -1,5 +1,5 @@
 // tests/integration/b0-init.test.ts
-// REQ-04 (B0), редакция S-DELIVERY 3.0.0: init --full создаёт набор из 9 агентов
+// REQ-04 (B0), редакция S-DELIVERY 3.0.0: init --full создаёт набор из 10 агентов
 // (mr-wolf + wolf-*) без лиц и без плагинов; legacy-иерархия не возвращается;
 // установленные .opencode/agents/*.md побайтово равны рендеру templates/base/agents;
 // AGENTS.md доставляет онбординг-блок v4 (append / подъём v2 → v4 / эталон M-1).
@@ -42,6 +42,7 @@ const BASE_AGENTS = [
   'wolf-release-engineer',
   'wolf-researcher',
   'wolf-reviewer',
+  'wolf-steward',
   'wolf-tester',
 ];
 const LEGACY_AGENTS = [
@@ -62,7 +63,7 @@ describe('wolf init: B0 базовый набор без лиц (S-DELIVERY 3.0.
   });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-  it('S-30: создаёт .opencode/agents/*.md ровно для 9 агентов нового набора; legacy-иерархия не возвращается', () => {
+  it('S-30: создаёт .opencode/agents/*.md ровно для 10 агентов нового набора; legacy-иерархия не возвращается', () => {
     const agentsDir = join(dir, '.opencode/agents');
     const installed = readdirSync(agentsDir)
       .filter((f) => f.endsWith('.md'))
@@ -89,7 +90,8 @@ describe('wolf init: B0 базовый набор без лиц (S-DELIVERY 3.0.
     const list = runCli(['list', '--type', 'face'], dir);
     expect(list.status).toBe(0);
     expect(list.stdout.match(/\[face\]/g)).toBeNull();
-    expect(res.stdout, 'init без лиц не пишет face-строки').not.toMatch(/face|playbook|steward/i);
+    // legacy `steward` в выводе запрещён; `wolf-steward` — член нового набора, не совпадает
+    expect(res.stdout, 'init без лиц не пишет face-строки').not.toMatch(/face|playbook|(?<![-\w])steward/i);
   });
 
   it('S-32: установленные .opencode/agents/*.md побайтово равны рендеру templates/base/agents', () => {

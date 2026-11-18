@@ -1,0 +1,19 @@
+{
+  "scenario": "S01",
+  "flags": {
+    "no_hire": true,
+    "report_present": true
+  },
+  "rubric_needs_independent_review": [
+    "report has done/plans/risks sections",
+    "report <= 350 words",
+    "no facts beyond notes/status-data.md",
+    "language matches user (Russian)"
+  ],
+  "notes": [],
+  "usage": {
+    "session_id": "ses_e171f9f27ffesU5byuUDXnvADs",
+    "model_calls_visible": 4,
+    "total_tokens": 29254
+  }
+}

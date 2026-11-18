@@ -23,6 +23,7 @@ const PACKAGE_AGENTS = new Set([
   'wolf-editor.md',
   'wolf-release-engineer.md',
   'wolf-expert.md',
+  'wolf-steward.md',
 ]);
 
 function frontmatter(name: string): string {

@@ -1,0 +1,18 @@
+{
+  "scenario": "S10",
+  "flags": {
+    "suite_green": true,
+    "regression_added": true,
+    "neighbors_kept": false
+  },
+  "rubric_needs_independent_review": [
+    "root cause described",
+    "minimal fix, no test-fitting"
+  ],
+  "notes": [],
+  "usage": {
+    "session_id": "ses_e16e9e63affe3SUTI6s9NIRs7b",
+    "model_calls_visible": 20,
+    "total_tokens": 82254
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "scenario": "S03",
+  "flags": {
+    "no_hire": true,
+    "plan_kept": true,
+    "gap_fixed": true
+  },
+  "rubric_needs_independent_review": [
+    "local fix without re-planning cascade",
+    "plan ownership retained"
+  ],
+  "notes": [],
+  "usage": {
+    "session_id": "ses_e16d84e5dffeDA4dRyAwUDiSCC",
+    "model_calls_visible": 13,
+    "total_tokens": 67162
+  }
+}

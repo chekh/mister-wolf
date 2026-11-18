@@ -1,0 +1,11 @@
+ M .wolf/memory/events.jsonl
+ M src/paginate.js
+ M tests/suite.test.mjs
+?? .wolf/memory/briefs/
+?? .wolf/memory/shared/decisions/
+?? .wolf/memory/shared/notes/mem_20261117_60de9f.md
+?? .wolf/memory/shared/notes/mem_20261117_doc_agents_a54ff182.md
+?? .wolf/memory/shared/notes/mem_20261117_ecb50e.md
+?? .wolf/memory/shared/notes/project-scan-latest.md
+?? .wolf/metrics/
+?? bin/

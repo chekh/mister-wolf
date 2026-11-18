@@ -12,6 +12,17 @@ The mental model is three layers, from least to most permanent:
 
 Nothing here changes what the update pass does to **memory** (`.wolf/`): faces are memory, the pass never rewrites them (see [Memory Model](/guide/memory)).
 
+## What a 3.1.2 → 3.2.0 upgrade delivers
+
+The 3.2.0 pass is additive for files and behavior:
+
+- **New delivered files.** `wolf-steward` (the tenth agent) and `wolf-learning-cycle` (the 36th skill) arrive as new targets of `update-map.json`; a clean `wolf init` and an upgrade both deliver them. Your local edits keep their keep/protect mechanics — nothing new there.
+- **New commands.** The CLI gains the `wolf learn` group — `due`, `list`, `ack`, `dismiss`, `accept`, `apply`, `rollback` — and `wolf propose candidate --file <envelope.json>` for saving a validated candidate envelope; the MCP catalog grows to 9 tools with `propose_candidate`. The old `learn digest/status/gate/evolve` subcommands do not come back.
+- **The learning cycle starts in `suggest`.** By default the queue and suggestions work and nothing activates: `wolf learn due` shows new signals, `wolf-steward` analysis happens only on the lead's finite assignment, and an accepted candidate applies only after you switch to `learning.mode: apply-approved` (in `.wolf/config.yaml`, or the `WOLF_LEARNING_MODE` environment variable). `off` silences the cycle entirely.
+- **Micro-notes start delivering.** Notes, lessons and rules tagged `micro-note` (optionally bounded by the `applies` field, protected by the `constraint` tag) begin appearing in `wolf call` and `wolf brief` within the 4,800-character / 8-record budget. Objects without the tag deliver exactly as before.
+- **History stays history.** The legacy `steward` actor in old memory records — face versions, complaint and proposal intake — remains readable as history; the new role is `wolf-steward`. Old complaints and faces are not converted into candidates of the new cycle.
+- **Rollback.** An applied learning candidate is reversible: `wolf learn rollback <id>` restores the exact previous content and refuses if any file carries later foreign edits; a repeated rollback is a noop. Ordinary file upgrades keep their existing backups under `.wolf/backup/upgrade/<date>/`.
+
 ## Migrating to 3.0.0 (the two-level organization)
 
 3.0.0 replaces the active agent set. Run the pass as usual:

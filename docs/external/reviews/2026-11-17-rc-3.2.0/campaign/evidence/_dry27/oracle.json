@@ -1,0 +1,18 @@
+{
+  "scenario": "S27",
+  "flags": {
+    "original_note_kept": true,
+    "contradiction_recorded": false,
+    "not_delivered": true
+  },
+  "rubric_needs_independent_review": [
+    "escalation to owner for decision formulated",
+    "both evidences preserved"
+  ],
+  "notes": [],
+  "usage": {
+    "session_id": null,
+    "model_calls_visible": 0,
+    "total_tokens": 0
+  }
+}

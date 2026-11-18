@@ -58,8 +58,8 @@ Before assigning, continuing or replacing, the lead (L0) loads the full
 [division of labor](references/division-of-labor.md) skill unless the current text is
 already delivered, and before any mandate reads
 [TASK/RESULT/EVIDENCE/ACCEPTANCE](references/contracts.md). An executor gets the
-full applicable contract, the assigned skill and the relevant rules, not the whole
-router or the parent history. No mandatory input — NEEDS_CONTEXT. A fresh executor
+full applicable contract, its role's own procedure and the assigned skills — not the
+lead's organizational skills, the whole router or the parent history. No mandatory input — NEEDS_CONTEXT. A fresh executor
 instance is for a new independent result; continue for the same unaccepted result;
 replace via handoff. After acceptance, an unneeded instance closes once the result
 is saved and recording stops, without ceremony.

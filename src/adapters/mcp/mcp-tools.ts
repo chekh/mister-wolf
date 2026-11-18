@@ -14,6 +14,9 @@ import { getMemoryObject } from '../../app/use-cases/get-memory-object.js';
 import { listMemoryObjects } from '../../app/use-cases/list-memory-objects.js';
 import { transitionMemoryObject } from '../../app/use-cases/transition-memory-object.js';
 import { recordCouncil, type CouncilRecordEnvelope } from '../../app/use-cases/record-council.js';
+import { saveLearningCandidate } from '../../app/use-cases/save-proposal.js';
+import { ProposeCandidateInputSchema } from './mcp-schemas.js';
+import { loadWolfConfigSync } from '../fs/config-file.js';
 import { scanProjectCached } from '../../app/use-cases/scan-project.js';
 import { openScanSnapshotCache } from '../fs/scan-snapshot-cache.js';
 import { projectTreeSignature } from '../fs/heuristic-project-scanner.js';
@@ -27,8 +30,8 @@ import { resolveSessionId } from '../../domain/actor.js';
 
 /**
  * Каталог MCP-тулов: диета 2.13 (спека §6.2, §7 C11) + REL-231-A P04/W4
- * (AC-A3) council_record = 8 survivors, порог ≤ 12.
- * `ping` — отдельный health-check в mcp-server.ts, в каталог не входит.
+ * (AC-A3) council_record + 3.2.0 T-04/T-05 propose_candidate = 9 тулов,
+ * порог ≤ 12. `ping` — отдельный health-check в mcp-server.ts, в каталог не входит.
  */
 export const MCP_TOOL_NAMES = [
   'search',
@@ -39,6 +42,7 @@ export const MCP_TOOL_NAMES = [
   'brief',
   'recap',
   'council_record',
+  'propose_candidate',
 ] as const;
 
 /** REL-231-A W4 (D-W4-2): envelope приходит объектом в поле `input` (без чтения
@@ -412,6 +416,42 @@ export function registerMemoryTools(
     }
   );
 
+  // 3.2.0 T-04/T-05 (REQ-05, design §9): конверт кандидата — объект в поле
+  // `input` (паттерн D-W4-2, как council_record); строгую валидацию делает
+  // домен (saveLearningCandidate → LearningCandidateInputSchema), схема тут
+  // только требует presence. Дедуп по request_key и режим off решает домен;
+  // НИЧЕГО не активирует (REQ-08): phase=proposed, acceptance/activation null.
+  // Автор пиннится env (WOLF_ACTOR) — параметра-актора у кандидата нет (REQ-09).
+  register(
+    'propose_candidate',
+    {
+      description:
+        'Save a validated learning-change candidate envelope as a proposal (dedup by request_key; nothing is activated)',
+      inputSchema: ProposeCandidateInputSchema,
+    },
+    async (input: unknown) => {
+      const args = input as { input: unknown };
+      const result = await saveLearningCandidate(
+        {
+          store: deps.store,
+          log: deps.log,
+          clock: deps.clock,
+          idGen: deps.idGen,
+          index: deps.index,
+          lock: deps.lock,
+          declarations: deps.declarations,
+          env: process.env,
+          config: loadWolfConfigSync(baseDir),
+        },
+        { envelope: args.input }
+      );
+      const text = result.deduplicated
+        ? `Existing learning candidate returned: ${result.object.id} (change_id=${result.envelope.change_id}, request_key=${result.envelope.request_key.slice(0, 12)}; no new candidate created)`
+        : `Learning candidate saved: ${result.object.id} (change_id=${result.envelope.change_id}, request_key=${result.envelope.request_key.slice(0, 12)}, phase=${result.envelope.phase}; nothing is activated — acceptance/activation stay null)`;
+      return { content: [{ type: 'text' as const, text }] };
+    }
+  );
+
   register(
     'brief',
     {
@@ -426,7 +466,13 @@ export function registerMemoryTools(
         { ...deps, treeSignature: projectTreeSignature, snapshotCache: openScanSnapshotCache(baseDir) },
         baseDir
       );
-      const brief = await generateAgentBrief(deps, baseDir, scanResult.snapshot);
+      // 3.2.0 T-10/F-2: same real context as the CLI brief (REQ-09) — project =
+      // the wolf memory root of baseDir, version = the wolf version. The shared
+      // SQLite log persists attribution (channel "brief") and supplies S-27
+      // suppressions.
+      const brief = await generateAgentBrief({ ...deps, noteLog: deps.index }, baseDir, scanResult.snapshot, {
+        microNotes: { context: { projectId: deps.memoryRoot, version: getWolfVersion() } },
+      });
       // P2 D1: бриф реально инъекцировал объекты → injected
       if (brief.injectedIds.length > 0) {
         try {

@@ -1,0 +1,13 @@
+ M .wolf/memory/events.jsonl
+ M repo-a
+ M repo-b
+?? .wolf/memory/briefs/
+?? .wolf/memory/shared/decisions/
+?? .wolf/memory/shared/notes/mem_20261117_06cc04.md
+?? .wolf/memory/shared/notes/mem_20261117_0aaf6b.md
+?? .wolf/memory/shared/notes/mem_20261117_5e270f.md
+?? .wolf/memory/shared/notes/mem_20261117_doc_agents_a54ff182.md
+?? .wolf/memory/shared/notes/mem_20261117_f15732.md
+?? .wolf/memory/shared/notes/project-scan-latest.md
+?? .wolf/metrics/
+?? bin/
