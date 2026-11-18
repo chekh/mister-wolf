@@ -190,17 +190,22 @@ describe('JsonlMicroNoteDeliveryLog (patch 3.3.1)', () => {
     mkdirSync(join(dir, '.wolf', 'cache'), { recursive: true });
     cpSync(FIXTURE, join(dir, '.wolf', 'cache', 'index.sqlite'));
 
-    // сбой до rename: memory dir только на чтение → запись tmp невозможна
+    // сбой до rename: memory dir только на чтение → запись tmp невозможна.
+    // Право-чувствительный путь: root (Docker CI) игнорирует permission-биты,
+    // поэтому негативная проверка выполняется только под не-root
+    // (идиома проекта: opencode-adapter, opencode-renderer, complaint-target).
     const memoryDir = join(dir, '.wolf', 'memory');
-    mkdirSync(memoryDir, { recursive: true });
-    chmodSync(memoryDir, 0o555);
-    try {
-      expect(() => new JsonlMicroNoteDeliveryLog(dir).suppressions()).toThrow();
-      expect(existsSync(journalPath())).toBe(false);
-    } finally {
-      chmodSync(memoryDir, 0o755);
+    if (process.getuid?.() !== 0) {
+      mkdirSync(memoryDir, { recursive: true });
+      chmodSync(memoryDir, 0o555);
+      try {
+        expect(() => new JsonlMicroNoteDeliveryLog(dir).suppressions()).toThrow();
+        expect(existsSync(journalPath())).toBe(false);
+      } finally {
+        chmodSync(memoryDir, 0o755);
+      }
     }
-    // повтор миграции успешен
+    // миграция успешна (повтор после снятия блокировки; под root — первая)
     expect(new JsonlMicroNoteDeliveryLog(dir).suppressions()).toHaveLength(3);
     // идемпотентность: файл журнала существует → повторная миграция не дублирует
     expect(new JsonlMicroNoteDeliveryLog(dir).suppressions()).toHaveLength(3);
