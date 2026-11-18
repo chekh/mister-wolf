@@ -23,7 +23,7 @@ LIMITS учёта: у 41 записи до продолжения cache-токе
 
 ## 2. Development-состав (8 сценариев × 6 = 48 целевых прогонов)
 
-Формат: per-run — статус, видимых вызовов, токенов, механические флаги оракула; mech PASS = замороженное PASS-определение (aggregate.json `PASS_DEF`). Сырые данные: `campaign/evidence/<run-id>/` (run.jsonl, usage.json, oracle.json, trace_tool.json, commands.txt, git_after.txt, git_status.txt). Видимые вызовы не включают child-сессии (LIMITS §6.3).
+Формат: per-run — статус, видимых вызовов, токенов, механические флаги оракула; mech PASS = замороженное PASS-определение (protocol §6; флаги — `aggregate.json` `mech_pass`). Сырые данные: `campaign/evidence/<run-id>/` (run.jsonl, usage.json, oracle.json, trace_tool.json, commands.txt, git_after.txt, git_status.txt). Видимые вызовы не включают child-сессии (LIMITS §6.3).
 
 ### S-01 (REQ-01) — короткий отчёт без найма
 | run | b1 | b2 | b3 | c1 | c2 | c3 |
