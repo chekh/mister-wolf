@@ -2,7 +2,7 @@
 description: Accepts complaints about agents/skills/rules and proposals via wolf-feedback. Usage: /complain <complaint or proposal text>
 agent: mr-wolf
 ---
-<!-- wolf:rendered base=complain.md set=3.1.2 -->
+<!-- wolf:rendered base=complain.md set=3.2.0 -->
 Accept the submission: $ARGUMENTS
 
 Load wolf-feedback; choose a sufficient response on the grounds already

@@ -2,7 +2,7 @@
 name: wolf-code-simplify
 description: 'Apply on an assigned simplification task or when concrete needless complexity needs a separate examination. Preserves behavior and contracts; not a mandatory stage after every edit.'
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
+<!-- wolf:rendered base=SKILL.md set=3.2.0 -->
 
 # Simplifying existing code
 
@@ -59,6 +59,6 @@ Compare the result with the original problem:
 
 If the benefit is doubtful, do not include the transformation in the result. If contract preservation is not confirmed, do not declare the work complete.
 
-Stop after eliminating the assigned complexity. Return the transformation's essence and evidence in the standard TASK format.
+Stop after eliminating the assigned complexity. Return the transformation's essence and evidence as a RESULT per your role contract.
 
 In review, distinguish a proven defect from an optional recommendation; apply project rules and severity in force.

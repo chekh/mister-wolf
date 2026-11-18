@@ -2,7 +2,7 @@
 name: wolf-learning-cycle
 description: "Method for turning recorded experience signals into verified, exactly-versioned changes of project knowledge and skills. Apply on an explicit request, or at the boundary of an independent goal when new relevant signals and budget exist; not on every RESULT."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
+<!-- wolf:rendered base=SKILL.md set=3.2.0 -->
 
 # Learning cycle (process improvement)
 

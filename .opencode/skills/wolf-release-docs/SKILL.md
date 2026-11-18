@@ -2,7 +2,7 @@
 name: wolf-release-docs
 description: "Apply when preparing any new Wolf version for release, when updating the README or the site for a release, when checking documentation readiness before publication, and after the release scope or the behavior of a documented feature changes."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
+<!-- wolf:rendered base=SKILL.md set=3.2.0 -->
 
 # Wolf documentation before a release
 
@@ -10,7 +10,7 @@ description: "Apply when preparing any new Wolf version for release, when updati
 
 Load this skill before planning and editing release documentation. Apply it to major/minor/patch: the volume depends on the changes; verification of currency and usefulness is mandatory. A regular feature PR without release preparation needs no full pass; changed behavior is documented in its task. After scope changes, re-check the affected pages and examples.
 
-The lead sets the release goal and accepts the package; the lead or an assigned executor drives the plan, assigns authors and independent review, integrates changes. An executor receives concrete pages, sources, allowlist and criteria. Shared READMEs, the concept and navigation have a single owner of record. This skill authorizes neither npm publication, a tag, a deploy, a commit nor changes to the approved concept beyond the mandate in force.
+The lead sets the release goal and accepts the package; the lead assigns authors and independent review and integrates changes, while an assigned executor may drive the plan's mechanics only within the lead's decisions. An executor receives concrete pages, sources, allowlist and criteria. Shared READMEs, the concept and navigation have a single owner of record. This skill authorizes neither npm publication, a tag, a deploy, a commit nor changes to the approved concept beyond the mandate in force.
 
 The goal is current, coherent, increasingly useful documentation: the reader understands what Wolf is for, the benefit of features, the design, the actions, the constraints and how to verify the result. Pages, lines and new methods are not a measure of quality; fixing outdated text, a clear diagram and a good example can beat a new section.
 

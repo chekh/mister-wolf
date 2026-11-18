@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=agent-language.md set=3.1.2 -->
+<!-- wolf:rendered base=agent-language.md set=3.2.0 -->
 # Wolf internal agent language specification
 
 **Status:** versioned council extension; observation stage. Base specification approved by the owner (2026-11-04, decision mem_20261104_vnutrenniy_yazyk_wolf_etap_nablyudeniya_19ed1f; frame and rationale — docs/dev/2026-11-04-agent-language/pre-requirements.md).
@@ -11,18 +11,24 @@ Covers only utterances that change work state: mandates, reports, verdicts, hand
 
 ## Session-language decision mechanics
 
-The session language decision is recorded, not inferred: after the first user
-message run `wolf add --type decision --title "Session language: <lang>"`; on an
-explicit language change record the new decision and immediately run
+The session language decision is recorded, not inferred, and read before it is
+created: after the first user message check the existing state
+(`wolf search "Session language"`; `wolf brief` also shows active decisions).
+If an active decision already exists and the user did not explicitly instruct a
+language change, apply it and create no record — no duplicates, whatever the
+session's language; the reply follows the user's current message language. Only
+when no active decision exists, run
+`wolf add --type decision --title "Session language: <lang>"`. On an explicit
+language change record the new decision and immediately run
 `wolf supersede <old-id> <new-id>` — exactly one language decision stays active.
-The user's message language wins over host or platform language defaults. Normative
-text: AGENTS.md, "Session language".
+The user's message language wins over host or platform language defaults.
+Normative text: AGENTS.md, "Session language".
 
 ## Terms
 
 Definitions follow the contracts in force (contracts.md, complaints.md) and the owner's decision frame; each term gets a gloss on first use.
 
-- **TASK** — a mandate to an executor: the core (mandatory elements) plus fields of the applicable profile (implement | review | research | expert). Full slot composition — contracts.md.
+- **TASK** — a mandate to an executor: the core (mandatory elements) plus fields of the applicable profile (implement | review | research | expert). Full slot composition — contracts.md; the compact six-slot display in wolf-agent-language shows the same single core and adds no second contract.
 - **RESULT** — the executor's report in its role's form. Implement-profile statuses: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED. DONE means ready for review, not acceptance.
 - **DONE ≠ ACCEPTED** — different utterances at different levels: DONE reports readiness for review; ACCEPTED is the designated acceptance owner's decision on acceptance results (the lead accepts the executor's result within its mandate; the owner where its decision is provided for).
 - **EVIDENCE** — confirmation of a claim/criterion: command or procedure, cwd, revision, exit/status, result; composition — contracts.md.
@@ -54,7 +60,9 @@ An expert's position is a reasoned answer within the lens, not a review VERDICT;
 
 If the meaning is clear, continue; if missing information affects the action, ask rather than guess. Non-compliance leaves the level no worse than today: compliance brings brevity and precision, not a penalty.
 
-## Examples (conditional, illustrative, not templates)
+## Examples (conditional, illustrative, abbreviated — not templates)
+
+These fragments show form, not a full mandate: a real TASK carries the whole core of contracts.md or the compact slot display mapped onto it (wolf-agent-language).
 
 1. TASK→RESULT exchange:
    TASK: "T-7@v1: update the command reference in guides/cli.md — add a section on sync. Verification: the section appears in the table of contents. Limit: 6 calls."

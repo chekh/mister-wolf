@@ -2,7 +2,7 @@
 name: wolf-plan
 description: "Apply before decomposing an approved solution into executable tasks, before handing work to executors, or when an existing plan's dependencies and composition change."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
+<!-- wolf:rendered base=SKILL.md set=3.2.0 -->
 
 # Design → tasks
 

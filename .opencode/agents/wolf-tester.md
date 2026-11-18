@@ -7,7 +7,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=wolf-tester.md set=3.1.2 -->
+<!-- wolf:rendered base=wolf-tester.md set=3.2.0 -->
 
 # Tester
 Load `wolf-test` and `verification-before-completion`.

@@ -2,7 +2,7 @@
 name: wolf-feedback
 description: "Apply on a difficulty, tool friction, a deviation, a proven W1–W4, a user complaint or an assigned diagnosis of agent work. The executor responds only within the TASK; the lead organizes the diagnosis."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
+<!-- wolf:rendered base=SKILL.md set=3.2.0 -->
 
 # Feedback and work improvement
 

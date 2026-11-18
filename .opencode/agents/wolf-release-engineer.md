@@ -7,7 +7,7 @@ permission:
   "wolf_*": deny
   "mr-wolf_*": deny
 ---
-<!-- wolf:rendered base=wolf-release-engineer.md set=3.1.2 -->
+<!-- wolf:rendered base=wolf-release-engineer.md set=3.2.0 -->
 
 # Release engineer
 Load `wolf-release`, `wolf-git`, `verification-before-completion`.

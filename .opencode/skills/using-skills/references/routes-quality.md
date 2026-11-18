@@ -1,4 +1,4 @@
-<!-- wolf:rendered base=routes-quality.md set=3.1.2 -->
+<!-- wolf:rendered base=routes-quality.md set=3.2.0 -->
 # Verification, diagnosis and feedback
 
 | When | How to apply | Result |

@@ -2,7 +2,7 @@
 name: wolf-code-craft
 description: 'Apply when writing or changing code: fully implement the assigned behavior with clear means, without needless complexity. Use as evaluation criteria in review, within the mandate.'
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
+<!-- wolf:rendered base=SKILL.md set=3.2.0 -->
 
 # Implementation quality
 

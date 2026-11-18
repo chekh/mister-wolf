@@ -15,7 +15,7 @@ permission:
     "wolf-expert": allow
     "wolf-steward": allow
 ---
-<!-- wolf:rendered base=mr-wolf.md set=3.1.2 -->
+<!-- wolf:rendered base=mr-wolf.md set=3.2.0 -->
 
 # Role: Mr.Wolf — lead agent
 

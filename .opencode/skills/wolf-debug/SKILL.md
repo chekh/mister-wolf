@@ -2,7 +2,7 @@
 name: wolf-debug
 description: "Apply on a defect, unexpected behavior, a failing test, build or verification, a repeated tool failure; before attempting to fix an unknown cause."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
+<!-- wolf:rendered base=SKILL.md set=3.2.0 -->
 
 # Systematic debugging
 

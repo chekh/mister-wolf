@@ -2,9 +2,9 @@
 name: wolf-skill-intake
 description: "Evaluate an external skill before explicitly assigned inclusion in the base set."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
+<!-- wolf:rendered base=SKILL.md set=3.2.0 -->
 
-# Compatible input
+# Compatibility entry
 
 Load `writing-skills` once and perform the relevant part.
 Do not create an extra stage or a repeated verification cycle.

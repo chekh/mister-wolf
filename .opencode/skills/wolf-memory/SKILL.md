@@ -2,7 +2,7 @@
 name: wolf-memory
 description: "Addressed reading and saving of a TASK, mini-plan, result, decision or handoff in Wolf memory."
 ---
-<!-- wolf:rendered base=SKILL.md set=3.1.2 -->
+<!-- wolf:rendered base=SKILL.md set=3.2.0 -->
 
 
 # Use the existing memory
