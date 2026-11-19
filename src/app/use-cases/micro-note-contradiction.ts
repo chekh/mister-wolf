@@ -25,6 +25,14 @@ export interface ReportMicroNoteContradictionInput {
   reason: string;
   /** Observation contradicting the note, kept verbatim (data, never executed). */
   contradiction_evidence: string;
+  /**
+   * REQ-333-5 (ADR-340-5): revision the contradiction was OBSERVED on
+   * (12–64 lowercase hex). Absent/empty → bind to the current revision
+   * (pre-3.4.0 behavior). A prefix of the current revision → same. Anything
+   * else (divergence) → the record binds to the OBSERVED revision and the
+   * result carries `divergence` for the caller's explicit warning.
+   */
+  observed_revision?: string;
 }
 
 export interface MicroNoteSuppressionResult {
@@ -35,7 +43,22 @@ export interface MicroNoteSuppressionResult {
   note_evidence: string;
   contradiction_evidence: string;
   suppressed_at: string;
+  /** REQ-333-5: present only when the observed revision diverges from the current one. */
+  divergence?: { observed_revision: string; current_revision: string };
 }
+
+/** REQ-333-5 (ADR-340-5): единый текст предупреждения о расхождении — один
+ *  источник для CLI и MCP («то же поведение и текст»). */
+export function divergenceWarning(divergence: { observed_revision: string; current_revision: string }): string {
+  return (
+    `WARNING: the observed revision ${divergence.observed_revision.slice(0, 12)} differs from the current revision ${divergence.current_revision.slice(0, 12)}` +
+    ' — the CURRENT revision is NOT suppressed and the note keeps being delivered; if the contradiction reproduces on the current text, report it again'
+  );
+}
+
+/** REQ-333-5 (ADR-340-5): формат наблюдаемой ревизии — 12–64 lowercase hex
+ *  (12 — длина префикса, которым журнал всегда показывает ревизию). */
+const OBSERVED_REVISION_RE = /^[0-9a-f]{12,64}$/;
 
 /** Is the object an addressed micro-note (same convention as the selector). */
 function isMicroNoteObject(obj: MemoryObject): boolean {
@@ -76,12 +99,24 @@ export async function reportMicroNoteContradiction(
     throw new UserFacingError(`unknown micro-note "${input.note_id}": no active micro-note with this id`);
   }
   const revision = learningSignalRevision(note);
+  const observedRaw = (input.observed_revision ?? '').trim();
+  if (observedRaw !== '' && !OBSERVED_REVISION_RE.test(observedRaw)) {
+    throw new UserFacingError(
+      `observed revision must be 12–64 lowercase hex chars (got "${observedRaw}") — pass the revision prefix as shown by "wolf contradict list" or the brief evidence`
+    );
+  }
+  // REQ-333-5 (ADR-340-5): наблюдаемая ревизия — префикс текущей (или равна) →
+  // запись как сегодня; иначе (расхождение) — запись под НАБЛЮДАЕМОЙ ревизией
+  // (свидетельство остаётся привязано к тексту наблюдения, r5 не
+  // воспроизводится: старое свидетельство не глушит исправленный текст).
+  const diverged = observedRaw !== '' && !revision.startsWith(observedRaw);
+  const boundRevision = diverged ? observedRaw : revision;
   const at = deps.clock.now();
-  const noteEvidence = `${note.id}@${revision.slice(0, 12)}`;
+  const noteEvidence = `${note.id}@${boundRevision.slice(0, 12)}`;
   const record = {
     suppression_id: suppressionId(deps.idGen, at, `${input.note_id}|${reason}|${evidence}|${at.toISOString()}`),
     memory_id: note.id,
-    revision,
+    revision: boundRevision,
     reason,
     note_evidence: noteEvidence,
     contradiction_evidence: evidence,
@@ -93,10 +128,11 @@ export async function reportMicroNoteContradiction(
   return {
     suppression_id: record.suppression_id,
     memory_id: note.id,
-    revision,
+    revision: boundRevision,
     note_evidence: noteEvidence,
     contradiction_evidence: evidence,
     suppressed_at: record.suppressed_at,
+    ...(diverged ? { divergence: { observed_revision: observedRaw, current_revision: revision } } : {}),
   };
 }
 

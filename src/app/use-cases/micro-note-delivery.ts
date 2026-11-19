@@ -200,7 +200,53 @@ export function suppressionBlockState(
   note: MemoryObject | undefined
 ): SuppressionBlockState {
   if (note === undefined) return 'unknown';
+  // REQ-333-6 (AC-6.2, r6): заметка есть, но не deliverable micro-note (тег снят,
+  // superseded, другой тип) — «actual» обещать нельзя; display-only правило,
+  // фильтр доставки (openContradiction) не трогается.
+  if (!isMicroNote(note)) return 'unknown';
   return record.revision === learningSignalRevision(note) ? 'actual' : 'superseded';
+}
+
+/** REQ-333-6 (AC-6.2): адресована ли запись сейчас доставляемому micro-note.
+ *  yes — заметка есть, это deliverable micro-note, и нет открытых записей
+ *  СВЕРХ рассматриваемой (excludingSuppressionId), блокирующих текущую ревизию;
+ *  no — заметка не deliverable micro-note ИЛИ её блокирует другая открытая
+ *  запись текущей ревизии; unknown — заметки нет в store (REQ-03). */
+export type DeliverableState = 'yes' | 'no' | 'unknown';
+
+export function deliverableMicroNote(
+  note: MemoryObject | undefined,
+  suppressions: readonly MicroNoteSuppressionRecord[],
+  excludingSuppressionId?: string
+): DeliverableState {
+  if (note === undefined) return 'unknown';
+  if (!isMicroNote(note)) return 'no';
+  const revision = learningSignalRevision(note);
+  const blockedByOther = suppressions.some(
+    (s) =>
+      s.suppression_id !== excludingSuppressionId &&
+      s.memory_id === note.id &&
+      s.resolved_at === null &&
+      s.revision === revision
+  );
+  return blockedByOther ? 'no' : 'yes';
+}
+
+/** REQ-333-6 (AC-6.1): честный статус заметки после закрытия ОДНОЙ записи —
+ *  единый текст для CLI и MCP. Считаются открытые записи ТЕКУЩЕЙ ревизии
+ *  (то же правило, что openContradiction); закрытая запись уже не открыта. */
+export function remainingBlockNotice(
+  note: MemoryObject | undefined,
+  suppressions: readonly MicroNoteSuppressionRecord[]
+): string {
+  if (note === undefined) return 'note is not in the store — the record is closed, delivery state unknown';
+  const revision = learningSignalRevision(note);
+  const stillOpen = suppressions.filter(
+    (s) => s.memory_id === note.id && s.resolved_at === null && s.revision === revision
+  ).length;
+  return stillOpen > 0
+    ? `Note still blocked by ${stillOpen} open contradiction(s) on the current revision`
+    : 'No other open contradictions on the current revision — delivery resumes';
 }
 
 /**

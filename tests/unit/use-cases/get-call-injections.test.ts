@@ -908,6 +908,10 @@ describe('getCallInjections', () => {
   function noteLogStub(suppressions: () => MicroNoteSuppressionRecord[]) {
     return {
       recordDelivery: () => {},
+      // REQ-333-7 (ADR-340-6): порт дополнен батчем; фейк принимает батч (тот же контракт)
+      recordDeliveries: (
+        _records: Array<{ memory_id: string; revision: string; channel: string; kind: string; ts: string }>
+      ) => {},
       recordSuppression: () => {},
       resolveSuppression: () => {},
       suppressions,

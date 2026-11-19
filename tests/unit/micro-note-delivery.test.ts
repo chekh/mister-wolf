@@ -5,6 +5,11 @@ import {
   CONSTRAINT_TAG,
   DEFAULT_MICRO_NOTE_BUDGET,
 } from '../../src/app/use-cases/micro-note-delivery.js';
+import {
+  deliverableMicroNote,
+  suppressionBlockState,
+  remainingBlockNotice,
+} from '../../src/app/use-cases/micro-note-delivery.js';
 import { learningSignalRevision } from '../../src/domain/learning-signals.js';
 import type { MemoryObject } from '../../src/domain/schemas/memory-object-schema.js';
 import type { MicroNoteSuppressionRecord } from '../../src/ports/micro-note-delivery-log.port.js';
@@ -251,5 +256,68 @@ describe('selectMicroNotes (AC-2.4: worktree scope)', () => {
     const scoped = note('n_own_wt', { scope: 'worktree:w-0123456789ab' });
     const result = selectMicroNotes([scoped], { environment: 'darwin' }, {}, [], visibility({ n_own_wt: true }));
     expect(result.delivered.map((c) => c.id)).toEqual(['n_own_wt']);
+  });
+});
+
+// REQ-333-6 (AC-6.2): честные статусы — deliverableMicroNote (да/нет/неизвестно),
+// block: unknown для не-deliverable заметки (класс r6 «block: actual» после
+// снятия тега исчезает), remainingBlockNotice для resolve (единый текст CLI/MCP).
+describe('REQ-333-6: honest statuses (deliverableMicroNote, suppressionBlockState, remainingBlockNotice)', () => {
+  const rev = learningSignalRevision(note('n6'));
+
+  function openSup(memoryId: string, revision: string, suffix: string = memoryId): MicroNoteSuppressionRecord {
+    return suppression(memoryId, revision, { suppression_id: `cnr_20261119_${suffix}` });
+  }
+
+  it('deliverable: yes — deliverable micro-note with no open records besides the considered one', () => {
+    const n = note('n6');
+    const own = openSup('n6', rev);
+    expect(deliverableMicroNote(n, [own], own.suppression_id)).toBe('yes');
+    // посторонняя запись другой заметки не мешает
+    expect(deliverableMicroNote(n, [own, openSup('other', rev)], own.suppression_id)).toBe('yes');
+  });
+
+  it('deliverable: no — another open record blocks the current revision; tag removed; superseded', () => {
+    const n = note('n6');
+    const own = openSup('n6', rev);
+    const other = openSup('n6', rev, 'n6b');
+    expect(deliverableMicroNote(n, [own, other], own.suppression_id)).toBe('no'); // заблокирована другой
+    expect(deliverableMicroNote(note('n6', { tags: [] }), [own], own.suppression_id)).toBe('no'); // тег снят
+    expect(
+      deliverableMicroNote(note('n6', { status: 'superseded', superseded_by: 'mem_new' }), [own], own.suppression_id)
+    ).toBe('no'); // superseded
+    // разрешённая запись не блокирует
+    expect(deliverableMicroNote(n, [own, { ...other, resolved_at: '2026-11-19T00:00:00Z' }], own.suppression_id)).toBe(
+      'yes'
+    );
+  });
+
+  it('deliverable: unknown — the note is missing from the store', () => {
+    expect(deliverableMicroNote(undefined, [openSup('gone', rev)], 'cnr_x')).toBe('unknown');
+  });
+
+  it('block: unknown — the note exists but is not a deliverable micro-note (r6: tag removed, same revision)', () => {
+    const record = openSup('n6', rev);
+    expect(suppressionBlockState(record, note('n6', { tags: [] }))).toBe('unknown'); // было 'actual' — дефект r6
+    expect(suppressionBlockState(record, note('n6', { status: 'superseded', superseded_by: 'mem_new' }))).toBe(
+      'unknown'
+    );
+    // регресс: отредактированная deliverable-заметка — по-прежнему superseded
+    expect(suppressionBlockState(record, note('n6'))).toBe('actual');
+    expect(suppressionBlockState(record, note('n6', { body: 'Edited body.' }))).toBe('superseded');
+    expect(suppressionBlockState(record, undefined)).toBe('unknown');
+  });
+
+  it('remainingBlockNotice: still blocked counts remaining open records on the current revision', () => {
+    const n = note('n6');
+    expect(remainingBlockNotice(n, [openSup('n6', rev)])).toBe(
+      'Note still blocked by 1 open contradiction(s) on the current revision'
+    );
+    expect(remainingBlockNotice(n, [openSup('n6', rev), openSup('n6', rev)])).toContain('by 2 open');
+    expect(remainingBlockNotice(n, [])).toBe('No other open contradictions on the current revision — delivery resumes');
+    // записи других ревизий/заметок и разрешённые не считаются
+    expect(remainingBlockNotice(n, [openSup('n6', 'deadbeef'.repeat(8)), openSup('other', rev)])).toBe(
+      'No other open contradictions on the current revision — delivery resumes'
+    );
   });
 });

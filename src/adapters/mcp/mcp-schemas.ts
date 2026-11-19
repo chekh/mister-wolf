@@ -117,6 +117,9 @@ export const NoteContradictionInputSchema = z.discriminatedUnion('action', [
     note_id: z.string(),
     reason: z.string().trim().min(1),
     contradiction_evidence: z.string().trim().min(1),
+    // REQ-333-5 (ADR-340-5): ревизия наблюдения — опциональна; формат
+    // (12–64 hex) проверяет use-case — единое место правила для CLI и MCP.
+    observed_revision: z.string().optional(),
   }),
   z.object({
     action: z.literal('resolve'),
