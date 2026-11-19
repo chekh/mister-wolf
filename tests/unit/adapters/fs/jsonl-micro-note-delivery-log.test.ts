@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { execFileSync } from 'child_process';
 import {
   appendFileSync,
   chmodSync,
@@ -13,7 +14,10 @@ import {
 import { tmpdir } from 'os';
 import { join } from 'path';
 import Database from 'better-sqlite3';
-import { JsonlMicroNoteDeliveryLog } from '../../../../src/adapters/fs/jsonl-micro-note-delivery-log.js';
+import {
+  JsonlMicroNoteDeliveryLog,
+  JournalStateUnknownError,
+} from '../../../../src/adapters/fs/jsonl-micro-note-delivery-log.js';
 import { UserFacingError } from '../../../../src/domain/errors.js';
 import type {
   MicroNoteDeliveryRecord,
@@ -90,13 +94,19 @@ describe('JsonlMicroNoteDeliveryLog (patch 3.3.1)', () => {
   }
 
   // T-2.4 (AC-2.4, REQ-03): утрата журнала ничего не изобретает — состояние
-  // пустое, файл создаётся первой записью и лежит вне `.wolf/cache`.
-  it('T-2.4: no journal and no legacy index → empty state; first write creates the file outside .wolf/cache', () => {
+  // пустое, файл лежит вне `.wolf/cache`.
+  // 3.4.0 (design §5 REV-340 F-2): fresh-with-no-sources creates an empty
+  // journal + marker — чтение на чистом проекте больше не оставляет «нет
+  // файлов», fresh выполняется ровно один раз (T-333-8.4).
+  it('T-2.4: no journal and no legacy index → empty state; the first access creates the empty journal + marker outside .wolf/cache', () => {
     const log = new JsonlMicroNoteDeliveryLog(dir);
     expect(log.suppressions()).toEqual([]);
     expect(log.deliveries()).toEqual([]);
     expect(log.observations()).toEqual([]);
-    expect(existsSync(journalPath())).toBe(false);
+    // 3.4.0 (design §5 REV-340 F-2): пустой fresh создаёт журнал+маркер
+    expect(existsSync(journalPath())).toBe(true);
+    expect(existsSync(join(dir, '.wolf', 'memory', 'micro-note-delivery.migrated.json'))).toBe(true);
+    expect(journalPath().includes(join(dir, '.wolf', 'cache'))).toBe(false);
 
     log.recordSuppression(sup('cnr_20261118_0000aa', 'n1'));
     expect(existsSync(journalPath())).toBe(true);
@@ -270,8 +280,11 @@ describe('JsonlMicroNoteDeliveryLog (patch 3.3.1)', () => {
     }
   });
 
-  // T-3.4 (AC-3.4): чистый проект (нет legacy-таблиц/строк) — миграция ничего не создаёт.
-  it('T-3.4: a project without legacy tables creates no journal and keeps empty state', () => {
+  // T-3.4 (AC-3.4): чистый проект (нет legacy-таблиц/строк) — миграция не
+  // переносит записей, состояние пустое.
+  // 3.4.0 (design §5 REV-340 F-2): fresh-with-no-sources creates an empty
+  // journal + marker (fresh выполняется ровно один раз, T-333-8.4).
+  it('T-3.4: a project without legacy tables keeps empty state; the fresh estimate creates the empty journal + marker', () => {
     mkdirSync(join(dir, '.wolf', 'cache'), { recursive: true });
     const db = new Database(join(dir, '.wolf', 'cache', 'index.sqlite'));
     db.exec('CREATE TABLE memory_meta (memory_id TEXT PRIMARY KEY)');
@@ -279,7 +292,9 @@ describe('JsonlMicroNoteDeliveryLog (patch 3.3.1)', () => {
 
     const log = new JsonlMicroNoteDeliveryLog(dir);
     expect(log.suppressions()).toEqual([]);
-    expect(existsSync(journalPath())).toBe(false);
+    // 3.4.0 (design §5 REV-340 F-2): пустой fresh создаёт журнал+маркер
+    expect(existsSync(journalPath())).toBe(true);
+    expect(existsSync(join(dir, '.wolf', 'memory', 'micro-note-delivery.migrated.json'))).toBe(true);
   });
 });
 
@@ -498,6 +513,452 @@ describe('JsonlMicroNoteDeliveryLog (patch 3.3.2)', () => {
       expect(new JsonlMicroNoteDeliveryLog(emptyDir).suppressions()).toHaveLength(1);
     } finally {
       rmSync(emptyDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('journal line validator (3.4.0 REQ-333-3, ADR-340-4)', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'wolf-jsonl-log-340-'));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  function journalPath(): string {
+    return join(dir, JOURNAL);
+  }
+
+  const crafted = (id: string): string => JSON.stringify({ kind: 'suppression', record: { suppression_id: id } });
+  // T-333-3.1 (AC-3.1): полная строка с невалидной структурой В СЕРЕДИНЕ —
+  // явный отказ с файлом и номером строки; файл не изменён; состояние
+  // (активное подавление) не исчезает.
+  it('T-333-3.1: an invalid-structure line mid-file refuses load with file+line and leaves the file unchanged', () => {
+    mkdirSync(join(dir, '.wolf', 'memory'), { recursive: true });
+    const good = JSON.stringify({ kind: 'suppression', record: { ...baseSup('cnr_20261119_0000aa', 'n1') } });
+    writeFileSync(journalPath(), `${good}\n${crafted('cnr_20261119_0000aa')}\n${good}\n`, 'utf8');
+    const before = readFileSync(journalPath(), 'utf8');
+
+    expect(() => new JsonlMicroNoteDeliveryLog(dir).suppressions()).toThrow(
+      new RegExp(`invalid structure.*${escapeRe(journalPath())}.*line 2`)
+    );
+    expect(readFileSync(journalPath(), 'utf8')).toBe(before);
+  });
+
+  // T-333-3.1 (хвост): та же строка в хвосте — отказ, молчаливой обрезки нет;
+  // после ручного удаления строки состояние равно прежнему (подавление живо).
+  it('T-333-3.1: an invalid-structure tail line refuses load and append (no silent truncation); removing it restores the state', () => {
+    mkdirSync(join(dir, '.wolf', 'memory'), { recursive: true });
+    const good = JSON.stringify({ kind: 'suppression', record: baseSup('cnr_20261119_0000aa', 'n1') });
+    writeFileSync(journalPath(), `${good}\n${crafted('cnr_20261119_0000aa')}\n`, 'utf8');
+    const before = readFileSync(journalPath(), 'utf8');
+    const expected = new RegExp(`invalid structure.*${escapeRe(journalPath())}.*line 2`);
+
+    expect(() => new JsonlMicroNoteDeliveryLog(dir).suppressions()).toThrow(expected);
+    // append (repair-путь) отказывает в той же позиции до ручного исправления
+    expect(() => new JsonlMicroNoteDeliveryLog(dir).recordSuppression(baseSup('cnr_20261119_0000bb', 'n2'))).toThrow(
+      expected
+    );
+    expect(readFileSync(journalPath(), 'utf8')).toBe(before);
+
+    // ручное удаление строки → состояние равно прежнему (одно активное подавление)
+    writeFileSync(journalPath(), `${good}\n`, 'utf8');
+    const log = new JsonlMicroNoteDeliveryLog(dir);
+    expect(log.suppressions().map((s) => s.suppression_id)).toEqual(['cnr_20261119_0000aa']);
+    expect(log.suppressions()[0]!.reason).toBe('reason cnr_20261119_0000aa');
+  });
+
+  // T-333-3.2 (AC-3.2): одна функция, один текст — чтение (load) и repair
+  // (append на обрывке хвоста) дают ИДЕНТИЧНЫЙ отказ для одной и той же строки.
+  it('T-333-3.2: load and the append/repair path refuse an invalid-structure line with the identical message', () => {
+    mkdirSync(join(dir, '.wolf', 'memory'), { recursive: true });
+    const good = JSON.stringify({ kind: 'suppression', record: baseSup('cnr_20261119_0000aa', 'n1') });
+    // crafted строка БЕЗ завершающего \n — она и хвост, и последняя строка файла
+    writeFileSync(journalPath(), `${good}\n${crafted('cnr_20261119_0000aa')}`, 'utf8');
+
+    let loadMessage = '';
+    try {
+      new JsonlMicroNoteDeliveryLog(dir).suppressions();
+    } catch (e) {
+      loadMessage = (e as Error).message;
+    }
+    expect(loadMessage).toMatch(/invalid structure/);
+    expect(loadMessage).toContain(journalPath());
+    expect(loadMessage).toContain('line 2');
+
+    let appendMessage = '';
+    try {
+      new JsonlMicroNoteDeliveryLog(dir).recordSuppression(baseSup('cnr_20261119_0000bb', 'n2'));
+    } catch (e) {
+      appendMessage = (e as Error).message;
+    }
+    expect(appendMessage).toBe(loadMessage);
+  });
+
+  // T-333-3.3 (AC-3.3, регресс с 3.3.2): обрывок JSON в хвосте — прежняя
+  // repair-семантика: чтение отбрасывает обрывок, запись обрезает хвост.
+  it('T-333-3.3: a truncated JSON tail keeps the repair semantics (discard on read, truncate on write)', () => {
+    mkdirSync(join(dir, '.wolf', 'memory'), { recursive: true });
+    const good = JSON.stringify({ kind: 'suppression', record: baseSup('cnr_20261119_0000aa', 'n1') });
+    writeFileSync(journalPath(), `${good}\n{"kind":"suppression","record":{"suppression_id":"cnr_trunc`, 'utf8');
+
+    const log = new JsonlMicroNoteDeliveryLog(dir);
+    expect(log.suppressions().map((s) => s.suppression_id)).toEqual(['cnr_20261119_0000aa']);
+    log.recordSuppression(baseSup('cnr_20261119_0000bb', 'n2'));
+    expect(readFileSync(journalPath(), 'utf8')).not.toContain('cnr_trunc');
+    expect(new JsonlMicroNoteDeliveryLog(dir).suppressions().map((s) => s.suppression_id)).toEqual([
+      'cnr_20261119_0000aa',
+      'cnr_20261119_0000bb',
+    ]);
+  });
+});
+
+/** Полная валидная suppression-запись для валидаторных тестов. */
+function baseSup(
+  id: string,
+  memoryId: string,
+  overrides: Partial<MicroNoteSuppressionRecord> = {}
+): MicroNoteSuppressionRecord {
+  return {
+    suppression_id: id,
+    memory_id: memoryId,
+    revision: 'rev111',
+    reason: `reason ${id}`,
+    note_evidence: `${memoryId}@rev111`,
+    contradiction_evidence: `observed against ${memoryId}`,
+    suppressed_at: '2026-11-19T00:00:00.000Z',
+    resolved_at: null,
+    resolution: null,
+    ...overrides,
+  };
+}
+
+/** Валидный JSON с неполной структурой — класс r3 (REQ-333-3). */
+function crafted(id: string): string {
+  return JSON.stringify({ kind: 'suppression', record: { suppression_id: id } });
+}
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+describe('migration marker and journal loss (3.4.0 REQ-333-4, ADR-340-2)', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'wolf-jsonl-log-340-marker-'));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  function journalPath(): string {
+    return join(dir, JOURNAL);
+  }
+
+  function markerPath(): string {
+    return join(dir, '.wolf', 'memory', 'micro-note-delivery.migrated.json');
+  }
+
+  /** Мигрированный проект: журнал первого импорта + маркер. */
+  function migrateFixture(): void {
+    mkdirSync(join(dir, '.wolf', 'cache'), { recursive: true });
+    cpSync(FIXTURE, join(dir, '.wolf', 'cache', 'index.sqlite'));
+    new JsonlMicroNoteDeliveryLog(dir).suppressions();
+  }
+
+  // T-333-4.1 (unit, машина состояний): журнал утрачен, маркер есть —
+  // состояние неизвестно: КАЖДЫЙ публичный метод отказывает с подсказкой
+  // restore, журнал не воссоздаётся, legacy SQLite не воскрешается.
+  it('T-333-4.1: journal loss with a marker present — every public method refuses (JournalStateUnknownError) and never recreates the journal', () => {
+    migrateFixture();
+    expect(existsSync(markerPath())).toBe(true);
+    rmSync(journalPath());
+
+    const log = new JsonlMicroNoteDeliveryLog(dir);
+    const refuse = (): void => {
+      expect(() => log.suppressions()).toThrow(JournalStateUnknownError);
+      expect(() => log.suppressions()).toThrow(/suppression journal is missing after migration/);
+      expect(() => log.suppressions()).toThrow(/wolf contradict restore/);
+      expect(() => log.deliveries()).toThrow(JournalStateUnknownError);
+      expect(() => log.observations()).toThrow(JournalStateUnknownError);
+      expect(() => log.recordSuppression(baseSup('cnr_20261119_0000zz', 'n9'))).toThrow(JournalStateUnknownError);
+      expect(() => log.resolveSuppression('cnr_20261119_0000zz', 'r', '2026-11-19T00:00:00.000Z')).toThrow(
+        JournalStateUnknownError
+      );
+      expect(() =>
+        log.setObservation({
+          memory_id: 'n9',
+          revision: 'r',
+          field: 'observed_outcome',
+          value: 'x',
+          at: '2026-11-19T00:00:00.000Z',
+        })
+      ).toThrow(JournalStateUnknownError);
+      expect(() => log.recordDelivery(deliv('n9'))).toThrow(JournalStateUnknownError);
+      // ни одна команда не воссоздаёт журнал молча; legacy-строки не воскрешены
+      expect(existsSync(journalPath())).toBe(false);
+    };
+    refuse();
+    refuse(); // состояние не меняется от отказов
+  });
+
+  // Самозаживление: журнал есть, маркера нет (окно сбоя 3.3.x) — первая же
+  // операция дописывает маркер под локом; состояние не меняется.
+  it('self-heal: a journal without the marker gets the marker back on the first operation, state unchanged', () => {
+    mkdirSync(join(dir, '.wolf', 'memory'), { recursive: true });
+    writeFileSync(
+      journalPath(),
+      `${JSON.stringify({ kind: 'suppression', record: baseSup('cnr_20261119_0000aa', 'n1') })}\n`,
+      'utf8'
+    );
+    expect(existsSync(markerPath())).toBe(false);
+
+    const log = new JsonlMicroNoteDeliveryLog(dir);
+    expect(log.suppressions().map((s) => s.suppression_id)).toEqual(['cnr_20261119_0000aa']);
+    expect(existsSync(markerPath())).toBe(true);
+    const marker = JSON.parse(readFileSync(markerPath(), 'utf8')) as { migrated_at: string; sources: string[] };
+    expect(marker.sources).toEqual(['unknown']); // источник не угадывается (REQ-03)
+    // повторное чтение — то же состояние, дубликата нет
+    expect(new JsonlMicroNoteDeliveryLog(dir).suppressions().map((s) => s.suppression_id)).toEqual([
+      'cnr_20261119_0000aa',
+    ]);
+  });
+
+  // T-333-4.3 (unit, сброс): удалены И журнал, И маркер → следующий доступ —
+  // свежий первый импорт (те же детерминированные id); без legacy — пустое
+  // состояние, файл создаёт первая запись.
+  it('T-333-4.3: removing both the journal and the marker is a fresh first import (same deterministic ids)', () => {
+    migrateFixture();
+    const ids = new JsonlMicroNoteDeliveryLog(dir).suppressions().map((s) => s.suppression_id);
+    rmSync(journalPath());
+    rmSync(markerPath());
+
+    const again = new JsonlMicroNoteDeliveryLog(dir).suppressions().map((s) => s.suppression_id);
+    expect(again).toEqual(ids);
+    expect(existsSync(journalPath())).toBe(true);
+    expect(existsSync(markerPath())).toBe(true);
+  });
+
+  it('T-333-4.3: fresh without legacy sources — empty state; the first access creates the empty journal + marker (T-333-8.4: fresh runs exactly once)', () => {
+    migrateFixture();
+    rmSync(journalPath());
+    rmSync(markerPath());
+    rmSync(join(dir, '.wolf', 'cache'), { recursive: true, force: true }); // источников нет
+
+    const log = new JsonlMicroNoteDeliveryLog(dir);
+    expect(log.suppressions()).toEqual([]);
+    // T-333-8.4 (F-2, уточнение design §5): свежая оценка с нулём строк и без
+    // отказов создаёт ПУСТОЙ журнал + маркер sources: [] — fresh не повторяется
+    expect(existsSync(journalPath())).toBe(true);
+    expect(existsSync(markerPath())).toBe(true);
+    expect(JSON.parse(readFileSync(markerPath(), 'utf8'))).toMatchObject({ sources: [] });
+    log.recordSuppression(baseSup('cnr_20261119_0000cc', 'n1'));
+    expect(existsSync(journalPath())).toBe(true);
+    expect(log.suppressions()).toHaveLength(1);
+  });
+});
+
+describe('worktree journal import (3.4.0 REQ-333-1, ADR-340-3)', () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'wolf-jsonl-log-340-wt-'));
+  });
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  function journalPath(): string {
+    return join(root, JOURNAL);
+  }
+
+  function wtJournalPath(wt: string): string {
+    return join(wt, '.wolf', 'memory', 'micro-note-delivery.jsonl');
+  }
+
+  /** Реальный git-репо с linked worktree (прецедент интеграции 3.3.2). */
+  function makeRepo(): string {
+    mkdirSync(root, { recursive: true });
+    execFileSync('git', ['init', '-q', '.'], { cwd: root });
+    execFileSync('git', ['config', 'user.email', 't@t.local'], { cwd: root });
+    execFileSync('git', ['config', 'user.name', 't'], { cwd: root });
+    writeFileSync(join(root, 'f.txt'), 'x');
+    execFileSync('git', ['add', '.'], { cwd: root });
+    execFileSync('git', ['commit', '-qm', 'init'], { cwd: root });
+    const wt = join(root, 'wt');
+    execFileSync('git', ['worktree', 'add', '-q', wt, '-b', 'wtb'], { cwd: root });
+    return wt;
+  }
+
+  function writeWtJournal(wt: string, lines: unknown[]): void {
+    mkdirSync(join(wt, '.wolf', 'memory'), { recursive: true });
+    writeFileSync(wtJournalPath(wt), lines.map((l) => `${JSON.stringify(l)}\n`).join(''), 'utf8');
+  }
+
+  // T-333-1.2 (AC-1.2): wt-источник с открытой и разрешённой записями — импорт
+  // переносит всё дословно (оба evidence, resolution), порядок снимков цепочки
+  // сохранён; deliveries тоже переносятся.
+  it('T-333-1.2: import carries open and resolved records verbatim with the chain order preserved', () => {
+    const wt = makeRepo();
+    const open = baseSup('cnr_20261118_0000aa', 'n1');
+    const resolved = {
+      ...baseSup('cnr_20261118_0000aa', 'n1'),
+      resolved_at: '2026-11-18T12:00:00.000Z',
+      resolution: 'confirmed by lead',
+    };
+    const otherOpen = baseSup('cnr_20261119_0000bb', 'n2');
+
+    const log = new JsonlMicroNoteDeliveryLog(root);
+    // журнал создаётся ДО появления wt-источника: importWorktreeJournals —
+    // досмотр существующего носителя (fresh-первый импорт — T-333-1.1)
+    log.recordSuppression(baseSup('cnr_20261119_0000seed', 'nseed'));
+    writeWtJournal(wt, [
+      { kind: 'suppression', record: open },
+      { kind: 'delivery', record: deliv('n1') },
+      { kind: 'suppression', record: resolved },
+      { kind: 'suppression', record: otherOpen },
+    ]);
+    const report = log.importWorktreeJournals();
+    expect(report.sources).toHaveLength(1);
+    expect(report.sources[0]!.kind).toBe('worktree-journal');
+    expect(report.sources[0]!.imported.suppressions).toBe(3);
+    expect(report.sources[0]!.imported.deliveries).toBe(1);
+
+    const suppressions = log.suppressions();
+    expect(suppressions.map((s) => s.suppression_id)).toEqual([
+      'cnr_20261118_0000aa', // 2026-11-18 раньше — детерминированный порядок suppressions()
+      'cnr_20261119_0000bb',
+      'cnr_20261119_0000seed',
+    ]);
+    // разрешённая запись: оба evidence и resolution ДОСЛОВНО, снимок — последняя строка цепочки
+    expect(suppressions[0]).toEqual(resolved);
+    expect(suppressions[1]).toEqual(otherOpen);
+    expect(log.deliveries()).toEqual([deliv('n1')]);
+    // порядок строк цепочки в ФАЙЛЕ сохранён (открытая строка раньше resolve-снимка)
+    const raw = readFileSync(journalPath(), 'utf8')
+      .split('\n')
+      .filter((l) => l.includes('cnr_20261118_0000aa'));
+    expect(JSON.parse(raw[0]!).record.resolved_at).toBe(null);
+    expect(JSON.parse(raw[1]!).record.resolution).toBe('confirmed by lead');
+    // маркер первого импорта не создан (журнал уже существовал — это досмотр wt, не миграция)
+  });
+
+  // T-333-1.3 (AC-1.3, идемпотентность unit-уровня): повторный import того же
+  // источника не дублирует записи — снимки журнала равны.
+  it('T-333-1.3: a repeated import of the same source does not duplicate records (journal snapshots equal)', () => {
+    const wt = makeRepo();
+    writeWtJournal(wt, [{ kind: 'suppression', record: baseSup('cnr_20261119_0000aa', 'n1') }]);
+
+    const log = new JsonlMicroNoteDeliveryLog(root);
+    log.importWorktreeJournals();
+    const snapshotAfterFirst = readFileSync(journalPath(), 'utf8');
+    expect(log.importWorktreeJournals().sources[0]!.imported.suppressions).toBe(0);
+    expect(readFileSync(journalPath(), 'utf8')).toBe(snapshotAfterFirst);
+  });
+
+  // T-333-1.4 (AC-1.4): коллизия suppression_id с другим содержимым — вся
+  // цепочка источника сохраняется под детерминированным новым id; исходная
+  // история не перезаписана; повторный импорт даёт ТОТ ЖЕ новый id.
+  it('T-333-1.4: a suppression_id collision re-ids the whole incoming chain deterministically', () => {
+    const wt = makeRepo();
+    // главный журнал уже содержит cnr_20261119_0000aa с содержимым A (открытая)
+    const log = new JsonlMicroNoteDeliveryLog(root);
+    log.recordSuppression(baseSup('cnr_20261119_0000aa', 'n1', { reason: 'original A' }));
+    const before = readFileSync(journalPath(), 'utf8');
+
+    // wt-источник: та же id с ДРУГИМ содержимым + resolve-снимок цепочки
+    const incomingOpen = baseSup('cnr_20261119_0000aa', 'n1', {
+      reason: 'incoming B',
+      suppressed_at: '2026-11-19T10:00:00.000Z',
+    });
+    const incomingResolved = {
+      ...incomingOpen,
+      resolved_at: '2026-11-19T11:00:00.000Z',
+      resolution: 'resolved in worktree',
+    };
+    writeWtJournal(wt, [
+      { kind: 'suppression', record: incomingOpen },
+      { kind: 'suppression', record: incomingResolved },
+    ]);
+
+    const report = log.importWorktreeJournals();
+    expect(report.sources[0]!.reid).toHaveLength(1);
+    const reid = report.sources[0]!.reid[0]!;
+    expect(reid.from).toBe('cnr_20261119_0000aa');
+    expect(reid.to).toMatch(/^cnr_\d{8}_r[0-9a-f]{12}$/);
+
+    const suppressions = log.suppressions();
+    // вся входящая цепочка под новым id в ФАЙЛЕ (обе строки: открытая и снимок)
+    const rawChain = readFileSync(journalPath(), 'utf8')
+      .split('\n')
+      .filter((l) => l.includes(reid.to))
+      .map((l) => JSON.parse(l).record);
+    expect(rawChain).toHaveLength(2);
+    expect(rawChain[0]).toMatchObject({ reason: 'incoming B', resolved_at: null });
+    expect(rawChain[1]).toMatchObject({ reason: 'incoming B', resolution: 'resolved in worktree' });
+    // suppressions() показывает эффективную (последнюю строку цепочки)
+    const byId = new Map(suppressions.map((s) => [s.suppression_id, s]));
+    // исходная история не перезаписана
+    expect(byId.get('cnr_20261119_0000aa')!.reason).toBe('original A');
+    expect(byId.get(reid.to)).toMatchObject({ reason: 'incoming B', resolution: 'resolved in worktree' });
+
+    // детерминизм: повторный импорт того же источника — тот же новый id
+    expect(log.importWorktreeJournals().sources[0]!.reid).toHaveLength(0);
+    const again = readFileSync(journalPath(), 'utf8');
+    expect(again).toContain(reid.to);
+    expect(again).not.toBe(before);
+  });
+
+  // T-333-3.2 (импорт-ветка): источник с невалидной строкой отвергается
+  // ЦЕЛИКОМ тем же валидатором (один текст с файлом и строкой источника).
+  it('T-333-3.2: a source with an invalid line is refused as a whole with the identical validator message', () => {
+    const wt = makeRepo();
+    const log = new JsonlMicroNoteDeliveryLog(root);
+    log.recordSuppression(baseSup('cnr_20261119_0000cc', 'n3')); // журнал создан до wt-источника
+    const before = readFileSync(journalPath(), 'utf8');
+    writeWtJournal(wt, [
+      { kind: 'suppression', record: baseSup('cnr_20261119_0000aa', 'n1') },
+      JSON.parse(crafted('cnr_20261119_0000aa')), // валидный JSON, неполная структура
+    ]);
+
+    let message = '';
+    try {
+      log.importWorktreeJournals();
+    } catch (e) {
+      message = (e as Error).message;
+    }
+    expect(message).toMatch(/invalid structure/);
+    expect(message).toContain(wtJournalPath(wt));
+    expect(message).toContain('line 2');
+    // журнал не изменён (all-or-nothing на источник)
+    expect(readFileSync(journalPath(), 'utf8')).toBe(before);
+  });
+
+  // T-333-8.2 (F-1, design §10.4): restore без единого источника — явный
+  // отказ «nothing to restore»; пустой журнал НЕ создаётся (документированный
+  // путь сброса — удалить И журнал, И маркер).
+  it('T-333-8.2: restoreFromSources with no sources at all refuses explicitly and does not create the journal', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wolf-restore-empty-'));
+    try {
+      mkdirSync(join(dir, '.wolf', 'memory'), { recursive: true });
+      writeFileSync(
+        join(dir, '.wolf', 'memory', 'micro-note-delivery.migrated.json'),
+        JSON.stringify({ migrated_at: '2026-11-19T00:00:00.000Z', sources: [] }),
+        'utf8'
+      );
+      // loss-состояние: маркер есть, журнала нет; index.sqlite и wt-журналов нет
+      const log = new JsonlMicroNoteDeliveryLog(dir);
+      expect(() => log.restoreFromSources()).toThrow(UserFacingError);
+      expect(() => log.restoreFromSources()).toThrow(/nothing to restore/);
+      expect(existsSync(join(dir, '.wolf', 'memory', 'micro-note-delivery.jsonl'))).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 });

@@ -55,6 +55,34 @@ export function resolveMemoryRoot(baseDir: string): MemoryRootInfo {
   }
 }
 
+/** Полные пути живых записей `git worktree list --porcelain` (тот же парс, что
+ *  liveWorktreeBasenames; REQ-333-1, ADR-340-3: перечисление источников импорта).
+ *  Каталог записи, исчезнувший с диска, пропускается (git пометит prunable).
+ *  null — сбой git-метаданных (fail-closed). Без кэша: вызывается в редких
+ *  критических секциях импорта/restore, не на горячем пути доставки. */
+export function listWorktreeCheckouts(baseDir: string): string[] | null {
+  try {
+    const out = execFileSync('git', ['worktree', 'list', '--porcelain'], {
+      cwd: baseDir,
+      encoding: 'utf-8',
+      timeout: 10_000,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    const result: string[] = [];
+    for (const line of out.split('\n')) {
+      if (!line.startsWith('worktree ')) continue;
+      try {
+        result.push(realpathSync(line.slice('worktree '.length).trim()));
+      } catch {
+        // каталог записи исчез — git пометит prunable; источником он не становится
+      }
+    }
+    return result;
+  } catch {
+    return null; // битые git-метаданные — fail-closed (design §5)
+  }
+}
+
 /** basename каждой живой записи `git worktree list --porcelain` (включая main-чекоут).
  * Дубликаты сохраняются: однозначность legacy-имени — счёт, не множество. Кэш на
  * процесс (NFR-01 (R02): ≤1 git-подпроцесса); null — сбой git-метаданных. */
@@ -67,26 +95,8 @@ function liveWorktreeBasenames(baseDir: string): string[] | null {
     return null;
   }
   if (liveBasenamesCache.has(key)) return liveBasenamesCache.get(key)!;
-  let result: string[] | null = null;
-  try {
-    const out = execFileSync('git', ['worktree', 'list', '--porcelain'], {
-      cwd: baseDir,
-      encoding: 'utf-8',
-      timeout: 10_000,
-      stdio: ['ignore', 'pipe', 'ignore'],
-    });
-    result = [];
-    for (const line of out.split('\n')) {
-      if (!line.startsWith('worktree ')) continue;
-      try {
-        result.push(basename(realpathSync(line.slice('worktree '.length).trim())));
-      } catch {
-        // каталог записи исчез — git пометит prunable; в счёт живых он не входит
-      }
-    }
-  } catch {
-    result = null; // битые git-метаданные — fail-closed (design §5)
-  }
+  const checkouts = listWorktreeCheckouts(baseDir);
+  const result: string[] | null = checkouts === null ? null : checkouts.map((p) => basename(p));
   liveBasenamesCache.set(key, result);
   return result;
 }

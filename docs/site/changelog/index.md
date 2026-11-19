@@ -8,6 +8,57 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [3.4.0] - 2026-11-19
+
+### Fixed — seven defects from the 3.3.1 post-release review
+
+All seven were reproduced on the published 3.3.x builds with a scripted stand
+(r1–r7); every fix is covered by regression tests and the stand re-run on the
+candidate.
+
+- **A broken tail write could erase a confirmed concurrent record (r2a).**
+  Every journal write now runs under one file lock and repairs the tail inside
+  the same critical section; a writer paused between the read and truncate
+  phases no longer drops a record appended by another process.
+- **The first import could race with concurrent writers (r2b).** The journal
+  lock covers the whole first import; the losing writer sees the imported
+  journal instead of re-creating it.
+- **A mid-file line with valid JSON but invalid structure was applied or
+  dropped silently (r3).** One strict validator parses every journal line;
+  a structure failure refuses the command in any position with the exact line
+  number ("unknown stays unknown"); only an uncompleted LAST line is repaired.
+- **A journal lost after the migration marker was silently replaced with an
+  empty one (r4).** A missing journal under an existing migration marker is a
+  fail-closed state: commands refuse and point to
+  `wolf contradict restore` instead of guessing.
+- **A stale report silently blocked the NEW revision of an edited note (r5).**
+  `wolf contradict report --revision <hex>` binds the record to the revision
+  the evidence was observed on (12–64 hex); when it differs from the current
+  revision the command warns explicitly, the record is stored under the
+  observed revision and the current text keeps being delivered.
+- **`contradict list`/`resolve` promised a delivery that did not happen (r6).**
+  The list row reports `deliverable:` — whether the note would actually be
+  delivered now — before the block state; resolving one of several open
+  contradictions states that the note stays blocked; the `resolve` help no
+  longer promises resumption.
+- **`brief`/`call` slowed down linearly with journal size (r7).** Delivery now
+  records one batch under one lock without re-parsing the journal, and the
+  repair step reads only a bounded tail window; a 100k-line journal delivers
+  within 10% of the 3.3.1 baseline (stand median ratio 1.08, criterion ≤ 1.10).
+
+### Added
+
+- **`wolf contradict import` / `wolf contradict restore`.** The first 3.4.0
+  command imports 3.3.x SQLite indexes and worktree-local JSONL journals into
+  the common journal: worktree order is lexicographic, records are re-id'd
+  deterministically (`cnr_<date>_r<hash>`), duplicate rows are deduplicated,
+  an invalid source is refused as a whole and reported. `restore` rebuilds the
+  journal from the sources recorded in the migration marker when the file was
+  lost after migration.
+- **MCP `note_contradiction` `observed_revision`** — the MCP counterpart of
+  `report --revision`: a divergence from the current revision is reported in
+  the tool result and does not suppress the current text.
+
 ## [3.3.2] - 2026-11-19
 
 ### Fixed — the contradiction journal is fresh, common and self-repairing

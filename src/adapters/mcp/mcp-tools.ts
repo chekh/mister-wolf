@@ -19,7 +19,9 @@ import { ProposeCandidateInputSchema, NoteContradictionInputSchema } from './mcp
 import {
   reportMicroNoteContradiction,
   resolveMicroNoteSuppression,
+  divergenceWarning,
 } from '../../app/use-cases/micro-note-contradiction.js';
+import { remainingBlockNotice as remainingBlockNote } from '../../app/use-cases/micro-note-delivery.js';
 import { loadWolfConfigSync } from '../fs/config-file.js';
 import { JsonlMicroNoteDeliveryLog } from '../fs/jsonl-micro-note-delivery-log.js';
 import { scanProjectCached } from '../../app/use-cases/scan-project.js';
@@ -483,6 +485,7 @@ export function registerMemoryTools(
         note_id?: string;
         reason?: string;
         contradiction_evidence?: string;
+        observed_revision?: string;
         suppression_id?: string;
         resolution?: string;
       };
@@ -493,28 +496,32 @@ export function registerMemoryTools(
             note_id: args.note_id!,
             reason: args.reason!,
             contradiction_evidence: args.contradiction_evidence!,
+            observed_revision: args.observed_revision,
           }
         );
+        // REQ-333-5 (ADR-340-5): тот же текст предупреждения, что в CLI
+        // (единый источник divergenceWarning), успех без подавления текущей ревизии
+        const text =
+          `Contradiction recorded: ${result.suppression_id} for ${result.note_evidence} (suppressed until resolved; suppressed at ${result.suppressed_at}). Evidence: ${result.contradiction_evidence}` +
+          (result.divergence ? ` ${divergenceWarning(result.divergence)}` : '');
         return {
-          content: [
-            {
-              type: 'text' as const,
-              text: `Contradiction recorded: ${result.suppression_id} for ${result.note_evidence} (suppressed until resolved; suppressed at ${result.suppressed_at}). Evidence: ${result.contradiction_evidence}`,
-            },
-          ],
+          content: [{ type: 'text' as const, text }],
         };
       }
       const result = resolveMicroNoteSuppression(
         { clock: deps.clock, log: noteLog },
         { suppression_id: args.suppression_id!, resolution: args.resolution! }
       );
-      // Точный id@rev12 — из записи журнала (аудит сохраняется и после резолва)
+      // Точный id@rev12 — из записи журнала (аудит сохраняется и после резолва);
+      // REQ-333-6 (AC-6.1): тот же статус остаточной блокировки, что в CLI
       const record = noteLog.suppressions().find((s) => s.suppression_id === result.suppression_id);
+      const note = (await deps.store.list()).find((o) => o.id === result.memory_id);
+      const status = remainingBlockNote(note, noteLog.suppressions());
       return {
         content: [
           {
             type: 'text' as const,
-            text: `Suppression resolved: ${record?.note_evidence ?? result.suppression_id} (resolved at ${result.resolved_at})`,
+            text: `Suppression resolved: ${record?.note_evidence ?? result.suppression_id} (resolved at ${result.resolved_at}). ${status}`,
           },
         ],
       };

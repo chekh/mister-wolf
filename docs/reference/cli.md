@@ -1182,10 +1182,14 @@ Options:
 Commands:
   report [options]   Record a contradiction against an active micro-note
                      (suppresses delivery until resolved)
-  resolve [options]  Resolve one suppression record by its id (delivery
-                     resumes; audit row stays)
+  resolve [options]  Resolve one suppression record by its id (closes exactly
+                     one record; the audit row stays)
   list               List open micro-note suppressions with revision and block
                      actuality (read-only)
+  import             Idempotently scan pre-upgrade worktree journals into the
+                     shared suppression journal
+  restore            Rebuild a lost suppression journal from index.sqlite and
+                     worktree journals (loss state only)
   help [command]     display help for command
 ```
 
@@ -1201,6 +1205,8 @@ Options:
   --note <id>            Memory id of the micro-note
   --reason <reason>      Why the note is contradicted
   --evidence <evidence>  Verbatim observation contradicting the note
+  --revision <revision>  Observed revision (12–64 hex) the contradiction was
+                         seen on (REQ-333-5)
   -h, --help             display help for command
 ```
 
@@ -1209,7 +1215,8 @@ Options:
 ```text
 Usage: wolf contradict resolve [options]
 
-Resolve one suppression record by its id (delivery resumes; audit row stays)
+Resolve one suppression record by its id (closes exactly one record; the audit
+row stays)
 
 Options:
   --id <suppression_id>      Suppression record id (cnr_…; see: wolf contradict
@@ -1226,6 +1233,30 @@ Options:
 Usage: wolf contradict list [options]
 
 List open micro-note suppressions with revision and block actuality (read-only)
+
+Options:
+  -h, --help  display help for command
+```
+
+#### wolf contradict import
+
+```text
+Usage: wolf contradict import [options]
+
+Idempotently scan pre-upgrade worktree journals into the shared suppression
+journal
+
+Options:
+  -h, --help  display help for command
+```
+
+#### wolf contradict restore
+
+```text
+Usage: wolf contradict restore [options]
+
+Rebuild a lost suppression journal from index.sqlite and worktree journals
+(loss state only)
 
 Options:
   -h, --help  display help for command

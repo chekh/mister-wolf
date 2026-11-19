@@ -63,6 +63,13 @@ export interface MicroNoteObservation {
 export interface MicroNoteDeliveryLog {
   recordDelivery(record: MicroNoteDeliveryRecord): void;
   /**
+   * REQ-333-7 (ADR-340-6): one lock, one repair, ONE append of N rows (row
+   * order identical to N recordDelivery calls); no full parse of the journal
+   * (deliveries are never read through the delivery path); the fresh
+   * first-import trigger and the loss refusal stay (ADR-340-2).
+   */
+  recordDeliveries(records: MicroNoteDeliveryRecord[]): void;
+  /**
    * Patch 3.3.1 (REQ-331-1, ADR-1): append — every contradiction is a new
    * record. A duplicate `suppression_id` is a UserFacingError (the journal is
    * append-only; silent overwrite is forbidden — a retry generates a new id).

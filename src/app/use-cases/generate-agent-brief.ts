@@ -13,7 +13,8 @@ import {
   type MicroNoteDeliveryResult,
 } from './micro-note-delivery.js';
 import { createDeliveryAdmission, createWorktreeVisibility } from './memory-delivery-admission.js';
-import type { MicroNoteDeliveryLog } from '../../ports/micro-note-delivery-log.port.js';
+import { JournalStateUnknownError } from '../../adapters/fs/jsonl-micro-note-delivery-log.js';
+import type { MicroNoteDeliveryLog, MicroNoteSuppressionRecord } from '../../ports/micro-note-delivery-log.port.js';
 
 export interface GenerateAgentBriefResult {
   content: string;
@@ -58,6 +59,23 @@ export async function generateAgentBrief(
   // противоречием (AC-2.3), worktree-scope (AC-2.4; токен текущей копии — fs-парс
   // .git из root, как в memory-call), исключение micro-note из legacy-секций
   // (AC-2.1: micro-note доставляется только микро-селектором ниже).
+  // REQ-333-4 (ADR-340-2): единственное чтение подавлений; утрата журнала —
+  // fail-closed: подавления неизвестны → micro-notes не доставляются вовсе +
+  // явная строка в брифе (подсказка restore).
+  let suppressions: MicroNoteSuppressionRecord[] = [];
+  let suspendedNotice: string | null = null;
+  if (deps.noteLog) {
+    try {
+      suppressions = deps.noteLog.suppressions();
+    } catch (e) {
+      if (e instanceof JournalStateUnknownError) {
+        suspendedNotice =
+          'Micro-note delivery suspended: suppression journal state unknown — run `wolf contradict restore`';
+      } else {
+        throw e;
+      }
+    }
+  }
   const worktree = createWorktreeVisibility({
     currentScope: options.admission?.currentScope ?? resolveMemoryRoot(root).worktree ?? 'main',
     baseDir: root,
@@ -65,7 +83,7 @@ export async function generateAgentBrief(
   });
   const admission = createDeliveryAdmission({
     context: options.microNotes?.context,
-    suppressions: deps.noteLog?.suppressions() ?? [],
+    suppressions,
     worktree,
   });
   const deliverable = (obj: MemoryObject): boolean => admission.admitted(obj as Record<string, unknown>).admitted;
@@ -103,43 +121,52 @@ export async function generateAgentBrief(
 
   // 3.2.0 T-09 (REQ-09): адресные micro-notes — детерминированная выборка из уже
   // прочитанного списка (без новых проходов, без LLM; NFR-02 бюджет).
-  const microCtx: MicroNoteContext = {
-    ...(options.microNotes?.context ?? {}),
-    environment: options.microNotes?.context?.environment ?? process.platform,
-  };
-  const micro = selectMicroNotes(
-    memoryObjects,
-    microCtx,
-    options.microNotes?.budget,
-    deps.noteLog?.suppressions() ?? [],
-    worktree
-  );
-  if (deps.noteLog) {
-    const deliveredNow = new Set(micro.delivered.map((c) => c.id));
-    const at = deps.clock.now().toISOString();
-    for (const candidate of micro.delivered) {
-      deps.noteLog.recordDelivery({
-        memory_id: candidate.id,
-        revision: candidate.revision,
-        channel: 'brief',
-        kind: 'delivered',
-        ts: at,
-      });
-    }
-    for (const candidate of micro.selected) {
-      if (deliveredNow.has(candidate.id)) continue;
-      deps.noteLog.recordDelivery({
-        memory_id: candidate.id,
-        revision: candidate.revision,
-        channel: 'brief',
-        kind: 'selected',
-        ts: at,
-      });
+  // REQ-333-4: в loss-состоянии доставка приостановлена — секция не рендерится.
+  let micro: MicroNoteDeliveryResult | null = null;
+  if (suspendedNotice === null) {
+    const microCtx: MicroNoteContext = {
+      ...(options.microNotes?.context ?? {}),
+      environment: options.microNotes?.context?.environment ?? process.platform,
+    };
+    micro = selectMicroNotes(memoryObjects, microCtx, options.microNotes?.budget, suppressions, worktree);
+    if (deps.noteLog) {
+      // REQ-333-7 (ADR-340-6): один батч — delivered, затем selected-не-delivered
+      // (прежний порядок строк; одна критическая секция журнала на вызов)
+      const deliveredNow = new Set(micro.delivered.map((c) => c.id));
+      const at = deps.clock.now().toISOString();
+      const records = [
+        ...micro.delivered.map((candidate) => ({
+          memory_id: candidate.id,
+          revision: candidate.revision,
+          channel: 'brief' as const,
+          kind: 'delivered' as const,
+          ts: at,
+        })),
+        ...micro.selected
+          .filter((candidate) => !deliveredNow.has(candidate.id))
+          .map((candidate) => ({
+            memory_id: candidate.id,
+            revision: candidate.revision,
+            channel: 'brief' as const,
+            kind: 'selected' as const,
+            ts: at,
+          })),
+      ];
+      deps.noteLog.recordDeliveries(records);
     }
   }
 
   const description = await buildProjectDescription(deps.fs, root, snapshot);
-  const content = renderBrief(deps.clock, snapshot, description, acceptedMemory, openQuestions, blockers, micro);
+  const content = renderBrief(
+    deps.clock,
+    snapshot,
+    description,
+    acceptedMemory,
+    openQuestions,
+    blockers,
+    micro,
+    suspendedNotice
+  );
 
   const briefPath = join(briefsDir(root), 'agent-brief-latest.md');
   await deps.fs.writeFile(briefPath, content);
@@ -147,7 +174,7 @@ export async function generateAgentBrief(
   return {
     content,
     path: briefPath,
-    injectedIds: [...acceptedMemory, ...openQuestions, ...blockers, ...micro.delivered].map((o) => o.id),
+    injectedIds: [...acceptedMemory, ...openQuestions, ...blockers, ...(micro?.delivered ?? [])].map((o) => o.id),
     microNotes: micro,
   };
 }
@@ -202,7 +229,8 @@ function renderBrief(
   activeMemory: MemoryObject[],
   openQuestions: MemoryObject[],
   blockers: MemoryObject[],
-  microNotes: MicroNoteDeliveryResult | null
+  microNotes: MicroNoteDeliveryResult | null,
+  suspendedNotice: string | null = null
 ): string {
   const lines: string[] = [
     `# Agent Brief: ${snapshot.projectName}`,
@@ -260,6 +288,10 @@ function renderBrief(
         ''
       );
     }
+  }
+  // REQ-333-4 (ADR-340-2): явная строка приостановки доставки в утрате журнала.
+  if (suspendedNotice !== null) {
+    lines.push('## Micro-Notes Delivery Suspended', suspendedNotice, '');
   }
 
   lines.push(

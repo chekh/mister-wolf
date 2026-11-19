@@ -2,6 +2,51 @@ import { openSync, closeSync, unlinkSync, readFileSync, writeFileSync, mkdirSync
 import { join } from 'path';
 import type { MemoryLock } from '../../ports/memory-lock.port.js';
 
+/** Блокирующая пауза (ADR-340-1): ожидание журнального лока в синхронном
+ *  контексте — event loop останавливается на retry-интервал, соседние
+ *  асинхронные задачи того же процесса не вклиниваются в критическую секцию. */
+function blockingSleep(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
+ * Синхронный двойник withMemoryLock (REQ-333-2, ADR-340-1): тот же протокол
+ * файлового лока (O_EXCL, содержимое {pid, ts}, retry 100 мс, maxWait 5 с,
+ * кража по возрасту ≥ 30 с без liveness-проверки — container-safe), но для
+ * синхронных критических секций журнала противоречий. Кража между двумя
+ * «ворами» допустима (local-first), владелец определяется только по факту
+ * файла. Ограничение: NFS/сетевые ФС не поддерживаются (O_EXCL-семантика).
+ */
+export function withJournalLockSync<T>(dir: string, fn: () => T, opts?: LockOpts, lockFileName: string = '.lock'): T {
+  mkdirSync(dir, { recursive: true });
+  const maxWaitMs = opts?.maxWaitMs ?? LOCK_TIMING.MAX_WAIT_MS;
+  const staleMs = opts?.staleMs ?? LOCK_TIMING.STALE_MS;
+  const retryMs = LOCK_TIMING.RETRY_MS;
+  const path = lockPathFor(dir, lockFileName);
+
+  const deadline = Date.now() + maxWaitMs;
+
+  while (true) {
+    if (tryAcquire(path)) {
+      try {
+        return fn();
+      } finally {
+        try {
+          unlinkSync(path);
+        } catch {
+          /* already gone */
+        }
+      }
+    }
+
+    const { stolen, holderPid } = stealIfStale(path, staleMs);
+    if (!stolen) {
+      if (Date.now() >= deadline) throw new LockHeldError(path, holderPid);
+      blockingSleep(retryMs);
+    }
+  }
+}
+
 export const LOCK_TIMING = {
   STALE_MS: 30_000,
   RETRY_MS: 100,

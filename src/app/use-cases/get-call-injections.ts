@@ -10,13 +10,14 @@ import { checksumBlock } from '../../adapters/fs/session-delivery-registry.js';
 import { brokenWorktreeHint, type WorktreeIdentity } from '../../adapters/fs/memory-root.js';
 import { createDeliveryAdmission, createWorktreeVisibility } from './memory-delivery-admission.js';
 import { detectUnaggregatedLessons } from './detect-unaggregated-lessons.js';
+import { JournalStateUnknownError } from '../../adapters/fs/jsonl-micro-note-delivery-log.js';
+import type { MicroNoteDeliveryLog, MicroNoteSuppressionRecord } from '../../ports/micro-note-delivery-log.port.js';
 import {
   selectMicroNotes,
   type MicroNoteBudget,
   type MicroNoteContext,
   type MicroNoteDeliveryResult,
 } from './micro-note-delivery.js';
-import type { MicroNoteDeliveryLog } from '../../ports/micro-note-delivery-log.port.js';
 
 export interface CallInjectionResult {
   blocks: string[];
@@ -118,6 +119,23 @@ export async function getCallInjections(
   // общая с brief и микро-селектором (AC-2.4); каждая legacy-ветка отбора ниже
   // проходит предикат допуска: применимость (AC-2.2), подавление открытым
   // противоречием (AC-2.3), исключение micro-note из legacy-пути (AC-2.1).
+  // REQ-333-4 (ADR-340-2): единственное чтение подавлений на вызов; утрата
+  // журнала — fail-closed: подавления неизвестны → micro-notes не доставляются,
+  // явная строка-уведомление добавляется в блоки вывода (подсказка restore).
+  let suppressions: MicroNoteSuppressionRecord[] = [];
+  let suspendedNotice: string | null = null;
+  if (deps.noteLog) {
+    try {
+      suppressions = deps.noteLog.suppressions();
+    } catch (e) {
+      if (e instanceof JournalStateUnknownError) {
+        suspendedNotice =
+          'Micro-note delivery suspended: suppression journal state unknown — run `wolf contradict restore`';
+      } else {
+        throw e;
+      }
+    }
+  }
   const worktree = createWorktreeVisibility({
     currentScope: input.currentScope,
     baseDir: deps.baseDir,
@@ -125,7 +143,7 @@ export async function getCallInjections(
   });
   const admission = createDeliveryAdmission({
     context: input.microNotes,
-    suppressions: deps.noteLog?.suppressions() ?? [],
+    suppressions,
     worktree,
   });
   /** Допуск legacy-ветки доставки: micro-note доставляется только селектором (AC-2.1). */
@@ -254,14 +272,26 @@ export async function getCallInjections(
   // 6a. 3.2.0 T-09 (REQ-09): адресные micro-notes — детерминированная выборка из
   // того же прочитанного списка (без дополнительных проходов и без LLM);
   // подавленные противоречием (S-27) не доставляются; бюджет отдельный (NFR-02).
+  // REQ-333-4: в loss-состоянии секция не строится — только строка приостановки.
   let micro: MicroNoteDeliveryResult | null = null;
-  if (input.microNotes !== undefined) {
+  if (input.microNotes !== undefined && suspendedNotice !== null) {
+    blocks.push(suspendedNotice);
+  } else if (input.microNotes !== undefined) {
     const ctx: MicroNoteContext = {
       ...input.microNotes,
       environment: input.microNotes.environment ?? process.platform,
     };
-    micro = selectMicroNotes(memoryObjects, ctx, input.microNotes.budget, deps.noteLog?.suppressions() ?? [], worktree);
+    micro = selectMicroNotes(memoryObjects, ctx, input.microNotes.budget, suppressions, worktree);
     const deliveredSet = new Set(deliveredIds);
+    // REQ-333-7 (ADR-340-6): один батч — delivered (в порядке цикла), затем
+    // selected-не-delivered (прежний порядок строк; одна критическая секция)
+    const deliveryRecords: Array<{
+      memory_id: string;
+      revision: string;
+      channel: 'call';
+      kind: 'delivered' | 'selected';
+      ts: string;
+    }> = [];
     for (const candidate of micro.delivered) {
       // Сессионная дедупликация (P108): та же checksum блока в реестре — не повторяем.
       if (input.deliveredRegistry && input.deliveredRegistry[candidate.id] === checksumBlock(candidate.block)) {
@@ -274,7 +304,7 @@ export async function getCallInjections(
       }
       blocks.push(candidate.block);
       deliveredIds.push(candidate.id);
-      deps.noteLog?.recordDelivery({
+      deliveryRecords.push({
         memory_id: candidate.id,
         revision: candidate.revision,
         channel: 'call',
@@ -286,7 +316,7 @@ export async function getCallInjections(
       const deliveredNow = new Set(micro.delivered.map((c) => c.id));
       for (const candidate of micro.selected) {
         if (deliveredNow.has(candidate.id)) continue;
-        deps.noteLog.recordDelivery({
+        deliveryRecords.push({
           memory_id: candidate.id,
           revision: candidate.revision,
           channel: 'call',
@@ -294,6 +324,7 @@ export async function getCallInjections(
           ts: now.toISOString(),
         });
       }
+      deps.noteLog.recordDeliveries(deliveryRecords);
     }
   }
 
