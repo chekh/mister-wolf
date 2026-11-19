@@ -10,6 +10,36 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [3.3.2] - 2026-11-19
+
+### Fixed — the contradiction journal is fresh, common and self-repairing
+
+Post-release review of 3.3.1 (D1, D2, D3): the owner's acceptance criterion —
+"common memory must give the same answer from the CLI, a running MCP server and
+a linked worktree; after a broken write a command must either safely continue or
+explicitly refuse before confirming success" — was reproduced failing on the
+published build.
+
+- **Long-lived processes see other processes' journal records.** The delivery
+  log instance no longer caches state between operations: an MCP server that
+  started before a `wolf contradict report` run now sees that record — the note
+  stays suppressed, the new id resolves successfully, duplicate ids are refused
+  — instead of delivering the suppressed note and answering "unknown".
+- **The journal resolves the common memory root, not the current checkout.**
+  A suppression registered in the main checkout hides the micro-note from
+  `wolf brief`/`wolf call` executed in a linked worktree; `contradict list`
+  shows the same open records from both checkouts (in both directions), and
+  resolving from a worktree lifts the record the main checkout sees. The
+  3.3.0→3.3.1 migration triggered from a worktree lands in the common root.
+  Outside a linked worktree the journal path is unchanged — existing projects
+  do not migrate again.
+- **A broken write cannot leave the journal unreadable.** Before appending, the
+  adapter restores the boundary of the last complete line: a crashed tail
+  fragment is discarded, a complete record without the trailing newline is
+  finalized (kept, not lost) — a confirmed write never leaves `brief`/`list`
+  failing on a corrupted mid-file line. An invalid line in the middle of the
+  file still refuses with the named cause (no silent loss).
+
 ## [3.3.1] - 2026-11-19
 
 ### Changed — contradiction journal integrity: per-record identity, persistent storage outside `.wolf/cache`

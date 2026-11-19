@@ -1,5 +1,5 @@
 // src/adapters/fs/jsonl-micro-note-delivery-log.ts
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, truncateSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import Database from 'better-sqlite3';
 import { UserFacingError } from '../../domain/errors.js';
@@ -9,6 +9,7 @@ import {
   MicroNoteObservation,
   MicroNoteSuppressionRecord,
 } from '../../ports/micro-note-delivery-log.port.js';
+import { resolveMemoryRoot } from './memory-root.js';
 import { indexPath } from './project-paths.js';
 
 /**
@@ -20,9 +21,10 @@ import { indexPath } from './project-paths.js';
  * Формат: одна строка — одна запись-снимок `{ kind, record }`
  * (kind: suppression | delivery | observation). Все рабочие записи — добавление
  * строки; состояние подавления/наблюдения = последняя строка своего ключа
- * (suppression_id / memory_id). Чтение — полный скан при первом обращении,
- * устойчив к незавершённой последней строке (design §11); незавершённой может
- * быть только последняя строка — ошибка разбора в середине файла не глушится.
+ * (suppression_id / memory_id). Чтение — полный скан на каждый публичный вызов
+ * (патч 3.3.2, REQ-332-1: кэша нет), устойчив к незавершённой последней строке
+ * (design §11); незавершённой может быть только последняя строка — ошибка
+ * разбора в середине файла не глушится.
  *
  * Миграция 3.3.0 → 3.3.1 (REQ-331-3, ADR-3): триггер — файла журнала нет И
  * index.sqlite содержит legacy-таблицы; строки читаются в детерминированном
@@ -31,6 +33,12 @@ import { indexPath } from './project-paths.js';
  * 1:1 включая NULL; запись журнала атомарная (tmp + rename); legacy-строки в
  * index.sqlite НЕ удаляются и не используются (замороженная копия для отката).
  * Идемпотентность: существование файла журнала — признак выполненной миграции.
+ *
+ * Патч 3.3.2 (REQ-332-2, ADR-2): общий корень памяти резолвится самим адаптером
+ * (resolveMemoryRoot) — linked worktree использует журнал main-чекоута, как и
+ * заметки; вне linked worktree путь прежний. (REQ-332-3, ADR-3): repair-on-write
+ * — перед дописыванием хвост файла восстанавливается до границы последней
+ * корректной строки.
  */
 
 const MICRO_NOTE_DELIVERY_LOG_FILE = join('.wolf', 'memory', 'micro-note-delivery.jsonl');
@@ -40,21 +48,45 @@ type JournalLine =
   | { kind: 'delivery'; record: MicroNoteDeliveryRecord }
   | { kind: 'observation'; record: MicroNoteObservation };
 
+/** Хвост — полная строка журнала (запись-снимок с известным kind и объектом
+ *  record): финализация вместо обрезки (REQ-332-3, AC-3.2). */
+function isCompleteJournalLine(tail: string): boolean {
+  try {
+    const parsed = JSON.parse(tail) as { kind?: unknown; record?: unknown };
+    return (
+      (parsed.kind === 'suppression' || parsed.kind === 'delivery' || parsed.kind === 'observation') &&
+      typeof parsed.record === 'object' &&
+      parsed.record !== null
+    );
+  } catch {
+    return false;
+  }
+}
+
 export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
-  private loaded = false;
   private readonly suppressionsById = new Map<string, MicroNoteSuppressionRecord>();
   private readonly deliveryRows: MicroNoteDeliveryRecord[] = [];
   private readonly observationsById = new Map<string, MicroNoteObservation>();
+  /** Общий корень памяти (REQ-332-2, ADR-2): резолвится в конструкторе — любая
+   *  точка входа может передать путь текущего чекаута, журнал и legacy-поиск
+   *  всегда идут в общий `.wolf/`; вне linked worktree root === baseDir (AC-2.5). */
+  private readonly root: string;
 
-  constructor(private readonly baseDir: string) {}
+  constructor(baseDir: string) {
+    this.root = resolveMemoryRoot(baseDir).root;
+  }
 
   private get file(): string {
-    return join(this.baseDir, MICRO_NOTE_DELIVERY_LOG_FILE);
+    return join(this.root, MICRO_NOTE_DELIVERY_LOG_FILE);
   }
 
   private load(): void {
-    if (this.loaded) return;
-    this.loaded = true;
+    // REQ-332-1 (ADR-1): кэша нет — состояние перестраивается на каждый
+    // публичный вызов, чтобы инстанс долгоживущего процесса (MCP) видел записи
+    // других процессов; файл мал, операции журнала и так сопровождаются записью.
+    this.suppressionsById.clear();
+    this.deliveryRows.length = 0;
+    this.observationsById.clear();
     if (!existsSync(this.file)) {
       this.migrateLegacy();
     }
@@ -88,10 +120,40 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
     }
   }
 
-  /** Добавление строки; директория создаётся на первой записи. */
+  /**
+   * Добавление строки; директория создаётся на первой записи; хвост файла
+   * восстанавливается до границы последней корректной строки (REQ-332-3, ADR-3).
+   */
   private append(line: JournalLine): void {
-    mkdirSync(join(this.baseDir, '.wolf', 'memory'), { recursive: true });
+    mkdirSync(join(this.root, '.wolf', 'memory'), { recursive: true });
+    this.repairTail();
     appendFileSync(this.file, `${JSON.stringify(line)}\n`, 'utf8');
+  }
+
+  /**
+   * Repair-on-write (REQ-332-3, ADR-3): обрыв append (crash) может оставить
+   * последнюю строку без `\n`; дописывание после неё создаёт битую строку в
+   * середине файла уже после подтверждения успеха. Перед записью:
+   * - файла нет или он заканчивается `\n` — граница корректна, ничего не делаем;
+   * - хвост после последнего `\n` — полная валидная запись: финализация
+   *   (дописывается `\n`, запись не теряется, AC-3.2);
+   * - хвост — обрывок частичной записи: обрезка до границы последнего `\n`
+   *   (или до нуля, AC-3.1).
+   * Байтовая граница ищется в Buffer: индекс `\n` в байтах, а не в символах
+   * (строки журнала могут содержать multibyte). После любого успешного append
+   * файл — последовательность полных строк (AC-3.3).
+   */
+  private repairTail(): void {
+    if (!existsSync(this.file)) return;
+    const raw = readFileSync(this.file);
+    if (raw.length === 0 || raw.at(-1) === 0x0a) return;
+    const lastNewline = raw.lastIndexOf(0x0a); // -1 — файл целиком без `\n`
+    const tail = raw.subarray(lastNewline + 1).toString('utf8');
+    if (isCompleteJournalLine(tail)) {
+      appendFileSync(this.file, '\n', 'utf8');
+    } else {
+      truncateSync(this.file, lastNewline + 1);
+    }
   }
 
   /**
@@ -100,7 +162,7 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
    * журнала в index.sqlite (страховка отката на 3.3.0).
    */
   private migrateLegacy(): void {
-    const legacyPath = indexPath(this.baseDir);
+    const legacyPath = indexPath(this.root);
     if (!existsSync(legacyPath)) return;
     const db = new Database(legacyPath, { readonly: true, fileMustExist: true });
     try {
@@ -181,7 +243,7 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
       }
 
       // атомарная инициализация журнала: tmp + rename (AC-3.3)
-      mkdirSync(join(this.baseDir, '.wolf', 'memory'), { recursive: true });
+      mkdirSync(join(this.root, '.wolf', 'memory'), { recursive: true });
       const tmp = `${this.file}.migrating-${process.pid}.tmp`;
       writeFileSync(tmp, lines.map((l) => `${JSON.stringify(l)}\n`).join(''), 'utf8');
       renameSync(tmp, this.file);

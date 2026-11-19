@@ -1,11 +1,25 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'fs';
+import {
+  appendFileSync,
+  chmodSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import Database from 'better-sqlite3';
 import { JsonlMicroNoteDeliveryLog } from '../../../../src/adapters/fs/jsonl-micro-note-delivery-log.js';
 import { UserFacingError } from '../../../../src/domain/errors.js';
-import type { MicroNoteSuppressionRecord } from '../../../../src/ports/micro-note-delivery-log.port.js';
+import type {
+  MicroNoteDeliveryRecord,
+  MicroNoteObservation,
+  MicroNoteSuppressionRecord,
+} from '../../../../src/ports/micro-note-delivery-log.port.js';
 
 // Патч 3.3.1 (REQ-331-2/3, design §6/§7): JsonlMicroNoteDeliveryLog — единственный
 // владелец журнала противоречий/доставок/наблюдений в постоянном файле
@@ -13,6 +27,8 @@ import type { MicroNoteSuppressionRecord } from '../../../../src/ports/micro-not
 // тест-плана: append-only с отказом на дубликат id, REQ-03-отказ resolve,
 // миграция 3.3.0-фикстуры 1:1 с детерминированными id, идемпотентность и
 // сохранение legacy-строк (поправка ADR-3), чистый проект без создания журнала.
+// Патч 3.3.2 (REQ-332-1/3): без межвызовного кэша (внешние записи видны тем же
+// инстансом) и с восстановлением границы последней корректной строки при записи.
 
 const FIXTURE = join(import.meta.dirname, '..', '..', '..', 'fixtures', 'micro-note-index-330', 'index.sqlite');
 const JOURNAL = join('.wolf', 'memory', 'micro-note-delivery.jsonl');
@@ -32,6 +48,28 @@ function sup(
     suppressed_at: '2026-11-18T00:00:00.000Z',
     resolved_at: null,
     resolution: null,
+    ...overrides,
+  };
+}
+
+function obs(memoryId: string, overrides: Partial<MicroNoteObservation> = {}): MicroNoteObservation {
+  return {
+    memory_id: memoryId,
+    revision: 'rev111',
+    observed_use: 'cited',
+    observed_outcome: 'unknown',
+    updated_at: '2026-11-18T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
+function deliv(memoryId: string, overrides: Partial<MicroNoteDeliveryRecord> = {}): MicroNoteDeliveryRecord {
+  return {
+    memory_id: memoryId,
+    revision: 'rev111',
+    channel: 'call',
+    kind: 'delivered',
+    ts: '2026-11-18T00:00:00.000Z',
     ...overrides,
   };
 }
@@ -242,5 +280,224 @@ describe('JsonlMicroNoteDeliveryLog (patch 3.3.1)', () => {
     const log = new JsonlMicroNoteDeliveryLog(dir);
     expect(log.suppressions()).toEqual([]);
     expect(existsSync(journalPath())).toBe(false);
+  });
+});
+
+describe('JsonlMicroNoteDeliveryLog (patch 3.3.2)', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'wolf-jsonl-log-332-'));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  function journalPath(): string {
+    return join(dir, JOURNAL);
+  }
+
+  /** Имитация другого процесса: прямая дозапись строки в файл журнала. */
+  function appendExternal(line: unknown): void {
+    mkdirSync(join(dir, '.wolf', 'memory'), { recursive: true });
+    appendFileSync(journalPath(), `${JSON.stringify(line)}\n`, 'utf8');
+  }
+
+  // T-332-1.1 (AC-1.1, REQ-332-1): инстанс без кэша — внешняя запись (другой
+  // процесс) видна тому же инстансу без перезапуска.
+  it('T-332-1.1: the same instance sees a suppression appended by another process', () => {
+    const log = new JsonlMicroNoteDeliveryLog(dir);
+    log.recordSuppression(sup('cnr_20261119_000001', 'n1'));
+    expect(log.suppressions()).toHaveLength(1);
+
+    appendExternal({ kind: 'suppression', record: sup('cnr_20261119_000002', 'n2') });
+
+    expect(log.suppressions().map((s) => s.suppression_id)).toEqual(['cnr_20261119_000001', 'cnr_20261119_000002']);
+  });
+
+  // T-332-1.2 (AC-1.2): resolve id, добавленного другим процессом, успешен тем
+  // же инстансом; повторный resolve — REQ-03-отказ. Инстанс уже читал журнал
+  // (как MCP при старте) — внешняя запись после этого не невидима.
+  it('T-332-1.2: the same instance resolves an id appended by another process; the second resolve refuses', () => {
+    const log = new JsonlMicroNoteDeliveryLog(dir);
+    expect(log.suppressions()).toEqual([]); // инстанс уже загрузил состояние
+    appendExternal({ kind: 'suppression', record: sup('cnr_20261119_00000a', 'n1') });
+
+    log.resolveSuppression('cnr_20261119_00000a', 'resolved by long-lived instance', '2026-11-19T10:00:00.000Z');
+
+    // решение сохранилось в носителе (видно новому инстансу)
+    expect(new JsonlMicroNoteDeliveryLog(dir).suppressions()[0]).toMatchObject({
+      suppression_id: 'cnr_20261119_00000a',
+      resolved_at: '2026-11-19T10:00:00.000Z',
+      resolution: 'resolved by long-lived instance',
+    });
+    expect(() => log.resolveSuppression('cnr_20261119_00000a', 'again', '2026-11-19T11:00:00.000Z')).toThrow(
+      'unknown or already resolved suppression for "cnr_20261119_00000a" (REQ-03: unknown stays unknown)'
+    );
+  });
+
+  // T-332-1.3 (AC-1.3): проверка дубликата видит внешние записи — повтор id
+  // отказывает, retry с новым id успешен.
+  it('T-332-1.3: the duplicate check sees external records — id X refuses, a retry with a new id succeeds', () => {
+    const log = new JsonlMicroNoteDeliveryLog(dir);
+    expect(log.suppressions()).toEqual([]); // инстанс уже загрузил состояние
+    appendExternal({ kind: 'suppression', record: sup('cnr_20261119_00000b', 'n1') });
+
+    expect(() => log.recordSuppression(sup('cnr_20261119_00000b', 'n2'))).toThrow(
+      /duplicate suppression id "cnr_20261119_00000b"/
+    );
+    log.recordSuppression(sup('cnr_20261119_00000c', 'n2'));
+    expect(log.suppressions().map((s) => s.suppression_id)).toEqual(['cnr_20261119_00000b', 'cnr_20261119_00000c']);
+  });
+
+  // T-332-1.4 (AC-1.4): наблюдения сливаются с внешними изменениями по тем же
+  // правилам — setObservation мержит поверх внешнего значения, а не поверх
+  // дефолта.
+  it('T-332-1.4: setObservation merges over an observation appended by another process', () => {
+    const log = new JsonlMicroNoteDeliveryLog(dir);
+    expect(log.observations()).toEqual([]); // инстанс уже загрузил состояние
+    appendExternal({ kind: 'observation', record: obs('n1') });
+
+    log.setObservation({
+      memory_id: 'n1',
+      revision: 'rev111',
+      field: 'observed_outcome',
+      value: 'applied',
+      at: '2026-11-19T10:00:00.000Z',
+    });
+
+    expect(log.observations()).toEqual([
+      {
+        memory_id: 'n1',
+        revision: 'rev111',
+        observed_use: 'cited',
+        observed_outcome: 'applied',
+        updated_at: '2026-11-19T10:00:00.000Z',
+      },
+    ]);
+  });
+
+  // T-332-1.5 (AC-1.1, deliveries): внешняя delivery-строка видна тому же инстансу.
+  it('T-332-1.5: the same instance sees a delivery appended by another process', () => {
+    const log = new JsonlMicroNoteDeliveryLog(dir);
+    expect(log.deliveries()).toEqual([]);
+
+    appendExternal({ kind: 'delivery', record: deliv('n1') });
+
+    expect(log.deliveries()).toEqual([deliv('n1')]);
+  });
+
+  // T-332-3.1 (AC-3.1, REQ-332-3): обрывок последней строки отбрасывается —
+  // запись успешна, полное чтение без ошибок, обрывка в файле нет.
+  it('T-332-3.1: a truncated tail is discarded — the next write succeeds and the file reads fully', () => {
+    mkdirSync(join(dir, '.wolf', 'memory'), { recursive: true });
+    writeFileSync(
+      journalPath(),
+      `${JSON.stringify({ kind: 'suppression', record: sup('cnr_20261119_000001', 'n1') })}\n` +
+        '{"kind":"suppression","record":{"suppression_id":"cnr_trunc',
+      'utf8'
+    );
+
+    const log = new JsonlMicroNoteDeliveryLog(dir);
+    log.recordSuppression(sup('cnr_20261119_000002', 'n2'));
+
+    // полное чтение — свежим инстансом и тем же — без ошибок
+    expect(new JsonlMicroNoteDeliveryLog(dir).suppressions().map((s) => s.suppression_id)).toEqual([
+      'cnr_20261119_000001',
+      'cnr_20261119_000002',
+    ]);
+    expect(log.suppressions().map((s) => s.suppression_id)).toEqual(['cnr_20261119_000001', 'cnr_20261119_000002']);
+    expect(readFileSync(journalPath(), 'utf8')).not.toContain('cnr_trunc');
+  });
+
+  // T-332-3.2 (AC-3.2): валидная последняя строка без \n финализируется и НЕ
+  // теряется; новая запись дописывается после неё.
+  it('T-332-3.2: a complete line without the trailing newline is finalized — it survives the next write', () => {
+    mkdirSync(join(dir, '.wolf', 'memory'), { recursive: true });
+    // готовая запись без завершающего \n (обрыв ровно между записью и newline)
+    writeFileSync(
+      journalPath(),
+      JSON.stringify({ kind: 'suppression', record: sup('cnr_20261119_000001', 'n1') }),
+      'utf8'
+    );
+
+    const log = new JsonlMicroNoteDeliveryLog(dir);
+    log.recordSuppression(sup('cnr_20261119_000002', 'n2'));
+
+    // первая запись не потеряна, новая добавлена, файл валиден (свежий инстанс)
+    expect(new JsonlMicroNoteDeliveryLog(dir).suppressions().map((s) => s.suppression_id)).toEqual([
+      'cnr_20261119_000001',
+      'cnr_20261119_000002',
+    ]);
+    for (const line of readFileSync(journalPath(), 'utf8').split('\n')) {
+      if (line !== '') expect(() => JSON.parse(line)).not.toThrow();
+    }
+  });
+
+  // T-332-3.3 (AC-3.3): после обрыва записи report-сценарий (запись + resolve)
+  // полностью успешен; свежим инстансом файл читается без ошибок и без
+  // невалидных строк — подтверждённая запись не оставляет файл нечитаемым.
+  it('T-332-3.3: after a truncated tail the report scenario succeeds and leaves a fully readable file', () => {
+    mkdirSync(join(dir, '.wolf', 'memory'), { recursive: true });
+    writeFileSync(
+      journalPath(),
+      `${JSON.stringify({ kind: 'suppression', record: sup('cnr_20261119_000001', 'n1') })}\n` +
+        '{"kind":"delivery","record":{"memory_id":"n1","rev',
+      'utf8'
+    );
+
+    const log = new JsonlMicroNoteDeliveryLog(dir);
+    log.recordSuppression(sup('cnr_20261119_000002', 'n2'));
+    log.resolveSuppression('cnr_20261119_000002', 'confirmed', '2026-11-19T10:00:00.000Z');
+
+    // свежие глаза: файл читается, обрывка нет, открытой осталась только первая
+    expect(new JsonlMicroNoteDeliveryLog(dir).suppressions()).toHaveLength(2);
+    expect(
+      new JsonlMicroNoteDeliveryLog(dir)
+        .suppressions()
+        .filter((s) => s.resolved_at === null)
+        .map((s) => s.suppression_id)
+    ).toEqual(['cnr_20261119_000001']);
+    for (const line of readFileSync(journalPath(), 'utf8').split('\n')) {
+      if (line !== '') expect(() => JSON.parse(line)).not.toThrow();
+    }
+  });
+
+  // T-332-3.4 (AC-3.4): битая строка В СЕРЕДИНЕ файла — прежний отказ с
+  // именованной причиной (молчаливой потери состояния нет; и чтение, и запись).
+  it('T-332-3.4: an invalid line in the middle still refuses reads and writes with the named mid-file cause', () => {
+    mkdirSync(join(dir, '.wolf', 'memory'), { recursive: true });
+    writeFileSync(
+      journalPath(),
+      `${JSON.stringify({ kind: 'suppression', record: sup('cnr_20261119_000001', 'n1') })}\nnot-json\n`,
+      'utf8'
+    );
+
+    expect(() => new JsonlMicroNoteDeliveryLog(dir).suppressions()).toThrow(/corrupted mid-file/);
+    expect(() => new JsonlMicroNoteDeliveryLog(dir).recordSuppression(sup('cnr_20261119_000002', 'n2'))).toThrow(
+      /corrupted mid-file/
+    );
+  });
+
+  // T-332-3.5: файл пуст или директории нет — запись создаёт оба и читается
+  // обратно (регресс существующего пути записи).
+  it('T-332-3.5: a missing directory and an empty file — the write creates both and reads back', () => {
+    const log = new JsonlMicroNoteDeliveryLog(dir);
+    log.recordSuppression(sup('cnr_20261119_000001', 'n1'));
+    expect(existsSync(journalPath())).toBe(true);
+    expect(log.suppressions()).toHaveLength(1);
+
+    const emptyDir = mkdtempSync(join(tmpdir(), 'wolf-jsonl-log-332-empty-'));
+    try {
+      mkdirSync(join(emptyDir, '.wolf', 'memory'), { recursive: true });
+      writeFileSync(join(emptyDir, JOURNAL), '', 'utf8');
+      const log2 = new JsonlMicroNoteDeliveryLog(emptyDir);
+      log2.recordSuppression(sup('cnr_20261119_000002', 'n2'));
+      expect(log2.suppressions().map((s) => s.suppression_id)).toEqual(['cnr_20261119_000002']);
+      expect(new JsonlMicroNoteDeliveryLog(emptyDir).suppressions()).toHaveLength(1);
+    } finally {
+      rmSync(emptyDir, { recursive: true, force: true });
+    }
   });
 });
