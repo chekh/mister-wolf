@@ -61,6 +61,10 @@ function createProject(parent: string, title: string): Proj {
   );
   const noteId = added.stdout.match(/mem_[0-9a-zA-Z_]+/)?.[0] ?? '';
   expect(noteId).not.toBe('');
+  // Docker CI: git refuses `worktree add` on an unborn HEAD — make the initial
+  // commit (same pattern as micro-note-worktree-journal.test.ts since 3.3.1).
+  execFileSync('git', ['add', '-A', '.'], { cwd: dir });
+  execFileSync('git', ['commit', '-qm', 'init'], { cwd: dir });
   return { dir, noteId };
 }
 
