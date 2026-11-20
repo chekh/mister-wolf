@@ -175,11 +175,14 @@ export async function loadWolfConfig(baseDir: string): Promise<WolfConfig | null
 }
 
 /**
- * P104 (A6): процессная мемоизация sync-чтения по mtime+size — sync-yaml-parse уходит
+ * P104 (A6): процессная мемоизация sync-чтения по mtime+size+ino — sync-yaml-parse уходит
  * с горячего пути телеметрии (паттерн version.ts:5-16; конфиг живёт дольше процесса,
  * поэтому ключ по stat, а не «одно чтение навсегда»). ENOENT кэшируется как stat
  * «файла нет»: появление/изменение файла меняет stat → перечитывается. Ошибки парса
- * (ConfigLoadError) НЕ кэшируются — бросаются как раньше.
+ * (ConfigLoadError) НЕ кэшируются — бросаются как раньше. ino в ключе добавлен после
+ * находки 2026-11-20 (remote-сервер): перезапись «того же размера» в пределах одного
+ * тика mtime (writeFileAtomic → tmp+rename = новый inode) иначе оставляет устаревшее
+ * значение в кэше.
  */
 const syncConfigCache = new Map<string, { stat: string; value: WolfConfig | null }>();
 
@@ -188,7 +191,7 @@ export function loadWolfConfigSync(baseDir: string): WolfConfig | null {
   let stat: string;
   try {
     const st = fsSync.statSync(path);
-    stat = `${st.mtimeMs}:${st.size}`;
+    stat = `${st.mtimeMs}:${st.size}:${st.ino}`;
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') stat = 'ENOENT';
     else throw err;

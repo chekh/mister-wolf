@@ -65,8 +65,15 @@ function getTypeSchemas(baseDir: string, onProblem?: (msg: string) => void): Map
 }
 
 export class MarkdownMemoryStore implements MemoryStore {
-  /** Parse-кэш (T013): mtimeMs+size совпали → отдаём объект мимо read+yaml+zod. */
-  private parseCache = new Map<string, { mtimeMs: number; size: number; obj: MemoryObject }>();
+  /**
+   * Parse-кэш (T013): mtimeMs+size+ino совпали → отдаём объект мимо read+yaml+zod.
+   * ino добавлен после находки 2026-11-20 (remote-сервер linux/7950X3D): две записи
+   * в пределах одного тика mtime той же файловой системы давали совпадающие
+   * mtimeMs+size, и кэш отдавал устаревший объект (save() поверх add() «не
+   * применялся»). writeFileAtomic пишет tmp+rename → каждый write даёт свежий
+   * inode, поэтому ino — дешёвый и надёжный дискриминатор перезаписи.
+   */
+  private parseCache = new Map<string, { mtimeMs: number; size: number; ino: number; obj: MemoryObject }>();
 
   constructor(
     private baseDir: string,
@@ -317,7 +324,7 @@ export class MarkdownMemoryStore implements MemoryStore {
     // T013: stat до чтения — кэш по mtimeMs+size. Внешний edit меняет mtime →
     // перечитает; save() пишет новый mtime → перечитает; удалённый файл
     // исчезает из walk → исчезает из list. ENOENT при stat → null как раньше.
-    let stat: { mtimeMs: number; size: number };
+    let stat: { mtimeMs: number; size: number; ino: number };
     try {
       stat = await fs.stat(path);
     } catch (err) {
@@ -330,7 +337,7 @@ export class MarkdownMemoryStore implements MemoryStore {
       return null;
     }
     const cached = this.parseCache.get(path);
-    if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+    if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size && cached.ino === stat.ino) {
       return cached.obj;
     }
     let content: string;
@@ -359,7 +366,7 @@ export class MarkdownMemoryStore implements MemoryStore {
         throw new Error(`Per-type validation: ${result.error.issues.map((i) => i.message).join(', ')}`);
       }
       const obj = result.data as MemoryObject;
-      this.parseCache.set(path, { mtimeMs: stat.mtimeMs, size: stat.size, obj });
+      this.parseCache.set(path, { mtimeMs: stat.mtimeMs, size: stat.size, ino: stat.ino, obj });
       return obj;
     } catch (err) {
       const msg = `Failed to parse ${path}: ${formatError(err)}`;
