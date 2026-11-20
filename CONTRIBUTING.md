@@ -17,6 +17,23 @@ npm run build:clean   # cold rebuild of dist, for release and shipping artifacts
 
 Builds are incremental: `npm run build` keeps its cache in `node_modules/.cache` and takes seconds, while `build:clean` recompiles everything. Remove `dist` only through `build:clean`: a manual deletion leaves the cache claiming fresh output, and `npm run build` detects that case and rebuilds from scratch before use. Test workers default to half of the logical CPUs (maximum 4) to keep the machine responsive; set `WOLF_TEST_MAX_FORKS` to override. `check:full` runs `tsc` once and reuses the result for both the code and documentation steps. `check:quick` omits the static gates and covers only tests affected by tracked changes, so run `check` before a pull request: new untracked test files are not picked up by `--changed`.
 
+## Run checks on a remote Linux server
+
+The same `test` image CI uses can run on your own Linux server, keeping the local machine free. One-time setup: the server needs Docker running and your user in the `docker` group; locally, create an SSH docker context:
+
+```bash
+docker context create mw-srv --docker "host=ssh://USER@HOST"
+```
+
+Then:
+
+```bash
+npm run test:remote                  # npm run check in the container on the server
+npm run test:remote -- npm run e2e   # e2e takes 12+ minutes; keep the session in tmux
+```
+
+The script sends the build context (what `.dockerignore` leaves, roughly 50 MB) over SSH, builds it with the daemon on the server, and returns the logs and the exit code. No copy of the sources is kept on the server — only the daemon's build cache. Rebuilds reuse the `npm ci` layer until `package-lock.json` changes. Heavy suites can use more workers on a large server: pass `WOLF_TEST_MAX_FORKS` (the default is capped at 4 for local machines).
+
 ## Git flow
 
 Use one feature branch and an isolated worktree per writer, based on the current `main`. Open a PR to `main`; do not commit directly to it. The active project policy uses `main` and feature branches, without `dev`. Preserve published history and save/push your work before handoff. Checks and authorized acceptance precede integration; a PR is not a release.

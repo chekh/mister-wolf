@@ -35,6 +35,7 @@
     "dev": "tsc --watch",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:remote": "bash scripts/test-remote.sh",
     "lint": "tsc --noEmit --incremental false",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"docs/**/*.md\" \"README.md\" \"*.json\" \"*.ts\"",
     "format:check": "prettier --check --cache \"src/**/*.ts\" \"tests/**/*.ts\" \"docs/**/*.md\" \"README.md\" \"*.json\" \"*.ts\"",

@@ -10,3 +10,6 @@ Dockerfile
 docker-compose.yml
 .dockerignore
 .github
+playground
+playground-lab
+.opencode/node_modules
