@@ -136,7 +136,7 @@ function seedLegacyMarker(dir: string): void {
   );
 }
 
-function markerOf(dir: string): { format?: number; complete?: boolean } {
+function markerOf(dir: string): { format?: number; complete?: boolean; sources?: string[]; worktrees?: string[] } {
   return JSON.parse(readFileSync(join(dir, MARKER), 'utf8'));
 }
 
@@ -314,6 +314,7 @@ describe('F-C: an explicit import refusal is persisted (marker complete:false)',
     cleanupDirs.push(root);
     const p = makeProjectWithWorktree(root, 'FC acceptance note');
     const revision = firstBrief(p, 'FC acceptance note'); // маркер v2 complete:true
+    const markerBefore = markerOf(p.dir);
 
     // подавление спорной заметки ТОЛЬКО в wt-источнике; источник повреждён
     // (битая последняя строка С '\n')
@@ -327,6 +328,11 @@ describe('F-C: an explicit import refusal is persisted (marker complete:false)',
     expect(refused.stdout + refused.stderr).toMatch(/migration is unfinished/);
     expect(markerOf(p.dir).format).toBe(2);
     expect(markerOf(p.dir).complete).toBe(false); // незавершённый импорт персистится
+    // F-N2 (ревью 990204da): provenance-поля маркера сохраняются при перезаписи
+    // (равны значениям ДО отказа; в этой фикстуре первый импорт шёл при пустом
+    // wt-источнике — sources=[], worktrees — реальное перечисление)
+    expect(markerOf(p.dir).sources).toEqual(markerBefore.sources ?? []);
+    expect(markerOf(p.dir).worktrees).toEqual(markerBefore.worktrees ?? []);
     expect(sha256(join(p.dir, JOURNAL))).toBe(journalBefore); // журнал не изменён
 
     // следующий brief: не выдаёт спорную заметку (suspended — источник всё ещё повреждён)
