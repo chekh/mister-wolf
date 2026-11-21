@@ -8,6 +8,41 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [3.4.2] - 2026-11-22
+
+### Fixed — three import error-handling defects from the 3.4.1 owner review
+
+All three were reproduced on the published 3.4.1 build with a scripted stand
+(s1–s3); every fix is covered by regression tests and the stand re-run clean
+on the release candidate.
+
+- **A corrupted last journal line WITH a trailing newline was silently dropped
+  as a torn tail (s1).** The tail tolerance in the source reader now applies
+  only to a torn last fragment WITHOUT a trailing newline; a corrupted line
+  followed by `\n` refuses the whole source (with the file and line number),
+  leaving the migration incomplete — instead of publishing a journal that lost
+  the suppression and delivering the disputed note. Real truncations still keep
+  the valid prefix (REQ-332-3 unchanged).
+- **The completion pass mutated the shared journal before validating it (s2).**
+  With a corrupted shared journal and healthy worktree sources, the pass
+  appended the merged records and wrote `complete: true` before the strict read
+  failed. The shared journal is now strictly validated before any mutation; on
+  refusal the journal bytes and the marker stay unchanged (fail-closed), and
+  delivery stays suspended until the journal is repaired and the migration
+  completes without duplicates.
+- **A refused explicit `contradict import` was forgotten by the next `brief`
+  (s3).** With a proven marker (`complete: true`), a failed import left the
+  marker untouched, so the next `brief` skipped the completion pass and
+  delivered a note whose suppression lived only in the refused source. The
+  refusal is now persisted: the marker is rewritten to `complete: false` under
+  the journal lock (`sources`/`worktrees` preserved); the next access goes
+  through the completion pass, and a repaired source completes the migration
+  without duplicates. A first-import refusal with no journal still writes
+  nothing.
+
+Performance: median `brief` on a 100 000-line journal is unchanged against
+3.4.1 (interleaved A/B runs, ratio ≈ 1.00; criterion ≤ 1.10).
+
 ## [3.4.1] - 2026-11-21
 
 ### Fixed — five defects from the 3.4.0 post-release review
