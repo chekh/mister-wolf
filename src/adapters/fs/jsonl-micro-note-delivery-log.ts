@@ -37,9 +37,10 @@ import { realpathSync } from 'fs';
  * (kind: suppression | delivery | observation). Все рабочие записи — добавление
  * строки; состояние подавления/наблюдения = последняя строка своего ключа
  * (suppression_id / memory_id). Чтение — полный скан на каждый публичный вызов
- * (патч 3.3.2, REQ-332-1: кэша нет), устойчив к незавершённой последней строке
- * (design §11); незавершённой может быть только последняя строка — ошибка
- * разбора в середине файла не глушится.
+ * (патч 3.3.2, REQ-332-1: кэша нет), устойчив к обрыву хвоста (design §11;
+ * patch 3.4.2 review F-A: незавершённой может быть только последняя строка
+ * БЕЗ завершающего '\n' — строка с '\n' и битая середина отвергают файл
+ * целиком, ошибка разбора не глушится).
  *
  * Миграция 3.3.0 → 3.3.1 (REQ-331-3, ADR-3): триггер — файла журнала нет И
  * index.sqlite содержит legacy-таблицы; строки читаются в детерминированном
@@ -253,6 +254,52 @@ function countNewlines(buf: Buffer): number {
   return n;
 }
 
+/**
+ * Единый путь чтения файла журнала (REQ-332-3; patch 3.4.2 review F-A/F-B):
+ * сырой текст делится по '\n', пустые фрагменты пропускаются, каждая строка —
+ * через единый валидатор parseJournalLine. Обрыв записи (причина 'json')
+ * допускается ТОЛЬКО для ПОСЛЕДНЕГО фрагмента split('\n') — файл без
+ * завершающего '\n' (crash в append): фрагмент отбрасывается, корректный
+ * префикс сохраняется. Битый JSON в любой другой позиции — в том числе
+ * повреждённая последняя строка С '\n' (F-A: не последний фрагмент) — или
+ * 'structure' в любой позиции отвергают файл ЦЕЛИКОМ: 'json' → UserFacingError
+ * «corrupted mid-file» с файлом и номером строки, 'structure' → JournalLineError
+ * как есть. sink вызывается на каждую валидную строку (без промежуточного
+ * массива — hot-path load без лишних аллокаций). Одна семантика допусков для
+ * load(), wt-журналов (F-A) и строгой валидации общего журнала перед слиянием
+ * (F-B).
+ */
+function readJournalLines(raw: string, file: string, sink: (line: JournalLine) => void): void {
+  const fragments = raw.split('\n');
+  // REQ-333-7 (r7): where-объект ОДИН на файл; trim только для «странного» края
+  const where = { file, line: 0 };
+  for (let i = 0; i < fragments.length; i++) {
+    let line = fragments[i]!;
+    if (line.length === 0) continue;
+    if (line.charCodeAt(0) !== 0x7b /* { */ || line.charCodeAt(line.length - 1) !== 0x7d /* } */) {
+      line = line.trim();
+      if (line === '') continue;
+    }
+    where.line = i + 1;
+    try {
+      sink(parseJournalLine(line, where));
+    } catch (e) {
+      if (e instanceof JournalLineError) {
+        // обрыв записи (crash в append): незавершённый ПОСЛЕДНИЙ фрагмент
+        // (файл без '\n') отбрасывается (REQ-332-3); повреждённая строка
+        // С '\n' или битая середина — отказ (REQ-03: unknown stays unknown)
+        if (e.cause_ === 'json' && i === fragments.length - 1) return;
+        if (e.cause_ === 'json') {
+          throw new UserFacingError(
+            `delivery log is corrupted mid-file: "${file}" line ${i + 1} is not valid JSON (REQ-03: unknown stays unknown)`
+          );
+        }
+      }
+      throw e;
+    }
+  }
+}
+
 export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
   private readonly suppressionsById = new Map<string, MicroNoteSuppressionRecord>();
   private readonly deliveryRows: MicroNoteDeliveryRecord[] = [];
@@ -278,16 +325,48 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
    *  импорта (ADR-340-2). patch 3.4.x review (F1.2): «перенос доказан» —
    *  format:2 + complete:true + перечисленные wt-пути; маркер 3.3.1/3.4.0
    *  (без format) перенос не доказывает — при следующем доступе выполняется
-   *  довосстановление (completion pass). */
-  private writeMarkerV2(sources: string[], worktrees: string[]): void {
+   *  довосстановление (completion pass). patch 3.4.2 review (F-C): complete
+   *  — параметр; false персистит незавершённый явный импорт. */
+  private writeMarkerV2(sources: string[], worktrees: string[], complete: boolean): void {
     mkdirSync(this.lockDir, { recursive: true });
     const tmp = `${this.markerPath}.tmp-${process.pid}`;
     writeFileSync(
       tmp,
-      JSON.stringify({ format: 2, migrated_at: new Date().toISOString(), sources, complete: true, worktrees }),
+      JSON.stringify({ format: 2, migrated_at: new Date().toISOString(), sources, complete, worktrees }),
       'utf8'
     );
     renameSync(tmp, this.markerPath);
+  }
+
+  /**
+   * patch 3.4.2 review (F-C): отказ явного импорта при существующем журнале
+   * персистится — маркер v2 переписывается с complete:false (прочие поля схемы
+   * сохраняются из прежнего маркера; worktrees при нечитаемом маркере
+   * актуализируется перечислением), затем вызывающий возвращает ошибку.
+   * Следующий доступ видит неподтверждённый перенос и идёт в completion pass:
+   * источник всё ещё повреждён → suspended; источник починен → довосстановление
+   * идемпотентно (дедуп каноническим JSON). Журнала нет (первый импорт отказал)
+   * — НИЧЕГО не пишется: маркер без журнала создал бы loss-состояние, а
+   * следующий доступ сам повторит первый импорт и сообщит о незавершённости.
+   */
+  private persistIncompleteImportMarker(wtPaths: string[]): void {
+    if (!existsSync(this.file)) return;
+    let sources: string[] = [];
+    let worktrees = wtPaths;
+    try {
+      const prev = JSON.parse(readFileSync(this.markerPath, 'utf8')) as { sources?: unknown; worktrees?: unknown };
+      if (Array.isArray(prev.sources)) {
+        const kept = prev.sources.filter((s): s is string => typeof s === 'string');
+        if (kept.length > 0) sources = kept;
+      }
+      if (Array.isArray(prev.worktrees)) {
+        const kept = prev.worktrees.filter((s): s is string => typeof s === 'string');
+        if (kept.length > 0) worktrees = kept;
+      }
+    } catch {
+      // маркера нет или он нечитаем — схема заполняется доступным перечислением
+    }
+    this.writeMarkerV2(sources, worktrees, false);
   }
 
   /** patch 3.4.x review (F1.2): доказан ли перенос. true — маркер v2
@@ -378,7 +457,7 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
     const tmp = `${this.file}.importing-${process.pid}.tmp`;
     writeFileSync(tmp, out.map((l) => `${JSON.stringify(l)}\n`).join(''), 'utf8');
     renameSync(tmp, this.file);
-    this.writeMarkerV2([...usedKinds], wtPaths);
+    this.writeMarkerV2([...usedKinds], wtPaths, true);
   }
 
   /**
@@ -405,7 +484,10 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
    * wt-источники перечисляются и читаются ЗАНОВО исправленным ридером и
    * сливаются идемпотентно (дедуп каноническим JSON — дублей нет, разрешённые
    * записи не возвращаются в открытое состояние). Любой отказ источника →
-   * ничего не пишется, JournalMigrationIncompleteError. Успех → маркер v2
+   * ничего не пишется, JournalMigrationIncompleteError. patch 3.4.2 review
+   * (F-B): общий журнал строго валидируется (семантика load(), REQ-332-3)
+   * ДО любых мутаций — отказ → JournalMigrationIncompleteError, байты журнала
+   * и маркер побайтово не изменяются. Успех → маркер v2
    * {complete:true, worktrees:[перечисленные пути]}.
    */
   private runCompletionPass(): void {
@@ -418,7 +500,13 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
     if (refusals.length > 0) {
       throw new JournalMigrationIncompleteError(refusals);
     }
-    const state = this.buildMergeStateFromJournal();
+    let state: MergeState;
+    try {
+      state = this.buildMergeStateFromJournal();
+    } catch (e) {
+      // F-B: повреждённый общий журнал — отказ до мутаций, причина с файлом и строкой
+      throw new JournalMigrationIncompleteError([(e as Error).message]);
+    }
     const newLines: JournalLine[] = [];
     for (const src of sources) {
       newLines.push(
@@ -432,7 +520,7 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
     }
     // idемпотентность: mergeImportSource отфильтровал уже присутствующие строки
     this.appendMany(newLines);
-    this.writeMarkerV2(['worktree-journal'], wtPaths);
+    this.writeMarkerV2(['worktree-journal'], wtPaths, true);
   }
 
   /** Пути wt-источников (ADR-340-3): живые чекауты; корневой исключён — его
@@ -453,12 +541,14 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
    * Чтение wt-журналов (лексикографический порядок путей чекаута); каждая
    * строка — через единый валидатор; источник с невалидной строкой
    * отвергается ЦЕЛИКОМ (all-or-nothing, ADR-340-3). Отсутствующий файл —
-   * источник не добавляется. patch 3.4.x review (F3.2): источник читается с
-   * терпимостью к обрыву хвоста — отказ валидатора с причиной 'json' на
-   * ПОСЛЕДНЕМ непустом фрагменте файла — обрывок отбрасывается, корректные
-   * строки перед ним СОХРАНЯЮТСЯ (источник валиден; тот же repair-принцип,
-   * что REQ-332-3 для общего журнала); отказ 'json' в середине файла или
-   * 'structure' в любой позиции — источник отвергается целиком (refused).
+   * источник не добавляется. patch 3.4.x review (F3.2), уточнено patch 3.4.2
+   * (F-A): терпимость к обрыву хвоста — ТОЛЬКО отказ валидатора с причиной
+   * 'json' на ПОСЛЕДНЕМ фрагменте файла БЕЗ завершающего '\n' (обрывок
+   * отбрасывается, корректные строки перед ним СОХРАНЯЮТСЯ; тот же
+   * repair-принцип, что REQ-332-3 для общего журнала, единый путь
+   * readJournalLines). Повреждённая строка С '\n' (не последний фрагмент) или
+   * повреждение в середине, как и 'structure' в любой позиции, — источник
+   * отвергается целиком (refused с файлом и номером строки).
    */
   private readWorktreeJournals(paths: string[]): Array<{ path: string; lines: JournalLine[]; refused?: string }> {
     const out: Array<{ path: string; lines: JournalLine[]; refused?: string }> = [];
@@ -467,24 +557,7 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
       if (!existsSync(j)) continue;
       try {
         const lines: JournalLine[] = [];
-        const raw = readFileSync(j, 'utf8').split('\n');
-        for (let i = 0; i < raw.length; i++) {
-          const line = raw[i]!.trim();
-          if (line === '') continue;
-          try {
-            lines.push(parseJournalLine(line, { file: j, line: i + 1 }));
-          } catch (e) {
-            // обрыв последнего фрагмента (crash в append источника) — префикс сохранён
-            if (
-              e instanceof JournalLineError &&
-              e.cause_ === 'json' &&
-              raw.slice(i + 1).every((l) => l.trim() === '')
-            ) {
-              break;
-            }
-            throw e;
-          }
-        }
+        readJournalLines(readFileSync(j, 'utf8'), j, (line) => lines.push(line));
         out.push({ path: wt, lines });
       } catch (e) {
         out.push({ path: wt, lines: [], refused: (e as Error).message });
@@ -584,7 +657,13 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
 
   /** Состояние слияния из ТЕКУЩЕГО журнала (read-only досмотр импорта):
    *  отдельное чтение сырых строк — история снимков в maps не хранится.
-   *  Вызывается под локом в редких CLI-командах, не на горячем пути. */
+   *  patch 3.4.2 review (F-B): ошибки разбора НЕ глушатся — строгая валидация
+   *  ВСЕГО журнала с семантикой допусков строгого load() (REQ-332-3, единый
+   *  путь readJournalLines): хвост-фрагмент без завершающего '\n' допускается
+   *  и отбрасывается, повреждение в середине или 'structure' в любой позиции
+   *  отвергают журнал целиком (вызывающий completion pass обязан отказаться
+   *  ДО мутаций). Вызывается под локом в редких CLI-командах, не на горячем
+   *  пути. */
   private buildMergeStateFromJournal(): MergeState {
     const state: MergeState = {
       suppressionCanonicals: new Set(),
@@ -593,16 +672,7 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
       observations: new Map(),
     };
     if (!existsSync(this.file)) return state;
-    const raw = readFileSync(this.file, 'utf8').split('\n');
-    for (let i = 0; i < raw.length; i++) {
-      const line = raw[i]!.trim();
-      if (line === '') continue;
-      let parsed: JournalLine;
-      try {
-        parsed = parseJournalLine(line, { file: this.file, line: i + 1 });
-      } catch {
-        continue; // хвост-обрывок (repair-семантика); середина уже отвергнута load()
-      }
+    readJournalLines(readFileSync(this.file, 'utf8'), this.file, (parsed) => {
       if (parsed.kind === 'suppression') {
         state.suppressionCanonicals.add(canonicalJson(parsed));
         state.suppressionsById.set(parsed.record.suppression_id, parsed.record);
@@ -614,13 +684,16 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
           canonical: canonicalJson(parsed),
         });
       }
-    }
+    });
     return state;
   }
 
   /** REQ-333-1 (ADR-340-3): идемпотентный досмотр wt-журналов ≤3.3.1; patch
    *  3.4.x review (F3.5): validate-before-append — отказ ЛЮБОГО источника →
-   *  ничего не дописывается, JournalMigrationIncompleteError с перечнем. */
+   *  ничего не дописывается, JournalMigrationIncompleteError с перечнем.
+   *  patch 3.4.2 review (F-C): отказ при существующем журнале персистится —
+   *  маркер complete:false под взятым локом (persistIncompleteImportMarker),
+   *  иначе следующий brief пропустил бы перенос по устаревшему complete:true. */
   importWorktreeJournals(): ImportReport {
     return this.withJournalLock(() => {
       this.load(); // fresh выполняет первый импорт (SQLite + wt); loss бросит
@@ -633,7 +706,10 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
       for (const src of sources) {
         if (src.refused !== undefined) refused.push(`${src.path}: ${src.refused}`);
       }
-      if (refused.length > 0) throw new JournalMigrationIncompleteError(refused);
+      if (refused.length > 0) {
+        this.persistIncompleteImportMarker(wtPaths);
+        throw new JournalMigrationIncompleteError(refused);
+      }
 
       const report: ImportReport = { sources: [], unrecoverable: UNRECOVERABLE_TEXT };
       const state = this.buildMergeStateFromJournal();
@@ -757,7 +833,7 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
       const tmp = `${this.file}.restoring-${process.pid}.tmp`;
       writeFileSync(tmp, out.map((l) => `${JSON.stringify(l)}\n`).join(''), 'utf8');
       renameSync(tmp, this.file);
-      this.writeMarkerV2([...usedKinds], wtPaths);
+      this.writeMarkerV2([...usedKinds], wtPaths, true);
       return report;
     });
   }
@@ -806,39 +882,9 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
     this.observationsById.clear();
     this.ensureJournalState();
     if (!existsSync(this.file)) return;
-    const lines = readFileSync(this.file, 'utf8').split('\n');
-    // REQ-333-7 (r7): where-объект ОДИН на файл (100k аллокаций на hot-path —
-    // заметная доля времени; мутация номера строки семантику не меняет)
-    const where = { file: this.file, line: 0 };
-    for (let i = 0; i < lines.length; i++) {
-      let line = lines[i]!;
-      // REQ-333-7 (r7): trim-аллокация на горячем пути не нужна — строки журнала
-      // пишутся как `JSON...\n`; trim только для «странного» края (пробелы/CR),
-      // пустая строка пропускается в обоих путях
-      if (line.length === 0) continue;
-      if (line.charCodeAt(0) !== 0x7b /* { */ || line.charCodeAt(line.length - 1) !== 0x7d /* } */) {
-        line = line.trim();
-        if (line === '') continue;
-      }
-      where.line = i + 1;
-      try {
-        this.apply(parseJournalLine(line, where));
-      } catch (e) {
-        if (e instanceof JournalLineError) {
-          // обрыв записи (crash в append): незавершённая ПОСЛЕДНЯЯ строка
-          // отбрасывается при чтении и обрезается при записи (REQ-332-3);
-          // валидный JSON с неверной структурой — отказ В ЛЮБОЙ позиции.
-          if (e.cause_ === 'json' && i === lines.length - 1) break;
-          if (e.cause_ === 'json') {
-            // прежний текст регресса 3.3.2: битая середина файла не глушится
-            throw new UserFacingError(
-              `delivery log is corrupted mid-file: "${this.file}" line ${i + 1} is not valid JSON (REQ-03: unknown stays unknown)`
-            );
-          }
-        }
-        throw e;
-      }
-    }
+    // patch 3.4.2 review (F-A/F-B): единый путь чтения (REQ-332-3) — строгий
+    // разбор, допуск только для хвост-обрывка без завершающего '\n'
+    readJournalLines(readFileSync(this.file, 'utf8'), this.file, (line) => this.apply(line));
   }
 
   /**
