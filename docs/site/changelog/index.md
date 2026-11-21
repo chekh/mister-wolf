@@ -8,6 +8,53 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [3.4.1] - 2026-11-21
+
+### Fixed — five defects from the 3.4.0 post-release review
+
+All five were reproduced on the published 3.4.0 build with a scripted stand
+(s1–s5); every fix is covered by regression tests and the stand re-run clean
+on the release candidate.
+
+- **A pre-upgrade worktree journal could be silently never migrated (s1).**
+  The shared journal or a 3.4.0 migration marker alone no longer proves the
+  transfer: on the first `brief`/`call` the journal completes the transfer
+  idempotently (records from pre-upgrade linked worktrees are merged, no
+  duplicates, resolved records stay resolved). Worktrees are enumerated via
+  `git worktree list --porcelain -z` and paths are no longer trimmed, so
+  checkout directories with trailing spaces work. If the transfer cannot be
+  completed, `brief`/`call` explicitly suspend micro-note delivery instead of
+  guessing.
+- **The journal write lock could be stolen from a live owner (s2).** The
+  O_EXCL lockfile with the 30-second age-based steal is replaced by an
+  OS-released `BEGIN IMMEDIATE` write lock (better-sqlite3) in a dedicated
+  lock database next to the journal (`.wolf/memory/`, outside `.wolf/cache`).
+  A live owner keeps the write right regardless of the lock's age; an owner
+  killed mid-write releases the lock immediately; a waiter gets an explicit
+  "journal busy" refusal on timeout instead of corrupting the journal.
+- **The journal was published before all sources were validated (s3).** First
+  import, migration completion, `contradict import` and `contradict restore`
+  validate every source line — including rows migrated from the frozen SQLite
+  index — before anything is published. A truncated tail fragment of a legacy
+  JSONL no longer discards the valid records before it; an unreadable source
+  or an invalid complete record leaves the migration unfinished with an
+  explicit suspended notice instead of a poisoned journal; a crash between
+  publishing the journal and writing the marker is healed by the next run.
+- **A short stored revision stopped blocking the restored text (s4).** One
+  revision rule everywhere: a full 64-hex hash compares as a whole, a stored
+  12–63 character prefix matches the beginning of the current revision.
+  Registering a contradiction against a revision prefix and then returning
+  the note's original text suppresses it again (`contradict list` shows
+  `block: actual`).
+- **`contradict` output promised delivery it could not guarantee (s5).** The
+  `deliverable:` field is removed from `contradict list`; `resolve` reports
+  the closed record and how many open contradictions remain on the current
+  revision, without promising resumption; when the note's revision cannot be
+  determined, the output says so explicitly. CLI and MCP use the same texts.
+
+Delivery on a 100k-line journal stays within the +10% budget of the 3.3.1
+baseline (stand median ratio 1.03, criterion ≤ 1.10).
+
 ## [3.4.0] - 2026-11-19
 
 ### Fixed — seven defects from the 3.3.1 post-release review

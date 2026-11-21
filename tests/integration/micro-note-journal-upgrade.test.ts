@@ -1,6 +1,15 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { spawnSync, execFileSync } from 'child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -198,5 +207,15 @@ describe('upgrade imports worktree journals (3.4.0 REQ-333-1, real processes)', 
     expect(fresh).toContain('legacy from sqlite'); // из SQLite
     expect(fresh).toContain('wt2-unique'); // из wt-журнала
     expect(existsSync(join(proj.dir, MARKER))).toBe(true);
+    // patch 3.4.x review (F3.4): маркер v2 с complete:true и wt-путями
+    const marker = JSON.parse(readFileSync(join(proj.dir, MARKER), 'utf-8')) as {
+      format: number;
+      complete: boolean;
+      worktrees: string[];
+    };
+    expect(marker.format).toBe(2);
+    expect(marker.complete).toBe(true);
+    expect(marker.worktrees).toContain(realpathSync(wt1));
+    expect(marker.worktrees).toContain(realpathSync(wt2));
   }, 120_000);
 });

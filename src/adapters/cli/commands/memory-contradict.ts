@@ -8,11 +8,7 @@ import {
   resolveMicroNoteSuppression,
   divergenceWarning,
 } from '../../../app/use-cases/micro-note-contradiction.js';
-import {
-  suppressionBlockState,
-  deliverableMicroNote,
-  remainingBlockNotice,
-} from '../../../app/use-cases/micro-note-delivery.js';
+import { suppressionBlockState, remainingBlockNotice } from '../../../app/use-cases/micro-note-delivery.js';
 import { UserFacingError } from '../../../domain/errors.js';
 
 /**
@@ -119,15 +115,14 @@ export function memoryContradictCommand(baseDir: string = safeCwd()): Command {
       }
       for (const s of open) {
         // AC-5.1/AC-5.2/AC-5.4: id, note@revision записи, reason, suppressed_at и
-        // актуальность по ТОМУ Ж правилу, что фильтр доставки (suppressionBlockState);
-        // REQ-333-6 (AC-6.2): deliverable — адресована ли запись доставляемому
-        // micro-note (запись строки из блокировки исключается). deliverable —
-        // ПЕРЕД block: сценарии ревью 3.3.1 якорят `block: <state>$` (правки их
-        // тестов запрещены), формат строки продолжает заканчиваться блокировкой.
+        // актуальность по ТОМУ Ж правилу, что фильтр доставки (suppressionBlockState).
+        // patch 3.4.x review (F5.1): поле `deliverable:` убрано — вывод сообщает
+        // состояние записи (подавление и актуальность блокировки), а не
+        // предсказание выдачи; строка по-прежнему заканчивается `block:`.
         // T-333-8.5 (F-4): один снимок подавлений (`open`) на всю команду —
         // suppressions() не вызывается на каждую строку.
         console.log(
-          `${s.suppression_id} ${s.memory_id}@${s.revision} ${s.reason} (suppressed at ${s.suppressed_at}) deliverable: ${deliverableMicroNote(byId.get(s.memory_id), open, s.suppression_id)} block: ${suppressionBlockState(s, byId.get(s.memory_id))}`
+          `${s.suppression_id} ${s.memory_id}@${s.revision} ${s.reason} (suppressed at ${s.suppressed_at}) block: ${suppressionBlockState(s, byId.get(s.memory_id))}`
         );
       }
     });

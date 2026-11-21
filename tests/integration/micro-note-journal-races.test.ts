@@ -1,29 +1,37 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { spawn, spawnSync, execFileSync } from 'child_process';
-import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'fs';
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import Database from 'better-sqlite3';
 
 // REQ-333-2 (ADR-340-1): параллельные операции журнала противоречий — взаимное
-// исключение через журнальный лок. Проверки — РЕАЛЬНЫЕ процессы (spawn node
-// dist/bootstrap/cli.js) с управляемой паузой
-// NODE_OPTIONS="--require tests/helpers/journal-pause.cjs" (порт стенда
-// repro-333: r2a/r2b/r2c). Паузы ≤ 2.5 с — в пределах maxWait лока 5 с:
-// второй процесс дожидается, а не крадёт лок (design §11).
+// исключение. patch 3.4.x review (F2): лок — межпроцессная блокировка SQLite
+// BEGIN IMMEDIATE в отдельной базе блокировки (.wolf/memory/micro-note-delivery.lock.sqlite):
+// кражи по возрасту больше нет — держатель удерживает право записи дольше любого
+// возраста; ожидающий процесс ждёт до busy-тайм-аута (5 с) и затем получает
+// явный busy-отказ; крах владельца (kill -9) ОС/SQLite освобождают при следующем
+// открытии. Проверки — РЕАЛЬНЫЕ процессы (spawn node dist/bootstrap/cli.js) с
+// управляемой паузой NODE_OPTIONS="--require tests/helpers/journal-pause.cjs"
+// (порт стенда repro-333: r2a/r2b/r2c).
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const CLI = join(REPO_ROOT, 'dist', 'bootstrap', 'cli.js');
 const PAUSE_HELPER = join(REPO_ROOT, 'tests', 'helpers', 'journal-pause.cjs');
 const JOURNAL = join('.wolf', 'memory', 'micro-note-delivery.jsonl');
+const LOCK_DB = join('.wolf', 'memory', 'micro-note-delivery.lock.sqlite');
 
 interface Proj {
   dir: string;
   noteId: string;
 }
 
-function run(args: string[], cwd: string, env: NodeJS.ProcessEnv = {}): { stdout: string; status: number | null } {
+function run(
+  args: string[],
+  cwd: string,
+  env: NodeJS.ProcessEnv = {}
+): { stdout: string; stderr: string; status: number | null } {
   const { npm_command: _npxGuard, ...base } = process.env;
   const r = spawnSync('node', [CLI, ...args], {
     cwd,
@@ -31,7 +39,7 @@ function run(args: string[], cwd: string, env: NodeJS.ProcessEnv = {}): { stdout
     timeout: 60_000,
     env: { ...base, ...env },
   });
-  return { stdout: r.stdout ?? '', status: r.status };
+  return { stdout: r.stdout ?? '', stderr: r.stderr ?? '', status: r.status };
 }
 
 function createProject(parent: string, title: string): Proj {
@@ -115,9 +123,23 @@ afterEach(() => {
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
-describe('journal lock: parallel CLI operations keep the journal consistent (3.4.0 REQ-333-2)', () => {
+/** Ждёт появления записи в pause-логе = процесс реально внутри критической секции. */
+async function waitForPause(logFile: string, marker: string): Promise<void> {
+  for (let i = 0; i < 100; i++) {
+    try {
+      if (readFileSync(logFile, 'utf-8').includes(marker)) return;
+    } catch {
+      /* лог ещё не создан */
+    }
+    await sleep(50);
+  }
+  throw new Error(`pause log never showed "${marker}"`);
+}
+
+describe('journal lock: parallel CLI operations keep the journal consistent (REQ-333-2, patch 3.4.x review)', () => {
   // T-333-2.1 (AC-2.1, r2a): repair-окно под локом — оба подтверждённых report
-  // выживают; список показывает обе записи.
+  // выживают; список показывает обе записи. B стартует внутри паузы A и ЖДЁТ
+  // освобождения (busy-тайм-аут 5 с > пауза 2.5 с), а не крадёт лок.
   it('T-333-2.1: two reports across the repair window both survive (r2a)', async () => {
     const root = mkdtempSync(join(tmpdir(), 'wolf-races-21-'));
     cleanupDirs.push(root);
@@ -132,7 +154,7 @@ describe('journal lock: parallel CLI operations keep the journal consistent (3.4
       { PAUSE333_TRUNCATE_MS: '2500' },
       join(root, 'a-pause.log')
     );
-    await sleep(1200); // B стартует ВНУТРИ паузы A (repair-окно открыто)
+    await waitForPause(join(root, 'a-pause.log'), 'PAUSE before truncate');
     const b = run(['contradict', 'report', '--note', proj.noteId, '--reason', 'raceB', '--evidence', 'eB'], proj.dir);
     const aCode = await new Promise<number | null>((resolve) => a.on('exit', (c) => resolve(c)));
     expect(aCode).toBe(0);
@@ -160,7 +182,7 @@ describe('journal lock: parallel CLI operations keep the journal consistent (3.4
       { PAUSE333_RENAME_MS: '2500' }, // пауза внутри окна первого импорта (tmp+rename)
       join(root, 'a-pause.log')
     );
-    await sleep(1200);
+    await waitForPause(join(root, 'a-pause.log'), 'PAUSE before rename');
     const b = run(['contradict', 'report', '--note', proj.noteId, '--reason', 'raceB', '--evidence', 'eB'], proj.dir);
     const aCode = await new Promise<number | null>((resolve) => a.on('exit', (c) => resolve(c)));
     expect(aCode).toBe(0);
@@ -174,8 +196,9 @@ describe('journal lock: parallel CLI operations keep the journal consistent (3.4
     expect(list.stdout).toContain('raceB');
   }, 40_000);
 
-  // T-333-2.3 (AC-2.3, r2c): два параллельных resolve одного id — ровно один
-  // успех, второй — явный отказ; конфликтующих снимков решения в журнале нет.
+  // T-333-2.3 (AC-2.3, r2c; patch 3.4.x review F2.3): два параллельных resolve
+  // одного id — лок сериализует их: ровно один успех, второй получает явный
+  // отказ «unknown or already resolved»; конфликтующих снимков решения нет.
   it('T-333-2.3: two parallel resolves of one id — exactly one success, the second refuses (r2c)', async () => {
     const root = mkdtempSync(join(tmpdir(), 'wolf-races-23-'));
     cleanupDirs.push(root);
@@ -192,15 +215,113 @@ describe('journal lock: parallel CLI operations keep the journal consistent (3.4
       { PAUSE333_APPEND_MS: '1500' },
       join(root, 'a-pause.log')
     );
-    await sleep(1200);
+    await waitForPause(join(root, 'a-pause.log'), 'PAUSE before append');
     const b = run(['contradict', 'resolve', '--id', c1, '--resolution', 'fix B'], proj.dir);
     const aCode = await new Promise<number | null>((resolve) => a.on('exit', (c) => resolve(c)));
     expect(aCode).toBe(0);
     expect(b.status).not.toBe(0);
+    expect(b.stdout + b.stderr).toContain('unknown or already resolved');
     const journal = journalOf(proj);
     // ровно один снимок решения по одному id
     expect(journal.match(/"resolved_at":"2/g) ?? []).toHaveLength(1);
     expect(journal.includes('fix A')).toBe(true);
     expect(journal.includes('fix B')).toBe(false);
+  }, 40_000);
+
+  // T-333-2.4 (patch 3.4.x review F2.1): держатель удерживает право записи
+  // ДОЛЬШЕ любого возраста (кражи по возрасту больше нет): ожидающий процесс
+  // ждёт до busy-тайм-аута и получает явный busy-отказ; запись держателя при
+  // этом не потеряна, и после освобождения следующий процесс продолжается.
+  it('T-333-2.4: a holder keeps the write lock beyond any age; the waiter times out with an explicit busy error', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'wolf-races-24-'));
+    cleanupDirs.push(root);
+    const proj = createProject(root, 'R2D note');
+
+    // A держит критическую секцию на ГЕЙТЕ: лок гарантированно занят всё время
+    // жизни B (без гонки таймингов на медленных раннерах — фиксированная пауза
+    // 7 с могла закончиться раньше busy-тайм-аута поздно стартовавшего B).
+    const gate = join(root, 'release-gate');
+    const a = paused(
+      ['contradict', 'report', '--note', proj.noteId, '--reason', 'slow-holder', '--evidence', 'eA'],
+      proj.dir,
+      { PAUSE333_APPEND_MS: '120000', PAUSE333_GATE: gate },
+      join(root, 'a-pause.log')
+    );
+    await waitForPause(join(root, 'a-pause.log'), 'PAUSE before append');
+
+    const b = await new Promise<{ status: number | null; out: string; ms: number }>((resolve) => {
+      const { npm_command: _npxGuard, ...base } = process.env;
+      const child = spawn(
+        'node',
+        [CLI, 'contradict', 'report', '--note', proj.noteId, '--reason', 'waiter', '--evidence', 'eB'],
+        { cwd: proj.dir, stdio: ['ignore', 'pipe', 'pipe'], env: base }
+      );
+      let out = '';
+      child.stdout?.on('data', (d) => (out += d));
+      child.stderr?.on('data', (d) => (out += d));
+      const t0 = Date.now();
+      child.on('exit', (code) => resolve({ status: code ?? -1, out, ms: Date.now() - t0 }));
+    });
+    // B ждал busy-тайм-аут (~5 с), а не отказался мгновенно и не украл лок
+    expect(b.ms).toBeGreaterThanOrEqual(4500);
+    expect(b.status).not.toBe(0);
+    expect(b.out).toContain('delivery journal is busy');
+    expect(b.out).toContain('SQLite BEGIN IMMEDIATE');
+
+    // A завершился успешно, его запись на месте; лок освобождён — следующий
+    // процесс продолжается сразу (без кражи и без stale-таймера)
+    writeFileSync(gate, 'release');
+    const aCode = await new Promise<number | null>((resolve) => a.on('exit', (c) => resolve(c)));
+    expect(aCode).toBe(0);
+    expect(journalOf(proj)).toContain('slow-holder');
+    const next = run(
+      ['contradict', 'report', '--note', proj.noteId, '--reason', 'after-release', '--evidence', 'eC'],
+      proj.dir
+    );
+    expect(next.status).toBe(0);
+    expect(journalOf(proj)).toContain('after-release');
+  }, 60_000);
+
+  // T-333-2.5 (patch 3.4.x review F2.1): крах владельца (kill -9) — ОС/SQLite
+  // освобождают блокировку при следующем открытии (rollback hot journal):
+  // следующий процесс продолжается СРАЗУ, без ожидания и без кражи по возрасту.
+  it('T-333-2.5: killing the lock holder (kill -9) lets the next process proceed immediately', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'wolf-races-25-'));
+    cleanupDirs.push(root);
+    const proj = createProject(root, 'R2E note');
+
+    const a = paused(
+      ['contradict', 'report', '--note', proj.noteId, '--reason', 'killed-holder', '--evidence', 'eA'],
+      proj.dir,
+      { PAUSE333_APPEND_MS: '15000' },
+      join(root, 'a-pause.log')
+    );
+    await waitForPause(join(root, 'a-pause.log'), 'PAUSE before append');
+    process.kill(a.pid!, 'SIGKILL');
+    await sleep(300); // ОС освобождает описатели процесса
+
+    // следующий процесс получает лок сразу: не ждёт busy-тайм-аут (5 с)
+    const started = Date.now();
+    const next = run(
+      ['contradict', 'report', '--note', proj.noteId, '--reason', 'after-crash', '--evidence', 'eB'],
+      proj.dir
+    );
+    expect(next.status).toBe(0);
+    expect(Date.now() - started).toBeLessThan(10_000);
+    expect(journalOf(proj)).toContain('after-crash');
+  }, 60_000);
+
+  // Лок-база лежит рядом с журналом, ВНЕ кэша: rebuild/удаление index.sqlite
+  // её не трогают (взаимное исключение переживает пересоздание кэша).
+  it('the lock database lives next to the journal, outside .wolf/cache', () => {
+    const root = mkdtempSync(join(tmpdir(), 'wolf-races-lock-'));
+    cleanupDirs.push(root);
+    const proj = createProject(root, 'R2F note');
+    expect(
+      run(['contradict', 'report', '--note', proj.noteId, '--reason', 'lock-check', '--evidence', 'e'], proj.dir).status
+    ).toBe(0);
+    const lockPath = join(proj.dir, LOCK_DB);
+    expect(statSync(lockPath).size).toBeGreaterThan(0);
+    expect(lockPath.includes(join('.wolf', 'cache'))).toBe(false);
   }, 40_000);
 });

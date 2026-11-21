@@ -47,7 +47,10 @@ import { realpathSync } from 'fs';
  * observations по memory_id), получают cnr_-id по порядку, значения переносятся
  * 1:1 включая NULL; запись журнала атомарная (tmp + rename); legacy-строки в
  * index.sqlite НЕ удаляются и не используются (замороженная копия для отката).
- * Идемпотентность: существование файла журнала — признак выполненной миграции.
+ * Идемпотентность — patch 3.4.x review (F1.2/F3.4): перенос доказан ТОЛЬКО
+ * маркером v2 {format:2, complete:true, worktrees}; журнал без v2-маркера
+ * (проект 3.3.1/3.4.0 или окно сбоя) → довосстановление при следующем доступе
+ * (completion pass, идемпотентен по каноническому JSON).
  *
  * Патч 3.3.2 (REQ-332-2, ADR-2): общий корень памяти резолвится самим адаптером
  * (resolveMemoryRoot) — linked worktree использует журнал main-чекоута, как и
@@ -71,6 +74,21 @@ export class JournalStateUnknownError extends UserFacingError {
       `suppression journal is missing after migration: "${journalFile}" — state unknown (REQ-03: unknown stays unknown); run \`wolf contradict restore\` to rebuild from sources, or remove BOTH the journal marker (${MIGRATION_MARKER_FILE}) and the journal file for the documented reset`
     );
     this.name = 'JournalStateUnknownError';
+  }
+}
+
+/**
+ * patch 3.4.x review (F3.1): перенос журнала не завершён — есть отвергнутые
+ * источники или недоступные git-метаданные при наличии .git. Доставка
+ * приостановлена до завершения переноса; состояние (журнал, маркер) не
+ * меняется ни одной командой; перечень отказов в тексте.
+ */
+export class JournalMigrationIncompleteError extends UserFacingError {
+  constructor(public readonly refusals: string[]) {
+    super(
+      `micro-note journal migration is unfinished: ${refusals.join('; ')} — micro-note delivery is suspended until the migration completes; fix or remove the refused source(s), then rerun (wolf brief completes the migration; explicit scan: wolf contradict import)`
+    );
+    this.name = 'JournalMigrationIncompleteError';
   }
 }
 
@@ -256,25 +274,71 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
     return join(this.root, MIGRATION_MARKER_FILE);
   }
 
-  /** Маркер миграции — атомарно (tmp + rename), внутри критической секции
-   *  первого импорта (ADR-340-2). */
-  private writeMarker(sources: string[]): void {
+  /** Маркер миграции v2 — атомарно (tmp + rename), внутри критической секции
+   *  импорта (ADR-340-2). patch 3.4.x review (F1.2): «перенос доказан» —
+   *  format:2 + complete:true + перечисленные wt-пути; маркер 3.3.1/3.4.0
+   *  (без format) перенос не доказывает — при следующем доступе выполняется
+   *  довосстановление (completion pass). */
+  private writeMarkerV2(sources: string[], worktrees: string[]): void {
     mkdirSync(this.lockDir, { recursive: true });
     const tmp = `${this.markerPath}.tmp-${process.pid}`;
-    writeFileSync(tmp, JSON.stringify({ migrated_at: new Date().toISOString(), sources }), 'utf8');
+    writeFileSync(
+      tmp,
+      JSON.stringify({ format: 2, migrated_at: new Date().toISOString(), sources, complete: true, worktrees }),
+      'utf8'
+    );
     renameSync(tmp, this.markerPath);
   }
 
+  /** patch 3.4.x review (F1.2): доказан ли перенос. true — маркер v2
+   *  {format:2, complete:true}; null — маркера нет; false — маркер есть, но
+   *  написан 3.3.1/3.4.0 (без format) или не complete — перенос не доказан. */
+  private migrationProven(): boolean | null {
+    if (!existsSync(this.markerPath)) return null;
+    try {
+      const marker = JSON.parse(readFileSync(this.markerPath, 'utf8')) as { format?: unknown; complete?: unknown };
+      return marker.format === 2 && marker.complete === true;
+    } catch {
+      return false; // битый маркер перенос не доказывает
+    }
+  }
+
   /**
-   * Первый импорт в состоянии fresh (ADR-340-2/3): журнал создаётся одной
-   * атомарной заменой (tmp + rename) из всех доступных источников в
-   * детерминированном порядке (замороженный SQLite, затем wt-журналы по
-   * лексикографическому пути чекаута); маркер пишется в той же критической
-   * секции (под журнальным локом). Отвергнутые источники (невалидная строка)
-   * не молчат: после записи валидных состояние бросает перечень отказов.
-   * Без источников журнал не создаётся (пустое состояние нового проекта).
+   * Первый импорт в состоянии fresh (ADR-340-2/3; patch 3.4.x review (F3.4)):
+   * validate-before-publish — ВСЕ источники (замороженный SQLite, wt-журналы,
+   * перечисление git) читаются и валидируются ДО публикации; хоть один отказ —
+   * НЕ создаётся ни журнал, ни маркер, JournalMigrationIncompleteError
+   * (следующий доступ повторит первый импорт и снова сообщит о
+   * незавершённости). Все источники валидны → журнал публикуется одной
+   * атомарной заменой (tmp + rename) вместе с маркером v2 в той же
+   * критической секции (под журнальным локом); строки в детерминированном
+   * порядке (замороженный SQLite, затем wt-журналы по лексикографическому
+   * пути чекаута). Окно «журнал опубликован, маркер нет» закрывается само:
+   * ensureJournalState видит журнал без v2-маркера → completion pass
+   * (идемпотентен). Пустое состояние нового проекта (0 строк, 0 отказов) —
+   * прежнее: пустой журнал + маркер.
    */
   private runFirstImport(): void {
+    const sqlitePath = indexPath(this.root);
+    const refusals: string[] = [];
+    let legacyLines: JournalLine[] = [];
+    if (existsSync(sqlitePath)) {
+      try {
+        legacyLines = this.collectLegacyLines();
+      } catch (e) {
+        refusals.push(`${sqlitePath}: ${(e as Error).message}`);
+      }
+    }
+    const wtPaths = this.enumerateWtSourcesOrFail(refusals);
+    const wtSources = this.readWorktreeJournals(wtPaths);
+    for (const src of wtSources) {
+      if (src.refused !== undefined) refusals.push(`${src.path}: ${src.refused}`);
+    }
+    if (refusals.length > 0) {
+      // REQ-03: отвергнутые источники не молчат — публикация не выполняется
+      throw new JournalMigrationIncompleteError(refusals);
+    }
+
     const state: MergeState = {
       suppressionCanonicals: new Set(),
       deliveryCanonicals: new Set(),
@@ -283,9 +347,6 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
     };
     const out: JournalLine[] = [];
     const usedKinds = new Set<string>();
-    const refused: string[] = [];
-
-    const sqlitePath = indexPath(this.root);
     if (existsSync(sqlitePath)) {
       const reportSrc: ImportSourceReport = {
         path: sqlitePath,
@@ -293,67 +354,85 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
         imported: { suppressions: 0, deliveries: 0, observations: 0 },
         reid: [],
       };
-      const merged = this.mergeImportSource(
-        { path: sqlitePath, kind: 'index.sqlite' },
-        this.collectLegacyLines(),
-        state,
-        reportSrc
-      );
+      const merged = this.mergeImportSource({ path: sqlitePath, kind: 'index.sqlite' }, legacyLines, state, reportSrc);
       out.push(...merged);
       if (merged.length > 0 || reportSrc.imported.observations > 0) usedKinds.add('index.sqlite');
-      if (reportSrc.refused) refused.push(`${sqlitePath}: ${reportSrc.refused}`);
+    }
+    for (const src of wtSources) {
+      const reportSrc: ImportSourceReport = {
+        path: src.path,
+        kind: 'worktree-journal',
+        imported: { suppressions: 0, deliveries: 0, observations: 0 },
+        reid: [],
+      };
+      const merged = this.mergeImportSource({ path: src.path, kind: 'worktree-journal' }, src.lines, state, reportSrc);
+      out.push(...merged);
+      if (merged.length > 0) usedKinds.add('worktree-journal');
     }
 
-    const wtPaths = this.worktreeSourcePaths();
-    if (wtPaths !== null) {
-      for (const src of this.readWorktreeJournals(wtPaths)) {
-        const reportSrc: ImportSourceReport = {
+    // REQ-333-4 (F-2, design §5 — уточнение ведущего REV-340, §6) + F3.4:
+    // журнал и маркер v2 публикуются одной критической секцией; для пустого
+    // нового проекта — пустой журнал + маркер, последующие вызовы идут по
+    // normal (пересмотр источников/git-спавн не на горячем пути).
+    mkdirSync(this.lockDir, { recursive: true });
+    const tmp = `${this.file}.importing-${process.pid}.tmp`;
+    writeFileSync(tmp, out.map((l) => `${JSON.stringify(l)}\n`).join(''), 'utf8');
+    renameSync(tmp, this.file);
+    this.writeMarkerV2([...usedKinds], wtPaths);
+  }
+
+  /**
+   * patch 3.4.x review (F1.2/F3.4): перечисление wt-источников с fail-closed
+   * правилом. null от git при наличии `.git` в корне — отказ «git metadata
+   * unavailable» (добавляется в refusals, причина невозможна только вместе с
+   * отказом); null без `.git` — linked worktree нет по построению (пустой
+   * список, перенос возможен).
+   */
+  private enumerateWtSourcesOrFail(refusals: string[]): string[] {
+    const paths = this.worktreeSourcePaths();
+    if (paths !== null) return paths;
+    if (existsSync(join(this.root, '.git'))) {
+      refusals.push('(git worktree list): git metadata unavailable (worktree enumeration failed)');
+      return [];
+    }
+    return []; // не-git каталог: worktree нет по построению
+  }
+
+  /**
+   * patch 3.4.x review (F1.2): довосстановление (completion pass) — для
+   * журнала, перенесённого 3.3.1/3.4.0 (маркер без format) или с маркером,
+   * утраченным в окне сбоя. Существование журнала перенос не доказывает:
+   * wt-источники перечисляются и читаются ЗАНОВО исправленным ридером и
+   * сливаются идемпотентно (дедуп каноническим JSON — дублей нет, разрешённые
+   * записи не возвращаются в открытое состояние). Любой отказ источника →
+   * ничего не пишется, JournalMigrationIncompleteError. Успех → маркер v2
+   * {complete:true, worktrees:[перечисленные пути]}.
+   */
+  private runCompletionPass(): void {
+    const refusals: string[] = [];
+    const wtPaths = this.enumerateWtSourcesOrFail(refusals);
+    const sources = this.readWorktreeJournals(wtPaths);
+    for (const src of sources) {
+      if (src.refused !== undefined) refusals.push(`${src.path}: ${src.refused}`);
+    }
+    if (refusals.length > 0) {
+      throw new JournalMigrationIncompleteError(refusals);
+    }
+    const state = this.buildMergeStateFromJournal();
+    const newLines: JournalLine[] = [];
+    for (const src of sources) {
+      newLines.push(
+        ...this.mergeImportSource({ path: src.path, kind: 'worktree-journal' }, src.lines, state, {
           path: src.path,
           kind: 'worktree-journal',
           imported: { suppressions: 0, deliveries: 0, observations: 0 },
           reid: [],
-        };
-        if (src.refused) {
-          reportSrc.refused = src.refused;
-          refused.push(`${src.path}: ${src.refused}`);
-        } else {
-          const merged = this.mergeImportSource(
-            { path: src.path, kind: 'worktree-journal' },
-            src.lines,
-            state,
-            reportSrc
-          );
-          out.push(...merged);
-          if (merged.length > 0) usedKinds.add('worktree-journal');
-        }
-      }
+        })
+      );
     }
-
-    if (out.length === 0 && refused.length === 0) {
-      // REQ-333-4 (F-2, design §5 — уточнение ведущего REV-340, §6): fresh с
-      // нулём строк И без отказов источников — ровно ОДИН раз: ПУСТОЙ журнал +
-      // маркер sources: [] в той же критической секции; последующие вызовы
-      // идут по normal (пересмотр источников/git-спавн не на горячем пути).
-      // Для пользователя неотличимо от прежнего «файл создаётся первой
-      // записью» (пустой файл читается как пустое состояние).
-      mkdirSync(this.lockDir, { recursive: true });
-      const tmp = `${this.file}.importing-${process.pid}.tmp`;
-      writeFileSync(tmp, '', 'utf8');
-      renameSync(tmp, this.file);
-      this.writeMarker([]);
-      return;
-    }
-    if (out.length > 0) {
-      mkdirSync(this.lockDir, { recursive: true });
-      const tmp = `${this.file}.importing-${process.pid}.tmp`;
-      writeFileSync(tmp, out.map((l) => `${JSON.stringify(l)}\n`).join(''), 'utf8');
-      renameSync(tmp, this.file);
-      this.writeMarker([...usedKinds]);
-    }
-    if (refused.length > 0) {
-      // REQ-03: отвергнутые источники не молчат — перечень с файлом и причиной
-      throw new UserFacingError(`journal first import skipped invalid sources: ${refused.join('; ')}`);
-    }
+    // idемпотентность: mergeImportSource отфильтровал уже присутствующие строки
+    this.appendMany(newLines);
+    this.writeMarkerV2(['worktree-journal'], wtPaths);
   }
 
   /** Пути wt-источников (ADR-340-3): живые чекауты; корневой исключён — его
@@ -370,10 +449,17 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
     return paths.filter((p) => p !== self);
   }
 
-  /** Чтение wt-журналов (лексикографический порядок путей чекаута); каждая
-   *  строка — через единый валидатор; источник с невалидной строкой
-   *  отвергается ЦЕЛИКОМ (all-or-nothing, ADR-340-3). Отсутствующий файл —
-   *  источник не добавляется. */
+  /**
+   * Чтение wt-журналов (лексикографический порядок путей чекаута); каждая
+   * строка — через единый валидатор; источник с невалидной строкой
+   * отвергается ЦЕЛИКОМ (all-or-nothing, ADR-340-3). Отсутствующий файл —
+   * источник не добавляется. patch 3.4.x review (F3.2): источник читается с
+   * терпимостью к обрыву хвоста — отказ валидатора с причиной 'json' на
+   * ПОСЛЕДНЕМ непустом фрагменте файла — обрывок отбрасывается, корректные
+   * строки перед ним СОХРАНЯЮТСЯ (источник валиден; тот же repair-принцип,
+   * что REQ-332-3 для общего журнала); отказ 'json' в середине файла или
+   * 'structure' в любой позиции — источник отвергается целиком (refused).
+   */
   private readWorktreeJournals(paths: string[]): Array<{ path: string; lines: JournalLine[]; refused?: string }> {
     const out: Array<{ path: string; lines: JournalLine[]; refused?: string }> = [];
     for (const wt of [...paths].sort()) {
@@ -385,7 +471,19 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
         for (let i = 0; i < raw.length; i++) {
           const line = raw[i]!.trim();
           if (line === '') continue;
-          lines.push(parseJournalLine(line, { file: j, line: i + 1 }));
+          try {
+            lines.push(parseJournalLine(line, { file: j, line: i + 1 }));
+          } catch (e) {
+            // обрыв последнего фрагмента (crash в append источника) — префикс сохранён
+            if (
+              e instanceof JournalLineError &&
+              e.cause_ === 'json' &&
+              raw.slice(i + 1).every((l) => l.trim() === '')
+            ) {
+              break;
+            }
+            throw e;
+          }
         }
         out.push({ path: wt, lines });
       } catch (e) {
@@ -520,47 +618,39 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
     return state;
   }
 
-  /** REQ-333-1 (ADR-340-3): идемпотентный досмотр wt-журналов — новые строки
-   *  дописываются одним батчем; отказавшие источники дают ошибку с перечнем. */
+  /** REQ-333-1 (ADR-340-3): идемпотентный досмотр wt-журналов ≤3.3.1; patch
+   *  3.4.x review (F3.5): validate-before-append — отказ ЛЮБОГО источника →
+   *  ничего не дописывается, JournalMigrationIncompleteError с перечнем. */
   importWorktreeJournals(): ImportReport {
     return this.withJournalLock(() => {
       this.load(); // fresh выполняет первый импорт (SQLite + wt); loss бросит
-      const report: ImportReport = { sources: [], unrecoverable: UNRECOVERABLE_TEXT };
-      const wtPaths = this.worktreeSourcePaths();
-      if (wtPaths === null) {
-        report.sources.push({
-          path: '(git worktree list)',
-          kind: 'worktree-journal',
-          imported: { suppressions: 0, deliveries: 0, observations: 0 },
-          reid: [],
-          refused: 'git metadata unavailable (worktree enumeration failed)',
-        });
-        return report;
+      // patch 3.4.x review (F3.4/F3.5): сбой перечисления git при наличии .git —
+      // отказ переноса (validate-before-append)
+      const enumRefusals: string[] = [];
+      const wtPaths = this.enumerateWtSourcesOrFail(enumRefusals);
+      const sources = this.readWorktreeJournals(wtPaths);
+      const refused = [...enumRefusals];
+      for (const src of sources) {
+        if (src.refused !== undefined) refused.push(`${src.path}: ${src.refused}`);
       }
+      if (refused.length > 0) throw new JournalMigrationIncompleteError(refused);
+
+      const report: ImportReport = { sources: [], unrecoverable: UNRECOVERABLE_TEXT };
       const state = this.buildMergeStateFromJournal();
       const newLines: JournalLine[] = [];
-      const refused: string[] = [];
-      for (const src of this.readWorktreeJournals(wtPaths)) {
+      for (const src of sources) {
         const reportSrc: ImportSourceReport = {
           path: src.path,
           kind: 'worktree-journal',
           imported: { suppressions: 0, deliveries: 0, observations: 0 },
           reid: [],
         };
-        if (src.refused !== undefined) {
-          reportSrc.refused = src.refused;
-          refused.push(`${src.path}: ${src.refused}`);
-        } else {
-          newLines.push(
-            ...this.mergeImportSource({ path: src.path, kind: 'worktree-journal' }, src.lines, state, reportSrc)
-          );
-        }
+        newLines.push(
+          ...this.mergeImportSource({ path: src.path, kind: 'worktree-journal' }, src.lines, state, reportSrc)
+        );
         report.sources.push(reportSrc);
       }
       this.appendMany(newLines);
-      if (refused.length > 0) {
-        throw new UserFacingError(`import skipped invalid sources: ${refused.join('; ')}`);
-      }
       return report;
     });
   }
@@ -568,7 +658,10 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
   /** REQ-333-4 (ADR-340-2): единственный путь состояния-в-состояние при утрате:
    *  пересборка журнала из замороженного index.sqlite + wt-журналов одной
    *  атомарной заменой (tmp + rename) под локом; отчёт источников и границы
-   *  потерь; при существующем журнале — отказ. */
+   *  потерь; при существующем журнале — отказ. patch 3.4.x review (F3.6):
+   *  validate-before-publish — отказ ЛЮБОГО источника → ничего не
+   *  публикуется (журнал остаётся отсутствующим, маркер на месте), ошибка с
+   *  перечнем и явной границей «ничего не написано». */
   restoreFromSources(): RestoreReport {
     return this.withJournalLock(() => {
       const journalExists = existsSync(this.file);
@@ -584,6 +677,27 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
         );
       }
 
+      const sqlitePath = indexPath(this.root);
+      const refusals: string[] = [];
+      let legacyLines: JournalLine[] = [];
+      if (existsSync(sqlitePath)) {
+        try {
+          legacyLines = this.collectLegacyLines();
+        } catch (e) {
+          refusals.push(`${sqlitePath}: ${(e as Error).message}`);
+        }
+      }
+      const wtPaths = this.enumerateWtSourcesOrFail(refusals);
+      const wtSources = this.readWorktreeJournals(wtPaths);
+      for (const src of wtSources) {
+        if (src.refused !== undefined) refusals.push(`${src.path}: ${src.refused}`);
+      }
+      if (refusals.length > 0) {
+        throw new UserFacingError(
+          `restore refused invalid sources: ${refusals.join('; ')} — nothing was written — fix the source(s) and rerun restore`
+        );
+      }
+
       const state: MergeState = {
         suppressionCanonicals: new Set(),
         deliveryCanonicals: new Set(),
@@ -593,9 +707,7 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
       const out: JournalLine[] = [];
       const usedKinds = new Set<string>();
       const report: ImportReport = { sources: [], unrecoverable: UNRECOVERABLE_TEXT };
-      const refused: string[] = [];
 
-      const sqlitePath = indexPath(this.root);
       if (existsSync(sqlitePath)) {
         const reportSrc: ImportSourceReport = {
           path: sqlitePath,
@@ -603,51 +715,35 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
           imported: { suppressions: 0, deliveries: 0, observations: 0 },
           reid: [],
         };
-        try {
-          const merged = this.mergeImportSource(
-            { path: sqlitePath, kind: 'index.sqlite' },
-            this.collectLegacyLines(),
-            state,
-            reportSrc
-          );
-          out.push(...merged);
-          if (merged.length > 0) usedKinds.add('index.sqlite');
-        } catch (e) {
-          reportSrc.refused = (e as Error).message;
-          refused.push(`${sqlitePath}: ${reportSrc.refused}`);
-        }
+        const merged = this.mergeImportSource(
+          { path: sqlitePath, kind: 'index.sqlite' },
+          legacyLines,
+          state,
+          reportSrc
+        );
+        out.push(...merged);
+        if (merged.length > 0 || reportSrc.imported.observations > 0) usedKinds.add('index.sqlite');
         report.sources.push(reportSrc);
       }
 
-      const wtPaths = this.worktreeSourcePaths();
-      if (wtPaths !== null) {
-        for (const src of this.readWorktreeJournals(wtPaths)) {
-          const reportSrc: ImportSourceReport = {
-            path: src.path,
-            kind: 'worktree-journal',
-            imported: { suppressions: 0, deliveries: 0, observations: 0 },
-            reid: [],
-          };
-          if (src.refused !== undefined) {
-            reportSrc.refused = src.refused;
-            refused.push(`${src.path}: ${src.refused}`);
-          } else {
-            const merged = this.mergeImportSource(
-              { path: src.path, kind: 'worktree-journal' },
-              src.lines,
-              state,
-              reportSrc
-            );
-            out.push(...merged);
-            if (merged.length > 0) usedKinds.add('worktree-journal');
-          }
-          report.sources.push(reportSrc);
-        }
+      for (const src of wtSources) {
+        const reportSrc: ImportSourceReport = {
+          path: src.path,
+          kind: 'worktree-journal',
+          imported: { suppressions: 0, deliveries: 0, observations: 0 },
+          reid: [],
+        };
+        const merged = this.mergeImportSource(
+          { path: src.path, kind: 'worktree-journal' },
+          src.lines,
+          state,
+          reportSrc
+        );
+        out.push(...merged);
+        if (merged.length > 0) usedKinds.add('worktree-journal');
+        report.sources.push(reportSrc);
       }
 
-      if (out.length === 0 && refused.length > 0) {
-        throw new UserFacingError(`nothing to restore from: ${refused.join('; ')}`);
-      }
       if (out.length === 0) {
         // REQ-333-4 (F-1, design §10.4): пересобрать не из чего — журнал НЕ
         // создаётся (иначе утрата замещается «тихо пустым состоянием»);
@@ -661,10 +757,7 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
       const tmp = `${this.file}.restoring-${process.pid}.tmp`;
       writeFileSync(tmp, out.map((l) => `${JSON.stringify(l)}\n`).join(''), 'utf8');
       renameSync(tmp, this.file);
-      this.writeMarker([...usedKinds]);
-      if (refused.length > 0) {
-        throw new UserFacingError(`restore skipped invalid sources: ${refused.join('; ')}`);
-      }
+      this.writeMarkerV2([...usedKinds], wtPaths);
       return report;
     });
   }
@@ -687,14 +780,17 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
    * журнальным локом: параллельные процессы не видят разорванное окно repair
    * и не теряют записи друг друга. Мутаторы держат лок на всю секцию,
    * читатели — на «load+parse».
+   * patch 3.4.x review (F2.1): лок — SQLite BEGIN IMMEDIATE в отдельной базе
+   * блокировки рядом с журналом (без кражи по возрасту); чужой активный лок —
+   * busy-отказ после тайм-аута ожидания.
    */
   private withJournalLock<T>(fn: () => T): T {
     try {
-      return withJournalLockSync(this.lockDir, fn, undefined, 'micro-note-delivery.jsonl.lock');
+      return withJournalLockSync(this.lockDir, fn);
     } catch (e) {
       if (e instanceof LockHeldError) {
         throw new UserFacingError(
-          `delivery journal is busy: ${e.lockPath} (holder pid: ${e.holderPid ?? 'unknown'}) — another wolf process holds the lock; retry when it finishes`
+          `delivery journal is busy: ${e.lockPath} — another wolf process holds the write lock (SQLite BEGIN IMMEDIATE); retry when it finishes`
         );
       }
       throw e;
@@ -747,8 +843,13 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
 
   /**
    * REQ-333-7 (ADR-340-6): машина состояний БЕЗ полного парса (для пути
-   * доставки): fresh → первый импорт; loss → отказ; normal → самозаживление
-   * маркера. Семантика та же, что в load(), parse-чтения нет.
+   * доставки): fresh → первый импорт; loss → отказ; normal (маркер v2
+   * complete) → без пересмотра источников. patch 3.4.x review (F1.2):
+   * существование общего JSONL или маркера НЕ доказывает перенос — журнал без
+   * v2-маркера (маркер 3.3.1/3.4.0 без format, битый маркер или его absence в
+   * окне сбоя) → довосстановление (completion pass) при следующем доступе,
+   * внутри уже имеющегося журнального лока. Семантика loss («журнал
+   * отсутствует + маркер есть») не меняется.
    */
   private ensureJournalState(): void {
     const journalExists = existsSync(this.file);
@@ -758,13 +859,13 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
       throw new JournalStateUnknownError(this.file);
     }
     if (!journalExists) {
-      // fresh: первый импорт из всех доступных источников (ADR-340-3)
+      // fresh: первый импорт из всех источников (validate-before-publish, F3.4)
       this.runFirstImport();
-    } else if (!markerExists) {
-      // самозаживление: журнал с 3.3.x, окно сбоя между rename и маркером;
-      // состояние не меняется, источник не угадывается
-      this.writeMarker(['unknown']);
+      return;
     }
+    // журнал есть: перенос доказан ТОЛЬКО маркером v2 {format:2, complete:true}
+    if (this.migrationProven() === true) return;
+    this.runCompletionPass(); // 3.3.1/3.4.0-маркер или его отсутствие
   }
 
   private apply(line: JournalLine): void {
@@ -861,6 +962,10 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
    * значения переносятся 1:1 включая NULL; cnr_-id по порядку миграции.
    * index.sqlite не изменяется — замороженная копия остаётся источником
    * для restore (ADR-340-2). Пустой массив — источников нет.
+   * patch 3.4.x review (F3.3): собранные строки прогоняются через ЕДИНЫЙ
+   * валидатор parseJournalLine (строка сериализуется канонически перед
+   * валидацией); невалидная ПОЛНАЯ запись → JournalLineError('structure') →
+   * источник index.sqlite отвергается целиком (refusal у вызывающего).
    */
   private collectLegacyLines(): JournalLine[] {
     const legacyPath = indexPath(this.root);
@@ -875,6 +980,10 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
       if (!hasSuppressions && !hasDeliveries && !hasObservations) return [];
 
       const lines: JournalLine[] = [];
+      // единый валидатор: канонический JSON строки → parseJournalLine; невалидная
+      // запись — JournalLineError (structure) с файлом и порядковым номером строки
+      const validated = (line: JournalLine): JournalLine =>
+        parseJournalLine(canonicalJson(line), { file: legacyPath, line: lines.length + 1 });
       if (hasSuppressions) {
         // детерминированный порядок (AC-3.2): suppressed_at, затем memory_id
         const rows = db
@@ -886,21 +995,23 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
           .all() as Array<Record<string, string | null>>;
         rows.forEach((row, i) => {
           const day = String(row.suppressed_at).slice(0, 10).replace(/-/g, '');
-          lines.push({
-            kind: 'suppression',
-            record: {
-              // cnr_<YYYYMMDD>_<шестиразрядный hex-счётчик порядка миграции>
-              suppression_id: `cnr_${day}_${(i + 1).toString(16).padStart(6, '0')}`,
-              memory_id: String(row.memory_id),
-              revision: String(row.revision),
-              reason: String(row.reason),
-              note_evidence: String(row.note_evidence),
-              contradiction_evidence: String(row.contradiction_evidence),
-              suppressed_at: String(row.suppressed_at),
-              resolved_at: row.resolved_at ?? null,
-              resolution: row.resolution ?? null,
-            },
-          });
+          lines.push(
+            validated({
+              kind: 'suppression',
+              record: {
+                // cnr_<YYYYMMDD>_<шестиразрядный hex-счётчик порядка миграции>
+                suppression_id: `cnr_${day}_${(i + 1).toString(16).padStart(6, '0')}`,
+                memory_id: String(row.memory_id),
+                revision: String(row.revision),
+                reason: String(row.reason),
+                note_evidence: String(row.note_evidence),
+                contradiction_evidence: String(row.contradiction_evidence),
+                suppressed_at: String(row.suppressed_at),
+                resolved_at: row.resolved_at ?? null,
+                resolution: row.resolution ?? null,
+              },
+            })
+          );
         });
       }
       if (hasDeliveries) {
@@ -910,16 +1021,18 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
           )
           .all() as Array<Record<string, string>>;
         for (const row of rows) {
-          lines.push({
-            kind: 'delivery',
-            record: {
-              memory_id: row.memory_id,
-              revision: row.revision,
-              channel: row.channel as MicroNoteDeliveryRecord['channel'],
-              kind: row.kind as MicroNoteDeliveryRecord['kind'],
-              ts: row.ts,
-            },
-          });
+          lines.push(
+            validated({
+              kind: 'delivery',
+              record: {
+                memory_id: row.memory_id,
+                revision: row.revision,
+                channel: row.channel as MicroNoteDeliveryRecord['channel'],
+                kind: row.kind as MicroNoteDeliveryRecord['kind'],
+                ts: row.ts,
+              },
+            })
+          );
         }
       }
       if (hasObservations) {
@@ -930,16 +1043,18 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
           )
           .all() as Array<Record<string, string | null>>;
         for (const row of rows) {
-          lines.push({
-            kind: 'observation',
-            record: {
-              memory_id: String(row.memory_id),
-              revision: String(row.revision),
-              observed_use: row.observed_use ?? null,
-              observed_outcome: String(row.observed_outcome),
-              updated_at: String(row.updated_at),
-            },
-          });
+          lines.push(
+            validated({
+              kind: 'observation',
+              record: {
+                memory_id: String(row.memory_id),
+                revision: String(row.revision),
+                observed_use: row.observed_use ?? null,
+                observed_outcome: String(row.observed_outcome),
+                updated_at: String(row.updated_at),
+              },
+            })
+          );
         }
       }
 

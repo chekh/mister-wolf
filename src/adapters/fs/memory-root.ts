@@ -55,24 +55,28 @@ export function resolveMemoryRoot(baseDir: string): MemoryRootInfo {
   }
 }
 
-/** Полные пути живых записей `git worktree list --porcelain` (тот же парс, что
- *  liveWorktreeBasenames; REQ-333-1, ADR-340-3: перечисление источников импорта).
- *  Каталог записи, исчезнувший с диска, пропускается (git пометит prunable).
- *  null — сбой git-метаданных (fail-closed). Без кэша: вызывается в редких
- *  критических секциях импорта/restore, не на горячем пути доставки. */
+/** Полные пути живых записей `git worktree list --porcelain -z` (REQ-333-1,
+ *  ADR-340-3: перечисление источников импорта). patch 3.4.x review (F1.1):
+ *  формат -z (NUL-разделители) — путь записи не может содержать NUL, поэтому
+ *  путь = подстрока после префикса `worktree ` до NUL БЕЗ trim: имена
+ *  каталогов с пробелами в конце валидны и не искажаются. Каталог записи,
+ *  исчезнувший с диска, пропускается (git пометит prunable); realpathSync
+ *  канонизирует каждый путь. null — сбой git-спавна (fail-closed). Без кэша:
+ *  вызывается в редких критических секциях импорта/restore, не на горячем
+ *  пути доставки. */
 export function listWorktreeCheckouts(baseDir: string): string[] | null {
   try {
-    const out = execFileSync('git', ['worktree', 'list', '--porcelain'], {
+    const out = execFileSync('git', ['worktree', 'list', '--porcelain', '-z'], {
       cwd: baseDir,
       encoding: 'utf-8',
       timeout: 10_000,
       stdio: ['ignore', 'pipe', 'ignore'],
     });
     const result: string[] = [];
-    for (const line of out.split('\n')) {
-      if (!line.startsWith('worktree ')) continue;
+    for (const record of out.split('\0')) {
+      if (!record.startsWith('worktree ')) continue;
       try {
-        result.push(realpathSync(line.slice('worktree '.length).trim()));
+        result.push(realpathSync(record.slice('worktree '.length)));
       } catch {
         // каталог записи исчез — git пометит prunable; источником он не становится
       }

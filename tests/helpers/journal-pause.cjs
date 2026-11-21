@@ -48,14 +48,26 @@ if (process.env.PAUSE333_RENAME_MS) {
 }
 
 // PAUSE333_APPEND_MS: pause before appendFileSync to the journal (write window after load)
+// PAUSE333_GATE: gate mode — instead of sleeping PAUSE333_APPEND_MS, hold the
+// pause point until the gate file exists (poll 50 ms, cap 120 s). Deterministic
+// holder: the lock stays held for the waiter's whole lifetime on slow runners.
 if (process.env.PAUSE333_APPEND_MS) {
   const origAppP = fs.appendFileSync;
   fs.appendFileSync = function (p, data, ...rest) {
     const s = pathOf(p);
     if (s.includes(MATCH)) {
-      log(`PAUSE before append ${s}`);
-      sleep(parseInt(process.env.PAUSE333_APPEND_MS, 10));
-      log(`RESUME before append ${s}`);
+      if (process.env.PAUSE333_GATE) {
+        log(`PAUSE before append ${s} (gate=${process.env.PAUSE333_GATE})`);
+        const cap = 120_000;
+        for (let i = 0; i < cap / 50; i++) {
+          try { fs.statSync(process.env.PAUSE333_GATE); break; } catch { sleep(50); }
+        }
+        log(`RESUME before append ${s} (gate released)`);
+      } else {
+        log(`PAUSE before append ${s}`);
+        sleep(parseInt(process.env.PAUSE333_APPEND_MS, 10));
+        log(`RESUME before append ${s}`);
+      }
     }
     return origAppP.call(fs, p, data, ...rest);
   };
