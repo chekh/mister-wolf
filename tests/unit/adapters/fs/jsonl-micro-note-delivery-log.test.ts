@@ -707,9 +707,11 @@ describe('migration marker and journal loss (3.4.0 REQ-333-4, ADR-340-2)', () =>
     refuse(); // состояние не меняется от отказов
   });
 
-  // Самозаживление: журнал есть, маркера нет (окно сбоя 3.3.x) — первая же
-  // операция дописывает маркер под локом; состояние не меняется.
-  it('self-heal: a journal without the marker gets the marker back on the first operation, state unchanged', () => {
+  // patch 3.4.x review (F1.2): самозаживление заменено довосстановлением —
+  // журнал без маркера (окно сбоя 3.3.x или проект 3.3.1) проходит completion
+  // pass: wt-источники перечисляются, новые строки сливаются идемпотентно,
+  // маркер переписывается в v2 {format:2, complete:true}; состояние не меняется.
+  it('completion pass: a journal without the marker gets the v2 marker on the first operation, state unchanged', () => {
     mkdirSync(join(dir, '.wolf', 'memory'), { recursive: true });
     writeFileSync(
       journalPath(),
@@ -721,12 +723,27 @@ describe('migration marker and journal loss (3.4.0 REQ-333-4, ADR-340-2)', () =>
     const log = new JsonlMicroNoteDeliveryLog(dir);
     expect(log.suppressions().map((s) => s.suppression_id)).toEqual(['cnr_20261119_0000aa']);
     expect(existsSync(markerPath())).toBe(true);
-    const marker = JSON.parse(readFileSync(markerPath(), 'utf8')) as { migrated_at: string; sources: string[] };
-    expect(marker.sources).toEqual(['unknown']); // источник не угадывается (REQ-03)
+    const marker = JSON.parse(readFileSync(markerPath(), 'utf8')) as {
+      format: number;
+      complete: boolean;
+      migrated_at: string;
+      sources: string[];
+      worktrees: string[];
+    };
+    expect(marker.format).toBe(2);
+    expect(marker.complete).toBe(true);
+    expect(marker.migrated_at).not.toBe('');
+    expect(marker.sources).toEqual(['worktree-journal']);
+    // не-git каталог: linked worktree нет по построению
+    expect(marker.worktrees).toEqual([]);
     // повторное чтение — то же состояние, дубликата нет
     expect(new JsonlMicroNoteDeliveryLog(dir).suppressions().map((s) => s.suppression_id)).toEqual([
       'cnr_20261119_0000aa',
     ]);
+    const journalLines = readFileSync(journalPath(), 'utf8')
+      .split('\n')
+      .filter((l) => l.includes('cnr_20261119_0000aa'));
+    expect(journalLines).toHaveLength(1); // id (в suppression_id и reason одной строки) — одна строка журнала
   });
 
   // T-333-4.3 (unit, сброс): удалены И журнал, И маркер → следующий доступ —

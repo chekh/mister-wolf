@@ -1,50 +1,65 @@
 import { openSync, closeSync, unlinkSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import Database from 'better-sqlite3';
 import type { MemoryLock } from '../../ports/memory-lock.port.js';
 
-/** Блокирующая пауза (ADR-340-1): ожидание журнального лока в синхронном
- *  контексте — event loop останавливается на retry-интервал, соседние
- *  асинхронные задачи того же процесса не вклиниваются в критическую секцию. */
-function blockingSleep(ms: number): void {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-}
+/**
+ * patch 3.4.x review (F2.1): имя отдельной базы блокировки журнала — файл лежит
+ * РЯДОМ с журналом (каталог `.wolf/memory`), ВНЕ кэша `.wolf/cache`
+ * (rebuild и удаление index.sqlite лок не трогают).
+ */
+export const JOURNAL_LOCK_DB_FILE = 'micro-note-delivery.lock.sqlite';
 
 /**
- * Синхронный двойник withMemoryLock (REQ-333-2, ADR-340-1): тот же протокол
- * файлового лока (O_EXCL, содержимое {pid, ts}, retry 100 мс, maxWait 5 с,
- * кража по возрасту ≥ 30 с без liveness-проверки — container-safe), но для
- * синхронных критических секций журнала противоречий. Кража между двумя
- * «ворами» допустима (local-first), владелец определяется только по факту
- * файла. Ограничение: NFS/сетевые ФС не поддерживаются (O_EXCL-семантика).
+ * patch 3.4.x review (F2.1, REQ-333-2): журнальный лок — межпроцессная
+ * блокировка SQLite `BEGIN IMMEDIATE` в отдельной базе блокировки проекта.
+ * Право записи держится ОТКРЫТОЙ транзакцией на всю критическую секцию fn():
+ * крах владельца ОС/SQLite освобождают при следующем открытии (rollback hot
+ * journal) — НИКАКОЙ кражи по возрасту и никакого stale-таймера: живой
+ * владелец сохраняет право записи независимо от возраста секции. Занятый лок
+ * ждёт до busy-тайм-аута (LOCK_TIMING.MAX_WAIT_MS), затем SQLITE_BUSY →
+ * LockHeldError. Режим журнала базы — по умолчанию (rollback), WAL не нужен:
+ * база не хранит данных, только право записи.
  */
-export function withJournalLockSync<T>(dir: string, fn: () => T, opts?: LockOpts, lockFileName: string = '.lock'): T {
+export function withJournalLockSync<T>(
+  dir: string,
+  fn: () => T,
+  opts?: LockOpts,
+  lockFileName: string = JOURNAL_LOCK_DB_FILE
+): T {
   mkdirSync(dir, { recursive: true });
   const maxWaitMs = opts?.maxWaitMs ?? LOCK_TIMING.MAX_WAIT_MS;
-  const staleMs = opts?.staleMs ?? LOCK_TIMING.STALE_MS;
-  const retryMs = LOCK_TIMING.RETRY_MS;
   const path = lockPathFor(dir, lockFileName);
-
-  const deadline = Date.now() + maxWaitMs;
-
-  while (true) {
-    if (tryAcquire(path)) {
+  const db = new Database(path, { timeout: maxWaitMs });
+  try {
+    try {
+      db.exec('BEGIN IMMEDIATE');
+    } catch (e) {
+      // занято другим процессом дольше busy-тайм-аута (или нетерпимый сбой)
+      if (isSqliteBusy(e)) throw new LockHeldError(path, null);
+      throw e;
+    }
+    try {
+      const result = fn();
+      db.exec('COMMIT');
+      return result;
+    } catch (e) {
       try {
-        return fn();
-      } finally {
-        try {
-          unlinkSync(path);
-        } catch {
-          /* already gone */
-        }
+        db.exec('ROLLBACK');
+      } catch {
+        /* транзакция уже откачена (например, краем fn) */
       }
+      throw e;
     }
-
-    const { stolen, holderPid } = stealIfStale(path, staleMs);
-    if (!stolen) {
-      if (Date.now() >= deadline) throw new LockHeldError(path, holderPid);
-      blockingSleep(retryMs);
-    }
+  } finally {
+    db.close();
   }
+}
+
+/** SQLITE_BUSY — лок занят другим владельцем (единственная ожидаемая причина
+ *  отказа BEGIN IMMEDIATE); остальное — нетерпимый сбой базы блокировки. */
+function isSqliteBusy(e: unknown): boolean {
+  return e instanceof Error && (e as Error & { code?: string }).code === 'SQLITE_BUSY';
 }
 
 export const LOCK_TIMING = {

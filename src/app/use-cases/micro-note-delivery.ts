@@ -172,6 +172,18 @@ function formatMicroBlock(candidate: Omit<MicroNoteCandidate, 'block'>, body: st
  * запись текущей ревизии (записей одной заметки может быть несколько);
  * причина — от последней открытой записи этой ревизии (детерминированно).
  */
+/**
+ * Patch 3.4.x review (F4): единое правило сравнения ревизии записи с текущей —
+ * ЕДИНСТВЕННОЕ место для фильтра доставки, list и resolve-статуса. Равенство
+ * строк → true; иначе короткая ревизия (12–63 символа) — префикс текущей →
+ * true; полный 64-символьный хеш сравнивается только целиком (профанация
+ * чужой ревизии префиксом длиной 64 невозможна).
+ */
+export function suppressionRevisionMatches(recordRevision: string, currentRevision: string): boolean {
+  if (recordRevision === currentRevision) return true;
+  return recordRevision.length >= 12 && recordRevision.length <= 63 && currentRevision.startsWith(recordRevision);
+}
+
 export function openContradiction(
   obj: MemoryObject,
   suppressions: readonly MicroNoteSuppressionRecord[]
@@ -179,7 +191,7 @@ export function openContradiction(
   const revision = learningSignalRevision(obj);
   let latest: MicroNoteSuppressionRecord | undefined;
   for (const s of suppressions) {
-    if (s.memory_id !== obj.id || s.resolved_at !== null || s.revision !== revision) continue;
+    if (s.memory_id !== obj.id || s.resolved_at !== null || !suppressionRevisionMatches(s.revision, revision)) continue;
     if (latest === undefined || s.suppressed_at > latest.suppressed_at) latest = s;
   }
   return latest === undefined ? null : { revision, reason: latest.reason };
@@ -204,7 +216,8 @@ export function suppressionBlockState(
   // superseded, другой тип) — «actual» обещать нельзя; display-only правило,
   // фильтр доставки (openContradiction) не трогается.
   if (!isMicroNote(note)) return 'unknown';
-  return record.revision === learningSignalRevision(note) ? 'actual' : 'superseded';
+  // patch 3.4.x review (F4): то же правило сравнения, что в openContradiction
+  return suppressionRevisionMatches(record.revision, learningSignalRevision(note)) ? 'actual' : 'superseded';
 }
 
 /** REQ-333-6 (AC-6.2): адресована ли запись сейчас доставляемому micro-note.
@@ -222,31 +235,35 @@ export function deliverableMicroNote(
   if (note === undefined) return 'unknown';
   if (!isMicroNote(note)) return 'no';
   const revision = learningSignalRevision(note);
+  // patch 3.4.x review (F4): то же правило сравнения ревизий, что в openContradiction
   const blockedByOther = suppressions.some(
     (s) =>
       s.suppression_id !== excludingSuppressionId &&
       s.memory_id === note.id &&
       s.resolved_at === null &&
-      s.revision === revision
+      suppressionRevisionMatches(s.revision, revision)
   );
   return blockedByOther ? 'no' : 'yes';
 }
 
-/** REQ-333-6 (AC-6.1): честный статус заметки после закрытия ОДНОЙ записи —
- *  единый текст для CLI и MCP. Считаются открытые записи ТЕКУЩЕЙ ревизии
- *  (то же правило, что openContradiction); закрытая запись уже не открыта. */
+/**
+ * REQ-333-6 (AC-6.1), patch 3.4.x review (F5.2): статус после закрытия ОДНОЙ
+ * записи — единый текст для CLI и MCP. Сообщает, что запись закрыта (печатает
+ * вызывающий), и сколько ОТКРЫТЫХ противоречий осталось на ТЕКУЩЕЙ ревизии
+ * (правило F4 — то же, что openContradiction). Никаких обещаний выдачи:
+ * N=0 пишется как есть, возобновление доставки не предсказывается.
+ */
 export function remainingBlockNotice(
   note: MemoryObject | undefined,
   suppressions: readonly MicroNoteSuppressionRecord[]
 ): string {
-  if (note === undefined) return 'note is not in the store — the record is closed, delivery state unknown';
+  if (note === undefined) return 'note is not in the store — current revision unknown, delivery state unknown (REQ-03)';
   const revision = learningSignalRevision(note);
   const stillOpen = suppressions.filter(
-    (s) => s.memory_id === note.id && s.resolved_at === null && s.revision === revision
+    (s) => s.memory_id === note.id && s.resolved_at === null && suppressionRevisionMatches(s.revision, revision)
   ).length;
-  return stillOpen > 0
-    ? `Note still blocked by ${stillOpen} open contradiction(s) on the current revision`
-    : 'No other open contradictions on the current revision — delivery resumes';
+  const suffix = isMicroNote(note) ? '' : ' (the note is not a deliverable micro-note now)';
+  return `open contradictions on the current revision: ${stillOpen}${suffix}`;
 }
 
 /**

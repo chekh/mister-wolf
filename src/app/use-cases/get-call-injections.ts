@@ -10,7 +10,10 @@ import { checksumBlock } from '../../adapters/fs/session-delivery-registry.js';
 import { brokenWorktreeHint, type WorktreeIdentity } from '../../adapters/fs/memory-root.js';
 import { createDeliveryAdmission, createWorktreeVisibility } from './memory-delivery-admission.js';
 import { detectUnaggregatedLessons } from './detect-unaggregated-lessons.js';
-import { JournalStateUnknownError } from '../../adapters/fs/jsonl-micro-note-delivery-log.js';
+import {
+  JournalStateUnknownError,
+  JournalMigrationIncompleteError,
+} from '../../adapters/fs/jsonl-micro-note-delivery-log.js';
 import type { MicroNoteDeliveryLog, MicroNoteSuppressionRecord } from '../../ports/micro-note-delivery-log.port.js';
 import {
   selectMicroNotes,
@@ -131,6 +134,11 @@ export async function getCallInjections(
       if (e instanceof JournalStateUnknownError) {
         suspendedNotice =
           'Micro-note delivery suspended: suppression journal state unknown — run `wolf contradict restore`';
+      } else if (e instanceof JournalMigrationIncompleteError) {
+        // patch 3.4.x review (F3.7): незавершённый перенос журнала — та же
+        // приостановка с явным указанием, где перечень отказов; обещаний выдачи нет
+        suspendedNotice =
+          'Micro-note delivery suspended: journal migration is unfinished — see the refused source(s) in `wolf contradict import` / `wolf contradict restore` output; delivery stays suspended until the migration completes';
       } else {
         throw e;
       }

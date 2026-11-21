@@ -259,12 +259,18 @@ describe('journal loss and restore (3.4.0 REQ-333-4, real processes)', () => {
     const proj = createProject(root, 'R81 note');
     // без insertLegacyRow: index.sqlite отсутствует; wt-чекаутов нет
     expect(run(['brief'], proj.dir).status).toBe(0); // fresh: журнал + маркер
-    // маркер первого импорта БЕЗ источников (sources: []) — состояние, которое
-    // создаёт fresh с нулём строк (T-333-8.4); self-heal-маркер ['unknown']
-    // попадал бы в другую ветку (refused по неизвестному kind)
+    // маркер первого импорта БЕЗ источников (v2 с sources: [] — состояние,
+    // которое создаёт fresh с нулём строк, T-333-8.4; patch 3.4.x review:
+    // маркер v2 {format:2, complete:true} доказывает перенос)
     writeFileSync(
       join(proj.dir, MARKER),
-      JSON.stringify({ migrated_at: '2026-11-19T00:00:00.000Z', sources: [] }),
+      JSON.stringify({
+        format: 2,
+        migrated_at: '2026-11-19T00:00:00.000Z',
+        sources: [],
+        complete: true,
+        worktrees: [],
+      }),
       'utf-8'
     );
     rmSync(join(proj.dir, JOURNAL));

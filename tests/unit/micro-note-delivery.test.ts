@@ -9,6 +9,7 @@ import {
   deliverableMicroNote,
   suppressionBlockState,
   remainingBlockNotice,
+  suppressionRevisionMatches,
 } from '../../src/app/use-cases/micro-note-delivery.js';
 import { learningSignalRevision } from '../../src/domain/learning-signals.js';
 import type { MemoryObject } from '../../src/domain/schemas/memory-object-schema.js';
@@ -262,6 +263,9 @@ describe('selectMicroNotes (AC-2.4: worktree scope)', () => {
 // REQ-333-6 (AC-6.2): честные статусы — deliverableMicroNote (да/нет/неизвестно),
 // block: unknown для не-deliverable заметки (класс r6 «block: actual» после
 // снятия тега исчезает), remainingBlockNotice для resolve (единый текст CLI/MCP).
+// patch 3.4.x review (F5.1/F5.2): deliverableMicroNote остаётся публичным
+// helper'ом use-case (вызов из `contradict list` удалён), remainingBlockNotice
+// сообщает счётчик открытых противоречий без обещаний выдачи.
 describe('REQ-333-6: honest statuses (deliverableMicroNote, suppressionBlockState, remainingBlockNotice)', () => {
   const rev = learningSignalRevision(note('n6'));
 
@@ -308,16 +312,62 @@ describe('REQ-333-6: honest statuses (deliverableMicroNote, suppressionBlockStat
     expect(suppressionBlockState(record, undefined)).toBe('unknown');
   });
 
-  it('remainingBlockNotice: still blocked counts remaining open records on the current revision', () => {
+  // patch 3.4.x review (F5.2): remainingBlockNotice — счётчик открытых
+  // противоречий на текущей ревизии, без обещаний выдачи (N=0 так и пишется).
+  it('remainingBlockNotice: counts open records on the current revision, promises no delivery', () => {
     const n = note('n6');
-    expect(remainingBlockNotice(n, [openSup('n6', rev)])).toBe(
-      'Note still blocked by 1 open contradiction(s) on the current revision'
+    expect(remainingBlockNotice(n, [openSup('n6', rev)])).toBe('open contradictions on the current revision: 1');
+    expect(remainingBlockNotice(n, [openSup('n6', rev), openSup('n6', rev)])).toBe(
+      'open contradictions on the current revision: 2'
     );
-    expect(remainingBlockNotice(n, [openSup('n6', rev), openSup('n6', rev)])).toContain('by 2 open');
-    expect(remainingBlockNotice(n, [])).toBe('No other open contradictions on the current revision — delivery resumes');
+    expect(remainingBlockNotice(n, [])).toBe('open contradictions on the current revision: 0');
     // записи других ревизий/заметок и разрешённые не считаются
     expect(remainingBlockNotice(n, [openSup('n6', 'deadbeef'.repeat(8)), openSup('other', rev)])).toBe(
-      'No other open contradictions on the current revision — delivery resumes'
+      'open contradictions on the current revision: 0'
     );
+    // заметка не в store — ревизия и состояние доставки неизвестны (REQ-03)
+    expect(remainingBlockNotice(undefined, [openSup('gone', rev)])).toBe(
+      'note is not in the store — current revision unknown, delivery state unknown (REQ-03)'
+    );
+    // заметка есть, но не deliverable micro-note — явное уточнение
+    expect(remainingBlockNotice(note('n6', { tags: [] }), [openSup('n6', rev)])).toBe(
+      'open contradictions on the current revision: 1 (the note is not a deliverable micro-note now)'
+    );
+    // ни в одном тексте нет обещания возобновления выдачи
+    expect(remainingBlockNotice(n, [])).not.toMatch(/resumes|deliver/i);
+  });
+
+  // patch 3.4.x review (F4): единое правило сравнения ревизий.
+  describe('suppressionRevisionMatches (F4)', () => {
+    const full = 'a'.repeat(12) + 'b'.repeat(52); // 64 hex
+    const prefix12 = full.slice(0, 12);
+
+    it('exact equality matches; a 12–63-char prefix of the current revision matches too', () => {
+      expect(suppressionRevisionMatches(full, full)).toBe(true);
+      expect(suppressionRevisionMatches(prefix12, full)).toBe(true);
+      expect(suppressionRevisionMatches(full.slice(0, 30), full)).toBe(true);
+      expect(suppressionRevisionMatches(full.slice(0, 63), full)).toBe(true);
+    });
+
+    it('a non-prefix, a too-short and a full-length non-equal revision do not match', () => {
+      expect(suppressionRevisionMatches('c'.repeat(16), full)).toBe(false);
+      expect(suppressionRevisionMatches(full.slice(0, 11), full)).toBe(false); // короче 12
+      // полный 64-символьный хеш сравнивается только целиком
+      const otherFull64 = 'c'.repeat(12) + full.slice(12);
+      expect(suppressionRevisionMatches(otherFull64, full)).toBe(false);
+    });
+
+    it('the delivery filter applies the prefix rule: a divergence-bound short revision blocks the caught-up text', () => {
+      // запись зарегистрирована под наблюдаемой короткой ревизией; текст заметки
+      // «догнал» её (полный хеш с этим префиксом) → противоречие снова блокирует
+      const obj = note('n_div');
+      const short = learningSignalRevision(obj).slice(0, 12);
+      const result = selectMicroNotes([obj], { environment: 'darwin' }, {}, [suppression('n_div', short)]);
+      expect(result.delivered).toEqual([]);
+      expect(result.underReview.map((u) => u.id)).toEqual(['n_div']);
+      // чужой короткий префикс не блокирует
+      const foreign = selectMicroNotes([obj], { environment: 'darwin' }, {}, [suppression('n_div', 'f'.repeat(12))]);
+      expect(foreign.delivered.map((c) => c.id)).toEqual(['n_div']);
+    });
   });
 });

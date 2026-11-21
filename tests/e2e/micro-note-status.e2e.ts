@@ -1,9 +1,9 @@
 // REQ-333-6 (ADR-340-5 §10.3): честные статусы list/resolve.
 // T-333-6.1 (AC-6.1): две открытые записи одной заметки — resolve первой
-// называет остаточную блокировку (доставки НЕТ и help не обещает возобновление),
-// resolve второй — «delivery resumes»; MCP resolve — тот же статус.
-// T-333-6.2 (AC-6.2): сценарий r6 — тег снят (ревизия та же): list показывает
-// `block: unknown` и `deliverable: no` (обещаний доставки нет).
+// называет счётчик оставшихся открытых противоречий (доставки НЕТ и ничего не
+// обещается), resolve второй — счётчик 0; MCP resolve — тот же статус.
+// patch 3.4.x review (F5.1/F5.2): формат строки list без `deliverable:`,
+// тексты resolve — счётчик открытых противоречий без обещаний выдачи.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { rmSync, readFileSync, writeFileSync } from 'fs';
 import { spawn, type ChildProcess } from 'child_process';
@@ -11,8 +11,8 @@ import { join } from 'path';
 import { ensureBuilt, cliPath, runCli, tmpProject } from './helpers.js';
 
 const JOURNAL = join('.wolf', 'memory', 'micro-note-delivery.jsonl');
-const STILL_BLOCKED = 'Note still blocked by 1 open contradiction(s) on the current revision';
-const RESUMES = 'No other open contradictions on the current revision — delivery resumes';
+const ONE_OPEN = 'open contradictions on the current revision: 1'; // patch 3.4.x review (F5.2)
+const ZERO_OPEN = 'open contradictions on the current revision: 0'; // patch 3.4.x review (F5.2)
 
 function createMicroNoteProject(title: string): { dir: string; noteId: string } {
   const dir = tmpProject();
@@ -50,7 +50,7 @@ function report(noteId: string, reason: string, dir: string): string {
   return id;
 }
 
-describe('T-333-6.1: resolve reports the remaining block honestly; help promises nothing', () => {
+describe('T-333-6.1: resolve reports the remaining open count honestly; help promises nothing', () => {
   let proj: { dir: string; noteId: string };
   let firstId = '';
   let secondId = '';
@@ -62,12 +62,12 @@ describe('T-333-6.1: resolve reports the remaining block honestly; help promises
   });
   afterAll(() => rmSync(proj.dir, { recursive: true, force: true }));
 
-  it('resolving the FIRST of two open records names the remaining block (no delivery resumption)', () => {
+  it('resolving the FIRST of two open records names the remaining open count (no delivery promise)', () => {
     const r = runCli(['contradict', 'resolve', '--id', firstId, '--resolution', 'fix one'], proj.dir);
     expect(r.status).toBe(0);
     expect(r.stdout).toContain('Suppression resolved');
-    expect(r.stdout).toContain(STILL_BLOCKED);
-    expect(r.stdout).not.toContain('delivery resumes');
+    expect(r.stdout).toContain(ONE_OPEN);
+    expect(r.stdout).not.toMatch(/delivery resumes/i);
   });
 
   it('resolve help does not promise delivery resumption (exactly one record is closed)', () => {
@@ -76,14 +76,17 @@ describe('T-333-6.1: resolve reports the remaining block honestly; help promises
     expect(h.stdout + h.stderr).not.toMatch(/delivery resumes/i);
   });
 
-  it('resolving the SECOND record — no other open contradictions on the current revision, delivery resumes', () => {
+  it('resolving the SECOND record — zero open contradictions on the current revision, no promise', () => {
     const r = runCli(['contradict', 'resolve', '--id', secondId, '--resolution', 'fix two'], proj.dir);
     expect(r.status).toBe(0);
-    expect(r.stdout).toContain(RESUMES);
+    expect(r.stdout).toContain(ZERO_OPEN);
+    expect(r.stdout).not.toMatch(/resumes/i);
   });
 });
 
-describe('T-333-6.2 (r6): tag removed, same revision — list shows block: unknown and deliverable: no', () => {
+// patch 3.4.x review (F5.1): строка list без `deliverable:` — формат строки
+// заканчивается актуальностью блокировки `block: <state>`.
+describe('T-333-6.2 (r6): tag removed, same revision — list shows block: unknown, no deliverable field', () => {
   let proj: { dir: string; noteId: string };
   let recordId = '';
   beforeAll(() => {
@@ -100,16 +103,17 @@ describe('T-333-6.2 (r6): tag removed, same revision — list shows block: unkno
   });
   afterAll(() => rmSync(proj.dir, { recursive: true, force: true }));
 
-  it('the row shows block: unknown (was: actual — r6 defect) and deliverable: no', () => {
+  it('the row shows block: unknown (was: actual — r6 defect) and carries no deliverable field', () => {
     const list = runCli(['contradict', 'list'], proj.dir);
     expect(list.status).toBe(0);
     const row = list.stdout.split('\n').find((l) => l.includes(recordId)) ?? '';
     expect(row).not.toBe('');
     expect(row).toContain('block: unknown');
-    expect(row).toContain('deliverable: no');
+    expect(row).not.toContain('deliverable:');
+    expect(row.trim().endsWith('block: unknown')).toBe(true); // строка заканчивается блокировкой
   });
 
-  it('a deliverable note with one open record shows deliverable: yes and block: actual', () => {
+  it('a deliverable note with one open record shows block: actual (row ends with the block state)', () => {
     // контрольный сценарий без снятия тега: вторая заметка, одна открытая запись
     const added = runCli(
       [
@@ -132,7 +136,8 @@ describe('T-333-6.2 (r6): tag removed, same revision — list shows block: unkno
     const list = runCli(['contradict', 'list'], proj.dir);
     const row = list.stdout.split('\n').find((l) => l.includes(id)) ?? '';
     expect(row).toContain('block: actual');
-    expect(row).toContain('deliverable: yes');
+    expect(row).not.toContain('deliverable:');
+    expect(row.trim().endsWith('block: actual')).toBe(true);
   });
 });
 
@@ -194,7 +199,7 @@ describe('T-333-6.1 MCP stdio: resolve response carries the same remaining-block
     rmSync(proj.dir, { recursive: true, force: true });
   });
 
-  it('resolve of the first record names the remaining block; the second resumes', async () => {
+  it('resolve of the first record names the remaining open count; the second reports zero', async () => {
     await sendAndReceive({
       jsonrpc: '2.0',
       method: 'initialize',
@@ -217,9 +222,10 @@ describe('T-333-6.1 MCP stdio: resolve response carries the same remaining-block
 
     const first = await callNoteContradiction({ action: 'resolve', suppression_id: firstId, resolution: 'fix one' });
     expect(first).toContain('Suppression resolved');
-    expect(first).toContain(STILL_BLOCKED);
+    expect(first).toContain(ONE_OPEN);
+    expect(first).not.toMatch(/delivery resumes/i);
 
     const second = await callNoteContradiction({ action: 'resolve', suppression_id: secondId, resolution: 'fix two' });
-    expect(second).toContain(RESUMES);
+    expect(second).toContain(ZERO_OPEN);
   });
 });

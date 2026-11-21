@@ -261,7 +261,8 @@ describe('learning cycle end-to-end: signal → candidate → apply → micro-no
     expect(record.note_evidence).toBe(`${signal.id}@${rev.slice(0, 12)}`);
     expect(record.contradiction_evidence).toBe('session sess-e2e: rerun failed twice with retry applied');
 
-    // Step 9 — resolve: delivery resumes; the audit row keeps the resolution.
+    // Step 9 — resolve: открытых противоречий на текущей ревизии не осталось,
+    // заметка снова доставляется; audit-строка хранит решение.
     resolveMicroNoteSuppression(
       { clock, log: journal() },
       { suppression_id: record.suppression_id, resolution: 'lead confirmed: probe fixed, hint stays' }

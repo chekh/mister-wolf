@@ -476,7 +476,7 @@ export function registerMemoryTools(
     'note_contradiction',
     {
       description:
-        'Report or resolve a micro-note contradiction (suppresses/resumes delivery; both evidences kept verbatim)',
+        'Report or resolve a micro-note contradiction (suppresses delivery until resolved; both evidences kept verbatim)',
       inputSchema: NoteContradictionInputSchema,
     },
     async (input: unknown) => {
