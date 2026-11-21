@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { spawn, spawnSync, execFileSync } from 'child_process';
-import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from 'fs';
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -237,26 +237,40 @@ describe('journal lock: parallel CLI operations keep the journal consistent (REQ
     cleanupDirs.push(root);
     const proj = createProject(root, 'R2D note');
 
-    // A держит критическую секцию 7 с (> busy-тайм-аута 5 с)
+    // A держит критическую секцию на ГЕЙТЕ: лок гарантированно занят всё время
+    // жизни B (без гонки таймингов на медленных раннерах — фиксированная пауза
+    // 7 с могла закончиться раньше busy-тайм-аута поздно стартовавшего B).
+    const gate = join(root, 'release-gate');
     const a = paused(
       ['contradict', 'report', '--note', proj.noteId, '--reason', 'slow-holder', '--evidence', 'eA'],
       proj.dir,
-      { PAUSE333_APPEND_MS: '7000' },
+      { PAUSE333_APPEND_MS: '120000', PAUSE333_GATE: gate },
       join(root, 'a-pause.log')
     );
     await waitForPause(join(root, 'a-pause.log'), 'PAUSE before append');
 
-    const started = Date.now();
-    const b = run(['contradict', 'report', '--note', proj.noteId, '--reason', 'waiter', '--evidence', 'eB'], proj.dir);
-    const waitedMs = Date.now() - started;
+    const b = await new Promise<{ status: number | null; out: string; ms: number }>((resolve) => {
+      const { npm_command: _npxGuard, ...base } = process.env;
+      const child = spawn(
+        'node',
+        [CLI, 'contradict', 'report', '--note', proj.noteId, '--reason', 'waiter', '--evidence', 'eB'],
+        { cwd: proj.dir, stdio: ['ignore', 'pipe', 'pipe'], env: base }
+      );
+      let out = '';
+      child.stdout?.on('data', (d) => (out += d));
+      child.stderr?.on('data', (d) => (out += d));
+      const t0 = Date.now();
+      child.on('exit', (code) => resolve({ status: code ?? -1, out, ms: Date.now() - t0 }));
+    });
     // B ждал busy-тайм-аут (~5 с), а не отказался мгновенно и не украл лок
-    expect(waitedMs).toBeGreaterThanOrEqual(4500);
+    expect(b.ms).toBeGreaterThanOrEqual(4500);
     expect(b.status).not.toBe(0);
-    expect(b.stdout + b.stderr).toContain('delivery journal is busy');
-    expect(b.stdout + b.stderr).toContain('SQLite BEGIN IMMEDIATE');
+    expect(b.out).toContain('delivery journal is busy');
+    expect(b.out).toContain('SQLite BEGIN IMMEDIATE');
 
     // A завершился успешно, его запись на месте; лок освобождён — следующий
     // процесс продолжается сразу (без кражи и без stale-таймера)
+    writeFileSync(gate, 'release');
     const aCode = await new Promise<number | null>((resolve) => a.on('exit', (c) => resolve(c)));
     expect(aCode).toBe(0);
     expect(journalOf(proj)).toContain('slow-holder');
