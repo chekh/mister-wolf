@@ -23,11 +23,20 @@ import type { MicroNoteSuppressionRecord } from '../../src/ports/micro-note-deli
 // не завершён и спорная заметка не выдаётся; после возврата прав перенос идёт
 // без дублей. Тесты выполняются не-root — chmod 0o000 на каталог даёт EACCES;
 // права возвращаются ДО rmSync (withClosed — try/finally, cleanupDirs afterEach).
+// Root-окружение (Docker-джоба CI) игнорирует chmod — EACCES не возникает,
+// тесты (1)-(4) дали бы ложную тревогу: скипаем по getuid()===0 (громко, не
+// false-green; F-1 ревью ef61bfaf).
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const CLI = join(REPO_ROOT, 'dist', 'bootstrap', 'cli.js');
 const JOURNAL = join('.wolf', 'memory', 'micro-note-delivery.jsonl');
 const MARKER = join('.wolf', 'memory', 'micro-note-delivery.migrated.json');
+
+/** chmod 0o000 значим только для не-root: root читает «закрытые» каталоги мимо
+ *  прав. Тесты (1)-(4) зависят от EACCES — под root скипаются (условие
+ *  задокументировано в шапке файла; ревью ef61bfaf F-1). */
+const RUN_AS_NON_ROOT = process.getuid?.() !== 0;
+const itNonRoot = RUN_AS_NON_ROOT ? it : it.skip;
 const LEGACY_DIR = join('.wolf', 'cache');
 
 const cleanupDirs: string[] = [];
@@ -190,7 +199,7 @@ function withClosed<T>(dir: string, fn: () => T): T {
 }
 
 describe('P1: an inaccessible migration source (EACCES) is a refusal, not a silent absence', () => {
-  it('(1) wt journal dir closed at FIRST import: brief stays suspended and the disputed note is not delivered; after chmod back the suppression migrates without duplicates', () => {
+  itNonRoot('(1) wt journal dir closed at FIRST import: brief stays suspended and the disputed note is not delivered; after chmod back the suppression migrates without duplicates', () => {
     const root = mkdtempSync(join(tmpdir(), 'wolf-p1-first-'));
     cleanupDirs.push(root);
     const p = makeProjectWithWorktree(root, 'P1 first import note');
@@ -233,7 +242,7 @@ describe('P1: an inaccessible migration source (EACCES) is a refusal, not a sile
     expect(readFileSync(join(p.dir, JOURNAL), 'utf8')).toBe(journalAfterFix);
   }, 120_000);
 
-  it('(2) explicit `contradict import` with a closed wt source: refusal with EACCES, marker complete:false, journal bytes unchanged; after chmod back it completes without duplicates', () => {
+  itNonRoot('(2) explicit `contradict import` with a closed wt source: refusal with EACCES, marker complete:false, journal bytes unchanged; after chmod back it completes without duplicates', () => {
     const root = mkdtempSync(join(tmpdir(), 'wolf-p1-import-'));
     cleanupDirs.push(root);
     const p = makeProjectWithWorktree(root, 'P1 explicit import note');
@@ -278,7 +287,7 @@ describe('P1: an inaccessible migration source (EACCES) is a refusal, not a sile
     expect(readFileSync(join(p.dir, JOURNAL), 'utf8')).toBe(journalAfterFix);
   }, 120_000);
 
-  it('(3) legacy index.sqlite behind a closed dir: first import refuses instead of silently skipping legacy rows; after chmod back the legacy rows migrate', () => {
+  itNonRoot('(3) legacy index.sqlite behind a closed dir: first import refuses instead of silently skipping legacy rows; after chmod back the legacy rows migrate', () => {
     const { root, wt } = makeRepo('sqlite');
     seedLegacyRow(root, 'n_legacy', 'P1 legacy reason');
     seedWtJournal(wt, supLine(sup('cnr_20261119_000300', 'n_wt')));
@@ -308,7 +317,7 @@ describe('P1: an inaccessible migration source (EACCES) is a refusal, not a sile
     expect(readFileSync(join(root, JOURNAL), 'utf8')).toContain('n_legacy');
   });
 
-  it('(4) `contradict restore` with a closed legacy source among recorded sources: explicit refusal naming path+EACCES, not a silent success from the healthy wt source; after chmod back restore rebuilds everything', () => {
+  itNonRoot('(4) `contradict restore` with a closed legacy source among recorded sources: explicit refusal naming path+EACCES, not a silent success from the healthy wt source; after chmod back restore rebuilds everything', () => {
     const root = mkdtempSync(join(tmpdir(), 'wolf-p1-restore-'));
     cleanupDirs.push(root);
     const p = makeProjectWithWorktree(root, 'P1 restore note');
