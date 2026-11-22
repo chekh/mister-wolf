@@ -496,11 +496,15 @@ describe('import validate-before-append (patch 3.4.x review F3.5)', () => {
     // валидный источник НЕ дописан (validate-before-append)
     expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(before);
 
-    // исправление → импорт завершается
+    // исправление → импорт завершается: подавление перенесено РОВНО ОДИН раз
+    // (patch 3.4.2 review F-C: отказ персистится маркером complete:false, поэтому
+    // повторный import сначала завершает перенос через completion pass, и явный
+    // скан может честно показать 0 новых строк — проверяем конечное состояние)
     seedWtJournal(wt, line(sup('cnr_20261119_000031', 'n8')));
-    const report = log.importWorktreeJournals();
-    expect(report.sources[0]!.imported.suppressions).toBe(1);
+    log.importWorktreeJournals();
     expect(log.suppressions().map((s) => s.suppression_id)).toEqual(['cnr_20261119_000030', 'cnr_20261119_000031']);
+    expect((readFileSync(join(root, JOURNAL), 'utf8').match(/cnr_20261119_000031/g) ?? []).length).toBe(1);
+    expect(markerOf(root).complete).toBe(true);
   });
 
   it('a mid-file json corruption refuses the source; a torn LAST fragment is tolerated with the prefix kept', () => {
