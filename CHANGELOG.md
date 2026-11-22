@@ -4,6 +4,35 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [3.4.4] - 2026-11-22
+
+### Fixed — an inaccessible worktree path was silently skipped during source enumeration (owner review of 3.4.3)
+
+Reproduced on the published 3.4.3 build with a scripted stand (s1–s2) and
+re-run clean on the release candidate.
+
+- **A registered worktree whose parent directory is inaccessible (EACCES) was
+  dropped from the source enumeration entirely.** `listWorktreeCheckouts()`
+  treated every `realpathSync()` failure as "the entry directory vanished", so
+  closing the parent directory of a registered worktree silently removed the
+  source: the migration completed with `complete: true`, both `brief` runs
+  delivered the disputed note, an explicit `contradict import` exited 0, and
+  restoring permissions did not restore the lost suppression. Path resolution
+  failures are now parsed by errno — only ENOENT (the entry really vanished;
+  git marks it prunable) skips a path; every other error becomes a per-path
+  enumeration refusal carrying the path and the error code, fed into the
+  existing migration-refusal flow: the first import and the completion pass
+  stay incomplete and suspend `brief`/`call` delivery, an explicit
+  `contradict import` refuses and persists `complete: false`,
+  `contradict restore` refuses explicitly without writing. After permissions
+  are restored the transfer completes with the original suppression IDs and
+  without duplicates. A `git worktree list` spawn failure still fails closed
+  ("git metadata unavailable").
+
+Performance: median `brief` on a 100 000-line journal is unchanged against
+3.4.3 (interleaved A/B runs; the candidate measured equal or faster in all
+three paired sessions; criterion ≤ 1.10).
+
 ## [3.4.3] - 2026-11-22
 
 ### Fixed — an inaccessible migration source was silently skipped (owner review of 3.4.2)
