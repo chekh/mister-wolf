@@ -100,6 +100,9 @@ function makeProjectWithWorktree(parent: string, title: string): Proj {
   const noteId = added.stdout.match(/mem_[0-9a-zA-Z_]+/)?.[0] ?? '';
   expect(noteId).not.toBe('');
   const wt = join(parent, 'wt');
+  // HEAD должен существовать: git worktree add -b на unborn-ветке отказывает на
+  // старых git (образ Docker-джобы), новые версии допускают — делаем явный commit
+  execFileSync('git', ['commit', '--allow-empty', '-q', '-m', 'init'], { cwd: dir });
   execFileSync('git', ['worktree', 'add', '-q', wt, '-b', 'wtb'], { cwd: dir });
   return { dir, noteId, wt };
 }
