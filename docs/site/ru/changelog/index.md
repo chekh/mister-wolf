@@ -10,6 +10,32 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [3.4.3] - 2026-11-22
+
+### Fixed — an inaccessible migration source was silently skipped (owner review of 3.4.2)
+
+Reproduced on the published 3.4.2 build with a scripted stand (s1–s4) and
+re-run clean on the release candidate.
+
+- **A source whose directory is inaccessible (EACCES) was treated as absent.**
+  `existsSync()` swallows EACCES, so a closed worktree-journal directory (or an
+  unreadable legacy SQLite) was silently skipped: the migration completed with
+  `complete: true` and the disputed note was delivered even though its
+  suppression lived in the inaccessible source; restoring permissions did not
+  restore the suppression. Source checks now stat with errno parsing — only
+  ENOENT means "the source is absent"; every other error goes through the
+  existing import-refusal path, with the path and the error code in the
+  refusal. The migration stays incomplete and `brief`/`call` suspend delivery
+  while access is closed; after permissions are restored the transfer completes
+  without duplicates. This applies to the first import, the completion pass, an
+  explicit `contradict import` (its refusal persists as `complete: false`), and
+  `contradict restore` (explicit refusal, nothing written). A genuinely absent
+  source (ENOENT) is still legitimately skipped.
+
+Performance: median `brief` on a 100 000-line journal is unchanged against
+3.4.2 (interleaved A/B runs; the candidate measured equal or faster in all
+three paired sessions; criterion ≤ 1.10).
+
 ## [3.4.2] - 2026-11-22
 
 ### Fixed — three import error-handling defects from the 3.4.1 owner review
