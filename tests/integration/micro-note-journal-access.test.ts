@@ -375,4 +375,104 @@ describe('P1: an inaccessible migration source (EACCES) is a refusal, not a sile
     expect(markerOf(root).complete).toBe(true);
     expect(readFileSync(join(root, JOURNAL), 'utf8')).not.toContain('cnr_20261119_000500');
   });
+
+  itNonRoot(
+    '(6) KEY owner scenario: the closed PARENT of a registered worktree outside the project dir suspends the migration (the source must not be silently dropped); after chmod back the original suppression ID migrates without duplicates and the disputed note stays hidden',
+    () => {
+      const base = mkdtempSync(join(tmpdir(), 'wolf-p1-owner-'));
+      cleanupDirs.push(base);
+      // проект и его родной wt — внутри proj-parent; ВТОРОЙ wt регистрируется
+      // в ОТДЕЛЬНОМ родителе вне каталога проекта (сценарий владельца: закрыт
+      // РОДИТЕЛЬ зарегистрированного wt, каталог проекта не тронут)
+      const p = makeProjectWithWorktree(join(base, 'proj-parent'), 'P1 owner note');
+      const externalParent = join(base, 'wt-parent');
+      mkdirSync(externalParent);
+      const wt2 = join(externalParent, 'wt-ext');
+      execFileSync('git', ['worktree', 'add', '-q', wt2, '-b', 'wtb2'], { cwd: p.dir });
+      const revision = firstBrief(p, 'P1 owner note'); // фикстура: ревизия заметки
+      // fresh-состояние: журнал и маркер удалены — следующий доступ = ПЕРВЫЙ импорт
+      rmSync(join(p.dir, JOURNAL));
+      rmSync(join(p.dir, MARKER));
+      seedWtJournal(wt2, supLine(sup('cnr_20261119_000600', p.noteId, revision)));
+
+      withClosed(externalParent, () => {
+        // ПЕРВЫЙ brief (первый импорт): перечисление wt2 отбивается на
+        // realpath (EACCES на родителе) → отказ переноса, suspended, спорная
+        // заметка НЕ выдана, ничего не опубликовано (дефект 3.4.3: путь молча
+        // выбрасывался → перенос «завершался» и заметка выдавалась)
+        const first = runCli(['brief'], p.dir);
+        expect(first.status).toBe(0);
+        expect(first.stdout).toContain('Micro-Notes Delivery Suspended');
+        expect(first.stdout).toMatch(/migration is unfinished/);
+        expect(first.stdout).not.toContain('P1 owner note');
+        expect(existsSync(join(p.dir, JOURNAL))).toBe(false);
+        expect(existsSync(join(p.dir, MARKER))).toBe(false);
+        // ВТОРОЙ brief: отказ персистентен (первый импорт повторяется)
+        const second = runCli(['brief'], p.dir);
+        expect(second.status).toBe(0);
+        expect(second.stdout).toContain('Micro-Notes Delivery Suspended');
+        expect(second.stdout).not.toContain('P1 owner note');
+        // явный import: отказ с путём wt-источника и EACCES
+        const why = runCli(['contradict', 'import'], p.dir);
+        const whyOut = why.stdout + why.stderr;
+        expect(whyOut).toMatch(/migration is unfinished/);
+        expect(whyOut).toContain(wt2);
+        expect(whyOut).toMatch(/EACCES/);
+      });
+
+      // права возвращены → перенос подавления: исходный ID, без дублей,
+      // спорная заметка скрыта (подавлена)
+      const fixed = runCli(['brief'], p.dir);
+      expect(fixed.status).toBe(0);
+      expect(fixed.stdout).not.toContain('Micro-Notes Delivery Suspended');
+      expect(fixed.stdout).not.toContain('P1 owner note');
+      expect(markerOf(p.dir).complete).toBe(true);
+      const journalAfterFix = readFileSync(join(p.dir, JOURNAL), 'utf8');
+      expect((journalAfterFix.match(/cnr_20261119_000600/g) ?? []).length).toBe(1);
+
+      // F-C-интеракция: повторный отказ явного import по EACCES-перечислению
+      // персистит complete:false; следующий brief снова suspended
+      seedWtJournal(wt2, supLine(sup('cnr_20261119_000700', p.noteId, revision)));
+      withClosed(externalParent, () => {
+        const refused = runCli(['contradict', 'import'], p.dir);
+        expect(refused.status).not.toBe(0);
+        const out = refused.stdout + refused.stderr;
+        expect(out).toMatch(/migration is unfinished/);
+        expect(out).toContain(wt2);
+        expect(out).toMatch(/EACCES/);
+        expect(markerOf(p.dir).complete).toBe(false);
+        const suspended = runCli(['brief'], p.dir);
+        expect(suspended.status).toBe(0);
+        expect(suspended.stdout).toContain('Micro-Notes Delivery Suspended');
+        expect(suspended.stdout).not.toContain('P1 owner note');
+      });
+
+      // возврат прав → completion pass: 000700 переносится, 000600 без дублей
+      const final = runCli(['brief'], p.dir);
+      expect(final.status).toBe(0);
+      expect(final.stdout).not.toContain('Micro-Notes Delivery Suspended');
+      expect(markerOf(p.dir).complete).toBe(true);
+      const journalFinal = readFileSync(join(p.dir, JOURNAL), 'utf8');
+      expect((journalFinal.match(/cnr_20261119_000600/g) ?? []).length).toBe(1);
+      expect((journalFinal.match(/cnr_20261119_000700/g) ?? []).length).toBe(1);
+      // повторный brief стабилен
+      const repeat = runCli(['brief'], p.dir);
+      expect(repeat.status).toBe(0);
+      expect(readFileSync(join(p.dir, JOURNAL), 'utf8')).toBe(journalFinal);
+    },
+    120_000
+  );
+
+  it('(7) regression: a registered worktree REMOVED from disk (ENOENT on realpath) is still honestly skipped; the migration completes without it and its path is absent from the marker', () => {
+    const { root, wt } = makeRepo('enoent-wt');
+    seedLegacyRow(root, 'n_legacy', 'P1 enoent wt legacy');
+    seedWtJournal(wt, supLine(sup('cnr_20261119_000800', 'n_wt')));
+    rmSync(wt, { recursive: true, force: true }); // каталог wt удалён с диска
+    const log = new JsonlMicroNoteDeliveryLog(root);
+    // прежнее поведение: исчезнувшая запись пропускается (git пометит prunable)
+    expect(log.suppressions().map((s) => s.suppression_id)).toEqual(['cnr_20261001_000001']);
+    expect(markerOf(root).complete).toBe(true);
+    expect(markerOf(root).worktrees).toEqual([]); // удалённый wt не в маркере
+    expect(readFileSync(join(root, JOURNAL), 'utf8')).not.toContain('cnr_20261119_000800');
+  });
 });

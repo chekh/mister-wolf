@@ -503,10 +503,14 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
    * правилом. null от git при наличии `.git` в корне — отказ «git metadata
    * unavailable» (добавляется в refusals, причина невозможна только вместе с
    * отказом); null без `.git` — linked worktree нет по построению (пустой
-   * список, перенос возможен).
+   * список, перенос возможен). patch 3.4.4 review (P1): по-путевые отказы
+   * перечисления (realpath EACCES/…, директива владельца) попадают в refusals
+   * → все существующие механики отказа (JournalMigrationIncompleteError на
+   * первом импорте/completion/явном import, явный отказ restore, F-C
+   * персистенция complete:false) срабатывают без нового «молчания».
    */
   private enumerateWtSourcesOrFail(refusals: string[]): string[] {
-    const paths = this.worktreeSourcePaths();
+    const paths = this.worktreeSourcePaths(refusals);
     if (paths !== null) return paths;
     if (existsSync(join(this.root, '.git'))) {
       refusals.push('(git worktree list): git metadata unavailable (worktree enumeration failed)');
@@ -562,17 +566,20 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
   }
 
   /** Пути wt-источников (ADR-340-3): живые чекауты; корневой исключён — его
-   *  журнал и есть цель. null — сбой git-метаданных. */
-  private worktreeSourcePaths(): string[] | null {
-    const paths = listWorktreeCheckouts(this.root);
-    if (paths === null) return null;
+   *  журнал и есть цель. patch 3.4.4 review (P1): по-путевые отказы
+   *  перечисления добавляются в refusals с путём и кодом. null — сбой
+   *  git-метаданных. */
+  private worktreeSourcePaths(refusals: string[]): string[] | null {
+    const enumeration = listWorktreeCheckouts(this.root);
+    if (enumeration === null) return null;
+    refusals.push(...enumeration.refusals);
     let self: string;
     try {
       self = realpathSync(this.root);
     } catch {
-      return paths;
+      return enumeration.paths;
     }
-    return paths.filter((p) => p !== self);
+    return enumeration.paths.filter((p) => p !== self);
   }
 
   /**
