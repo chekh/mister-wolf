@@ -55,16 +55,30 @@ export function resolveMemoryRoot(baseDir: string): MemoryRootInfo {
   }
 }
 
+/** Результат перечисления `git worktree list --porcelain -z`. paths —
+ *  канонизированные (realpath) пути живых чекаутов; refusals — по-путевые
+ *  отказы канонизации (путь НЕ включён в paths). */
+export interface WorktreeEnumeration {
+  paths: string[];
+  refusals: string[];
+}
+
 /** Полные пути живых записей `git worktree list --porcelain -z` (REQ-333-1,
  *  ADR-340-3: перечисление источников импорта). patch 3.4.x review (F1.1):
  *  формат -z (NUL-разделители) — путь записи не может содержать NUL, поэтому
  *  путь = подстрока после префикса `worktree ` до NUL БЕЗ trim: имена
- *  каталогов с пробелами в конце валидны и не искажаются. Каталог записи,
- *  исчезнувший с диска, пропускается (git пометит prunable); realpathSync
- *  канонизирует каждый путь. null — сбой git-спавна (fail-closed). Без кэша:
- *  вызывается в редких критических секциях импорта/restore, не на горячем
- *  пути доставки. */
-export function listWorktreeCheckouts(baseDir: string): string[] | null {
+ *  каталогов с пробелами в конце валидны и не искажаются. patch 3.4.4 review
+ *  (P1, директива владельца): errno-разбор realpathSync — ТОЛЬКО ENOENT
+ *  означает «запись исчезла с диска» (git пометит prunable, источник
+ *  пропускается, прежнее поведение); EACCES/EPERM/EIO/ENOTDIR/… — путь НЕ
+ *  попадает в paths, а отказ с путём и кодом попадает в refusals: закрытый
+ *  родитель зарегистрированного worktree не имеет права молча выбрасывать
+ *  источник из перечисления (иначе перенос «завершается» без чужого
+ *  подавления и выдаётся спорная заметка — вызывающий переносит отказ в
+ *  механику отказа миграции). null — сбой git-спавна (fail-closed, design §5).
+ *  Без кэша: вызывается в редких критических секциях импорта/restore, не на
+ *  горячем пути доставки. */
+export function listWorktreeCheckouts(baseDir: string): WorktreeEnumeration | null {
   try {
     const out = execFileSync('git', ['worktree', 'list', '--porcelain', '-z'], {
       cwd: baseDir,
@@ -72,16 +86,20 @@ export function listWorktreeCheckouts(baseDir: string): string[] | null {
       timeout: 10_000,
       stdio: ['ignore', 'pipe', 'ignore'],
     });
-    const result: string[] = [];
+    const paths: string[] = [];
+    const refusals: string[] = [];
     for (const record of out.split('\0')) {
       if (!record.startsWith('worktree ')) continue;
+      const raw = record.slice('worktree '.length);
       try {
-        result.push(realpathSync(record.slice('worktree '.length)));
-      } catch {
-        // каталог записи исчез — git пометит prunable; источником он не становится
+        paths.push(realpathSync(raw));
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code === 'ENOENT') continue; // запись исчезла — prunable
+        // недоступный путь — отказ с путём и кодом (не молчаливое отсутствие)
+        refusals.push(`${raw}: ${(e as Error).message}`);
       }
     }
-    return result;
+    return { paths, refusals };
   } catch {
     return null; // битые git-метаданные — fail-closed (design §5)
   }
@@ -100,7 +118,12 @@ function liveWorktreeBasenames(baseDir: string): string[] | null {
   }
   if (liveBasenamesCache.has(key)) return liveBasenamesCache.get(key)!;
   const checkouts = listWorktreeCheckouts(baseDir);
-  const result: string[] | null = checkouts === null ? null : checkouts.map((p) => basename(p));
+  // patch 3.4.4 review (P1): недоступный путь делает перечисление неполным —
+  // уникальность legacy-имени неизвестна → fail-closed (identity null:
+  // legacy-токены не маппятся, чужой scope недоступен — §5), не молчаливый
+  // подсчёт по неполному списку.
+  const result: string[] | null =
+    checkouts === null || checkouts.refusals.length > 0 ? null : checkouts.paths.map((p) => basename(p));
   liveBasenamesCache.set(key, result);
   return result;
 }

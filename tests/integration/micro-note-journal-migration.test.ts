@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { execFileSync } from 'child_process';
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -33,6 +34,11 @@ import type { MicroNoteSuppressionRecord } from '../../src/ports/micro-note-deli
 
 const JOURNAL = join('.wolf', 'memory', 'micro-note-delivery.jsonl');
 const MARKER = join('.wolf', 'memory', 'micro-note-delivery.migrated.json');
+
+/** chmod-тесты значимы только для не-root (root читает «закрытые» каталоги
+ *  мимо прав; прецедент F-1 ревью ef61bfaf) — скипаются громко, не false-green. */
+const RUN_AS_NON_ROOT = process.getuid?.() !== 0;
+const itNonRoot = RUN_AS_NON_ROOT ? it : it.skip;
 
 function sup(
   id: string,
@@ -141,8 +147,10 @@ describe('listWorktreeCheckouts (patch 3.4.x review F1.1: porcelain -z, no trim)
     const trailingSpaceDir = join(root, 'wt ');
     git(['worktree', 'add', '-q', trailingSpaceDir, '-b', 'wtb']);
 
-    const paths = listWorktreeCheckouts(main);
-    expect(paths).not.toBeNull();
+    const enumeration = listWorktreeCheckouts(main);
+    expect(enumeration).not.toBeNull();
+    expect(enumeration!.refusals).toEqual([]); // все пути канонизированы
+    const paths = enumeration!.paths;
     const realMain = execFileSync('git', ['rev-parse', '--show-toplevel'], { cwd: main, encoding: 'utf8' }).trim();
     // realpath каталогов: listWorktreeCheckouts канонизирует пути
     const realTrailingSpace = realpathSync(trailingSpaceDir);
@@ -151,7 +159,6 @@ describe('listWorktreeCheckouts (patch 3.4.x review F1.1: porcelain -z, no trim)
     // -z-парсинг не «склеивает» записи: два чекаута → две записи
     expect(paths!.length).toBe(2);
   });
-
   it('a vanished worktree directory is skipped; a broken git repo yields null (fail-closed)', () => {
     const root = mkdtempSync(join(tmpdir(), 'wolf-wt-vanish-'));
     cleanupDirs.push(root);
@@ -168,15 +175,61 @@ describe('listWorktreeCheckouts (patch 3.4.x review F1.1: porcelain -z, no trim)
     git(['worktree', 'add', '-q', wt, '-b', 'wtb']);
     rmSync(wt, { recursive: true, force: true }); // каталог исчез
 
-    const paths = listWorktreeCheckouts(main);
-    expect(paths).not.toBeNull();
-    expect(paths!.some((p) => p === wt)).toBe(false);
+    const enumeration = listWorktreeCheckouts(main);
+    expect(enumeration).not.toBeNull();
+    expect(enumeration!.paths.some((p) => p === wt)).toBe(false);
+    expect(enumeration!.refusals).toEqual([]); // исчезнувшая запись — не отказ
 
     // не-git каталог: git-спавн падает → null (fail-closed)
     const nogit = mkdtempSync(join(tmpdir(), 'wolf-wt-nogit-'));
     cleanupDirs.push(nogit);
     expect(listWorktreeCheckouts(nogit)).toBeNull();
   });
+
+  itNonRoot(
+    'patch 3.4.4 review (P1): a registered worktree behind an INACCESSIBLE PARENT is a per-path refusal (EACCES) outside paths, not a silent absence; ENOENT (removed dir) stays a skip',
+    () => {
+      const root = mkdtempSync(join(tmpdir(), 'wolf-wt-eacces-'));
+      cleanupDirs.push(root);
+      mkdirSync(join(root, 'main'));
+      const main = join(root, 'main');
+      const git = (args: string[]): void => execFileSync('git', args, { cwd: main, stdio: 'pipe' });
+      git(['init', '-q', '.']);
+      git(['config', 'user.email', 't@t.local']);
+      git(['config', 'user.name', 't']);
+      writeFileSync(join(main, 'f.txt'), 'x\n');
+      git(['add', '.']);
+      git(['commit', '-qm', 'init']);
+      // wt в ОТДЕЛЬНОМ родителе (сценарий владельца): закрывается РОДИТЕЛЬ,
+      // не сам wt — realpath записи отбивается на родителе с EACCES
+      const wtParent = join(root, 'wt-parent');
+      mkdirSync(wtParent);
+      const wt = join(wtParent, 'wt');
+      git(['worktree', 'add', '-q', wt, '-b', 'wtb']);
+      const realMain = realpathSync(main);
+
+      chmodSync(wtParent, 0o000);
+      try {
+        const enumeration = listWorktreeCheckouts(main);
+        expect(enumeration).not.toBeNull(); // git-спавн успешен (проверено: git отдаёт запись + prunable)
+        expect(enumeration!.refusals).toHaveLength(1);
+        expect(enumeration!.refusals[0]).toContain(wt); // путь и код в отказе
+        expect(enumeration!.refusals[0]).toMatch(/EACCES/);
+        expect(enumeration!.paths).toEqual([realMain]); // закрытый путь НЕ в путях
+      } finally {
+        chmodSync(wtParent, 0o755); // права возвращаются ДО rmSync в afterEach
+      }
+
+      // права возвращены → путь снова перечисляется (канонизирован)
+      expect(listWorktreeCheckouts(main)!.paths).toContain(realpathSync(wt));
+
+      // ENOENT (каталог wt удалён) — по-прежнему честный пропуск без отказа
+      rmSync(wt, { recursive: true, force: true });
+      const after = listWorktreeCheckouts(main)!;
+      expect(after.paths).toEqual([realMain]);
+      expect(after.refusals).toEqual([]);
+    }
+  );
 });
 
 describe('completion pass (patch 3.4.x review F1.2: marker v2 proves the migration)', () => {
