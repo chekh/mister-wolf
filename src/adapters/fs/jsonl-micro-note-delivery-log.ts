@@ -113,6 +113,39 @@ export type RestoreReport = ImportReport;
 const UNRECOVERABLE_TEXT =
   'records appended to the shared journal after the migration are unrecoverable: the append-only carrier keeps no copies (restore rebuilds from the frozen index.sqlite snapshot and pre-upgrade worktree journals)';
 
+/** Состояние ИСТОЧНИКА переноса по пути (patch 3.4.3 review, P1). */
+type SourceState = { state: 'absent' } | { state: 'ok' } | { state: 'refused'; reason: string };
+
+/**
+ * Состояние ИСТОЧНИКА переноса (patch 3.4.3 review, P1): statSync с разбором
+ * errno вместо existsSync. existsSync возвращает false и для «нет», и для
+ * «нет прав» — недоступный источник (EACCES/EPERM/EIO/ENOTDIR/…) молча
+ * считался отсутствующим, перенос завершался и последующий brief выдавал
+ * спорную заметку, чьё подавление лежит в закрытом источнике. Контракт
+ * (директива владельца ревью): ТОЛЬКО ENOENT означает «источника нет»
+ * (прежнее поведение «отсутствующий пропускается»); любой другой код —
+ * { state:'refused', reason } с путём и кодом ошибки, отказ идёт по
+ * существующим путям незавершённого переноса (JournalMigrationIncompleteError
+ * на первом импорте/completion pass/явном import, явный отказ restore).
+ * Проверки СОБСТВЕННЫХ файлов адаптера (журнал/маркер проекта в load()/
+ * ensureJournalState/persistIncompleteImportMarker/migrationProven/
+ * buildMergeStateFromJournal/restoreFromSources-precondition, repairTail,
+ * .git-гейт) намеренно остаются на existsSync — прежняя семантика: это не
+ * источники переноса, а состояние самого журнала/окружения, где false
+ * («файла нет») уже имеет осмысленную ветку обработки, а недоступность
+ * собственного файла проявится на последующем чтении/записи с полной
+ * диагностикой, не как молчаливая потеря переноса.
+ */
+function sourceState(path: string): SourceState {
+  try {
+    statSync(path);
+    return { state: 'ok' };
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return { state: 'absent' };
+    return { state: 'refused', reason: `${path}: ${(e as Error).message}` };
+  }
+}
+
 /** Канонический JSON (сортировка ключей) — детерминированное сравнение записей импорта. */
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
@@ -401,7 +434,12 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
     const sqlitePath = indexPath(this.root);
     const refusals: string[] = [];
     let legacyLines: JournalLine[] = [];
-    if (existsSync(sqlitePath)) {
+    // patch 3.4.3 review (P1): источник — sourceState (statSync + errno), не
+    // existsSync: EACCES/… — отказ переноса, ENOENT — источника нет
+    const sqliteState = sourceState(sqlitePath);
+    if (sqliteState.state === 'refused') {
+      refusals.push(sqliteState.reason);
+    } else if (sqliteState.state === 'ok') {
       try {
         legacyLines = this.collectLegacyLines();
       } catch (e) {
@@ -426,7 +464,7 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
     };
     const out: JournalLine[] = [];
     const usedKinds = new Set<string>();
-    if (existsSync(sqlitePath)) {
+    if (sqliteState.state === 'ok') {
       const reportSrc: ImportSourceReport = {
         path: sqlitePath,
         kind: 'index.sqlite',
@@ -554,12 +592,18 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
     const out: Array<{ path: string; lines: JournalLine[]; refused?: string }> = [];
     for (const wt of [...paths].sort()) {
       const j = join(wt, '.wolf', 'memory', 'micro-note-delivery.jsonl');
-      if (!existsSync(j)) continue;
       try {
         const lines: JournalLine[] = [];
         readJournalLines(readFileSync(j, 'utf8'), j, (line) => lines.push(line));
         out.push({ path: wt, lines });
       } catch (e) {
+        // patch 3.4.3 review (P1): источник — errno-разбор, не existsSync-пропуск.
+        // ТОЛЬКО ENOENT — источника нет (прежнее «отсутствующий пропускается»);
+        // EACCES/… — отказ источника с путём и кодом (readFileSync называет оба):
+        // закрытый каталог журнала приостанавливает перенос (все вызывающие
+        // отказы ведут к JournalMigrationIncompleteError / отказу restore),
+        // а не трактуется как «журнала в worktree нет».
+        if ((e as NodeJS.ErrnoException).code === 'ENOENT') continue;
         out.push({ path: wt, lines: [], refused: (e as Error).message });
       }
     }
@@ -756,7 +800,12 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
       const sqlitePath = indexPath(this.root);
       const refusals: string[] = [];
       let legacyLines: JournalLine[] = [];
-      if (existsSync(sqlitePath)) {
+      // patch 3.4.3 review (P1): источник — sourceState (statSync + errno), не
+      // existsSync: EACCES/… — отказ restore с перечнем, ENOENT — источника нет
+      const sqliteState = sourceState(sqlitePath);
+      if (sqliteState.state === 'refused') {
+        refusals.push(sqliteState.reason);
+      } else if (sqliteState.state === 'ok') {
         try {
           legacyLines = this.collectLegacyLines();
         } catch (e) {
@@ -784,7 +833,7 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
       const usedKinds = new Set<string>();
       const report: ImportReport = { sources: [], unrecoverable: UNRECOVERABLE_TEXT };
 
-      if (existsSync(sqlitePath)) {
+      if (sqliteState.state === 'ok') {
         const reportSrc: ImportSourceReport = {
           path: sqlitePath,
           kind: 'index.sqlite',
@@ -1015,7 +1064,13 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
    */
   private collectLegacyLines(): JournalLine[] {
     const legacyPath = indexPath(this.root);
-    if (!existsSync(legacyPath)) return [];
+    // patch 3.4.3 review (P1): источник — sourceState (statSync + errno), не
+    // existsSync: ТОЛЬКО ENOENT — «источника нет» (пустой массив); EACCES/… —
+    // отказ источника (throw с путём и кодом; вызывающий добавляет его в
+    // refusals/отказ restore), не молчаливый пропуск закрытого legacy-источника
+    const st = sourceState(legacyPath);
+    if (st.state === 'absent') return [];
+    if (st.state === 'refused') throw new UserFacingError(st.reason);
     const db = new Database(legacyPath, { readonly: true, fileMustExist: true });
     try {
       const tableExists = (name: string): boolean =>
