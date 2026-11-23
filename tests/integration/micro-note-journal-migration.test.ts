@@ -40,6 +40,17 @@ const MARKER = join('.wolf', 'memory', 'micro-note-delivery.migrated.json');
 const RUN_AS_NON_ROOT = process.getuid?.() !== 0;
 const itNonRoot = RUN_AS_NON_ROOT ? it : it.skip;
 
+/** Закрыть каталог (EACCES для не-root) на время fn; вернуть права ДО выхода —
+ *  cleanup afterEach делает rmSync, который иначе упал бы на закрытом каталоге. */
+function withClosed<T>(dir: string, fn: () => T): T {
+  chmodSync(dir, 0o000);
+  try {
+    return fn();
+  } finally {
+    chmodSync(dir, 0o755);
+  }
+}
+
 function sup(
   id: string,
   memoryId: string,
@@ -328,6 +339,64 @@ describe('completion pass (patch 3.4.x review F1.2: marker v2 proves the migrati
     ]);
     expect(markerOf(root).complete).toBe(true);
   });
+
+  itNonRoot(
+    'a per-path enumeration refusal (the closed PARENT of a registered worktree) suspends the completion pass with the wt PATH and EACCES — reasons as at fresh enumeration (R-1); after chmod back the completion succeeds without duplicates',
+    () => {
+      const { root, wt } = makeRepo('comp-enum-refused');
+      // второй wt регистрируется в ОТДЕЛЬНОМ родителе (паттерн кейса (6):
+      // закрытие бьёт ТОЛЬКО перечисление этого wt, проект и родной wt
+      // остаются доступными → отказ именно ПО-ПУТЕВОЙ, не сбой git-спавна)
+      const externalParent = mkdtempSync(join(tmpdir(), 'wolf-r1-wt-parent-'));
+      cleanupDirs.push(externalParent);
+      const wt2 = join(externalParent, 'wt-ext');
+      execFileSync('git', ['worktree', 'add', '-q', wt2, '-b', 'wtb2'], { cwd: root });
+      // лечебное состояние: общий журнал + legacy-маркер (без format) →
+      // следующий доступ = completion pass; wt2-журнал содержит подавление
+      mkdirSync(join(root, '.wolf', 'memory'), { recursive: true });
+      writeFileSync(join(root, JOURNAL), line(sup('cnr_20261119_001101', 'nR1')), 'utf8');
+      seedLegacyMarker(root);
+      seedWtJournal(wt2, line(sup('cnr_20261119_001102', 'nR2')));
+      const before = readFileSync(join(root, JOURNAL), 'utf8');
+
+      const refused = withClosed(externalParent, () => {
+        let message = '';
+        try {
+          new JsonlMicroNoteDeliveryLog(root).suppressions();
+        } catch (e) {
+          message = (e as Error).message;
+        }
+        return message;
+      });
+      // причина названа как при свежем перечислении: ПУТЬ wt-источника и EACCES
+      expect(refused).toMatch(/migration is unfinished/);
+      expect(refused).toContain(wt2);
+      expect(refused).toMatch(/EACCES/);
+      // ничего не написано: журнал и legacy-маркер побайтово не изменены
+      expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(before);
+      expect(markerOf(root).format).toBeUndefined();
+
+      // отказ персистентен: следующий доступ (новый экземпляр) повторяет его
+      withClosed(externalParent, () => {
+        let message = '';
+        try {
+          new JsonlMicroNoteDeliveryLog(root).suppressions();
+        } catch (e) {
+          message = (e as Error).message;
+        }
+        expect(message).toMatch(/migration is unfinished/);
+        expect(message).toContain(wt2);
+        expect(message).toMatch(/EACCES/);
+      });
+
+      // права возвращены → completion pass завершается: обе записи, без дублей
+      const ids = new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id);
+      expect(ids).toEqual(['cnr_20261119_001101', 'cnr_20261119_001102']);
+      expect(markerOf(root).complete).toBe(true);
+      expect((readFileSync(join(root, JOURNAL), 'utf8').match(/cnr_20261119_001102/g) ?? []).length).toBe(1);
+    },
+    120_000
+  );
 });
 
 describe('first import validate-before-publish (patch 3.4.x review F3.4)', () => {
@@ -621,6 +690,254 @@ describe('loss semantics unchanged (patch 3.4.x review: «журнал отсу�
     );
     expect(() => log.suppressions()).toThrow(JournalStateUnknownError);
     expect(existsSync(join(root, JOURNAL))).toBe(false);
+  });
+});
+
+// patch 3.4.5 review (P1-1): ошибочный complete:true от старых версий не
+// доверяется навсегда. Маркер v2 хранит sources[] и worktrees[] — они сверяются
+// с ТЕКУЩИМ перечислением источников (legacy SQLite путь + wt пути): новый
+// wt-путь, которого нет в worktrees (3.4.3 молча выбрасывала wt с недоступным
+// родителем — маркер worktrees:[] доказан стендом repro-344), или существующий
+// legacy SQLite, не записанный в sources (3.4.2 молча пропускала недоступный
+// SQLite), делают маркер «подозрительным» → completion pass. Путь лечения
+// обязан покрывать SQLite + wt; после успеха маркер переписывается актуальными
+// списками (самоисцеление, без повторных прогонов на каждом доступе).
+describe('patch 3.4.5 review P1-1: suspicious proven markers (recorded lists vs current enumeration)', () => {
+  it('(1 wt) a proven marker whose worktrees list lacks an existing wt with a legacy record (real 3.4.3 shape): the first access imports the wt record once and heals the marker; the second access is stable', () => {
+    const { root, wt } = makeRepo('p343-wt');
+    mkdirSync(join(root, '.wolf', 'memory'), { recursive: true });
+    writeFileSync(join(root, JOURNAL), line(sup('cnr_20261119_000050', 'nW1')), 'utf8');
+    // маркер реальной 3.4.3 (стенд repro-344): complete:true, wt-источник выброшен
+    writeFileSync(
+      join(root, MARKER),
+      JSON.stringify({
+        format: 2,
+        migrated_at: '2026-11-01T00:00:00.000Z',
+        sources: [],
+        complete: true,
+        worktrees: [],
+      }),
+      'utf8'
+    );
+    seedWtJournal(wt, line(sup('cnr_20261119_000051', 'nW2')));
+
+    const ids = new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id);
+    expect(ids).toEqual(['cnr_20261119_000050', 'cnr_20261119_000051']); // довосстановлен первым доступом
+    const marker = markerOf(root);
+    expect(marker.worktrees).toContain(realpathSync(wt)); // маркер самоисцелился актуальным списком
+    expect((readFileSync(join(root, JOURNAL), 'utf8').match(/cnr_20261119_000051/g) ?? []).length).toBe(1);
+
+    // второй доступ стабилен: журнал байт-в-байт, маркер не переписан (нет повторного completion)
+    const journalSnapshot = readFileSync(join(root, JOURNAL), 'utf8');
+    const markerSnapshot = readFileSync(join(root, MARKER), 'utf8');
+    expect(new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id)).toEqual(ids);
+    expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(journalSnapshot);
+    expect(readFileSync(join(root, MARKER), 'utf8')).toBe(markerSnapshot);
+  });
+
+  it('(2 sqlite) a proven marker whose sources list lacks the existing legacy SQLite (real 3.4.2 shape): the first access migrates the legacy rows once and heals the marker; the second access is stable', () => {
+    const { root, wt } = makeRepo('p342-sqlite');
+    seedLegacyRow(root, 'n_legacy', '3.4.2 silently skipped legacy');
+    mkdirSync(join(root, '.wolf', 'memory'), { recursive: true });
+    writeFileSync(join(root, JOURNAL), line(sup('cnr_20261119_000052', 'nS1')), 'utf8');
+    // маркер реальной 3.4.2 (стенд A2): contradict import с exit 0 пишет
+    // complete:true с sources:[] — ЗАТИРАЯ честный список с index.sqlite;
+    // index.sqlite молча пропущен, wt-перечисление тех лет сохранено
+    writeFileSync(
+      join(root, MARKER),
+      JSON.stringify({
+        format: 2,
+        migrated_at: '2026-11-01T00:00:00.000Z',
+        sources: [],
+        complete: true,
+        worktrees: [realpathSync(wt)],
+      }),
+      'utf8'
+    );
+    seedWtJournal(wt, line(sup('cnr_20261119_000053', 'nS2')));
+
+    const ids = new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id);
+    expect(ids).toContain('cnr_20261001_000001'); // legacy-строка перенесена (день suppressed_at)
+    expect(ids).toContain('cnr_20261119_000052');
+    expect(ids).toContain('cnr_20261119_000053');
+    expect(markerOf(root).sources).toContain(indexPath(root)); // path-форма: самоисцеление
+    expect((readFileSync(join(root, JOURNAL), 'utf8').match(/cnr_20261001_000001/g) ?? []).length).toBe(1);
+
+    const journalSnapshot = readFileSync(join(root, JOURNAL), 'utf8');
+    const markerSnapshot = readFileSync(join(root, MARKER), 'utf8');
+    expect(new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id)).toEqual(ids);
+    expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(journalSnapshot);
+    expect(readFileSync(join(root, MARKER), 'utf8')).toBe(markerSnapshot);
+  });
+
+  it('(3 benign) a proven marker whose lists match the current enumeration is trusted without a completion pass: journal and marker stay byte-identical', () => {
+    const { root, wt } = makeRepo('benign-match');
+    seedWtJournal(wt, line(sup('cnr_20261119_000054', 'nB1')));
+    const ids = new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id); // первый импорт публикует path-форму маркера
+    const journalSnapshot = readFileSync(join(root, JOURNAL), 'utf8');
+    const markerSnapshot = readFileSync(join(root, MARKER), 'utf8');
+    expect(markerOf(root).complete).toBe(true);
+    expect(markerOf(root).worktrees).toContain(realpathSync(wt));
+
+    // доброкачественный доступ: сверка списков сходится — без completion pass
+    expect(new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id)).toEqual(ids);
+    expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(journalSnapshot);
+    expect(readFileSync(join(root, MARKER), 'utf8')).toBe(markerSnapshot);
+  });
+
+  it('(4 new wt) a wt registered AFTER the migration (no legacy journal) triggers at most one healing pass: the marker is refreshed once and later accesses are stable', () => {
+    const { root, wt } = makeRepo('new-wt');
+    seedWtJournal(wt, line(sup('cnr_20261119_000055', 'nC1')));
+    const ids = new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id);
+    const journalSnapshot = readFileSync(join(root, JOURNAL), 'utf8');
+
+    // новый wt после миграции: legacy-журнала нет (≥3.3.1 не пишет их)
+    const wt2 = join(root, 'wt2');
+    execFileSync('git', ['worktree', 'add', '-q', wt2, '-b', 'wtb2'], { cwd: root, stdio: 'pipe' });
+
+    // один довосстановительный прогон максимум: списки маркера обновлены
+    expect(new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id)).toEqual(ids);
+    expect(markerOf(root).worktrees).toContain(realpathSync(wt2));
+    expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(journalSnapshot); // записей не прибавилось
+
+    // дальше стабильно: маркер больше не переписывается
+    const markerSnapshot = readFileSync(join(root, MARKER), 'utf8');
+    expect(new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id)).toEqual(ids);
+    expect(readFileSync(join(root, MARKER), 'utf8')).toBe(markerSnapshot);
+    expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(journalSnapshot);
+  });
+
+  it('(5 resolved) an already-resolved record does not come back open when the healing pass re-reads the frozen legacy SQLite', () => {
+    const { root, wt } = makeRepo('resolved-sqlite');
+    seedLegacyRow(root, 'n_legacy', 'resolved later in the shared journal');
+    seedWtJournal(wt, line(sup('cnr_20261119_000056', 'nR1')));
+    const log = new JsonlMicroNoteDeliveryLog(root);
+    const legacyId = 'cnr_20261001_000001';
+    expect(log.suppressions().map((s) => s.suppression_id)).toContain(legacyId); // здоровый первый импорт
+    log.resolveSuppression(legacyId, 'done', '2026-11-20T00:00:00.000Z');
+
+    // доброкачественный дрейф → один completion pass, который теперь ЧИТАЕТ
+    // sqlite заново: замороженный ОТКРЫТЫЙ снимок не открывает запись снова
+    const wt2 = join(root, 'wt2');
+    execFileSync('git', ['worktree', 'add', '-q', wt2, '-b', 'wtb2'], { cwd: root, stdio: 'pipe' });
+    const legacy = log.suppressions().find((s) => s.suppression_id === legacyId);
+    expect(legacy?.resolved_at).not.toBeNull();
+    // история записи не растёт: открытая строка + снимок решения, четвёртой нет
+    expect((readFileSync(join(root, JOURNAL), 'utf8').match(new RegExp(legacyId, 'g')) ?? []).length).toBe(2);
+  });
+
+  it('(6 persistent suspicion) a suspicious proven marker with a refused wt source suspends repeatedly: the marker is not rewritten and the next access re-examines again', () => {
+    const { root, wt } = makeRepo('suspicious-refused');
+    mkdirSync(join(root, '.wolf', 'memory'), { recursive: true });
+    writeFileSync(join(root, JOURNAL), line(sup('cnr_20261119_000060', 'nP1')), 'utf8');
+    writeFileSync(
+      join(root, MARKER),
+      JSON.stringify({
+        format: 2,
+        migrated_at: '2026-11-01T00:00:00.000Z',
+        sources: [],
+        complete: true,
+        worktrees: [],
+      }),
+      'utf8'
+    );
+    seedWtJournal(
+      wt,
+      line(sup('cnr_20261119_000061', 'nP2')) + `${JSON.stringify({ kind: 'wat', record: {} })}\n` // отказ источника
+    );
+    const markerBefore = readFileSync(join(root, MARKER), 'utf8');
+    const journalBefore = readFileSync(join(root, JOURNAL), 'utf8');
+
+    const log = new JsonlMicroNoteDeliveryLog(root);
+    expect(() => log.suppressions()).toThrow(/migration is unfinished/);
+    // отказ лечения не переписывает подозрительный маркер и журнал...
+    expect(readFileSync(join(root, MARKER), 'utf8')).toBe(markerBefore);
+    expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(journalBefore);
+    // ...и НЕ доверяет ему снова: следующий доступ повторяет довосстановление
+    seedWtJournal(wt, line(sup('cnr_20261119_000061', 'nP2')));
+    expect(log.suppressions().map((s) => s.suppression_id)).toEqual(['cnr_20261119_000060', 'cnr_20261119_000061']);
+    expect(markerOf(root).worktrees).toContain(realpathSync(wt));
+  });
+});
+
+// patch 3.4.5 review, коррекция (F-1/F-2): (F-1) .git-гвард не имеет права
+// отключать правило (б) legacy-SQLite — замороженный источник не требует
+// перечисления wt. Сценарий стенда A2 в не-git каталоге: миграция пала громко,
+// remedies `contradict import` 3.4.2 завершался без отказов и писал
+// complete:true sources:[] → спорная заметка выдавалась бессрочно. (F-2)
+// маркер-литерал (валидный JSON не-объект) — не доказательство, а не внутренний
+// TypeError команды.
+describe('patch 3.4.5 correction (F-1/F-2): non-git projects and non-object markers', () => {
+  function makeNoGitDir(name: string): string {
+    const root = mkdtempSync(join(tmpdir(), `wolf-f1-${name}-`));
+    cleanupDirs.push(root);
+    mkdirSync(join(root, '.wolf', 'memory'), { recursive: true });
+    return root;
+  }
+
+  it('(F-1) non-git project: a proven marker without the existing legacy SQLite in sources is suspicious — the first access migrates the rows and heals the marker; the repeat is stable', () => {
+    const root = makeNoGitDir('sqlite');
+    seedLegacyRow(root, 'n_legacy', 'non-git 3.4.2 skipped legacy');
+    writeFileSync(join(root, JOURNAL), line(sup('cnr_20261119_000070', 'nNG1')), 'utf8');
+    writeFileSync(
+      join(root, MARKER),
+      JSON.stringify({
+        format: 2,
+        migrated_at: '2026-11-01T00:00:00.000Z',
+        sources: [],
+        complete: true,
+        worktrees: [],
+      }),
+      'utf8'
+    );
+
+    const ids = new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id);
+    expect(ids).toContain('cnr_20261001_000001'); // довосстановлено БЕЗ git
+    expect(ids).toContain('cnr_20261119_000070');
+    expect(markerOf(root).sources).toContain(indexPath(root));
+    expect((readFileSync(join(root, JOURNAL), 'utf8').match(/cnr_20261001_000001/g) ?? []).length).toBe(1);
+
+    const journalSnapshot = readFileSync(join(root, JOURNAL), 'utf8');
+    const markerSnapshot = readFileSync(join(root, MARKER), 'utf8');
+    expect(new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id)).toEqual(ids);
+    expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(journalSnapshot);
+    expect(readFileSync(join(root, MARKER), 'utf8')).toBe(markerSnapshot);
+  });
+
+  it('(F-1 benign) non-git project: lists matching the enumeration are trusted without a completion pass', () => {
+    const root = makeNoGitDir('benign');
+    seedLegacyRow(root, 'n_legacy', 'recorded legacy');
+    writeFileSync(join(root, JOURNAL), line(sup('cnr_20261119_000071', 'nNG2')), 'utf8');
+    writeFileSync(
+      join(root, MARKER),
+      JSON.stringify({
+        format: 2,
+        migrated_at: '2026-11-01T00:00:00.000Z',
+        sources: [indexPath(root)],
+        complete: true,
+        worktrees: [],
+      }),
+      'utf8'
+    );
+
+    const ids = new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id);
+    const journalSnapshot = readFileSync(join(root, JOURNAL), 'utf8');
+    const markerSnapshot = readFileSync(join(root, MARKER), 'utf8');
+    expect(new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id)).toEqual(ids);
+    expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(journalSnapshot);
+    expect(readFileSync(join(root, MARKER), 'utf8')).toBe(markerSnapshot);
+  });
+
+  it('(F-2) a marker file holding a JSON literal (null) is not proven — the access completes normally instead of failing with an internal TypeError', () => {
+    const root = makeNoGitDir('null-marker');
+    writeFileSync(join(root, JOURNAL), line(sup('cnr_20261119_000072', 'nNG3')), 'utf8');
+    writeFileSync(join(root, MARKER), 'null', 'utf8');
+
+    const log = new JsonlMicroNoteDeliveryLog(root);
+    expect(log.suppressions().map((s) => s.suppression_id)).toEqual(['cnr_20261119_000072']);
+    // не proven → штатный completion pass переписал маркер в валидный v2
+    expect(markerOf(root).format).toBe(2);
+    expect(markerOf(root).complete).toBe(true);
   });
 });
 

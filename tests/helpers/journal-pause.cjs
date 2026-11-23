@@ -73,6 +73,29 @@ if (process.env.PAUSE333_APPEND_MS) {
   };
 }
 
+// PAUSE333_MARKER_WRITE_MS: pause before the Nth writeFileSync of the migration
+// marker (PAUSE333_MARKER_WRITE_N, default 1). Marker writes of an explicit
+// import: (1) the persisted intention (complete:false), (2) the finalization
+// (complete:true). N=2 holds the window "journal appended, not finalized".
+if (process.env.PAUSE333_MARKER_WRITE_MS) {
+  const MARKER_MATCH = process.env.PAUSE333_MARKER_MATCH || 'micro-note-delivery.migrated.json';
+  const MARKER_N = parseInt(process.env.PAUSE333_MARKER_WRITE_N || '1', 10);
+  let markerWrites = 0;
+  const origWrite = fs.writeFileSync;
+  fs.writeFileSync = function (p, ...rest) {
+    const s = pathOf(p);
+    if (s.includes(MARKER_MATCH)) {
+      markerWrites++;
+      if (markerWrites === MARKER_N) {
+        log(`PAUSE before marker write #${markerWrites} ${s}`);
+        sleep(parseInt(process.env.PAUSE333_MARKER_WRITE_MS, 10));
+        log(`RESUME before marker write #${markerWrites} ${s}`);
+      }
+    }
+    return origWrite.call(fs, p, ...rest);
+  };
+}
+
 // Log every append to the journal (evidence of what each process wrote)
 const origApp = fs.appendFileSync;
 fs.appendFileSync = function (p, data, ...rest) {

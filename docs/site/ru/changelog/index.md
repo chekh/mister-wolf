@@ -10,6 +10,49 @@ All notable changes to this project are documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [SemVer](https://semver.org/).
 
+## [3.4.5] - 2026-11-24
+
+### Fixed — import integrity: markers written by older versions, interrupted imports, and cached enumeration refusals (owner review of 3.4.4)
+
+All three were reproduced on the published 3.4.4 build with scripted stands;
+every fix is covered by regression tests and the stands re-run clean on the
+release candidate.
+
+- **A `complete: true` migration marker written by an older version after
+  silently skipping a source was trusted forever.** Proven markers are now
+  checked against the current source enumeration: a registered worktree
+  missing from the marker's list, or an existing legacy SQLite journal not
+  reflected in `sources`, makes the marker suspect. The completion pass —
+  now covering both worktree journals and the legacy SQLite — re-transfers
+  the missing records on the next access, without a manual import, exactly
+  once; already resolved contradictions are not reopened, and the marker is
+  rewritten with the current lists (one healing pass, then stable). Non-git
+  projects are covered: the SQLite rule does not require git metadata.
+- **An explicit `contradict import` interrupted before finishing left no
+  trace**, so the next `brief` trusted the old marker and delivered the
+  disputed note. The import now persists its unfinished state before touching
+  any source and finalizes it under the same journal lock. A crash in any
+  window — before the write, or after the journal write but before the
+  finalization — leaves the migration incomplete: the next run either
+  finishes the import safely (no duplicates) or suspends delivery with the
+  refusal reasons.
+- **In a long-running session, a temporary EACCES during worktree
+  enumeration was cached until process restart**, keeping a note with a
+  legacy `worktree:` token hidden after access was restored — and a warmed
+  cache of a successful enumeration shielded a new refusal, delivering a
+  note while the source list was incomplete. Enumeration refusals are no
+  longer cached; cached successes are revalidated on every access with cheap
+  path checks. With an incomplete list the note is hidden; after access is
+  restored it is delivered again in the same session. Refusal reasons keep
+  the per-path details (path and error code) on every path, including the
+  healing pass.
+
+Performance: median `brief` on a 100 000-line journal stays within the
+≤ 1.10 acceptance criterion against 3.4.4 in interleaved A/B runs on an
+otherwise idle machine. The delivery path gains one `git worktree list` call
+per process (cached and revalidated by cheap path checks; refusals are never
+cached, so an incomplete state re-enumerates until access is restored).
+
 ## [3.4.4] - 2026-11-22
 
 ### Fixed — an inaccessible worktree path was silently skipped during source enumeration (owner review of 3.4.3)

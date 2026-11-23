@@ -733,7 +733,9 @@ describe('migration marker and journal loss (3.4.0 REQ-333-4, ADR-340-2)', () =>
     expect(marker.format).toBe(2);
     expect(marker.complete).toBe(true);
     expect(marker.migrated_at).not.toBe('');
-    expect(marker.sources).toEqual(['worktree-journal']);
+    // patch 3.4.5 review (P1-1): sources — path-форма участвовавших источников
+    // (legacy SQLite); здесь legacy SQLite нет → пусто, kind-метки больше не пишутся
+    expect(marker.sources).toEqual([]);
     // не-git каталог: linked worktree нет по построению
     expect(marker.worktrees).toEqual([]);
     // повторное чтение — то же состояние, дубликата нет
