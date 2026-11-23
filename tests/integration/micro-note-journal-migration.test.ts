@@ -791,6 +791,87 @@ describe('patch 3.4.5 review P1-1: suspicious proven markers (recorded lists vs 
   });
 });
 
+// patch 3.4.5 review, коррекция (F-1/F-2): (F-1) .git-гвард не имеет права
+// отключать правило (б) legacy-SQLite — замороженный источник не требует
+// перечисления wt. Сценарий стенда A2 в не-git каталоге: миграция пала громко,
+// remedies `contradict import` 3.4.2 завершался без отказов и писал
+// complete:true sources:[] → спорная заметка выдавалась бессрочно. (F-2)
+// маркер-литерал (валидный JSON не-объект) — не доказательство, а не внутренний
+// TypeError команды.
+describe('patch 3.4.5 correction (F-1/F-2): non-git projects and non-object markers', () => {
+  function makeNoGitDir(name: string): string {
+    const root = mkdtempSync(join(tmpdir(), `wolf-f1-${name}-`));
+    cleanupDirs.push(root);
+    mkdirSync(join(root, '.wolf', 'memory'), { recursive: true });
+    return root;
+  }
+
+  it('(F-1) non-git project: a proven marker without the existing legacy SQLite in sources is suspicious — the first access migrates the rows and heals the marker; the repeat is stable', () => {
+    const root = makeNoGitDir('sqlite');
+    seedLegacyRow(root, 'n_legacy', 'non-git 3.4.2 skipped legacy');
+    writeFileSync(join(root, JOURNAL), line(sup('cnr_20261119_000070', 'nNG1')), 'utf8');
+    writeFileSync(
+      join(root, MARKER),
+      JSON.stringify({
+        format: 2,
+        migrated_at: '2026-11-01T00:00:00.000Z',
+        sources: [],
+        complete: true,
+        worktrees: [],
+      }),
+      'utf8'
+    );
+
+    const ids = new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id);
+    expect(ids).toContain('cnr_20261001_000001'); // довосстановлено БЕЗ git
+    expect(ids).toContain('cnr_20261119_000070');
+    expect(markerOf(root).sources).toContain(indexPath(root));
+    expect((readFileSync(join(root, JOURNAL), 'utf8').match(/cnr_20261001_000001/g) ?? []).length).toBe(1);
+
+    const journalSnapshot = readFileSync(join(root, JOURNAL), 'utf8');
+    const markerSnapshot = readFileSync(join(root, MARKER), 'utf8');
+    expect(new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id)).toEqual(ids);
+    expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(journalSnapshot);
+    expect(readFileSync(join(root, MARKER), 'utf8')).toBe(markerSnapshot);
+  });
+
+  it('(F-1 benign) non-git project: lists matching the enumeration are trusted without a completion pass', () => {
+    const root = makeNoGitDir('benign');
+    seedLegacyRow(root, 'n_legacy', 'recorded legacy');
+    writeFileSync(join(root, JOURNAL), line(sup('cnr_20261119_000071', 'nNG2')), 'utf8');
+    writeFileSync(
+      join(root, MARKER),
+      JSON.stringify({
+        format: 2,
+        migrated_at: '2026-11-01T00:00:00.000Z',
+        sources: [indexPath(root)],
+        complete: true,
+        worktrees: [],
+      }),
+      'utf8'
+    );
+
+    const ids = new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id);
+    const journalSnapshot = readFileSync(join(root, JOURNAL), 'utf8');
+    const markerSnapshot = readFileSync(join(root, MARKER), 'utf8');
+    expect(new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id)).toEqual(ids);
+    expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(journalSnapshot);
+    expect(readFileSync(join(root, MARKER), 'utf8')).toBe(markerSnapshot);
+  });
+
+  it('(F-2) a marker file holding a JSON literal (null) is not proven — the access completes normally instead of failing with an internal TypeError', () => {
+    const root = makeNoGitDir('null-marker');
+    writeFileSync(join(root, JOURNAL), line(sup('cnr_20261119_000072', 'nNG3')), 'utf8');
+    writeFileSync(join(root, MARKER), 'null', 'utf8');
+
+    const log = new JsonlMicroNoteDeliveryLog(root);
+    expect(log.suppressions().map((s) => s.suppression_id)).toEqual(['cnr_20261119_000072']);
+    // не proven → штатный completion pass переписал маркер в валидный v2
+    expect(markerOf(root).format).toBe(2);
+    expect(markerOf(root).complete).toBe(true);
+  });
+});
+
 // Обрыв хвоста ОБЩЕГО журнала: чтение (load) отбрасывает незавершённую
 // последнюю строку, запись (repairTail REQ-332-3) обрезает её до границы.
 describe('shared journal torn tail (REQ-332-3 repair semantics, untouched by F3.2)', () => {

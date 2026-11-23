@@ -418,12 +418,16 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
    */
   private migrationProven(): boolean | null {
     if (!existsSync(this.markerPath)) return null;
-    let marker: { format?: unknown; complete?: unknown; sources?: unknown; worktrees?: unknown };
+    let parsed: unknown;
     try {
-      marker = JSON.parse(readFileSync(this.markerPath, 'utf8'));
+      parsed = JSON.parse(readFileSync(this.markerPath, 'utf8'));
     } catch {
       return false; // битый маркер перенос не доказывает
     }
+    // коррекция 3.4.5 (F-2): маркер-литерал (валидный JSON не-объект, например
+    // null) — доказательства нет, как у битого; не внутренний TypeError команды
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return false;
+    const marker = parsed as { format?: unknown; complete?: unknown; sources?: unknown; worktrees?: unknown };
     if (marker.format !== 2 || marker.complete !== true) return false;
     if (this.markerSourcesSuspect(marker)) return false;
     return true;
@@ -444,8 +448,23 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
    * записи маркера (доступность как в 3.4.4; отказ перечисления не рвёт
    * F-C-персистенцию явного импорта, а после возврата доступа сверка
    * выполняется — тогда дрейф обнаруживается).
+   * Коррекция 3.4.5 (F-1): правило (б) legacy-SQLite применяется БЕЗ .git-гварда
+   * — замороженный источник не требует перечисления wt; гвард остаётся только
+   * для правила (а) wt-дрейфа (не-git: worktree нет по построению).
    */
   private markerSourcesSuspect(marker: { sources?: unknown; worktrees?: unknown }): boolean {
+    // (б) legacy SQLite существует, но не записан в sources — ни путём (форма
+    // 3.4.5), ни kind-меткой 'index.sqlite' (здоровые маркеры 3.4.2–3.4.4
+    // писали kinds) — БЕЗ git-гварда (F-1)
+    const sqlitePath = indexPath(this.root);
+    const state = sourceState(sqlitePath);
+    if (state.state === 'ok') {
+      const sources = Array.isArray(marker.sources)
+        ? marker.sources.filter((s): s is string => typeof s === 'string')
+        : [];
+      if (!sources.includes(sqlitePath) && !sources.includes('index.sqlite')) return true;
+    }
+    // (а) существует wt-путь, которого нет в worktrees — только при .git
     if (!existsSync(join(this.root, '.git'))) return false; // не-git: worktree нет по построению
     const enumeration = cachedWorktreeEnumeration(this.root);
     if (enumeration === null) return false; // перечислить нельзя — сравнить нельзя (см. выше)
@@ -460,13 +479,7 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
       ? marker.worktrees.filter((s): s is string => typeof s === 'string')
       : [];
     if (current.some((p) => !recorded.includes(p))) return true; // новый wt-источник
-    const sqlitePath = indexPath(this.root);
-    const state = sourceState(sqlitePath);
-    if (state.state !== 'ok') return false; // нет источника или недоступен — не о чем сравнивать
-    const sources = Array.isArray(marker.sources)
-      ? marker.sources.filter((s): s is string => typeof s === 'string')
-      : [];
-    return !sources.includes(sqlitePath) && !sources.includes('index.sqlite');
+    return false;
   }
 
   /**
@@ -563,13 +576,41 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
    * персистенция complete:false) срабатывают без нового «молчания».
    */
   private enumerateWtSourcesOrFail(refusals: string[]): string[] {
-    const paths = this.worktreeSourcePaths(refusals);
+    // свежее перечисление: контракт явного import/restore/первого импорта — «сканируй сейчас»
+    return this.failClosedWtPaths(refusals, this.worktreeSourcePaths(refusals));
+  }
+
+  /** Обработка сбоя перечисления (null): при .git — отказ «git metadata
+   *  unavailable» (причина невозможна только вместе с отказом), без .git —
+   *  worktree нет по построению. Общее правило для свежего и кэшированного
+   *  перечислений. */
+  private failClosedWtPaths(refusals: string[], paths: string[] | null): string[] {
     if (paths !== null) return paths;
     if (existsSync(join(this.root, '.git'))) {
       refusals.push('(git worktree list): git metadata unavailable (worktree enumeration failed)');
       return [];
     }
     return []; // не-git каталог: worktree нет по построению
+  }
+
+  /** Коррекция 3.4.5 (F-3): кэшированный близнец worktreeSourcePaths для
+   *  лечебного completion pass — тот идёт СРАЗУ после suspect-проверки того же
+   *  доступа и переиспользует её ревалидированный (достижимость путей
+   *  проверяется при каждом обращении к кэшу) снимок: 2→1 git-спавн на
+   *  лечебный доступ. Отказные перечисления не кэшируются — на сломанном пути
+   *  отказ перечисляется заново, с полным перечнем причин (тексты отказов —
+   *  как у свежего перечисления). null — сбой git-метаданных. */
+  private worktreeSourcePathsCached(refusals: string[]): string[] | null {
+    const enumeration = cachedWorktreeEnumeration(this.root);
+    if (enumeration === null) return null;
+    refusals.push(...enumeration.refusals);
+    let self: string;
+    try {
+      self = realpathSync(this.root);
+    } catch {
+      return enumeration.paths;
+    }
+    return enumeration.paths.filter((p) => p !== self);
   }
 
   /**
@@ -604,7 +645,7 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
         refusals.push(`${sqlitePath}: ${(e as Error).message}`);
       }
     }
-    const wtPaths = this.enumerateWtSourcesOrFail(refusals);
+    const wtPaths = this.failClosedWtPaths(refusals, this.worktreeSourcePathsCached(refusals));
     const sources = this.readWorktreeJournals(wtPaths);
     for (const src of sources) {
       if (src.refused !== undefined) refusals.push(`${src.path}: ${src.refused}`);
