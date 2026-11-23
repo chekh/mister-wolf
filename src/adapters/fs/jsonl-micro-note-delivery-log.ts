@@ -597,20 +597,30 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
    *  лечебного completion pass — тот идёт СРАЗУ после suspect-проверки того же
    *  доступа и переиспользует её ревалидированный (достижимость путей
    *  проверяется при каждом обращении к кэшу) снимок: 2→1 git-спавн на
-   *  лечебный доступ. Отказные перечисления не кэшируются — на сломанном пути
-   *  отказ перечисляется заново, с полным перечнем причин (тексты отказов —
-   *  как у свежего перечисления). null — сбой git-метаданных. */
+   *  лечебный доступ (NFR-01). Валидного снимка нет (null: отказное
+   *  перечисление не кэшируется, P2) → фолбэк на свежее worktreeSourcePaths —
+   *  коррекция 3.4.5 review (R-1): по-путевые причины (путь+код) восстанавливаются
+   *  в refusals полностью, тексты — как у свежего перечисления 3.4.4;
+   *  fail-closed «git metadata unavailable» остаётся только для истинного
+   *  сбоя git-спавна. Лишний git-спавн возникает только в уже сломанном
+   *  случае (отказное перечисление), чистый лечебный путь остаётся 2→1. */
   private worktreeSourcePathsCached(refusals: string[]): string[] | null {
-    const enumeration = cachedWorktreeEnumeration(this.root);
-    if (enumeration === null) return null;
-    refusals.push(...enumeration.refusals);
+    const snapshot = cachedWorktreeEnumeration(this.root);
+    if (snapshot === null) return this.worktreeSourcePaths(refusals);
+    return this.wtPathsExcludingSelf(snapshot.paths);
+  }
+
+  /** Пост-обработка перечисления, общая для свежего и кэшированного путей:
+   *  корневой чекаут исключается — его журнал и есть цель; нерезолвимый
+   *  корень — без фильтра (реального «себя» нет в списке). */
+  private wtPathsExcludingSelf(paths: string[]): string[] {
     let self: string;
     try {
       self = realpathSync(this.root);
     } catch {
-      return enumeration.paths;
+      return paths;
     }
-    return enumeration.paths.filter((p) => p !== self);
+    return paths.filter((p) => p !== self);
   }
 
   /**
@@ -694,13 +704,7 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
     const enumeration = listWorktreeCheckouts(this.root);
     if (enumeration === null) return null;
     refusals.push(...enumeration.refusals);
-    let self: string;
-    try {
-      self = realpathSync(this.root);
-    } catch {
-      return enumeration.paths;
-    }
-    return enumeration.paths.filter((p) => p !== self);
+    return this.wtPathsExcludingSelf(enumeration.paths);
   }
 
   /**

@@ -40,6 +40,17 @@ const MARKER = join('.wolf', 'memory', 'micro-note-delivery.migrated.json');
 const RUN_AS_NON_ROOT = process.getuid?.() !== 0;
 const itNonRoot = RUN_AS_NON_ROOT ? it : it.skip;
 
+/** Закрыть каталог (EACCES для не-root) на время fn; вернуть права ДО выхода —
+ *  cleanup afterEach делает rmSync, который иначе упал бы на закрытом каталоге. */
+function withClosed<T>(dir: string, fn: () => T): T {
+  chmodSync(dir, 0o000);
+  try {
+    return fn();
+  } finally {
+    chmodSync(dir, 0o755);
+  }
+}
+
 function sup(
   id: string,
   memoryId: string,
@@ -328,6 +339,64 @@ describe('completion pass (patch 3.4.x review F1.2: marker v2 proves the migrati
     ]);
     expect(markerOf(root).complete).toBe(true);
   });
+
+  itNonRoot(
+    'a per-path enumeration refusal (the closed PARENT of a registered worktree) suspends the completion pass with the wt PATH and EACCES — reasons as at fresh enumeration (R-1); after chmod back the completion succeeds without duplicates',
+    () => {
+      const { root, wt } = makeRepo('comp-enum-refused');
+      // второй wt регистрируется в ОТДЕЛЬНОМ родителе (паттерн кейса (6):
+      // закрытие бьёт ТОЛЬКО перечисление этого wt, проект и родной wt
+      // остаются доступными → отказ именно ПО-ПУТЕВОЙ, не сбой git-спавна)
+      const externalParent = mkdtempSync(join(tmpdir(), 'wolf-r1-wt-parent-'));
+      cleanupDirs.push(externalParent);
+      const wt2 = join(externalParent, 'wt-ext');
+      execFileSync('git', ['worktree', 'add', '-q', wt2, '-b', 'wtb2'], { cwd: root });
+      // лечебное состояние: общий журнал + legacy-маркер (без format) →
+      // следующий доступ = completion pass; wt2-журнал содержит подавление
+      mkdirSync(join(root, '.wolf', 'memory'), { recursive: true });
+      writeFileSync(join(root, JOURNAL), line(sup('cnr_20261119_001101', 'nR1')), 'utf8');
+      seedLegacyMarker(root);
+      seedWtJournal(wt2, line(sup('cnr_20261119_001102', 'nR2')));
+      const before = readFileSync(join(root, JOURNAL), 'utf8');
+
+      const refused = withClosed(externalParent, () => {
+        let message = '';
+        try {
+          new JsonlMicroNoteDeliveryLog(root).suppressions();
+        } catch (e) {
+          message = (e as Error).message;
+        }
+        return message;
+      });
+      // причина названа как при свежем перечислении: ПУТЬ wt-источника и EACCES
+      expect(refused).toMatch(/migration is unfinished/);
+      expect(refused).toContain(wt2);
+      expect(refused).toMatch(/EACCES/);
+      // ничего не написано: журнал и legacy-маркер побайтово не изменены
+      expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(before);
+      expect(markerOf(root).format).toBeUndefined();
+
+      // отказ персистентен: следующий доступ (новый экземпляр) повторяет его
+      withClosed(externalParent, () => {
+        let message = '';
+        try {
+          new JsonlMicroNoteDeliveryLog(root).suppressions();
+        } catch (e) {
+          message = (e as Error).message;
+        }
+        expect(message).toMatch(/migration is unfinished/);
+        expect(message).toContain(wt2);
+        expect(message).toMatch(/EACCES/);
+      });
+
+      // права возвращены → completion pass завершается: обе записи, без дублей
+      const ids = new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id);
+      expect(ids).toEqual(['cnr_20261119_001101', 'cnr_20261119_001102']);
+      expect(markerOf(root).complete).toBe(true);
+      expect((readFileSync(join(root, JOURNAL), 'utf8').match(/cnr_20261119_001102/g) ?? []).length).toBe(1);
+    },
+    120_000
+  );
 });
 
 describe('first import validate-before-publish (patch 3.4.x review F3.4)', () => {
