@@ -105,27 +105,68 @@ export function listWorktreeCheckouts(baseDir: string): WorktreeEnumeration | nu
   }
 }
 
-/** basename каждой живой записи `git worktree list --porcelain` (включая main-чекоут).
- * Дубликаты сохраняются: однозначность legacy-имени — счёт, не множество. Кэш на
- * процесс (NFR-01 (R02): ≤1 git-подпроцесса); null — сбой git-метаданных. */
-const liveBasenamesCache = new Map<string, string[] | null>();
-function liveWorktreeBasenames(baseDir: string): string[] | null {
+/**
+ * Кэш УСПЕШНЫХ полных перечислений на процесс; ключ — realpath(корень памяти
+ * baseDir): журнал миграции и identity перечисляют ОДИН repo-global список
+ * `git worktree list` из разных чекаутов, общий кэш держит бюджет NFR-01
+ * (≤1 git-подпроцесс на процесс) и на пути доставки (proven-check P1-1 +
+ * legacy-identity — один спавн). Значения не мутировать.
+ * patch 3.4.5 review (P2): кэшируются ТОЛЬКО успешные полные перечисления —
+ * отказ (spawn-сбой или refusals → fail-closed null) НЕ кэшируется: временная
+ * недоступность (EACCES) не должна кэшироваться до перезапуска процесса,
+ * следующий доступ повторяет перечисление (сломанный путь — suspended/
+ * fail-closed, повторная попытка на каждый доступ допустима).
+ */
+const liveEnumerationCache = new Map<string, WorktreeEnumeration>();
+
+/**
+ * patch 3.4.5 review (F-B): тёплый кэш успеха не должен экранировать
+ * НАСТУПИВШИЙ отказ доступа (приёмка P2 «при неполном списке заметка скрыта»
+ * — в ОБОИХ состояниях кэша). Перечисление считается устаревшим, если хотя бы
+ * один закэшированный путь стал недостижим (EACCES на родителе/ENOENT/…) —
+ * это тот же примитив realpathSync, чей errno порождает refusals. Только
+ * файловые проверки, БЕЗ git-спавна: на чистом пути все пути достижимы и кэш
+ * переиспользуется (NFR-01 не меняется), на сломанном — инвалидация и свежее
+ * перечисление (его отказ не кэшируется — P2).
+ */
+function enumerationPathsReachable(paths: string[]): boolean {
+  for (const p of paths) {
+    try {
+      realpathSync(p);
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Успешное полное перечисление с кэшем на процесс (см. liveEnumerationCache);
+ *  null — перечислить не удалось (не кэшируется, P2). */
+export function cachedWorktreeEnumeration(baseDir: string): WorktreeEnumeration | null {
   let key: string;
   try {
-    key = realpathSync(baseDir);
+    key = realpathSync(resolveMemoryRoot(baseDir).root);
   } catch {
-    return null;
+    return null; // нерезолвимый baseDir — отказ без кэша, как раньше
   }
-  if (liveBasenamesCache.has(key)) return liveBasenamesCache.get(key)!;
-  const checkouts = listWorktreeCheckouts(baseDir);
-  // patch 3.4.4 review (P1): недоступный путь делает перечисление неполным —
-  // уникальность legacy-имени неизвестна → fail-closed (identity null:
-  // legacy-токены не маппятся, чужой scope недоступен — §5), не молчаливый
-  // подсчёт по неполному списку.
-  const result: string[] | null =
-    checkouts === null || checkouts.refusals.length > 0 ? null : checkouts.paths.map((p) => basename(p));
-  liveBasenamesCache.set(key, result);
-  return result;
+  const cached = liveEnumerationCache.get(key);
+  if (cached !== undefined) {
+    if (enumerationPathsReachable(cached.paths)) return cached;
+    liveEnumerationCache.delete(key); // F-B: мир изменился — кэш устарел
+  }
+  const fresh = listWorktreeCheckouts(baseDir);
+  if (fresh === null || fresh.refusals.length > 0) return null; // отказ не кэшируется (P2)
+  liveEnumerationCache.set(key, fresh);
+  return fresh;
+}
+
+/** basename каждой живой записи `git worktree list --porcelain` (включая main-чекоут).
+ * Дубликаты сохраняются: однозначность legacy-имени — счёт, не множество. Кэш на
+ * процесс (NFR-01 (R02): ≤1 git-подпроцесса); null — сбой git-метаданных
+ * (fail-closed, НЕ кэшируется — P2). */
+function liveWorktreeBasenames(baseDir: string): string[] | null {
+  const enumeration = cachedWorktreeEnumeration(baseDir);
+  return enumeration === null ? null : enumeration.paths.map((p) => basename(p));
 }
 
 /** 2.17.1 REQ-02 (R02), design §3.1 (ADR-1): идентичность linked worktree.

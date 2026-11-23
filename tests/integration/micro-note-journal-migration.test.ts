@@ -624,6 +624,173 @@ describe('loss semantics unchanged (patch 3.4.x review: «журнал отсу�
   });
 });
 
+// patch 3.4.5 review (P1-1): ошибочный complete:true от старых версий не
+// доверяется навсегда. Маркер v2 хранит sources[] и worktrees[] — они сверяются
+// с ТЕКУЩИМ перечислением источников (legacy SQLite путь + wt пути): новый
+// wt-путь, которого нет в worktrees (3.4.3 молча выбрасывала wt с недоступным
+// родителем — маркер worktrees:[] доказан стендом repro-344), или существующий
+// legacy SQLite, не записанный в sources (3.4.2 молча пропускала недоступный
+// SQLite), делают маркер «подозрительным» → completion pass. Путь лечения
+// обязан покрывать SQLite + wt; после успеха маркер переписывается актуальными
+// списками (самоисцеление, без повторных прогонов на каждом доступе).
+describe('patch 3.4.5 review P1-1: suspicious proven markers (recorded lists vs current enumeration)', () => {
+  it('(1 wt) a proven marker whose worktrees list lacks an existing wt with a legacy record (real 3.4.3 shape): the first access imports the wt record once and heals the marker; the second access is stable', () => {
+    const { root, wt } = makeRepo('p343-wt');
+    mkdirSync(join(root, '.wolf', 'memory'), { recursive: true });
+    writeFileSync(join(root, JOURNAL), line(sup('cnr_20261119_000050', 'nW1')), 'utf8');
+    // маркер реальной 3.4.3 (стенд repro-344): complete:true, wt-источник выброшен
+    writeFileSync(
+      join(root, MARKER),
+      JSON.stringify({
+        format: 2,
+        migrated_at: '2026-11-01T00:00:00.000Z',
+        sources: [],
+        complete: true,
+        worktrees: [],
+      }),
+      'utf8'
+    );
+    seedWtJournal(wt, line(sup('cnr_20261119_000051', 'nW2')));
+
+    const ids = new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id);
+    expect(ids).toEqual(['cnr_20261119_000050', 'cnr_20261119_000051']); // довосстановлен первым доступом
+    const marker = markerOf(root);
+    expect(marker.worktrees).toContain(realpathSync(wt)); // маркер самоисцелился актуальным списком
+    expect((readFileSync(join(root, JOURNAL), 'utf8').match(/cnr_20261119_000051/g) ?? []).length).toBe(1);
+
+    // второй доступ стабилен: журнал байт-в-байт, маркер не переписан (нет повторного completion)
+    const journalSnapshot = readFileSync(join(root, JOURNAL), 'utf8');
+    const markerSnapshot = readFileSync(join(root, MARKER), 'utf8');
+    expect(new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id)).toEqual(ids);
+    expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(journalSnapshot);
+    expect(readFileSync(join(root, MARKER), 'utf8')).toBe(markerSnapshot);
+  });
+
+  it('(2 sqlite) a proven marker whose sources list lacks the existing legacy SQLite (real 3.4.2 shape): the first access migrates the legacy rows once and heals the marker; the second access is stable', () => {
+    const { root, wt } = makeRepo('p342-sqlite');
+    seedLegacyRow(root, 'n_legacy', '3.4.2 silently skipped legacy');
+    mkdirSync(join(root, '.wolf', 'memory'), { recursive: true });
+    writeFileSync(join(root, JOURNAL), line(sup('cnr_20261119_000052', 'nS1')), 'utf8');
+    // маркер реальной 3.4.2 (стенд A2): contradict import с exit 0 пишет
+    // complete:true с sources:[] — ЗАТИРАЯ честный список с index.sqlite;
+    // index.sqlite молча пропущен, wt-перечисление тех лет сохранено
+    writeFileSync(
+      join(root, MARKER),
+      JSON.stringify({
+        format: 2,
+        migrated_at: '2026-11-01T00:00:00.000Z',
+        sources: [],
+        complete: true,
+        worktrees: [realpathSync(wt)],
+      }),
+      'utf8'
+    );
+    seedWtJournal(wt, line(sup('cnr_20261119_000053', 'nS2')));
+
+    const ids = new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id);
+    expect(ids).toContain('cnr_20261001_000001'); // legacy-строка перенесена (день suppressed_at)
+    expect(ids).toContain('cnr_20261119_000052');
+    expect(ids).toContain('cnr_20261119_000053');
+    expect(markerOf(root).sources).toContain(indexPath(root)); // path-форма: самоисцеление
+    expect((readFileSync(join(root, JOURNAL), 'utf8').match(/cnr_20261001_000001/g) ?? []).length).toBe(1);
+
+    const journalSnapshot = readFileSync(join(root, JOURNAL), 'utf8');
+    const markerSnapshot = readFileSync(join(root, MARKER), 'utf8');
+    expect(new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id)).toEqual(ids);
+    expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(journalSnapshot);
+    expect(readFileSync(join(root, MARKER), 'utf8')).toBe(markerSnapshot);
+  });
+
+  it('(3 benign) a proven marker whose lists match the current enumeration is trusted without a completion pass: journal and marker stay byte-identical', () => {
+    const { root, wt } = makeRepo('benign-match');
+    seedWtJournal(wt, line(sup('cnr_20261119_000054', 'nB1')));
+    const ids = new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id); // первый импорт публикует path-форму маркера
+    const journalSnapshot = readFileSync(join(root, JOURNAL), 'utf8');
+    const markerSnapshot = readFileSync(join(root, MARKER), 'utf8');
+    expect(markerOf(root).complete).toBe(true);
+    expect(markerOf(root).worktrees).toContain(realpathSync(wt));
+
+    // доброкачественный доступ: сверка списков сходится — без completion pass
+    expect(new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id)).toEqual(ids);
+    expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(journalSnapshot);
+    expect(readFileSync(join(root, MARKER), 'utf8')).toBe(markerSnapshot);
+  });
+
+  it('(4 new wt) a wt registered AFTER the migration (no legacy journal) triggers at most one healing pass: the marker is refreshed once and later accesses are stable', () => {
+    const { root, wt } = makeRepo('new-wt');
+    seedWtJournal(wt, line(sup('cnr_20261119_000055', 'nC1')));
+    const ids = new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id);
+    const journalSnapshot = readFileSync(join(root, JOURNAL), 'utf8');
+
+    // новый wt после миграции: legacy-журнала нет (≥3.3.1 не пишет их)
+    const wt2 = join(root, 'wt2');
+    execFileSync('git', ['worktree', 'add', '-q', wt2, '-b', 'wtb2'], { cwd: root, stdio: 'pipe' });
+
+    // один довосстановительный прогон максимум: списки маркера обновлены
+    expect(new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id)).toEqual(ids);
+    expect(markerOf(root).worktrees).toContain(realpathSync(wt2));
+    expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(journalSnapshot); // записей не прибавилось
+
+    // дальше стабильно: маркер больше не переписывается
+    const markerSnapshot = readFileSync(join(root, MARKER), 'utf8');
+    expect(new JsonlMicroNoteDeliveryLog(root).suppressions().map((s) => s.suppression_id)).toEqual(ids);
+    expect(readFileSync(join(root, MARKER), 'utf8')).toBe(markerSnapshot);
+    expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(journalSnapshot);
+  });
+
+  it('(5 resolved) an already-resolved record does not come back open when the healing pass re-reads the frozen legacy SQLite', () => {
+    const { root, wt } = makeRepo('resolved-sqlite');
+    seedLegacyRow(root, 'n_legacy', 'resolved later in the shared journal');
+    seedWtJournal(wt, line(sup('cnr_20261119_000056', 'nR1')));
+    const log = new JsonlMicroNoteDeliveryLog(root);
+    const legacyId = 'cnr_20261001_000001';
+    expect(log.suppressions().map((s) => s.suppression_id)).toContain(legacyId); // здоровый первый импорт
+    log.resolveSuppression(legacyId, 'done', '2026-11-20T00:00:00.000Z');
+
+    // доброкачественный дрейф → один completion pass, который теперь ЧИТАЕТ
+    // sqlite заново: замороженный ОТКРЫТЫЙ снимок не открывает запись снова
+    const wt2 = join(root, 'wt2');
+    execFileSync('git', ['worktree', 'add', '-q', wt2, '-b', 'wtb2'], { cwd: root, stdio: 'pipe' });
+    const legacy = log.suppressions().find((s) => s.suppression_id === legacyId);
+    expect(legacy?.resolved_at).not.toBeNull();
+    // история записи не растёт: открытая строка + снимок решения, четвёртой нет
+    expect((readFileSync(join(root, JOURNAL), 'utf8').match(new RegExp(legacyId, 'g')) ?? []).length).toBe(2);
+  });
+
+  it('(6 persistent suspicion) a suspicious proven marker with a refused wt source suspends repeatedly: the marker is not rewritten and the next access re-examines again', () => {
+    const { root, wt } = makeRepo('suspicious-refused');
+    mkdirSync(join(root, '.wolf', 'memory'), { recursive: true });
+    writeFileSync(join(root, JOURNAL), line(sup('cnr_20261119_000060', 'nP1')), 'utf8');
+    writeFileSync(
+      join(root, MARKER),
+      JSON.stringify({
+        format: 2,
+        migrated_at: '2026-11-01T00:00:00.000Z',
+        sources: [],
+        complete: true,
+        worktrees: [],
+      }),
+      'utf8'
+    );
+    seedWtJournal(
+      wt,
+      line(sup('cnr_20261119_000061', 'nP2')) + `${JSON.stringify({ kind: 'wat', record: {} })}\n` // отказ источника
+    );
+    const markerBefore = readFileSync(join(root, MARKER), 'utf8');
+    const journalBefore = readFileSync(join(root, JOURNAL), 'utf8');
+
+    const log = new JsonlMicroNoteDeliveryLog(root);
+    expect(() => log.suppressions()).toThrow(/migration is unfinished/);
+    // отказ лечения не переписывает подозрительный маркер и журнал...
+    expect(readFileSync(join(root, MARKER), 'utf8')).toBe(markerBefore);
+    expect(readFileSync(join(root, JOURNAL), 'utf8')).toBe(journalBefore);
+    // ...и НЕ доверяет ему снова: следующий доступ повторяет довосстановление
+    seedWtJournal(wt, line(sup('cnr_20261119_000061', 'nP2')));
+    expect(log.suppressions().map((s) => s.suppression_id)).toEqual(['cnr_20261119_000060', 'cnr_20261119_000061']);
+    expect(markerOf(root).worktrees).toContain(realpathSync(wt));
+  });
+});
+
 // Обрыв хвоста ОБЩЕГО журнала: чтение (load) отбрасывает незавершённую
 // последнюю строку, запись (repairTail REQ-332-3) обрезает её до границы.
 describe('shared journal torn tail (REQ-332-3 repair semantics, untouched by F3.2)', () => {

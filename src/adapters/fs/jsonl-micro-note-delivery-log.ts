@@ -21,7 +21,7 @@ import {
   MicroNoteObservation,
   MicroNoteSuppressionRecord,
 } from '../../ports/micro-note-delivery-log.port.js';
-import { resolveMemoryRoot, listWorktreeCheckouts } from './memory-root.js';
+import { resolveMemoryRoot, listWorktreeCheckouts, cachedWorktreeEnumeration } from './memory-root.js';
 import { indexPath } from './project-paths.js';
 import { withJournalLockSync, LockHeldError } from './memory-lock.js';
 import { createHash } from 'crypto';
@@ -381,9 +381,11 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
    * идемпотентно (дедуп каноническим JSON). Журнала нет (первый импорт отказал)
    * — НИЧЕГО не пишется: маркер без журнала создал бы loss-состояние, а
    * следующий доступ сам повторит первый импорт и сообщит о незавершённости.
+   * Возвращает sources, сохранённые из прежнего маркера (P1-2: финализация
+   * явного импорта записывает их же — явный импорт SQLite не перечитывает).
    */
-  private persistIncompleteImportMarker(wtPaths: string[]): void {
-    if (!existsSync(this.file)) return;
+  private persistIncompleteImportMarker(wtPaths: string[]): string[] {
+    if (!existsSync(this.file)) return [];
     let sources: string[] = [];
     let worktrees = wtPaths;
     try {
@@ -400,19 +402,71 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
       // маркера нет или он нечитаем — схема заполняется доступным перечислением
     }
     this.writeMarkerV2(sources, worktrees, false);
+    return sources;
   }
 
-  /** patch 3.4.x review (F1.2): доказан ли перенос. true — маркер v2
-   *  {format:2, complete:true}; null — маркера нет; false — маркер есть, но
-   *  написан 3.3.1/3.4.0 (без format) или не complete — перенос не доказан. */
+  /**
+   * patch 3.4.x review (F1.2): доказан ли перенос. true — маркер v2
+   * {format:2, complete:true} И его списки источников покрывают текущее
+   * перечисление; null — маркера нет; false — маркер есть, но написан
+   * 3.3.1/3.4.0 (без format), не complete, ПОДОЗРИТЕЛЕН (P1-1: см.
+   * markerSourcesSuspect) или бит — перенос не доказан.
+   * patch 3.4.5 review (P1-1): ошибочный complete:true старых версий не
+   * доверяется навсегда — списки маркера сверяются с текущим перечислением
+   * источников (legacy SQLite + wt); расхождение → completion pass, после
+   * успеха маркер переписывается актуальными списками (самоисцеление).
+   */
   private migrationProven(): boolean | null {
     if (!existsSync(this.markerPath)) return null;
+    let marker: { format?: unknown; complete?: unknown; sources?: unknown; worktrees?: unknown };
     try {
-      const marker = JSON.parse(readFileSync(this.markerPath, 'utf8')) as { format?: unknown; complete?: unknown };
-      return marker.format === 2 && marker.complete === true;
+      marker = JSON.parse(readFileSync(this.markerPath, 'utf8'));
     } catch {
       return false; // битый маркер перенос не доказывает
     }
+    if (marker.format !== 2 || marker.complete !== true) return false;
+    if (this.markerSourcesSuspect(marker)) return false;
+    return true;
+  }
+
+  /**
+   * patch 3.4.5 review (P1-1): «подозрительный» proven-маркер — записанные
+   * списки источников не покрывают ТЕКУЩЕЕ перечисление: (а) существует
+   * wt-путь, которого нет в worktrees (3.4.3 молча выбрасывала wt с
+   * недоступным родителем — маркер с worktrees:[] доказан стендом repro-344);
+   * (б) legacy SQLite существует, но не записан в sources — ни путём (форма
+   * 3.4.5), ни kind-меткой 'index.sqlite' (здоровые маркеры 3.4.2–3.4.4 писали
+   * kinds) (3.4.2 молча пропускала недоступный SQLite). Пропавшие пути и
+   * источники подозрительными НЕ считаются (ENOENT-пропуск честен — см.
+   * регресс (7)); недоступный для stat SQLite сравнение не поднимает
+   * (доступность — как в 3.4.4); НЕВОЗМОЖНОСТЬ перечислить (сбой git или
+   * недоступные пути) сравнение не поднимает: сверить нельзя — доверяем
+   * записи маркера (доступность как в 3.4.4; отказ перечисления не рвёт
+   * F-C-персистенцию явного импорта, а после возврата доступа сверка
+   * выполняется — тогда дрейф обнаруживается).
+   */
+  private markerSourcesSuspect(marker: { sources?: unknown; worktrees?: unknown }): boolean {
+    if (!existsSync(join(this.root, '.git'))) return false; // не-git: worktree нет по построению
+    const enumeration = cachedWorktreeEnumeration(this.root);
+    if (enumeration === null) return false; // перечислить нельзя — сравнить нельзя (см. выше)
+    let self: string | null = null;
+    try {
+      self = realpathSync(this.root);
+    } catch {
+      // фильтр себя недоступен — сравнение по полному списку (как worktreeSourcePaths)
+    }
+    const current = self === null ? enumeration.paths : enumeration.paths.filter((p) => p !== self);
+    const recorded = Array.isArray(marker.worktrees)
+      ? marker.worktrees.filter((s): s is string => typeof s === 'string')
+      : [];
+    if (current.some((p) => !recorded.includes(p))) return true; // новый wt-источник
+    const sqlitePath = indexPath(this.root);
+    const state = sourceState(sqlitePath);
+    if (state.state !== 'ok') return false; // нет источника или недоступен — не о чем сравнивать
+    const sources = Array.isArray(marker.sources)
+      ? marker.sources.filter((s): s is string => typeof s === 'string')
+      : [];
+    return !sources.includes(sqlitePath) && !sources.includes('index.sqlite');
   }
 
   /**
@@ -463,7 +517,6 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
       observations: new Map(),
     };
     const out: JournalLine[] = [];
-    const usedKinds = new Set<string>();
     if (sqliteState.state === 'ok') {
       const reportSrc: ImportSourceReport = {
         path: sqlitePath,
@@ -473,7 +526,6 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
       };
       const merged = this.mergeImportSource({ path: sqlitePath, kind: 'index.sqlite' }, legacyLines, state, reportSrc);
       out.push(...merged);
-      if (merged.length > 0 || reportSrc.imported.observations > 0) usedKinds.add('index.sqlite');
     }
     for (const src of wtSources) {
       const reportSrc: ImportSourceReport = {
@@ -484,18 +536,19 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
       };
       const merged = this.mergeImportSource({ path: src.path, kind: 'worktree-journal' }, src.lines, state, reportSrc);
       out.push(...merged);
-      if (merged.length > 0) usedKinds.add('worktree-journal');
     }
 
     // REQ-333-4 (F-2, design §5 — уточнение ведущего REV-340, §6) + F3.4:
     // журнал и маркер v2 публикуются одной критической секцией; для пустого
     // нового проекта — пустой журнал + маркер, последующие вызовы идут по
     // normal (пересмотр источников/git-спавн не на горячем пути).
+    // patch 3.4.5 review (P1-1): sources маркера — path-форма (участвовавший
+    // legacy SQLite), их сверяет с текущим перечислением migrationProven.
     mkdirSync(this.lockDir, { recursive: true });
     const tmp = `${this.file}.importing-${process.pid}.tmp`;
     writeFileSync(tmp, out.map((l) => `${JSON.stringify(l)}\n`).join(''), 'utf8');
     renameSync(tmp, this.file);
-    this.writeMarkerV2([...usedKinds], wtPaths, true);
+    this.writeMarkerV2(sqliteState.state === 'ok' ? [sqlitePath] : [], wtPaths, true);
   }
 
   /**
@@ -521,19 +574,36 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
 
   /**
    * patch 3.4.x review (F1.2): довосстановление (completion pass) — для
-   * журнала, перенесённого 3.3.1/3.4.0 (маркер без format) или с маркером,
-   * утраченным в окне сбоя. Существование журнала перенос не доказывает:
-   * wt-источники перечисляются и читаются ЗАНОВО исправленным ридером и
-   * сливаются идемпотентно (дедуп каноническим JSON — дублей нет, разрешённые
-   * записи не возвращаются в открытое состояние). Любой отказ источника →
-   * ничего не пишется, JournalMigrationIncompleteError. patch 3.4.2 review
-   * (F-B): общий журнал строго валидируется (семантика load(), REQ-332-3)
-   * ДО любых мутаций — отказ → JournalMigrationIncompleteError, байты журнала
-   * и маркер побайтово не изменяются. Успех → маркер v2
-   * {complete:true, worktrees:[перечисленные пути]}.
+   * журнала, перенесённого 3.3.1/3.4.0 (маркер без format), с маркером,
+   * утраченным в окне сбоя, или с ПОДОЗРИТЕЛЬНЫМ proven-маркером (P1-1).
+   * Существование журнала перенос не доказывает: источники перечисляются и
+   * читаются ЗАНОВО исправленным ридером и сливаются идемпотентно (дедуп
+   * каноническим JSON — дублей нет, разрешённые записи не возвращаются в
+   * открытое состояние). patch 3.4.5 review (P1-1): путь лечения обязан
+   * покрывать И legacy SQLite, И wt (3.4.2 молча пропускала недоступный
+   * SQLite — довосстановление перечитывает оба вида источников). Любой отказ
+   * источника → ничего не пишется, JournalMigrationIncompleteError. patch
+   * 3.4.2 review (F-B): общий журнал строго валидируется (семантика load(),
+   * REQ-332-3) ДО любых мутаций — отказ → JournalMigrationIncompleteError,
+   * байты журнала и маркер побайтово не изменяются. Успех → маркер v2
+   * {complete:true, sources:[SQLite путь если участвовал], worktrees:[текущее
+   * перечисление]} — актуальные списки, следующие доступы стабильны
+   * (самоисцеление без повторных прогонов).
    */
   private runCompletionPass(): void {
     const refusals: string[] = [];
+    const sqlitePath = indexPath(this.root);
+    const sqliteState = sourceState(sqlitePath);
+    let legacyLines: JournalLine[] = [];
+    if (sqliteState.state === 'refused') {
+      refusals.push(sqliteState.reason);
+    } else if (sqliteState.state === 'ok') {
+      try {
+        legacyLines = this.collectLegacyLines();
+      } catch (e) {
+        refusals.push(`${sqlitePath}: ${(e as Error).message}`);
+      }
+    }
     const wtPaths = this.enumerateWtSourcesOrFail(refusals);
     const sources = this.readWorktreeJournals(wtPaths);
     for (const src of sources) {
@@ -550,6 +620,16 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
       throw new JournalMigrationIncompleteError([(e as Error).message]);
     }
     const newLines: JournalLine[] = [];
+    if (sqliteState.state === 'ok') {
+      newLines.push(
+        ...this.mergeImportSource({ path: sqlitePath, kind: 'index.sqlite' }, legacyLines, state, {
+          path: sqlitePath,
+          kind: 'index.sqlite',
+          imported: { suppressions: 0, deliveries: 0, observations: 0 },
+          reid: [],
+        })
+      );
+    }
     for (const src of sources) {
       newLines.push(
         ...this.mergeImportSource({ path: src.path, kind: 'worktree-journal' }, src.lines, state, {
@@ -562,7 +642,7 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
     }
     // idемпотентность: mergeImportSource отфильтровал уже присутствующие строки
     this.appendMany(newLines);
-    this.writeMarkerV2(['worktree-journal'], wtPaths, true);
+    this.writeMarkerV2(sqliteState.state === 'ok' ? [sqlitePath] : [], wtPaths, true);
   }
 
   /** Пути wt-источников (ADR-340-3): живые чекауты; корневой исключён — его
@@ -744,10 +824,20 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
    *  ничего не дописывается, JournalMigrationIncompleteError с перечнем.
    *  patch 3.4.2 review (F-C): отказ при существующем журнале персистится —
    *  маркер complete:false под взятым локом (persistIncompleteImportMarker),
-   *  иначе следующий brief пропустил бы перенос по устаревшему complete:true. */
+   *  иначе следующий brief пропустил бы перенос по устаревшему complete:true.
+   *  patch 3.4.5 review (P1-2): НАМЕРЕНИЕ явного импорта персистится ДО начала
+   *  работы с источниками (под тем же локом): сбой процесса после чтения
+   *  источников, но до записи журнала, оставляет complete:false — следующий
+   *  запуск безопасно заканчивает импорт (completion pass идемпотентен) или
+   *  приостанавливает выдачу с объяснением при отказе источника; после записи
+   *  журнала, но до финализации — completion pass перечитывает и досматривает,
+   *  дублей нет. Окно до намерения — ничего не сделано, потерь нет. */
   importWorktreeJournals(): ImportReport {
     return this.withJournalLock(() => {
       this.load(); // fresh выполняет первый импорт (SQLite + wt); loss бросит
+      // P1-2: намерение персистено до перечисления/чтения источников;
+      // sources прежнего маркера сохраняются до финализации
+      const preservedSources = this.persistIncompleteImportMarker([]);
       // patch 3.4.x review (F3.4/F3.5): сбой перечисления git при наличии .git —
       // отказ переноса (validate-before-append)
       const enumRefusals: string[] = [];
@@ -778,6 +868,9 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
         report.sources.push(reportSrc);
       }
       this.appendMany(newLines);
+      // P1-2: финализация под тем же локом; worktrees актуализируются текущим
+      // перечислением, sources — сохранённые из прежнего маркера
+      this.writeMarkerV2(preservedSources, wtPaths, true);
       return report;
     });
   }
@@ -837,7 +930,6 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
         observations: new Map(),
       };
       const out: JournalLine[] = [];
-      const usedKinds = new Set<string>();
       const report: ImportReport = { sources: [], unrecoverable: UNRECOVERABLE_TEXT };
 
       if (sqliteState.state === 'ok') {
@@ -854,7 +946,6 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
           reportSrc
         );
         out.push(...merged);
-        if (merged.length > 0 || reportSrc.imported.observations > 0) usedKinds.add('index.sqlite');
         report.sources.push(reportSrc);
       }
 
@@ -872,7 +963,6 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
           reportSrc
         );
         out.push(...merged);
-        if (merged.length > 0) usedKinds.add('worktree-journal');
         report.sources.push(reportSrc);
       }
 
@@ -889,7 +979,9 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
       const tmp = `${this.file}.restoring-${process.pid}.tmp`;
       writeFileSync(tmp, out.map((l) => `${JSON.stringify(l)}\n`).join(''), 'utf8');
       renameSync(tmp, this.file);
-      this.writeMarkerV2([...usedKinds], wtPaths, true);
+      // patch 3.4.5 review (P1-1): sources маркера — path-форма (участвовавший
+      // legacy SQLite), сверяются migrationProven с текущим перечислением
+      this.writeMarkerV2(sqliteState.state === 'ok' ? [sqlitePath] : [], wtPaths, true);
       return report;
     });
   }
@@ -946,7 +1038,8 @@ export class JsonlMicroNoteDeliveryLog implements MicroNoteDeliveryLog {
   /**
    * REQ-333-7 (ADR-340-6): машина состояний БЕЗ полного парса (для пути
    * доставки): fresh → первый импорт; loss → отказ; normal (маркер v2
-   * complete) → без пересмотра источников. patch 3.4.x review (F1.2):
+   * complete, чьи списки источников сходятся с текущим перечислением — P1-1)
+   * → без пересмотра источников. patch 3.4.x review (F1.2):
    * существование общего JSONL или маркера НЕ доказывает перенос — журнал без
    * v2-маркера (маркер 3.3.1/3.4.0 без format, битый маркер или его absence в
    * окне сбоя) → довосстановление (completion pass) при следующем доступе,

@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { spawnSync, execFileSync } from 'child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { spawn, spawnSync, execFileSync } from 'child_process';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'fs';
 import { createHash } from 'crypto';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
@@ -167,7 +167,7 @@ function markerOf(dir: string): { format?: number; complete?: boolean; sources?:
   return JSON.parse(readFileSync(join(dir, MARKER), 'utf8'));
 }
 
-function seedLegacyRow(root: string, memoryId: string, reason: string): void {
+function seedLegacyRow(root: string, memoryId: string, reason: string, revision = 'legacy-rev-330'): void {
   mkdirSync(join(root, LEGACY_DIR), { recursive: true });
   const db = new Database(indexPath(root));
   db.exec(`CREATE TABLE IF NOT EXISTS micro_note_suppressions (
@@ -176,7 +176,7 @@ function seedLegacyRow(root: string, memoryId: string, reason: string): void {
     suppressed_at TEXT NOT NULL, resolved_at TEXT, resolution TEXT)`);
   db.prepare('INSERT INTO micro_note_suppressions VALUES (?,?,?,?,?,?,?,?)').run(
     memoryId,
-    'legacy-rev-330',
+    revision,
     reason,
     `${memoryId}@legacy`,
     'legacy evidence',
@@ -475,4 +475,176 @@ describe('P1: an inaccessible migration source (EACCES) is a refusal, not a sile
     expect(markerOf(root).worktrees).toEqual([]); // удалённый wt не в маркере
     expect(readFileSync(join(root, JOURNAL), 'utf8')).not.toContain('cnr_20261119_000800');
   });
+});
+
+// patch 3.4.5 review (P1-1): ошибочные proven-маркеры реальных 3.4.2/3.4.3 на
+// поверхности владельца (brief). Приёмка: после возврата доступа ПЕРВЫЙ brief
+// скрывает спорную заметку БЕЗ ручного импорта, запись переносится один раз,
+// повторный brief стабилен.
+describe('P1-1 (3.4.5 review): a suspicious proven marker is re-examined on the brief surface', () => {
+  it('(8 wt) a proven marker of real 3.4.3 (worktrees []) with an undiscovered wt suppression: the FIRST brief hides the disputed note, imports it once and heals the marker; the second brief is stable', () => {
+    const base = mkdtempSync(join(tmpdir(), 'wolf-p11-wt-'));
+    cleanupDirs.push(base);
+    const p = makeProjectWithWorktree(base, 'P343 wt heal note');
+    const revision = firstBrief(p, 'P343 wt heal note'); // здоровый журнал + маркер v2
+    // маркер реальной 3.4.3: wt-источник выброшен из перечисления
+    writeFileSync(
+      join(p.dir, MARKER),
+      JSON.stringify({
+        format: 2,
+        migrated_at: '2026-11-01T00:00:00.000Z',
+        sources: [],
+        complete: true,
+        worktrees: [],
+      }),
+      'utf8'
+    );
+    seedWtJournal(p.wt, supLine(sup('cnr_20261119_000900', p.noteId, revision)));
+
+    const first = runCli(['brief'], p.dir);
+    expect(first.status).toBe(0);
+    expect(first.stdout).not.toContain('Micro-Notes Delivery Suspended');
+    expect(first.stdout).not.toContain('P343 wt heal note'); // спорная заметка скрыта БЕЗ ручного импорта
+    expect(markerOf(p.dir).worktrees).toContain(realpathSync(p.wt)); // маркер самоисцелился
+    const journalAfterFirst = readFileSync(join(p.dir, JOURNAL), 'utf8');
+    expect((journalAfterFirst.match(/cnr_20261119_000900/g) ?? []).length).toBe(1); // один раз
+
+    // повторный brief стабилен и заметка по-прежнему подавлена
+    const second = runCli(['brief'], p.dir);
+    expect(second.status).toBe(0);
+    expect(second.stdout).not.toContain('P343 wt heal note');
+    expect(readFileSync(join(p.dir, JOURNAL), 'utf8')).toBe(journalAfterFirst);
+  }, 120_000);
+
+  it('(9 sqlite) a proven marker of real 3.4.2 (index.sqlite silently skipped): the FIRST brief migrates the legacy suppression and hides the note; the repeat is stable', () => {
+    const base = mkdtempSync(join(tmpdir(), 'wolf-p11-sqlite-'));
+    cleanupDirs.push(base);
+    const p = makeProjectWithWorktree(base, 'P342 sqlite heal note');
+    const revision = firstBrief(p, 'P342 sqlite heal note'); // здоровый журнал + маркер v2
+    // подавление спорной заметки лежит в legacy SQLite, которого 3.4.2 не
+    // видела; revision — реальная ревизия заметки (подавление вяжется к ней)
+    seedLegacyRow(p.dir, p.noteId, 'P342 legacy reason', revision);
+    // маркер реальной 3.4.2 (стенд A2): sources:[] затёр честный список,
+    // index.sqlite молча пропущен, wt-перечисление тех лет сохранено
+    writeFileSync(
+      join(p.dir, MARKER),
+      JSON.stringify({
+        format: 2,
+        migrated_at: '2026-11-01T00:00:00.000Z',
+        sources: [],
+        complete: true,
+        worktrees: [realpathSync(p.wt)],
+      }),
+      'utf8'
+    );
+
+    const first = runCli(['brief'], p.dir);
+    expect(first.status).toBe(0);
+    expect(first.stdout).not.toContain('Micro-Notes Delivery Suspended');
+    expect(first.stdout).not.toContain('P342 sqlite heal note'); // скрыта: подавление перенесено из SQLite
+    expect(markerOf(p.dir).sources).toContain(indexPath(realpathSync(p.dir))); // SQLite записан в маркер (path-форма)
+    const journalAfterFirst = readFileSync(join(p.dir, JOURNAL), 'utf8');
+    expect((journalAfterFirst.match(/cnr_20261001_000001/g) ?? []).length).toBe(1); // перенос один раз
+
+    const second = runCli(['brief'], p.dir);
+    expect(second.status).toBe(0);
+    expect(second.stdout).not.toContain('P342 sqlite heal note');
+    expect(readFileSync(join(p.dir, JOURNAL), 'utf8')).toBe(journalAfterFirst);
+  }, 120_000);
+});
+
+// patch 3.4.5 review (P1-2): явный импорт персистит НАМЕРЕНИЕ (complete:false)
+// до начала работы с источниками. Прерывание процесса (SIGKILL через
+// pause-helper: PAUSE333_APPEND_MS — окно «намерение есть, журнал не записан»;
+// PAUSE333_MARKER_WRITE_N=2 — окно «журнал записан, финализации нет») оставляет
+// состояние незавершённости: следующий запуск безопасно заканчивает импорт
+// (completion pass, идемпотентно) без дублей.
+describe('P1-2 (3.4.5 review): an interrupted explicit import persists its unfinished state', () => {
+  /** Ждать появления строки в логе pause-helper (пауза child-процесса захвачена). */
+  function waitForPauseLog(logFile: string, needle: string): Promise<void> {
+    const deadline = Date.now() + 30_000;
+    return new Promise((resolve, reject) => {
+      const poll = (): void => {
+        try {
+          if (existsSync(logFile) && readFileSync(logFile, 'utf8').includes(needle)) return resolve();
+        } catch {
+          // лог ещё пишется — повторить
+        }
+        if (Date.now() > deadline) return reject(new Error(`pause log never showed "${needle}"`));
+        setTimeout(poll, 50);
+      };
+      poll();
+    });
+  }
+
+  function spawnPausedImport(dir: string, logFile: string, pauseEnv: Record<string, string>): ReturnType<typeof spawn> {
+    const { npm_command: _npxGuard, ...base } = process.env;
+    return spawn('node', [CLI, 'contradict', 'import'], {
+      cwd: dir,
+      env: {
+        ...base,
+        NODE_OPTIONS: `--require ${join(REPO_ROOT, 'tests', 'helpers', 'journal-pause.cjs')}`,
+        ...pauseEnv,
+        PAUSE333_LOG: logFile,
+      },
+      stdio: 'ignore',
+    });
+  }
+
+  it('(10 window b) import killed AFTER the persisted intention but BEFORE the journal append: marker complete:false, journal untouched; the next brief finishes the import without duplicates', async () => {
+    const base = mkdtempSync(join(tmpdir(), 'wolf-p12-b-'));
+    cleanupDirs.push(base);
+    const p = makeProjectWithWorktree(base, 'P12 crash before append');
+    const revision = firstBrief(p, 'P12 crash before append');
+    seedWtJournal(p.wt, supLine(sup('cnr_20261119_000910', p.noteId, revision)));
+    const journalBefore = sha256(join(p.dir, JOURNAL));
+    const logFile = join(base, 'pause.log');
+
+    const child = spawnPausedImport(p.dir, logFile, { PAUSE333_APPEND_MS: '2500' });
+    const exited = new Promise<void>((resolve) => child.on('exit', () => resolve()));
+    await waitForPauseLog(logFile, 'PAUSE before append'); // намерение уже персистено
+    child.kill('SIGKILL');
+    await exited;
+
+    // состояние незавершённости: маркер complete:false, журнал не тронут
+    expect(markerOf(p.dir).complete).toBe(false);
+    expect(sha256(join(p.dir, JOURNAL))).toBe(journalBefore);
+
+    // следующий запуск безопасно заканчивает импорт: без дублей, финализировано
+    const fixed = runCli(['brief'], p.dir);
+    expect(fixed.status).toBe(0);
+    expect(fixed.stdout).not.toContain('Micro-Notes Delivery Suspended');
+    expect(fixed.stdout).not.toContain('P12 crash before append'); // подавление действует
+    const journalAfter = readFileSync(join(p.dir, JOURNAL), 'utf8');
+    expect((journalAfter.match(/cnr_20261119_000910/g) ?? []).length).toBe(1);
+    expect(markerOf(p.dir).complete).toBe(true);
+  }, 120_000);
+
+  it('(11 window c) import killed AFTER the journal append but BEFORE finalization: the next brief re-examines, sees the record exactly once and finalizes', async () => {
+    const base = mkdtempSync(join(tmpdir(), 'wolf-p12-c-'));
+    cleanupDirs.push(base);
+    const p = makeProjectWithWorktree(base, 'P12 crash before finalize');
+    const revision = firstBrief(p, 'P12 crash before finalize');
+    seedWtJournal(p.wt, supLine(sup('cnr_20261119_000911', p.noteId, revision)));
+    const logFile = join(base, 'pause.log');
+
+    const child = spawnPausedImport(p.dir, logFile, { PAUSE333_MARKER_WRITE_MS: '2500', PAUSE333_MARKER_WRITE_N: '2' });
+    const exited = new Promise<void>((resolve) => child.on('exit', () => resolve()));
+    await waitForPauseLog(logFile, 'PAUSE before marker write #2'); // журнал уже дописан
+    child.kill('SIGKILL');
+    await exited;
+
+    // журнал содержит перенос, маркер остался в состоянии намерения
+    expect((readFileSync(join(p.dir, JOURNAL), 'utf8').match(/cnr_20261119_000911/g) ?? []).length).toBe(1);
+    expect(markerOf(p.dir).complete).toBe(false);
+
+    // следующий запуск досматривает: дублей нет, финализировано, заметка подавлена
+    const fixed = runCli(['brief'], p.dir);
+    expect(fixed.status).toBe(0);
+    expect(fixed.stdout).not.toContain('Micro-Notes Delivery Suspended');
+    expect(fixed.stdout).not.toContain('P12 crash before finalize');
+    const journalAfter = readFileSync(join(p.dir, JOURNAL), 'utf8');
+    expect((journalAfter.match(/cnr_20261119_000911/g) ?? []).length).toBe(1);
+    expect(markerOf(p.dir).complete).toBe(true);
+  }, 120_000);
 });
